@@ -34,6 +34,7 @@ import importlib
 from typing import Any, ClassVar
 
 import pytest
+from jsonschema import Draft7Validator
 from pydantic import Field
 
 from adcp.types._base import (
@@ -1129,25 +1130,57 @@ def test_the_verifiers_own_derivation_separates_the_pairs_section_4_separates() 
 
     All three of section 4's separators, each on a constructed pair, and the overlapping
     case beside each so the derivation is not green for free.
+
+    **The first separator reads SETS and is gated on PRESENCE (2026-10-29,**
+    ``adcp-client-python-10l.102``).  So the ``required`` is part of every pair below and
+    not decoration: the pair that drops it is the one asserting the gate.
     """
     assert harness.inseparable_unions(OVERLAPPING) == ("#/oneOf",)
     assert harness.inseparable_unions(SEPARATED) == ()
-    pinned = {
-        "type": "object",
-        "oneOf": [
-            {"properties": {"kind": {"const": "a"}}},
-            {"properties": {"kind": {"enum": ["b"]}}},
-        ],
-    }
-    assert harness.inseparable_unions(pinned) == ()
-    same_pin = {
-        "type": "object",
-        "oneOf": [
-            {"properties": {"kind": {"const": "a"}}},
-            {"properties": {"kind": {"const": "a"}}},
-        ],
-    }
-    assert harness.inseparable_unions(same_pin) == ("#/oneOf",)
+
+    def union(*branches: dict, required: list[str] | None = None) -> dict:
+        node = {"type": "object", "oneOf": list(branches)}
+        return node if required is None else {**node, "required": required}
+
+    def pins(value: dict, required: bool = True) -> dict:
+        branch: dict = {"properties": {"kind": value}}
+        return {**branch, "required": ["kind"]} if required else branch
+
+    # Disjoint sets separate, in all four spellings section 4 names -- a one-member set
+    # against a one-member set (which is the single-value reading this generalises), a
+    # multi-member set against either, and a set against the COMPLEMENT of a set that
+    # contains it.
+    for one, other in (
+        (pins({"const": "a"}), pins({"enum": ["b"]})),
+        (pins({"enum": ["a", "b"]}), pins({"const": "c"})),
+        (pins({"enum": ["a", "b"]}), pins({"enum": ["c", "d"]})),
+        (pins({"const": "a"}), pins({"not": {"enum": ["a", "b"]}})),
+    ):
+        assert harness.inseparable_unions(union(one, other)) == (), (one, other)
+        assert harness.inseparable_unions(union(other, one)) == (), (one, other)
+
+    # Sets that INTERSECT do not, and nor do two complements: whether their two finite
+    # excluded sets cover the value space is not something the branches state.
+    for one, other in (
+        (pins({"const": "a"}), pins({"const": "a"})),
+        (pins({"enum": ["a", "b"]}), pins({"enum": ["b", "c"]})),
+        (pins({"enum": ["a", "b"]}), pins({"not": {"enum": ["b"]}})),
+        (pins({"not": {"enum": ["a"]}}), pins({"not": {"enum": ["b"]}})),
+    ):
+        assert harness.inseparable_unions(union(one, other)) == ("#/oneOf",), (one, other)
+
+    # **THE PRESENCE GATE.**  A ``properties`` entry says nothing about an instance that
+    # omits the key, so two branches naming disjoint sets for a key neither requires are
+    # both satisfied by ``{}`` -- and section 4's "a pair the derivation cannot separate
+    # is treated as overlapping" is the answer.  Satisfied either by a BRANCH requiring
+    # the key or by the ROOT requiring it of every branch, which is the form the bundle
+    # uses: 19,520 of the 70,446 pairs this arm separates get presence from the root
+    # alone.
+    bare = (pins({"const": "a"}, required=False), pins({"enum": ["b"]}, required=False))
+    assert Draft7Validator({"type": "object", **bare[0]}).is_valid({})
+    assert harness.inseparable_unions(union(*bare)) == ("#/oneOf",), bare
+    assert harness.inseparable_unions(union(*bare, required=["kind"])) == (), bare
+    assert harness.inseparable_unions(union(pins({"const": "a"}), bare[1])) == ()
 
 
 def test_the_underdetermined_set_equals_the_inseparable_set_in_both_directions() -> None:

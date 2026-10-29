@@ -629,6 +629,34 @@ _VALUES: dict[str, Row] = {
     ),
 }
 
+#: **The clause for a node that states a value keyword and no `type`**, shared by the
+#: array bounds and the string bounds because it is one sentence about both: the keyword
+#: has no annotation to sit on, so it is DROPPED and declared, and the rung is the one
+#: this row's own ``widens_to`` already carries.  It belongs in the DEFAULT cell of each
+#: row and not at the tail of a position-specific override: a typeless node is reachable
+#: at every position the row gives an answer at, and a sentence written into one
+#: override's text reads as part of that override's clause.
+_TYPELESS_DROPS = (
+    " A node stating the bound and **no `type`** is `Any` (§5's `type` row, \"absent → "
+    "`Any`\"), which carries no bound: the keyword is dropped at rung KEYWORD — the type "
+    "is unchanged, which is what that rung is — and the drop is declared. Selecting the "
+    "type the bound implies instead would NARROW, because a typeless node admits an "
+    "instance of every type and the bound constrains only one of them."
+)
+
+_ITEM_BOUND_COMPILES = (
+    "`min_length` / `max_length` on the annotation of the **array's own type**, at "
+    "every position. `minItems: 0` states nothing. `constraints` declares it once, "
+    "generically, as `type NonEmptyList[T] = Annotated[list[T], "
+    "Field(min_length=1)]`." + _TYPELESS_DROPS
+)
+
+_STRING_BOUND_COMPILES = (
+    "`min_length` / `max_length` on the type, as a named alias. On a URL type → "
+    "refused, not representable." + _TYPELESS_DROPS
+)
+
+
 _STRINGS: dict[str, Row] = {
     "pattern": Row(
         Cell(
@@ -684,13 +712,7 @@ _STRINGS: dict[str, Row] = {
         grid=STRINGS,
     ),
     "minLength": Row(
-        Cell(
-            Effect.TYPE,
-            True,
-            None,
-            "`min_length` / `max_length` on the type, as a named alias. On a URL type "
-            "→ refused, not representable.",
-        ),
+        Cell(Effect.TYPE, True, None, _STRING_BOUND_COMPILES),
         {
             Position.ROOT: Cell(Effect.TYPE, True, None, " → the root alias."),
             **_group(
@@ -709,13 +731,7 @@ _STRINGS: dict[str, Row] = {
         grid=STRINGS,
     ),
     "maxLength": Row(
-        Cell(
-            Effect.TYPE,
-            True,
-            None,
-            "`min_length` / `max_length` on the type, as a named alias. On a URL type "
-            "→ refused, not representable.",
-        ),
+        Cell(Effect.TYPE, True, None, _STRING_BOUND_COMPILES),
         {
             Position.ROOT: Cell(Effect.TYPE, True, None, " → the root alias."),
             **_group(
@@ -779,12 +795,6 @@ _NUMBERS: dict[str, Row] = {
     ),
 }
 
-_ITEM_BOUND_COMPILES = (
-    "`min_length` / `max_length` on the annotation of the **array's own type**, at "
-    "every position. `minItems: 0` states nothing. `constraints` declares it once, "
-    "generically, as `type NonEmptyList[T] = Annotated[list[T], "
-    "Field(min_length=1)]`."
-)
 _ITEM_BOUND_AT = {
     Position.PROP: Cell(Effect.TYPE, True, None, " → on the field."),
     **_group(
