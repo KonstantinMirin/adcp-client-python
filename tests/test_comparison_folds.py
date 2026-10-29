@@ -154,3 +154,92 @@ def test_the_two_shapes_are_the_only_ones_and_the_population_is_not_empty() -> N
     assert folding == {"required"}, folding
     folding = {kw for kw in facts if _constrains_nothing(kw, DEFAULTED, required=True)}
     assert folding == {"default"}, folding
+
+
+# --------------------------------------------------------------------------- #
+# the ADDED side's one fold: a model-only ``properties`` entry that is the empty schema
+# --------------------------------------------------------------------------- #
+#: §8's empty-schema clause, and the direction is why these cases are written in full.
+#: ``_constrains_nothing`` above folds a DOCUMENT fact, so a mistake there reports a
+#: model as faithful when it dropped something -- bad.  This one folds a MODEL fact, and
+#: ``added`` is the half that can make a faithful SDK refuse valid traffic, so a mistake
+#: here hides a model NARROWER than its document, which §2 never permits.  The negative
+#: cases are therefore the file's own rule applied twice over.
+VACUOUS = [
+    ({}, "the empty schema, which IS true and constrains nothing"),
+    (True, "``true``, which is the same subschema spelled the other way"),
+    (
+        {"title": "Id"},
+        "what pydantic renders for a bare Any field: a title, which the TABLE's effect "
+        "column makes an annotation, so §8's annotation clause already says a "
+        "difference about it cannot change what a payload is accepted as",
+    ),
+    (
+        {"title": "Id", "description": "text"},
+        "two annotations and still no graded fact: the fold's predicate is "
+        "grades_a_difference and not a count of keys",
+    ),
+]
+
+NOT_VACUOUS = [
+    (False, "``false`` admits NOTHING, which is the tightest a subschema can be"),
+    ({"type": "string"}, "a type word is a fact, and the model stating one the document "
+     "does not is the narrowing ``added`` exists to report"),
+    ({"title": "Id", "type": "string"}, "one graded key beside an annotation is still a "
+     "fact: a fold that counted annotations instead of grading keys would swallow it"),
+    ({"enum": ["a"]}, "a value set the document does not state"),
+    ({"const": "a"}, "a pin the document does not state"),
+    ({"required": ["x"]}, "a nested presence demand"),
+    ({"minLength": 1}, "a bound"),
+    ({"format": "uri"}, "a format, which D5 lets select a type"),
+    ({"properties": {"x": {}}}, "a nested object declaration: vacuous INSIDE is not "
+     "vacuous here, because ``properties`` is structure the comparison descends"),
+    ("not a schema", "not a mapping and not a boolean, so nothing says it is vacuous"),
+]
+
+
+@pytest.mark.parametrize(("entry", "why"), VACUOUS, ids=[str(e) for e, _ in VACUOUS])
+def test_a_model_only_properties_entry_stating_no_graded_fact_is_folded(entry, why: str) -> None:
+    from codegen.harness import _states_no_graded_fact
+
+    assert _states_no_graded_fact(entry) is True, why
+
+
+@pytest.mark.parametrize(("entry", "why"), NOT_VACUOUS, ids=[str(e) for e, _ in NOT_VACUOUS])
+def test_a_model_only_properties_entry_stating_any_graded_fact_is_not_folded(
+    entry, why: str
+) -> None:
+    from codegen.harness import _states_no_graded_fact
+
+    assert _states_no_graded_fact(entry) is False, why
+
+
+def test_no_graded_keyword_is_vacuous_on_its_own_over_the_whole_compared_set() -> None:
+    """The fold's population, exhausted the way the one above is.
+
+    A fold whose population nobody enumerated grows silently when a keyword joins the
+    compared set, so this reads the real sets -- ``harness.compared_facts``, the table's
+    rendered column, split by ``grades_a_difference`` -- rather than a copy of them, and
+    asserts the fold's answer for each half.  A keyword that changed sides reddens here
+    by name.
+
+    **The two sets are NOT the same set, and §8 says so**: ``grades_a_difference`` "is
+    asked at the three REPORTS and NOT of the compared set", because ``compared`` is the
+    pair's evidence and an annotation IS looked for.  ``description`` is the measured
+    case -- rendered at PROP, so compared, and an annotation, so a difference about it is
+    not graded -- and an entry stating only a description therefore folds, correctly: the
+    model declaring a property the document does not, and saying nothing about it but
+    words, accepts exactly the payloads the document accepts.  Asserting the fold over
+    the compared set alone would have called that a defect; asserting it over the graded
+    half alone would never have met it.
+    """
+    from codegen.harness import _states_no_graded_fact, compared_facts, grades_a_difference
+    from codegen.keywords import Position
+
+    facts = compared_facts(Position.PROP)
+    assert facts, "empty keyword set: the assertions below would pass vacuously"
+    graded = {kw for kw in facts if grades_a_difference(kw, Position.PROP)}
+    annotations = set(facts) - graded
+    assert graded and annotations, (sorted(graded), sorted(annotations))
+    assert {kw for kw in graded if _states_no_graded_fact({kw: "anything"})} == set()
+    assert {kw for kw in annotations if not _states_no_graded_fact({kw: "anything"})} == set()

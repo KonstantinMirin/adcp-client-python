@@ -355,7 +355,12 @@ _STRUCTURE: dict[str, Row] = {
             True,
             None,
             "The named fields are required: no `\\| None`, no default. Naming a "
-            "property no node declares → refused, a presence rule with no field. "
+            "property NO declaration declares → a required field of type `Any`, and "
+            "it is EXACT rather than wide: `required: ['x']` with no entry for `x` "
+            "admits an object carrying `x` with any value, which is what the `type` "
+            "row already gives an absent type word, so nothing is dropped and no "
+            "declaration is owed. The model-only `properties` entry it renders is "
+            "the empty schema, which §8 folds by reading `{}` as the `true` it is. "
             "`required: []` → nothing.",
         ),
         {

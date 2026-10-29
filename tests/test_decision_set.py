@@ -50,11 +50,12 @@ the measurement, and tells the reader to REPORT rather than repair.
 
 **What this file does NOT claim, said rather than implied** (§8: "A check is exhaustive
 over the set of nodes it claims, or it does not exist.  A check that enumerates a subset
-reports on that subset only, and says so").  Shape 4 reaches the four mechanisms
+reports on that subset only, and says so").  Shape 4 reaches the five mechanisms
 ``compare_schema`` admits a fact through today: :data:`~codegen.harness.URL_IMPLIED`,
-``_schema_half_enforces``, ``_narrows_nothing`` and ``_constrains_nothing``.  A FIFTH
-mechanism -- a new ``continue`` in that function that neither appends to a reported
-counter nor routes through one of those two predicates -- is outside it.  It is also a
+``_schema_half_enforces``, ``_narrows_nothing``, ``_constrains_nothing`` and
+``_states_no_graded_fact``.  A SIXTH mechanism -- a new ``continue`` in that function
+that neither appends to a reported counter nor routes through one of those predicates --
+is outside it.  It is also a
 shape the comparison does not currently have, and the thing that would make it visible
 is a structural reading of the source, which is a different instrument from this one.
 """
@@ -619,7 +620,7 @@ def test_url_implied_holds_the_value_the_selected_arms_actually_render() -> None
 #:
 #: This is what keeps the value pins above from being "a hand-written list beside the
 #: comparison ... complete with respect to itself and blind to everything beyond it"
-#: (§8).  A new hand-written row, wherever in these four mechanisms it is written, admits
+#: (§8).  A new hand-written row, wherever in these mechanisms it is written, admits
 #: some keyword; that keyword appears in this derivation and is not in this mapping, and
 #: the guard reddens naming it.  A row that STOPS firing reddens too, which is the
 #: shrink-on-its-own ``dump_exemptions`` relies on: the compiler got better, and the
@@ -629,6 +630,7 @@ ADMITTED: Mapping[str, frozenset[str]] = {
     "harness._schema_half_enforces": frozenset({"pattern"}),
     "harness._narrows_nothing": frozenset({"type", "default"}),
     "harness._constrains_nothing": frozenset({"required", "default"}),
+    "harness._states_no_graded_fact": frozenset({"properties"}),
 }
 
 #: Why each mechanism admits what it admits, for the message.  One sentence each, and
@@ -661,6 +663,15 @@ WHY_ADMITTED: Mapping[str, str] = {
         "demand.  The mirror of _narrows_nothing, and reported apart from missing so the "
         "fold stays auditable at its positions"
     ),
+    "harness._states_no_graded_fact": (
+        "a model-only properties ENTRY that is the empty schema, which section 8 reads the "
+        "way section 5's additionalProperties row already reads {} -- as true, so the "
+        "entry constrains nothing and a document with no entry for the key admits exactly "
+        "the same instances.  It is the FIRST mechanism on the added side, and added is "
+        "the half that can make a faithful SDK refuse valid traffic, so the scope is the "
+        "empty schema and nothing wider: any GRADED key in the entry is a real fact and "
+        "still reports added"
+    ),
 }
 
 
@@ -669,7 +680,7 @@ WHY_ADMITTED: Mapping[str, str] = {
 #: that report a defect (``added``, ``missing``).  Named by their own attribute names and
 #: read with ``getattr``, so a bucket renamed in the harness reddens here rather than
 #: being silently measured as empty.
-BUCKETS = ("url_typed", "constrains_nothing", "added", "missing")
+BUCKETS = ("url_typed", "constrains_nothing", "vacuous_entry", "added", "missing")
 
 
 def _reach() -> dict[str, frozenset[str]]:
@@ -724,6 +735,10 @@ def _reach() -> dict[str, frozenset[str]]:
         out["harness._narrows_nothing"] = frozenset(pass_over()["added"] - live["added"])
     with mock.patch.object(harness, "_constrains_nothing", lambda *a, **k: False):
         out["harness._constrains_nothing"] = frozenset(pass_over()["missing"] - live["missing"])
+    # The ADDED direction, and the delta is read there for the reason the two above read
+    # it in ``missing``: with the fold off, the entry it excuses reappears as ``added``.
+    with mock.patch.object(harness, "_states_no_graded_fact", lambda *a, **k: False):
+        out["harness._states_no_graded_fact"] = frozenset(pass_over()["added"] - live["added"])
     return out
 
 

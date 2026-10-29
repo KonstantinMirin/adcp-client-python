@@ -1508,7 +1508,6 @@ def fields(
     distinct: Collection[str] = (),
     reuse: Mapping[str, ir.Field] | None = None,
     carried: Collection[str] = (),
-    position: Position = Position.ROOT,
 ) -> list[ir.Field] | Refusal:
     """The decided properties for one property map, children declared first.
 
@@ -1518,13 +1517,16 @@ def fields(
     this loop is how two declarations of one field come to disagree about the
     answer.
 
-    **``required`` is read IN ORDER, so the caller owns that order** (P7): the names
-    this function reports as undeclared come out of a comprehension over it, so the
-    argument's order is the refusal sentence's order and therefore part of the run's
-    report.  A caller passing the document's own ``required`` tuple passes document
-    order; a caller holding a ``set`` -- the composing row, which unions the node's own
-    names with a base's ``frozenset`` -- sorts before it passes, because a set of
-    strings iterates in hash order and a report must be a function of the bundle.
+    **``required`` is read IN ORDER, so the caller owns that order** (P7): the names no
+    declaration declares come out of a comprehension over it, and each one becomes a
+    FIELD below, so the argument's order is the emitted class's field order and
+    therefore part of the artifact.  A caller passing the document's own ``required``
+    tuple passes document order; a caller holding a ``set`` -- the composing row, which
+    unions the node's own names with a base's ``frozenset`` -- sorts before it passes,
+    because a set of strings iterates in hash order and the emitted tree must be a
+    function of the bundle.  It was the REFUSAL SENTENCE's order before those names
+    became fields; the same argument now decides a line of rendered Python, which is a
+    stronger reason for the same rule.
 
     ``inherited`` names the keys a BASE CLASS already declares.  They are not
     decided here -- the field is inherited, and a subclass that restated it would
@@ -1570,7 +1572,8 @@ def fields(
     subclass inherits, so the subclass's own rules do not name the key.
 
     ``carried`` names the required keys whose presence the CLASS enforces by something
-    that is NOT a field of its own, so they are not undeclared and get no field here.
+    that is NOT a field of its own, so they are not undeclared and get no field here --
+    which is the one thing that keeps the ``Any``-field answer below off a union base.
     **One caller passes a non-empty one and §5's ``required`` row is the whole of why**:
     at a ROOT beside a union the row reads "required on the base's fields, and the names
     recorded in ``_ROOT_REQUIRED``, so a refusal can separate a field the root requires
@@ -1589,28 +1592,15 @@ def fields(
     ``creative/validate-input-request.json`` at ``/properties/targets/items`` -- and in
     BOTH every branch declares and requires every such name.
 
-    ``position`` is the node's own, and it is here for ONE reason: the refusal below
-    reads its kind off the ``required`` cell at that position (:func:`kind_for`,
-    architecture §3's "a refusal's kind is derived from the cell and never chosen at a
-    raise site") rather than naming one.  Defaulted to ROOT for :func:`rules_at`'s
-    reason -- every position a class can sit at reads the same ``TYPE`` cell, so the
-    answer does not move -- and both callers pass the node's own anyway.
+    **``position`` is GONE with the refusal it was here for.**  It existed so the
+    undeclared-``required`` refusal could read its kind off the ``required`` cell at the
+    node's own position (:func:`kind_for`) rather than name one; that refusal is now a
+    field, and nothing else in this function asked the question.  Every position a class
+    can sit at reads the same ``TYPE`` cell, so the answer never moved anyway, which is
+    why removing it changes no caller's meaning.
     """
     held = (*inherited, *carried)
     undeclared = [r for r in required if r not in props and r not in held]
-    if undeclared:
-        return Refusal(
-            "required",
-            pointer,
-            f"required names no property declares: {undeclared} -- section 5's required "
-            "row makes that a presence rule with no field, and a rule renders nothing in "
-            "a model's JSON schema while the same row's cell is rendered=True, so section "
-            "8 compares the keyword and reports the name the model's required omits "
-            "(measured: differs at this pointer's /required).  A FIELD for the key makes "
-            "required match and adds a model-only properties entry section 8 has no fold "
-            "for, so neither half of the row is written",
-            kind=kind_for("required", position),
-        )
 
     built: list[ir.Field] = []
     spelled: dict[str, str] = {}
@@ -1717,6 +1707,48 @@ def fields(
                 distinct=is_distinct,
             )
         )
+    # **A required name NO declaration declares is a required field of type ``Any``**,
+    # which §8's empty-schema clause decides and which is EXACT rather than wide:
+    # ``required: ["x"]`` with no entry for ``x`` admits an object carrying ``x`` with
+    # any value, and ``Any`` is what §5's ``type`` row already gives an absent type
+    # word.  Nothing is widened, nothing is dropped and no declaration is owed, so this
+    # appends a field and declares no approximation.
+    #
+    # **It was a refusal, and the refusal was a conflict between two of this compiler's
+    # own decisions rather than anything a document got wrong.**  §5's ``required`` row
+    # called such a name "a presence rule with no field"; a rule renders no ``required``
+    # into a model's JSON schema while the keyword's own cell is ``rendered=True``, so
+    # the rule half reported ``differs`` at this pointer's ``/required`` -- and the field
+    # half reported the model-only ``properties`` entry as ``added``, which §8 had no
+    # fold for.  Both halves were red, so neither was written.  §8 now folds the entry
+    # (``harness._states_no_graded_fact``, reading the empty schema the way §5's
+    # ``additionalProperties`` row already reads it), and with the fold the field half is
+    # the faithful one.  27 of the 95 refusals, 5 of them primary.
+    #
+    # ``held`` is why this fires only where NOTHING holds the name: a key an INHERITED
+    # field declares is the base's, and a CARRIED one is the union row's -- at a ROOT
+    # beside a union the branches declare and require the name and
+    # ``_ROOT_REQUIRED`` enforces it, which
+    # ``test_a_root_required_the_branches_declare_is_root_required_and_not_a_field``
+    # asserts a field would get wrong.
+    #
+    # In ``required``'s own order, which is the CALLER's (see the note above on P7):
+    # these keys have no ``properties`` entry, so the document states no key order for
+    # them and ``required`` is the only order it states.  That order is now the emitted
+    # class's FIELD order and not just a sentence's, which is why the composing caller
+    # sorts before it passes.
+    for key in undeclared:
+        fname = names.field_name(key, mod.reserved)
+        if fname in spelled:
+            return Refusal(
+                "required",
+                pointer,
+                f"{key!r} is required with no declaration and {spelled[fname]!r} is "
+                f"declared, and both spell the field {fname!r}",
+                kind=Kind.VERDICT,
+            )
+        spelled[fname] = key
+        built.append(ir.Field(name=fname, wire=key, type=ir.TypeRef("typing.Any"), required=True))
     return built
 
 
@@ -2032,9 +2064,7 @@ def lower_object(
     if "required" in node.faults:
         return Refusal("required", pointer, node.faults["required"], kind=Kind.VERDICT)
     required = node.required
-    built = fields(
-        node.properties, required, pointer, mod, distinct=stated.distinct, position=position
-    )
+    built = fields(node.properties, required, pointer, mod, distinct=stated.distinct)
     if isinstance(built, Refusal):
         return built
     return declare_object(
@@ -4042,17 +4072,17 @@ def lower_composition(
         # ``required`` tuple went into a set at the top of this function so the conjuncts'
         # names could be unioned into it, and a base's arrives as the ``frozenset`` on
         # :attr:`Shape.required` -- and :func:`fields` READS this argument in order: the
-        # ``undeclared`` list it names in its refusal is a comprehension over it.  A set of
-        # strings iterates in hash order, so without the sort the refusal sentence for
-        # ``core/product-format-declaration.json`` names ``format_kind`` and ``params`` in
-        # an order that changes with ``PYTHONHASHSEED`` -- measured 32/32 over seeds 0..63
-        # -- and the run's own report stops being a function of the bundle.
+        # names no declaration declares are a comprehension over it, and each becomes an
+        # ``Any`` FIELD.  A set of strings iterates in hash order, so without the sort the
+        # emitted class's field order changes with ``PYTHONHASHSEED`` -- measured 32/32
+        # over seeds 0..63 while the order decided a refusal sentence, which it no longer
+        # does -- and the artifact stops being a function of the bundle.
         #
-        # Here and not at the raise site: the order of this argument is the CALLER's, which
-        # is why :func:`fields`' other caller passes ``node.required`` and gets the
-        # document's own order.  Sorting inside ``fields`` would overrule that caller and
-        # put the choice in the layer that reports the refusal rather than the one that
-        # holds the set.  It is the same reading the two other places this function's sets
+        # Here and not inside :func:`fields`: the order of this argument is the CALLER's,
+        # which is why that function's other caller passes ``node.required`` and gets the
+        # document's own order.  Sorting inside it would overrule that caller and put the
+        # choice in the layer that builds the field rather than the one that holds the
+        # set.  It is the same reading the two other places this function's sets
         # become sequences already take -- the requiredness overlay's
         # ``sorted(required - inherited_required - set(own))`` above and ``distinct``
         # below -- and the one :func:`codegen.lower.names` takes of ``Shape.required``
@@ -4076,9 +4106,8 @@ def lower_composition(
         # tuple :func:`declare_object` writes onto the class, so the names the base
         # does not hold a field for and the names it reports on are one reading.
         # Empty for every other row, where a required name no view declares has
-        # nothing to carry it and :func:`fields` says so.
+        # nothing to carry it and :func:`fields` gives it an ``Any`` field of its own.
         carried=() if union is None else union.root_required,
-        position=position,
     )
     if isinstance(decided, Refusal):
         return decided
@@ -4252,13 +4281,7 @@ def _intersected_at_a_branch(
         merged = _parsed_property(intersected, f"{pointer}/properties/{key}", mod)
         if isinstance(merged, Refusal):
             return merged
-        decided = fields(
-            {key: merged},
-            [key] if key in required else (),
-            pointer,
-            mod,
-            position=Position.BRANCH,
-        )
+        decided = fields({key: merged}, [key] if key in required else (), pointer, mod)
         if isinstance(decided, Refusal):
             return decided
         out += decided
