@@ -1414,6 +1414,20 @@ def lower_union(
                     {**base_shape.properties, **plan.inherits.shape.properties},
                     base_shape.required | plan.inherits.shape.required,
                     decided={**base_shape.decided, **plan.inherits.shape.decided},
+                    # **§4's TWO BASES are exactly where pydantic's ``model_config``
+                    # merge decides what the document should** (§5's
+                    # ``additionalProperties`` row, 2026-10-29).  This branch states no
+                    # ``additionalProperties`` of its own, so what it DECLARES is what
+                    # the composed document states at its pointer -- the TARGET's first
+                    # and the union base's after, which is the order the three lines
+                    # above give a shared property ("the target wins a shared key") and
+                    # the order ``harness._composed`` gap-fills in.  Measured on
+                    # ``media-buy/decline-proposals-response.json#/anyOf/1``, whose root
+                    # forbids and whose target admits: read the other way the branch
+                    # REFUSES keys the document admits.
+                    extra=compiler.stated_extra(
+                        plan.inherits.shape.extra, base_shape.extra
+                    ),
                     description=inherited,
                 ),
                 Position.BRANCH,
@@ -1527,7 +1541,13 @@ def lower_union(
                 )
                 if base_shape.properties
                 else compiler.lower_object(
-                    plan.parsed, mod, bases=(ir.TypeRef(pointer, local=True),)
+                    plan.parsed,
+                    mod,
+                    bases=(ir.TypeRef(pointer, local=True),),
+                    # The base declares no PROPERTY -- that is the branch above -- and
+                    # it may still have resolved an ``extra``, which §5 says this class
+                    # declares rather than inherits.
+                    inherits=base_shape,
                 )
             )
             if isinstance(composing, Refusal):
