@@ -870,6 +870,11 @@ def _composition(raw: Mapping[str, Any], common: dict, pointer: str) -> nodes.Co
             for i, conjunct in enumerate(raw["allOf"])
         ),
         required=tuple(raw["required"]) if isinstance(raw.get("required"), list) else (),
+        # §5's ``$ref`` row at CONJ reads the ``allOf``'s SIBLINGS as constraining the
+        # target, and §5's "Two ARRAY declarations under one ``allOf``" is what puts a
+        # ``contains`` among them (:attr:`nodes.Composition.contains`).  Read here, by the
+        # arm that claims the node, so ``lower_composition`` is the one reader of it.
+        contains=raw.get("contains"),
         word=raw.get("type"),
         **common,
     )

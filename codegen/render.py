@@ -171,6 +171,26 @@ def _data_type(decided: ir.TypeRef) -> Any:
     """One :class:`codegen.ir.TypeRef` as the model layer's ``DataType``."""
     if decided.validators:
         return _bound_to_the_type(decided)
+    if decided.members:
+        # **§5's ``enum`` row at CONJ: a ``Literal`` over the ENUMERATION'S MEMBERS**, and
+        # the subscript is composed here for ``container="alias"``'s reason -- the model
+        # layer has no carrier for "this enumeration's members", and spelling one as a
+        # path loses its qualifier to ``treat_dot_as_module`` (:attr:`ir.TypeRef.members`
+        # carries the probe).
+        #
+        # ``data_types=[holder]`` is what carries the ENUMERATION's own import to the
+        # module, exactly as the alias arm passes its arguments rather than only spelling
+        # them; ``import_`` carries ``typing.Literal``, which is this arm's own.  Written
+        # with only the text, the module names a symbol it does not import.
+        holder = _data_type(dataclasses.replace(decided, members=()))
+        return _TYPES.data_type(
+            type="Literal[%s]"
+            % ", ".join(f"{holder.type_hint}.{member}" for member in decided.members),
+            import_=_TYPES.get_data_type_from_full_path(
+                "typing.Literal", is_custom_type=False
+            ).import_,
+            data_types=[holder],
+        )
     if decided.literals:
         return _TYPES.data_type(literals=list(decided.literals))
     if decided.container == "list":

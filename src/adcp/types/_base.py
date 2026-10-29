@@ -528,6 +528,13 @@ def applied_schema(root: dict, pointer: str) -> dict:
             enclosing = None  # the hop moves to a different instance
             cutting = None
         key = part.replace("~1", "/").replace("~0", "~")
+        # **Does any conjoined statement HOLD this key?**  Read before the descent below,
+        # which is what consumes it: once :func:`_descended` has run, the statement that
+        # held the key has BECOME the value under it and the question can no longer be
+        # asked.  The arm that uses the answer is two blocks down.
+        conjoined_holds = any(
+            isinstance(s, dict) and key in s for s in (*conjoined, *siblings)
+        )
         if not same_instance:
             # The hop moves to a different instance, and it moves every statement held
             # against THIS instance to THAT SAME instance: draft-07 applies
@@ -555,6 +562,35 @@ def applied_schema(root: dict, pointer: str) -> dict:
             # not in how they travel.
             conjoined = _descended(conjoined, key)
             siblings = _descended(siblings, key)
+        if isinstance(node, dict) and key not in node and conjoined_holds:
+            # **A HOP THE CONJUNCTION HAS AND THE NODE'S OWN TEXT DOES NOT.**  §8's third
+            # pairing rule is "followed as far as the pointer goes", and this is one hop
+            # further: §2's intersection rule composes a restatement with its base, so a
+            # class can be declared from a declaration PART of which came from a sibling
+            # conjunct -- and the pointer the class is stamped at is the restatement's,
+            # where the document's own text is silent at this key.
+            #
+            # The node there is the EMPTY schema, which is exactly what the document says
+            # at that key: nothing.  Every fact the pair is graded against comes from the
+            # conjoined statements the two lines above have already descended, so the
+            # composition is graded as the conjunction and not as either view alone.
+            #
+            # **Gated so it fires ONLY where the walk would otherwise raise**, which is
+            # what makes it unable to move a pair that resolves today: a key the node
+            # holds takes the hop below exactly as before, and a key NEITHER the node nor
+            # any conjoined statement holds still raises -- a class stamped at a pointer
+            # the document's conjunction does not have is a defect in the walk and stays
+            # loud.
+            #
+            # Measured on ``core/signal-coverage-forecast.json`` at
+            # ``#/properties/points/items/allOf/1/properties/metrics/properties/coverage_rate``:
+            # the document restates ``metrics`` as ``{"required": ["coverage_rate"]}`` and
+            # ``core/forecast-point.json``'s sibling conjunct declares the sixteen
+            # properties, so §2 composes a class whose ``coverage_rate`` field is the
+            # base's declaration made required -- and the pair raised ``KeyError:
+            # 'properties'`` instead of being graded.
+            node = {}
+            continue
         node = node[key]
     if not isinstance(node, dict):
         raise LookupError(f"{pointer} is {type(node).__name__}, not a schema")

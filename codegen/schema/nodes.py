@@ -256,6 +256,31 @@ class Composition(Base):
 
     conjuncts: tuple[Conjunct, ...]
     required: tuple[str, ...] = ()
+    #: **The ``contains`` predicate this node states BESIDE its conjunct list**, as the
+    #: document states it, and ``None`` where it states none.
+    #:
+    #: §5's ``$ref`` row at CONJ says the siblings count -- "the target is this node's own
+    #: TYPE, and the other conjuncts **and the ``allOf``'s siblings** constrain it" -- and
+    #: §5's "Two ARRAY declarations under one ``allOf``" (decided 2026-10-29) is what
+    #: brings a ``contains`` here: §2's intersection spells the composition of a bare
+    #: ``$ref`` base with an array restatement as ``{**child, "allOf": […, base]}``, so a
+    #: restatement whose whole content is a ``contains`` arrives as a conjunct list with
+    #: that keyword beside it.
+    #:
+    #: :attr:`Array.contains` is the precedent and the shape is deliberately the same: a
+    #: kind that claims the node before :func:`parse`'s ``allOf`` arm -- or, here, BY that
+    #: arm -- carries the keyword its handler is the one reader of.  The module docstring's
+    #: rule is that no node carries the mapping it was PARSED FROM; a typed field holding
+    #: one subschema is the answer that rule points to, which is what
+    #: :attr:`Array.contains` and :attr:`Base.rules` already are.
+    #:
+    #: Measured over the 1,054 portable documents: **1 node**,
+    #: ``core/signal-coverage-forecast.json`` at
+    #: ``/properties/points/items/allOf/1/properties/dimensions``, whose restatement is a
+    #: bare ``{"contains": {...}}`` over ``core/forecast-point.json``'s ``{"$ref":
+    #: core/forecast-point-dimensions.json}``.  0 nodes state one in the bundle's own
+    #: text, so every node reaching this field is one §2's intersection rule composed.
+    contains: Any = None
     word: Any = None
 
 
