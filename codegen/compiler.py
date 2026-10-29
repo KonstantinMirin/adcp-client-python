@@ -2675,6 +2675,81 @@ def _the_conjuncts_own_type(
     return Decided(ir.TypeRef(symbol, local=True))
 
 
+#: The mixin §4 puts FIRST on a union base, as the one spelling both sites name it by.
+DISPATCH_MIXIN = "BranchDispatchMixin"
+
+
+def dispatching_bases(bases: tuple[ir.TypeRef, ...], mod: "Module") -> tuple[ir.TypeRef, ...]:
+    """``bases`` with :data:`DISPATCH_MIXIN` named FIRST, or unchanged where a base in it
+    already carries the mixin.
+
+    **§5, "The dispatch mixin is named where no base already carries it" (decided
+    2026-10-29).**  The mixin has to come first so the MRO finds its
+    ``__get_pydantic_core_schema__``, and a union base already carries it -- so naming it
+    beside such a base puts a class before its own subclass and Python refuses to build
+    the module.  **The suppression is a function of the BASE LIST and not of the route that
+    reached it**, which is the one reading both routes can ask: this function is the point
+    the list is built, and it is the same shape as ``base_if_none_composes`` at the same
+    seam -- that one says "what the base would be if nothing composed", this one "what the
+    mixin is if nothing already carries it".
+
+    The alternative was a guard at the route, and it is wrong for §11's reason.
+    ``lower.union.Enclosing`` is constructed at ONE place, inside the enclosing union's
+    branch loop under the arm that claims a branch the parser classified
+    :class:`nodes.Union`; a nested union reaching ``lower_union`` through the DISPATCH
+    instead arrives with no carrier, and a second guard there would be a second copy of
+    the reading that carrier was built to hold once.  ``Enclosing`` keeps its other job --
+    the enclosing base's :class:`Shape`, so a property both declare takes §2's
+    restatement rule -- which no base list states.
+
+    **Transitive, because a base's base carries it too.**  A branch class of a union is
+    declared with the union's base among its own bases, so a node composing that BRANCH
+    inherits the mixin two hops up; asking only the immediate list would name it again.
+    A declaration travels by POINTER in its name slot until ``lower/names.py`` binds a
+    symbol (§7), so the lookup is by pointer over what this module has declared so far --
+    no census over the run, and nothing outside this module is consulted.
+
+    **A base another MODULE declares is not followed, and the population says why.**  Such
+    a base arrives as an imported symbol with no declaration here to read, and the one
+    shape that would need following is a conjunct whose target is a union ROOT -- which
+    :func:`lower_composition` DISTRIBUTES rather than naming as a base, so the symbol that
+    reaches a base list is a target's BRANCH and a branch does not carry the mixin by
+    itself.  Measured: with this function in force, 0 of the 1,006 modules of the tree has
+    an inconsistent MRO, asserted by importing every one of them.
+    """
+    if any(_carries_the_mixin(base, mod, frozenset()) for base in bases):
+        return bases
+    mod.imports.add((ir.BASE_MODULE, DISPATCH_MIXIN))
+    return (ir.TypeRef(DISPATCH_MIXIN, local=True), *bases)
+
+
+def _carries_the_mixin(base: ir.TypeRef, mod: "Module", seen: frozenset[str]) -> bool:
+    """Does this ONE base carry :data:`DISPATCH_MIXIN`, itself or through its own bases?
+
+    ``seen`` is the pointers already on this walk, so a declaration naming itself among
+    its bases answers once rather than recurring.  The population is 0 -- a base is always
+    an ancestor -- and it is written because a fold with no base case is a crash and §9
+    says a crash is not an outcome.
+    """
+    if base.path == DISPATCH_MIXIN:
+        return True
+    if base.path in seen:
+        return False
+    declared = next(
+        (
+            d
+            for d in mod.declarations
+            if isinstance(d, ir.ClassDecl) and d.name == base.path
+        ),
+        None,
+    )
+    if declared is None:
+        return False
+    return any(
+        _carries_the_mixin(b, mod, seen | {base.path}) for b in declared.bases
+    )
+
+
 def _conjunct_base(
     conjunct: Mapping[str, Any], where: str, mod: "Module"
 ) -> tuple[Target, "nodes.Reference"] | Refusal:
@@ -3465,14 +3540,18 @@ def lower_composition(
                 for j in range(len(branches.of))
             ),
         )
-        # ``BranchDispatchMixin`` FIRST, so the MRO finds its
-        # ``__get_pydantic_core_schema__``, and the model base only where this node
-        # composes nothing else -- the same arrangement ``lower.union.lower_union`` passes
-        # and for the same measured reason (``base_if_none_composes``).
-        bases = (ir.TypeRef("BranchDispatchMixin", local=True), *bases)
+        # The mixin FIRST so the MRO finds its ``__get_pydantic_core_schema__``, and the
+        # model base only where this node composes nothing else -- the same arrangement
+        # ``lower.union.lower_union`` passes and for the same measured reason
+        # (``base_if_none_composes``).  **Through :func:`dispatching_bases`, which is the
+        # one reading of "is it already carried"**: this arm's ``bases`` may already hold
+        # the enclosing union's base, because a BRANCH of a root union that distributes a
+        # union target arrives here with that base passed down -- and naming the mixin
+        # beside it puts a class before its own subclass.  That is ``core/postal-area.json``
+        # at ``/anyOf/0``, which is this route and not the carrier's.
+        bases = dispatching_bases(bases, mod)
         base_if_none_composes = ir.TypeRef("AdCPBaseModel", local=True)
         mod.imports.add((ir.BASE_MODULE, "AdCPBaseModel"))
-        mod.imports.add((ir.BASE_MODULE, "BranchDispatchMixin"))
         mod.imports.add(("typing", "ClassVar"))
 
     stated = rules_at(node, *conjunct_rules, position=position)

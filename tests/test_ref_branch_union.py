@@ -428,3 +428,104 @@ def test_the_bundles_ref_branch_roots_are_claimed_by_name_and_wait_on_their_targ
             continue
         row = out.refusals[document]
         assert row["keyword"] and row["pointer"], document
+
+
+# --------------------------------------------------------------------------- #
+# §5's base-list rule: the dispatch mixin where no base already carries it
+# --------------------------------------------------------------------------- #
+def test_the_dispatch_mixin_is_named_only_where_no_base_already_carries_it() -> None:
+    """§5: "The suppression is a function of the BASE LIST and not of the route that
+    reached it" (decided 2026-10-29).
+
+    ``BranchDispatchMixin`` has to come FIRST so the MRO finds its
+    ``__get_pydantic_core_schema__``, and a union base already carries it -- so naming it
+    beside such a base puts a class before its own subclass and Python refuses to build
+    the module. :func:`compiler.dispatching_bases` is the one reading, asked at the point
+    the list is built, so both routes into ``lower_union`` get it: the one that carries
+    :class:`lower_union.Enclosing` and the DISPATCH, which does not.
+
+    Asserted on the FUNCTION in both directions and TRANSITIVELY, because a branch class
+    of a union carries the mixin two hops up and asking only the immediate list would name
+    it again.
+    """
+    mod = compiler.Module(document="probe.json")
+    plain = compiler.dispatching_bases((), mod)
+    assert [b.path for b in plain] == ["BranchDispatchMixin"], plain
+    assert (compiler.ir.BASE_MODULE, "BranchDispatchMixin") in mod.imports, (
+        "the import is added where the name is, so a suppressed mixin imports nothing"
+    )
+    # A base that IS the mixin: not named twice.
+    assert compiler.dispatching_bases(plain, mod) == plain
+    # A base this module declares whose own bases carry it -- the union base, and then a
+    # class descending from that base, which is the transitive hop.
+    mod.declarations.append(
+        compiler.ir.ClassDecl(name="", ref=None, fields=(), bases=plain)
+    )
+    base = compiler.ir.TypeRef("", local=True)
+    assert [b.path for b in compiler.dispatching_bases((base,), mod)] == [""], (
+        "a union base already carries the mixin"
+    )
+    mod.declarations.append(
+        compiler.ir.ClassDecl(name="/anyOf/0", ref=None, fields=(), bases=(base,))
+    )
+    branch = compiler.ir.TypeRef("/anyOf/0", local=True)
+    assert [b.path for b in compiler.dispatching_bases((branch,), mod)] == ["/anyOf/0"], (
+        "and so does a class that descends from one, two hops up"
+    )
+    # A base this module does NOT declare is not followed and the mixin is named, which is
+    # the conservative direction: an imported symbol has no declaration here to read.
+    outside = compiler.ir.TypeRef("SomeImportedClass", local=True)
+    assert [b.path for b in compiler.dispatching_bases((outside,), mod)] == [
+        "BranchDispatchMixin",
+        "SomeImportedClass",
+    ]
+
+
+def test_the_nested_union_base_of_postal_area_imports_and_dispatches() -> None:
+    """``core/postal-area.json``, and the check is an IMPORT rather than a comparison.
+
+    Its ``/anyOf/0`` is a branch of the root union that composes a ``$ref`` whose target
+    is a union ROOT, so §5's ``$ref`` row distributes the target's branches and the branch
+    class becomes a union base of its own -- reached through
+    ``compiler.lower_composition``, not through the branch loop that builds
+    :class:`lower_union.Enclosing`. With the mixin named unconditionally there the module
+    was ``(BranchDispatchMixin, PostalArea, AdCPBaseModel)``: an inconsistent MRO, and the
+    module did not import.
+
+    **The module had been emitting for some time and nothing could see it**, because it
+    was not in the committed tree, so no instrument imported it. That is why this test
+    EXECUTES the emitted text instead of asserting on its shape: a base list that reads
+    plausibly and does not build is exactly the defect that hid here.
+    """
+    out = emit.emit(BUNDLE, ["core/postal-area.json"])
+    assert "core/postal-area.json" in out.emitted, out.refusals
+    assert (
+        "class PostalAreaCountrySystemValues(PostalArea, AdCPBaseModel):"
+        in out.files["core/postal_area.py"]
+    ), out.files["core/postal_area.py"]
+    # **The CLOSURE, written as a real package and IMPORTED.**  Not ``exec`` of the one
+    # module's text: its relative imports are what reach the distributed target's branch
+    # classes, and an MRO is built when the class statement runs, so the check has to run
+    # every statement the module writer produced in the package layout it wrote them for.
+    # The committed tree does not carry this document yet, which is the whole reason the
+    # defect hid, so the package is a temporary one rooted at its own name.
+    at = Path(tempfile.mkdtemp())
+    package = f"probe_{at.name}"
+    try:
+        emit.write(out, at / package, at)
+        sys.path.insert(0, str(at))
+        module = importlib.import_module(f"{package}.core.postal_area")
+        root, nested = module.PostalArea, module.PostalAreaCountrySystemValues
+        assert issubclass(nested, root)
+        # The mixin is INHERITED, which is the half that says suppressing it loses
+        # nothing: the nested base still carries the hook and still holds its own branch
+        # list, so a payload reaching the outer arm dispatches again inside it.
+        assert issubclass(nested, BranchDispatchMixin)
+        assert len(nested._branch_models) > 1, nested._branch_models
+        assert len(root._branch_models) > 1, root._branch_models
+    finally:
+        if str(at) in sys.path:
+            sys.path.remove(str(at))
+        for name in [m for m in sys.modules if m.startswith(package)]:
+            del sys.modules[name]
+        shutil.rmtree(at)
