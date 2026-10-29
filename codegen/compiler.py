@@ -2741,7 +2741,29 @@ def _conjunct_base(
             f"{type(parsed).__name__}, so compiler.lower_composition's conjunct screen and "
             "schema.parse's arm order disagree about what a $ref node is"
         )
-    if parsed.head:
+    if parsed.head or parsed.into not in mod.local:
+        # **A local spelling that names NO NODE OF THIS DOCUMENT is not a local reference
+        # of this document at all** (``adcp-client-python-97w``).  It is a reference the
+        # COMPOSITION carried in: §5's ``properties`` row composes two object declarations
+        # as an ``allOf`` of the two, so where a base spells its half as a pointer into its
+        # own text, :func:`_intersection` plants that very pointer as a conjunct of a node
+        # belonging to this document -- and ``emit.based_edges`` is what resolves it, by
+        # re-stating it as the fragment reference into the base that it is.
+        # :meth:`Module.target` already has the arm (:attr:`inherited_targets`, asked by
+        # URI for exactly the sites a composition produces).
+        #
+        # **Asked of :attr:`local`, which is the pointers a local reference of this
+        # document can REACH, and never of the pointer's spelling**: the question is
+        # whether this document holds the node, which only the document can answer, and
+        # :func:`local_reference` asks the same map one line in.  Routed here rather than
+        # on ``local_reference``'s refusal, so the two resolvers keep one condition each
+        # and neither is reached by the other's failure.
+        #
+        # Measured over the 1,054 portable documents: 0 sites move off the local arm that
+        # the document's own text spells -- row ``10l.43``'s two,
+        # ``core/account-identity-change-preview.json#/definitions/impact`` and
+        # ``core/registry-event.json#/$defs/propertyPayload``, both name a node of their
+        # own document and keep the local resolution.
         target = mod.target(parsed.uri, where)
         if isinstance(target, Refusal):
             return target
@@ -4359,49 +4381,42 @@ def _at_least_as_tight(
             isinstance(c, list) and isinstance(b, list) and all(member in b for member in c)
         )
     if keyword == "required":
-        # **``required`` is the one keyword whose intersection is a UNION, and the
-        # ordering is therefore the SUPERSET and not the subset** -- §2's own sentence,
-        # "a composed class's ``required`` is the union of its own and every base's",
-        # and §5's ``required`` row at CONJ, "unioned into the composed class's
-        # ``required``".  A name list says which keys the instance must supply, so
-        # demanding MORE names admits FEWER instances: ``c`` is at least as tight when
-        # every name ``b`` demands is one ``c`` demands too.  :func:`_intersection`
-        # writes the union at this keyword, which is the other half of the same rule and
-        # is not correct without this one.
+        # **A ``required`` pair is ALWAYS ordered, because its composition is the UNION
+        # and neither side can loosen it** -- which is §2's intersection rule read at this
+        # keyword and not a new rung.  ``required`` names the keys an instance must
+        # supply, ``allOf`` applies both conjuncts to that same instance, so an instance
+        # satisfying the composition supplies every key EITHER list names: the composed
+        # accepted set is the intersection of the two, spelled as the union of the two
+        # lists (:func:`_intersection`'s own arm, which is where the union is written).
         #
-        # **Without the arm the keyword fell through to this predicate's closing
-        # ``False``** -- "a keyword this cannot read is not tight enough and the caller
-        # refuses" -- and a restatement adding a required name refused as a loosening,
-        # which is the opposite of what it states.  Measured over the 1,054 portable
-        # documents: it is the ONLY keyword blocking the ``action_binding`` restatement
-        # in ``core/audience-evidence-selection.json`` and
-        # ``governance/check-governance-response.json``, whose refusals were REPORTED on
-        # ``anyOf`` and on ``additionalProperties`` because :func:`_disagreeing` names
-        # the first key of the whole disagreeing set and the base states both of those
-        # where the child is silent -- silence that is not a loosening and was never the
-        # obstruction.  One shape under two keyword headings.
+        # So a child naming FEWER keys than the base is not a loosening, for exactly the
+        # reason silence is not one (:func:`_restatement`): under ``allOf`` the base's
+        # ``required`` applies wherever the child's does not name a key.  Without this
+        # arm two different lists share a keyword neither ordering reads, the pair is
+        # unordered and the caller refuses a document whose composition §2 decides.
         #
-        # **A SUPERSET and not the pair's mere readability, and the difference is one
-        # MEASURED verdict** (``adcp-client-python-10l.82``).  §2 states the union with no
-        # condition on it, so a child requiring FEWER names is not a loosening either and
-        # the honest predicate would answer True for every pair of lists -- which is what
-        # this arm said for one measurement.  It takes
+        # Measured over the 1,054 portable documents: it is the whole of what refused
         # ``brand/verify-brand-claim-response.json`` and
-        # ``brand/verify-brand-claims-response.json`` past this predicate (their
-        # ``payload`` requires ``task`` and ``response`` where the base's target requires
-        # eight, ``adcp-client-python-97w``) and onto a VERDICT at
-        # ``/definitions/signed_response/allOf/1/properties/payload/allOf/0`` reading
-        # "#/definitions/response_payload names no node of this document": the ``$ref``
-        # conjunct the arm below APPENDS carries the base's own spelling, and that
-        # spelling is a pointer LOCAL TO THE BASE'S DOCUMENT -- resolvable by
-        # :meth:`Module.resolve_node`, which reads both spellings for the predicate, and
-        # not by the lowering that then reads the appended conjunct against the document
-        # being WRITTEN.  A verdict minted there is §9's first mistake for code nobody has
-        # written, and dropping the arm instead emits a class missing 6 of the 8
-        # properties ``payload`` requires -- the widening the arm's own comment measured.
-        # So the superset half lands and the rest waits on the conjunct carrying a
-        # reference the composing module can resolve.
-        return isinstance(c, list) and isinstance(b, list) and all(n in c for n in b)
+        # ``brand/verify-brand-claims-response.json`` at
+        # ``/definitions/signed_response/allOf/1/properties/payload`` -- the restatement
+        # requires ``task`` and ``response``, ``core/response-payload-jws-envelope.json``'s
+        # ``response_payload`` requires eight, and ``properties`` and ``type`` both
+        # ordered (``adcp-client-python-97w``).
+        #
+        #
+        # **It is also the only keyword that blocked the ``action_binding`` restatement in
+        # ``core/audience-evidence-selection.json`` and
+        # ``governance/check-governance-response.json``** (``adcp-client-python-10l.82``),
+        # whose refusals were REPORTED on ``anyOf`` and on ``additionalProperties``
+        # because :func:`_disagreeing` names the first key of the whole disagreeing set
+        # and the base states both of those where the child is silent -- silence that is
+        # not a loosening and was never the obstruction.  One shape under two keyword
+        # headings, which is why a row grouped by ``Refusal.keyword`` is grouped by a
+        # report and not by a cause.
+        #
+        # A non-list is draft-07-invalid at this keyword and falls to False with
+        # everything else this predicate cannot read.
+        return isinstance(c, list) and isinstance(b, list)
     if keyword in _BOUNDS:
         if isinstance(c, bool) or isinstance(b, bool):
             return False  # draft-04's boolean exclusiveMinimum: a different keyword
@@ -4625,16 +4640,29 @@ def _intersection(
             # the tightness arm below with every other non-mapping value.
             merged[kw] = _intersection(c[kw], b[kw], resolve)
         elif kw == "required" and isinstance(c[kw], list) and isinstance(b[kw], list):
-            # **The UNION at ``required``, and neither value is the tighter one**: §2's
-            # "a composed class's ``required`` is the union of its own and every base's"
-            # and §5's ``required`` row at CONJ, "unioned into the composed class's
-            # ``required``".  :func:`_at_least_as_tight` carries the ordering half; this
-            # is what the field is decided FROM, and taking either list whole is the
-            # shadow §2 forbids in the one direction it forbids -- the base's list drops
-            # a name the restatement demands, which accepts an instance the document
-            # refuses.  Order preserved, child's names first, so the composition of a
-            # declaration with itself is itself and the rendered class is stable.
-            merged[kw] = [*c[kw], *(n for n in b[kw] if n not in c[kw])]
+            # **At ``required`` neither value is the tighter one either, and the
+            # composition is the UNION** -- §2's intersection rule read at the one keyword
+            # whose value is a set of KEYS rather than a constraint on one instance.
+            # ``allOf`` applies both conjuncts to the same instance, so an instance
+            # satisfying the composition supplies every key either list names, and the
+            # union is what the composed declaration states.
+            #
+            # **This is the arm the predicate's own ``required`` rung needs beside it**
+            # (:func:`_at_least_as_tight`): that rung says the pair is always ordered, and
+            # it is only sound because the composition written here is the union.  Left to
+            # the tightness fallback below, the merge would take the BASE's list and drop
+            # the keys the child requires -- a model looser than its document at the
+            # keyword the document was most explicit about.  Measured on
+            # ``brand/verify-brand-claim-response.json``, whose restatement requires
+            # ``task`` and ``response`` over ``response_payload``'s eight: the union is
+            # ten, the base's alone is eight, and the child's alone is two
+            # (``adcp-client-python-97w``).
+            #
+            # The BASE's order first and the child's new keys appended, so the composed
+            # list is document-ordered and a key either side already named keeps its
+            # place.  A non-list falls to the tightness arm with every other value this
+            # rule has no composition for.
+            merged[kw] = [*b[kw], *(k for k in c[kw] if k not in b[kw])]
         elif not _at_least_as_tight(kw, c[kw], b[kw], resolve):
             merged[kw] = b[kw]
     # **The base's reference SURVIVES as a ``$ref`` CONJUNCT where both declarations
@@ -4909,12 +4937,25 @@ def _restatement(
     have the field carry the base's.**  "A bound is the tighter one" says the
     intersection of ``minimum: 1`` over a base's ``minimum: 3`` is 3, and the comparison
     reads it that way too (``harness._tighter``), so such a pair is gradeable and could
-    be inherited.  It refuses because the arm has no site: re-measured after this rule
-    landed, **3 of the 1,054 portable documents are refused by this predicate** --
-    ``governance/check-governance-response.json``'s ``action_binding``,
-    ``media-buy/get-media-buys-response.json``'s ``indicators`` and
-    ``signals/get-signals-response.json``'s ``range`` -- and none of the three is a
-    looser bound.  An arm for one would be a derivation matching nothing.
+    be inherited.  It refuses because the arm has no site.
+
+    **RE-MEASURED at ``adcp-client-python-97w``, and the three documents the comment here
+    named are gone from it.**  The old sentence read "3 of the 1,054 portable documents
+    are refused by this predicate -- ``governance/check-governance-response.json``'s
+    ``action_binding``, ``media-buy/get-media-buys-response.json``'s ``indicators`` and
+    ``signals/get-signals-response.json``'s ``range``".  Probed by recording which pairs
+    reach the shared-keyword loop's ``None``: immediately before this row, **6
+    documents** -- the two it named last are not among them, because each now refuses
+    earlier in its own chain and never reaches this predicate -- and **5 of the 6 were
+    one keyword, ``required``**, which is the rung this row wrote (the arm above).  After
+    it: **1**, ``core/postal-area.json`` at ``enum``, and that document is refused on
+    ``title`` at ``/anyOf/0`` regardless, so the arm is the SOLE reason for none.
+
+    So the ceiling stands and the reason does: the one live pair is not a looser bound
+    either, and an arm for a looser bound would still be a derivation matching nothing.
+    What the stale count hid was a keyword that measured FIVE documents, which is the
+    lesson rather than the number -- a population named once and not re-probed stops
+    being a measurement.
 
     **SILENCE IS NOT A LOOSENING, and that half had to wait for the output to be the
     intersection.**  The old rule demanded the child keep every keyword the base states,
@@ -4993,12 +5034,11 @@ def _restatement(
         # ``payload`` requires and the comparison reported 4 ``missing`` and 2
         # ``differs``, which is a model wider than its document.
         #
-        # The two ``brand`` documents still refuse, one clause down and on their own
-        # facts: the base now dereferences to its object, ``properties`` composes per key
-        # (§5's row), and ``required`` is what the pair is not ordered by -- the child
-        # requires ``task`` and ``response``, the base's target requires eight.  That is
-        # ``adcp-client-python-97w``'s, and it reports through the shared "neither matches
-        # nor narrows" arm and takes that arm's kind.
+        # **The two ``brand`` documents EMIT now, and they left through the clause below
+        # rather than through this one** (``adcp-client-python-97w``).  Once the base
+        # dereferenced to its object, ``properties`` composed per key and ``type``
+        # matched; what was left unordered was ``required``, and the rung for it is in
+        # :func:`_at_least_as_tight` where §2 already put it.
         return None
     if not all(_at_least_as_tight(k, c[k], b[k], resolve) for k in set(c) & set(b)):
         return None
