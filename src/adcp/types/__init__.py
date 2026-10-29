@@ -1,14 +1,30 @@
 """The generated types.
 
-The public surface -- what resolves on ``adcp.types`` and on ``adcp.types.<domain>``
--- is generated from the binding table in step 9.  Until then this is the package
-marker, and the only supported path to a type FROM A DOCUMENT is the private
-schema module the binding table names.
+**The one path to a type FROM A DOCUMENT is private today**: the schema module under
+``adcp.types._schemas``, at the document's own path with each segment spelled as a Python
+identifier.  ``from adcp.types._schemas.core.pagination_request import
+PaginationRequest`` is what resolves; there is no second spelling, and nothing
+re-exports it publicly.
 
-Two modules are the exception and both are public already, because what they hold
-has no document to bind, so neither has a domain for the binding table to give it.
-A consumer annotating application code imports from them, and each is the only path
-to what it holds -- there is no flat root and no second spelling.
+A PUBLIC module per domain is a stated goal and it has NOT arrived.  This docstring used
+to announce it as imminent -- it said the surface was "generated from the binding table
+in step 9" -- and ``docs/plan/architecture.md`` §14 step 9 is *the faithful rows*, which
+has landed and owns no binding table.  Where the goal is actually written, with the
+derivation of what is true instead and the check it still needs:
+``docs/plan/surface-goal.md`` ("What the surface must satisfy", first bullet) and
+``docs/plan/unimplemented.md`` item A-2.  ``docs/plan/execution-plan.md`` sequences "the
+public surface" after the keyword waves.
+
+**The reading that says it has not arrived, so a consumer can re-derive it rather than
+trust this sentence**: ``pkgutil.iter_modules`` over ``adcp.types`` returns ``_base``,
+``_runtime``, ``_schemas``, ``constraints`` and ``envelopes`` -- three private by the
+leading underscore, and the two public ones named below.  A name there that is neither
+underscored nor one of those two is a domain, and its appearance is the surface arriving.
+
+Two modules ARE public already, because what they hold has no document to bind -- so
+neither has a domain a surface could give it, and neither waits on one.  A consumer
+annotating application code imports from them, and each is the only path to what it
+holds: there is no flat root and no second spelling.
 
 ``adcp.types.constraints`` names a constrained type once (D5): a type derived from a
 CONSTRAINT belongs to no document.

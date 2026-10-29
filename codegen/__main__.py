@@ -138,14 +138,21 @@ def main(argv: list[str] | None = None) -> int:
     # condition counts -- emitted plus VERDICTS -- is printed beside the partition
     # rather than left to a reader to assemble.
     #
-    # **Section 10 replaces this pair with ``emitted N / population N`` and it cannot be
-    # replaced yet, which is this row's reported conflict rather than its omission.**  The
-    # section's reason is that "``M`` goes to zero over this bundle and the pair stops
-    # partitioning anything" -- and ``M`` is 285 at section 14 step 8, because step 8
-    # widens no cell and so moves no document out of the refused set.  A report printing
-    # ``emitted 769 / population 1054`` while 285 documents refuse would state a partition
-    # the run does not hold.  The pair therefore stays until step 10 takes ``M`` to zero,
-    # and the three approximation figures above are added beside it.
+    # **Section 10 would replace this pair with ``emitted N / population N``, and the
+    # reason it could not be replaced is gone -- so this is now an open decision and not a
+    # blocked one.**  The section's reason is that "``M`` goes to zero over this bundle and
+    # the pair stops partitioning anything".  At section 14 step 8 ``M`` was 285, because
+    # that step widens no cell and so moves no document out of the refused set, and a
+    # report printing ``emitted 769 / population 1054`` beside 285 refusals would have
+    # stated a partition the run did not hold.  Step 10 took ``M`` to zero: the READING is
+    # the ``refused`` figure this very line prints, and it is what ``./check`` reports.
+    #
+    # The pair nevertheless STAYS, and that is a decision rather than a leftover. The
+    # delivery report is required to read the three numbers off ``Refusal.kind`` with the
+    # ``deferred``/``verdict`` split and never summed, and ``emitted N / population N``
+    # drops the split; changing the lines a delivery quotes is a report change nobody has
+    # taken. So the pair is here on purpose, with the approximation figures beside it, and
+    # no step is behind on it.
     counted = collections.Counter(r["resolved"] for r in out.refusals.values())
     verdicts = sum(counted[k] for k in refusal.FINAL_KINDS)
     print(

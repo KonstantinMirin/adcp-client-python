@@ -6,9 +6,10 @@ family and this shape from the bundle.  Edit neither -- the tree is
 ``f(bundle, emitter, pinned compiler)`` and a hand edit here is a fact no input states.
 
 A type here belongs to NO document, which is why it lives beside ``adcp.types.constraints``
-rather than under a domain: there is no document for the binding table to give it a domain
-from.  It carries no ``__adcp_schema__``, nothing grades it, and ``strict_validate`` does
-not resolve on it.
+rather than in a document's own module: every other emitted type is reachable through the
+module of the document it came from, and this one has no document to be reached through.
+It carries no ``__adcp_schema__``, nothing grades it, and ``strict_validate`` does not
+resolve on it.
 
 **It is a type to program against and not an authority on acceptance.**  The documents of
 the family do not agree about what they accept, so no single schema reference could be

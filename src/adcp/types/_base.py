@@ -541,8 +541,10 @@ def applied_schema(root: dict, pointer: str) -> dict:
     instance needs this extended", and ``lower.union.ROOT_CONJUNCTS`` was what kept
     the population at zero -- a union root carrying ``properties``, ``required``,
     ``additionalProperties`` or ``allOf`` refused, so ``type`` was the only assertion
-    such a root could make.  §14 step 9 emits those 61 documents, so the four
-    keywords arrive, and §8's pairing rule is what they are graded by: "a branch class
+    such a root could make.  §14 step 9 emitted those 61 documents, so the four
+    keywords have arrived -- the READING is that no document of the portable population
+    refuses, which ``python -m codegen``'s own report prints -- and §8's pairing rule is
+    what they are graded by: "a branch class
     of a root union is paired with its branch node read UNDER THE ROOT'S SIBLINGS:
     draft-07 applies every keyword beside the combinator to the same instance the
     branch describes, so a field the branch inherits from the base is a fact its node

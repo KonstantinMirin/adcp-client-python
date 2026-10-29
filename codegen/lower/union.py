@@ -134,8 +134,8 @@ narrower reading §8 widened, and the two sides disagreed in one document.  The 
 text is ``codegen/keywords.py``'s and §5's grid is generated from it, so the correction
 is a SOURCE edit: the cell now gives the base-plus-branches answer to a sibling a CLASS
 carries at a union in any position, keeps ``A | B`` for a union stating nothing beside
-the combinator, and keeps the refusal for a sibling NO class carries -- which is
-:data:`keywords._NESTED_SIBLING`, reached through :func:`nested` and by no document of
+the combinator, and keeps the refusal for a sibling NO class carries -- whose text is this module's
+:data:`_NESTED_SIBLING`, reached through :func:`nested` and by no document of
 3.2.  The cell says what a class CARRIES and not which keywords those are, because
 :func:`carried_by_a_class` derives that set and a list in the prose would be a fifth
 copy beside §3's four readers.
@@ -831,7 +831,7 @@ def _alias(node: "nodes.Union", mod: compiler.Module) -> str | Refusal:
     every branch.
 
     **A null branch lands here and the bundle has none.**  ``{"type": "null"}`` decides
-    to ``ir.TypeRef("None")`` through ``emit._decide``'s own arm, so such a root
+    to ``ir.TypeRef("None")`` through the dispatch's own ``Null`` arm, so such a root
     aliases to ``str | None``.  At a root that ``| None`` can only be a fact about the
     TYPE -- there is no key for an absence to be the absence of -- which is the half of
     D4 this row is named for; the other half is the ``| None`` the compiler adds to an
@@ -1989,7 +1989,7 @@ def nested(node: "nodes.Union", mod: compiler.Module) -> compiler.Decided | Refu
     ``lower.containers.multi_type`` already builds for a ``type`` LIST, through the same
     ``ir.TypeRef(container="union", ...)``.
 
-    It is the SAME ARM of ``emit._decide`` that :func:`lower_union` is, reached at a
+    It is the SAME ARM of the one dispatch that :func:`lower_union` is, reached at a
     position that is not ROOT -- §5's "root and non-root are one path", so what the
     position changes is the arm's ANSWER and not which arm answers.  There was a table
     of root selectors above this and §14 step 5 deleted it: dispatching on a root's KIND

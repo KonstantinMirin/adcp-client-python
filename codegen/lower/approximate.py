@@ -34,11 +34,13 @@ So ``fact`` is a parameter and the caller passes what the DOCUMENT states, never
 the walk derived; :func:`approximate` cannot check that for the caller, which is what
 section 8's two set equalities are pointed at from the other side.
 
-**Step 10 is the first caller, and :func:`declare` is how a handler reaches it.**  The
-step before this one had no production call site at all -- "the approximation, end to
-end, with no cell widened" -- and ``tests/test_approximation.py`` exercises every arm
-here directly for that reason.  Section 14 step 10 widens the cells, so the handlers call
-:func:`declare`, which is :func:`approximate` plus the ACCUMULATION section 2 describes:
+**Step 10 WAS the first caller and the handlers call :func:`declare` today.**  The step
+before it had no production call site at all -- "the approximation, end to end, with no
+cell widened" -- which is why ``tests/test_approximation.py`` exercises every arm here
+directly, and that grading is worth keeping whatever the handlers do.  Section 14 step 10
+widened the cells; the READING of how much this function now mints is ``./check``'s third
+line, and ``tests/test_the_declared_backlog.py`` is the set equality against the tree.
+:func:`declare` is :func:`approximate` plus the ACCUMULATION section 2 describes:
 "a refusal is absorbing, an approximation is additive", and on this tree the accumulator
 is :attr:`codegen.compiler.Module.approximations`.  Minting stays in one function and the
 append stays in one function beside it, so no handler spells either.

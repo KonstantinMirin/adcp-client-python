@@ -1718,7 +1718,11 @@ def descends_at(position: Position) -> Mapping[str, Position]:
     """The structural keywords at this position and the position each one's
     subschema(s) occupy -- the ONE descent table, where today there are three.
 
-    Declared here; its readers are section 14 step 5's and are not built by this row.
+    Declared here ahead of its readers, which were section 14 step 5's.  They are built:
+    ``bundle.py``, ``schema/parse.py``, ``emit.py``, ``lower/union.py``, ``harness.py``
+    and ``tests/test_nested_union_sibling.py`` all read this function, which is what
+    "where today there are three" was pointed at -- so the sentence above is the ONE
+    descent table's statement of fact and no longer a declaration waiting for a reader.
     """
     out: dict[str, Position] = {}
     for keyword in TABLE:
