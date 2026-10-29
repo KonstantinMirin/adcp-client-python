@@ -1,0 +1,3094 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "not": {
+        "anyOf": [
+          {
+            "required": [
+              "availability_horizon",
+              "start_date"
+            ]
+          },
+          {
+            "required": [
+              "availability_horizon",
+              "end_date"
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "description": "Offer, commercial-fit, availability, and reporting filters for product discovery. This compact schema is independent of the legacy delivery-targeting filter graph. Brand and issuer selectors are stable keys; callers do not send brand assets or content provenance.",
+  "properties": {
+    "audience_evidence_requirements": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "independent_attestation_required": {
+                "const": true
+              }
+            },
+            "required": [
+              "independent_attestation_required"
+            ]
+          },
+          "then": {
+            "required": [
+              "accepted_attestation_issuers"
+            ]
+          }
+        }
+      ],
+      "description": "Buyer-authored evidence policy for compact product discovery. Organization selectors are stable keys and never carry brand assets or content provenance.",
+      "properties": {
+        "accepted_attestation_claim_types": {
+          "items": {
+            "format": "uri",
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "accepted_attestation_issuers": {
+          "items": {
+            "discriminator": {
+              "propertyName": "type"
+            },
+            "oneOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "brand": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "additionalProperties": false,
+                    "description": "Stable brand identity used to resolve the canonical brand manifest, optionally qualified by the countries of a commercial advertiser entity. The manifest URL is derived from domain; callers do not send brand assets or per-call brand overrides. Countries do not target delivery.",
+                    "properties": {
+                      "brand_id": {
+                        "$schema": "http://json-schema.org/draft-07/schema#",
+                        "description": "Brand within a house-of-brands manifest. Omit for a single-brand domain.",
+                        "examples": [
+                          "tide",
+                          "cheerios",
+                          "air_jordan",
+                          "nike",
+                          "pampers"
+                        ],
+                        "pattern": "^[a-z0-9_]+$",
+                        "title": "Brand ID",
+                        "type": "string",
+                        "x-entity": "advertiser_brand"
+                      },
+                      "countries": {
+                        "description": "Canonical set of ISO 3166-1 alpha-2 countries for this advertiser identity. Omit when the identity is global or the house does not split the brand geographically. Array order is not meaningful; producers MUST sort codes lexicographically before computing keys or signatures. This qualifies account and proposal identity and is not delivery targeting.",
+                        "items": {
+                          "pattern": "^[A-Z]{2}$",
+                          "type": "string"
+                        },
+                        "minItems": 1,
+                        "type": "array",
+                        "uniqueItems": true
+                      },
+                      "domain": {
+                        "description": "Domain that hosts /.well-known/brand.json or is registered for the brand.",
+                        "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "domain"
+                    ],
+                    "title": "Brand Key",
+                    "type": "object"
+                  },
+                  "ext": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "additionalProperties": true,
+                    "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+                    "title": "Extension Object",
+                    "type": "object"
+                  },
+                  "type": {
+                    "const": "brand",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "type",
+                  "brand"
+                ],
+                "type": "object"
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "agent_url": {
+                    "format": "uri",
+                    "pattern": "^https://[^/?#@]+(?:/[^?#]*)?(?:\\?[^#]*)?$",
+                    "type": "string"
+                  },
+                  "ext": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "additionalProperties": true,
+                    "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+                    "title": "Extension Object",
+                    "type": "object"
+                  },
+                  "type": {
+                    "const": "agent",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "type",
+                  "agent_url"
+                ],
+                "type": "object"
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "ext": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "additionalProperties": true,
+                    "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+                    "title": "Extension Object",
+                    "type": "object"
+                  },
+                  "origin": {
+                    "format": "uri",
+                    "pattern": "^https://[^/?#@]+$",
+                    "type": "string"
+                  },
+                  "type": {
+                    "const": "origin",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "type",
+                  "origin"
+                ],
+                "type": "object"
+              }
+            ]
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "accepted_evidence_types": {
+          "items": {
+            "enum": [
+              "measured",
+              "forecast",
+              "seller_declared"
+            ],
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "accepted_methodologies": {
+          "items": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "How a population-level audience-evidence estimate was produced. This vocabulary is intentionally separate from signal-definition methodology: `projected` describes expansion of a sample or panel to a reference population and does not become a user-level signal-membership method.",
+            "enum": [
+              "observed",
+              "declared",
+              "derived",
+              "inferred",
+              "modeled",
+              "projected"
+            ],
+            "title": "Audience Evidence Methodology",
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "accepted_providers": {
+          "items": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": false,
+            "description": "Stable brand identity used to resolve the canonical brand manifest, optionally qualified by the countries of a commercial advertiser entity. The manifest URL is derived from domain; callers do not send brand assets or per-call brand overrides. Countries do not target delivery.",
+            "properties": {
+              "brand_id": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "description": "Brand within a house-of-brands manifest. Omit for a single-brand domain.",
+                "examples": [
+                  "tide",
+                  "cheerios",
+                  "air_jordan",
+                  "nike",
+                  "pampers"
+                ],
+                "pattern": "^[a-z0-9_]+$",
+                "title": "Brand ID",
+                "type": "string",
+                "x-entity": "advertiser_brand"
+              },
+              "countries": {
+                "description": "Canonical set of ISO 3166-1 alpha-2 countries for this advertiser identity. Omit when the identity is global or the house does not split the brand geographically. Array order is not meaningful; producers MUST sort codes lexicographically before computing keys or signatures. This qualifies account and proposal identity and is not delivery targeting.",
+                "items": {
+                  "pattern": "^[A-Z]{2}$",
+                  "type": "string"
+                },
+                "minItems": 1,
+                "type": "array",
+                "uniqueItems": true
+              },
+              "domain": {
+                "description": "Domain that hosts /.well-known/brand.json or is registered for the brand.",
+                "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "domain"
+            ],
+            "title": "Brand Key",
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "accepted_resolution_methods": {
+          "items": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "How subjects were resolved when producing a signal or population-level evidence estimate.",
+            "enum": [
+              "deterministic_id",
+              "probabilistic_device",
+              "browser",
+              "geographic",
+              "content_signal",
+              "mixed"
+            ],
+            "title": "Audience Resolution Method",
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "accepted_subject_types": {
+          "items": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "The kind of subject characterized by audience data or population-level evidence.",
+            "enum": [
+              "individual",
+              "household",
+              "business",
+              "contextual",
+              "none"
+            ],
+            "title": "Audience Subject Type",
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "evidence_presence": {
+          "enum": [
+            "required",
+            "when_available"
+          ],
+          "type": "string"
+        },
+        "excluded_methodologies": {
+          "items": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "How a population-level audience-evidence estimate was produced. This vocabulary is intentionally separate from signal-definition methodology: `projected` describes expansion of a sample or panel to a reference population and does not become a user-level signal-membership method.",
+            "enum": [
+              "observed",
+              "declared",
+              "derived",
+              "inferred",
+              "modeled",
+              "projected"
+            ],
+            "title": "Audience Evidence Methodology",
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "excluded_providers": {
+          "items": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": false,
+            "description": "Stable brand identity used to resolve the canonical brand manifest, optionally qualified by the countries of a commercial advertiser entity. The manifest URL is derived from domain; callers do not send brand assets or per-call brand overrides. Countries do not target delivery.",
+            "properties": {
+              "brand_id": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "description": "Brand within a house-of-brands manifest. Omit for a single-brand domain.",
+                "examples": [
+                  "tide",
+                  "cheerios",
+                  "air_jordan",
+                  "nike",
+                  "pampers"
+                ],
+                "pattern": "^[a-z0-9_]+$",
+                "title": "Brand ID",
+                "type": "string",
+                "x-entity": "advertiser_brand"
+              },
+              "countries": {
+                "description": "Canonical set of ISO 3166-1 alpha-2 countries for this advertiser identity. Omit when the identity is global or the house does not split the brand geographically. Array order is not meaningful; producers MUST sort codes lexicographically before computing keys or signatures. This qualifies account and proposal identity and is not delivery targeting.",
+                "items": {
+                  "pattern": "^[A-Z]{2}$",
+                  "type": "string"
+                },
+                "minItems": 1,
+                "type": "array",
+                "uniqueItems": true
+              },
+              "domain": {
+                "description": "Domain that hosts /.well-known/brand.json or is registered for the brand.",
+                "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "domain"
+            ],
+            "title": "Brand Key",
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "ext": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": true,
+          "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+          "title": "Extension Object",
+          "type": "object"
+        },
+        "independent_attestation_required": {
+          "default": false,
+          "type": "boolean"
+        },
+        "maximum_age": {
+          "allOf": [
+            {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "additionalProperties": false,
+              "description": "A time duration expressed as an interval and unit. Used for frequency cap windows, attribution windows, reach optimization windows, time budgets, and other time-based settings. When unit is 'campaign', interval must be 1 \u2014 the window spans the full campaign flight.",
+              "properties": {
+                "interval": {
+                  "description": "Number of time units. Must be 1 when unit is 'campaign'.",
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "unit": {
+                  "description": "Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.",
+                  "enum": [
+                    "seconds",
+                    "minutes",
+                    "hours",
+                    "days",
+                    "campaign"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "interval",
+                "unit"
+              ],
+              "title": "Duration",
+              "type": "object"
+            },
+            {
+              "properties": {
+                "unit": {
+                  "enum": [
+                    "seconds",
+                    "minutes",
+                    "hours",
+                    "days"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "methodology_documentation_required": {
+          "default": false,
+          "type": "boolean"
+        },
+        "minimum_confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "requirement_mode": {
+          "enum": [
+            "required",
+            "preferred"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "requirement_mode",
+        "evidence_presence"
+      ],
+      "title": "Product Audience Evidence Requirements",
+      "type": "object"
+    },
+    "audio_distribution_types": {
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Declared audio distribution classification for radio, streaming-audio, podcast, and other audio inventory, using IAB Tech Lab/OpenRTB 2.6 audio.feed definitions with AdCP-native value names. This is seller-declared discovery metadata, not independent verification of inventory quality or delivery context.",
+        "enum": [
+          "music_streaming_service",
+          "fm_am_broadcast",
+          "podcast",
+          "catch_up_radio",
+          "web_radio",
+          "video_game",
+          "text_to_speech"
+        ],
+        "enumDescriptions": {
+          "catch_up_radio": "OpenRTB 2.6 audio.feed=4: recorded segment of a radio show that was originally broadcast live.",
+          "fm_am_broadcast": "OpenRTB 2.6 audio.feed=2: FM/AM broadcast, including live content broadcast over the air and also available via online streaming.",
+          "music_streaming_service": "OpenRTB 2.6 audio.feed=1: music streaming service.",
+          "podcast": "OpenRTB 2.6 audio.feed=3: original, pre-recorded content distributed as episodes in a series.",
+          "text_to_speech": "OpenRTB 2.6 audio.feed=7: text-to-speech audio such as audio books or website/plugin article narration.",
+          "video_game": "OpenRTB 2.6 audio.feed=6: background audio in video games.",
+          "web_radio": "OpenRTB 2.6 audio.feed=5: live audio content only available via online streaming, not as FM/AM broadcast."
+        },
+        "title": "Audio Distribution Type",
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true,
+      "x-canonicalization": "set"
+    },
+    "availability_horizon": {
+      "additionalProperties": false,
+      "description": "Flexible-window availability discovery: the buyer is open to any bookable window inside [start_time, end_time) and asks the seller to describe when the returned inventory can run, instead of filtering to one exact flight. Sellers that support this field partition the horizon into time-dimensioned forecast rows (forecast-dimension-time) carrying availability_status; sellers that cannot cover the full horizon signal the gap via the response's incomplete[] mechanism. Unlike start_date/end_date this is not an eligibility filter \u2014 products remain returnable when only part of the horizon is open. The resulting availability is a snapshot bounded by the forecast's valid_until, never a hold. Mutually exclusive with start_date and end_date, which declare a fixed flight; buyers that already know their dates use those instead.",
+      "properties": {
+        "end_time": {
+          "description": "Exclusive horizon end (RFC 3339 date-time with timezone offset). MUST be after start_time.",
+          "format": "date-time",
+          "type": "string"
+        },
+        "start_time": {
+          "description": "Inclusive horizon start (RFC 3339 date-time with timezone offset).",
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "start_time",
+        "end_time"
+      ],
+      "type": "object"
+    },
+    "budget_range": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "anyOf": [
+        {
+          "required": [
+            "min"
+          ]
+        },
+        {
+          "required": [
+            "max"
+          ]
+        }
+      ],
+      "description": "Extension-tolerant inclusive currency bounds used by legacy discovery filters. At least one bound is required; min MUST be less than or equal to max. The strict negotiation peer that rejects unknown members is media-buy/proposal-budget-constraint.json.",
+      "properties": {
+        "currency": {
+          "pattern": "^[A-Z]{3}$",
+          "type": "string"
+        },
+        "max": {
+          "minimum": 0,
+          "type": "number"
+        },
+        "min": {
+          "minimum": 0,
+          "type": "number"
+        }
+      },
+      "required": [
+        "currency"
+      ],
+      "title": "Budget Range",
+      "type": "object"
+    },
+    "channels": {
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Standardized advertising media channels describing how buyers allocate budget. Channels are planning abstractions, not technical substrates. See the Media Channel Taxonomy specification for detailed definitions.",
+        "enum": [
+          "display",
+          "olv",
+          "social",
+          "search",
+          "ctv",
+          "linear_tv",
+          "radio",
+          "streaming_audio",
+          "podcast",
+          "dooh",
+          "ooh",
+          "print",
+          "cinema",
+          "email",
+          "gaming",
+          "retail_media",
+          "influencer",
+          "affiliate",
+          "product_placement",
+          "sponsored_intelligence"
+        ],
+        "enumDescriptions": {
+          "affiliate": "Affiliate networks, comparison sites, and performance-based partnerships",
+          "cinema": "Movie theater advertising",
+          "ctv": "Connected TV and streaming on television screens",
+          "display": "Digital display advertising (banners, native, rich media) across web and app",
+          "dooh": "Digital out-of-home buying context, including inventory on venue-operated screens and audio players",
+          "email": "Email advertising and sponsored newsletter content",
+          "gaming": "In-game advertising across platforms",
+          "influencer": "Creator and influencer marketing partnerships",
+          "linear_tv": "Traditional broadcast and cable television",
+          "olv": "Online video advertising outside CTV (pre-roll, outstream, in-app video)",
+          "ooh": "Classic out-of-home (physical billboards, transit, etc.)",
+          "podcast": "Podcast advertising (host-read or dynamically inserted)",
+          "print": "Newspapers, magazines, and other print publications",
+          "product_placement": "Product placement, branded content, and sponsorship integrations",
+          "radio": "Traditional AM/FM radio broadcast",
+          "retail_media": "Retail media networks and commerce marketplaces (Amazon, Walmart, Instacart)",
+          "search": "Search engine advertising and search networks",
+          "social": "Social media platforms (Facebook, Instagram, TikTok, LinkedIn, etc.)",
+          "sponsored_intelligence": "Sponsored Intelligence \u2014 advertising within AI assistants, AI search, and generative AI experiences via the reversed data flow",
+          "streaming_audio": "Digital audio streaming services (Spotify, Pandora, etc.)"
+        },
+        "title": "Media Channel",
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "countries": {
+      "description": "Filter by country coverage using ISO 3166-1 alpha-2 codes (e.g., ['US', 'CA', 'GB']). Returns products whose geographic coverage includes at least one of the specified countries. This is a product attribute filter, not a delivery-targeting instruction.",
+      "items": {
+        "pattern": "^[A-Z]{2}$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "delivery_type": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Type of inventory delivery",
+      "enum": [
+        "guaranteed",
+        "non_guaranteed"
+      ],
+      "enumDescriptions": {
+        "guaranteed": "Reserved inventory with guaranteed delivery",
+        "non_guaranteed": "Inventory without reserved or guaranteed delivery, commonly auction-based or otherwise best-effort. Do not use for scheduled broadcast buys solely because final audience delivery is estimated from historical ranges or settles through third-party measurement."
+      },
+      "title": "Delivery Type",
+      "type": "string"
+    },
+    "end_date": {
+      "description": "Fixed-flight availability filter end. See start_date. Mutually exclusive with availability_horizon.",
+      "format": "date",
+      "type": "string"
+    },
+    "exclusivity": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Whether a product offers exclusive access to its inventory",
+      "enum": [
+        "none",
+        "category",
+        "exclusive"
+      ],
+      "enumDescriptions": {
+        "category": "Category-exclusive \u2014 only one advertiser per industry category (e.g., one auto brand per collection sponsorship)",
+        "exclusive": "Sole sponsorship \u2014 only one advertiser can buy this product",
+        "none": "No exclusivity \u2014 multiple advertisers can buy this product simultaneously"
+      },
+      "title": "Exclusivity",
+      "type": "string"
+    },
+    "ext": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "format_kinds": {
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Discriminator naming one of the 15 AdCP 3.2 canonical creative formats, plus `custom` for adopter-defined shapes. AdCP 3.2 adds `audio_vast` for VAST-tag-delivered audio (the standards-conformant profile starts at VAST 4.1, with older versions available only as seller-declared legacy interoperability) and promotes the legacy `multi_state_display` and `multi_placement_takeover` custom shapes to `seller_rendered_stateful_display` and `coordinated_placements`. When `format_kind` is `custom`, the declaration also carries `format_shape` and `format_schema`. The enum mirrors the branches in `product-format-declaration.json` and is closed for producer validation: sellers do not mint ad-hoc values. SDKs may retain unknown future values in tolerant in-memory parsers, but that does not change versioned JSON Schema validation. A seller responding to a 3.1-or-earlier request MUST project away 3.2-only kinds and emit a compatible legacy declaration; a strict older schema correctly rejects an unprojected newer kind. See adcp#3666 and the promotion migration contract in canonical-formats.mdx.",
+        "enum": [
+          "image",
+          "html5",
+          "display_tag",
+          "image_carousel",
+          "video_hosted",
+          "video_vast",
+          "audio_hosted",
+          "audio_vast",
+          "audio_daast",
+          "sponsored_placement",
+          "native_in_feed",
+          "responsive_creative",
+          "agent_placement",
+          "seller_rendered_stateful_display",
+          "coordinated_placements",
+          "custom"
+        ],
+        "title": "Canonical Format Kind",
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true,
+      "x-canonicalization": "set"
+    },
+    "format_option_refs": {
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": true,
+        "description": "Discriminated reference to a product format option. The global canonical shape is still named by `format_kind`; this reference selects one concrete product `format_options[]` entry. `scope: \"publisher\"` identifies a publisher-declared catalog option by `{ publisher_domain, format_option_id }`. `scope: \"product\"` identifies a product-local option by `format_option_id`; the enclosing package/product context supplies the namespace.",
+        "discriminator": {
+          "propertyName": "scope"
+        },
+        "oneOf": [
+          {
+            "additionalProperties": true,
+            "description": "Selects a publisher-catalog-backed product format option by publisher domain and format option ID.",
+            "properties": {
+              "format_option_id": {
+                "description": "Stable format option ID from the publisher's adagents.json top-level `formats[]`, matching a publisher-catalog-backed entry in the target product's `format_options[]`.",
+                "type": "string"
+              },
+              "publisher_domain": {
+                "description": "Publisher domain where the adagents.json declaring this format option is hosted.",
+                "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                "type": "string"
+              },
+              "scope": {
+                "const": "publisher",
+                "description": "Reference resolves against the named publisher's adagents.json top-level `formats[]` catalog.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "scope",
+              "publisher_domain",
+              "format_option_id"
+            ],
+            "title": "Publisher Catalog Format Option Reference",
+            "type": "object"
+          },
+          {
+            "additionalProperties": true,
+            "description": "Selects a product-local format option by ID within the enclosing package/product context. This branch deliberately forbids `publisher_domain` (`publisher_domain: false` in the schema) because product-local references are namespaced by the enclosing product only; include `scope: \"publisher\"` when the selector must cross into a publisher catalog.",
+            "properties": {
+              "format_option_id": {
+                "description": "Stable format option ID from the target product's inline `format_options[]`.",
+                "type": "string"
+              },
+              "publisher_domain": false,
+              "scope": {
+                "const": "product",
+                "description": "Reference resolves only against the target product's inline `format_options[]`.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "scope",
+              "format_option_id"
+            ],
+            "title": "Product-Local Format Option Reference",
+            "type": "object"
+          }
+        ],
+        "title": "Format Option Reference",
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true,
+      "x-canonicalization": "set"
+    },
+    "geo_proximity": {
+      "description": "Inventory coverage in the specified proximity boundaries: OR within this field, AND across offer filters. Does not add delivery targeting, require targeting support, or rescope pricing or forecasts.",
+      "items": {
+        "additionalProperties": true,
+        "oneOf": [
+          {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "radius"
+                  ]
+                },
+                {
+                  "required": [
+                    "geometry"
+                  ]
+                }
+              ]
+            },
+            "required": [
+              "lat",
+              "lng",
+              "travel_time",
+              "transport_mode"
+            ]
+          },
+          {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "travel_time"
+                  ]
+                },
+                {
+                  "required": [
+                    "geometry"
+                  ]
+                }
+              ]
+            },
+            "required": [
+              "lat",
+              "lng",
+              "radius"
+            ]
+          },
+          {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "travel_time"
+                  ]
+                },
+                {
+                  "required": [
+                    "radius"
+                  ]
+                }
+              ]
+            },
+            "required": [
+              "geometry"
+            ]
+          }
+        ],
+        "properties": {
+          "ext": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": true,
+            "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+            "title": "Extension Object",
+            "type": "object"
+          },
+          "geometry": {
+            "additionalProperties": false,
+            "description": "Pre-computed GeoJSON geometry defining the proximity boundary. Use when the buyer has already calculated isochrones (via TravelTime, Mapbox, etc.) or has custom boundaries. When geometry is provided, lat/lng are not required.",
+            "properties": {
+              "coordinates": {
+                "description": "GeoJSON coordinates array. For Polygon: array of linear rings. For MultiPolygon: array of polygons.",
+                "type": "array"
+              },
+              "type": {
+                "description": "GeoJSON geometry type.",
+                "enum": [
+                  "Polygon",
+                  "MultiPolygon"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "coordinates"
+            ],
+            "type": "object"
+          },
+          "label": {
+            "description": "Human-readable label for this entry (e.g., 'D\u00fcsseldorf', 'Heathrow Airport', 'Primary trade area').",
+            "type": "string"
+          },
+          "lat": {
+            "description": "Latitude in decimal degrees (WGS 84). Required for travel_time and radius methods.",
+            "maximum": 90,
+            "minimum": -90,
+            "type": "number"
+          },
+          "lng": {
+            "description": "Longitude in decimal degrees (WGS 84). Required for travel_time and radius methods.",
+            "maximum": 180,
+            "minimum": -180,
+            "type": "number"
+          },
+          "radius": {
+            "additionalProperties": false,
+            "description": "Simple radius from the point. The platform draws a circle of this distance around the coordinates.",
+            "properties": {
+              "unit": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "description": "Distance unit.",
+                "enum": [
+                  "km",
+                  "mi",
+                  "m"
+                ],
+                "enumDescriptions": {
+                  "km": "Kilometers",
+                  "m": "Meters",
+                  "mi": "Miles"
+                },
+                "title": "Distance Unit",
+                "type": "string"
+              },
+              "value": {
+                "description": "Radius distance.",
+                "exclusiveMinimum": 0,
+                "type": "number"
+              }
+            },
+            "required": [
+              "value",
+              "unit"
+            ],
+            "type": "object"
+          },
+          "transport_mode": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Transportation mode for isochrone calculation. Required when travel_time is provided.",
+            "enum": [
+              "walking",
+              "cycling",
+              "driving",
+              "public_transport"
+            ],
+            "enumDescriptions": {
+              "cycling": "Bicycle travel on roads and cycle paths",
+              "driving": "Motor vehicle travel on road networks",
+              "public_transport": "Public transit including bus, rail, metro, and ferry",
+              "walking": "Pedestrian travel on walkable paths and sidewalks"
+            },
+            "title": "Transport Mode",
+            "type": "string"
+          },
+          "travel_time": {
+            "additionalProperties": false,
+            "description": "Travel time limit for isochrone calculation. The platform resolves this to a geographic boundary based on actual transportation networks.",
+            "properties": {
+              "unit": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "description": "Time unit for isochrone (travel-time catchment) calculations.",
+                "enum": [
+                  "min",
+                  "hr"
+                ],
+                "enumDescriptions": {
+                  "hr": "Hours",
+                  "min": "Minutes"
+                },
+                "title": "Travel Time Unit",
+                "type": "string"
+              },
+              "value": {
+                "description": "Travel time limit.",
+                "minimum": 1,
+                "type": "number"
+              }
+            },
+            "required": [
+              "value",
+              "unit"
+            ],
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "is_fixed_price": {
+      "description": "Filter fixed-price versus auction offers. Contingent pricing matches neither value.",
+      "type": "boolean"
+    },
+    "metros": {
+      "description": "Inventory coverage in the specified metro areas (system and code): OR within this field, AND across offer filters. Does not add delivery targeting, require targeting support, or rescope pricing or forecasts.",
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "description": "Metro code within the system (e.g., '501' for NYC DMA)",
+            "type": "string"
+          },
+          "system": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Metro classification system",
+            "enum": [
+              "nielsen_dma",
+              "uk_itl1",
+              "uk_itl2",
+              "eurostat_nuts2",
+              "custom"
+            ],
+            "title": "Metro Area System",
+            "type": "string"
+          }
+        },
+        "required": [
+          "system",
+          "code"
+        ],
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "min_exposures": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "postal_areas": {
+      "description": "Inventory coverage in the specified postal areas: OR within this field, AND across offer filters. Does not add delivery targeting, require targeting support, or rescope pricing or forecasts.",
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "anyOf": [
+          {
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "anyOf": [
+                  {
+                    "properties": {
+                      "country": {
+                        "const": "US"
+                      },
+                      "system": {
+                        "enum": [
+                          "zip",
+                          "zip_plus_four"
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "properties": {
+                      "country": {
+                        "const": "GB"
+                      },
+                      "system": {
+                        "enum": [
+                          "outward",
+                          "full"
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "properties": {
+                      "country": {
+                        "const": "CA"
+                      },
+                      "system": {
+                        "enum": [
+                          "fsa",
+                          "full"
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "properties": {
+                      "country": {
+                        "enum": [
+                          "DE",
+                          "CH",
+                          "AT"
+                        ]
+                      },
+                      "system": {
+                        "const": "plz"
+                      }
+                    }
+                  },
+                  {
+                    "properties": {
+                      "country": {
+                        "const": "FR"
+                      },
+                      "system": {
+                        "const": "code_postal"
+                      }
+                    }
+                  },
+                  {
+                    "properties": {
+                      "country": {
+                        "const": "AU"
+                      },
+                      "system": {
+                        "const": "postcode"
+                      }
+                    }
+                  },
+                  {
+                    "properties": {
+                      "country": {
+                        "const": "BR"
+                      },
+                      "system": {
+                        "const": "cep"
+                      }
+                    }
+                  },
+                  {
+                    "properties": {
+                      "country": {
+                        "const": "IN"
+                      },
+                      "system": {
+                        "const": "pin"
+                      }
+                    }
+                  },
+                  {
+                    "properties": {
+                      "country": {
+                        "const": "ZA"
+                      },
+                      "system": {
+                        "const": "postal_code"
+                      }
+                    }
+                  },
+                  {
+                    "properties": {
+                      "country": {
+                        "not": {
+                          "enum": [
+                            "US",
+                            "GB",
+                            "CA",
+                            "DE",
+                            "CH",
+                            "AT",
+                            "FR",
+                            "AU",
+                            "BR",
+                            "IN",
+                            "ZA"
+                          ]
+                        }
+                      },
+                      "system": {
+                        "enum": [
+                          "postal_code",
+                          "custom"
+                        ]
+                      }
+                    }
+                  }
+                ],
+                "description": "Valid country-local postal system pairing. Registered countries only accept their registered local systems; countries without a registered local system use postal_code or custom.",
+                "properties": {
+                  "country": {
+                    "description": "ISO 3166-1 alpha-2 country code.",
+                    "pattern": "^[A-Z]{2}$",
+                    "type": "string"
+                  },
+                  "system": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "description": "Country-local postal code system.",
+                    "enum": [
+                      "postal_code",
+                      "zip",
+                      "zip_plus_four",
+                      "outward",
+                      "full",
+                      "fsa",
+                      "plz",
+                      "code_postal",
+                      "postcode",
+                      "cep",
+                      "pin",
+                      "custom",
+                      "us_zip",
+                      "us_zip_plus_four",
+                      "gb_outward",
+                      "gb_full",
+                      "ca_fsa",
+                      "ca_full",
+                      "de_plz",
+                      "fr_code_postal",
+                      "au_postcode",
+                      "ch_plz",
+                      "at_plz"
+                    ],
+                    "title": "Postal Code System",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "country",
+                  "system"
+                ],
+                "title": "Postal Country System",
+                "type": "object"
+              }
+            ],
+            "properties": {
+              "country": {
+                "description": "ISO 3166-1 alpha-2 country code for the postal values.",
+                "pattern": "^[A-Z]{2}$",
+                "type": "string"
+              },
+              "system": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "description": "Country-local postal code system (e.g., 'zip', 'outward', 'plz', 'postal_code').",
+                "enum": [
+                  "postal_code",
+                  "zip",
+                  "zip_plus_four",
+                  "outward",
+                  "full",
+                  "fsa",
+                  "plz",
+                  "code_postal",
+                  "postcode",
+                  "cep",
+                  "pin",
+                  "custom",
+                  "us_zip",
+                  "us_zip_plus_four",
+                  "gb_outward",
+                  "gb_full",
+                  "ca_fsa",
+                  "ca_full",
+                  "de_plz",
+                  "fr_code_postal",
+                  "au_postcode",
+                  "ch_plz",
+                  "at_plz"
+                ],
+                "title": "Postal Code System",
+                "type": "string"
+              },
+              "values": {
+                "description": "Postal codes within the country and system.",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "type": "array"
+              }
+            },
+            "required": [
+              "country",
+              "system",
+              "values"
+            ],
+            "title": "PostalArea",
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "deprecated": true,
+            "properties": {
+              "system": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "deprecated": true,
+                "description": "Deprecated country-fused postal code system (e.g., 'us_zip', 'gb_outward'). Prefer country + postal-system.",
+                "enum": [
+                  "us_zip",
+                  "us_zip_plus_four",
+                  "gb_outward",
+                  "gb_full",
+                  "ca_fsa",
+                  "ca_full",
+                  "de_plz",
+                  "fr_code_postal",
+                  "au_postcode",
+                  "ch_plz",
+                  "at_plz"
+                ],
+                "title": "Country-Fused Postal Code System",
+                "type": "string"
+              },
+              "values": {
+                "description": "Postal codes within the legacy system.",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "type": "array"
+              }
+            },
+            "required": [
+              "system",
+              "values"
+            ],
+            "title": "PostalAreaWithFusedSystem",
+            "type": "object"
+          }
+        ],
+        "description": "Postal area values. Prefer the native country + postal system form. Deprecated legacy country-fused postal-system tokens remain accepted for compatibility.",
+        "title": "Postal Area"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "pricing_currencies": {
+      "items": {
+        "pattern": "^[A-Z]{3}$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true,
+      "x-canonicalization": "set"
+    },
+    "pricing_structures": {
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "How the payable price is determined. Fixed pricing has a seller-declared monetary unit price, auction pricing is established through a buyer bid, and contingent pricing is calculated from a measured business outcome after delivery.",
+        "enum": [
+          "fixed",
+          "auction",
+          "contingent"
+        ],
+        "enumDescriptions": {
+          "auction": "Buyer bid against optional floor_price and price_guidance",
+          "contingent": "Price calculated from a measured business outcome after delivery",
+          "fixed": "Seller-declared monetary unit price through fixed_price"
+        },
+        "title": "Pricing Structure",
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true,
+      "x-canonicalization": "set"
+    },
+    "property_list": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "description": "Reference to an externally managed property list. When provided, the seller filters products to only those available on properties in the list. This narrows which publisher inventory is returned; it is a product attribute filter, not a delivery-targeting instruction.",
+      "properties": {
+        "agent_url": {
+          "description": "URL of the agent managing the property list",
+          "format": "uri",
+          "type": "string"
+        },
+        "auth_token": {
+          "description": "JWT or other authorization token for accessing the list. Optional if the list is public or caller has implicit access.",
+          "type": "string"
+        },
+        "list_id": {
+          "description": "Identifier for the property list within the agent",
+          "minLength": 1,
+          "type": "string",
+          "x-entity": "property_list"
+        }
+      },
+      "required": [
+        "agent_url",
+        "list_id"
+      ],
+      "title": "Property List Reference",
+      "type": "object"
+    },
+    "regions": {
+      "description": "Inventory coverage in the specified ISO 3166-2 subdivisions: OR within this field, AND across offer filters. Does not add delivery targeting, require targeting support, or rescope pricing or forecasts.",
+      "items": {
+        "pattern": "^[A-Z]{2}-[A-Z0-9]{1,3}$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "required_features": {
+      "allOf": [
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": {
+            "type": "boolean"
+          },
+          "description": "Compact seller features relevant to canonical product purchase. Legacy inline-creative capabilities are absent.",
+          "properties": {
+            "bidding_policy": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "additionalProperties": false,
+              "definitions": {
+                "max_bid_with_cost_per": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "cost_per_strengths": {
+                      "description": "cost_per strengths supported when combined with max_bid.",
+                      "items": {
+                        "enum": [
+                          "cap",
+                          "target"
+                        ],
+                        "type": "string"
+                      },
+                      "minItems": 1,
+                      "type": "array",
+                      "uniqueItems": true
+                    },
+                    "kind": {
+                      "const": "max_bid_with_cost_per",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "cost_per_strengths"
+                  ],
+                  "type": "object"
+                },
+                "max_bid_with_roas": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "const": "max_bid_with_roas",
+                      "type": "string"
+                    },
+                    "roas_strengths": {
+                      "description": "roas strengths supported when combined with max_bid.",
+                      "items": {
+                        "enum": [
+                          "floor",
+                          "target"
+                        ],
+                        "type": "string"
+                      },
+                      "minItems": 1,
+                      "type": "array",
+                      "uniqueItems": true
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "roas_strengths"
+                  ],
+                  "type": "object"
+                },
+                "policy_profile": {
+                  "additionalProperties": false,
+                  "allOf": [
+                    {
+                      "else": {
+                        "not": {
+                          "required": [
+                            "cost_per_strengths"
+                          ]
+                        }
+                      },
+                      "if": {
+                        "properties": {
+                          "modes": {
+                            "contains": {
+                              "const": "cost_per"
+                            }
+                          }
+                        },
+                        "required": [
+                          "modes"
+                        ]
+                      },
+                      "then": {
+                        "required": [
+                          "cost_per_strengths"
+                        ]
+                      }
+                    },
+                    {
+                      "else": {
+                        "not": {
+                          "required": [
+                            "roas_strengths"
+                          ]
+                        }
+                      },
+                      "if": {
+                        "properties": {
+                          "modes": {
+                            "contains": {
+                              "const": "roas"
+                            }
+                          }
+                        },
+                        "required": [
+                          "modes"
+                        ]
+                      },
+                      "then": {
+                        "required": [
+                          "roas_strengths"
+                        ]
+                      }
+                    }
+                  ],
+                  "anyOf": [
+                    {
+                      "required": [
+                        "modes"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "supported_combinations"
+                      ]
+                    }
+                  ],
+                  "properties": {
+                    "cost_per_strengths": {
+                      "description": "Supported standalone cost_per strengths in this profile. Required exactly when modes includes cost_per.",
+                      "items": {
+                        "enum": [
+                          "cap",
+                          "target"
+                        ],
+                        "type": "string"
+                      },
+                      "minItems": 1,
+                      "type": "array",
+                      "uniqueItems": true
+                    },
+                    "modes": {
+                      "description": "Standalone policy modes accepted in this exact scope and allocation context. Combination-only components belong only in supported_combinations and need not appear here. `automatic` means the seller accepts and preserves an explicit `{automatic:true}` authored block; omission only invokes inheritance/default behavior.",
+                      "items": {
+                        "enum": [
+                          "automatic",
+                          "bid_amount",
+                          "max_bid",
+                          "cost_per",
+                          "roas"
+                        ],
+                        "type": "string"
+                      },
+                      "minItems": 1,
+                      "type": "array",
+                      "uniqueItems": true
+                    },
+                    "roas_strengths": {
+                      "description": "Supported standalone roas strengths in this profile. Required exactly when modes includes roas.",
+                      "items": {
+                        "enum": [
+                          "floor",
+                          "target"
+                        ],
+                        "type": "string"
+                      },
+                      "minItems": 1,
+                      "type": "array",
+                      "uniqueItems": true
+                    },
+                    "supported_combinations": {
+                      "description": "Multi-field policies supported in this exact scope and allocation context. Each entry independently qualifies the strengths supported in that combination; standalone strength support does not imply combination support. Absence means no multi-field combination is claimed.",
+                      "items": {
+                        "oneOf": [
+                          {
+                            "additionalProperties": false,
+                            "properties": {
+                              "cost_per_strengths": {
+                                "description": "cost_per strengths supported when combined with max_bid.",
+                                "items": {
+                                  "enum": [
+                                    "cap",
+                                    "target"
+                                  ],
+                                  "type": "string"
+                                },
+                                "minItems": 1,
+                                "type": "array",
+                                "uniqueItems": true
+                              },
+                              "kind": {
+                                "const": "max_bid_with_cost_per",
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "cost_per_strengths"
+                            ],
+                            "type": "object"
+                          },
+                          {
+                            "additionalProperties": false,
+                            "properties": {
+                              "kind": {
+                                "const": "max_bid_with_roas",
+                                "type": "string"
+                              },
+                              "roas_strengths": {
+                                "description": "roas strengths supported when combined with max_bid.",
+                                "items": {
+                                  "enum": [
+                                    "floor",
+                                    "target"
+                                  ],
+                                  "type": "string"
+                                },
+                                "minItems": 1,
+                                "type": "array",
+                                "uniqueItems": true
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "roas_strengths"
+                            ],
+                            "type": "object"
+                          }
+                        ]
+                      },
+                      "minItems": 1,
+                      "type": "array"
+                    }
+                  },
+                  "type": "object"
+                },
+                "scope_capability": {
+                  "additionalProperties": false,
+                  "description": "Support at one authored scope, partitioned by the media buy's resulting allocation mode. Omitted contexts are unsupported; claims in one context make no claim about the other.",
+                  "minProperties": 1,
+                  "properties": {
+                    "fixed": {
+                      "additionalProperties": false,
+                      "allOf": [
+                        {
+                          "else": {
+                            "not": {
+                              "required": [
+                                "cost_per_strengths"
+                              ]
+                            }
+                          },
+                          "if": {
+                            "properties": {
+                              "modes": {
+                                "contains": {
+                                  "const": "cost_per"
+                                }
+                              }
+                            },
+                            "required": [
+                              "modes"
+                            ]
+                          },
+                          "then": {
+                            "required": [
+                              "cost_per_strengths"
+                            ]
+                          }
+                        },
+                        {
+                          "else": {
+                            "not": {
+                              "required": [
+                                "roas_strengths"
+                              ]
+                            }
+                          },
+                          "if": {
+                            "properties": {
+                              "modes": {
+                                "contains": {
+                                  "const": "roas"
+                                }
+                              }
+                            },
+                            "required": [
+                              "modes"
+                            ]
+                          },
+                          "then": {
+                            "required": [
+                              "roas_strengths"
+                            ]
+                          }
+                        }
+                      ],
+                      "anyOf": [
+                        {
+                          "required": [
+                            "modes"
+                          ]
+                        },
+                        {
+                          "required": [
+                            "supported_combinations"
+                          ]
+                        }
+                      ],
+                      "description": "Policies supported when budget allocation is fixed or omitted.",
+                      "properties": {
+                        "cost_per_strengths": {
+                          "description": "Supported standalone cost_per strengths in this profile. Required exactly when modes includes cost_per.",
+                          "items": {
+                            "enum": [
+                              "cap",
+                              "target"
+                            ],
+                            "type": "string"
+                          },
+                          "minItems": 1,
+                          "type": "array",
+                          "uniqueItems": true
+                        },
+                        "modes": {
+                          "description": "Standalone policy modes accepted in this exact scope and allocation context. Combination-only components belong only in supported_combinations and need not appear here. `automatic` means the seller accepts and preserves an explicit `{automatic:true}` authored block; omission only invokes inheritance/default behavior.",
+                          "items": {
+                            "enum": [
+                              "automatic",
+                              "bid_amount",
+                              "max_bid",
+                              "cost_per",
+                              "roas"
+                            ],
+                            "type": "string"
+                          },
+                          "minItems": 1,
+                          "type": "array",
+                          "uniqueItems": true
+                        },
+                        "roas_strengths": {
+                          "description": "Supported standalone roas strengths in this profile. Required exactly when modes includes roas.",
+                          "items": {
+                            "enum": [
+                              "floor",
+                              "target"
+                            ],
+                            "type": "string"
+                          },
+                          "minItems": 1,
+                          "type": "array",
+                          "uniqueItems": true
+                        },
+                        "supported_combinations": {
+                          "description": "Multi-field policies supported in this exact scope and allocation context. Each entry independently qualifies the strengths supported in that combination; standalone strength support does not imply combination support. Absence means no multi-field combination is claimed.",
+                          "items": {
+                            "oneOf": [
+                              {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "cost_per_strengths": {
+                                    "description": "cost_per strengths supported when combined with max_bid.",
+                                    "items": {
+                                      "enum": [
+                                        "cap",
+                                        "target"
+                                      ],
+                                      "type": "string"
+                                    },
+                                    "minItems": 1,
+                                    "type": "array",
+                                    "uniqueItems": true
+                                  },
+                                  "kind": {
+                                    "const": "max_bid_with_cost_per",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "cost_per_strengths"
+                                ],
+                                "type": "object"
+                              },
+                              {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "kind": {
+                                    "const": "max_bid_with_roas",
+                                    "type": "string"
+                                  },
+                                  "roas_strengths": {
+                                    "description": "roas strengths supported when combined with max_bid.",
+                                    "items": {
+                                      "enum": [
+                                        "floor",
+                                        "target"
+                                      ],
+                                      "type": "string"
+                                    },
+                                    "minItems": 1,
+                                    "type": "array",
+                                    "uniqueItems": true
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "roas_strengths"
+                                ],
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "minItems": 1,
+                          "type": "array"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "seller_optimized": {
+                      "additionalProperties": false,
+                      "allOf": [
+                        {
+                          "else": {
+                            "not": {
+                              "required": [
+                                "cost_per_strengths"
+                              ]
+                            }
+                          },
+                          "if": {
+                            "properties": {
+                              "modes": {
+                                "contains": {
+                                  "const": "cost_per"
+                                }
+                              }
+                            },
+                            "required": [
+                              "modes"
+                            ]
+                          },
+                          "then": {
+                            "required": [
+                              "cost_per_strengths"
+                            ]
+                          }
+                        },
+                        {
+                          "else": {
+                            "not": {
+                              "required": [
+                                "roas_strengths"
+                              ]
+                            }
+                          },
+                          "if": {
+                            "properties": {
+                              "modes": {
+                                "contains": {
+                                  "const": "roas"
+                                }
+                              }
+                            },
+                            "required": [
+                              "modes"
+                            ]
+                          },
+                          "then": {
+                            "required": [
+                              "roas_strengths"
+                            ]
+                          }
+                        }
+                      ],
+                      "anyOf": [
+                        {
+                          "required": [
+                            "modes"
+                          ]
+                        },
+                        {
+                          "required": [
+                            "supported_combinations"
+                          ]
+                        }
+                      ],
+                      "description": "Policies supported when budget_allocation.mode is seller_optimized.",
+                      "properties": {
+                        "cost_per_strengths": {
+                          "description": "Supported standalone cost_per strengths in this profile. Required exactly when modes includes cost_per.",
+                          "items": {
+                            "enum": [
+                              "cap",
+                              "target"
+                            ],
+                            "type": "string"
+                          },
+                          "minItems": 1,
+                          "type": "array",
+                          "uniqueItems": true
+                        },
+                        "modes": {
+                          "description": "Standalone policy modes accepted in this exact scope and allocation context. Combination-only components belong only in supported_combinations and need not appear here. `automatic` means the seller accepts and preserves an explicit `{automatic:true}` authored block; omission only invokes inheritance/default behavior.",
+                          "items": {
+                            "enum": [
+                              "automatic",
+                              "bid_amount",
+                              "max_bid",
+                              "cost_per",
+                              "roas"
+                            ],
+                            "type": "string"
+                          },
+                          "minItems": 1,
+                          "type": "array",
+                          "uniqueItems": true
+                        },
+                        "roas_strengths": {
+                          "description": "Supported standalone roas strengths in this profile. Required exactly when modes includes roas.",
+                          "items": {
+                            "enum": [
+                              "floor",
+                              "target"
+                            ],
+                            "type": "string"
+                          },
+                          "minItems": 1,
+                          "type": "array",
+                          "uniqueItems": true
+                        },
+                        "supported_combinations": {
+                          "description": "Multi-field policies supported in this exact scope and allocation context. Each entry independently qualifies the strengths supported in that combination; standalone strength support does not imply combination support. Absence means no multi-field combination is claimed.",
+                          "items": {
+                            "oneOf": [
+                              {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "cost_per_strengths": {
+                                    "description": "cost_per strengths supported when combined with max_bid.",
+                                    "items": {
+                                      "enum": [
+                                        "cap",
+                                        "target"
+                                      ],
+                                      "type": "string"
+                                    },
+                                    "minItems": 1,
+                                    "type": "array",
+                                    "uniqueItems": true
+                                  },
+                                  "kind": {
+                                    "const": "max_bid_with_cost_per",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "cost_per_strengths"
+                                ],
+                                "type": "object"
+                              },
+                              {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "kind": {
+                                    "const": "max_bid_with_roas",
+                                    "type": "string"
+                                  },
+                                  "roas_strengths": {
+                                    "description": "roas strengths supported when combined with max_bid.",
+                                    "items": {
+                                      "enum": [
+                                        "floor",
+                                        "target"
+                                      ],
+                                      "type": "string"
+                                    },
+                                    "minItems": 1,
+                                    "type": "array",
+                                    "uniqueItems": true
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "roas_strengths"
+                                ],
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "minItems": 1,
+                          "type": "array"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  },
+                  "type": "object"
+                }
+              },
+              "description": "Structured declaration of the canonical bidding policies a seller can preserve without semantic translation. Media-buy/package authored scope and fixed/seller-optimized allocation context are advertised independently. Buyers MUST inspect the exact scope, allocation context, mode, strength, and combination rather than treating presence of this object as blanket support.",
+              "minProperties": 1,
+              "properties": {
+                "media_buy": {
+                  "additionalProperties": false,
+                  "description": "Policies accepted at media-buy scope and inherited by packages that omit a package override.",
+                  "minProperties": 1,
+                  "properties": {
+                    "fixed": {
+                      "additionalProperties": false,
+                      "allOf": [
+                        {
+                          "else": {
+                            "not": {
+                              "required": [
+                                "cost_per_strengths"
+                              ]
+                            }
+                          },
+                          "if": {
+                            "properties": {
+                              "modes": {
+                                "contains": {
+                                  "const": "cost_per"
+                                }
+                              }
+                            },
+                            "required": [
+                              "modes"
+                            ]
+                          },
+                          "then": {
+                            "required": [
+                              "cost_per_strengths"
+                            ]
+                          }
+                        },
+                        {
+                          "else": {
+                            "not": {
+                              "required": [
+                                "roas_strengths"
+                              ]
+                            }
+                          },
+                          "if": {
+                            "properties": {
+                              "modes": {
+                                "contains": {
+                                  "const": "roas"
+                                }
+                              }
+                            },
+                            "required": [
+                              "modes"
+                            ]
+                          },
+                          "then": {
+                            "required": [
+                              "roas_strengths"
+                            ]
+                          }
+                        }
+                      ],
+                      "anyOf": [
+                        {
+                          "required": [
+                            "modes"
+                          ]
+                        },
+                        {
+                          "required": [
+                            "supported_combinations"
+                          ]
+                        }
+                      ],
+                      "description": "Policies supported when budget allocation is fixed or omitted.",
+                      "properties": {
+                        "cost_per_strengths": {
+                          "description": "Supported standalone cost_per strengths in this profile. Required exactly when modes includes cost_per.",
+                          "items": {
+                            "enum": [
+                              "cap",
+                              "target"
+                            ],
+                            "type": "string"
+                          },
+                          "minItems": 1,
+                          "type": "array",
+                          "uniqueItems": true
+                        },
+                        "modes": {
+                          "description": "Standalone policy modes accepted in this exact scope and allocation context. Combination-only components belong only in supported_combinations and need not appear here. `automatic` means the seller accepts and preserves an explicit `{automatic:true}` authored block; omission only invokes inheritance/default behavior.",
+                          "items": {
+                            "enum": [
+                              "automatic",
+                              "bid_amount",
+                              "max_bid",
+                              "cost_per",
+                              "roas"
+                            ],
+                            "type": "string"
+                          },
+                          "minItems": 1,
+                          "type": "array",
+                          "uniqueItems": true
+                        },
+                        "roas_strengths": {
+                          "description": "Supported standalone roas strengths in this profile. Required exactly when modes includes roas.",
+                          "items": {
+                            "enum": [
+                              "floor",
+                              "target"
+                            ],
+                            "type": "string"
+                          },
+                          "minItems": 1,
+                          "type": "array",
+                          "uniqueItems": true
+                        },
+                        "supported_combinations": {
+                          "description": "Multi-field policies supported in this exact scope and allocation context. Each entry independently qualifies the strengths supported in that combination; standalone strength support does not imply combination support. Absence means no multi-field combination is claimed.",
+                          "items": {
+                            "oneOf": [
+                              {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "cost_per_strengths": {
+                                    "description": "cost_per strengths supported when combined with max_bid.",
+                                    "items": {
+                                      "enum": [
+                                        "cap",
+                                        "target"
+                                      ],
+                                      "type": "string"
+                                    },
+                                    "minItems": 1,
+                                    "type": "array",
+                                    "uniqueItems": true
+                                  },
+                                  "kind": {
+                                    "const": "max_bid_with_cost_per",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "cost_per_strengths"
+                                ],
+                                "type": "object"
+                              },
+                              {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "kind": {
+                                    "const": "max_bid_with_roas",
+                                    "type": "string"
+                                  },
+                                  "roas_strengths": {
+                                    "description": "roas strengths supported when combined with max_bid.",
+                                    "items": {
+                                      "enum": [
+                                        "floor",
+                                        "target"
+                                      ],
+                                      "type": "string"
+                                    },
+                                    "minItems": 1,
+                                    "type": "array",
+                                    "uniqueItems": true
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "roas_strengths"
+                                ],
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "minItems": 1,
+                          "type": "array"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "seller_optimized": {
+                      "additionalProperties": false,
+                      "allOf": [
+                        {
+                          "else": {
+                            "not": {
+                              "required": [
+                                "cost_per_strengths"
+                              ]
+                            }
+                          },
+                          "if": {
+                            "properties": {
+                              "modes": {
+                                "contains": {
+                                  "const": "cost_per"
+                                }
+                              }
+                            },
+                            "required": [
+                              "modes"
+                            ]
+                          },
+                          "then": {
+                            "required": [
+                              "cost_per_strengths"
+                            ]
+                          }
+                        },
+                        {
+                          "else": {
+                            "not": {
+                              "required": [
+                                "roas_strengths"
+                              ]
+                            }
+                          },
+                          "if": {
+                            "properties": {
+                              "modes": {
+                                "contains": {
+                                  "const": "roas"
+                                }
+                              }
+                            },
+                            "required": [
+                              "modes"
+                            ]
+                          },
+                          "then": {
+                            "required": [
+                              "roas_strengths"
+                            ]
+                          }
+                        }
+                      ],
+                      "anyOf": [
+                        {
+                          "required": [
+                            "modes"
+                          ]
+                        },
+                        {
+                          "required": [
+                            "supported_combinations"
+                          ]
+                        }
+                      ],
+                      "description": "Policies supported when budget_allocation.mode is seller_optimized.",
+                      "properties": {
+                        "cost_per_strengths": {
+                          "description": "Supported standalone cost_per strengths in this profile. Required exactly when modes includes cost_per.",
+                          "items": {
+                            "enum": [
+                              "cap",
+                              "target"
+                            ],
+                            "type": "string"
+                          },
+                          "minItems": 1,
+                          "type": "array",
+                          "uniqueItems": true
+                        },
+                        "modes": {
+                          "description": "Standalone policy modes accepted in this exact scope and allocation context. Combination-only components belong only in supported_combinations and need not appear here. `automatic` means the seller accepts and preserves an explicit `{automatic:true}` authored block; omission only invokes inheritance/default behavior.",
+                          "items": {
+                            "enum": [
+                              "automatic",
+                              "bid_amount",
+                              "max_bid",
+                              "cost_per",
+                              "roas"
+                            ],
+                            "type": "string"
+                          },
+                          "minItems": 1,
+                          "type": "array",
+                          "uniqueItems": true
+                        },
+                        "roas_strengths": {
+                          "description": "Supported standalone roas strengths in this profile. Required exactly when modes includes roas.",
+                          "items": {
+                            "enum": [
+                              "floor",
+                              "target"
+                            ],
+                            "type": "string"
+                          },
+                          "minItems": 1,
+                          "type": "array",
+                          "uniqueItems": true
+                        },
+                        "supported_combinations": {
+                          "description": "Multi-field policies supported in this exact scope and allocation context. Each entry independently qualifies the strengths supported in that combination; standalone strength support does not imply combination support. Absence means no multi-field combination is claimed.",
+                          "items": {
+                            "oneOf": [
+                              {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "cost_per_strengths": {
+                                    "description": "cost_per strengths supported when combined with max_bid.",
+                                    "items": {
+                                      "enum": [
+                                        "cap",
+                                        "target"
+                                      ],
+                                      "type": "string"
+                                    },
+                                    "minItems": 1,
+                                    "type": "array",
+                                    "uniqueItems": true
+                                  },
+                                  "kind": {
+                                    "const": "max_bid_with_cost_per",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "cost_per_strengths"
+                                ],
+                                "type": "object"
+                              },
+                              {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "kind": {
+                                    "const": "max_bid_with_roas",
+                                    "type": "string"
+                                  },
+                                  "roas_strengths": {
+                                    "description": "roas strengths supported when combined with max_bid.",
+                                    "items": {
+                                      "enum": [
+                                        "floor",
+                                        "target"
+                                      ],
+                                      "type": "string"
+                                    },
+                                    "minItems": 1,
+                                    "type": "array",
+                                    "uniqueItems": true
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "roas_strengths"
+                                ],
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "minItems": 1,
+                          "type": "array"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  },
+                  "type": "object"
+                },
+                "package": {
+                  "additionalProperties": false,
+                  "description": "Policies accepted as package-authored policies, including explicit automatic overrides.",
+                  "minProperties": 1,
+                  "properties": {
+                    "fixed": {
+                      "additionalProperties": false,
+                      "allOf": [
+                        {
+                          "else": {
+                            "not": {
+                              "required": [
+                                "cost_per_strengths"
+                              ]
+                            }
+                          },
+                          "if": {
+                            "properties": {
+                              "modes": {
+                                "contains": {
+                                  "const": "cost_per"
+                                }
+                              }
+                            },
+                            "required": [
+                              "modes"
+                            ]
+                          },
+                          "then": {
+                            "required": [
+                              "cost_per_strengths"
+                            ]
+                          }
+                        },
+                        {
+                          "else": {
+                            "not": {
+                              "required": [
+                                "roas_strengths"
+                              ]
+                            }
+                          },
+                          "if": {
+                            "properties": {
+                              "modes": {
+                                "contains": {
+                                  "const": "roas"
+                                }
+                              }
+                            },
+                            "required": [
+                              "modes"
+                            ]
+                          },
+                          "then": {
+                            "required": [
+                              "roas_strengths"
+                            ]
+                          }
+                        }
+                      ],
+                      "anyOf": [
+                        {
+                          "required": [
+                            "modes"
+                          ]
+                        },
+                        {
+                          "required": [
+                            "supported_combinations"
+                          ]
+                        }
+                      ],
+                      "description": "Policies supported when budget allocation is fixed or omitted.",
+                      "properties": {
+                        "cost_per_strengths": {
+                          "description": "Supported standalone cost_per strengths in this profile. Required exactly when modes includes cost_per.",
+                          "items": {
+                            "enum": [
+                              "cap",
+                              "target"
+                            ],
+                            "type": "string"
+                          },
+                          "minItems": 1,
+                          "type": "array",
+                          "uniqueItems": true
+                        },
+                        "modes": {
+                          "description": "Standalone policy modes accepted in this exact scope and allocation context. Combination-only components belong only in supported_combinations and need not appear here. `automatic` means the seller accepts and preserves an explicit `{automatic:true}` authored block; omission only invokes inheritance/default behavior.",
+                          "items": {
+                            "enum": [
+                              "automatic",
+                              "bid_amount",
+                              "max_bid",
+                              "cost_per",
+                              "roas"
+                            ],
+                            "type": "string"
+                          },
+                          "minItems": 1,
+                          "type": "array",
+                          "uniqueItems": true
+                        },
+                        "roas_strengths": {
+                          "description": "Supported standalone roas strengths in this profile. Required exactly when modes includes roas.",
+                          "items": {
+                            "enum": [
+                              "floor",
+                              "target"
+                            ],
+                            "type": "string"
+                          },
+                          "minItems": 1,
+                          "type": "array",
+                          "uniqueItems": true
+                        },
+                        "supported_combinations": {
+                          "description": "Multi-field policies supported in this exact scope and allocation context. Each entry independently qualifies the strengths supported in that combination; standalone strength support does not imply combination support. Absence means no multi-field combination is claimed.",
+                          "items": {
+                            "oneOf": [
+                              {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "cost_per_strengths": {
+                                    "description": "cost_per strengths supported when combined with max_bid.",
+                                    "items": {
+                                      "enum": [
+                                        "cap",
+                                        "target"
+                                      ],
+                                      "type": "string"
+                                    },
+                                    "minItems": 1,
+                                    "type": "array",
+                                    "uniqueItems": true
+                                  },
+                                  "kind": {
+                                    "const": "max_bid_with_cost_per",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "cost_per_strengths"
+                                ],
+                                "type": "object"
+                              },
+                              {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "kind": {
+                                    "const": "max_bid_with_roas",
+                                    "type": "string"
+                                  },
+                                  "roas_strengths": {
+                                    "description": "roas strengths supported when combined with max_bid.",
+                                    "items": {
+                                      "enum": [
+                                        "floor",
+                                        "target"
+                                      ],
+                                      "type": "string"
+                                    },
+                                    "minItems": 1,
+                                    "type": "array",
+                                    "uniqueItems": true
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "roas_strengths"
+                                ],
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "minItems": 1,
+                          "type": "array"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "seller_optimized": {
+                      "additionalProperties": false,
+                      "allOf": [
+                        {
+                          "else": {
+                            "not": {
+                              "required": [
+                                "cost_per_strengths"
+                              ]
+                            }
+                          },
+                          "if": {
+                            "properties": {
+                              "modes": {
+                                "contains": {
+                                  "const": "cost_per"
+                                }
+                              }
+                            },
+                            "required": [
+                              "modes"
+                            ]
+                          },
+                          "then": {
+                            "required": [
+                              "cost_per_strengths"
+                            ]
+                          }
+                        },
+                        {
+                          "else": {
+                            "not": {
+                              "required": [
+                                "roas_strengths"
+                              ]
+                            }
+                          },
+                          "if": {
+                            "properties": {
+                              "modes": {
+                                "contains": {
+                                  "const": "roas"
+                                }
+                              }
+                            },
+                            "required": [
+                              "modes"
+                            ]
+                          },
+                          "then": {
+                            "required": [
+                              "roas_strengths"
+                            ]
+                          }
+                        }
+                      ],
+                      "anyOf": [
+                        {
+                          "required": [
+                            "modes"
+                          ]
+                        },
+                        {
+                          "required": [
+                            "supported_combinations"
+                          ]
+                        }
+                      ],
+                      "description": "Policies supported when budget_allocation.mode is seller_optimized.",
+                      "properties": {
+                        "cost_per_strengths": {
+                          "description": "Supported standalone cost_per strengths in this profile. Required exactly when modes includes cost_per.",
+                          "items": {
+                            "enum": [
+                              "cap",
+                              "target"
+                            ],
+                            "type": "string"
+                          },
+                          "minItems": 1,
+                          "type": "array",
+                          "uniqueItems": true
+                        },
+                        "modes": {
+                          "description": "Standalone policy modes accepted in this exact scope and allocation context. Combination-only components belong only in supported_combinations and need not appear here. `automatic` means the seller accepts and preserves an explicit `{automatic:true}` authored block; omission only invokes inheritance/default behavior.",
+                          "items": {
+                            "enum": [
+                              "automatic",
+                              "bid_amount",
+                              "max_bid",
+                              "cost_per",
+                              "roas"
+                            ],
+                            "type": "string"
+                          },
+                          "minItems": 1,
+                          "type": "array",
+                          "uniqueItems": true
+                        },
+                        "roas_strengths": {
+                          "description": "Supported standalone roas strengths in this profile. Required exactly when modes includes roas.",
+                          "items": {
+                            "enum": [
+                              "floor",
+                              "target"
+                            ],
+                            "type": "string"
+                          },
+                          "minItems": 1,
+                          "type": "array",
+                          "uniqueItems": true
+                        },
+                        "supported_combinations": {
+                          "description": "Multi-field policies supported in this exact scope and allocation context. Each entry independently qualifies the strengths supported in that combination; standalone strength support does not imply combination support. Absence means no multi-field combination is claimed.",
+                          "items": {
+                            "oneOf": [
+                              {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "cost_per_strengths": {
+                                    "description": "cost_per strengths supported when combined with max_bid.",
+                                    "items": {
+                                      "enum": [
+                                        "cap",
+                                        "target"
+                                      ],
+                                      "type": "string"
+                                    },
+                                    "minItems": 1,
+                                    "type": "array",
+                                    "uniqueItems": true
+                                  },
+                                  "kind": {
+                                    "const": "max_bid_with_cost_per",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "cost_per_strengths"
+                                ],
+                                "type": "object"
+                              },
+                              {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "kind": {
+                                    "const": "max_bid_with_roas",
+                                    "type": "string"
+                                  },
+                                  "roas_strengths": {
+                                    "description": "roas strengths supported when combined with max_bid.",
+                                    "items": {
+                                      "enum": [
+                                        "floor",
+                                        "target"
+                                      ],
+                                      "type": "string"
+                                    },
+                                    "minItems": 1,
+                                    "type": "array",
+                                    "uniqueItems": true
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "roas_strengths"
+                                ],
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "minItems": 1,
+                          "type": "array"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  },
+                  "type": "object"
+                }
+              },
+              "title": "Bidding Policy Capability",
+              "type": "object",
+              "x-adcp-hoist": true
+            },
+            "catalog_management": {
+              "type": "boolean"
+            },
+            "property_filtering": {
+              "type": "boolean"
+            },
+            "reporting_commitment_snapshots": {
+              "description": "Seller preserves the accepted per-purchase reporting contract and exposes it on proposal and MediaBuy readback.",
+              "type": "boolean"
+            },
+            "seller_optimized_budget": {
+              "description": "Core seller-optimized shared-budget contract: shared total_budget, seller allocation across packages, media-buy pacing, and allocation echo.",
+              "type": "boolean"
+            },
+            "seller_optimized_min_spend_targets": {
+              "description": "Package minimum-spend targets inside seller-optimized buys; implies seller_optimized_budget.",
+              "type": "boolean"
+            },
+            "seller_optimized_package_budgets": {
+              "description": "Package budget caps inside seller-optimized buys; implies seller_optimized_budget.",
+              "type": "boolean"
+            },
+            "seller_optimized_package_pacing": {
+              "description": "Package pacing inside seller-optimized buys; implies seller_optimized_budget.",
+              "type": "boolean"
+            }
+          },
+          "title": "Canonical Media Buy Features",
+          "type": "object"
+        }
+      ],
+      "description": "Canonical protocol features the seller must support.",
+      "x-adcp-schema-uri": "/schemas/core/canonical-media-buy-features.json"
+    },
+    "required_metrics": {
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Standard delivery and performance metrics available for reporting. Most values name flat numeric fields of `core/delivery-metrics.json`. Leaf identities address a single numeric value nested inside an object-shaped metric so it can be declared, committed, aggregated, and sorted individually: `quartile_25`/`quartile_50`/`quartile_75`/`quartile_100` resolve to `quartile_data.q1_views`\u2013`q4_views`, and `viewable_rate`/`viewable_impressions`/`measurable_impressions`/`viewed_seconds` resolve to the same-named fields of `viewability`. Structured nested identities `viewed_seconds_percentiles` and `viewed_seconds_histogram` make the corresponding optional distribution carriers discoverable, committable, and requestable, but not aggregatable or sortable. The nested object or array remains the canonical carrier \u2014 nested identities never introduce duplicate flat response fields. Container tokens such as `viewability`, `quartile_data`, `dooh_metrics`, and `time_based_views` declare their documented nested surface. **Container subsumption applies only to numeric leaves**: `viewability` subsumes `viewable_rate`, `viewable_impressions`, `measurable_impressions`, and `viewed_seconds`; `quartile_data` subsumes `quartile_25`, `quartile_50`, `quartile_75`, and `quartile_100`. This rule applies to capability declaration, `required_metrics` filtering, format `reported_metrics` intersection, and `requested_metrics` selection. Optional structured identities MUST be declared explicitly: `viewability` alone does not satisfy `viewed_seconds_percentiles` or `viewed_seconds_histogram`. Requesting any nested identity selects its canonical carrier in the response. A nested identity declaration does not imply sibling values or the carrier's non-metric fields.",
+        "enum": [
+          "impressions",
+          "spend",
+          "clicks",
+          "ctr",
+          "views",
+          "completed_views",
+          "completion_rate",
+          "conversions",
+          "conversion_value",
+          "commissionable_value",
+          "roas",
+          "cost_per_acquisition",
+          "new_to_brand_rate",
+          "leads",
+          "reach",
+          "frequency",
+          "grps",
+          "engagements",
+          "engagement_rate",
+          "follows",
+          "saves",
+          "profile_visits",
+          "viewability",
+          "viewable_rate",
+          "viewable_impressions",
+          "measurable_impressions",
+          "viewed_seconds",
+          "viewed_seconds_percentiles",
+          "viewed_seconds_histogram",
+          "quartile_data",
+          "quartile_25",
+          "quartile_50",
+          "quartile_75",
+          "quartile_100",
+          "time_based_views",
+          "dooh_metrics",
+          "ooh_metrics",
+          "cost_per_click",
+          "cost_per_completed_view",
+          "cpm",
+          "downloads",
+          "units_sold",
+          "new_to_brand_units",
+          "plays",
+          "incremental_sales_lift",
+          "brand_lift",
+          "foot_traffic",
+          "conversion_lift",
+          "brand_search_lift"
+        ],
+        "title": "Available Metric",
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "required_performance_standards": {
+      "items": {
+        "additionalProperties": true,
+        "properties": {
+          "metric": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Performance metrics that support rate thresholds on media buys \u2014 the verification subset of the broader metric vocabulary. Each metric specifies whether its threshold is a floor (must exceed) or ceiling (must not exceed). Shared values with `available-metric.json` mirror the delivery vocabulary (`viewability` \u2192 `viewable_rate` family, `completion_rate` \u2192 same name); verification-only values (`ivt`, `brand_safety`, `attention_score`) are typically vendor-attested and do not appear in `available-metric.json` because they're not seller-reportable scalars \u2014 they flow through `vendor_metric_values` or vendor-scope `committed_metrics` entries with the matching `performance_standard.vendor` BrandRef anchoring identity.",
+            "enum": [
+              "viewability",
+              "ivt",
+              "completion_rate",
+              "brand_safety",
+              "attention_score"
+            ],
+            "enumDescriptions": {
+              "attention_score": "Attention score rate (floor \u2014 must exceed threshold). Denominator: measurable_impressions.",
+              "brand_safety": "Brand-safe impression rate (floor \u2014 must exceed threshold). Denominator: total_impressions.",
+              "completion_rate": "Video or audio completion rate (floor \u2014 must exceed threshold). Denominator: total_impressions.",
+              "ivt": "Invalid Traffic rate (ceiling \u2014 must not exceed threshold). Denominator: total_impressions.",
+              "viewability": "Viewable impression rate (floor \u2014 must exceed threshold). Requires viewability_standard. Denominator: measurable_impressions."
+            },
+            "title": "Performance Standard Metric",
+            "type": "string"
+          },
+          "standard": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Viewability measurement standard applied to determine whether an impression qualifies as viewable. These are materially different thresholds and should not be compared across standards.",
+            "enum": [
+              "mrc",
+              "groupm"
+            ],
+            "enumDescriptions": {
+              "groupm": "GroupM standard: 100% of pixels in view for 1 continuous second (display) or 50% of video duration.",
+              "mrc": "MRC/IAB standard: 50% of pixels in view for 1 continuous second (display) or 2 continuous seconds (video)."
+            },
+            "title": "Viewability Standard",
+            "type": "string"
+          },
+          "threshold": {
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+          },
+          "vendor": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": false,
+            "description": "Stable brand identity used to resolve the canonical brand manifest, optionally qualified by the countries of a commercial advertiser entity. The manifest URL is derived from domain; callers do not send brand assets or per-call brand overrides. Countries do not target delivery.",
+            "properties": {
+              "brand_id": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "description": "Brand within a house-of-brands manifest. Omit for a single-brand domain.",
+                "examples": [
+                  "tide",
+                  "cheerios",
+                  "air_jordan",
+                  "nike",
+                  "pampers"
+                ],
+                "pattern": "^[a-z0-9_]+$",
+                "title": "Brand ID",
+                "type": "string",
+                "x-entity": "advertiser_brand"
+              },
+              "countries": {
+                "description": "Canonical set of ISO 3166-1 alpha-2 countries for this advertiser identity. Omit when the identity is global or the house does not split the brand geographically. Array order is not meaningful; producers MUST sort codes lexicographically before computing keys or signatures. This qualifies account and proposal identity and is not delivery targeting.",
+                "items": {
+                  "pattern": "^[A-Z]{2}$",
+                  "type": "string"
+                },
+                "minItems": 1,
+                "type": "array",
+                "uniqueItems": true
+              },
+              "domain": {
+                "description": "Domain that hosts /.well-known/brand.json or is registered for the brand.",
+                "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "domain"
+            ],
+            "title": "Brand Key",
+            "type": "object"
+          }
+        },
+        "required": [
+          "metric",
+          "threshold",
+          "vendor"
+        ],
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "required_vendor_metrics": {
+      "items": {
+        "additionalProperties": false,
+        "anyOf": [
+          {
+            "required": [
+              "vendor"
+            ]
+          },
+          {
+            "required": [
+              "metric_id"
+            ]
+          }
+        ],
+        "properties": {
+          "metric_id": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Identifier for a vendor-defined metric within the vendor's vocabulary. Stable lookup key; the vendor publishes the canonical list (with category, methodology, and standard alignment) in `brand.json` `agents[type='measurement']`. Lowercase with underscores so a future enum promotion into `available-metric.json` is a literal string lift. Identifier is namespaced by the vendor \u2014 the same `metric_id` may mean different things in different vendors' vocabularies.",
+            "examples": [
+              "attention_units",
+              "gco2e_per_impression",
+              "demographic_reach",
+              "co_view_index",
+              "incremental_lift_percent"
+            ],
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "title": "Vendor Metric ID",
+            "type": "string",
+            "x-entity": "vendor_metric"
+          },
+          "vendor": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": false,
+            "description": "Stable brand identity used to resolve the canonical brand manifest, optionally qualified by the countries of a commercial advertiser entity. The manifest URL is derived from domain; callers do not send brand assets or per-call brand overrides. Countries do not target delivery.",
+            "properties": {
+              "brand_id": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "description": "Brand within a house-of-brands manifest. Omit for a single-brand domain.",
+                "examples": [
+                  "tide",
+                  "cheerios",
+                  "air_jordan",
+                  "nike",
+                  "pampers"
+                ],
+                "pattern": "^[a-z0-9_]+$",
+                "title": "Brand ID",
+                "type": "string",
+                "x-entity": "advertiser_brand"
+              },
+              "countries": {
+                "description": "Canonical set of ISO 3166-1 alpha-2 countries for this advertiser identity. Omit when the identity is global or the house does not split the brand geographically. Array order is not meaningful; producers MUST sort codes lexicographically before computing keys or signatures. This qualifies account and proposal identity and is not delivery targeting.",
+                "items": {
+                  "pattern": "^[A-Z]{2}$",
+                  "type": "string"
+                },
+                "minItems": 1,
+                "type": "array",
+                "uniqueItems": true
+              },
+              "domain": {
+                "description": "Domain that hosts /.well-known/brand.json or is registered for the brand.",
+                "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "domain"
+            ],
+            "title": "Brand Key",
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "social_placement_surfaces": {
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Declared social-placement surface classification for social inventory, distinguishing the in-app surface where a social placement renders. Values name the semantic surface, not platform brands. This is seller-declared discovery metadata, not independent verification of inventory quality or delivery context.",
+        "enum": [
+          "feed",
+          "stories",
+          "short_video",
+          "explore",
+          "search"
+        ],
+        "enumDescriptions": {
+          "explore": "The discovery or browse surface presenting recommended content outside the user's followed graph.",
+          "feed": "The primary scrolling home or timeline surface where posts and ads are interleaved with followed and recommended content.",
+          "search": "The in-app search-results surface, keyed to the user's query.",
+          "short_video": "The full-screen, sound-on, swipe-past, algorithmically-recommended vertical short-video surface. Subsumes the platform brand names for this surface (Reels, Shorts, Spotlight, and TikTok's For You short-video experience) \u2014 platform identity belongs to a property/publisher axis, not here.",
+          "stories": "The full-screen, ephemeral tap-through surface presented between or alongside users' story content."
+        },
+        "title": "Social Placement Surface",
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true,
+      "x-canonicalization": "set"
+    },
+    "sponsored_placement_types": {
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Declared sponsored-placement classification for catalog-driven retail-media inventory, distinguishing where the sponsored placement renders on the retailer surface. This is seller-declared discovery metadata, not independent verification of inventory quality or delivery context.",
+        "enum": [
+          "sponsored_search",
+          "sponsored_display",
+          "sponsored_native"
+        ],
+        "enumDescriptions": {
+          "sponsored_display": "Sponsored placements rendered in display slots across retailer browse, category, and product-detail pages outside the search results stream (e.g., Criteo Sponsored Display, Amazon Sponsored Display on-site).",
+          "sponsored_native": "Sponsored placements rendered using the retailer's native in-grid product template, blending into the organic product listing (e.g., CitrusAd native product cards, Pinterest catalog-driven collections).",
+          "sponsored_search": "Sponsored placements rendered against retailer on-site search results, keyed to the shopper's query (e.g., Amazon Sponsored Products on search, Walmart Connect Sponsored Search)."
+        },
+        "title": "Sponsored Placement Type",
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true,
+      "x-canonicalization": "set"
+    },
+    "standard_formats_only": {
+      "type": "boolean"
+    },
+    "start_date": {
+      "description": "Fixed-flight availability filter: with end_date, declares the exact flight the buyer intends to run. Returned products MUST be able to serve that flight, and pricing and forecasts are scoped to it. Mutually exclusive with availability_horizon.",
+      "format": "date",
+      "type": "string"
+    },
+    "trusted_match": {
+      "additionalProperties": false,
+      "properties": {
+        "providers": {
+          "items": {
+            "additionalProperties": true,
+            "properties": {
+              "agent_url": {
+                "format": "uri",
+                "type": "string"
+              },
+              "context_match": {
+                "type": "boolean"
+              },
+              "identity_match": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "agent_url"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "response_types": {
+          "items": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "What the publisher wants back from a TMP context match. Determines the richness level of the buyer's offer response.",
+            "enum": [
+              "activation",
+              "catalog_items",
+              "creative",
+              "deal"
+            ],
+            "enumDescriptions": {
+              "activation": "Binary activation with GAM key-values. Offers identify the package via package_id.",
+              "catalog_items": "Preferred catalog items for rendering. Offers may include catalog item references.",
+              "creative": "Inline creative manifest. Offers include full rendering details.",
+              "deal": "Deal ID for programmatic execution. Offers include deal metadata."
+            },
+            "title": "TMP Response Type",
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "video_placement_types": {
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Declared video placement classification for OLV and other video inventory, using the IAB Tech Lab/OpenRTB 2.6 video.plcmt definitions with AdCP-native value names. This is seller-declared discovery metadata, not independent verification of inventory quality or delivery context.",
+        "enum": [
+          "instream",
+          "accompanying_content",
+          "interstitial",
+          "standalone"
+        ],
+        "enumDescriptions": {
+          "accompanying_content": "OpenRTB 2.6 video.plcmt=2: video ads played with accompanying video content in a player associated with the page or app content.",
+          "instream": "OpenRTB 2.6 video.plcmt=1: video ads played before, during, or after streaming video content requested by the user.",
+          "interstitial": "OpenRTB 2.6 video.plcmt=3: video ads shown as an interstitial experience, typically between content or app states.",
+          "standalone": "OpenRTB 2.6 video.plcmt=4: video ads shown without associated video content, also called no-content or standalone video."
+        },
+        "title": "Video Placement Type",
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true,
+      "x-canonicalization": "set"
+    }
+  },
+  "title": "Product Offer Filters",
+  "type": "object"
+}

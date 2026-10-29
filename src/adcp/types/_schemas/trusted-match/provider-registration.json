@@ -1,0 +1,163 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "anyOf": [
+    {
+      "properties": {
+        "context_match": {
+          "const": true
+        }
+      },
+      "required": [
+        "context_match"
+      ]
+    },
+    {
+      "properties": {
+        "identity_match": {
+          "const": true
+        }
+      },
+      "required": [
+        "identity_match"
+      ]
+    }
+  ],
+  "description": "Declares a TMP provider's endpoint, capabilities, and operational parameters. Used in router configuration (static YAML or dynamic API) and referenced by product-level provider entries. The publisher controls which providers participate in their ad decisioning. Endpoint URLs MUST be validated against SSRF, and dynamic registration endpoints MUST authenticate callers \u2014 see docs/trusted-match/specification#provider-registration-security.",
+  "if": {
+    "properties": {
+      "identity_match": {
+        "const": true
+      }
+    },
+    "required": [
+      "identity_match"
+    ]
+  },
+  "properties": {
+    "context_match": {
+      "description": "Provider handles Context Match requests (POST /context).",
+      "type": "boolean"
+    },
+    "countries": {
+      "description": "ISO 3166-1 alpha-2 country codes this provider serves. The router filters Identity Match providers by the request's country field. MUST be present and non-empty when identity_match is true.",
+      "items": {
+        "pattern": "^[A-Z]{2}$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "endpoint": {
+      "description": "Base URL the router calls. The router appends /context for Context Match and /identity for Identity Match. MUST be HTTPS in production, validated against the canonical reserved IPv4 and IPv6 ranges, with the TCP connection pinned to the validated IP (DNS re-resolution alone is insufficient against rebinding). Publishers comparing two provider registrations for the same `endpoint` MUST canonicalize both per the AdCP URL canonicalization rules; two registrations differing only in case, default port, or path-slash collapsing are the same provider. See docs/trusted-match/specification#provider-registration-security, docs/building/by-layer/L1/security#webhook-url-validation-ssrf, and docs/reference/url-canonicalization.",
+      "format": "uri",
+      "type": "string"
+    },
+    "identity_match": {
+      "description": "Provider handles Identity Match requests (POST /identity).",
+      "type": "boolean"
+    },
+    "priority": {
+      "default": 0,
+      "description": "Provider ordering for Context Match offer conflict resolution. Lower values have higher priority. When two providers return offers for the same package_id (a configuration error), the router keeps the offer from the higher-priority provider; equal priorities are broken by first response received. Identity Match eligibility remains a responder-scoped union because silent omission is not a negative vote. Also used for adaptive timeout allocation \u2014 higher-priority providers receive a larger share of the latency budget.",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "properties": {
+      "description": "Property RIDs (UUID v7) this provider serves. When present, the router only sends requests from these properties to this provider. When absent, the provider serves all properties.",
+      "items": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "provider_id": {
+      "description": "Stable identifier for this provider registration. Used in logs, metrics, cache keys, as the key in `signals_by_provider` on Context Match responses and `targeting_kv_mapping` in publisher configuration, and as the key in `tmpx_providers` on Identity Match responses and `tmpx_macro_mapping` in publisher configuration. Publishers assign this \u2014 it is not the provider's agent_url. Charset is constrained to a safe alphanumeric/underscore set so the value can appear in operational surfaces (logs, metrics, dashboards) without quoting. See publisher-targeting-kv-config.json and publisher-tmpx-config.json.",
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_]+$",
+      "type": "string"
+    },
+    "status": {
+      "default": "active",
+      "description": "Provider lifecycle status. Active providers receive requests. Inactive providers are skipped entirely. Draining providers stop receiving new requests but in-flight requests complete normally.",
+      "enum": [
+        "active",
+        "inactive",
+        "draining"
+      ],
+      "type": "string"
+    },
+    "timeout_ms": {
+      "default": 50,
+      "description": "Per-provider timeout in milliseconds. The router skips this provider if it does not respond within this budget. Must be less than or equal to the router's overall latency_budget_ms. The router may further reduce this based on adaptive timeout allocation.",
+      "maximum": 5000,
+      "minimum": 5,
+      "type": "integer"
+    },
+    "tmpx_slots": {
+      "description": "Stable provider-local slot identifiers for the ordered TMPX chunks this provider mints. Slot IDs are opaque provider-namespaced tokens (e.g. `[\"primary\",\"secondary\"]`), NOT ad-server macro names \u2014 publishers map `(provider_id, slot_id)` \u2192 local destination via `tmpx_macro_mapping` in publisher-tmpx-config.json, so the destination namespace stays publisher-owned and the router never accepts a destination name from an untrusted provider. Distinct providers MAY reuse the same slot_id without collision because publisher lookup is keyed on `(provider_id, slot_id)`. Publishers use this list at startup to validate `tmpx_macro_mapping` covers every slot the provider mints and to detect config drift when the provider's slot contract changes. Ordering carries the ordered-prefix invariant: a provider that emits fewer chunks than it registered MUST emit an ordered prefix of this list \u2014 chunks map to slots in registration order and MUST NOT be shifted, sparse, or reordered. Cap of 2 slots in v1 aligned with the GAM macro-slot budget; the cap MAY rise without a shape change. A provider that emits TMPX (populates `tmpx_chunks` on its identity-match response) MUST register this list; a provider that does not emit TMPX omits it. Schema cannot enforce that predicate because \"emits TMPX\" is not schema-visible.",
+      "items": {
+        "maxLength": 64,
+        "minLength": 1,
+        "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
+        "type": "string"
+      },
+      "maxItems": 2,
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "uid_types": {
+      "description": "Identity types this provider can resolve. The router selects Identity Match providers whose uid_types overlaps with any uid_type in the request's identities array. MUST be present and non-empty when identity_match is true.",
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Type of user identifier. Used in audience sync, event logging, and TMP identity match requests to tell the receiver how to interpret and resolve the identifier; some types, including PAIR, are publisher-scoped rather than universal identity-graph tokens.",
+        "enum": [
+          "rampid",
+          "rampid_derived",
+          "id5",
+          "uid2",
+          "euid",
+          "pairid",
+          "maid",
+          "hashed_email",
+          "publisher_first_party",
+          "world_id_nullifier",
+          "other"
+        ],
+        "enumDescriptions": {
+          "euid": "European Unified ID",
+          "hashed_email": "SHA-256 hashed email address. Pseudonymous PII, not anonymous \u2014 unsalted SHA-256 of the email namespace is recoverable via precomputed dictionaries; treat as PII. See docs/reference/privacy-considerations#unsalted-hashed-identifiers-are-pseudonymous-not-anonymous.",
+          "id5": "ID5 universal ID",
+          "maid": "Mobile Advertising ID (IDFA/GAID)",
+          "other": "Other universal ID type (specify in ext)",
+          "pairid": "Publisher Addressable Identity via IAB Tech Lab PAIR. The OpenRTB profile uses User.eids[].source pair-protocol.com, EID.mm 3, EID.matcher set to the publisher's canonical ads.txt ownerdomain, and uids[].atype 3. The URL-safe Base64-encoded KsKp Publisher Identifier must be interpreted with that matcher scope. It is stable across a publisher's advertiser matches only within a Ks key epoch; Ks rotates every 30 days, and current and prior Publisher Identifiers can overlap during rollover. TMP identity objects do not carry matcher or ownerdomain, so a bridge requires an authenticated out-of-band binding to preserve PAIR scope.",
+          "publisher_first_party": "Publisher's own first-party identifier, opaque to buyers",
+          "rampid": "LiveRamp RampID maintained form (XY, 32 bytes on the wire)",
+          "rampid_derived": "LiveRamp RampID derived form (Xi, 48 bytes on the wire)",
+          "uid2": "Unified ID 2.0",
+          "world_id_nullifier": "World ID nullifier \u2014 a Sybil-resistant, relying-party-scoped, unlinkable pseudonym. Carries NO personhood or age assertion on its own; trust comes only from an accompanying verified `attestation`, never from this type tag. Distinct from the `world_id` value in the age-verification-method enum, which names a method, not an identifier."
+        },
+        "title": "UID Type",
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array"
+    }
+  },
+  "required": [
+    "provider_id",
+    "endpoint"
+  ],
+  "then": {
+    "required": [
+      "countries",
+      "uid_types"
+    ]
+  },
+  "title": "TMP Provider Registration",
+  "type": "object",
+  "x-status": "experimental"
+}

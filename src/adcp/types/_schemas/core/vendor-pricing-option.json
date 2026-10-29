@@ -1,0 +1,309 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "allOf": [
+    {
+      "properties": {
+        "applies_to_output_capability_ids": {
+          "description": "Creative transformers only: scopes this pricing option to canonical output capabilities advertised in creative.supported_formats[].capability_id. When absent, the option is the default for any output. A build targeting an output that matches no scoped option and has no unscoped default is rejected with UNPRICEABLE_OUTPUT.",
+          "items": {
+            "pattern": "^[a-zA-Z0-9_-]+$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "applies_to_output_format_ids": {
+          "deprecated": true,
+          "description": "**DEPRECATED in 3.2.** Legacy named-format pricing scope. Use applies_to_output_capability_ids.",
+          "items": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": true,
+            "dependencies": {
+              "height": [
+                "width"
+              ],
+              "pixel_ratio": [
+                "width",
+                "height"
+              ],
+              "width": [
+                "height"
+              ]
+            },
+            "deprecated": true,
+            "description": "**DEPRECATED in 3.2.** Legacy named-format reference retained for 3.x compatibility. This JSON object \u2014 never a plain string \u2014 identifies a format by its declaring agent and local slug, and may carry legacy logical dimensions, pixel ratio, or duration parameters. New products and manifests use canonical `format_options`, `format_kind`, and `format_option_ref`; creative-agent build routing uses `creative.supported_formats[].capability_id`.",
+            "properties": {
+              "agent_url": {
+                "description": "URL of the agent that defines this format (e.g., 'https://creative.adcontextprotocol.org' for standard formats, or 'https://publisher.com/.well-known/adcp/sales' for custom formats). Callers comparing two `format-id` values MUST canonicalize `agent_url` per the AdCP URL canonicalization rules before treating two formats as the same. See docs/reference/url-canonicalization.",
+                "format": "uri",
+                "type": "string"
+              },
+              "duration_ms": {
+                "description": "Duration in milliseconds for time-based formats (video, audio). When specified, creates a parameterized format ID. Omit to reference a template format without parameters.",
+                "minimum": 1,
+                "type": "number"
+              },
+              "height": {
+                "description": "Height in pixels for visual formats. When specified, width must also be specified. Both fields together create a parameterized format ID for dimension-specific variants.",
+                "minimum": 1,
+                "type": "integer"
+              },
+              "id": {
+                "description": "Format identifier within the agent's namespace (e.g., 'display_static', 'video_hosted', 'audio_standard'). When used alone, references a template format. When combined with dimension/duration fields, creates a parameterized format ID for a specific variant.",
+                "pattern": "^[a-zA-Z0-9_-]+$",
+                "type": "string"
+              },
+              "pixel_ratio": {
+                "description": "Required intrinsic-pixel density for a parameterized visual format, expressed as intrinsic pixels per logical pixel. Requires `width` and `height`. Example: `{id: \"display_image\", width: 300, height: 250, pixel_ratio: 2}` identifies a 300\u00d7250 logical render supplied by a 600\u00d7500 image. Omit for the backward-compatible 1x variant.",
+                "exclusiveMinimum": 0,
+                "type": "number"
+              },
+              "width": {
+                "description": "Width in pixels for visual formats. When specified, height must also be specified. Both fields together create a parameterized format ID for dimension-specific variants.",
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "agent_url",
+              "id"
+            ],
+            "title": "Format Reference (Structured Object)",
+            "type": "object",
+            "x-entity": "creative_format"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "pricing_option_id": {
+          "description": "Opaque identifier for this pricing option, unique within the vendor agent. Pass this in report_usage to identify which pricing option was applied.",
+          "type": "string",
+          "x-entity": "vendor_pricing_option"
+        }
+      },
+      "required": [
+        "pricing_option_id"
+      ],
+      "type": "object"
+    },
+    {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Pricing model for a vendor service. Discriminated by model: 'cpm' (fixed CPM), 'percent_of_media' (percentage of spend with optional CPM cap), 'flat_fee' (fixed charge per reporting period), 'per_unit' (fixed price per unit of work), or 'custom' (escape hatch for models not covered by the enumerated forms \u2014 requires a description and structured metadata).",
+      "discriminator": {
+        "propertyName": "model"
+      },
+      "oneOf": [
+        {
+          "additionalProperties": true,
+          "description": "Fixed cost per thousand impressions",
+          "properties": {
+            "cpm": {
+              "description": "Cost per thousand impressions",
+              "minimum": 0,
+              "type": "number"
+            },
+            "currency": {
+              "description": "ISO 4217 currency code",
+              "pattern": "^[A-Z]{3}$",
+              "type": "string"
+            },
+            "ext": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "additionalProperties": true,
+              "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+              "title": "Extension Object",
+              "type": "object"
+            },
+            "model": {
+              "const": "cpm",
+              "type": "string"
+            }
+          },
+          "required": [
+            "model",
+            "cpm",
+            "currency"
+          ],
+          "title": "CpmPricing",
+          "type": "object"
+        },
+        {
+          "additionalProperties": true,
+          "description": "Percentage of media spend charged for this signal. When max_cpm is set, the effective rate is capped at that CPM \u2014 useful for platforms like The Trade Desk that use percent-of-media pricing with a CPM ceiling.",
+          "properties": {
+            "currency": {
+              "description": "ISO 4217 currency code for the resulting charge",
+              "pattern": "^[A-Z]{3}$",
+              "type": "string"
+            },
+            "ext": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "additionalProperties": true,
+              "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+              "title": "Extension Object",
+              "type": "object"
+            },
+            "max_cpm": {
+              "description": "Optional CPM cap. When set, the effective charge is min(percent \u00d7 media_spend_per_mille, max_cpm).",
+              "minimum": 0,
+              "type": "number"
+            },
+            "model": {
+              "const": "percent_of_media",
+              "type": "string"
+            },
+            "percent": {
+              "description": "Percentage of media spend, e.g. 15 = 15%",
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "model",
+            "percent",
+            "currency"
+          ],
+          "title": "PercentOfMediaPricing",
+          "type": "object"
+        },
+        {
+          "additionalProperties": true,
+          "description": "Fixed charge per billing period, regardless of impressions or spend. Used for licensed data bundles and audience subscriptions.",
+          "properties": {
+            "amount": {
+              "description": "Fixed charge for the billing period",
+              "minimum": 0,
+              "type": "number"
+            },
+            "currency": {
+              "description": "ISO 4217 currency code",
+              "pattern": "^[A-Z]{3}$",
+              "type": "string"
+            },
+            "ext": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "additionalProperties": true,
+              "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+              "title": "Extension Object",
+              "type": "object"
+            },
+            "model": {
+              "const": "flat_fee",
+              "type": "string"
+            },
+            "period": {
+              "description": "Billing period for the flat fee.",
+              "enum": [
+                "monthly",
+                "quarterly",
+                "annual",
+                "campaign"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "model",
+            "amount",
+            "period",
+            "currency"
+          ],
+          "title": "FlatFeePricing",
+          "type": "object"
+        },
+        {
+          "additionalProperties": true,
+          "description": "Fixed price per unit of work. Used for creative transformation (per format), AI generation (per image, per token), and rendering (per variant). The unit field describes what is counted; unit_price is the cost per one unit.",
+          "properties": {
+            "currency": {
+              "description": "ISO 4217 currency code",
+              "pattern": "^[A-Z]{3}$",
+              "type": "string"
+            },
+            "ext": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "additionalProperties": true,
+              "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+              "title": "Extension Object",
+              "type": "object"
+            },
+            "model": {
+              "const": "per_unit",
+              "type": "string"
+            },
+            "unit": {
+              "description": "What is counted \u2014 e.g. 'format', 'image', 'token', 'variant', 'render', 'evaluation'.",
+              "type": "string"
+            },
+            "unit_price": {
+              "description": "Cost per one unit",
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "model",
+            "unit",
+            "unit_price",
+            "currency"
+          ],
+          "title": "PerUnitPricing",
+          "type": "object"
+        },
+        {
+          "additionalProperties": true,
+          "description": "Escape hatch for pricing constructs that do not fit cpm, percent_of_media, flat_fee, or per_unit. Use when a vendor prices via performance kickers, tiered volume, hybrid formulas, outcome-sharing, or any other model the standard forms cannot express. Requires a human-readable description and a structured metadata object that captures the parameters a buyer needs to reason about the charge. Buyers SHOULD route custom pricing through operator review before commitment \u2014 automatic selection is not recommended.",
+          "properties": {
+            "currency": {
+              "description": "ISO 4217 currency code. Present when the pricing resolves to a monetary charge in a specific currency.",
+              "pattern": "^[A-Z]{3}$",
+              "type": "string"
+            },
+            "description": {
+              "description": "Human-readable description of the custom pricing model. Buyers display this to the operator when requesting approval.",
+              "minLength": 1,
+              "type": "string"
+            },
+            "ext": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "additionalProperties": true,
+              "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+              "title": "Extension Object",
+              "type": "object"
+            },
+            "metadata": {
+              "additionalProperties": true,
+              "description": "Structured parameters for the custom model. Keys follow lowercase_snake_case. Values may be primitives, arrays, or nested objects. Must be sufficient for a human to understand the pricing basis and for a downstream system to reconstruct the charge. Vendors SHOULD include a `summary_for_operator` string (one or two sentences, suitable for display in a buyer's operator-review UI) so reviewers across vendors see a consistent prompt. Required operator-review fields (approver role, dollar threshold for automatic approval, escalation contact) MAY be surfaced via additional keys the buyer's review surface recognizes.",
+              "minProperties": 1,
+              "properties": {
+                "summary_for_operator": {
+                  "description": "One or two sentences describing the pricing construct in plain language, displayed to the buyer's operator when requesting approval. Should not repeat the top-level `description` verbatim \u2014 summarize the charge mechanic instead (e.g., 'Base $12 CPM plus $0.50 per qualifying post-view conversion, capped at $45 CPM').",
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "model": {
+              "const": "custom",
+              "type": "string"
+            }
+          },
+          "required": [
+            "model",
+            "description",
+            "metadata"
+          ],
+          "title": "CustomPricing",
+          "type": "object"
+        }
+      ],
+      "title": "Vendor Pricing",
+      "type": "object"
+    }
+  ],
+  "description": "A pricing option offered by a vendor agent (signals, creative, governance). Combines pricing_option_id with the pricing model fields. Pass pricing_option_id in report_usage for billing verification. All vendor discovery responses return pricing_options as an array \u2014 vendors may offer multiple options (volume tiers, context-specific rates, different models per product line).",
+  "title": "Vendor Pricing Option"
+}
