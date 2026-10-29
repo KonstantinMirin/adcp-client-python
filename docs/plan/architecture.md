@@ -148,6 +148,27 @@ nobody can audit against the table that was supposed to hold it.
 
 ---
 
+### An approximation's pointer is the SchemaRef spelling (decided 2026-10-29)
+
+`render.declared_at` attaches a declaration to a class by a prefix test, and its own docstring
+fixes the rule: "the prefix test is on ONE spelling of a pointer — `SchemaRef`'s, which
+`compiler.schema_ref` is the sole producer of". **An approximation declared at a different
+spelling of the same node therefore attaches to the wrong class, or to none.**
+
+The spellings differ across an `allOf` conjunct. A class's `SchemaRef` keeps the conjunct —
+`#/anyOf/0/allOf/0/anyOf` — and the walk writes the approximation at the node reached through
+it, `#/anyOf/0/anyOf`. Measured: **144 of 235 declared pointers do not resolve in their own
+document**, even following `$ref` and merging `allOf`, and in `adagents.json` four `minItems`
+declarations land on the root and on an intermediate branch rather than on the class whose field
+actually drops the fact.
+
+**The approximation takes the `SchemaRef` spelling, because that is the one the reader of a
+declaration uses.** §2 asks a declaration to be a fact §8 can look for in the document and
+find; a pointer that resolves to nothing is not that. This is one producer and one spelling, as
+`attribution.py` already says of the attribution it writes beside it, and it is also both
+directions of §8's UNDERDETERMINED equality: of 118 declared-but-separable sites, 116 pair with
+a silent entry once the conjunct is elided — the same union counted twice under two spellings.
+
 ## 3. The declarations: `codegen/keywords.py`, and `codegen/attribution.py` beside it
 
 The semantics document's §5, §6 and §7 are a table of keyword × position. The code carries that

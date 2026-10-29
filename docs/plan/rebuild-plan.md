@@ -689,8 +689,21 @@ sources, in order:
 3. **Branches no instance satisfies twice.** Where the branches are pairwise disjoint, the
    payload selects its own branch and the order they are tried in cannot change which one it
    reaches. Disjointness is derived from the branches themselves: one property pinned to
-   different `const` values, a `required` name one branch declares and another forbids, **one
-   branch forbidding a VALUE another pins**, or scalar branches of different `type`. A pair the
+   **disjoint value SETS**, a `required` name one branch declares and another forbids, **one
+   branch forbidding a VALUE another pins**, or scalar branches of different `type`.
+
+   *The first separator reads SETS and not single values, decided 2026-10-29.* An `enum` is a
+   set of pinned values and a `not: {"enum": [...]}` is its complement, so two branches whose
+   sets do not intersect are disjoint for the same reason two different `const`s are — the
+   single-value case is the one-member set. Reading only single values made
+   `core/postal-country-system.json#/anyOf` inseparable on 12 pairs, every one involving the
+   branch pinning `country` to `["DE", "CH", "AT"]` or the branch pinning its complement, while
+   all ten branches are pairwise disjoint in fact and the emitted classes dispatch
+   deterministically: ten probed payloads, document and model agreeing on every one,
+   `{"country": "DE", "system": "plz"}` reaching `PostalCountrySystemPlz` and
+   `{"country": "ZZ", "system": "custom"}` reaching the complement branch. That one union
+   accounted for **116 of the 235 approximated facts**, declared for a disjointness the
+   derivation could not see rather than one the document does not have. A pair the
    derivation cannot separate is treated as overlapping, because admitting a union on an unproven
    disjointness is the defect this source exists to avoid.
 
@@ -718,8 +731,22 @@ by trying each and keeping the first that validates, because overlapping branche
 answer a property of declaration order rather than of the payload — and that reasoning is
 unchanged and is exactly what the approximation now records. What changes is that the
 order-dependence is no longer worth a document. `A | B` admits the union of the branches, which
-is what the document admits, so **nothing widens and nothing narrows**; for `oneOf` the schema
-half still enforces exclusivity, as it already does for every nested union. The whole of the
+is what the document admits, so **nothing widens and nothing narrows** — **for `anyOf`.**
+
+**For `oneOf` it is false, and an inseparable `oneOf` owes TWO declarations (decided
+2026-10-29).** `oneOf` admits an instance satisfying exactly one branch; `A | B` admits one
+satisfying two. The old sentence said "the schema half still enforces exclusivity", and that is
+true only of a caller who invokes `strict_validate`: measured on `core/evaluator-spec.json#/oneOf`
+with `{"evaluator_id": "e1", "agent_url": "https://x.example/a"}`, `Draft7Validator` refuses it
+and `EvaluatorSpec.model_validate` returns `EvaluatorSpecEvaluatorId`. The class carries
+`strict_validate` and `model_validate` does not route through it, so the type is wider than the
+document for every caller who uses pydantic's own entry point.
+
+So the dropped exclusivity is a WIDENED fact and is declared as one, **beside** the
+UNDERDETERMINED declaration for the branch choice and not instead of it — §2 never sums the
+kinds, and the two losses are different: which branch an overlapping payload lands in, and that
+it is admitted at all. The second is a fact §8's comparison can see; `UNDERDETERMINED` alone
+exempts the site from the comparison by name, which hid it from all three checks. The whole of the
 loss is that an overlapping payload's branch is decided by declaration order, and the document
 does not say which branch it should be. That is the UNDERDETERMINED kind of §2, and it is the
 only instance of it.
