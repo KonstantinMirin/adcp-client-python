@@ -330,7 +330,7 @@ def pins(props: Any) -> dict[str, Any]:
     """Every property of a property map that is pinned to a ``const``.
 
     ONE reading, and two things read it: §4 "Names"'s second branch-naming choice -- the
-    ``const`` a branch pins on the discriminating property (:func:`_const_pin`) -- and
+    ``const`` a branch pins on the discriminating property (:func:`_const_pins`) -- and
     §4's first dispatch source (:func:`discriminator`).  They are the same question asked
     of the same map -- "which key does this branch pin, and to what" -- and a second
     reading is how a class could come to be NAMED after a key the union does not dispatch
@@ -349,13 +349,36 @@ def pins(props: Any) -> dict[str, Any]:
     }
 
 
-def _const_pin(props: Any, named: str | None) -> Any:
-    """The ``const`` a branch pins on the discriminating property, or ``None``.
+def _const_pins(props: Any) -> tuple[Any, ...]:
+    """Every ``const`` a branch pins, in the order the document writes the keys.
 
-    The property is the root's ``discriminator.propertyName`` where it declares one, and
-    otherwise the branch's single ``const``-pinned property.  Two pins and no
-    ``discriminator`` is ambiguous and falls through to §4's next rule rather than taking
-    the alphabetically first, which would make a class name a function of spelling.
+    **§4, "Rung 2 reads EVERY pin the branch states" (decided 2026-10-29.)**  This read
+    ONE pin -- the root's ``discriminator.propertyName`` where it declared one, else the
+    branch's single pinned property, else nothing -- and "else nothing" sent the five most
+    heavily identified branches of the bundle to their index: ``core/postal-country-system
+    .json``'s ``/anyOf/4`` through ``/anyOf/8`` each pin two and took ``Branch4`` through
+    ``Branch8``.  Reading them all gives ``FRCodePostal``, ``AUPostcode``, ``BRCep``,
+    ``INPin`` and ``ZAPostalCode``, and the four single-pin branches keep ``US``, ``GB``,
+    ``CA`` and ``Plz``, because one pin in key order is that one pin.
+
+    **The order is the DOCUMENT's and the map is never sorted.**  That is the whole reason
+    the one-pin reading declined to choose: taking the alphabetically first of two would
+    make a public symbol a function of spelling.  Document order is a fact of the
+    document, so it is a reading and not a choice -- and :func:`pins` preserves it,
+    because it comprehends over ``props.items()``.
+
+    **``discriminator.propertyName`` IS NOT AN INPUT, and the parameter is gone rather
+    than ignored.**  The section says "in the order the document writes the keys" with no
+    clause for a nominated key, and its only other sentence about the discriminator is
+    that the rung is "not narrowed to unions that derive a dispatch discriminator" --
+    which is about which unions the rung SERVES.  So the keyword's whole role is §4's
+    FIRST DISPATCH SOURCE (:func:`discriminator`, :func:`dispatch_key`) and it names
+    nothing: a union that declares one and a union that does not derive the same branch
+    names from the same pins.  Taking the parameter and not reading it would leave a
+    caller believing it decided something, so it is dropped from this function and from
+    :func:`_naming_facts` with it.  An earlier draft of this row put the nominated pin
+    FIRST and the rest after; measured over the portable set that reordering moved **0**
+    names, so nothing grades it and nothing of the bundle depends on it either way.
 
     ``props`` is the branch's OWN property map, or -- for a bare ``$ref`` branch -- the
     map it inherits from its target (:class:`Branch`).  A ``$ref`` branch's fields come
@@ -367,13 +390,10 @@ def _const_pin(props: Any, named: str | None) -> Any:
     seam §6 draws: the reading stays in a module ``MAY_READ_A_DECLARATION`` names, and
     which of §4's three facts wins is the naming pass's (``names.branch_identity``).
     """
-    pinned = pins(props)
-    if named is not None and named in pinned:
-        return pinned[named]
-    return next(iter(pinned.values())) if len(pinned) == 1 else None
+    return tuple(pins(props).values())
 
 
-def _naming_facts(branch: Any, props: Any, named: str | None) -> Any:
+def _naming_facts(branch: Any, props: Any) -> Any:
     """The three DECLARED facts §4 "Names"'s branch rules read, off one branch's
     declaration.
 
@@ -389,7 +409,7 @@ def _naming_facts(branch: Any, props: Any, named: str | None) -> Any:
     return names.Branch(
         parent="",
         title=title if isinstance(title, str) and title else None,
-        pin=_const_pin(props, named),
+        pins=_const_pins(props),
         required=tuple(required) if isinstance(required, list) else (),
     )
 
@@ -418,7 +438,7 @@ def dispatch_key(node: "nodes.Union") -> str | None:
 # (a root union, which declares one class per branch) or falls back to the union's own
 # derived name (a nested union, where a branch that lowers to an annotation needs none).
 #
-# :func:`_const_pin` went with them and ``names._const_pin`` is the one reading of a
+# :func:`_const_pins` went with them and ``names._const_pins`` is the one reading of a
 # branch's pin.  What stays here is :func:`pins`, which §4's DISPATCH derivation reads
 # across every branch at once -- a different question from naming one branch, and the
 # one this module owns.
@@ -1241,7 +1261,7 @@ def lower_union(
     # because §4's fourth rung answers for every branch whose index is recorded.
     for i, plan in enumerate(planned):
         mod.hops[plan.pointer] = replace(
-            _naming_facts(plan.node, plan.properties, named), parent=pointer, index=i
+            _naming_facts(plan.node, plan.properties), parent=pointer, index=i
         )
 
     mod.imports.add((ir.BASE_MODULE, "AdCPBaseModel"))
@@ -1650,7 +1670,7 @@ _NESTED_SIBLING = (
 #:   sentence above and the half that does not hold for a constraining sibling.
 #: * It is already READ at this position: :func:`nested` names each branch through
 #:   :func:`branch_identity`, which reads ``discriminator.propertyName`` off the union's
-#:   own node (:func:`_const_pin`).
+#:   own node (:func:`_const_pins`).
 
 
 
@@ -1969,7 +1989,7 @@ def _arms(node: "nodes.Union", mod: compiler.Module) -> compiler.Decided | Refus
         # the branch declares BELOW it, which §4's nested rule is the whole argument
         # against.
         mod.hops[at] = replace(
-            _naming_facts(branch, branch.get("properties"), named),
+            _naming_facts(branch, branch.get("properties")),
             parent=pointer,
         )
         # A NESTED union's branch is NOT ``objectish``: §4 makes a branch of a ROOT union

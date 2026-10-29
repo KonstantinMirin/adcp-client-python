@@ -280,8 +280,13 @@ class Branch:
     parent: str
     #: The branch's own ``title``, where it states one that is a non-empty string.
     title: str | None = None
-    #: The ``const`` it pins on the discriminating property, where exactly one is derived.
-    pin: Any = None
+    #: **Every ``const`` the branch pins, in the order the document writes the keys**
+    #: (§4, "Rung 2 reads EVERY pin the branch states", decided 2026-10-29).  It held ONE
+    #: pin and declined to choose where a branch pinned several, which sent the five most
+    #: heavily identified branches of the bundle to their index.  A tuple and not a scalar
+    #: because the rung reads them all: one field, meaning "the pins this branch states",
+    #: where a scalar beside a count would be two readings of one keyword.
+    pins: tuple[Any, ...] = ()
     #: Its ``required`` set, as the document lists it.
     required: tuple[str, ...] = ()
     #: Its index among its union's branches, in the document's own order, where the branch
@@ -347,15 +352,50 @@ def branch_identity(hop: Branch, parent: tuple[str, ...]) -> tuple[str, ...] | N
     the walk did not record (a nested union's, which needs no name of its own) answers
     ``None`` and takes the union's own derived name.
     """
+    rungs = branch_rungs(hop, parent)
+    return rungs[0] if rungs else None
+
+
+def branch_rungs(hop: Branch, parent: tuple[str, ...]) -> tuple[tuple[str, ...], ...]:
+    """§4's four branch rules as a LADDER: every rung that answers, in the section's order.
+
+    :func:`branch_identity` is the FIRST rung of this and is what a chain starts at.  The
+    rest exist because §4 now says a rung can fail to identify: "Where a rung derives one
+    name for two branches it has not identified either, so BOTH fall to the next rung",
+    and "a branch colliding with its own document ROOT ... falls to the next rung"
+    (both decided 2026-10-29).  Falling is not lengthening -- these chains are one segment
+    with nothing to lengthen by -- so it is a second axis and :func:`spell_the_rungs`
+    walks it.
+
+    **Rung 2 is EVERY pin, in the document's own key order** (:attr:`Branch.pins`).  A
+    branch pinning ``country: FR`` and ``system: code_postal`` is ``FRCodePostal``; one
+    pinning ``country: US`` alone is ``US``, because one pin in key order is that one pin.
+    The order is the DOCUMENT's and never sorted: sorting would make a public symbol a
+    function of spelling, which is the reading ``_const_pin`` declined for and the reason
+    it answered nothing at all for such a branch.
+
+    **Which rungs a ROOT has: exactly one.**  A root is not a branch and never reaches
+    here -- :func:`segments` answers it from :class:`Root` -- so its ladder is the single
+    chain §4's D5 fixes, and "the root keeps the name" needs no clause of its own here.
+    That is why the collision rule below says only "a position with a rung left advances":
+    the root has none, so it cannot move, and the branch beside it is the side that does.
+    """
+    out: list[tuple[str, ...]] = []
     if hop.title:
-        return (class_name(hop.title),)
-    if hop.pin is not None:
-        return _suffixed(parent, class_name(str(hop.pin)))
+        out.append((class_name(hop.title),))
+    if hop.pins:
+        out.append(_suffixed(parent, "".join(class_name(str(p)) for p in hop.pins)))
     if hop.required:
-        return _suffixed(parent, "".join(class_name(str(k)) for k in sorted(hop.required)))
+        out.append(
+            _suffixed(parent, "".join(class_name(str(k)) for k in sorted(hop.required)))
+        )
     if hop.index is not None:
-        return _suffixed(parent, f"Branch{hop.index}")
-    return None
+        out.append(_suffixed(parent, f"Branch{hop.index}"))
+    # A rung spelling the same chain as the rung above it is not a rung to fall to: it
+    # identifies the branch no better and the fall would not terminate.  Measured: a
+    # branch whose title spells its own pin, and a one-branch union whose index repeats
+    # its required set.
+    return tuple(dict.fromkeys(out))
 
 
 #: §4's fourth branch rule and the one ground it stands on, in the section's own terms.
@@ -568,6 +608,36 @@ def segments(
     return parent if derived is None else derived
 
 
+def ladder(
+    pointer: str, hops: Mapping[str, Any], seen: frozenset[str] = frozenset()
+) -> tuple[tuple[str, ...], ...] | Refusal:
+    """Every chain this position could be named by, best first: §4's rungs.
+
+    One rung for every position but a BRANCH, which is the whole of §4's asymmetry here --
+    a property, an element, a mapping value, a definitions entry and a ROOT each derive
+    their name from one fact, and only a branch has a section-ordered ladder of facts to
+    fall down (:func:`branch_rungs`).  So this is :func:`segments` with the branch arm
+    widened, and :func:`segments` is its first rung.
+
+    The PARENT chain a rung is suffixed onto is the parent's own FIRST rung, which is
+    :func:`segments`' answer and the chain every other reading of the parent uses.  A
+    parent that itself falls to a later rung therefore keeps its children's SHORT names
+    where they were -- and a short name is what a child is declared under unless it
+    collides, so the parent's fall reaches a child only through the lengthening axis.
+    Measured over the portable set: of the branch positions that fall to a later rung, 0
+    have a named descendant that collides, so the two axes do not interact in this bundle
+    and the simpler reading is the measured one.
+    """
+    hop = hops.get(pointer)
+    if not isinstance(hop, Branch) or pointer in seen:
+        chain = segments(pointer, hops, seen)
+        return chain if isinstance(chain, Refusal) else (chain,)
+    parent = segments(hop.parent, hops, seen | {pointer})
+    if isinstance(parent, Refusal):
+        return parent
+    return branch_rungs(hop, parent) or (parent,)
+
+
 #: §4's collision rule, in the section's own words.  QUOTED by the checks that grade it
 #: (``tests/test_names_collision.py``), so the sentence the code states and the sentence
 #: a check reports against are one string.
@@ -630,6 +700,50 @@ def spell(
     That is exactly the population the fold refused before the rule was written -- the
     full path was the name then -- so the rule moves no document into the refused set.
     """
+    spelled, shared = _lengthened(chains, occupied)
+    if not shared:
+        return spelled
+    # Nothing colliding can lengthen and §4's rung axis is not this function's -- see
+    # :func:`spell_the_rungs`, which is what the run calls.  The pointer named is the one
+    # that COLLIDED, the later of the two in declaration order, which is the pointer
+    # ``Module.declare``'s symmetric check names as well.
+    #
+    # **MEASURED UNREACHABLE over the 1,054 portable documents: 0 modules reach it**
+    # (``adcp-client-python-10l.78``), which is §4's own sentence -- "no document of
+    # bundle 3.2 refuses for a derivable name again: rung 4 always answers, because a
+    # branch always has an index".  It is kept because the positions that are NOT branches
+    # have one rung each and two of them could in principle spell alike with nothing to
+    # lengthen by, and §9 says a crash is not an outcome.
+    #
+    # **The kind is HAND-WRITTEN and this row did not derive it, deliberately.**  §9's
+    # test makes it a VERDICT and not a deferral -- two positions of one document spelling
+    # alike at every rung and every length is a fact about that document's own titles and
+    # keys, and no unwritten row would clear it -- but ``compiler.kind_for("title", …)``
+    # answers DEFERRED at every position, because ``title``'s cell is a lowering effect.
+    # So the kind cannot be read off a cell here, and minting a different one to make the
+    # count fall would be the ninth hand-minted verdict wearing a derivation's clothes.
+    # Filed as a numbered request instead; the arm is unreachable, so no report moves
+    # either way.
+    at = next(p for p in chains if p in {q for ps in shared.values() for q in ps[1:]})
+    return Refusal(
+        "title",
+        at,
+        f"two nodes in this document derive the class name {spelled[at]!r}",
+        kind=Kind.VERDICT,
+    )
+
+
+def _lengthened(
+    chains: Mapping[str, tuple[str, ...]], occupied: frozenset[str]
+) -> tuple[dict[str, str], dict[str, list[str]]]:
+    """§4's collision rule run to a fixed point: the names, and the groups still sharing one.
+
+    ONE reading with two readers, which is why it is split out: :func:`spell` turns a
+    surviving group into the refusal, and :func:`spell_the_rungs` turns it into the set of
+    positions that fall to their next rung.  Asked twice, the second ask would be a second
+    reading of "which positions cannot be told apart", and the refusal and the fall would
+    be free to disagree about the set.
+    """
     depth = dict.fromkeys(chains, 1)
     while True:
         spelled = {p: spelling(chains[p], depth[p]) for p in chains}
@@ -647,20 +761,64 @@ def spell(
                     lengthened = True
         if lengthened:
             continue
-        # Nothing colliding can lengthen.  Two positions sharing a name is the refusal;
-        # a position alone on a name an import holds keeps it (above).  The pointer named
-        # is the one that COLLIDED -- the later of the two in declaration order, which is
-        # the pointer ``Module.declare``'s symmetric check names as well.
-        shared = {name: ps for name, ps in colliding.items() if len(ps) > 1}
+        # A position alone on a name an import holds KEEPS it (see the docstring above);
+        # only a name two positions share is unresolved.
+        return spelled, {name: ps for name, ps in colliding.items() if len(ps) > 1}
+
+
+#: §4's rung rule, in the section's own words.  QUOTED by the checks that grade it, so the
+#: sentence the code states and the sentence a check reports against are one string.
+RUNG_FALL = (
+    "where a rung derives one name for two branches it has not identified either, so "
+    "both fall to the next rung; and a branch colliding with its own document ROOT loses "
+    "the name -- the root keeps it, because D5 fixes a document's one exported symbol, "
+    "and the branch falls the same way any colliding rung does (section 4)"
+)
+
+
+def spell_the_rungs(
+    ladders: Mapping[str, tuple[tuple[str, ...], ...]],
+    occupied: frozenset[str] = frozenset(),
+) -> dict[str, str] | Refusal:
+    """§4's two naming axes together: LENGTHEN first, and FALL where lengthening is spent.
+
+    :data:`COLLISION` is the first axis and :data:`RUNG_FALL` the second.  A position
+    starts at its first rung; :func:`_lengthened` spends ancestor segments until no name
+    is shared; and a group that still shares a name falls -- every member of it that has a
+    rung left takes the next one and starts lengthening again.
+
+    **The ROOT is not special-cased and must not be.**  "The root keeps the name" is not a
+    clause here: a root's ladder has exactly ONE rung, because D5 fixes a document's
+    exported symbol, so it has nothing to advance and the branch beside it is the only
+    side that can move.  §4's sentence is the CONSEQUENCE of the ladder's shape, and
+    writing it as a test on the pointer ``""`` would be a second statement of D5 for the
+    two to disagree through.
+
+    **Lengthening is tried before falling**, which is §4's order and not a preference: the
+    collision rule is stated for every position and the fall is stated for the case where
+    "these chains are one segment with nothing to lengthen by".  A branch that can
+    lengthen keeps the name its best rung derives, so no identity is given up while a
+    cheaper fix is available -- measured, that keeps every one of this bundle's existing
+    branch names except the three §4 names.
+
+    It TERMINATES because each fall strictly advances at least one position's rung index
+    and :func:`branch_rungs` is finite and duplicate-free; when no member of a sharing
+    group has a rung left, the refusal is :func:`spell`'s and says what it always said.
+    """
+    rung = dict.fromkeys(ladders, 0)
+    while True:
+        chains = {p: ladders[p][rung[p]] for p in ladders}
+        spelled, shared = _lengthened(chains, occupied)
         if not shared:
             return spelled
-        at = next(p for p in chains if p in {q for ps in shared.values() for q in ps[1:]})
-        return Refusal(
-            "title",
-            at,
-            f"two nodes in this document derive the class name {spelled[at]!r}",
-            kind=Kind.VERDICT,
-        )
+        fell = False
+        for group in shared.values():
+            for pointer in group:
+                if rung[pointer] + 1 < len(ladders[pointer]):
+                    rung[pointer] += 1
+                    fell = True
+        if not fell:
+            return spell(chains, occupied)
 
 
 def resolved(decided: ir.TypeRef, symbols: Mapping[str, str]) -> ir.TypeRef:
@@ -814,7 +972,9 @@ def assign(mod: Module, carriers: frozenset[str] = frozenset()) -> ir.Module | R
     #: DIRECTLY, which is what mapping the adopting pointer onto the declaring symbol
     #: does for every type that names it.
     degenerate: set[int] = set()
-    chains: dict[str, tuple[str, ...]] = {}
+    #: Pointer -> §4's RUNGS for it, best first (:func:`ladder`).  One rung for every
+    #: position but a branch; :func:`spell_the_rungs` walks both axes.
+    ladders: dict[str, tuple[tuple[str, ...], ...]] = {}
     #: An adopting pointer that binds no name of its own -> the pointer whose class it
     #: takes.  Resolved after :func:`spell`, because the symbol it takes is not decided
     #: until the declaring position's own name is.
@@ -823,22 +983,27 @@ def assign(mod: Module, carriers: frozenset[str] = frozenset()) -> ir.Module | R
         pointer = _at(declaration)
         if pointer is None:
             continue
-        chain = segments(pointer, mod.hops)
-        if isinstance(chain, Refusal):
-            return chain
+        rungs = ladder(pointer, mod.hops)
+        if isinstance(rungs, Refusal):
+            return rungs
+        #: The dedup comparison reads the FIRST rung, which is the name this position
+        #: derives before any collision is known -- §4's dedup is about two positions
+        #: stating the same NODE, and a rung is about telling two names apart, so the
+        #: question this asks is settled before the rung axis is walked.
+        chain = rungs[0]
         declares = mod.adopted.get(pointer)
         #: Compared over the WHOLE chain, which is this position's own longest spelling:
         #: two positions whose paths spell alike derive one name at every length, so the
         #: degenerate arm is the same arm it was when the fold returned that spelling.
         if declares is not None and "".join(chain) in (
             "",
-            "".join(chains.get(declares, ())),
+            "".join(ladders[declares][0] if declares in ladders else ()),
         ):
             takes[pointer] = declares
             degenerate.add(i)
             continue
-        chains[pointer] = chain
-    spelled = spell(chains, carriers | {symbol for _, symbol in mod.imports})
+        ladders[pointer] = rungs
+    spelled = spell_the_rungs(ladders, carriers | {symbol for _, symbol in mod.imports})
     if isinstance(spelled, Refusal):
         return spelled
     symbols: dict[str, str] = dict(spelled)
