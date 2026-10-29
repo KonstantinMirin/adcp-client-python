@@ -100,6 +100,41 @@ same defect as an exemption with no issue behind it, which §9 already names.
 
 ## 2. Design principles
 
+### The intersection is idempotent (decided 2026-10-29)
+
+`allOf` applies every conjunct to the same instance, so a conjunct already in the composed list
+states nothing a second time: **A ∧ A ≡ A.** A merge that appends a base's reference appends it
+only where the list does not already name it.
+
+Measured on `creative/list-creatives-response.json`, where two individually-correct merges each
+appended the same bare reference and the emitted class read `(Indicator, Indicator)` — which
+Python refuses to build. Both merges were right about their own pair; neither asked whether the
+conjunct was already there. The document states no `allOf` at that node at all, so **both
+conjuncts were ours**, and that is why the answer is here and not at the base list: deduplicating
+the bases would have left a node no document states standing for §8's document-side fold and for
+every refusal pointer below it, which §9 forbids — "do not decide a position the bundle does not
+hold from a view of it".
+
+The composed list stays a LIST and not a set. Its order decides the pointer a nested class is
+stamped at, so idempotence is a property of the one member a merge appends and not a set
+conversion of the whole.
+
+### A generated region of a plan document is its rendering, not an edit (decided 2026-10-29)
+
+Both plan documents are blob-compared on every delivery, and a lane may not edit either. **A
+region between `<!-- begin generated -->` and `<!-- end generated -->` is exempt, because a
+keyword decision lives in `codegen/keywords.py`'s cell and the grid is its rendering** — a lane
+that moves a cell and regenerates has changed the decision in the one place §5 names for it, and
+the row following is the table agreeing with itself.
+
+The exemption is narrow and testable: the diff must lie wholly inside a generated region, and it
+must be exactly what `pytest tests/test_keywords.py --write-grids` writes. A row that moves
+without its cell moving, or prose outside the markers, is an edit and is refused. `test_keywords.py`
+holds the equality in both directions, so a hand-written row reddens it.
+
+Prose is mine. The cells are the compiler's, read by four readers, and the grid is what they
+render to.
+
 ### A refusal is the document's; a broken invariant is ours (decided 2026-10-29)
 
 A `Refusal` names a fact about the document — a keyword it states that no row reads yet
