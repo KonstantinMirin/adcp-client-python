@@ -2129,14 +2129,12 @@ _NOT_A_BASE: Mapping[TargetKind, str] = {
 
 
 def _distributes(
-    node: "nodes.Base",
     where: str,
     branches: TargetBranches,
     fields_declared: Collection[str],
-    bases: Sequence[ir.TypeRef],
     conj: Kind,
 ) -> TargetBranches | Refusal:
-    """§5's DISTRIBUTION clause, and the two shapes it does not reach.
+    """§5's DISTRIBUTION clause, and the ONE shape it does not reach.
 
     "(A | B) and C is (A and C) | (B and C), and the node is a union whose branches each
     take one of the target's branches as a base and add the node's own fields."  The
@@ -2164,26 +2162,42 @@ def _distributes(
     :func:`_restatement` over a declaration this module does not hold -- the branch's is
     the TARGET's -- so it is a row and not an arm.
 
-    **2. A field the node carries that its OWN declaration does not state has no pointer
-    on the branch's side.**  §8 pairs a branch class with "its branch node read UNDER THE
-    ROOT'S SIBLINGS", which at this position is what the node asserts about the same
-    instance -- its own ``properties``, ``required`` and ``additionalProperties`` -- and
-    ``_base.applied_schema`` drops the outer conjunct siblings at a second cut rather than
-    guessing which of them answers the inner hop.  So a field arriving from a SIBLING
-    CONJUNCT is on the class and not at the branch's pointer, and the pair reports it
-    ``added``: a model NARROWER than its document, which §2 forbids outright and no
-    declaration absorbs.  Measured over the 1,054 portable documents: **2 nodes**, both
-    carrying their fields in an inline conjunct beside the ``$ref`` --
-    ``core/vendor-pricing-option.json`` at ``/allOf/1`` (whose ``/allOf/0`` declares
-    ``pricing_option_id`` and two more) and the ``core/audience-evidence.json`` node
-    above.  Graded on the emitted tree, the 5 ``VendorPricing`` branch pairs each reported
-    3 ``added`` properties and a ``differs /required``, and each refused a payload the
-    document accepts (``model_refused_valid``).  What is unwritten is §8's reading of a
-    branch BELOW a conjunct with siblings, which is the pairing document's to decide.
+    **2. A SECOND ARM STOOD HERE AND IS GONE, because the pairing gap it named is
+    closed** (``adcp-client-python-10l.37``'s fourth fix, lifted here by
+    ``adcp-client-python-10l.76``).  It refused a node carrying a field its OWN
+    declaration does not state -- one a sibling conjunct or a base contributes -- on the
+    ground that "``_base.applied_schema`` drops the outer conjunct siblings at a second
+    cut", so the field was on the class and not at the branch's pointer and the pair
+    reported it ``added``.  That sentence was true of the walk and is not true of it now:
+    the drop is scoped to a second ``allOf`` CUT, and a ``oneOf``/``anyOf``/``then``/
+    ``else`` hop moves to no other instance, so the sibling conjunct holds against the
+    branch in the spelling it already has.  §8's third pairing rule followed as far as the
+    pointer goes, which is what the ``not same_instance`` arm beside it already did
+    through a KEY hop.
 
-    A node whose own declaration carries every field reaches neither, which is
-    ``core/package-signal-targeting.json`` and ``core/product-filters.json``'s
-    ``/properties/signal_targeting/items`` -- and both grade clean.
+    **Measured by ABLATION rather than by reading the sentence**, which is what this arm
+    cost twice over: emitted with the screen lifted, all **14 pairs of
+    ``core/vendor-pricing-option.json``'s closure pass all three checks**, the five
+    distributed branch pairs comparing 47-53 facts each.  With the ``applied_schema``
+    scope put back and nothing else changed, the same five report exactly what this arm
+    claimed -- 3 ``added`` properties, ``differs /required`` and
+    ``accepts:model_refused_valid`` -- and the other nine still pass.  So the arm's
+    population was one document, its reason was one line of the verifier, and the two are
+    the same fact seen from both sides.
+
+    The ``bases`` half of that arm is lifted on the same reason and has **population 0**:
+    no node of the bundle reaches this function with a base and no restated key
+    (``core/postal-area.json`` at ``/anyOf/0/allOf/0`` carries one and is claimed by arm 1
+    above).  A base's fields come from a sibling ``$ref`` conjunct, which
+    ``bundle.record`` inlines, so the walk conjoins them at the branch's pointer by the
+    same descent -- and the first document to state one is graded by §8 rather than
+    refused by a guess, which is loud in the direction §2 wants: an ``added`` is never
+    declarable and every emitted class is graded.
+
+    A node whose own declaration carries every field reached neither arm before this and
+    reaches arm 1 alone now: ``core/package-signal-targeting.json`` and
+    ``core/product-filters.json``'s ``/properties/signal_targeting/items``, both of which
+    grade clean.
     """
     restated = sorted(
         {key for branch in branches.of for key in branch.declares.properties}
@@ -2200,22 +2214,6 @@ def _distributes(
             "computed over declarations, and the branch's is the target's rather than "
             "this module's, so there is nothing here to intersect and the base's field "
             "would shadow the branch's",
-            kind=conj,
-        )
-    own = set(getattr(node, "declared", {})) | set(getattr(node, "required", ()))
-    elsewhere = sorted(set(fields_declared) - own)
-    if elsewhere or bases:
-        return Refusal(
-            "allOf",
-            where,
-            f"this node carries {elsewhere or [b.path for b in bases]} from another "
-            "conjunct rather than from its own declaration, and section 5's $ref row "
-            "distributes the conjunction over the target's branches: section 8 pairs each "
-            "branch class with its branch node read under what THIS node asserts about "
-            "the same instance -- its own properties, required and additionalProperties -- "
-            "so a field a sibling conjunct contributes is on the class and not at the "
-            "branch's pointer, and the pair reports it added, which is a model narrower "
-            "than its document",
             kind=conj,
         )
     return branches
@@ -2353,7 +2351,7 @@ def _the_conjuncts_own_type(
         # and a container state one thing about the instance and there is nothing to
         # distribute, which is why the sentence below still refuses those.
         if target.kind is TargetKind.UNION and target.branches is not None:
-            return _distributes(node, where, target.branches, fields_declared, bases, conj)
+            return _distributes(where, target.branches, fields_declared, conj)
         return Refusal(
             "allOf",
             where,
