@@ -84,7 +84,7 @@ class IndicatorsItemType(StrEnum):
     CREATIVE_QUALITY_OPPORTUNITY = 'creative_quality_opportunity'
 
 
-class IndicatorsItem(Indicator, Indicator):
+class IndicatorsItem(Indicator):
     """
     A compact current seller assertion identifying a material risk or optimization opportunity that warrants buyer attention on the containing media buy, package, or package–creative relationship. An indicator is read-side state, not an error, warning, durable event record, authorization, executable action, or independently addressable resource. The responding seller is the source. Different sellers may use different methodologies for the same standard type; native scores, evaluation windows, suggested actions, deep links, and upstream attribution belong in ext.
     """
