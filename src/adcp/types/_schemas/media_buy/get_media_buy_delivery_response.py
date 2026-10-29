@@ -137,6 +137,9 @@ class MediaBuyDeliveriesItemTotals(DeliveryMetrics):
     """
     Standard delivery metrics that can be reported at media buy, package, or creative level
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buy-delivery-response.json', pointer='#/properties/media_buy_deliveries/items/properties/totals')
     effective_rate: Annotated[NonNegativeFloat | None, Field(description="Effective rate paid per unit based on pricing_model (e.g., actual CPM for 'cpm', actual cost per completed view for 'cpcv', actual cost per point for 'cpp')")] = None
 
@@ -145,6 +148,9 @@ class ByFormatItem(DeliveryMetrics):
     """
     Standard delivery metrics that can be reported at media buy, package, or creative level
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buy-delivery-response.json', pointer='#/properties/media_buy_deliveries/items/properties/by_package/items/allOf/1/properties/by_format/items')
     format_kind: Annotated[CanonicalFormatKind, Field(description='Canonical creative format kind aggregated by this row. This identifies creative shape, not duration or other format-option parameters.')]
     impressions: Annotated[NonNegativeFloat, Field(description='Impressions delivered')]
@@ -155,6 +161,9 @@ class ByDeviceTypeItem(DeliveryMetrics):
     """
     Standard delivery metrics that can be reported at media buy, package, or creative level
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buy-delivery-response.json', pointer='#/properties/media_buy_deliveries/items/properties/by_package/items/allOf/1/properties/by_device_type/items')
     device_type: Annotated[DeviceType, Field(description='Device form factor (desktop, mobile, tablet, ctv, dooh, unknown)')]
     impressions: Annotated[NonNegativeFloat, Field(description='Impressions delivered')]
@@ -165,6 +174,9 @@ class ByDevicePlatformItem(DeliveryMetrics):
     """
     Standard delivery metrics that can be reported at media buy, package, or creative level
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buy-delivery-response.json', pointer='#/properties/media_buy_deliveries/items/properties/by_package/items/allOf/1/properties/by_device_platform/items')
     device_platform: Annotated[DevicePlatform, Field(description='Operating system platform')]
     impressions: Annotated[NonNegativeFloat, Field(description='Impressions delivered')]
@@ -175,6 +187,9 @@ class ByAudienceItem(DeliveryMetrics):
     """
     Standard delivery metrics that can be reported at media buy, package, or creative level
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buy-delivery-response.json', pointer='#/properties/media_buy_deliveries/items/properties/by_package/items/allOf/1/properties/by_audience/items')
     audience_id: Annotated[str, Field(description="Audience segment identifier. For 'synced' source, matches audience_id from sync_audiences. For other sources, seller-defined.")]
     audience_source: Annotated[AudienceSource, Field(description='Origin of the audience segment (synced, platform, third_party, lookalike, retargeting, unknown)')]
@@ -187,6 +202,9 @@ class ByDemographicItem(DeliveryMetrics):
     """
     Standard delivery metrics that can be reported at media buy, package, or creative level
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buy-delivery-response.json', pointer='#/properties/media_buy_deliveries/items/properties/by_package/items/allOf/1/properties/by_demographic/items')
     demographic: Annotated[StrMinLen1Matching130C1C9D, Field(description="Demographic code in the declared system's notation (for example, P25-54 for Nielsen).")]
     demographic_system: Annotated[DemographicSystem, Field(description='Measurement system that defines the demographic code.')]
@@ -199,6 +217,9 @@ class BySpotItem(DeliveryMetrics):
     """
     Standard delivery metrics that can be reported at media buy, package, or creative level
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buy-delivery-response.json', pointer='#/properties/media_buy_deliveries/items/properties/by_package/items/allOf/1/properties/by_spot/items')
     spot_id: Annotated[StrMinLen1, Field(description='Stable seller-scoped identifier for this scheduled spot occurrence. Reused across measurement-window updates and available to later preemption or makegood workflows. Distinct from creative_id.')]
     creative_id: Annotated[StrMinLen1 | None, Field(description="Optional identifier for the creative that aired in this spot occurrence, matching the package's creative asset or assignment. For library-backed sellers this is the sync_creatives identifier; inline-only sellers use the packages[].creatives creative_id.")] = None
@@ -227,6 +248,9 @@ class MediaBuyDeliveriesItemByPackageItem(DeliveryMetrics):
     """
     Standard delivery metrics that can be reported at media buy, package, or creative level
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buy-delivery-response.json', pointer='#/properties/media_buy_deliveries/items/properties/by_package/items')
     package_id: Annotated[str, Field(description="Seller's package identifier")]
     pacing_index: Annotated[NonNegativeFloat | None, Field(description='Package delivery pace relative to its package-level pacing plan (1.0 = on track, <1.0 = behind, >1.0 = ahead). In seller-optimized mode this is a subordinate diagnostic and may be absent when no package pacing preference exists.')] = None
@@ -324,6 +348,9 @@ class WindowsItemTotals(DeliveryMetrics):
     """
     Aggregate metrics for this window slice across all packages. Shape-aligned with reporting_webhook fire payloads at the same granularity.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buy-delivery-response.json', pointer='#/properties/media_buy_deliveries/items/properties/windows/items/properties/totals')
 
 
@@ -331,6 +358,9 @@ class WindowsItemByPackageItem(DeliveryMetrics):
     """
     Standard delivery metrics that can be reported at media buy, package, or creative level
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buy-delivery-response.json', pointer='#/properties/media_buy_deliveries/items/properties/windows/items/properties/by_package/items')
     package_id: Annotated[str, Field(description="Seller's package identifier")]
     currency: Annotated[StrMatching43E30B32 | None, Field(description="ISO 4217 denomination for this package window's monetary values. Required by the runtime currency-coherence rule when neither the parent media-buy row nor deprecated response-wide field supplies a currency and this package window contains monetary values; otherwise it MUST match the row or response currency when present.")] = None

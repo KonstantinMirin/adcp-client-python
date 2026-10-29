@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import Field, NonNegativeFloat
+from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import SchemaRef
 from adcp.types.constraints import StrMatching32F5291C
@@ -18,6 +18,9 @@ class CollectionPropertyDeliveryMetrics(DeliveryMetrics):
     """
     Delivery metrics at the intersection of one collection and one publisher property. The property operational key is (publisher_domain, identifier.type, identifier.value). This row grain proves where a collection delivered; independent by_collection and by_property marginals do not.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/collection-property-delivery-metrics.json', pointer='#')
     collection_ref: CollectionReference
     collection_name: Annotated[str | None, Field(description='Current human-readable collection name. Convenience metadata only.')] = None

@@ -76,6 +76,9 @@ class ListProductsResponse(BranchDispatchMixin, AdCPBaseModel):
 
 
 class ListProductsResponseListed(ListProductsResponse):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/list-products-response.json', pointer='#/oneOf/0')
     outcome: Annotated[Literal['listed'], Field(description='Whether this response carries a product page or confirms that the selected feed has not changed.')]
     cache_scope: CacheScope
@@ -84,6 +87,9 @@ class ListProductsResponseListed(ListProductsResponse):
 
 
 class ListProductsResponseUnchanged(ListProductsResponse):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/list-products-response.json', pointer='#/oneOf/1')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('products',),)),

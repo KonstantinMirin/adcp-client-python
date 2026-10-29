@@ -54,6 +54,9 @@ class Vendor(BrandReference):
     """
     Measurement vendor judging a viewable_rate or viewed_seconds goal; not allowed for other metrics. When omitted, the seller's default viewability measurement applies. Sellers MUST reject a vendor they cannot optimize against rather than substitute another.
     """
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/optimization-goal.json', pointer='#/oneOf/0/properties/vendor')
 
 
@@ -61,6 +64,9 @@ class Window(Duration):
     """
     Time window over which frequency is measured (e.g. {"interval": 7, "unit": "days"} or {"interval": 1, "unit": "campaign"} for the full flight). Weekly windows are typical for brand campaigns; daily windows suit high-cadence direct response.
     """
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/optimization-goal.json', pointer='#/oneOf/0/properties/target_frequency/properties/window')
 
 
@@ -178,6 +184,9 @@ class OptimizationGoalEventAttributionWindow(AttributionWindow):
     """
     Attribution window for this optimization goal — references the canonical `attribution-window` shape (post_click, post_view, model). Values must match an option declared in the seller's `conversion_tracking.attribution_windows` capability. Sellers MUST reject windows not in their declared capabilities. When the entire field is omitted, the seller uses their default window.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/optimization-goal.json', pointer='#/oneOf/1/properties/attribution_window')
 
 

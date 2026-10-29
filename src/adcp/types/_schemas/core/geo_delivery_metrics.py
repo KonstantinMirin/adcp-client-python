@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import Field, NonNegativeFloat
+from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
@@ -17,6 +17,9 @@ class GeoDeliveryMetrics(DeliveryMetrics):
     """
     Delivery metrics row for one geographic area within a package.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/geo-delivery-metrics.json', pointer='#')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ConditionalRequired((Match('geo_level', True, ('country',)),), require=(), forbid=('system', 'country')),

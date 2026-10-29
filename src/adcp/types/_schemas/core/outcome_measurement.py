@@ -14,6 +14,9 @@ class Window(Duration):
     """
     Attribution window as a structured duration (e.g., {"interval": 30, "unit": "days"}).
     """
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/outcome-measurement.json', pointer='#/properties/window')
 
 

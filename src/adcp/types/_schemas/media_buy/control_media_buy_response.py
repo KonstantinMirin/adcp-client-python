@@ -34,6 +34,9 @@ class WarningsItem(Warning):
     """
     A non-blocking observation returned with a successful operation. The operation succeeded exactly as its success arm states. Warnings are immediate receipts, not durable lifecycle state; a continuing condition MUST also appear on its authoritative read surface as an indicator, defect, delivery issue, approval state, or other applicable resource state.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/control-media-buy-response.json', pointer='#/oneOf/0/properties/warnings/items')
     code: Annotated[Literal['inventory_shortfall_forecast'], Field(description='Closed warning vocabulary for the negotiated AdCP release. A non-blocking condition observed while an operation still succeeded. New values are added through normal protocol releases; buyers validate against the negotiated release.')]
 

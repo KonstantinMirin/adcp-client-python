@@ -55,11 +55,17 @@ class VASTAssetUrlMacroDeclarationsItem(MacroDeclaration):
     """
     The source-faithful contract for one occurrence of one macro token. It identifies the current dialect, verified mapping status, exact asset-field occurrence, next processing operation, actor, and encoding. Translation and concrete value resolution are separate operations: a translator emits the declared native token and replaces this declaration with the target declaration. Unknown tokens are always byte-preserved.
     """
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/vast-asset.json', pointer='#/oneOf/0/properties/macro_declarations/items')
     location: VASTAssetUrlMacroDeclarationsItemLocation
 
 
 class VASTAssetUrl(VASTAsset):
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/vast-asset.json', pointer='#/oneOf/0')
     delivery_type: Annotated[Literal['url'], Field(description='Discriminator indicating VAST is delivered via URL endpoint')]
     url: Annotated[MacroBearingURL, Field(description='URL endpoint returning VAST XML. Macro delimiters remain byte-preserved; declarations distinguish occurrences in this locator URL from occurrences in inline or fetched VAST content.')]
@@ -80,11 +86,17 @@ class VASTAssetInlineMacroDeclarationsItem(MacroDeclaration):
     """
     The source-faithful contract for one occurrence of one macro token. It identifies the current dialect, verified mapping status, exact asset-field occurrence, next processing operation, actor, and encoding. Translation and concrete value resolution are separate operations: a translator emits the declared native token and replaces this declaration with the target declaration. Unknown tokens are always byte-preserved.
     """
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/vast-asset.json', pointer='#/oneOf/1/properties/macro_declarations/items')
     location: VASTAssetInlineMacroDeclarationsItemLocation
 
 
 class VASTAssetInline(VASTAsset):
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/vast-asset.json', pointer='#/oneOf/1')
     delivery_type: Annotated[Literal['inline'], Field(description='Discriminator indicating VAST is delivered as inline XML content')]
     content: Annotated[str, Field(description='Inline VAST XML content')]

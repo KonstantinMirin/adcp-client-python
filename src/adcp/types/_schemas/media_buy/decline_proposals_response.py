@@ -38,6 +38,9 @@ class ResultsItem(BranchDispatchMixin, AdCPBaseModel):
 
 
 class ResultsItemDeclined(ResultsItem):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/decline-proposals-response.json', pointer='#/properties/results/items/oneOf/0')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('reason',),)),
@@ -46,6 +49,9 @@ class ResultsItemDeclined(ResultsItem):
 
 
 class ResultsItemUnable(ResultsItem):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/decline-proposals-response.json', pointer='#/properties/results/items/oneOf/1')
     outcome: Literal['unable']
     reason: Annotated[StrMinLen1, Field(description='Why the seller could not apply a decline. Present only for outcome unable.')]
@@ -80,6 +86,9 @@ class DeclineProposalsResponse(BranchDispatchMixin, AdCPBaseModel):
 
 
 class DeclineProposalsResponseResults(DeclineProposalsResponse):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/decline-proposals-response.json', pointer='#/anyOf/0')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('status',), ('task_id',))),
@@ -91,6 +100,9 @@ class DeclineProposalsResponseSubmitted(DeclineProposalsResponse, CompactTaskSub
     """
     Bounded submitted envelope shared by the compact lifecycle tools.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/decline-proposals-response.json', pointer='#/anyOf/1')
 
 

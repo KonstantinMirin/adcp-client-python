@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, Field
+from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types.envelopes import FailedResponse
@@ -22,6 +22,9 @@ class GetMediaBuyArtifactsResponse(BranchDispatchMixin, AdCPVersionEnvelope, Pro
     """
     Response containing content artifacts from a media buy for validation
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/get-media-buy-artifacts-response.json', pointer='#')
     _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
     _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()
@@ -79,6 +82,9 @@ class GetMediaBuyArtifactsResponseArtifactsMediaBuyId(GetMediaBuyArtifactsRespon
     """
     Success response with artifacts
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/get-media-buy-artifacts-response.json', pointer='#/oneOf/0')
     media_buy_id: Annotated[str, Field(description='Media buy these artifacts belong to')]
     artifacts: Annotated[list[ArtifactsItem], Field(description='Delivery records with full artifact content')]
@@ -92,6 +98,9 @@ class GetMediaBuyArtifactsResponseErrors(GetMediaBuyArtifactsResponse, FailedRes
     """
     Error response
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/get-media-buy-artifacts-response.json', pointer='#/oneOf/1')
     errors: list[Error]
     context: ContextObject | None = None

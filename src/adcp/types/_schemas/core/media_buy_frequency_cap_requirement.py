@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule, UniqueItems
@@ -16,6 +16,9 @@ class MediaBuyFrequencyCapRequirement(FrequencyCapRequirements):
     """
     Buyer minimum product-support detail for an aggregate MediaBuy frequency cap. Aggregate support in 3.2 is max-impressions only.
     """
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/media-buy-frequency-cap-requirement.json', pointer='#')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('supported_suppression_units',),)),

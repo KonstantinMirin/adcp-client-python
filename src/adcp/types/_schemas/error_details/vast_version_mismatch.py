@@ -61,6 +61,9 @@ class VASTVersionMismatchDetails(BranchDispatchMixin, AdCPBaseModel):
 
 
 class AssetOutsideAcceptedVersionIntersection(VASTVersionMismatchDetails):
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='error-details/vast-version-mismatch.json', pointer='#/anyOf/0')
     mismatch_reason: Annotated[Literal['asset_outside_acceptance'], Field(description='Machine-readable modern mismatch branch.')]
     asset_vast_version: VASTVersion
@@ -69,6 +72,9 @@ class AssetOutsideAcceptedVersionIntersection(VASTVersionMismatchDetails):
 
 
 class InspectedDocumentVersionMismatch(VASTVersionMismatchDetails):
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='error-details/vast-version-mismatch.json', pointer='#/anyOf/1')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ConditionalRequired((Match('document_role', True, ('wrapper', 'terminal_inline')),), require=('product_vast_versions', 'seller_vast_versions'), forbid=()),
@@ -80,6 +86,9 @@ class InspectedDocumentVersionMismatch(VASTVersionMismatchDetails):
 
 
 class SupportedVersionsCompatibilityDetails(VASTVersionMismatchDetails):
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='error-details/vast-version-mismatch.json', pointer='#/anyOf/2')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('mismatch_reason',),)),

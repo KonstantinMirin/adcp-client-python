@@ -141,6 +141,9 @@ class FrequencyCapSupport(FrequencyCapConstraints):
     """
     Independently positive constrained package-cap support. Mutually exclusive with legacy frequency_cap: a product declares one form or the other.
     """
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/targeting-overlay-support.json', pointer='#/properties/frequency_cap_support')
 
 

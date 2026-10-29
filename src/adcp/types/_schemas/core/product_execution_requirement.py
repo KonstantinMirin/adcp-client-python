@@ -64,6 +64,9 @@ class Connection(DownstreamConnectionRequirement):
     """
     The required connection. Account-independent: `status` is omitted or `unknown`; `resource_ref`, `connection_id`, and `expires_at` MUST be omitted; `required_for`, when present, includes `create_media_buy`.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-execution-requirement.json', pointer='#/oneOf/2/properties/connection')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('resource_ref',), ('connection_id',), ('expires_at',))),

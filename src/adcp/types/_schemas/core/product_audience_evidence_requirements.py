@@ -48,6 +48,9 @@ class MaximumAge(Duration):
     """
     A time duration expressed as an interval and unit. Used for frequency cap windows, attribution windows, reach optimization windows, time budgets, and other time-based settings. When unit is 'campaign', interval must be 1 — the window spans the full campaign flight.
     """
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-audience-evidence-requirements.json', pointer='#/properties/maximum_age')
     unit: Annotated[Unit, Field(description="Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.")]
 

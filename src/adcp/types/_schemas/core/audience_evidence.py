@@ -65,6 +65,9 @@ class Subject(AttestationResourceSubject):
     """
     Typed identity of the entity or object an attestation credential is about. Brand and agent subjects reuse canonical AdCP identities. Other resources use an open, URI-namespaced resource_type plus an identifier whose namespace is explicit. Evaluators MUST compare the resolved credential subject to this complete typed identity, not to id alone.
     """
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/audience-evidence.json', pointer='#/properties/attestation_refs/items/allOf/1/properties/subject')
     resource_type: Annotated[Literal['https://adcontextprotocol.org/claims/subjects/audience-evidence'], Field(description='Open, absolute URI naming the subject vocabulary, such as https://adcontextprotocol.org/claims/subjects/signal. AdCP does not maintain an exhaustive enum.')]
     content_digest: StrMatching3CBDBB74
@@ -74,6 +77,9 @@ class AttestationRefsItem(AttestationReference):
     """
     Portable, reference-first presentation of an independently issued claim. It identifies the claimed issuer, claim vocabulary, subject, and either a stable credential locator or an embedded credential. A presentation is a locator and claim hint, not proof or a trust decision. The evaluator remains verifier-of-record and MUST resolve or inspect the credential only under its published attestation capabilities and local trust policy.
     """
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/audience-evidence.json', pointer='#/properties/attestation_refs/items')
     subject: Annotated[Subject, Field(description='Typed identity of the entity or object an attestation credential is about. Brand and agent subjects reuse canonical AdCP identities. Other resources use an open, URI-namespaced resource_type plus an identifier whose namespace is explicit. Evaluators MUST compare the resolved credential subject to this complete typed identity, not to id alone.')]
 

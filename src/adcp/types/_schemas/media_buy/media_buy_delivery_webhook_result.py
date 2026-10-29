@@ -63,6 +63,9 @@ class Totals(DeliveryMetrics):
     """
     Standard delivery metrics that can be reported at media buy, package, or creative level
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/media-buy-delivery-webhook-result.json', pointer='#/properties/media_buy_deliveries/items/properties/totals')
     effective_rate: NonNegativeFloat | None = None
 
@@ -71,6 +74,9 @@ class ByPackageItem(DeliveryMetrics):
     """
     Standard delivery metrics that can be reported at media buy, package, or creative level
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/media-buy-delivery-webhook-result.json', pointer='#/properties/media_buy_deliveries/items/properties/by_package/items')
     package_id: str | None = None
     pacing_index: Annotated[NonNegativeFloat | None, Field(description='Subordinate package pacing diagnostic. May be absent for seller-optimized packages without package-level pacing.')] = None

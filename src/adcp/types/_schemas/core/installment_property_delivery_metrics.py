@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, Field, NonNegativeFloat
+from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import SchemaRef
 from adcp.types.constraints import StrMatching32F5291C
@@ -18,6 +18,9 @@ class InstallmentPropertyDeliveryMetrics(DeliveryMetrics):
     """
     Delivery metrics at the intersection of one installment and one publisher property. The property operational key is (publisher_domain, identifier.type, identifier.value). This row proves where a specific airing, episode, issue, or programming block delivered; independent by_installment and by_property marginals do not.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/installment-property-delivery-metrics.json', pointer='#')
     installment_ref: InstallmentReference
     installment_name: Annotated[str | None, Field(description='Current human-readable installment name. Convenience metadata only.')] = None

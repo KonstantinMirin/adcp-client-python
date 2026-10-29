@@ -114,6 +114,9 @@ class TimeBudget(Duration):
     """
     Maximum time the buyer will commit to this request. The seller returns the best results achievable within this budget and does not start processes (human approvals, expensive external queries) that cannot complete in time. When omitted, the seller decides timing.
     """
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-products-request.json', pointer='#/properties/time_budget')
 
 

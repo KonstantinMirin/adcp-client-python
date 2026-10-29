@@ -60,6 +60,9 @@ class AccountIdentityChangePreviewNonblockingImpactsItemEffect(StrEnum):
 
 
 class AccountIdentityChangePreviewNonblockingImpactsItem(AccountIdentityChangePreviewImpact):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/account-identity-change-preview.json', pointer='#/definitions/nonblocking_impacts/items')
     effect: AccountIdentityChangePreviewNonblockingImpactsItemEffect
 

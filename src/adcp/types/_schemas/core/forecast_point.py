@@ -21,6 +21,9 @@ class CoverageRate(ForecastRange):
     """
     Share of the declared forecast scope represented by this point. For signal coverage forecasts, this is the point's count divided by the coverage_forecast.scope denominator. Range 0.0 to 1.0.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/forecast-point.json', pointer='#/properties/metrics/properties/coverage_rate')
     low: Annotated[FloatMin0Max1 | None, Field(description='Conservative (low-end) forecast value')] = None
     mid: Annotated[FloatMin0Max1 | None, Field(description='Expected (most likely) forecast value')] = None
@@ -59,6 +62,9 @@ class ViewableRate(ForecastRange):
     """
     Forecasted viewable impression rate (viewable_impressions / measurable_impressions). Range 0.0 to 1.0.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/forecast-point.json', pointer='#/properties/viewability/properties/viewable_rate')
     low: Annotated[FloatMin0Max1 | None, Field(description='Conservative (low-end) forecast value')] = None
     mid: Annotated[FloatMin0Max1 | None, Field(description='Expected (most likely) forecast value')] = None

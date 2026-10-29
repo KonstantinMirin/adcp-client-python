@@ -220,6 +220,9 @@ class SignalTargetingItemBinary(SignalTargetingItem, SignalTargetingBinary):
     """
     Binary signal targeting - user either matches or doesn't
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-filters.json', pointer='#/properties/signal_targeting/items/allOf/0/oneOf/0')
 
 
@@ -227,6 +230,9 @@ class SignalTargetingItemCategorical(SignalTargetingItem, SignalTargetingCategor
     """
     Categorical signal targeting - target users with specific values
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-filters.json', pointer='#/properties/signal_targeting/items/allOf/0/oneOf/1')
 
 
@@ -234,6 +240,9 @@ class SignalTargetingItemNumeric(SignalTargetingItem, SignalTargetingNumeric):
     """
     Numeric signal targeting - target users within a value range. If min_value is provided, it must be <= max_value. Values should be within the signal's defined range (see signal definition).
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-filters.json', pointer='#/properties/signal_targeting/items/allOf/0/oneOf/2')
 
 

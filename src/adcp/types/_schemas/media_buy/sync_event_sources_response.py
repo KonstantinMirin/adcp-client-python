@@ -26,6 +26,9 @@ class SyncEventSourcesResponse(BranchDispatchMixin, AdCPVersionEnvelope, Protoco
     """
     Response from event source sync operation. Returns either per-source results OR operation-level errors.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/sync-event-sources-response.json', pointer='#')
     _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
     _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()

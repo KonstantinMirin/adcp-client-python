@@ -25,6 +25,9 @@ class SyncCatalogsResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnv
     """
     Response from catalog sync or item availability operation. Exactly one of three shapes: (1) synchronous success — per-catalog results, availability update acknowledgements, and/or current-state query results; (2) terminal failure — errors array with no resources processed; (3) submitted task envelope — status 'submitted' with task_id when a catalog-only operation is queued. The submitted branch MAY carry advisory errors for non-blocking warnings; terminal failures belong in the error branch. These three shapes are mutually exclusive — a response has exactly one.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/sync-catalogs-response.json', pointer='#')
     _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
     _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()
@@ -93,6 +96,9 @@ class ErrorsItem(Error):
     """
     Standard error structure for task-specific errors and warnings
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/sync-catalogs-response.json', pointer='#/oneOf/1/properties/errors/items')
 
 

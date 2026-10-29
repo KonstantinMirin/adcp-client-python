@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import Field, NonNegativeFloat
+from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import SchemaRef
 from adcp.types.constraints import StrMatching32F5291C
@@ -18,6 +18,9 @@ class PlacementPropertyDeliveryMetrics(DeliveryMetrics):
     """
     Delivery metrics at the intersection of one placement and one publisher property. This distinguishes the actual serving property when a placement declaration spans multiple properties.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/placement-property-delivery-metrics.json', pointer='#')
     placement_id: Annotated[str, Field(description='Required flat compatibility ID. It MUST equal placement_identity.placement_id when placement_identity is present.')]
     placement_identity: Annotated[PlacementIdentity, Field(description='Required self-contained placement identity. Unlike the legacy-compatible by_placement dimension, the new by_placement_property dimension has no pre-3.2 row shape and always names the placement authority.')]

@@ -55,6 +55,9 @@ class MaximumAge(Duration):
     """
     Maximum age at evaluation time measured from last_updated. Campaign-relative duration is not valid for evidence age.
     """
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/audience-evidence-requirements.json', pointer='#/properties/maximum_age')
     unit: Annotated[Unit, Field(description="Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.")]
 

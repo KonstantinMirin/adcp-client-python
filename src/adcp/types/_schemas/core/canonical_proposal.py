@@ -43,6 +43,9 @@ class Forecast(CanonicalDeliveryForecast):
     """
     Aggregate forecasted delivery for the proposal. For outcome_target requests, points carry the goal's metric or event key in metrics; with cost_per, that is the goal volume planned under the commercial_terms.bidding policy, and currency equals cost_per.currency.
     """
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/canonical-proposal.json', pointer='#/properties/forecast')
 
 

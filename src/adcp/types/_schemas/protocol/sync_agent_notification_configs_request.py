@@ -18,6 +18,9 @@ class NotificationConfigsItem(AgentNotificationConfig):
     """
     Caller-scoped agent-level webhook subscription. Caller-anchored event types (capabilities.changed, principal.changed) always fire principal-wide; account-anchored event types may also be listed here with the explicit all_authorized_accounts acknowledgment and fire with per-delivery-attempt authorization scoping over the caller's currently authorized accounts. Registration goes through the task declared by get_adcp_capabilities.adcp.capability_changes.notifications.registration_task: sync_principal when the broader principal surface is supported, or the specialized sync_agent_notification_configs compatibility task. Both tasks operate on one underlying caller-scoped subscriber set. This surface is intentionally separate from account-level notification_configs[]: a registry or buyer can subscribe before it has an account, and one fire invalidates the agent-wide get_adcp_capabilities cache. The persisted set is scoped to the authenticated caller or registry identity, so one caller's declarative replacement cannot clear another caller's subscribers. As with other AdCP webhooks, the default signing scheme is the RFC 9421 webhook profile against the seller's brand.json agents[] JWKS; the optional authentication block opts into the deprecated Bearer / HMAC-SHA256 fallback for compatibility. Credentials and shared secrets in authentication.credentials are write-only and MUST NOT be echoed on reads. Sellers MUST verify endpoint control before activating a new or changed active agent-level notification config; delivery-time SSRF validation still applies to every fire.
     """
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/sync-agent-notification-configs-request.json', pointer='#/properties/notification_configs/items')
 
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import Field, NonNegativeFloat
+from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import SchemaRef
 from adcp.types.constraints import StrMatching32F5291C
@@ -17,6 +17,9 @@ class PropertyDeliveryMetrics(DeliveryMetrics):
     """
     Delivery metrics for one publisher property. The stable operational key is (publisher_domain, identifier.type, identifier.value); property_ref adds catalog identity when resolution is available.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/property-delivery-metrics.json', pointer='#')
     publisher_domain: Annotated[StrMatching32F5291C, Field(description='Publisher or platform authority that namespaces the operational identifier, including when the surface is not registered in adagents.json.')]
     identifier: Annotated[Identifier, Field(description='Primary operational identifier of the property that delivered. Required even when catalog enrichment is unavailable.')]

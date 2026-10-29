@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from typing import ClassVar
 
+from pydantic import ConfigDict
+
 from adcp.types._base import SchemaRef
 
 from ...compact_task_working import CompactTaskWorking
@@ -12,6 +14,9 @@ class AcceptProposalWorking(CompactTaskWorking):
     """
     Bounded working progress payload for accept_proposal.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/async-response-refs/media-buy/accept-proposal-async-response-working.json', pointer='#')
 
 

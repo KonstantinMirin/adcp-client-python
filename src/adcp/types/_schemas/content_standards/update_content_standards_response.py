@@ -18,6 +18,9 @@ class UpdateContentStandardsResponse(BranchDispatchMixin, AdCPVersionEnvelope, P
     """
     Response from updating a content standards configuration
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/update-content-standards-response.json', pointer='#')
     _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
     _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()

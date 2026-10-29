@@ -17,6 +17,9 @@ class Age(DemographicAgeRange):
     """
     A canonical audience-age predicate in completed integer years. min and max are inclusive; omitting one bound means no restriction in that direction. At least one bound is required. include_unknown is always explicit because people whose age is unavailable are not members of any numeric interval. Implementations MUST reject min greater than max; JSON Schema draft-07 cannot compare sibling numeric values.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/demographic-targeting-intent.json', pointer='#/properties/age')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('accepted_bases'),

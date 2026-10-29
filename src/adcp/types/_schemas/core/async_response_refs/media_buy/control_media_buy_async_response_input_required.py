@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from typing import ClassVar
 
+from pydantic import ConfigDict
+
 from adcp.types._base import SchemaRef
 
 from ...compact_task_input_required import CompactTaskInputRequired
@@ -12,6 +14,9 @@ class ControlMediaBuyInputRequired(CompactTaskInputRequired):
     """
     Bounded input-required payload for control_media_buy.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/async-response-refs/media-buy/control-media-buy-async-response-input-required.json', pointer='#')
 
 

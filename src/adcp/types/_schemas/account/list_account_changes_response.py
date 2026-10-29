@@ -81,6 +81,9 @@ class ListAccountChangesResponseCompleted(ListAccountChangesResponse):
     """
     Successful feed page.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='account/list-account-changes-response.json', pointer='#/oneOf/0')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('adcp_error',),)),
@@ -97,6 +100,9 @@ class ListAccountChangesResponseFailed(ListAccountChangesResponse):
     """
     Fatal feed failure, including CURSOR_EXPIRED. Both envelope and payload error layers are present.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='account/list-account-changes-response.json', pointer='#/oneOf/1')
     status: Annotated[Literal['failed'], Field(description='Current AdCP task state or structured outcome. Indicates whether the task completed, is in progress, was submitted for async processing, failed, requires user input, or returned a typed business rejection. REQUIRED on every task response envelope. Synchronous tasks (including read-only metadata calls like `get_adcp_capabilities`) normally emit `status: "completed"`; a task-specific rejection arm emits `status: "rejected"` without turning the transport into a failure. Async tasks emit `submitted`, `working`, `input-required`, etc. per their lifecycle. Agents MUST NOT emit the legacy task_status or response_status fields alongside this field — the status field is the single authoritative AdCP response state.')]
     errors: Annotated[list[Error], Field(min_length=1)]

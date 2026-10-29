@@ -126,6 +126,9 @@ class RuntimeAttestationsItem(AttestationReference):
     """
     Portable, reference-first presentation of an independently issued claim. It identifies the claimed issuer, claim vocabulary, subject, and either a stable credential locator or an embedded credential. A presentation is a locator and claim hint, not proof or a trust decision. The evaluator remains verifier-of-record and MUST resolve or inspect the credential only under its published attestation capabilities and local trust policy.
     """
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/check-governance-request.json', pointer='#/properties/runtime_attestations/items')
     subject: Annotated[Subject, Field(description='Typed identity of the entity or object an attestation credential is about. Brand and agent subjects reuse canonical AdCP identities. Other resources use an open, URI-namespaced resource_type plus an identifier whose namespace is explicit. Evaluators MUST compare the resolved credential subject to this complete typed identity, not to id alone.')]
 

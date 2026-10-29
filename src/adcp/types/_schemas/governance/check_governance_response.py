@@ -113,6 +113,9 @@ class RuntimeAttestationEvaluationsItem(AttestationEvaluation):
     """
     Evaluator-of-record result for one portable attestation presentation. The result binds to the exact presentation through reference_digest and may also pin the credential bytes. It records evaluation, not issuer evidence: domain consumers attach this object to the governance context, evidence snapshot, rights decision, or other action that relied on it.
     """
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/check-governance-response.json', pointer='#/properties/runtime_attestation_evaluations/items')
     action_binding: Annotated[ActionBinding, Field(description='Optional binding to the consuming action or readback. Domain consumers that rely on an evaluation MUST carry either an action id or an action digest so the result cannot be transplanted to an unrelated decision.')]
 

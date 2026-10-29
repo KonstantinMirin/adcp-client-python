@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from typing import ClassVar
 
+from pydantic import ConfigDict
+
 from adcp.types._base import SchemaRef
 
 from ..core.compact_task_input_required import CompactTaskInputRequired
@@ -12,6 +14,9 @@ class RefineProposalsInputRequired(CompactTaskInputRequired):
     """
     Bounded input-required payload for refine_proposals.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/refine-proposals-async-response-input-required.json', pointer='#')
 
 

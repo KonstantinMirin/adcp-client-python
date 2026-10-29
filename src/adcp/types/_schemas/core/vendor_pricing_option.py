@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
@@ -36,6 +36,9 @@ class CpmPricing(VendorPricingOption, CpmPricing):
     """
     Fixed cost per thousand impressions
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/vendor-pricing-option.json', pointer='#/allOf/1/oneOf/0')
 
 
@@ -43,6 +46,9 @@ class PercentOfMediaPricing(VendorPricingOption, PercentOfMediaPricing):
     """
     Percentage of media spend charged for this signal. When max_cpm is set, the effective rate is capped at that CPM — useful for platforms like The Trade Desk that use percent-of-media pricing with a CPM ceiling.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/vendor-pricing-option.json', pointer='#/allOf/1/oneOf/1')
 
 
@@ -50,6 +56,9 @@ class FlatFeePricing(VendorPricingOption, FlatFeePricing):
     """
     Fixed charge per billing period, regardless of impressions or spend. Used for licensed data bundles and audience subscriptions.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/vendor-pricing-option.json', pointer='#/allOf/1/oneOf/2')
 
 
@@ -57,6 +66,9 @@ class PerUnitPricing(VendorPricingOption, PerUnitPricing):
     """
     Fixed price per unit of work. Used for creative transformation (per format), AI generation (per image, per token), and rendering (per variant). The unit field describes what is counted; unit_price is the cost per one unit.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/vendor-pricing-option.json', pointer='#/allOf/1/oneOf/3')
 
 
@@ -64,6 +76,9 @@ class CustomPricing(VendorPricingOption, CustomPricing):
     """
     Escape hatch for pricing constructs that do not fit cpm, percent_of_media, flat_fee, or per_unit. Use when a vendor prices via performance kickers, tiered volume, hybrid formulas, outcome-sharing, or any other model the standard forms cannot express. Requires a human-readable description and a structured metadata object that captures the parameters a buyer needs to reason about the charge. Buyers SHOULD route custom pricing through operator review before commitment — automatic selection is not recommended.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/vendor-pricing-option.json', pointer='#/allOf/1/oneOf/4')
 
 

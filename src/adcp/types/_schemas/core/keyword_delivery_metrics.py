@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import Field, NonNegativeFloat
+from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import SchemaRef
 
@@ -15,6 +15,9 @@ class KeywordDeliveryMetrics(DeliveryMetrics):
     """
     Delivery metrics row for one keyword and match-type pair within a package.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/keyword-delivery-metrics.json', pointer='#')
     keyword: Annotated[str, Field(description='The targeted keyword')]
     match_type: MatchType

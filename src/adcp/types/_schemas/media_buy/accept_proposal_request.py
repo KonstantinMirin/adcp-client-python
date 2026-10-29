@@ -45,6 +45,9 @@ class Opportunity(OpportunityContext):
     """
     Optional planning-cycle closure. Success infers closed with accepted_with_seller when status is omitted. If the proposal carries opportunity_id, a supplied ID MUST match; the accepted proposal preserves that association.
     """
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/accept-proposal-request.json', pointer='#/properties/opportunity')
     status: Annotated[Literal['closed'] | None, Field(description='Whether the planning cycle remains open. On calls after initial creation, omission means no status update and MUST NOT reopen or close the opportunity implicitly, except that successful create_media_buy proposal execution explicitly infers accepted closure.')] = None
 

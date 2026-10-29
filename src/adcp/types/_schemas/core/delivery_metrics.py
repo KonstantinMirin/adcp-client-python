@@ -46,6 +46,9 @@ class Period(Duration):
     """
     Duration of the measurement window. REQUIRED when `kind` is `period` or `rolling` — declares the snapshot length (e.g., `{"interval": 1, "unit": "days"}` for a daily snapshot) or the trailing-window length (e.g., `{"interval": 7, "unit": "days"}` for trailing-7-day rolling reach). When `kind` is `cumulative`, this field is implicit (campaign-to-date) and SHOULD be omitted.
     """
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/delivery-metrics.json', pointer='#/properties/reach_window/properties/period')
 
 

@@ -28,6 +28,9 @@ class MacroDeclarationsItem(MacroDeclaration):
     """
     The source-faithful contract for one occurrence of one macro token. It identifies the current dialect, verified mapping status, exact asset-field occurrence, next processing operation, actor, and encoding. Translation and concrete value resolution are separate operations: a translator emits the declared native token and replaces this declaration with the target declaration. Unknown tokens are always byte-preserved.
     """
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/url-asset.json', pointer='#/properties/macro_declarations/items')
     location: Location
 

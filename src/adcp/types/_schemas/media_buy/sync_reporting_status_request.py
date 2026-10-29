@@ -20,6 +20,9 @@ class StatusesItem(ReportingConsumerStatus):
     """
     One immutable, authenticated consumer statement about whether the required reporting for an expected configuration period could actually be consumed. It is operational status, not measurement data, delivery totals, a billing receipt, or authority to overwrite the seller's obligation/revision ledger. New statements supersede the current statement for the same consumer, configuration generation, report definition, and period while preserving append-only history.
     """
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/sync-reporting-status-request.json', pointer='#/properties/statuses/items')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('recorded_at',),)),

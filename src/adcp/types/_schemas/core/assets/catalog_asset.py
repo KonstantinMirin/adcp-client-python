@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
 
@@ -14,6 +14,9 @@ class CatalogAsset(Catalog):
     """
     A typed data feed as a creative asset. Carries catalog context (products, stores, jobs, etc.) within the manifest's assets map.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/catalog-asset.json', pointer='#')
     asset_type: Annotated[Literal['catalog'], Field(description='Discriminator identifying this as a catalog asset. See /schemas/creative/asset-types for the registry.')]
 

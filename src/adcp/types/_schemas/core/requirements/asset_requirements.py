@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from typing import ClassVar
 
+from pydantic import ConfigDict
+
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 
 from .audio_asset_requirements import AudioAssetRequirements
@@ -39,6 +41,9 @@ class AssetRequirementsBranch0(AssetRequirements, ImageAssetRequirements):
     """
     Requirements for image creative assets. These define the technical constraints for image files.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/requirements/asset-requirements.json', pointer='#/anyOf/0')
 
 
@@ -46,6 +51,9 @@ class AssetRequirementsBranch1(AssetRequirements, VideoAssetRequirements):
     """
     Requirements for video creative assets. These define the technical constraints for video files.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/requirements/asset-requirements.json', pointer='#/anyOf/1')
 
 
@@ -53,6 +61,9 @@ class AssetRequirementsBranch2(AssetRequirements, AudioAssetRequirements):
     """
     Requirements for audio creative assets.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/requirements/asset-requirements.json', pointer='#/anyOf/2')
 
 
@@ -60,6 +71,9 @@ class AssetRequirementsBranch3(AssetRequirements, TextAssetRequirements):
     """
     Requirements for text creative assets such as headlines, body copy, and CTAs.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/requirements/asset-requirements.json', pointer='#/anyOf/3')
 
 
@@ -67,6 +81,9 @@ class AssetRequirementsBranch4(AssetRequirements, MarkdownAssetRequirements):
     """
     Requirements for markdown creative assets.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/requirements/asset-requirements.json', pointer='#/anyOf/4')
 
 
@@ -74,6 +91,9 @@ class AssetRequirementsBranch5(AssetRequirements, HTMLAssetRequirements):
     """
     Requirements for HTML creative assets. These define the execution environment constraints that the HTML must be compatible with.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/requirements/asset-requirements.json', pointer='#/anyOf/5')
 
 
@@ -81,6 +101,9 @@ class AssetRequirementsBranch6(AssetRequirements, CSSAssetRequirements):
     """
     Requirements for CSS creative assets.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/requirements/asset-requirements.json', pointer='#/anyOf/6')
 
 
@@ -88,6 +111,9 @@ class AssetRequirementsBranch7(AssetRequirements, JavaScriptAssetRequirements):
     """
     Requirements for JavaScript creative assets. These define the execution environment constraints that the JavaScript must be compatible with.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/requirements/asset-requirements.json', pointer='#/anyOf/7')
 
 
@@ -95,6 +121,9 @@ class AssetRequirementsBranch8(AssetRequirements, VASTAssetRequirements):
     """
     Requirements for VAST (Video Ad Serving Template) creative assets.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/requirements/asset-requirements.json', pointer='#/anyOf/8')
 
 
@@ -102,6 +131,9 @@ class AssetRequirementsBranch9(AssetRequirements, DAASTAssetRequirements):
     """
     Requirements for DAAST (Digital Audio Ad Serving Template) creative assets.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/requirements/asset-requirements.json', pointer='#/anyOf/9')
 
 
@@ -109,6 +141,9 @@ class AssetRequirementsBranch10(AssetRequirements, URLAssetRequirements):
     """
     Requirements for URL assets such as click-through URLs, tracking pixels, and landing pages.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/requirements/asset-requirements.json', pointer='#/anyOf/10')
 
 
@@ -116,6 +151,9 @@ class AssetRequirementsBranch11(AssetRequirements, WebhookAssetRequirements):
     """
     Requirements for webhook creative assets.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/requirements/asset-requirements.json', pointer='#/anyOf/11')
 
 

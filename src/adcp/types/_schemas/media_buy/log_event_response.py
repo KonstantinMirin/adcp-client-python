@@ -21,6 +21,9 @@ class LogEventResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelop
     """
     Response from event logging operation. Returns either event processing results OR operation-level errors.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/log-event-response.json', pointer='#')
     _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
     _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()

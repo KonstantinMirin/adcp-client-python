@@ -34,6 +34,9 @@ class SyncAccountsResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnv
     """
     Response from account sync operation. Returns per-account results with status and billing, or operation-level errors on complete failure.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='account/sync-accounts-response.json', pointer='#')
     _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
     _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()

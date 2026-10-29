@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from typing import ClassVar
 
+from pydantic import ConfigDict
+
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 
 from ..pricing_options.cpa_option import CPAPricingOption
@@ -34,6 +36,9 @@ class PricingOptionCpm(PricingOption, CPMPricingOption):
     """
     Cost Per Mille (cost per 1,000 impressions) pricing. If fixed_price is present, it's fixed pricing. If absent, it's auction-based.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/pricing-option.json', pointer='#/oneOf/0')
 
 
@@ -41,6 +46,9 @@ class PricingOptionVcpm(PricingOption, VCPMPricingOption):
     """
     Viewable Cost Per Mille (cost per 1,000 viewable impressions) pricing - MRC viewability standard. If fixed_price is present, it's fixed pricing. If absent, it's auction-based.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/pricing-option.json', pointer='#/oneOf/1')
 
 
@@ -48,6 +56,9 @@ class PricingOptionCpc(PricingOption, CPCPricingOption):
     """
     Cost Per Click pricing. If fixed_price is present, it's fixed pricing. If absent, it's auction-based.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/pricing-option.json', pointer='#/oneOf/2')
 
 
@@ -55,6 +66,9 @@ class PricingOptionCpcv(PricingOption, CPCVPricingOption):
     """
     Cost Per Completed View (100% video/audio completion) pricing. If fixed_price is present, it's fixed pricing. If absent, it's auction-based.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/pricing-option.json', pointer='#/oneOf/3')
 
 
@@ -62,6 +76,9 @@ class PricingOptionCpv(PricingOption, CPVPricingOption):
     """
     Cost Per View (at publisher-defined threshold) pricing for video/audio. If fixed_price is present, it's fixed pricing. If absent, it's auction-based.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/pricing-option.json', pointer='#/oneOf/4')
 
 
@@ -69,6 +86,9 @@ class PricingOptionCpp(PricingOption, CPPPricingOption):
     """
     Cost Per Point (Gross Rating Point) pricing for TV and audio campaigns. If fixed_price is present, it's fixed pricing. If absent, it's auction-based.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/pricing-option.json', pointer='#/oneOf/5')
 
 
@@ -76,6 +96,9 @@ class PricingOptionCpa(PricingOption, CPAPricingOption):
     """
     Cost Per Acquisition pricing. Advertiser pays a fixed price when a specified conversion event occurs. The event_type field declares which event triggers billing (e.g., purchase, lead, app_install).
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/pricing-option.json', pointer='#/oneOf/6')
 
 
@@ -83,6 +106,9 @@ class PricingOptionRevenueShare(PricingOption, RevenueSharePricingOption):
     """
     Revenue-share pricing. The advertiser pays a fixed decimal commission rate applied to settled commissionable_value attributed to the declared conversion event and event source. Spend is rounded once to the ISO 4217 minor-unit precision of currency after multiplication: spend = round_currency(commissionable_value × commission_rate). This is contingent pricing, not fixed-unit pricing or an auction.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/pricing-option.json', pointer='#/oneOf/7')
 
 
@@ -90,6 +116,9 @@ class PricingOptionFlatRate(PricingOption, FlatRatePricingOption):
     """
     Flat rate pricing for sponsorships, takeovers, and DOOH exclusive placements. A fixed total cost regardless of delivery volume. For duration-scaled pricing (rate × time units), use the `time` model instead. If fixed_price is present, it's fixed pricing. If absent, it's auction-based.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/pricing-option.json', pointer='#/oneOf/8')
 
 
@@ -97,6 +126,9 @@ class PricingOptionTime(PricingOption, TimeBasedPricingOption):
     """
     Cost per time unit (hour, day, week, or month) - rate scales with campaign duration. If fixed_price is present, it's fixed pricing. If absent, it's auction-based.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/pricing-option.json', pointer='#/oneOf/9')
 
 

@@ -22,6 +22,9 @@ class ProvidePerformanceFeedbackResponse(BranchDispatchMixin, AdCPVersionEnvelop
     """
     Response payload for provide_performance_feedback task. Returns either success confirmation OR error information, never both.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/provide-performance-feedback-response.json', pointer='#')
     _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
     _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()

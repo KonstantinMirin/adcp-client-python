@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types.constraints import FloatMin0Max1
@@ -22,6 +22,9 @@ class ValidateContentDeliveryResponse(BranchDispatchMixin, AdCPVersionEnvelope, 
     """
     Response payload with per-record verdicts and optional feature breakdown
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/validate-content-delivery-response.json', pointer='#')
     _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
     _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()
@@ -64,6 +67,9 @@ class ValidateContentDeliveryResponseResultsSummary(ValidateContentDeliveryRespo
     """
     Success response
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/validate-content-delivery-response.json', pointer='#/oneOf/0')
     summary: Annotated[Summary, Field(description='Summary counts across all records')]
     results: Annotated[list[ResultsItem], Field(description='Per-record evaluation results')]
@@ -75,6 +81,9 @@ class ValidateContentDeliveryResponseErrors(ValidateContentDeliveryResponse, Fai
     """
     Error response
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/validate-content-delivery-response.json', pointer='#/oneOf/1')
     errors: list[Error]
     context: ContextObject | None = None

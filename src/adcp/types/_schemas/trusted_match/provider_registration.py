@@ -57,11 +57,17 @@ class TMPProviderRegistration(BranchDispatchMixin, AdCPBaseModel):
 
 
 class TMPProviderRegistrationContextMatch(TMPProviderRegistration):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='trusted-match/provider-registration.json', pointer='#/anyOf/0')
     context_match: Annotated[Literal[True], Field(description='Provider handles Context Match requests (POST /context).')]
 
 
 class TMPProviderRegistrationIdentityMatch(TMPProviderRegistration):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='trusted-match/provider-registration.json', pointer='#/anyOf/1')
     identity_match: Annotated[Literal[True], Field(description='Provider handles Identity Match requests (POST /identity).')]
 

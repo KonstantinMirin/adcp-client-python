@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, Field, NonNegativeFloat
+from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import SchemaRef
 
@@ -15,6 +15,9 @@ class InstallmentDeliveryMetrics(DeliveryMetrics):
     """
     Delivery metrics for one canonically identified installment.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/installment-delivery-metrics.json', pointer='#')
     installment_ref: InstallmentReference
     installment_name: Annotated[str | None, Field(description='Current human-readable installment name. Convenience metadata only; installment_ref is stable identity.')] = None

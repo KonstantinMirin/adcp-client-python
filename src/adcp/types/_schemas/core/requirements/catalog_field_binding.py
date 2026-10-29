@@ -55,6 +55,9 @@ class CatalogFieldBindingScalar(CatalogFieldBinding, CatalogFieldBindingScalarBi
     """
     Maps an individual format asset to a catalog item field via dot-notation path.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/requirements/catalog-field-binding.json', pointer='#/oneOf/0')
 
 
@@ -62,6 +65,9 @@ class CatalogFieldBindingAssetPool(CatalogFieldBinding, CatalogFieldBindingAsset
     """
     Maps an individual format asset to a typed asset pool on the catalog item (e.g., images_landscape, images_vertical, logo). The format slot receives the first item in the pool.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/requirements/catalog-field-binding.json', pointer='#/oneOf/1')
 
 

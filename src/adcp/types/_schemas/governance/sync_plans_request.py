@@ -63,6 +63,9 @@ class Budget(BranchDispatchMixin, AdCPBaseModel):
 
 
 class BudgetReallocationThreshold(Budget):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/sync-plans-request.json', pointer='#/properties/plans/items/properties/budget/oneOf/0')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('reallocation_unlimited',),)),
@@ -71,6 +74,9 @@ class BudgetReallocationThreshold(Budget):
 
 
 class BudgetTrue(Budget):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/sync-plans-request.json', pointer='#/properties/plans/items/properties/budget/oneOf/1')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('reallocation_threshold',),)),

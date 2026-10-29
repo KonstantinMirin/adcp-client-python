@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import Field, NonNegativeFloat
+from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import SchemaRef
 from adcp.types.constraints import StrMatching32F5291C
@@ -16,6 +16,9 @@ class PlacementDeliveryMetrics(DeliveryMetrics):
     """
     Delivery metrics for one placement. The flat placement_id remains required for 3.1 consumer compatibility. New 3.2 sellers MUST also emit placement_identity so the authority is self-contained; legacy rows without it remain scoped to the enclosing package.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/placement-delivery-metrics.json', pointer='#')
     placement_identity: Annotated[PlacementIdentity | None, Field(description='Self-contained identity. publisher_ref resolves in adagents.json; seller_inline is scoped by seller_agent.')] = None
     placement_name: Annotated[str | None, Field(description='Current human-readable placement name. Convenience metadata only; placement_identity is stable identity.')] = None

@@ -24,6 +24,9 @@ class GetRightsResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelo
     """
     Licensable rights matching the search criteria, with pricing options. Each result is a complete snapshot of current availability (stateless, DDEX PIE pattern). Excluded results explain why they were filtered out.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/get-rights-response.json', pointer='#')
     _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
     _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()

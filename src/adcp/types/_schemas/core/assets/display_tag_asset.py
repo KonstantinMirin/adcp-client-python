@@ -49,11 +49,17 @@ class TagURLMacroDeclarationsItem(MacroDeclaration):
     """
     The source-faithful contract for one occurrence of one macro token. It identifies the current dialect, verified mapping status, exact asset-field occurrence, next processing operation, actor, and encoding. Translation and concrete value resolution are separate operations: a translator emits the declared native token and replaces this declaration with the target declaration. Unknown tokens are always byte-preserved.
     """
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/display-tag-asset.json', pointer='#/oneOf/0/properties/macro_declarations/items')
     location: TagURLMacroDeclarationsItemLocation
 
 
 class TagURL(DisplayTagAsset):
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/display-tag-asset.json', pointer='#/oneOf/0')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('markup',), ('ad_request_url',), ('clickthrough_url',))),
@@ -79,6 +85,9 @@ class InlineMarkupMacroDeclarationsItem(MacroDeclaration):
     """
     The source-faithful contract for one occurrence of one macro token. It identifies the current dialect, verified mapping status, exact asset-field occurrence, next processing operation, actor, and encoding. Translation and concrete value resolution are separate operations: a translator emits the declared native token and replaces this declaration with the target declaration. Unknown tokens are always byte-preserved.
     """
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/display-tag-asset.json', pointer='#/oneOf/1/properties/macro_declarations/items')
     location: InlineMarkupMacroDeclarationsItemLocation
 
@@ -93,6 +102,9 @@ class MarkupType(StrEnum):
 
 
 class InlineMarkup(DisplayTagAsset):
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/display-tag-asset.json', pointer='#/oneOf/1')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('url',), ('ad_request_url',), ('clickthrough_url',))),
@@ -127,11 +139,17 @@ class PairedRedirectMacroDeclarationsItem(MacroDeclaration):
     """
     The source-faithful contract for one occurrence of one macro token. It identifies the current dialect, verified mapping status, exact asset-field occurrence, next processing operation, actor, and encoding. Translation and concrete value resolution are separate operations: a translator emits the declared native token and replaces this declaration with the target declaration. Unknown tokens are always byte-preserved.
     """
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/display-tag-asset.json', pointer='#/oneOf/2/properties/macro_declarations/items')
     location: PairedRedirectMacroDeclarationsItemLocation
 
 
 class PairedRedirect(DisplayTagAsset):
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/display-tag-asset.json', pointer='#/oneOf/2')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('url',), ('markup',))),

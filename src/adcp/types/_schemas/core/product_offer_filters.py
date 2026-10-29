@@ -80,6 +80,9 @@ class RequiredFeatures(CanonicalMediaBuyFeatures):
     """
     Canonical protocol features the seller must support.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-offer-filters.json', pointer='#/properties/required_features')
 
 

@@ -21,6 +21,9 @@ class ComplyTestControllerResponse(BranchDispatchMixin, AdCPVersionEnvelope, Pro
     """
     Response from the comply_test_controller tool. Shape varies by scenario type: list_scenarios returns available scenarios, force_* returns state transition results, simulate_* returns simulation results.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='compliance/comply-test-controller-response.json', pointer='#')
     _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
     _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()
@@ -242,6 +245,9 @@ class RawAttestation(RecordedCallsItem):
     """
     attestation_mode raw — payload is required; payload_digest_sha256 and identifier_match_proofs are absent. attestation_mode is required at the item level so the discriminator always has a value to dispatch on (no implicit defaults inside oneOf branches).
     """
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='compliance/comply-test-controller-response.json', pointer='#/oneOf/6/properties/recorded_calls/items/oneOf/0')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('payload_digest_sha256',), ('identifier_match_proofs',))),
@@ -254,6 +260,9 @@ class DigestAttestation(RecordedCallsItem):
     """
     attestation_mode digest — payload_digest_sha256 required, payload absent. identifier_match_proofs present when the request supplied identifier_value_digests.
     """
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='compliance/comply-test-controller-response.json', pointer='#/oneOf/6/properties/recorded_calls/items/oneOf/1')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('payload',),)),

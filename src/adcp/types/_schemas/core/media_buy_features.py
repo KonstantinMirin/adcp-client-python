@@ -14,6 +14,9 @@ class BiddingPolicy(BiddingPolicyCapability):
     """
     Structured support for canonical bidding by authored scope, allocation context, mode, strength, and strength-qualified multi-field combination. Presence does not imply support for both scopes, both allocation modes, or every policy shape. Sellers MUST preserve every advertised semantic exactly and reject unadvertised policies rather than translating them.
     """
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/media-buy-features.json', pointer='#/properties/bidding_policy')
 
 

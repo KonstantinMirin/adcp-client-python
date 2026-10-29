@@ -21,6 +21,9 @@ class CreativeApprovalResponse(BranchDispatchMixin, AdCPVersionEnvelope, Protoco
     """
     Response from the approval_webhook after reviewing a submitted creative. Uses discriminated union on `approval_status` field: approved, rejected, or pending_review.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/creative-approval-response.json', pointer='#')
     _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
     _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types.envelopes import FailedResponse
@@ -21,6 +21,9 @@ class ListContentStandardsResponse(BranchDispatchMixin, AdCPVersionEnvelope, Pro
     """
     Response payload with list of content standards configurations
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/list-content-standards-response.json', pointer='#')
     _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
     _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()
@@ -37,6 +40,9 @@ class ListContentStandardsResponseStandards(ListContentStandardsResponse):
     """
     Success response - returns array of content standards
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/list-content-standards-response.json', pointer='#/oneOf/0')
     standards: Annotated[list[ContentStandards], Field(description='Array of content standards configurations matching the filter criteria')]
     pagination: PaginationResponse | None = None
@@ -48,6 +54,9 @@ class ListContentStandardsResponseErrors(ListContentStandardsResponse, FailedRes
     """
     Error response
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/list-content-standards-response.json', pointer='#/oneOf/1')
     errors: list[Error]
     context: ContextObject | None = None

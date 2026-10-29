@@ -23,6 +23,9 @@ class SyncGovernanceResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolE
     """
     Response from governance agent sync. Returns per-account results confirming sync, or operation-level errors on complete failure.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='account/sync-governance-response.json', pointer='#')
     _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
     _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()

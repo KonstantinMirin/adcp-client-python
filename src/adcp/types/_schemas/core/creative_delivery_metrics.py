@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import Field, NonNegativeFloat
+from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import SchemaRef
 from adcp.types.constraints import FloatMin0Max100
@@ -15,6 +15,9 @@ class CreativeDeliveryMetrics(DeliveryMetrics):
     """
     Delivery metrics row for one creative within a package.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/creative-delivery-metrics.json', pointer='#')
     creative_id: Annotated[str, Field(description='Creative identifier matching the creative assignment')]
     creative_name: Annotated[str | None, Field(description='Optional human-readable creative name current when the report is generated. Convenience metadata only: names may change and buyers MUST use creative_id as the stable identity.')] = None

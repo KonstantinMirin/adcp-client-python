@@ -193,6 +193,9 @@ class TransitionsItemTimerTransitionMode(StrEnum):
 
 
 class TransitionsItemTimer(TransitionsItem):
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='formats/canonical/seller_rendered_stateful_display.json', pointer='#/properties/transitions/items/oneOf/0')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('input',), ('media_event',), ('scroll_reference',), ('scroll_threshold_percent',), ('scroll_start_percent',), ('scroll_end_percent',))),
@@ -206,6 +209,9 @@ TransitionsItemInViewTimerTransitionMode = TransitionsItemTimerTransitionMode
 
 
 class TransitionsItemInViewTimer(TransitionsItem):
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='formats/canonical/seller_rendered_stateful_display.json', pointer='#/properties/transitions/items/oneOf/1')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('input',), ('media_event',), ('scroll_reference',), ('scroll_threshold_percent',), ('scroll_start_percent',), ('scroll_end_percent',))),
@@ -219,6 +225,9 @@ TransitionsItemScrollThresholdScrollTransitionMode = TransitionsItemTimerTransit
 
 
 class TransitionsItemScrollThresholdScroll(TransitionsItem):
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='formats/canonical/seller_rendered_stateful_display.json', pointer='#/properties/transitions/items/oneOf/2')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('delay_ms',), ('media_event',), ('scroll_start_percent',), ('scroll_end_percent',))),
@@ -231,6 +240,9 @@ class TransitionsItemScrollThresholdScroll(TransitionsItem):
 
 
 class TransitionsItemScrollProgressScrollScrollLinked(TransitionsItem):
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='formats/canonical/seller_rendered_stateful_display.json', pointer='#/properties/transitions/items/oneOf/3')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('delay_ms',), ('media_event',), ('scroll_threshold_percent',), ('direction',))),
@@ -247,6 +259,9 @@ TransitionsItemUserActionTransitionMode = TransitionsItemTimerTransitionMode
 
 
 class TransitionsItemUserAction(TransitionsItem):
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='formats/canonical/seller_rendered_stateful_display.json', pointer='#/properties/transitions/items/oneOf/4')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('delay_ms',), ('media_event',), ('scroll_reference',), ('scroll_threshold_percent',), ('scroll_start_percent',), ('scroll_end_percent',), ('direction',))),
@@ -260,6 +275,9 @@ TransitionsItemMediaEventTransitionMode = TransitionsItemTimerTransitionMode
 
 
 class TransitionsItemMediaEvent(TransitionsItem):
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='formats/canonical/seller_rendered_stateful_display.json', pointer='#/properties/transitions/items/oneOf/5')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('input',), ('delay_ms',), ('scroll_reference',), ('scroll_threshold_percent',), ('scroll_start_percent',), ('scroll_end_percent',), ('direction',))),

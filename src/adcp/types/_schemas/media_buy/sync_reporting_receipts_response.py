@@ -21,6 +21,9 @@ class RecordedReportingReceiptReceipt(ReportingReceipt):
     """
     Authenticated consumer evidence for one materialization. A receipt closes the knowledge gap between producer availability and consumer reconciliation. Buyer and governance consumers submit independently; neither consumer's receipt implies acceptance by another principal.
     """
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/sync-reporting-receipts-response.json', pointer='#/properties/results/items/anyOf/0/properties/receipt')
     received_at: AwareDatetime
 
@@ -50,6 +53,9 @@ class RecordedReportingAdjustmentReceiptAdjustmentReceipt(ReportingAdjustmentRec
     """
     Authenticated consumer acceptance or rejection of one exact post-official adjustment. It does not alter the original official revision or its receipt.
     """
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/sync-reporting-receipts-response.json', pointer='#/properties/results/items/anyOf/2/properties/adjustment_receipt')
     received_at: AwareDatetime
 

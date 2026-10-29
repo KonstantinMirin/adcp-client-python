@@ -20,6 +20,9 @@ class RecordedReportingConsumerStatusConsumerStatus(ReportingConsumerStatus):
     """
     One immutable, authenticated consumer statement about whether the required reporting for an expected configuration period could actually be consumed. It is operational status, not measurement data, delivery totals, a billing receipt, or authority to overwrite the seller's obligation/revision ledger. New statements supersede the current statement for the same consumer, configuration generation, report definition, and period while preserving append-only history.
     """
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/sync-reporting-status-response.json', pointer='#/properties/results/items/oneOf/0/properties/consumer_status')
     recorded_at: Annotated[AwareDatetime, Field(description='When the seller durably recorded this immutable statement.')]
 

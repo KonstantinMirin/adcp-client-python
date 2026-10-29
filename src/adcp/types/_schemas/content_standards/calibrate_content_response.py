@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types.constraints import FloatMin0Max1
@@ -22,6 +22,9 @@ class CalibrateContentResponse(BranchDispatchMixin, AdCPVersionEnvelope, Protoco
     """
     Response payload with verdict and detailed explanations for collaborative calibration
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/calibrate-content-response.json', pointer='#')
     _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
     _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()
@@ -47,6 +50,9 @@ class CalibrateContentResponseVerdict(CalibrateContentResponse):
     """
     Success response with detailed calibration feedback
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/calibrate-content-response.json', pointer='#/oneOf/0')
     verdict: BinaryVerdict
     confidence: Annotated[FloatMin0Max1 | None, Field(description='Model confidence in the verdict (0-1)')] = None
@@ -60,6 +66,9 @@ class CalibrateContentResponseErrors(CalibrateContentResponse, FailedResponse):
     """
     Error response
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/calibrate-content-response.json', pointer='#/oneOf/1')
     errors: list[Error]
     context: ContextObject | None = None

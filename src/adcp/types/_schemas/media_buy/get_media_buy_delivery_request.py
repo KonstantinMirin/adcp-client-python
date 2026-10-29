@@ -33,6 +33,9 @@ class PostClick(Duration):
     """
     Post-click attribution window to apply.
     """
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buy-delivery-request.json', pointer='#/properties/attribution_window/properties/post_click')
 
 
@@ -40,6 +43,9 @@ class PostView(Duration):
     """
     Post-view attribution window to apply.
     """
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buy-delivery-request.json', pointer='#/properties/attribution_window/properties/post_view')
 
 

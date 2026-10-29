@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
 
@@ -14,6 +14,9 @@ class BriefAsset(CreativeBrief):
     """
     Campaign-level creative context as an asset. Carries the creative brief through the manifest so it travels with the creative through regeneration, resizing, and auditing.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/brief-asset.json', pointer='#')
     asset_type: Annotated[Literal['brief'], Field(description='Discriminator identifying this as a brief asset. See /schemas/creative/asset-types for the registry.')]
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
@@ -16,6 +16,9 @@ class MediaBuyFrequencyCap(FrequencyCap):
     """
     A MediaBuy-level maximum-impression cap. The counter is shared across participating packages for the declared per unit. Duration windows are rolling elapsed windows; campaign spans the MediaBuy flight. Aggregate suppression is not defined in 3.2 because suppress-only FrequencyCap values do not identify a counter entity.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/media-buy-frequency-cap.json', pointer='#')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('suppress',), ('suppress_minutes',))),

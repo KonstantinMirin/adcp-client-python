@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from typing import ClassVar
 
+from pydantic import ConfigDict
+
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types.envelopes import FailedResponse
 
@@ -18,6 +20,9 @@ class GetContentStandardsResponse(BranchDispatchMixin, AdCPVersionEnvelope, Prot
     """
     Response payload with content safety policies
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/get-content-standards-response.json', pointer='#')
     _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
     _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()
@@ -34,6 +39,9 @@ class GetContentStandardsResponseBranch0(GetContentStandardsResponse, ContentSta
     """
     Success response - returns the content standards configuration
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/get-content-standards-response.json', pointer='#/oneOf/0')
     context: ContextObject | None = None
 
@@ -42,6 +50,9 @@ class GetContentStandardsResponseErrors(GetContentStandardsResponse, FailedRespo
     """
     Error response
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/get-content-standards-response.json', pointer='#/oneOf/1')
     errors: list[Error]
     context: ContextObject | None = None

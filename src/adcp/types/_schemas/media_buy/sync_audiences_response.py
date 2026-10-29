@@ -25,6 +25,9 @@ class SyncAudiencesResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEn
     """
     Response from audience sync operation. Exactly one of three shapes: (1) synchronous success — per-audience results in the audiences array (best-effort processing with per-item status/failures); (2) terminal failure — errors array with no audiences processed; (3) submitted task envelope — status 'submitted' with task_id when the whole operation is queued (batch ingestion, governance-gated upload, or any flow where the seller cannot return per-audience results before the response is emitted). The submitted branch MAY carry advisory errors for non-blocking warnings; terminal failures belong in the error branch. Final per-audience results land on the task completion artifact, not this envelope. Per-audience asynchronous matching (an audience reported with status 'processing' while the rest of the sync resolves synchronously) belongs on the synchronous success branch via audience-status, NOT here — operation-level async is for when the seller has no per-item results to return yet. These three shapes are mutually exclusive — a response has exactly one.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/sync-audiences-response.json', pointer='#')
     _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
     _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()

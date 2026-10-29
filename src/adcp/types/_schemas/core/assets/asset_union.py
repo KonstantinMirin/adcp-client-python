@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from typing import ClassVar
 
+from pydantic import ConfigDict
+
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 
 from .audio_asset import AudioAsset
@@ -45,6 +47,9 @@ class AssetVariantImage(AssetVariant, ImageAsset):
     """
     Image asset with URL and dimensions
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/asset-union.json', pointer='#/oneOf/0')
 
 
@@ -52,6 +57,9 @@ class AssetVariantVideo(AssetVariant, VideoAsset):
     """
     A hosted video file delivered directly (e.g., an MP4 you host), with URL and technical specifications including audio track properties. `width` and `height` are required because a hosted video file has intrinsic, native pixel dimensions that are known when the file is created. Tag-delivered video uses the separate `vast` asset, which carries no `width`/`height`: a VAST response resolves geometry per-`MediaFile` at serve time, so there is no single width/height for the ad. Aspect-ratio and size *constraints* (what a placement accepts) belong on the format/requirements layer, not on the asset.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/asset-union.json', pointer='#/oneOf/1')
 
 
@@ -59,6 +67,9 @@ class AssetVariantAudio(AssetVariant, AudioAsset):
     """
     Audio asset with URL and technical specifications
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/asset-union.json', pointer='#/oneOf/2')
 
 
@@ -66,6 +77,9 @@ class AssetVariantVast(AssetVariant, VASTAsset):
     """
     VAST (Video Ad Serving Template) tag for third-party video or audio ad serving. Unlike a hosted media asset, a VAST tag carries no single `width`/`height`: a response can return multiple renditions and the player selects one at serve time. Standardized VAST audio support begins at 4.1 and uses MediaFile width and height values of 0; older audio-in-VAST versions are seller-declared legacy interoperability. Dimensional, duration, MIME-type, and codec constraints live on the format/requirements layer, not on this asset.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/asset-union.json', pointer='#/oneOf/3')
 
 
@@ -73,6 +87,9 @@ class AssetVariantDisplayTag(AssetVariant, DisplayTagAsset):
     """
     One atomic third-party display delivery representation. `delivery_type` distinguishes a single ad-request URL, byte-preserved inline markup, and a paired redirect whose ad-request and click-through URLs MUST travel together. This is not an HTML5 bundle: seller-hosted HTML5 zip files use `asset_type: "zip"` under `format_kind: "html5"`.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/asset-union.json', pointer='#/oneOf/4')
 
 
@@ -80,6 +97,9 @@ class AssetVariantText(AssetVariant, TextAsset):
     """
     Text content asset
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/asset-union.json', pointer='#/oneOf/5')
 
 
@@ -87,6 +107,9 @@ class AssetVariantUrl(AssetVariant, URLAsset):
     """
     URL reference asset. `url_type` declares the mechanism a receiver uses to invoke the URL (`clickthrough`, display `ad_request`, `tracker_pixel`, or `tracker_script`) and is distinct from the URL's purpose, which the format declares in `url-asset-requirements.role`. Senders SHOULD include `url_type` on every URL asset. When `url_type` is absent, receivers SHOULD fall back to the format's role: clickthrough/landing_page → `clickthrough`; impression_tracker/click_tracker → `tracker_pixel`; viewability_tracker → `tracker_script`; third_party_tracker and display ad requests have no safe fallback. When neither `url_type` nor a format-side role is available, receivers MUST NOT silently pick a mechanism. VAST/DAAST tag URLs are not URL assets — use `asset_type: "vast"` or `asset_type: "daast"`.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/asset-union.json', pointer='#/oneOf/6')
 
 
@@ -94,6 +117,9 @@ class AssetVariantHtml(AssetVariant, HTMLAsset):
     """
     Inline HTML content asset. For seller-hosted HTML5 banner bundles, use the zip asset type. For third-party display markup or paired redirects, use the display_tag asset so the trafficking representation remains explicit.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/asset-union.json', pointer='#/oneOf/7')
 
 
@@ -101,6 +127,9 @@ class AssetVariantJavascript(AssetVariant, JavaScriptAsset):
     """
     Inline JavaScript content asset. For third-party display ad markup, use the display_tag asset with delivery_type `inline_markup`; for measurement scripts use a typed tracker; for seller-hosted HTML5 bundles use zip.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/asset-union.json', pointer='#/oneOf/8')
 
 
@@ -108,6 +137,9 @@ class AssetVariantZip(AssetVariant, ZipAsset):
     """
     Bundled creative asset delivered as a zip archive — typically an HTML5 banner with index.html plus supporting CSS, JS, images, and fonts. Receivers unpack the zip, validate internal structure, and serve contents from CDN. Distinct from inline HTML (html asset) and from third-party tag URLs (url asset with url_type tracker_script).
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/asset-union.json', pointer='#/oneOf/9')
 
 
@@ -115,6 +147,9 @@ class AssetVariantWebhook(AssetVariant, WebhookAsset):
     """
     Webhook for server-side dynamic content rendering (DCO)
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/asset-union.json', pointer='#/oneOf/10')
 
 
@@ -122,6 +157,9 @@ class AssetVariantCss(AssetVariant, CSSAsset):
     """
     CSS stylesheet asset
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/asset-union.json', pointer='#/oneOf/11')
 
 
@@ -129,6 +167,9 @@ class AssetVariantDaast(AssetVariant, DAASTAsset):
     """
     DAAST (Digital Audio Ad Serving Template) tag for third-party audio ad serving
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/asset-union.json', pointer='#/oneOf/12')
 
 
@@ -136,6 +177,9 @@ class AssetVariantMarkdown(AssetVariant, MarkdownAsset):
     """
     Markdown-formatted text content following CommonMark specification
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/asset-union.json', pointer='#/oneOf/13')
 
 
@@ -143,6 +187,9 @@ class AssetVariantBrief(AssetVariant, BriefAsset):
     """
     Campaign-level creative context as an asset. Carries the creative brief through the manifest so it travels with the creative through regeneration, resizing, and auditing.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/asset-union.json', pointer='#/oneOf/14')
 
 
@@ -150,6 +197,9 @@ class AssetVariantCatalog(AssetVariant, CatalogAsset):
     """
     A typed data feed as a creative asset. Carries catalog context (products, stores, jobs, etc.) within the manifest's assets map.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/asset-union.json', pointer='#/oneOf/15')
 
 
@@ -157,6 +207,9 @@ class AssetVariantPublishedPost(AssetVariant, PublishedPostAsset):
     """
     Reference to an already-published post on a publisher, creator, or social platform. The buyer supplies a reference to the existing post; the seller resolves, authorizes, reviews, and serves the referenced post according to the target product's format declaration. This asset is for post references, not uploaded bytes and not catalog rows.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/asset-union.json', pointer='#/oneOf/16')
 
 
@@ -168,6 +221,9 @@ class AssetVariantCard(AssetVariant, CardAsset):
 
     Used as the array element type for the `cards` slot on image_carousel canonicals. Adopters MUST NOT invent per-card key conventions like `card_0_headline` / `cards.0.headline` — the manifest's `assets.cards` value is an array of card-asset objects, period. Per-card platform extensions (e.g., Meta-specific carousel attributes, Pinterest rich-pin metadata, Snap Collection price tags) attach via the `platform_extensions` field, never via inline non-canonical keys.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/asset-union.json', pointer='#/oneOf/17')
 
 
@@ -216,6 +272,9 @@ class AssetVariantPixelTracker(AssetVariant, PixelTrackerAsset):
 
     All v1→v2 upgrades surface `PIXEL_TRACKER_UPGRADE_INFERRED` so consumers can see that event/method were inferred rather than explicitly declared.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/asset-union.json', pointer='#/oneOf/18')
 
 
@@ -223,6 +282,9 @@ class AssetVariantVastTracker(AssetVariant, VASTTrackerAsset):
     """
     A single tracker URL bound to a VAST `TrackingEvents` event. Emitted by the creative agent as a decomposed VAST-event URL; the sales agent assembles these into the VAST `TrackingEvents` block at serve time. IMPORTANT: this asset type is for `TrackingEvents` URLs only (start, quartiles, complete, pause, mute, etc.). The `Impression` URL MUST be modeled as a `url` asset with `url_type: "tracker_pixel"`, not as a vast_tracker with `vast_event: "impression"`. Decomposed trackers let format requirements bind specific measurement events (e.g., MRC viewable) without forcing the buyer to construct a full VAST tag.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/asset-union.json', pointer='#/oneOf/19')
 
 
@@ -230,6 +292,9 @@ class AssetVariantDaastTracker(AssetVariant, DAASTTrackerAsset):
     """
     A single tracker URL bound to a DAAST `TrackingEvents` event. Audio-side analogue of vast-tracker-asset. The `Impression` URL MUST be modeled as a `url` asset with `url_type: "tracker_pixel"`, not as a daast_tracker with `daast_event: "impression"`.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/asset-union.json', pointer='#/oneOf/20')
 
 

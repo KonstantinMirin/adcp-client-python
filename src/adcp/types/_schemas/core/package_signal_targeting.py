@@ -34,6 +34,9 @@ class PackageSignalTargetingBinaryTrue(PackageSignalTargeting, SignalTargetingEx
     """
     Binary signal expression. In grouped package targeting, value is always true; use a parent group with operator 'none' for exclusion.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/package-signal-targeting.json', pointer='#/allOf/0/oneOf/0')
 
 
@@ -41,6 +44,9 @@ class PackageSignalTargetingCategorical(PackageSignalTargeting, SignalTargetingE
     """
     Categorical signal expression - target users with one of the listed values.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/package-signal-targeting.json', pointer='#/allOf/0/oneOf/1')
 
 
@@ -48,6 +54,9 @@ class PackageSignalTargetingNumeric(PackageSignalTargeting, SignalTargetingExpre
     """
     Numeric signal expression - target users within a value range. At least one of min_value or max_value is required. If both min_value and max_value are provided, min_value MUST be <= max_value.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/package-signal-targeting.json', pointer='#/allOf/0/oneOf/2')
 
 

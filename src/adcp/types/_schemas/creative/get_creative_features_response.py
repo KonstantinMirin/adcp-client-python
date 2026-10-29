@@ -21,6 +21,9 @@ class GetCreativeFeaturesResponse(BranchDispatchMixin, AdCPVersionEnvelope, Prot
     """
     Response payload for the get_creative_features task. Exactly one shape is returned: terminal success with results, terminal error, or a submitted acknowledgement carrying the pollable task identity. In AdCP 3.x providers SHOULD also include a stable evaluation_id on accepted work; it becomes required in AdCP 4.0.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/get-creative-features-response.json', pointer='#')
     _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
     _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()
@@ -34,6 +37,9 @@ class GetCreativeFeaturesResponseBranch0(GetCreativeFeaturesResponse, GetCreativ
     """
     Terminal success response. In AdCP 3.x evaluation_id is an optional migration field that providers SHOULD emit; it becomes required in AdCP 4.0. When present, it is the provider-side reconciliation identity allocated when the evaluation was accepted and remains stable across exact replays and asynchronous completion.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/get-creative-features-response.json', pointer='#/oneOf/0')
 
 

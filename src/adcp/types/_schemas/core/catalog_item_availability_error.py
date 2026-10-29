@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from typing import ClassVar
 
+from pydantic import ConfigDict
+
 from adcp.types._base import SchemaRef
 
 from .error import Error
@@ -12,6 +14,9 @@ class CatalogItemAvailabilityError(Error):
     """
     Error returned by a catalog item availability operation. REFERENCE_NOT_FOUND has a deliberately closed, invariant shape so callers cannot distinguish unknown, inaccessible, unauthorized, or stale-generation references.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/catalog-item-availability-error.json', pointer='#')
 
 

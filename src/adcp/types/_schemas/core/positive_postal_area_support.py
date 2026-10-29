@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from typing import ClassVar, Literal
 
+from pydantic import ConfigDict
+
 from adcp.types._base import SchemaRef
 
 from .postal_area_support import PostalAreaSupport
@@ -12,6 +14,9 @@ class PositivePostalAreaSupport(PostalAreaSupport):
     """
     Non-vacuous postal capability used for hard targeting requirements and product overlay support. At least one native system array or true-valued deprecated alias is required. The general seller-capabilities postal schema remains permissive for backward compatibility, but an empty or false-only map cannot satisfy a hard discovery requirement.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/positive-postal-area-support.json', pointer='#')
     us_zip: Literal[True] | None = None
     us_zip_plus_four: Literal[True] | None = None

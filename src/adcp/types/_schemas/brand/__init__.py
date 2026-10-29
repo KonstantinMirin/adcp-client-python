@@ -1128,18 +1128,27 @@ class BrandDiscoveryColorRef(BranchDispatchMixin, AdCPBaseModel):
 
 
 class BrandDiscoveryColorRefName(BrandDiscoveryColorRef):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/color_ref/oneOf/0')
     kind: Annotated[Literal['name'], Field(description='Discriminator for the color reference variant.')]
     name: Annotated[str, Field(description='Key from the colors object, such as market_yellow, river_green, or any custom palette key. Unambiguous lookup into colors{}.')]
 
 
 class BrandDiscoveryColorRefValue(BrandDiscoveryColorRef):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/color_ref/oneOf/1')
     kind: Annotated[Literal['value'], Field(description='Discriminator for the color reference variant.')]
     value: Annotated[BrandDiscoveryHexColor, Field(description='Literal hex color when no palette key exists.')]
 
 
 class BrandDiscoveryColorRefSurface(BrandDiscoveryColorRef):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/color_ref/oneOf/2')
     kind: Annotated[Literal['surface'], Field(description='Discriminator for the color reference variant.')]
     surface: Annotated[Surface, Field(description='Usage surface rather than a specific color value.')]
@@ -1569,6 +1578,9 @@ class BrandCanonicalDocument(BrandDiscovery, BrandDiscoveryBrand):
     """
     Self-published brand document where the brand owns its own identity attributes. Optionally declares its house via house_domain; for trust, the named house's brand_refs[] must reciprocate (mutual assertion). Standalone brands (no parent house) omit house_domain. Hosted at the brand's own /.well-known/brand.json (or via authoritative_location indirection). See docs/brand-protocol/brand-json.mdx
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/oneOf/4')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('house',), ('brands',), ('brand_refs',), ('authorized_operators',), ('authoritative_location',), ('redirect_reason',), ('redirect_effective_at',), ('region',), ('note',))),

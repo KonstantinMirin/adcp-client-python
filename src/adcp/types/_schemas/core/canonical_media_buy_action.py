@@ -4,6 +4,8 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import ClassVar, Literal
 
+from pydantic import ConfigDict
+
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 
 from .canonical_media_buy_action_fields import CanonicalMediaBuyActionFields
@@ -49,6 +51,9 @@ class CanonicalMediaBuyActionControlMediaBuy(CanonicalMediaBuyAction, CanonicalM
     """
     Shared closed field set for task-discriminated canonical MediaBuy actions.
     """
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/canonical-media-buy-action.json', pointer='#/oneOf/0')
     task: Literal['control_media_buy']
     action: CanonicalMediaBuyActionControlMediaBuyAction
@@ -76,6 +81,9 @@ class CanonicalMediaBuyActionRefineProposals(CanonicalMediaBuyAction, CanonicalM
     """
     Shared closed field set for task-discriminated canonical MediaBuy actions.
     """
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/canonical-media-buy-action.json', pointer='#/oneOf/1')
     task: Literal['refine_proposals']
     action: CanonicalMediaBuyActionRefineProposalsAction
@@ -91,6 +99,9 @@ class CanonicalMediaBuyActionSyncCreatives(CanonicalMediaBuyAction, CanonicalMed
     """
     Shared closed field set for task-discriminated canonical MediaBuy actions.
     """
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/canonical-media-buy-action.json', pointer='#/oneOf/2')
     task: Literal['sync_creatives']
     action: CanonicalMediaBuyActionSyncCreativesAction

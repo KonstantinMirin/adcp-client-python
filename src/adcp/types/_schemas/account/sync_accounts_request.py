@@ -29,6 +29,9 @@ class NotificationConfigsItem(NotificationConfig):
     """
     Account-level webhook subscription for notifications whose lifecycle outlives any single media buy — creative state changes, library purges, account status changes, wholesale feed change webhooks, and future account-anchored resource events after those event types are added to this schema. This is distinct from `push-notification-config.json`, which anchors at a per-resource operation (a single task or media buy). The one-shot `sync_accounts.push_notification_config` channel may report the first async result of a provisioning request, while durable account lifecycle events such as later `payment_required` or `suspended` transitions use `account.status_changed` here. An account MAY register multiple notification configs to fan a single seller's events out to multiple buyer-side endpoints; each entry filters by `event_types`. As with push-notification-config, the default signing scheme is the AdCP RFC 9421 webhook profile against the seller's brand.json `agents[]` JWKS; the optional `authentication` block opts into the deprecated Bearer / HMAC-SHA256 fallback for compatibility. Credentials and shared secrets in `authentication.credentials` are write-only — sellers MUST NOT echo them back in `list_accounts` responses. Sellers MUST verify endpoint control before activating a new or changed active account-level notification config; delivery-time SSRF validation still applies to every fire.
     """
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='account/sync-accounts-request.json', pointer='#/properties/accounts/items/properties/notification_configs/items')
 
 
@@ -72,6 +75,9 @@ class ProvisioningMode(AccountsItem):
     """
     Provisioning-mode entry — natural-key trio is required; account, revision, and operator_identity are forbidden.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='account/sync-accounts-request.json', pointer='#/properties/accounts/items/oneOf/0')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('account',),)),
@@ -88,6 +94,9 @@ class SettingsUpdateMode(AccountsItem):
     """
     Settings-update entry — `account` (AccountRef) is required, provisioning trio fields are forbidden.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='account/sync-accounts-request.json', pointer='#/properties/accounts/items/oneOf/1')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('brand',),)),

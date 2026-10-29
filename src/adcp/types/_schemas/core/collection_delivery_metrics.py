@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import Field, NonNegativeFloat
+from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import SchemaRef
 
@@ -15,6 +15,9 @@ class CollectionDeliveryMetrics(DeliveryMetrics):
     """
     Delivery metrics for one canonically identified collection.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/collection-delivery-metrics.json', pointer='#')
     collection_ref: CollectionReference
     collection_name: Annotated[str | None, Field(description='Current human-readable collection name. Convenience metadata only; collection_ref is stable identity.')] = None

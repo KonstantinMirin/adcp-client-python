@@ -120,6 +120,9 @@ class RegistryEventPropertyCreatedPropertyPayload(RegistryEventPropertyPayload):
     """
     Event-type-specific payload. Shape is determined by event_type per the oneOf below.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/0/properties/payload')
     classification: RegistryEventClassification
     identifiers: Annotated[list[Identifier], Field(min_length=1)]
@@ -140,6 +143,9 @@ class RegistryEventPropertyUpdatedPropertyPayload(RegistryEventPropertyPayload):
     """
     Event-type-specific payload. Shape is determined by event_type per the oneOf below.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/1/properties/payload')
     property_rid: Annotated[str, Field(json_schema_extra={'format': 'uuid'})]
 
@@ -204,6 +210,9 @@ class RegistryEventPropertyReactivatedPropertyPayload(RegistryEventPropertyPaylo
     """
     Event-type-specific payload. Shape is determined by event_type per the oneOf below.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/4/properties/payload')
     reactivated_at: AwareDatetime | None = None
     property_rid: Annotated[str, Field(json_schema_extra={'format': 'uuid'})]
@@ -256,6 +265,9 @@ class RegistryEventCollectionCreatedCollectionPayload(RegistryEventCollectionPay
     """
     Event-type-specific payload. Shape is determined by event_type per the oneOf below.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/5/properties/payload')
     collection_id: Annotated[str | None, Field(description='Publisher-local collection_id from the authoritative adagents.json.')]
     collection_rid: Annotated[str, Field(json_schema_extra={'format': 'uuid'})]
@@ -277,6 +289,9 @@ class RegistryEventCollectionUpdatedCollectionPayload(RegistryEventCollectionPay
     """
     Event-type-specific payload. Shape is determined by event_type per the oneOf below.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/6/properties/payload')
     collection_rid: Annotated[str, Field(json_schema_extra={'format': 'uuid'})]
 
@@ -318,6 +333,9 @@ class RegistryEventCollectionRemovedCollectionPayload(RegistryEventCollectionPay
     """
     Event-type-specific payload. Shape is determined by event_type per the oneOf below.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/8/properties/payload')
     status: Literal['removed']
     collection_rid: Annotated[str, Field(json_schema_extra={'format': 'uuid'})]
@@ -377,6 +395,9 @@ class RegistryEventAgentDiscoveredAgentPayload(RegistryEventAgentProfilePayload)
     """
     Event-type-specific payload. Shape is determined by event_type per the oneOf below.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/9/properties/payload')
     agent_url: HttpUrl
 
@@ -417,6 +438,9 @@ class RegistryEventAgentProfileUpdatedAgentPayload(RegistryEventAgentProfilePayl
     """
     Event-type-specific payload. Shape is determined by event_type per the oneOf below.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/11/properties/payload')
     changed_fields: RegistryEventChangedFields | None = None
     agent_url: HttpUrl
@@ -601,6 +625,9 @@ class RegistryEventPublisherAdagentsChangedPublisherPayload(RegistryEventPublish
     """
     Event-type-specific payload. Shape is determined by event_type per the oneOf below.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/16/properties/payload')
 
 

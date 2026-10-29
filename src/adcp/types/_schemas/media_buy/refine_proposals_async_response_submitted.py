@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from typing import ClassVar
 
+from pydantic import ConfigDict
+
 from adcp.types._base import SchemaRef
 
 from ..core.compact_task_submitted import CompactTaskSubmitted
@@ -12,6 +14,9 @@ class RefineProposalsSubmitted(CompactTaskSubmitted):
     """
     Bounded submitted task envelope for refine_proposals when a complex revision requires upstream pricing or re-underwriting.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/refine-proposals-async-response-submitted.json', pointer='#')
 
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 
@@ -18,6 +18,9 @@ class CreateContentStandardsResponse(BranchDispatchMixin, AdCPVersionEnvelope, P
     """
     Response payload for creating a content standards configuration
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/create-content-standards-response.json', pointer='#')
     _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
     _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()
@@ -34,6 +37,9 @@ class CreateContentStandardsResponseStandardsId(CreateContentStandardsResponse):
     """
     Success response - returns the created standards identifier
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/create-content-standards-response.json', pointer='#/oneOf/0')
     standards_id: Annotated[str, Field(description='Unique identifier for the created standards configuration')]
     context: ContextObject | None = None
@@ -44,6 +50,9 @@ class CreateContentStandardsResponseErrors(CreateContentStandardsResponse):
     """
     Error response
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/create-content-standards-response.json', pointer='#/oneOf/1')
     errors: list[Error]
     conflicting_standards_id: Annotated[str | None, Field(description='If the error is a scope conflict, the ID of the existing standards that conflict')] = None

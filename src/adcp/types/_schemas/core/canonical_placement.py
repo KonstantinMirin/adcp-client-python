@@ -105,6 +105,9 @@ class CanonicalProductPlacement(BranchDispatchMixin, AdCPBaseModel):
 
 
 class CanonicalProductPlacementPublisherRef(CanonicalProductPlacement):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/canonical-placement.json', pointer='#/oneOf/0')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('seller_agent',),)),
@@ -114,6 +117,9 @@ class CanonicalProductPlacementPublisherRef(CanonicalProductPlacement):
 
 
 class CanonicalProductPlacementSellerInline(CanonicalProductPlacement):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/canonical-placement.json', pointer='#/oneOf/1')
     kind: Literal['seller_inline']
     name: StrMinLen1
