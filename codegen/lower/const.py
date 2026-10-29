@@ -2,7 +2,9 @@
 
 A ``const`` is a single-member enumeration in JSON Schema's vocabulary, and
 ``Literal`` is the Python spelling of one.  The row is reached from
-``emit._decide`` before ``type`` is read, for the same reason the ``enum`` branch is:
+the one dispatch because ``schema/parse.py`` classifies the node as a
+:class:`codegen.schema.nodes.Constant` before it reads ``type``, for the same reason the
+``enum`` branch is classified first:
 the pinned VALUE is what the node admits, and its own JSON type follows from the
 value whether the document spells a ``type`` word or not.
 
@@ -12,14 +14,14 @@ rather than a result of one:
 
 * **1,486** ``const`` nodes over **347** documents;
 * **0** of them at a document ROOT.  A root carrying one would reach this lowering
-  through ``emit._decide``'s ``const`` arm like any other node -- §5's "root and
+  through the ``Constant`` arm of the one dispatch like any other node -- §5's "root and
   non-root are one path" -- and ``emit.lower_document`` would then have no class to
   wrap, so the upgrade path for a bundle that grows one is the ROOT cell of this arm:
   §5's ``const`` row already decides it ("where EVERY branch of a root union is a
   scalar ... the root emits as an alias over the union of their types"), read at a bare
   root;
 * **0** carrying an ``enum`` beside the ``const``, so the two branches do not overlap
-  and their order in ``_decide`` is not a precedence;
+  and the parser's order between them is not a precedence;
 * the whole key vocabulary is ``const`` (826), ``const type`` (397),
   ``const description type`` (257) and ``const description`` (6).  **Nothing else
   appears beside a ``const`` anywhere in the bundle**, so :data:`CLAIMS` is two
@@ -132,7 +134,8 @@ CLAIMS = frozenset({"type", "const", "format"})
 #:
 #: ``null`` has a second reason of its own, and it is why admitting it would be wrong
 #: even if the slot took it: ``{"const": null}`` and ``{"type": "null"}`` are ONE node
-#: kind written two ways, and ``_decide``'s own ``null`` branch owns it.
+#: kind written two ways, and the dispatch's own :class:`codegen.schema.nodes.Null` arm
+#: owns it.
 #:
 #: Measured over the bundle's 1,486 const nodes: 1,310 ``str``, 161 ``bool``, 15
 #: ``int`` -- so both refusals have a population of 0 and are reached only by a

@@ -1,7 +1,7 @@
 """§5's scalar rows: one ``type`` word, ``null``, and a node with no kind at all.
 
 Three of ``docs/plan/architecture.md`` §5's twelve arms, and the three that were the
-tail of ``emit._decide`` rather than a lowering of their own: a SCALAR carries its
+tail of the per-node dispatch rather than a lowering of their own: a SCALAR carries its
 constraint facts in the document's spelling and its ``format``, a ``null`` node carries
 nothing, and a TYPELESS node is "a ``not`` over a value, or nothing".
 

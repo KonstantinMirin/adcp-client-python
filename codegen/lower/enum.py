@@ -185,7 +185,8 @@ def lower(
     insists on, and this one is about the MEMBERS -- and they agree on what to do about it.
     """
     # **The row's own screen, at the node's own position, over the cells this row
-    # consumes.**  It was in ``emit._decide``'s enum arm and the conversion dropped it;
+    # consumes.**  It was in ``emit``'s then-private per-node dispatch, in the enum arm,
+    # and the conversion to the parser dropped it;
     # nothing in the bundle paid for that -- the emitted set, the refused set and the tree
     # were all identical -- which is exactly why it is a hole rather than a harmless
     # omission.  ``test_enum.py``'s ``enumMetadata`` cost claim found it by REMOVING the

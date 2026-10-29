@@ -32,12 +32,14 @@ pydantic-v2 model layer, which writes the Python.  The generator's parser never 
 
 **D13 divides the walk between this module and ``codegen.compiler``**, and the cut
 is the layering rather than a taxonomy.  What is HERE is the RUN -- the dependency
-closure, the per-document fold, the files and the report -- plus
-:func:`_decide`, the ONE per-node dispatch, because the answer for an array, a
-mapping or a multi-type node lives in a lowering.  There was a second dispatch beside
-it, ``ROWS``, over a document's root KIND; ``docs/plan/architecture.md`` §14 step 5
-deletes it, so a document is :func:`_decide` at ROOT and :func:`lower_document` adds
-the module wrapper and nothing else (§5).  What is in ``compiler`` is everything a
+closure, the per-document fold, the files and the report -- plus :func:`decide_type`,
+which wraps the ONE per-node dispatch.  **The dispatch itself is
+``codegen/lower/decide.py``'s**, an exhaustive ``match`` over
+``codegen/schema/nodes.py``'s kinds; this paragraph used to call it ``_decide`` and put
+it here, and §14 step 5 moved it.  There was a second dispatch beside it, ``ROWS``, over
+a document's root KIND; step 5 deleted that too, so a document is one ``decide`` call at
+ROOT and :func:`lower_document` adds the module wrapper and nothing else (§5).  What is
+in ``compiler`` is everything a
 lowering is handed: the field builder, the class declarer, the alias declarer, the
 keyword screen, D3's name rules and the carriers.  The module TEXT -- the header, the
 import block, the ``__all__`` -- is ``render.module``'s, because it is text (§7);
@@ -53,9 +55,10 @@ callables carried on :class:`compiler.Module`, which is how a lowering decided a
 child node and named a constraint.  ``codegen/__main__.py`` removes the reason: no
 module of this compiler is ever bound as ``__main__``, so this module is imported
 once, by name, on every path.  :func:`decide_type` is therefore reached through
-``compiler.decide`` and :func:`name_the_constraint` through ``compiler.carried``,
-and the context carries DATA rather than functions.  ``tests/test_import_rule.py``
-is down to the two boundaries that are about design (§8, §9).
+``compiler.lower_node`` and ``lower.scalars.name_the_constraint`` through
+:func:`codegen.compiler.carried`, and the context carries DATA rather than functions.
+``tests/test_import_rule.py`` is down to the two boundaries that are about design
+(§8, §9).
 
 The bundle directory is an argument (D9) and there is no default, so no version
 literal can enter this package.  The output path is a function of the document
@@ -305,22 +308,25 @@ def decide_type(
     It wraps rather than living inside the dispatch because both apply to every arm
     equally -- an array, a scalar, a mapping and a multi-type node are all annotations
     with no name -- and §5 says the dispatch "contains no decision beyond the route", so
-    the two tests sit outside it.  §14 step 7 moves both into ``lower/names.py`` as a pass
-    over the finished module.  A class or an enumeration comes
-    back ``local`` already, having declared itself under this very ``name_hint``, so
-    nothing is named twice and no second symbol appears for one node.
+    the two tests sit outside it.  **Both READINGS are ``lower/names.py``'s already**
+    (§14 step 7): ``names.same_node`` is the equality and ``names.adopt`` binds a later
+    position's own name to the first position's class.  What stays here is the CALL, and
+    it has to -- a second occurrence's children are never lowered, so the pruning is a
+    decision about the walk.  A class or an enumeration comes back ``local`` already,
+    having declared itself at its own POINTER (the dispatch carries no name), so nothing
+    is named twice and no second symbol appears for one node.
 
     ``mod.named`` is a function of the BUNDLE (``bundle.named_nodes``), not of the
     run's document set, so whether a node gets a name does not depend on who else was
     emitted.
 
-    **D3: nodes with identical content are one node.**  The memo is consulted BEFORE
-    ``_decide`` and seeded after it, so the second occurrence of a node decides to the
+    **D3: nodes with identical content are one node.**  The memo is consulted BEFORE the
+    dispatch and seeded after it, so the second occurrence of a node decides to the
     symbol the first DECLARED and no second class is written for it.  Three things
     make that the whole of the rule rather than an optimisation:
 
-    * The memo is seeded only where the walk declared a symbol AT THIS NODE'S OWN
-      POINTER (``mod.declared.get(pointer)``), which is exactly D2's class and
+    * The memo is seeded only where the walk declared at THIS NODE'S OWN
+      POINTER (``mod.at.get(pointer)``), which is exactly D2's class and
       enumeration rows and :func:`compiler.name_the_node`'s alias.  An annotation
       declares nothing, so an identical annotation is simply decided again -- to the
       same annotation, since the inputs are the same string -- and a ``$ref`` whose
@@ -333,7 +339,7 @@ def decide_type(
       pairs survive the run, and clause 1 of the check reddens by name if one appears.
     * **The CLASS is declared at the node's first position in the document's own key
       order, and every other position derives its own name and binds the same class**
-      (:func:`bind_the_same_node`).  D3 derives a name PER POSITION, so a node at two
+      (:func:`codegen.lower.names.adopt`).  D3 derives a name PER POSITION, so a node at two
       positions has two derivations and no rule in the plan picks between them -- and it
       does not have to, because the dedup is about classes and a name bound to a class is
       not a second class.  Measured first, because the three readings that would need one

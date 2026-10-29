@@ -9,15 +9,23 @@ produces is ``codegen.ir``: **nothing here holds a string of Python**
 declaration into text.
 
 **D13 puts the shared machinery here and not in ``codegen.emit``**, and the reason
-is an import rule rather than a preference.  A lowering under ``codegen/lower/``
-imports this module and ``codegen.refusal`` and nothing else of this package: it
-never imports ``codegen.emit``, because ``emit`` holds the dispatch table that
-names it, and an import back the other way closes a cycle that ``python -m
-codegen.emit`` resolves into TWO module objects rather than into an ``ImportError``
+WAS an import rule rather than a preference.  A lowering under ``codegen/lower/``
+could name this module and ``codegen.refusal`` and nothing else of this package: it
+could not name ``codegen.emit``, because ``emit`` held the dispatch table that
+named it, and an import back the other way closed a cycle that ``python -m
+codegen.emit`` resolved into TWO module objects rather than into an ``ImportError``
 -- the failure D12 already exists to prevent for ``Refusal``, one layer in.  A
-``TYPE_CHECKING`` import hides that cycle from the type checker without removing
-it, because the lowering needs the machinery at RUN time.  So the machinery moves,
+``TYPE_CHECKING`` import hid that cycle from the type checker without removing
+it, because the lowering needs the machinery at RUN time.  So the machinery moved,
 which is what makes the one-directional import true rather than intended.
+
+**That prohibition is RETIRED and ``codegen/lower/__init__.py`` records why.**
+``codegen/__main__.py`` removed the double binding, so there is one ``codegen.emit``
+on every path and the rule has nothing left to prevent: ``codegen/lower/decide.py``
+imports eight handler modules of its own package by name.  The reading that survives
+is the one ``tests/test_import_rule.py`` still holds, and it is down to the two
+boundaries §§8-10 decide on their own merits -- no Pydantic in the walk, no walk in
+the verifier.
 
 What is here, in D13's own terms: the field builder (:func:`fields`), the class
 declarer (:func:`declare_object`, and :func:`declare_alias` beside it for a root
@@ -35,17 +43,27 @@ name was forbidden while ``python -m codegen.emit`` bound that file twice under
 ``runpy``.  ``codegen/__main__.py`` ended that, and :func:`decide` is the name:
 one function, one deferred import, and a :class:`Module` carrying data.
 
-**§14 steps 5 and 7 dissolve this module.**  The node kinds and the one parser take
-:func:`check_keywords`, the applied-type reading and the per-node dispatch
-(``codegen/schema/``); the naming pass takes :func:`class_name`, :func:`field_name` and
-:attr:`Module.declared` (``codegen/lower/names.py``); the handlers take
-:func:`lower_object` and :func:`lower_composition` (``codegen/lower/<kind>.py``).  Two
-things follow that are named rather than hidden: :attr:`Module.bind` is still a CLOSURE
-over the run, which step 7 replaces with a dependency-ordered ``targets`` map; and
-:func:`field_name` still reads what pydantic's ``BaseModel`` carries, which is the one
-model-layer import left outside ``codegen.render`` and which step 7 has to answer when
-the name rules move into ``lower/`` -- ``tests/test_import_rule.py`` names it and the
-set it sits in may only shrink.
+**§12 would dissolve this module, and NO ROW OWNS THAT.**  It is not a step a lane is
+behind on, and this docstring used to say it was.  Most of what §12 names has already
+moved and each piece has a READING a test holds rather than a line count:
+``codegen/schema/parse.py`` is the only entry that reads a raw mapping
+(``tests/test_import_rule.py::test_the_parser_is_the_only_entry_that_reads_a_raw_mapping``),
+``codegen/lower/decide.py`` is the exhaustive ``match`` over the node kinds, and
+``codegen/lower/names.py`` is the naming pass -- :func:`class_name` and
+:func:`field_name` here are re-bindings of that module's, kept so every existing reader
+has one spelling.  What is left in this file is a residue, and it is INTERNAL: no
+consumer of ``src/adcp`` can observe how many lines it has or which modules import it.
+``docs/plan/unimplemented.md`` Part B is where that is recorded and why it gets no
+verdict -- a maintainability preference, done when it pays for itself, and explicitly
+not a gate.
+
+**The two debts the old wording named are PAID, which is why naming them here was
+misleading.**  ``Module.bind`` -- the last callable carried on the context -- is gone and
+:attr:`Module.targets` is the dependency-ordered map that replaced it.  And
+:func:`field_name` no longer reads what pydantic's ``BaseModel`` carries: ``render.py``
+derives the set (``render.RESERVED``), the run hands it to the walk as DATA, and
+``names.field_name`` takes it as an argument -- so ``tests/test_import_rule.py``'s
+``MODEL_LAYER_EXCEPTIONS`` is empty, and it may shrink and not grow.
 """
 
 from __future__ import annotations
@@ -110,7 +128,7 @@ def inert_beside_a_reference(
     "referring node wins" to ANNOTATION siblings.
 
     So this is the co-occurrence, decided in ONE place and read by the two arms that
-    meet it -- ``emit._decide``'s reference arm and
+    meet it -- ``lower/references.py``'s arm of the one dispatch and
     :func:`lower_composition`'s ``$ref``-conjunct arm.  Both refused as VERDICTS on
     the sibling before, which is the self-undermining reason the epic recorded: if
     draft-07 ignores the keyword it constrains no instance, so the obstruction belongs
@@ -887,15 +905,18 @@ class Module:
     #: than declaring a second class for it.  Written and read by ``emit.decide_type``,
     #: which is the one per-node walk.
     #:
-    #: **The equality is §4's own**, and that is what §14 step 5 deletes
-    #: ``emit.content_key`` for: "two nodes are equal exactly when they state the same
-    #: thing about an instance -- which is §4's content dedup read off the type system
+    #: **The equality is §4's own**, and that is what §14 step 5 deleted the old
+    #: ``content_key`` serialisation for: "two nodes are equal exactly when they state the
+    #: same thing about an instance -- which is §4's content dedup read off the type system
     #: rather than off a JSON serialisation with a position bit appended".  So the memo is
     #: a SEQUENCE and not a mapping: a node carries mappings and is not hashable, and the
     #: alternative is a second spelling of what identical means, which is §9's own open
-    #: question about two instruments disagreeing about identity.  §14 step 7 is where the
-    #: memo becomes a pass over the finished module (``lower/names.py``) and the linear
-    #: scan goes with it; it is per MODULE, so the sequence is tens of entries long.
+    #: question about two instruments disagreeing about identity.  **The READING is
+    #: ``lower/names.py``'s already** (§14 step 7): ``names.same_node`` is the equality and
+    #: ``names.adopt`` the binding, and what stays on the walk is this record and the call
+    #: that consults it -- a second occurrence's children are never lowered, so the pruning
+    #: is a decision about the walk.  Per MODULE, so the linear scan is over tens of
+    #: entries.
     #:
     #: **A ``$ref`` is compared as a STRING and never followed, which is the CUT** §9 says
     #: the comparison has to state: :class:`codegen.schema.nodes.Reference` carries the
@@ -988,8 +1009,10 @@ class Module:
     #: GRADER reads, which is why it rides into the emitted module (§7) where the other
     #: two ride out to the report.
     #:
-    #: **Empty over the whole bundle at §14 step 8**, which is that step's exit condition:
-    #: no cell widens, so no handler mints one, and ``APPROXIMATED`` is 0.
+    #: **It was EMPTY over the whole bundle at §14 step 8**, which was that step's exit
+    #: condition: no cell widened, so no handler minted one and ``APPROXIMATED`` was 0.
+    #: Step 10 widened the cells and handlers mint them now; ``./check``'s third line is
+    #: the reading, and it is not zero.
     approximations: list[Approximation] = field(default_factory=list)
 
     #: What the PARSER is handed about this document: its path and the pointers an
@@ -3162,7 +3185,8 @@ def lower_composition(
     ``(node, name, pointer, module)`` like every other lowering (D13), reads the pointer
     it is handed, and ``declare_object`` names whatever node that is.  A document ROOT
     and a composition at a property or deeper reach it through the SAME arm of
-    ``emit._decide``, which is §5's "root and non-root are one path": there was a table
+    :func:`codegen.lower.decide.decide`, which is §5's "root and non-root are one path":
+    there was a table
     of root selectors above this and §14 step 5 deleted it, because dispatching on a
     root's KIND is the second reading of the one the walk makes per node (§11).
     Measured over the 3.2 bundle: of the 67 documents whose composition this step was
@@ -3488,7 +3512,7 @@ def lower_composition(
             # siblings compile to nothing and are REPORTED** -- §5's ``$ref`` row as
             # the design owner settled it on 2026-10-25, read through
             # :func:`inert_beside_a_reference` so that this arm and
-            # ``emit._decide``'s reference arm decide one co-occurrence once.  The
+            # ``lower/references.py``'s arm decide one co-occurrence once.  The
             # conjunct is then the bare ``$ref`` it effectively is, and the base arm
             # below binds it.
             #

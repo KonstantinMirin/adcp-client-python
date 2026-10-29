@@ -26,10 +26,13 @@ this layer is not a Pydantic idiom: §8 says naming a symbol is not one, while
 constructing a ``Field``, a ``ConfigDict``, an ``Annotated`` or a ``DataType`` is, and
 only ``render.py`` does that.
 
-**A declaration carries no name of its own choosing.**  ``name`` is still a field here
-because the walk computes one today; §7 and §14 step 7 move naming into
-``codegen/lower/names.py`` as a pass over the finished module, keyed by POINTER.  This
-layer is what that pass will rewrite, not where it lives.
+**A declaration carries no name of its own choosing, and that is the state rather than
+the plan.**  ``name`` is a field here, and during the walk it holds the node's own
+POINTER: ``codegen/lower/names.py`` is the pass over the finished module that rewrites
+every slot into a symbol (§7, §14 step 7).  This docstring used to say the walk computed
+a name and that the pass was coming; both stopped being true when step 7 landed.  The
+READING: ``codegen/compiler.py``'s class declarer passes ``name=pointer``, and
+``names.assign`` is the one function that turns those keys into §7's symbol table.
 
 ``TypeRef.validators`` is the same arrangement one level down: ``AtLeastOne``,
 ``NotValue`` and ``Distinct`` are declared in ``adcp.types._runtime`` beside the
@@ -98,20 +101,22 @@ ROOT_FIELD = "root"
 #: (and so part of the decided :class:`TypeRef`), an annotation (and so a field's
 #: ``description``), a rule (``ClassDecl.rules``), or a keyword the walk refuses.
 #:
-#: Declared HERE because this is the layer that declares what ``facts`` may hold, and
-#: because two readers ask: the walk, cutting a scalar node's constraints out of the node
-#: (``emit._scalar``), and ``codegen.render``, filtering them into the model layer's
-#: ``constraints=``.  One declaration, so the two cannot disagree about what a constraint
-#: IS; pydantic's own spelling of the two that differ is ``render.KEY_COUNT`` and stays
-#: behind the §8 boundary.
+#: Declared HERE because this is the layer that declares what ``facts`` may hold.  It had
+#: two readers -- the walk, cutting a scalar node's constraints out of the raw node, and
+#: ``codegen.render``, filtering them into the model layer's ``constraints=``.  **The
+#: walk's half is gone**: ``codegen/schema/parse.py`` classifies a node's own facts from
+#: the table at its position (``nodes.Base``'s ``facts``, DERIVED), so ``render.py``'s
+#: filter is the one reader left of this tuple.  pydantic's own spelling of the two that
+#: differ is ``render.KEY_COUNT`` and stays behind the §8 boundary.
 #:
 #: ``docs/plan/architecture.md`` §11 says this should be derived -- "the annotation set,
 #: the rule-keyword set, the constraint spelling in three modules | rows of the table" --
 #: and §3 declares no column that answers it: a cell's ``effect`` is ``TYPE`` for
 #: ``type``, ``enum``, ``const`` and ``format`` as well, and ``uniqueItems`` is ``RULE``.
-#: §14 step 5's ``schema/parse.py`` is the mechanism that reaches it: a parsed node
-#: carries its own facts, classified from the table at its position, and this set is what
-#: that classification replaces.
+#: §14 step 5's ``schema/parse.py`` is the mechanism that reached it, and it has: a parsed
+#: node carries its own facts, classified from the table at its position, which is what
+#: this tuple was replaced BY on the walk's side.  What survives here is the renderer's
+#: filter, and §11's row is still pointed at that.
 FACTS = (
     "minimum",
     "maximum",
@@ -500,19 +505,24 @@ class RootModelDecl:
     and for a mixed root union the dispatch facts -- a root that is an array, a mixed
     union, or a document stating no schema keyword."
 
-    Three rows of the semantics document reach it and all three are section 14 step 9's,
-    not this row's: section 5's ``items`` row at ROOT ("array -> ``RootModel[list[X]]``"),
-    section 4's new mixed-root-union row ("A ``Union`` at ROOT mixing the two lowers to a
-    ``RootModelDecl`` over the union of the branches' types, with the class branches
-    declared beside it and the dispatch facts on the root model"), and section 7's
-    registry row ("a root stating only these keys is a permissive root model").
+    Three rows of the semantics document reach it: section 5's ``items`` row at ROOT
+    ("array -> ``RootModel[list[X]]``"), section 4's mixed-root-union row ("A ``Union`` at
+    ROOT mixing the two lowers to a ``RootModelDecl`` over the union of the branches'
+    types, with the class branches declared beside it and the dispatch facts on the root
+    model"), and section 7's registry row ("a root stating only these keys is a permissive
+    root model").
 
-    **Declared here with no producer, which is what makes each of those a one-handler
-    change against a slot that exists** -- the same arrangement ``Field.deprecated`` and
-    ``ClassDecl.branches`` were declared under, and the reason section 14 orders the
-    structure before the rows.  ``codegen/render.py`` renders it, and
-    ``tests/test_approximation.py`` grades that rendering against a hand-built declaration,
-    so the path from a declaration to text is exercised before a handler writes one.
+    **It HAS a producer and the tree carries its output.**  This docstring was written
+    when it did not -- "declared here with no producer", on the precedent
+    ``Field.deprecated`` and ``ClassDecl.branches`` set, which is why section 14 orders
+    the structure before the rows -- and section 14 step 9 has since landed.  The READING
+    rather than a count: ``codegen/compiler.py`` is the one mint site, and a module of
+    the emitted tree declares a root model exactly where it names
+    :data:`codegen.render.ROOT_MODEL` in a base list, so
+    ``grep -rl AdCPRootModel`` over a fresh tree is the census and it is not empty.
+    ``codegen/render.py`` renders the declaration and ``tests/test_approximation.py``
+    grades that rendering against a hand-built one, so the path from a declaration to
+    text is exercised independently of which handler writes it.
 
     *Why a declaration of its own and not a ``ClassDecl`` with a flag.*  A root model's
     body is a ``root:`` annotation and a class's is a field list, so the two differ in
@@ -523,8 +533,9 @@ class RootModelDecl:
     their document accepts".
 
     The runtime base a renderer writes it through is ``AdCPRootModel``, which section 8 of
-    the architecture document declares and step 9 adds; until then the renderer names it
-    and no emitted module imports it, so nothing of the committed tree moves.
+    the architecture document declares and ``src/adcp/types/_base.py`` carries.  The
+    emitted modules import it: the sentence here used to say none did, which stopped being
+    true when step 9 landed the handlers.
     """
 
     name: str
@@ -617,9 +628,12 @@ class Module:
     #: are comparable.  ``render.py`` distributes them onto the declarations whose nodes
     #: contain them (``render.declared_at``), which is the pairing §9 grades over.
     #:
-    #: **Empty over the whole bundle at §14 step 8**, which is that step's exit condition:
-    #: the instrument exists and no cell widens, so every module's declaration is empty
-    #: and the emitted tree does not move.
+    #: **It was EMPTY over the whole bundle at §14 step 8**, which was that step's exit
+    #: condition -- the instrument existed, no cell widened, and the emitted tree did not
+    #: move.  Step 10 widened the cells and it is populated now.  The READING, so a figure
+    #: here cannot go stale: ``./check``'s third line prints how many facts in how many
+    #: documents the run declares, and ``tests/test_the_declared_backlog.py`` holds the
+    #: equality between what the run mints and what the tree declares.
     approximations: tuple[Approximation, ...] = ()
 
 

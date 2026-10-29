@@ -22,12 +22,15 @@ constrained scalar it meets:
    ``adcp.types.constraints``.
 
 **An alias has no document, so it has no domain.**  Every other type this
-pipeline emits is reachable at ``adcp.types.<domain>.<Name>`` where the domain is
-the document's own path (D1).  A type derived from a constraint belongs to no
-document, so inventing a domain for it would be naming it after a concept, which
-D5 forbids.  One module holds them all, it is PUBLIC (a consumer annotating
-application code imports from it), and it is named for what it holds rather than
-for ``Annotated``, which is only the mechanism.
+pipeline emits is reachable through the module of its OWN DOCUMENT, at the
+document's path under ``adcp.types._schemas`` (D1 gives the derivation; the
+module tree is where it resolves, and D1's public per-domain re-export is a goal
+rather than a surface -- ``docs/plan/unimplemented.md`` A-2).  A type derived
+from a constraint belongs to no document, so there is no such module for it, and
+inventing a domain would be naming it after a concept, which D5 forbids.  One
+module holds them all, it is PUBLIC (a consumer annotating application code
+imports from it), and it is named for what it holds rather than for
+``Annotated``, which is only the mechanism.
 
 **An alias names a constraint, never a concept.**  :func:`symbol` derives the
 name from the constraint and from nothing else -- never from a property key,

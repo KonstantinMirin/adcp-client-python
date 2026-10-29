@@ -102,9 +102,9 @@ from codegen.refusal import BuildFailure
 #: ``render._import_rank``'s grouping.
 #:
 #: It is PUBLIC, beside ``adcp.types.constraints``, for the reason §1 of the semantics
-#: document gives that module: what it holds has no document, so it has no domain for the
-#: binding table to give it, and a consumer annotating application code has one path to it
-#: and no second spelling.
+#: document gives that module: what it holds has no document, so there is no document
+#: module for it to be reached through, and a consumer annotating application code has
+#: one path to it and no second spelling.
 BASE = "FailedResponse"
 MODULE = f"{ir.BASE_MODULE.rsplit('.', 1)[0]}.envelopes"
 

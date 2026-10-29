@@ -48,13 +48,20 @@ module of the walk --
 ``tests/test_import_rule.py::test_the_verifier_reaches_no_module_of_the_walk_transitively``
 is what measures it.
 
-**The registry is EMPTY today, and that is the row's exit condition rather than an
-omission.**  This row widens no cell, so no widening exists to attribute: section 14 step
-8 is "the approximation, end to end, with no cell widened", and step 10 is where the
-entries arrive -- "the upstream issues must be filed before this step lands, not after:
-``attribution.py`` admits no entry without one, so an unfiled issue is a build failure and
-the step cannot be completed around it."  ``adcp-client-python-10l.22`` is the row that
-files them.
+**The registry is EMPTY, and it is not a step's exit condition any more.**  It was one:
+the row that built this module widened no cell, so no widening existed to attribute --
+section 14 step 8 is "the approximation, end to end, with no cell widened".  That row's
+note then quoted step 10 as "the upstream issues must be filed before this step lands,
+not after ... the step cannot be completed around it", and **that sentence was
+WITHDRAWN** by the design owner on 2026-10-26: step 10 as it stands says the issues do
+not block it, because a compiler's own completion cannot wait on a third party's issue
+tracker.  The gate moved onto the WORD instead: an attribution is OURS until an issue
+exists, and only an UPSTREAM one needs a live reference -- :class:`Issue` is where that
+is enforced, and it raises rather than admitting a reference-less entry.  So the registry
+being empty is the reading that every declared approximation is OURS, which
+``python -m codegen``'s report prints as the ours/upstream split and never sums; filing an
+issue reclassifies an attribution and changes no type and no emission.
+``adcp-client-python-10l.22`` is the filing row and nothing waits on it.
 """
 
 from __future__ import annotations
@@ -114,9 +121,10 @@ class Issue:
 #: carries, because the key of this registry IS the approximation's own address.
 Site = tuple[str, str, str]
 
-#: **The registry: site -> upstream issue.**  Empty, by section 14 step 8's exit
-#: condition; the module docstring says which row fills it and why it cannot be filled
-#: around an unfiled issue.
+#: **The registry: site -> upstream issue.**  Empty, and the module docstring says why
+#: that is a READING and not a gap: an attribution is OURS until an issue exists, so an
+#: empty registry means every declared approximation is ours and none is claimed as
+#: upstream without a filed reference.
 REGISTRY: Mapping[Site, Issue] = {}
 
 
