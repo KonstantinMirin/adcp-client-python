@@ -456,6 +456,22 @@ class TargetBranches:
     #: One per branch, in the target's own branch order, which is the order
     #: :attr:`codegen.ir.ClassDecl.branches` records and the order the document lists.
     of: tuple[Target, ...]
+    #: The INDICES in :attr:`of` whose intersection with what the composing node asserts
+    #: is provably empty, and which §5's distribution clause therefore DROPS.
+    #:
+    #: Recorded as a set of indices rather than by filtering :attr:`of`, and the reason
+    #: is the POINTER: a branch class sits at ``<conjunct>/<combinator>/<index>``
+    #: (:func:`_distributed_pointer`), which is the target's own branch position in the
+    #: document of record -- so a dropped branch must not renumber the ones after it, or
+    #: §8 would pair every surviving class against the wrong branch node.  Keeping the
+    #: list whole and the drop beside it makes that impossible to get wrong, and it keeps
+    #: the drop READABLE: a refusal and a report can say which branches went and why.
+    dropped: frozenset[int] = frozenset()
+
+    @property
+    def live(self) -> tuple[tuple[int, Target], ...]:
+        """The surviving branches, each with its index in the target's own list."""
+        return tuple((i, b) for i, b in enumerate(self.of) if i not in self.dropped)
 
 
 def branches_of(
@@ -2087,6 +2103,85 @@ _NOT_A_BASE: Mapping[TargetKind, str] = {
 }
 
 
+def _asserted_properties(
+    node: "nodes.Base", conjuncts: Sequence["nodes.Conjunct"]
+) -> dict[str, list[dict]]:
+    """Every DECLARATION this node and its conjuncts state about each property key.
+
+    §2 computes an intersection over DECLARATIONS, so the question "does this node's
+    statement about ``type`` admit anything a branch's does" is asked here, of the raw
+    declarations, and not of decided fields -- which is also what makes it answerable
+    BEFORE the field loop has run (:func:`lower_composition`'s own order).
+
+    A LIST per key and not a merge, because the reading below needs no merge:
+    ``(V1 and V2 and B)`` admits nothing as soon as ANY ``(Vi and B)`` does, so asking
+    each view separately is sound and avoids computing an intersection this function has
+    no reason to compute.  Flattened through a nested ``allOf`` for the reason
+    ``schema.parse.applies_to_one_instance`` states: an ``allOf`` of an ``allOf``
+    conjoins just the same.
+    """
+    out: dict[str, list[dict]] = {}
+
+    def collect(declared: Any) -> None:
+        if not isinstance(declared, Mapping):
+            return
+        for key, declaration in declared.items():
+            if isinstance(declaration, dict):
+                out.setdefault(key, []).append(declaration)
+
+    def descend(raw: Any) -> None:
+        if not isinstance(raw, Mapping):
+            return
+        collect(raw.get("properties"))
+        nested = raw.get("allOf")
+        if isinstance(nested, list):
+            for one in nested:
+                descend(one)
+
+    collect(getattr(node, "declared", {}))
+    for conjunct in conjuncts:
+        descend(conjunct.raw)
+    return out
+
+
+def _surviving(
+    asserted: Mapping[str, list[dict]], branches: TargetBranches
+) -> TargetBranches:
+    """``branches`` with every branch whose intersection with what this node asserts is
+    PROVABLY empty recorded as dropped.
+
+    §5's ``$ref`` row at CONJ: "A distributed branch whose intersection is EMPTY is
+    DROPPED, and the node refuses only where every branch is: ``(A | B | C) and D`` with
+    ``A and D`` empty is exactly ``(B and D) | (C and D)``, so the accepted set is
+    unchanged and nothing is approximated."  Dropping an empty disjunct is an EXACT
+    simplification in both directions -- it admits nothing the document admits and
+    refuses nothing the document refuses -- which is why no approximation is declared
+    for one and why §5's empty-intersection row says this is not the node that row is
+    about.
+
+    The drop is recorded and the list is kept whole, for the reason
+    :attr:`TargetBranches.dropped` states: the branch class's pointer is its index in the
+    target's own branch list, so renumbering would pair every survivor against the wrong
+    branch node.
+
+    :func:`_provably_empty` is the whole of the test, and its docstring carries why it is
+    not :func:`_restatement`'s ``None``.
+    """
+    return replace(
+        branches,
+        dropped=frozenset(
+            index
+            for index, branch in enumerate(branches.of)
+            if any(
+                _provably_empty(stated, branch.declares.properties[key]) is not None
+                for key, views in asserted.items()
+                if key in branch.declares.properties
+                for stated in views
+            )
+        ),
+    )
+
+
 def _distributes(
     node: "nodes.Base",
     where: str,
@@ -2924,8 +3019,53 @@ def lower_composition(
                 if stating is not None:
                     conjunct_rules.append(stating)
                     continue
-                conjoined.append((where, target, reference))
-                continue
+                if target.branches is not None:
+                    # **§5's distribution clause drops a branch whose intersection with
+                    # what this node asserts is PROVABLY empty, and the drop is decided
+                    # HERE because it can be** -- it is a question about DECLARATIONS
+                    # (:func:`_asserted_properties`), which §2 is where every intersection
+                    # is computed, and the raw declarations are all read before this loop
+                    # starts.  The two answers that depend on the whole conjunct list are
+                    # still :func:`_the_conjuncts_own_type`'s and are unchanged.
+                    #
+                    # **One survivor is not a distribution at all**: "(A | B | C) and D"
+                    # with two disjuncts empty is "(C and D)", a conjunction of two
+                    # declarations and nothing more -- so the branch is a class declaring
+                    # fields and §5's CONJ rule for one applies as stated, "a BASE where
+                    # the target is a class declaring fields".  It falls through to the
+                    # arm below with no special case, which is the coordinator's own
+                    # reading of the clause: one class and no dispatch.  §2's restatement
+                    # rule then decides every key the node and the survivor both declare,
+                    # through the machinery that already answers it for every other class
+                    # base -- so nothing shadows anything and no second intersection is
+                    # written.
+                    asserted = _asserted_properties(node, conjuncts)
+                    live = _surviving(asserted, target.branches)
+                    if not live.live:
+                        # Every disjunct empty, which is the node §5's empty-intersection
+                        # row IS about: "the node admits nothing, which is a contradiction
+                        # in the document".  0 sites over the portable population.
+                        return Refusal(
+                            "allOf",
+                            where,
+                            f"every branch of {target.symbol} intersects to nothing with "
+                            f"what this node asserts about {sorted(asserted)}: section 5's "
+                            "$ref row distributes the conjunction over the target's "
+                            "branches and drops an empty one, and with every branch empty "
+                            "the node admits no instance at all",
+                            kind=kind_for("allOf", Position.CONJ),
+                        )
+                    if len(live.live) > 1:
+                        conjoined.append((where, replace(target, branches=live), reference))
+                        continue
+                    # The one survivor stands as a BASE, so its own symbol is what this
+                    # module imports -- the UNION ROOT's, which ``_conjunct_base``
+                    # recorded, is no longer named anywhere.
+                    target = live.live[0][1]
+                    mod.importing(target.symbol, target.where)
+                else:
+                    conjoined.append((where, target, reference))
+                    continue
             # A base another MODULE declares, carried as the symbol the module writer
             # imported: §7 makes ``bases`` ``TypeRef``s so one slot holds that beside a
             # base this module declares, which travels by pointer until the pass runs.
@@ -3591,7 +3731,12 @@ def _distribute(
     """
     base_shape = mod.shapes[base]
     declared: list[ir.TypeRef] = []
-    for index, branch in enumerate(branches.of):
+    # **The LIVE branches, and the index is the target's own** -- §5's distribution
+    # clause drops a branch whose intersection is provably empty, and
+    # :attr:`TargetBranches.dropped` says why the dropped one is skipped rather than
+    # filtered out: the index IS the pointer, so renumbering would pair every survivor
+    # against the wrong branch node.
+    for index, branch in branches.live:
         pointer = _distributed_pointer(where, branches, index)
         if branch.naming is None:
             # §4 "Names" derives a branch's name from its own declaration, and the facts
@@ -4222,6 +4367,71 @@ def _intersection(
 #: and a child stating one says nothing about the other, so merging the base's is
 #: correct and is what section 2's "a bound is the tighter one" means per keyword.
 _AXES: tuple[frozenset[str], ...] = (frozenset({"const", "enum"}),)
+
+
+def _type_words(stated: Any) -> frozenset[str]:
+    """A ``type`` keyword's words as a set: one word, a list of words, or nothing.
+
+    ``frozenset()`` for a ``type`` the node does not state and for one whose value is
+    neither a word nor a list of them, which is what makes :func:`_provably_empty`
+    answer "not provably" rather than "empty" for a malformed declaration.
+    """
+    if isinstance(stated, str):
+        return frozenset({stated})
+    if isinstance(stated, list):
+        return frozenset(w for w in stated if isinstance(w, str))
+    return frozenset()
+
+
+def _provably_empty(child: dict, base: dict) -> str | None:
+    """The keyword at which two declarations of ONE property intersect to NOTHING, or
+    ``None`` where this cannot prove they do.
+
+    §5's ``$ref`` row at CONJ, distribution clause: "A distributed branch whose
+    intersection is EMPTY is DROPPED ... **The emptiness must be PROVED from the pins the
+    two sides state** -- disjoint ``const``\\ s, disjoint ``enum``\\ s, disjoint type
+    words -- which is the same test the empty-intersection row names; an intersection
+    this compiler cannot compute is the restatement row and not this one."
+
+    **That last clause is the whole of why this is a predicate of its own and not
+    ``_restatement(...) is None``.**  :func:`_restatement` answers ``None`` for every
+    pair it cannot ORDER, which is a strictly larger set than the pairs it can prove
+    admit nothing -- its own docstring names the case: "a shared keyword where the CHILD
+    is LOOSER refuses, where §2 would have the field carry the base's", and
+    ``minimum: 1`` beside a base's ``minimum: 3`` admits every value from 3 up.  A branch
+    dropped on that answer would be dropped for a conjunction that admits something,
+    which is a model NARROWER than its document -- the one direction §2 forbids outright
+    and the defect this whole clause is fenced against.  So the two questions are asked
+    by two functions: "can I order these" is :func:`_restatement`'s and "do these admit
+    nothing" is this one's, and nothing here is reused to answer the other.
+
+    Two proofs, and deliberately no third:
+
+    * **Disjoint vocabularies.**  Read through :func:`_as_enum`, which is the same
+      rewrite :func:`_at_least_as_tight` compares through -- a ``const`` is a one-member
+      ``enum`` -- so ``const`` against ``const``, ``const`` against ``enum`` and ``enum``
+      against ``enum`` are one reading and not three.  No member in common means no
+      instance satisfies both, which is a proof and not an estimate.
+    * **Disjoint type words.**  draft-07's ``type`` is the instance's JSON type, so two
+      sets of words with no word in common admit no instance between them.  A node
+      stating no ``type`` states nothing to be disjoint FROM, which is why
+      :func:`_type_words` answers with an empty set and an empty set proves nothing.
+
+    A bound, a pattern, a ``required`` naming a key the other forbids: each of these CAN
+    make a conjunction empty and none of them is read here, because the reading would be
+    an inference rather than a pin.  This function being incomplete is safe in exactly
+    one direction -- a branch it fails to drop is kept, and a kept branch that admits
+    nothing is a model WIDER than its document, which §2 permits and ``strict_validate``
+    refuses the payload for.
+    """
+    c, b = _as_enum(_constraining(child)), _as_enum(_constraining(base))
+    if isinstance(c.get("enum"), list) and isinstance(b.get("enum"), list):
+        if not [member for member in c["enum"] if member in b["enum"]]:
+            return "enum"
+    words_c, words_b = _type_words(c.get("type")), _type_words(b.get("type"))
+    if words_c and words_b and not words_c & words_b:
+        return "type"
+    return None
 
 
 def _restatement(
