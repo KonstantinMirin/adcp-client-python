@@ -197,6 +197,27 @@ class TypeRef:
     #: a ``None`` default could not be told from an absent one.  One member is all
     #: a ``const`` has; the plural is the model layer's spelling of the slot.
     literals: tuple[Any, ...] = ()
+    #: **§5's ``enum`` row at CONJ: the MEMBER NAMES of the enumeration :attr:`path`
+    #: names, where a conjunct's own vocabulary narrows the target's to a subset.**  The
+    #: rendering the row decides is ``Literal[CreativeApprovalStatus.PENDING_REVIEW, …]``
+    #: -- a ``Literal`` over the target's members and not over their raw values, because
+    #: both dump identically and the member form keeps the imported symbol a caller can
+    #: name.
+    #:
+    #: A SLOT OF ITS OWN, and :attr:`literals` could not carry it for the very reason
+    #: that field's own comment records: the model layer's ``literals`` renders a VALUE,
+    #: and spelling a member as a path instead hits ``treat_dot_as_module``, which reads
+    #: the dot as a module qualifier.  Probed on the pinned version --
+    #: ``TypeRef("typing.Literal", container="alias", of=(TypeRef("X.A"), TypeRef("X.B")))``
+    #: renders ``Literal[A, B]``, both members' qualifier gone -- so the subscript is
+    #: composed in ``render.py`` exactly as ``container="alias"``'s is, and for the same
+    #: stated reason: the walk decides the enumeration and the members, the renderer
+    #: writes the text.
+    #:
+    #: Python IDENTIFIERS and not the document's values: they are the names
+    #: ``lower.enum.member_name`` minted on the DECLARING side, so a member here is a
+    #: name that module already binds.
+    members: tuple[str, ...] = ()
     #: **The constraint keywords this type carries, in the DOCUMENT'S OWN SPELLING**
     #: (§7).  §2 of the semantics document: *constraints bind to the type, not the
     #: field* -- so a bound travels with the type into ``list[...]``, into a mapping

@@ -2041,6 +2041,28 @@ def lower_object(
 #: refuses rather than choosing between them.
 INLINE = frozenset({"type", "properties", "required"})
 
+#: **A conjunct whose whole content is a VALUE SET**, which section 5's ``enum`` row at CONJ
+#: decides: "beside a ``$ref`` whose target is an enumeration -> section 2's intersection of
+#: the two vocabularies, rendered as a ``Literal`` over the TARGET's MEMBERS".
+#:
+#: Both spellings, because :func:`_as_enum` is the one reading of them -- "a ``const`` is a
+#: one-member ``enum``, and that is a rewrite rather than a rung" -- so the intersection is
+#: ONE computation over ``const`` vs ``const``, ``const`` vs ``enum`` and ``enum`` vs
+#: ``enum``, exactly as the restatement predicate makes it.
+#:
+#: **Population ONE, and that is measured over the whole shape rather than over this
+#: keyword** (``adcp-client-python-10l.84``): of every ``allOf`` in the bundle whose
+#: conjuncts are a bare ``$ref`` plus an inline conjunct stating none of ``type``,
+#: ``properties``, ``required``, ``additionalProperties`` or ``allOf`` -- 186 sites --
+#: ``if``/``then`` is 142, ``not`` 34, ``anyOf`` 3, ``oneOf`` 3, ``else``/``if``/``then``
+#: 2, ``errorMessage`` with ``not`` 1, and ``enum`` **1**.  Every one but the ``enum`` is a
+#: rule or a combinator and reaches a reader already (:func:`_a_rule_the_target_states`,
+#: ``lower.rules.on_a_value``, the combinator arm), so this is the only value-level
+#: conjunct the bundle states and ``const`` is the arm with no population -- written
+#: because :func:`_as_enum` makes it the same arm and leaving it out would be a second
+#: reading of a pin.
+_A_VALUE_SET = frozenset({"enum", "const"})
+
 #: What a conjunct may carry BESIDE its fields and its rules, each part lowered by the
 #: decision covering it.  Section 5 decides both, per keyword and at CONJ:
 #:
@@ -2675,6 +2697,111 @@ def _the_conjuncts_own_type(
     return Decided(ir.TypeRef(symbol, local=True))
 
 
+def _the_vocabularys_intersection(
+    decided: Decided,
+    stated: Sequence[tuple[str, Mapping[str, Any]]],
+    reference: "nodes.Reference",
+    mod: "Module",
+) -> Decided | Refusal:
+    """§5's ``enum`` row at CONJ: the TYPE :func:`_the_conjuncts_own_type` decided,
+    narrowed to the intersection of the target's vocabulary with the conjuncts' own.
+
+    "Beside a ``$ref`` whose target is an enumeration → §2's intersection of the two
+    vocabularies, rendered as a ``Literal`` over the TARGET's MEMBERS and not over their
+    raw values.  The two dump identically -- ``{"enum": [the members], "type":
+    "string"}`` -- so §8 compares the same fact either way, and the member form keeps the
+    imported symbol a caller can name: where §8 cannot tell two renderings apart, DX
+    decides."
+
+    **The intersection is computed over DECLARATIONS and the ORDER is the TARGET'S**, both
+    of which are §2's and neither of which is a preference.  The declaration is read
+    through :meth:`Module.resolve_node` -- the one reader §2's intersection rule has for a
+    reference -- because the symbol the reference was bound to carries no vocabulary, and
+    the whole of this row is a fact about the two value sets.  The order is the target's so
+    that the rendered annotation is a function of the document's content (P7) and not of
+    which conjunct the walk read first; the conjuncts are a FILTER over it.
+
+    **``const`` and ``enum`` are one computation** (:func:`_as_enum`, and
+    :data:`_A_VALUE_SET` says why): a ``const`` is a one-member vocabulary, so a pin
+    narrowing a target's members and a vocabulary narrowing them are the same intersection
+    asked twice.
+
+    Three refusals, each by name:
+
+    * **the target states no vocabulary** -- a value set beside a scalar, a container or a
+      union root.  The intersection has nothing to intersect WITH: §2 computes it over
+      declarations, and a declaration that enumerates nothing offers no member set, so
+      reading the conjunct's own vocabulary alone would state a fact the target does not
+      and reading neither would drop the document's.  0 sites.
+    * **the intersection is EMPTY** -- §5(b)'s empty-intersection row, which is the rung
+      :data:`_RUNG_AT` already puts on this very cell: "two disjoint enums.  The node
+      admits nothing, which is a contradiction in the document.  Rung TOP."  Attribution
+      upstream, and reported here rather than widened because the node admits no instance
+      at all.  0 sites.
+    * **two surviving members spell ONE Python name** -- the rendering names a MEMBER of
+      the target's class, so a collision means the target did not render as a class at all
+      (§5's ``enum`` row: two colliding spellings → a ``Literal`` and not an enum) and
+      ``Symbol.NAME`` would name nothing.  Read with the SAME ``member_name`` the
+      declaring side minted the names with, which is why that function is shared rather
+      than re-derived.  0 sites.
+
+    Where the intersection is the target's whole vocabulary the type is returned
+    UNCHANGED: the conjunct restates what the target already says, narrows nothing, and a
+    ``Literal`` over every member would render the same acceptance under a second spelling
+    (§1's one way to reach one class).
+    """
+    from codegen.lower.enum import member_name
+
+    where = stated[0][0]
+    target = mod.resolve_node(reference.uri)
+    members = target.get("enum") if isinstance(target, dict) else None
+    if not isinstance(members, list) or not members:
+        return Refusal(
+            "enum",
+            where,
+            f"a conjunct states a value set beside {reference.uri!r}, whose declaration "
+            "enumerates nothing: section 5's enum row at CONJ is section 2's intersection of "
+            "TWO vocabularies and there is only one here, so neither reading is the "
+            "document's -- the conjunct's alone states a set the target does not, and "
+            "dropping it loses the set the document does state",
+            kind=kind_for("enum", Position.CONJ),
+        )
+    surviving = list(members)
+    for _at, conjunct in stated:
+        vocabulary = _as_enum(_constraining(conjunct)).get("enum")
+        if not isinstance(vocabulary, list):
+            return Refusal(
+                "enum",
+                where,
+                f"a conjunct's value set is {vocabulary!r}, not a list of members",
+                kind=Kind.VERDICT,
+            )
+        surviving = [m for m in surviving if m in vocabulary]
+    if not surviving:
+        return Refusal(
+            "enum",
+            where,
+            f"the conjunct's value set and {reference.uri!r}'s intersect to nothing: "
+            "section 5's empty-intersection row says the node admits no instance at all, "
+            "which is a contradiction in the document and not a fact a model can widen to",
+            kind=kind_for("enum", Position.CONJ),
+        )
+    if surviving == list(members):
+        return decided
+    names = [member_name(m) for m in surviving]
+    if len(set(names)) != len(names):
+        return Refusal(
+            "enum",
+            where,
+            f"two of the surviving members {surviving!r} spell one Python name "
+            f"{sorted(names)!r}, so {reference.uri!r} did not render as an enum class "
+            "(section 5's enum row gives a colliding pair a Literal of the values) and "
+            "there is no member for this row's Literal to name",
+            kind=kind_for("enum", Position.CONJ),
+        )
+    return replace(decided, type=replace(decided.type, members=tuple(names)))
+
+
 def _conjunct_base(
     conjunct: Mapping[str, Any], where: str, mod: "Module"
 ) -> tuple[Target, "nodes.Reference"] | Refusal:
@@ -2976,7 +3103,18 @@ def lower_composition(
         combinator_of_shapes = _refuse_a_combinator_of_shapes(node, stated.screen)
         if combinator_of_shapes is not None:
             return combinator_of_shapes
+    #: **The node's own ``contains``, which §5's ``$ref`` row at CONJ counts among the
+    #: siblings that constrain the target** (:attr:`nodes.Composition.contains`, and §5's
+    #: "Two ARRAY declarations under one ``allOf``").  CLAIMED here and read below, which
+    #: is the pair §3 requires of a lowering cell: the cell says ``contains`` lowers at
+    #: CONJ, so a screen that drops it promises "a later row does" for a row that would
+    #: have to be this one.  It reached that promise, measured: the merged ``dimensions``
+    #: declaration of ``core/signal-coverage-forecast.json`` refused with
+    #: ``DEFERRED_TO_A_LATER_ROW`` on this very keyword.
+    contains = getattr(node, "contains", None)
     claimed = COMPOSING | stated.screen | ({union.combinator} if union is not None else set())
+    if contains is not None:
+        claimed = claimed | {"contains"}
     screened = check_keywords(node, claimed, mod=mod)
     if screened is not None:
         return screened
@@ -3030,6 +3168,11 @@ def lower_composition(
     required: set[str] = set(getattr(node, "required", ()))
     #: The conjuncts that state a RULE of this node rather than a base or fields.
     conjunct_rules: list[dict] = []
+    #: **The conjuncts whose whole content is a VALUE SET** (:data:`_A_VALUE_SET`), with
+    #: each one's own pointer, for §5's ``enum`` row at CONJ.  A value set constrains this
+    #: node's own TYPE, so it is read after the whole list beside the reference that
+    #: supplied the type -- :func:`_the_vocabularys_intersection`.
+    conjunct_values: list[tuple[str, Mapping[str, Any]]] = []
     #: The description the FIRST base that states one states, for a composing node that
     #: states none of its own (:attr:`Shape.description`).  First and not last, and not
     #: a merge, because that is what ``harness._composed`` gap-fills on the document
@@ -3427,6 +3570,22 @@ def lower_composition(
                 "branches constrain a value, so there is no clause to read",
                 kind=Kind.DEFERRED,
             )
+        if keys and keys <= _A_VALUE_SET:
+            # **§5's ``enum`` row at CONJ: a conjunct that is a VALUE SET constrains the
+            # node's own TYPE** (:data:`_A_VALUE_SET`).  It is not a field, not a rule and
+            # not a base, so it belongs to the same reading §5's ``$ref`` row gives every
+            # other conjunct here -- "the target is this node's own TYPE, and the other
+            # conjuncts and the ``allOf``'s siblings constrain it, which is §2's
+            # intersection at a node that declares no fields of its own" -- and §2 states
+            # the intersection for this keyword in its own words: "an enum is the
+            # intersection of the members".
+            #
+            # Collected and read AFTER the whole list, for the reason
+            # :func:`_the_conjuncts_own_type` is: whether this conjunct narrows a TYPE or
+            # has nothing to narrow depends on what the other conjuncts turned out to be,
+            # which the conjunct carrying the value set cannot know.
+            conjunct_values.append((where, conjunct))
+            continue
         return Refusal(
             min(keys) if keys else "allOf",
             where,
@@ -3436,6 +3595,43 @@ def lower_composition(
             kind=Kind.DEFERRED,
         )
 
+    if contains is not None and not conjoined:
+        # **A ``contains`` beside conjuncts that are all BASES.**  §5's row makes the
+        # sibling constrain the TYPE a non-class target supplies, and a node whose
+        # conjuncts are classes has no such type: ``contains`` quantifies over the MEMBERS
+        # of a list and a composed class is not a list, so there is nothing for the
+        # ``AtLeastOne`` to range over.  0 sites over the portable population -- the one
+        # node reaching the carrier at all composes a bare ``$ref`` to an array document
+        # -- so this is written so the first one is loud rather than emitted with the
+        # keyword dropped.
+        return Refusal(
+            "contains",
+            pointer,
+            "this node states contains beside conjuncts that are all class bases: "
+            "section 5's contains row makes it an AtLeastOne over the members of a LIST, "
+            "and this node's type is a composed class, so the predicate has nothing to "
+            "range over and dropping it would lose the document's own existential",
+            kind=kind_for("contains", Position.CONJ),
+        )
+    if conjunct_values and not conjoined:
+        # **A value set beside conjuncts that are all BASES, which §5's row does not
+        # reach.**  The row's answer is the TARGET as this node's own TYPE, narrowed; a
+        # node whose conjuncts are classes has no such type -- the instance must satisfy
+        # those classes AND be one of the enumerated values, and a class is not a member
+        # of a vocabulary.  0 sites over the portable population (the one value-level
+        # conjunct in the bundle sits beside a ``$ref`` to an enumeration), so this is
+        # written so the first one is loud rather than emitted with the keyword dropped.
+        where, conjunct = conjunct_values[0]
+        return Refusal(
+            min(declaring(conjunct, Position.CONJ)),
+            where,
+            "a conjunct states a VALUE SET beside conjuncts that are all class bases: "
+            "section 5's enum row at CONJ narrows the TYPE a non-class target supplies, "
+            "and this node's type is a composed class -- an instance of a class is not a "
+            "member of a vocabulary, so there is nothing here for the intersection to "
+            "narrow and dropping the keyword would lose the document's own value set",
+            kind=kind_for("enum", Position.CONJ),
+        )
     #: §5's DISTRIBUTION clause, where the row above answered with the target's BRANCHES:
     #: the conjunct's own pointer, the branches, and the node each branch class is
     #: declared from.  ``None`` at every other node, which is what the tail below reads to
@@ -3453,8 +3649,31 @@ def lower_composition(
             conjoined,
             fields_declared=set(local) | set(inherited) | required,
             bases=(*bases, *conjunct_bases),
-            rule_nodes=conjunct_rules,
+            # **The node's own ``contains`` joins the conjuncts' rule sources**, which is
+            # §5's ``$ref`` row at CONJ read whole: "the other conjuncts AND THE
+            # ``allOf``'s SIBLINGS constrain it".  One list and not two, because
+            # :func:`_the_conjuncts_own_type` already folds its sources into a single
+            # ``beside`` and hands that to ``lower.rules.on_a_value`` -- which is the one
+            # reader of a ``contains`` over a value, at every position, by §5's
+            # ``contains`` row ("an ``AtLeastOne`` after-validator on the array's own
+            # annotated type, because no class has a kind for it").  Appended LAST so a
+            # conjunct stating one is met first and the two-sources refusal names the
+            # conjunct's pointer rather than the node's.
+            rule_nodes=(
+                [*conjunct_rules, {"contains": contains}]
+                if contains is not None
+                else conjunct_rules
+            ),
         )
+        if isinstance(answered, Decided) and conjunct_values:
+            # **§5's ``enum`` row at CONJ, applied to the type the row above decided.**
+            # The reference is the one that supplied the type, which is the same
+            # ``conjoined[0]`` the row reads, and the narrowing is §2's intersection over
+            # DECLARATIONS -- the TARGET's vocabulary read through
+            # :meth:`Module.resolve_node`, not the symbol it was bound to.
+            return _the_vocabularys_intersection(
+                answered, conjunct_values, conjoined[0][2], mod
+            )
         if not isinstance(answered, TargetBranches):
             return answered
         # **The DISTRIBUTION, and the whole of it on this side is that the node becomes a
@@ -3568,13 +3787,29 @@ def lower_composition(
             # declaration nothing earns.  A rung is written when §8 has a form for the
             # direction it drops in, and that is a decision §8 makes rather than this
             # arm.
-            disagreeing = _disagreeing(stating, inherited[key])
+            disagreeing = _disagreeing(stating, inherited[key], mod.resolve_node)
+            # **The sentence states its own obstruction, which means the DEREFERENCED
+            # reading and the two values at the keyword that failed** (``10l.92``).  It
+            # printed ``sorted(_constraining(...))`` of the RAW declarations, so a base
+            # whose whole content is a bare reference read as "inherited states
+            # ['$ref']" -- true of the text and not of what was compared, since
+            # :func:`_restatement` resolves such a base before it compares anything.
+            # Three refusals here said that, and the keyword they named was the
+            # reference they had already resolved past.
+            inherited_read = _constraining(_dereferenced(inherited[key], mod.resolve_node))
+            stating_read = _constraining(_dereferenced(stating, mod.resolve_node))
             return Refusal(
                 disagreeing,
                 at[key],
                 f"the restatement of {key!r} neither matches nor narrows the "
-                f"inherited declaration: inherited states {sorted(_constraining(inherited[key]))}, "
-                f"this states {sorted(_constraining(stating))}.  "
+                f"inherited declaration at {disagreeing!r}: inherited says "
+                f"{inherited_read.get(disagreeing)!r}, this says "
+                f"{stating_read.get(disagreeing)!r}.  inherited states "
+                f"{sorted(inherited_read)}, this states {sorted(stating_read)}, and the "
+                "keyword above is the first the two SHARE that this one does not say at "
+                "least as much at -- a keyword only the inherited declaration states is "
+                "never the obstruction, because under allOf the base's statement applies "
+                "wherever the restatement is quiet.  "
                 "docs/plan/rebuild-plan.md section 5(b) decides this row at rung "
                 "KEYWORD -- the field takes the base's declaration and the "
                 "restatement's extra facts are dropped -- and the facts it drops are "
@@ -4417,6 +4652,29 @@ def _at_least_as_tight(
         # A non-list is draft-07-invalid at this keyword and falls to False with
         # everything else this predicate cannot read.
         return isinstance(c, list) and isinstance(b, list)
+    # **``contains`` HAS NO ARM, DELIBERATELY, and that is the one clause of §5's "Two
+    # ARRAY declarations under one ``allOf``" this compiler does not write**
+    # (``adcp-client-python-10l.83``).  The row: "Every ``contains`` is kept: two
+    # ``contains`` predicates are two independent ``AtLeastOne`` rules over the same
+    # value, never merged into one, because ``contains: A`` and ``contains: B`` demand a
+    # member satisfying each and a single merged predicate would demand one member
+    # satisfying both."
+    #
+    # A DECLARATION holds one ``contains`` key, so two facts cannot be spelled in the
+    # merged declaration :func:`_intersection` hands back to the parser; keeping both
+    # means ``lower.rules.on_a_value`` taking several predicates where its signature takes
+    # one (``contains: Any = None``).  Falling through to the closing ``False`` is
+    # therefore the right answer for now and not an oversight: the caller refuses BY NAME
+    # on this keyword -- which keeps both facts visible and merges nothing, the
+    # prohibition the clause exists for -- rather than taking either predicate and
+    # dropping the other silently.
+    #
+    # **Measured over the 1,054 portable documents: 0 property pairs state ``contains`` on
+    # both sides**, so the signature change would be a derivation matching nothing.  The
+    # bundle's only two declarations of one ``contains`` are at
+    # ``creative/preview-creative-request.json#/allOf/6/not/anyOf/2/properties/requests``,
+    # under a ``not`` -- a RULE position §5's ``not`` row owns and this rule never
+    # reaches.  The first document to compose two is what buys the change.
     if keyword in _BOUNDS:
         if isinstance(c, bool) or isinstance(b, bool):
             return False  # draft-04's boolean exclusiveMinimum: a different keyword
@@ -4663,6 +4921,21 @@ def _intersection(
             # place.  A non-list falls to the tightness arm with every other value this
             # rule has no composition for.
             merged[kw] = [*b[kw], *(k for k in c[kw] if k not in b[kw])]
+        elif kw == "uniqueItems":
+            # **``uniqueItems`` HOLDS WHERE EITHER CONJUNCT STATES IT** -- §5's "Two ARRAY
+            # declarations under one ``allOf``" (decided 2026-10-29), "because a
+            # conjunction of constraints is satisfied only by an instance satisfying
+            # both".  So it is an OR and neither value is "the tighter one": the tightness
+            # fallthrough below reads an unordered pair as the BASE's, which takes
+            # ``false`` over a base's ``true`` in one direction and is the one direction
+            # §2 forbids -- a model admitting duplicates the document refuses.
+            #
+            # The ASYMMETRIC case needs no arm and never did: a key only one declaration
+            # states is carried through by the merge above, so the OR already held
+            # wherever one side was silent.  Measured over the 1,054 portable documents:
+            # **0 property pairs state the keyword on both sides**, so this arm is the one
+            # written for the first one rather than a derivation matching something.
+            merged[kw] = bool(c[kw]) or bool(b[kw])
         elif not _at_least_as_tight(kw, c[kw], b[kw], resolve):
             merged[kw] = b[kw]
     # **The base's reference SURVIVES as a ``$ref`` CONJUNCT where both declarations
@@ -5167,9 +5440,47 @@ def _as_enum(constraining: dict) -> dict:
     return out
 
 
-def _disagreeing(child: dict, base: dict) -> str:
-    """The keyword a refusal is reported on: the first the two do not agree about."""
-    c, b = _constraining(child), _constraining(base)
+def _disagreeing(
+    child: dict, base: dict, resolve: Callable[[str], dict | None] | None = None
+) -> str:
+    """The keyword a refusal is reported on: **the first SHARED one the restatement does
+    not say at least as much at**, read through the same two lenses
+    :func:`_restatement` compares through.
+
+    **It was ``min()`` over every key the two differ about, and that set contains keys
+    only the BASE states -- which can never be the obstruction** (``10l.92``).  Under
+    ``allOf`` the base's declaration applies wherever the child is quiet, so the child's
+    silence at a keyword is not a loosening and :func:`_restatement` does not read it as
+    one: the predicate ranges over ``set(c) & set(b)`` alone.  A refusal naming a
+    base-only key therefore attributes itself to a keyword nothing looked at.
+
+    **Measured, and it cost a whole row its shape** (``adcp-client-python-10l.82``).
+    ``core/audience-evidence-selection.json`` and
+    ``governance/check-governance-response.json`` restate one property, ``action_binding``,
+    and were blocked by one keyword, ``required`` -- and reported under ``anyOf`` and
+    under ``additionalProperties``, both base-only keys that sort first.  The row was
+    handed to a lane as two keyword headings and is one shape.  The three that still
+    refuse here all reported ``$ref``, because ``$`` sorts before every letter and the
+    base's whole content is a bare reference that :func:`_dereferenced` RESOLVES before
+    anything is compared -- so the reported keyword was one the comparison never reads.
+    Their obstructions, measured and now reported: ``required`` for both
+    ``brand/verify-brand-claim-response.json`` and
+    ``brand/verify-brand-claims-response.json`` (the restatement requires two names where
+    the base's target requires eight), and ``additionalProperties`` for
+    ``media-buy/get-reporting-status-response.json``'s ``adcp_error`` (``false`` over the
+    target's ``true``).
+
+    **The fallback is one arm and not a guess.** :func:`_restatement` answers ``None`` at
+    exactly two places: the tightness loop, which by construction leaves a failing shared
+    keyword for this to find, and the arm for a base whose whole content is a ``$ref``
+    this could not resolve -- where there is no shared keyword at all, the obstruction
+    really is the unreadable reference, and the union reading below names it.
+    """
+    dc, db = _dereferenced(child, resolve), _dereferenced(base, resolve)
+    c, b = _as_enum(_constraining(dc)), _as_enum(_constraining(db))
+    failing = sorted(k for k in set(c) & set(b) if not _at_least_as_tight(k, c[k], b[k], resolve))
+    if failing:
+        return failing[0]
     return min({k for k in set(c) | set(b) if c.get(k) != b.get(k)} or {"allOf"})
 
 

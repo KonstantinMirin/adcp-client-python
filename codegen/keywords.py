@@ -566,6 +566,34 @@ _VALUES: dict[str, Row] = {
                 "own keyword, rendered and gradable; where the key node carries a "
                 "`title` the `StrEnum` is the key type and renders the same way.",
             ),
+            # **§5's "An `enum` conjunct beside a `$ref` to an enum" (decided
+            # 2026-10-29).**  The cell and not the grid line: §3 generates the line from
+            # here, and this cell carried an EMPTY ``compiles`` synthesised by
+            # :data:`_RUNG_AT` for the rung alone -- a cell saying the keyword lowers at
+            # CONJ with no handler claiming it, which is the defect this epic has found
+            # seven times.
+            #
+            # ``widens_to`` stays :attr:`Rung.TOP` through :data:`_RUNG_AT`, which is §5's
+            # empty-intersection row: two disjoint vocabularies admit nothing and the
+            # typeless ``Any`` carries it.
+            #
+            # The clause renders BETWEEN the KEY one and the RULE one, which is
+            # :class:`Position`'s own declaration order and is why the general decision
+            # does not read as part of the position-specific override that ends the line.
+            Position.CONJ: Cell(
+                Effect.TYPE,
+                True,
+                None,
+                " beside a `$ref` whose target is an enumeration → §2's intersection of "
+                "the two vocabularies, rendered as a `Literal` over the TARGET's MEMBERS "
+                "and not over their raw values. The two dump identically — "
+                "`{\"enum\": [the members], \"type\": \"string\"}` — so §8 compares the "
+                "same fact either way, and the member form keeps the imported symbol a "
+                "caller can name: where §8 cannot tell two renderings apart, DX decides. "
+                "A vocabulary the target does not contain is the empty intersection and "
+                "refuses, by the same rule that refuses a member the node's own "
+                "constraints exclude.",
+            ),
             Position.RULE: Cell(
                 Effect.RULE,
                 False,
