@@ -1536,7 +1536,17 @@ def test_the_hop_does_not_excuse_any_other_model_only_fact() -> None:
 
     other = root_graded(root, RequiresAKeyTheRootDoesNot)
     assert "/required" in keys(other.added), other.added
-    assert "/properties/k" in keys(other.added), other.added
+    # **The model-only ENTRY is reported at ``<node>/properties`` and NAMES the key in the
+    # sentence**, which is §8's own decided spelling and not an imprecision: the arm
+    # carries the reason beside it -- "a line keyed on the property name would pin a set of
+    # property names there, which moves whenever the emitter emits more", and
+    # ``tests/test_decision_set.py`` derives each admission mechanism's reach by reading
+    # the keyword off the production message.  This assertion read ``/properties/k`` and
+    # went stale against that decision (``adcp-client-python-10l.109``); the CLAIM -- that
+    # the hop excuses nothing but ``type`` -- is unchanged, so what it asserts now is the
+    # fact's own two halves: the keyword before the colon and the key inside the sentence.
+    assert "/properties" in keys(other.added), other.added
+    assert [line for line in other.added if "'k'" in line], other.added
 
 
 def test_the_hop_is_taken_against_whichever_root_it_is_handed() -> None:

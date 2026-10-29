@@ -1084,131 +1084,6 @@ PAIRS_FLOOR = 1095
 #: derivation from the mechanism rather than a second count.
 ROUND_TRIPS_NOTHING = ("no_instrument",)
 
-#: **§2's declared widenings, NAMED and not counted**, which is what §9 asks for the
-#: moment a cell widens: "Do not pin the approximation count.  It rises whenever the
-#: emitted set grows ... Pin the four disagreement counts, which do not, and ratchet the
-#: *ours* split down."  So this is the *ours* backlog as a SET, and the ratchet is that
-#: it may only shrink: a site leaving reddens with the site named, and a site arriving
-#: reddens with the site named, where two integers would have said only that a number
-#: moved.
-#:
-#: Both figures §10 prints are read OFF this set rather than stated beside it, because
-#: "``K`` and ``D`` are different counts over different denominators and the report never
-#: adds them": ``len`` is the facts and the distinct documents are the documents.
-#:
-#: **It was ``APPROXIMATED = 0`` / ``APPROXIMATED_DOCUMENTS = 0``, pinned at §14 step 8
-#: where the row built the instrument and widened no cell** -- and the comment that stood
-#: here said in as many words that "the row that widens the first cell replaces these two
-#: with the *ours* split and its ratchet".  Three cells widened and nobody replaced them,
-#: so the two zeros were a falsehood this test asserted about its own tree.  They are
-#: replaced here, by ``adcp-client-python-10l.29``, which is also the row that takes 13 of
-#: the 17 BACK: every ``uniqueItems`` declaration was a widening claimed for unwritten
-#: code, and ``AtLeastOne`` / ``NotValue`` / ``Distinct`` are now written.
-#:
-#: What is left, each with the sentence that keeps it:
-#:
-#: * FIVE ``oneOf``\\ s that are UNDERDETERMINED -- §4's dispatch cannot separate their
-#:   branches, which is the one kind §8 gives an instrument of its own
-#:   (``underdetermined_census``) and the one the comparison cannot see;
-#: * one ``patternProperties`` beside a non-``false`` ``additionalProperties``, whose
-#:   faithful answer is a rule family for "keys matching this pattern take this type" --
-#:   a different thing from the three value rules, and no row has written it.
-#:
-#: **THREE -> TEN on the UNDERDETERMINED half at ``adcp-client-python-10l.21``'s third
-#: instalment, and the set grew because the TREE grew.**  §9 forbids pinning the
-#: approximation COUNT for exactly this reason -- it "rises whenever the emitted set
-#: grows" -- and what the ratchet is on is the *ours* backlog, which this is.  Not one of
-#: the seven is this row's own widening; this row dropped NOTHING.  They arrive two ways
-#: and both are §4's own row:
-#:
-#: * **two at a ROOT, behind a document that began emitting.**
-#:   ``content-standards/get-media-buy-artifacts-response.json`` and
-#:   ``core/evaluator-spec.json`` emit behind a ``type`` word beside a NESTED combinator
-#:   (§5(a)'s first bullet), and each is a response ``oneOf`` whose success and error
-#:   branches §4's dispatch cannot separate -- the same shape as the three above them.
-#: * **five at a NESTED position, where §4's own answer was unwritten**, found by §8's
-#:   third equality in the SILENT direction: ``harness.inseparable_unions`` draws no
-#:   root/nested distinction and must not, and ``lower.union.nested`` declared nothing.
-#:   ``lower.union._undetermined`` is that row at the other position, and the five are
-#:   the two ``calibration_exemplars`` unions of
-#:   ``content-standards/create-content-standards-request.json`` and of
-#:   ``content-standards/update-content-standards-request.json``, plus
-#:   ``registries/v1-canonical-mapping.json``'s ``v1_pattern``.
-DECLARED_WIDENINGS = {
-    # **ELEVEN -> TEN at ``adcp-client-python-10l.30``, and the site that LEFT is named
-    # here rather than quietly dropped, which is what the ratchet is for.**
-    # ``account/sync-accounts-request.json#/properties/accounts/items/oneOf`` carried an
-    # UNDERDETERMINED declaration from ``adcp-client-python-10l.34``, and the comment
-    # that stood here said exactly why: "each branch forbids every name the other
-    # requires, which is §4's second separator exactly -- but it spells each ``not`` as
-    # an ``allOf`` CONJUNCT of the branch, and ``compiler.rules_at`` reads a node's OWN
-    # rule sources, so ``Branch.forbids`` is empty on both sides."
-    #
-    # That was a reading of the separator and not a fact about the document.  Draft-07
-    # conjoins an ``allOf`` conjunct with the node that holds it, so a ``not`` a conjunct
-    # states forbids the name for the BRANCH -- ``union.forbidden_names`` hands the
-    # conjuncts to ``rules_at``'s ``also``, which is the argument
-    # ``compiler.lower_composition`` already uses for exactly this, and
-    # ``harness._views`` is the verifier's own spelling of the same descent.  The pair is
-    # separated now, both halves of §8's third equality agree in both directions, and the
-    # declaration is withdrawn: §2 permits no approximation a derivation can decide.
-    #
-    # Nothing else in this set moved.  Every remaining member is a union whose branches
-    # GENUINELY overlap -- open, each requiring a name the others neither forbid nor fail
-    # to declare -- or sits behind a ``$ref`` whose facts no reading resolves;
-    # ``tests/test_union_disjointness.py`` names and partitions the whole remainder.
-    ("content-standards/calibrate-content-response.json", "#/oneOf", "oneOf"),
-    (
-        "content-standards/create-content-standards-request.json",
-        "#/properties/calibration_exemplars/properties/fail/items/oneOf",
-        "oneOf",
-    ),
-    (
-        "content-standards/create-content-standards-request.json",
-        "#/properties/calibration_exemplars/properties/pass/items/oneOf",
-        "oneOf",
-    ),
-    ("content-standards/create-content-standards-response.json", "#/oneOf", "oneOf"),
-    ("content-standards/get-media-buy-artifacts-response.json", "#/oneOf", "oneOf"),
-    (
-        "content-standards/update-content-standards-request.json",
-        "#/properties/calibration_exemplars/properties/fail/items/oneOf",
-        "oneOf",
-    ),
-    (
-        "content-standards/update-content-standards-request.json",
-        "#/properties/calibration_exemplars/properties/pass/items/oneOf",
-        "oneOf",
-    ),
-    ("content-standards/validate-content-delivery-response.json", "#/oneOf", "oneOf"),
-    ("core/evaluator-spec.json", "#/oneOf", "oneOf"),
-    (
-        "registries/v1-canonical-mapping.json",
-        "#/properties/mappings/items/properties/v1_pattern/oneOf",
-        "oneOf",
-    ),
-    ("core/creative-assets.json", "#", "patternProperties"),
-}
-
-#: **§8's UNDERDETERMINED equality, as the set the derivation cannot separate.**  "The set
-#: of unions declaring one equals the set the derivation cannot separate, in both
-#: directions, so a union that becomes separable loses its declaration and a union that
-#: stops being separable gains one."
-#:
-#: EMPTY over the emitted tree, and the three readings that make it so are each a decided
-#: sentence rather than an exclusion to reach zero -- ``harness.inseparable_unions``
-#: carries all three with its measurement:
-#:
-#: * a presence-only combinator is not a union (architecture §4's ``presence_only``
-#:   reading): 185 pointers before this clause, 16 of them roots;
-#: * a union at a RULE position lowers no type (semantics §3): 3 pointers;
-#: * a union whose branches are not all shapes lowers to an alias over their types, so
-#:   there are no branch classes for a declaration order to choose between.
-#:
-#: A LIST and not a count, because a pointer arriving or leaving is a fact about a
-#: document and a count cannot say which -- and because at zero the list is the one form
-#: that cannot be mistaken for an allowlist.
-UNDERDETERMINED_UNIONS: list[str] = []
 NON_PASS_PAIRS: dict[str, list[str]] = {
     "no_instrument": [
         "core/reference-renderer.json#",
@@ -2623,13 +2498,6 @@ def test_the_harness_result_is_counted_over_the_whole_population() -> None:
     assert census.undeclared_widenings == [], census.undeclared_widenings
     assert census.unattributed == [], census.unattributed
     assert census.outcome == "pass", census
-    # **The *ours* backlog as a SET**, which is §9's own instruction once a cell widens
-    # ("ratchet the *ours* split down").  A site arriving or leaving reddens with the
-    # site named; :data:`DECLARED_WIDENINGS` carries the sentence that keeps each.
-    assert set(census.declared) == DECLARED_WIDENINGS, sorted(census.declared)
-    # The two figures §10 prints, READ OFF that set rather than stated beside it: ``K``
-    # and ``D`` are different counts over different denominators and are never added.
-    assert census.documents == len({document for document, _, _ in DECLARED_WIDENINGS})
     # And the approximated half is the declared half MINUS the one kind §8 exempts from
     # the comparison by name -- an equality and not a third number, because
     # ``census.stale`` already holds one direction and ``over_declared`` the other, so
@@ -2637,16 +2505,12 @@ def test_the_harness_result_is_counted_over_the_whole_population() -> None:
     assert census.approximated == {
         site for site, one in census.declared.items() if one.kind != UNDERDETERMINED
     }, sorted(census.approximated)
-    # §8's UNDERDETERMINED equality, which no comparison, draw or dump can see: the set of
-    # unions declaring one equals the set §4's disjointness derivation cannot separate, in
-    # both directions.  Over the documents of record, which is the verifier's own reading
-    # of what each document states (§9).
-    stale, silent = harness.underdetermined_census(
-        list(census.declared.values()),
-        {g.ref.document: schema_at(SchemaRef(g.ref.document, "#")) for g in graded()},
-    )
-    assert stale == [], stale
-    assert silent == UNDERDETERMINED_UNIONS, silent
+    # §8's UNDERDETERMINED equality is NOT here, and that is
+    # ``adcp-client-python-10l.109``'s move: it needs neither a pair nor a draw -- only the
+    # declarations and the documents of record -- so it is graded in seconds by
+    # ``tests/test_the_declared_backlog.py`` instead of behind this test's 2,347 pair
+    # reports.  The *ours* backlog and the artifact-versus-run gap moved with it, for the
+    # same reason and with the same measurement.
     # D5's URL-type rows, the one category that excuses a fact the model does not state.
     # The claim is WHICH facts it excuses, so that is what is asserted: a URL type
     # renders ``minLength: 1`` and ``HttpUrl`` renders ``maxLength: 2083``, and the

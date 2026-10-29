@@ -279,7 +279,25 @@ RELEASED: dict[str, tuple[str, ...]] = {
 #: the document rather than emit a node no check grades.  ``harness._type_list`` folds a
 #: model's ``anyOf`` of arms back to the list plus the per-arm facts, so the node is
 #: GRADED and both documents emit.
-STILL_REFUSED: dict[str, str] = {
+#: **EMPTY at ``adcp-client-python-10l.109``, and the entry that left is below rather
+#: than deleted** -- which is the whole of what this map is pinned for, taken to its end.
+#: ``core/media-buy.json`` was the last one and it EMITS; the assertion that caught it
+#: said so in as many words ("now emits: move it out of STILL_REFUSED") and could not run,
+#: because this file was one of the seven failures the down gate was hiding.
+STILL_REFUSED: dict[str, str] = {}
+
+#: The documents that LEFT :data:`STILL_REFUSED` because a later row cleared their next
+#: obstruction, with the keyword they were last refused on.  **A named set and not a
+#: deletion**, for the reason the map above exists: a document whose refusal comes BACK is
+#: a regression, and a count going from one to zero cannot say which document it was.  So
+#: the two maps partition this row's whole handoff and each half is asserted in its own
+#: direction -- this one EMITS, that one still refuses on the named keyword.
+#:
+#: ``core/media-buy.json``'s own history is the direction read twice: ``10l.20`` moved it
+#: from ``allOf`` at ``/properties/health/allOf/0`` to ``$ref`` at
+#: ``/properties/budget_allocation/allOf/0``, a chain through
+#: ``core/budget-allocation.json``, and that chain now resolves.
+CLEARED_BY_A_LATER_ROW: dict[str, str] = {
     "core/media-buy.json": "$ref",
 }
 
@@ -289,7 +307,7 @@ def test_every_document_this_row_releases_emits_and_the_rest_name_their_next_key
     """The named sets, over a fresh whole-population run.
 
     A total would be satisfied by any twelve documents.  This asserts the twelve the
-    row owns and the seven it cleared a refusal for without finishing, which is what a
+    row owns and the ones it cleared a refusal for without finishing, which is what a
     later re-derivation of the ownership can be checked against.
     """
     out = compiled(BUNDLE, sorted(bundle.portable(BUNDLE)))
@@ -299,12 +317,29 @@ def test_every_document_this_row_releases_emits_and_the_rest_name_their_next_key
         inside=bundle.portable(BUNDLE),
     )
     assert released <= set(out.emitted), sorted(released - set(out.emitted))
-    cleared = claimed("documents whose next refusal is another row's", set(STILL_REFUSED))
-    assert cleared.isdisjoint(released), sorted(cleared & released)
+    # The HANDOFF: every document this row cleared a refusal for without finishing,
+    # whether it still refuses or has since been released.  Claimed as one set so the
+    # denominator cannot go empty by a row emptying one half of it -- which is exactly
+    # what happened to ``STILL_REFUSED``.
+    handoff = claimed(
+        "documents this row cleared a refusal for without finishing",
+        set(STILL_REFUSED) | set(CLEARED_BY_A_LATER_ROW),
+        inside=bundle.portable(BUNDLE),
+    )
+    assert handoff.isdisjoint(released), sorted(handoff & released)
+    assert set(STILL_REFUSED).isdisjoint(CLEARED_BY_A_LATER_ROW), sorted(
+        set(STILL_REFUSED) & set(CLEARED_BY_A_LATER_ROW)
+    )
     for document, keyword in sorted(STILL_REFUSED.items()):
         row = out.refusals.get(document)
-        assert row is not None, f"{document} now emits: move it out of STILL_REFUSED"
+        assert row is not None, f"{document} now emits: move it to CLEARED_BY_A_LATER_ROW"
         assert row["keyword"] == keyword, (document, row)
+    for document, was in sorted(CLEARED_BY_A_LATER_ROW.items()):
+        row = out.refusals.get(document)
+        assert row is None, (
+            f"{document} refuses again on {row and row['keyword']!r}, having been cleared "
+            f"of {was!r}: a refusal coming back is a regression and not a count going up"
+        )
 
 
 # --------------------------------------------------------------------------- #

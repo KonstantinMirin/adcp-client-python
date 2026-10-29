@@ -152,20 +152,24 @@ def _reaching() -> tuple[Site, ...]:
     seen: list[Site] = []
     original = compiler._the_conjuncts_own_type  # noqa: SLF001 -- the test is the caller
 
-    def spy(
-        node: Any,
-        conjoined: Any,
-        *,
-        fields_declared: Any,
-        bases: Any,
-        rule_nodes: Any,
-    ) -> Any:
-        answer = original(
-            node,
-            conjoined,
-            fields_declared=fields_declared,
-            bases=bases,
-            rule_nodes=rule_nodes,
+    # **The spy FORWARDS the call rather than restating the signature**, which is the
+    # correction ``adcp-client-python-10l.109`` makes.  It used to name each keyword
+    # argument -- ``fields_declared``, ``bases``, ``rule_nodes`` -- and §5's ``$ref`` row
+    # at CONJ then gained a fourth, ``facts`` (the ``allOf``'s own BOUNDS as siblings), so
+    # every call of the row raised ``TypeError: spy() got an unexpected keyword argument
+    # 'facts'`` and this file was red for a reason that is about the INSTRUMENT: the spy
+    # was a second declaration of the row's parameter list, and a second declaration is
+    # where two readings come apart (§3's own rule, read for a test).  ``**read`` is one
+    # declaration, and what this function CLAIMS to know about the row is exactly the three
+    # keys the :class:`Site` below reads out -- asserted present on every call, so a
+    # renamed argument reddens here by name instead of being silently recorded as absent.
+    def spy(node: Any, conjoined: Any, **read: Any) -> Any:
+        answer = original(node, conjoined, **read)
+        assert {"fields_declared", "bases", "rule_nodes"} <= set(read), sorted(read)
+        fields_declared, bases, rule_nodes = (
+            read["fields_declared"],
+            read["bases"],
+            read["rule_nodes"],
         )
         seen.append(
             Site(
@@ -256,6 +260,21 @@ def test_the_three_shapes_of_not_beside_a_conjoined_type_partition_the_populatio
     grew 3 -> 4 on ``core/audience-evidence.json``, whose ``$ref`` conjunct now resolves
     to the ``AttestationSubject`` union root: that is ``adcp-client-python-10l.59``'s
     OPEN numbered request and not this row's, so the part grows and the property holds.
+
+    **AND AT ``adcp-client-python-10l.109``, which is the first re-measurement this file
+    has had since the spy went stale: 56 calls, 40 distinct sites, 32 with one target and
+    no fields -- 20 with no rule and 12 with one, splitting 10 / 0 / 2.**  Nothing here was
+    read between ``10l.63`` and this row, because ``compiler._the_conjuncts_own_type``
+    gained a fourth keyword argument (``facts``, the ``allOf``'s own sibling bounds) and
+    the spy restated its parameter list, so every call raised ``TypeError`` and the whole
+    file was one of the seven failures the down gate was hiding.  Two parts moved and both
+    are the SIBLING reading landing (``2cbe670c``):
+
+    * ``a_class_as_well`` is 4 -> 8 and ALL EIGHT DISTRIBUTE, so ``refuses`` is now the
+      part expected EMPTY -- named rather than dropped, which is the arrangement
+      ``two_non_class_targets`` and ``declined_for_want_of_a_callable`` already have;
+    * the rule shapes gained ``('contains',)`` and the kinds gained ``AtLeastOne``, each
+      named below with the clause that admits it.
     """
     sites = _reaching()
     every = claimed("calls of section 5's $ref row at CONJ", {(s.at, s.symbol) for s in sites})
@@ -318,9 +337,28 @@ def test_the_three_shapes_of_not_beside_a_conjoined_type_partition_the_populatio
     # the document's own ``strict_validate`` is what enforces the conditional.  That is
     # the same answer §5's ``not`` row's last clause gives, which is why the two share a
     # part rather than needing a fourth.
-    assert {s.beside for s in reaches if s.beside} == {("not",), ("if", "then")}, sorted(
-        {s.beside for s in reaches if s.beside}
-    )
+    #
+    # **A ``contains`` JOINED at ``adcp-client-python-10l.109``, and it is this row's own
+    # sentence arriving rather than a new reading.**  §5's ``$ref`` row at CONJ is read
+    # WHOLE -- "the other conjuncts AND THE ``allOf``'s SIBLINGS constrain it" -- and
+    # ``2cbe670c`` landed the siblings: the node's own ``contains`` joins the conjuncts'
+    # rule sources and its own bounds ride in ``facts``.  One live site,
+    # ``core/signal-coverage-forecast.json`` at
+    # ``/properties/points/items/allOf/1/properties/dimensions``, which restates
+    # ``dimensions`` as a bare ``contains`` over the base's ``$ref`` to
+    # ``core/forecast-point-dimensions.json``; §5's ``contains`` row gives it an
+    # ``AtLeastOne`` on the value's own annotated type "because no class has a kind for
+    # it", which is the same half of §2 the ``not`` sites above take.
+    #
+    # **This assertion named two shapes and the third made the whole file a
+    # ``TypeError``**, so the arrival was invisible: the spy restated the row's parameter
+    # list and the row had gained ``facts``.  The pin is the READING now, and the shape it
+    # gained is named with the clause that admits it.
+    assert {s.beside for s in reaches if s.beside} == {
+        ("not",),
+        ("if", "then"),
+        ("contains",),
+    }, sorted({s.beside for s in reaches if s.beside})
     assert lower_rules.ON_A_VALUE == frozenset({"not"}), lower_rules.ON_A_VALUE
 
     wrote = {(s.at, s.symbol) for s in reaches if s.beside and s.validators}
@@ -343,7 +381,10 @@ def test_the_three_shapes_of_not_beside_a_conjoined_type_partition_the_populatio
     # below, so a row that lost one reddens with the kind named rather than leaving the
     # partition green over the other.
     bound = {type(v).__name__ for s in reaches if s.beside for v in s.validators}
-    assert bound == {"NotValue", "ForbiddenGroups"}, sorted(bound)
+    # ``AtLeastOne`` is the third, and it is the ``contains`` shape's own kind -- the one
+    # §5's ``contains`` row names and the one ``lower.rules.contains_predicate`` builds.
+    # It joined with the sibling reading above (``adcp-client-python-10l.109``).
+    assert bound == {"NotValue", "ForbiddenGroups", "AtLeastOne"}, sorted(bound)
     assert all(
         isinstance(v, ValueRule) for s in reaches if s.beside for v in s.validators
     ), [s for s in reaches if s.beside]
@@ -592,6 +633,14 @@ def test_a_rule_kind_that_is_no_callable_on_the_value_refuses_and_names_itself()
         fields_declared=(),
         bases=(),
         rule_nodes=[conjunct],
+        # **``facts`` is the ``allOf``'s own SIBLING BOUNDS**, which §5's ``$ref`` row at
+        # CONJ reads whole ("the other conjuncts AND THE ``allOf``'s SIBLINGS constrain
+        # it").  Empty here because the probe states none, and passed EXPLICITLY rather
+        # than defaulted: this call is the arm's only caller outside the walk, and an
+        # argument the probe does not name is an argument the probe is not grading.  It
+        # was absent, and the row gaining it made every call of this file a ``TypeError``
+        # (``adcp-client-python-10l.109``).
+        facts=(),
     )
     assert isinstance(answer, Refusal), answer
     assert (answer.keyword, answer.resolved) == ("allOf", "deferred"), answer
@@ -630,6 +679,14 @@ def test_two_conjuncts_stating_one_rule_keyword_refuse_rather_than_drop_one() ->
         fields_declared=(),
         bases=(),
         rule_nodes=[{"not": {"const": "video"}}, {"not": {"const": "audio"}}],
+        # **``facts`` is the ``allOf``'s own SIBLING BOUNDS**, which §5's ``$ref`` row at
+        # CONJ reads whole ("the other conjuncts AND THE ``allOf``'s SIBLINGS constrain
+        # it").  Empty here because the probe states none, and passed EXPLICITLY rather
+        # than defaulted: this call is the arm's only caller outside the walk, and an
+        # argument the probe does not name is an argument the probe is not grading.  It
+        # was absent, and the row gaining it made every call of this file a ``TypeError``
+        # (``adcp-client-python-10l.109``).
+        facts=(),
     )
     assert isinstance(answer, Refusal), answer
     assert (answer.keyword, answer.resolved) == ("allOf", "deferred"), answer
@@ -642,6 +699,7 @@ def test_two_conjuncts_stating_one_rule_keyword_refuse_rather_than_drop_one() ->
         fields_declared=(),
         bases=(),
         rule_nodes=[{"not": {"const": "video"}}],
+        facts=(),
     )
     assert isinstance(one, compiler.Decided), one
     assert one.type == ir.TypeRef("MediaType", local=True, validators=(NotValue(("video",)),)), one

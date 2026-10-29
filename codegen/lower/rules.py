@@ -365,6 +365,28 @@ def contains_predicate(sub: Any) -> AtLeastOne | None:
     return AtLeastOne(pinned=tuple((key, allowed[0]) for key, _, allowed in clauses if allowed))
 
 
+def contains_source(declaration: Mapping[str, Any]) -> Any:
+    """The ``contains`` a DECLARATION states, which is a rule source and so read HERE.
+
+    **One line, and it is a module boundary rather than a convenience**
+    (``adcp-client-python-10l.109``).  §4 keeps a node at RULE as a rule SOURCE on the
+    enclosing node and "names this module its only reader", and ``tests/test_import_rule.py``'s
+    ``MAY_READ_A_DECLARATION`` is that rule asserted: ``lower/containers.py`` read
+    ``raw.get("contains")`` off an ``allOf`` conjunct's own declaration, and the set --
+    which "may SHRINK and may not grow" -- reported it.  The keyword is a rule source at
+    every position §5 gives it ("it takes this half at EVERY position and the caller gates
+    nothing", :func:`on_a_value`), so the reader is this module and the gate is nobody's.
+
+    **It is not in ``compiler.rule_sources(CONJ)``, and that is why a caller needed it.**
+    The table lists ``contains`` as a rule source at RULE alone, so
+    ``compiler.declaration_rule_sources`` filters it out of a conjunct's sources and a
+    caller that wants §5's ``contains`` row at a conjunct has to ask for it separately.
+    This is that ask, in the module the ask belongs to; whether the cell should list it at
+    CONJ as well is §3's question and not this function's.
+    """
+    return declaration.get("contains")
+
+
 # --------------------------------------------------------------------------- #
 # the step-5 boundary, which is also the selector's per-node test
 # --------------------------------------------------------------------------- #

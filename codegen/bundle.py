@@ -582,6 +582,93 @@ def composed(found: Collection[Edge]) -> dict[str, frozenset[str]]:
     return {d: frozenset(p) for d, p in out.items()}
 
 
+def declaring_site(
+    bundle_dir: Path, known: Collection[str], edge: Edge
+) -> tuple[Edge, str | None] | None:
+    """The same reference re-pointed at the document that DECLARES what it names, with
+    the ``description`` the chain passed through -- or ``None`` where its own target
+    declares it.
+
+    **HERE and not in ``codegen/emit.py``, which is §11's rule and
+    ``adcp-client-python-10l.109``'s correction.**  This is a fact about the bundle's
+    reference GRAPH -- an :class:`Edge` in and an :class:`Edge` out -- and §4 gives this
+    module "every file read and every fact derived from a document".  It was written in
+    ``emit.py``, where it read ``node["$ref"]`` and ``node.get("description")`` off a raw
+    mapping; ``tests/test_import_rule.py``'s ``MAY_READ_A_DECLARATION`` reported it, and
+    that set's own note carries the precedent verbatim: "``codegen/emit.py`` is NOT in
+    this set and §14 step 7 is what removed it.  It held ``_composed_nodes``, the pointers
+    a document's root ``allOf`` NAMES -- a fact about the bundle's reference GRAPH, which
+    §11 puts in the source layer.  It is ``bundle.composed`` now."  Same shape, same
+    answer, and the move is the whole of the change: not a line of the walk below differs.
+
+    §5's ``$ref`` row reads "a fragment of another document → an import of a symbol the
+    target declares", and the node a fragment names may be ITSELF a ``$ref``: then the
+    target module IMPORTS that symbol and declares nothing at the pointer, so the row's
+    sentence names no symbol at that site and the chain has to be walked to the module
+    the sentence is about.  Binding the target's own imported name instead would be a
+    re-export and §1's second way to reach one class; following the chain is one import
+    path per class, from the declarer.
+
+    **This is the reading the refusal at the one live site deferred** -- "10 of the 76
+    [named nodes], in 3 documents, all 3 refused on a keyword of their own -- so 0 are
+    reachable and the step whose population reaches one decides whether the chain is
+    followed".  ``core/catalog-selection.json`` at ``/properties/type`` is that
+    population arriving: its target ``core/catalog.json#/properties/type`` is a bare
+    ``$ref`` to ``enums/catalog-type.json``, whose module declares ``CatalogType``.
+
+    A hop is taken only where the node is a ``$ref`` naming a DOCUMENT of this bundle: a
+    LOCAL pointer is one the target's own module resolves and declares, so there is
+    nothing to follow, and a URI naming no document of the bundle is the refusal
+    ``emit.answer``'s own screen already makes.  ``seen`` bounds the walk, so a chain that
+    cycles between documents stops rather than recurring -- the caller then reports the
+    site it stopped at, which is the refusal this function declined to replace.
+
+    **The DESCRIPTION the chain passed through travels with it.**  A node the chain hops
+    over may state a ``description`` sibling, and §5's ``$ref`` row gives a sibling the
+    other answer -- "the sibling's description wins" -- while :func:`record` inlines
+    exactly that text at the REFERRING pointer.  So a chain that returned only the symbol
+    would make the model *missing* a fact at a pointer the comparison reaches, which is
+    §8's defect in the undeclared direction.  The FIRST sibling along the chain is the
+    one taken, which is the record's own precedence: the referrer's own wins over it (read
+    where the field is built) and it wins over the declarer's.
+
+    ``None`` and not the edge unchanged, so a caller cannot recurse on its own input:
+    the only edge this returns is one naming a DIFFERENT (document, pointer) site.
+    """
+    target, into, uri = edge.target, edge.into, edge.uri
+    if target is None:
+        # A LOCAL reference names no other document (:attr:`Edge.target`), so there is no
+        # chain to follow and nothing to re-point at.  **Behaviour-preserving and not a new
+        # screen**: in ``emit.py`` this fell through to ``read(bundle_dir, None)``, whose
+        # ``TypeError`` the ``except`` below turned into the same ``None`` -- so the only
+        # thing that changes is that the type checker can see it (the one mypy error the
+        # move carried with the code).
+        return None
+    described: str | None = None
+    seen = {(target, into)}
+    while into:
+        try:
+            node = node_at(read(bundle_dir, target), into)
+        except (KeyError, IndexError, TypeError, ValueError):
+            return None
+        if not isinstance(node, dict) or "$ref" not in node:
+            break
+        head, pointer = split_ref(str(node["$ref"]))
+        if not head:
+            break
+        nxt = document_for(head, known)
+        if nxt is None or (nxt, pointer) in seen:
+            break
+        text = node.get("description")
+        if described is None and isinstance(text, str) and text:
+            described = text
+        seen.add((nxt, pointer))
+        target, into, uri = nxt, pointer, str(node["$ref"])
+    if (target, into) == (edge.target, edge.into):
+        return None
+    return edge._replace(target=target, into=into, uri=uri), described
+
+
 def named_nodes(bundle_dir: Path) -> dict[str, frozenset[str]]:
     """For each document, the pointers of its nodes that a ``$ref`` NAMES.
 
