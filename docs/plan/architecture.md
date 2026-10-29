@@ -148,6 +148,29 @@ nobody can audit against the table that was supposed to hold it.
 
 ---
 
+### A check may not be downstream of its own precondition (decided 2026-10-29)
+
+`tests/test_emit.py`'s `test_every_module_of_the_tree_imports_and_every_class_of_it_is_defined`
+is the obligation that an emitted tree builds, and its docstring names the failure mode it
+missed. It could not run, for two independent reasons, and both are structural:
+
+* it lives in the file whose COLLECTION the defect disables — `graded()` imports the tree at
+  parametrize time, so an unimportable module errors the check that exists to report it;
+* its population is `emit.TREE`, the COMMITTED tree, so a document absent from `src/` is
+  invisible. That is how the second of the two sites hid entirely.
+
+**A check whose precondition is the thing it checks is not a check.** The import obligation ranges
+over the tree a fresh run EMITS, not the one committed, and it lives outside the module whose
+collection it would gate. Both halves are required: fixing the population alone leaves it
+uncollectable, and moving the file alone leaves it blind to anything not yet committed.
+
+**And a base list naming one class twice RAISES.** §2 decides it — a refusal is the document's and
+a broken invariant is ours — so this is the clause applied: nothing a document can state produces
+a duplicate base, the reader of such a report would go to `codegen/`, and an exception at the
+pointer is louder and honest where a refusal is quiet and wrong. The chokepoint is
+`ir.ClassDecl`, because not every base list passes through `compiler.dispatching_bases`; a guard
+there would hold two of the call sites and miss the rest.
+
 ### An approximation's pointer is the SchemaRef spelling (decided 2026-10-29)
 
 `render.declared_at` attaches a declaration to a class by a prefix test, and its own docstring

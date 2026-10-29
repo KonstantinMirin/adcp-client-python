@@ -100,6 +100,28 @@ same defect as an exemption with no issue behind it, which §9 already names.
 
 ## 2. Design principles
 
+### Where the `oneOf` entailment is derived (decided 2026-10-29)
+
+§5's `type` row says an enclosing `oneOf` applies a type word it does not state. **The derivation
+belongs in `adcp.types._base.applied_schema` and nowhere else**, and the two other readers derive
+from it rather than restate it.
+
+`bundle.constrained_to_object` already works that way and its own docstring says why: that
+function is what the RUNTIME resolves a class's `__adcp_schema__` through, "so deriving the
+lowering's answer from it is what makes it impossible for the emitter to admit a node whose class
+would then be narrower than the schema it names. Two spellings of 'which hop keeps the instance'
+is precisely how that divergence would arrive, and it would arrive silently."
+
+So the entailment is one sentence in one function, and the walk inherits it. `harness._entails_type`
+is the third reader and its combinator arm must derive from the same function rather than require
+a STATED word on every branch — measured, requiring one reports `added /type` on 9 pairs, which is
+the divergence that docstring forbids showing up as a verifier disagreement instead of a crash.
+§9 permits it: `adcp.types` is the emitted package reached as a consumer reaches it, and
+`_base.applied_schema` is the runtime's, not the walk's.
+
+Three readers, one derivation. A row that adds the entailment to a parser and leaves the other two
+alone has written the second spelling, whatever the measurement says that day.
+
 ### The intersection is idempotent (decided 2026-10-29)
 
 `allOf` applies every conjunct to the same instance, so a conjunct already in the composed list
