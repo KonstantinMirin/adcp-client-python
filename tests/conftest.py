@@ -1,4 +1,16 @@
-"""Suite-wide options, and the one assertion every file that grades a refusal shares.
+"""Suite-wide options, the binding that decides WHICH TREE is graded, and the one
+assertion every file that grades a refusal shares.
+
+:func:`pytest_sessionstart` is not a convenience import.  ``docs/plan/architecture.md``
+(2026-10-29) decides that "grading reads the tree a fresh run emits; the committed tree is
+an ARTIFACT, verified by one byte-compare, and is never the subject", and importing
+``tests/fresh.py`` IS the act: it materialises the generated half of ``adcp.types`` from a
+fresh compile and puts it in front of ``src/adcp/types`` on ``adcp.types.__path__``.  It
+has to happen HERE because a process has one ``adcp.types.constraints``: the first import
+of the generated half binds it for the life of the interpreter, so the binding has to
+precede every test module, and a root ``conftest`` is the only thing pytest runs before
+collection.  ``tests/fresh.py`` asserts that nothing beat it to it rather than grading
+whatever it finds.
 
 :func:`refusal_from` is at the bottom: §14 step 6 makes a refusal a VALUE, so a test that
 used to write ``pytest.raises(Refusal)`` reads the value a call returned, and this is the
@@ -18,7 +30,29 @@ root ``conftest``, and a test module declaring one is not read in time.
 
 from __future__ import annotations
 
+import pytest
+
 from codegen.refusal import Refusal
+
+
+@pytest.hookimpl(trylast=True)
+def pytest_sessionstart(session) -> None:
+    """Bind the generated half of ``adcp.types`` to the tree a fresh run emits.
+
+    **The window, and both of its edges are load-bearing.**  It has to be before
+    COLLECTION, because every test module is imported there and the first import of the
+    generated half binds it for the life of the interpreter -- ``tests/fresh.py`` asserts
+    that nothing beat it to it rather than grading whatever it finds.  And it has to be
+    after hypothesis's own ``pytest_sessionstart``, because ``fresh`` reaches
+    ``codegen.emit`` -> ``codegen.harness`` -> ``hypothesis``, and hypothesis warns
+    (``HypothesisSideeffectWarning``) when its unicode charmap is built while its
+    ``in_initialization`` counter is up, which it clears in that hook.  ``trylast`` is
+    what orders the two; the warning is correct about the cost and is not suppressed.
+
+    Run in each xdist worker as well as in the session process, because each is its own
+    interpreter with its own ``adcp.types``.
+    """
+    import fresh  # noqa: PLC0415 -- deferred on purpose; see above
 
 
 def pytest_addoption(parser) -> None:

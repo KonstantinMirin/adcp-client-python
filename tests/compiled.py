@@ -130,6 +130,20 @@ def _key(bundle: str, population: tuple[str, ...]) -> str:
     return h.hexdigest()
 
 
+def digest(bundle: Path, population: Iterable[str]) -> str:
+    """The key a compile is held under, for a caller holding a DERIVED ARTIFACT of one.
+
+    ``tests/fresh.py`` writes the emitted tree to disk and has to name the directory it
+    holds it in.  That name must move on exactly what the compile moves on -- the
+    compiler's own source, the package modules the compile reads, the bundle and the
+    population -- or a tree one compiler wrote is handed to a lane running another, which
+    is the staleness this whole module exists to make impossible one layer down.  So the
+    name is THIS function's key rather than a second derivation that could disagree with
+    it.
+    """
+    return _key(str(bundle), tuple(population))
+
+
 @functools.cache
 def _compiled(bundle: str, population: tuple[str, ...]) -> emit.Emitted:
     """The one compile, keyed by the compiler's source, the bundle and the population.

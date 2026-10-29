@@ -36,13 +36,19 @@ from adcp.types._base import SchemaRef, schema_at
 from codegen import bundle, constraints, dump_exemptions, harness
 from codegen.dump_exemptions import EXEMPT, ORIGIN_ONLY, PIN, UPSTREAM, Exemption
 
+import fresh
 from tests.nodeset import claimed
 
 #: The packaged tree, which is the pointer space an entry names: section 6 measures
 #: these documents at 0 ``$ref`` occurrences, so what the harness grades is the
 #: resolved form and a node reached through a ``$ref`` in the bundle source is an
 #: inlined copy here.
-PACKAGED = pathlib.Path("src/adcp/types/_schemas")
+#:
+#: **The tree a FRESH run emits** (``docs/plan/architecture.md``, 2026-10-29), which is
+#: the same tree ``_class_for`` imports its classes out of: an entry's position space and
+#: the pair it is checked against have to be one tree, or the ORIGIN_ONLY equality is a
+#: comparison between two compilers.  ``tests/fresh.py`` owns it.
+PACKAGED = fresh.TREE
 
 #: The bundle source, for the pattern census.  Every measurement in this build is
 #: taken over ``schemas/cache/<version>/`` (section 6).

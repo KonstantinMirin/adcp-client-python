@@ -29,6 +29,7 @@ from adcp.types.envelopes import FailedResponse
 from compiled import compiled
 from codegen import bundle, emit, keywords
 from codegen.lower import envelope
+import fresh
 from tests.nodeset import claimed
 
 BUNDLE = emit.TREE.parents[3] / "schemas" / "cache" / "3.2"
@@ -364,13 +365,14 @@ def test_the_base_module_is_a_function_of_the_bundle_and_not_of_the_run() -> Non
     document = "brand/creative-approval-response.json"
     rel = emit.module_path(document) + ".py"
     alone = compiled(BUNDLE, [document])
-    # Against the COMMITTED artifacts, which is the whole-population run's own output
-    # (``tests/test_emit.py``'s byte compare is what keeps them that): comparing a
+    # Against the WHOLE-POPULATION run's own output, read off the tree a fresh run wrote
+    # (``docs/plan/architecture.md``, 2026-10-29, and ``tests/fresh.py``): comparing a
     # one-document run with a second whole-bundle run here would cost a second emission
-    # to prove a property the committed tree already carries.
-    package = emit.TREE.parent
-    assert alone.beside["envelopes.py"] == (package / "envelopes.py").read_text()
-    assert alone.files[rel] == (emit.TREE / rel).read_text()
+    # to prove a property the materialised one already carries.  It used to read the
+    # COMMITTED artifact, which made this one-document property conditional on when
+    # ``src/`` was last regenerated.
+    assert alone.beside["envelopes.py"] == (fresh.PACKAGE / "envelopes.py").read_text()
+    assert alone.files[rel] == (fresh.TREE / rel).read_text()
     assert f"from {envelope.MODULE} import {envelope.BASE}" in alone.files[rel]
 
 

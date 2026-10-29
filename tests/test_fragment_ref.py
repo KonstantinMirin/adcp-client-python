@@ -47,6 +47,7 @@ from codegen import bundle, compiler, emit
 from codegen.keywords import Position
 from codegen.refusal import Kind, Refusal
 from compiled import compiled
+import fresh
 import populations
 from conftest import refusal_from
 
@@ -54,7 +55,12 @@ from tests.nodeset import claimed, partitions
 
 REPO = Path(__file__).resolve().parents[1]
 BUNDLE = REPO / "schemas" / "cache" / "3.2"
-TREE = REPO / emit.TREE
+
+#: The tree a FRESH run emits, which is what every byte compare below is against
+#: (``docs/plan/architecture.md``, 2026-10-29).  ``tests/fresh.py`` owns it;
+#: ``tests/test_emit.py``'s ``test_the_committed_tree_is_what_a_fresh_run_emits`` is the
+#: one check that reads ``src/``.
+TREE = fresh.TREE
 
 DRAFT = "http://json-schema.org/draft-07/schema#"
 #: The base every reference in the 3.2 bundle is spelled under.  Written out here
@@ -120,7 +126,9 @@ def constraint_aliases(source: str | None = None) -> dict[str, set[str]]:
     reference keeps the claim -- the constraint is reachable from the alias, and it
     is still nowhere near the property -- without weakening either half of it.
     """
-    source = Path("src/adcp/types/constraints.py").read_text() if source is None else source
+    # The alias module a FRESH run writes, beside the fresh tree: it is this run's
+    # output and not the checkout's, for ``TREE``'s reason one file over.
+    source = (fresh.PACKAGE / "constraints.py").read_text() if source is None else source
     out: dict[str, set[str]] = {}
     for node in ast.parse(source).body:
         if isinstance(node, ast.Assign) and len(node.targets) == 1:

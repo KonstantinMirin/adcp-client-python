@@ -1,4 +1,23 @@
-"""Grade the committed emitted tree against the documents it was emitted from.
+"""Grade the tree a FRESH run emits against the documents it was emitted from.
+
+**The subject is a fresh emission and never the committed tree**
+(``docs/plan/architecture.md``, 2026-10-29): "the schema is pinned and the drawn
+instances are content-addressed, so what a class is graded against is a function of the
+bundle and the compiler alone.  Grading therefore reads the tree a fresh run emits.  The
+committed tree is an ARTIFACT, verified by one byte-compare, and is never the subject."
+``tests/fresh.py`` is how: it writes the emission to disk once and binds the generated
+half of ``adcp.types`` to it, so :data:`TREE` and :func:`graded`'s import are two
+readings of ONE tree and that tree is this compiler's output.  :data:`COMMITTED` is the
+artifact and ``test_the_committed_tree_is_what_a_fresh_run_emits`` is the only check in
+this file that reads it.
+
+What that replaced, because the file's own figures were the evidence: the committed tree
+was found carrying no module at all for some documents a fresh run emits and differing
+byte for byte on others, so every census here graded a MIXTURE of two compilers -- most
+of the import-path collisions then on the board were invisible in ``src/`` and visible in
+a fresh run.  And because :func:`graded` runs at PARAMETRIZE time, one committed module
+that did not import collected zero tests from this file, including the obligation that
+exists to report such a module.
 
 Every assertion here is over something DERIVED: the population comes from the
 bundle, the pairs come from the classes' own ``__adcp_schema__``, and the verdict
@@ -41,6 +60,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import traceback
 import types
 from dataclasses import replace
 from pathlib import Path
@@ -98,6 +118,7 @@ from codegen.harness import (
 from codegen.lower import rules
 import corpus
 from compiled import compiled
+import fresh
 import populations
 from conftest import refusal_from
 
@@ -125,7 +146,22 @@ REPO = Path(__file__).resolve().parents[1]
 #: sits in, which is the tree they claim to grade.
 SUBPROCESS_PATH = os.pathsep.join((str(REPO / "src"), str(REPO)))
 BUNDLE = REPO / "schemas" / "cache" / "3.2"
-TREE = REPO / emit.TREE
+
+#: **The tree every check in this file reads: the one a fresh run emits.**
+#: ``tests/fresh.py`` materialises it and binds ``adcp.types``'s generated half to it, so
+#: a reading through this path and a reading through ``import adcp.types._schemas`` are
+#: two readings of the same tree.  They were not before, and that was the defect: a path
+#: reading of ``src/`` and an import of ``src/`` agreed with each other and with neither
+#: compiler.
+TREE = fresh.TREE
+
+#: ``src/adcp/types/_schemas``: the ARTIFACT a consumer installs.
+#:
+#: Read by ``test_the_committed_tree_is_what_a_fresh_run_emits`` and by nothing else here.
+#: It is verified -- one byte-compare against a fresh emission of the derived population
+#: -- and it is never the SUBJECT of a check about the compiler, because a check whose
+#: subject is a committed file passes or fails on when that file was last written.
+COMMITTED = REPO / emit.TREE
 
 
 #: Cached because each of these re-reads all 1,054 documents and the two keyword
@@ -306,6 +342,26 @@ class Graded(NamedTuple):
     module: str
 
 
+#: Modules of the fresh tree that did not import, as ``name -> the tail of the traceback``.
+#:
+#: **:func:`graded` records an unimportable module and does not raise**, and that is the
+#: whole of why this dict exists.  It runs at PARAMETRIZE time, where a raise is not a red
+#: test: it errors the COLLECTION of this file, and the measurement is that one module
+#: which did not import collected ZERO tests here -- every pair, every census and the
+#: import obligation itself, gone, with the reader left holding a traceback about a base
+#: list instead of a named failure.  ``docs/plan/architecture.md``'s rule for it is "a
+#: tree that does not build fails one named test instead of disabling the file".
+#:
+#: So the skip is a finding, and ``test_no_module_of_the_graded_tree_failed_to_import``
+#: below is the one that reads it.  It is NOT silent anywhere else either: a module that
+#: does not import contributes no pair, so its document emits and is not graded, which
+#: ``test_the_pairing_is_intrinsic_to_every_class_the_tree_carries`` reports from the
+#: other side, and ``tests/test_the_tree_imports.py`` reports in a child process over the
+#: same tree without importing anything of it here.
+UNIMPORTABLE: dict[str, str] = {}
+
+
+@functools.cache
 def graded() -> list[Graded]:
     """Every class and alias the tree carries, with the schema each one names.
 
@@ -337,12 +393,37 @@ def graded() -> list[Graded]:
     back on the number the suite expected and nothing reddened.  The dedup check below
     is what catches it from the other side: it asserts that every name in a content
     group binds ONE object.
+
+    **THE TREE IS THE ONE A FRESH RUN EMITS**, which is the row this function is the
+    subject of.  ``tests/fresh.py`` writes the emission and binds ``adcp.types``'s
+    generated half to it, so the import below reaches this compiler's output and its
+    aliases resolve through this compiler's ``constraints`` module.  A fresh ``_schemas``
+    imported beside the COMMITTED alias module would resolve its aliases through that one,
+    and an alias this run mints that the committed module lacks is exactly a defect the
+    pairing is meant to find -- which is why the binding is one decision about one package
+    and not a path handed in here.
+
+    **Nothing it reads can take this file's collection down.**  No tree at all is an empty
+    list (``fresh.schemas()`` answers ``None`` and a named test reads the reason), and a
+    module that does not import is recorded in :data:`UNIMPORTABLE` and skipped.  Both
+    were raises, and both errored ~2,400 tests.
+
+    Cached because it imports the whole emitted tree and a union root's
+    ``model_rebuild(force=True)`` is not cheap; it is read at parametrize time and by
+    several tests, and the result is a function of the tree alone.  The returned list is
+    SHARED: read it, do not mutate it.
     """
-    import adcp.types._schemas as pkg
+    pkg = fresh.schemas()
+    if pkg is None:
+        return []
 
     out: list[Graded] = []
     for info in sorted(pkgutil.walk_packages(pkg.__path__, pkg.__name__ + "."), key=lambda i: i.name):
-        module = importlib.import_module(info.name)
+        try:
+            module = importlib.import_module(info.name)
+        except Exception:  # noqa: BLE001 -- see UNIMPORTABLE: a raise here errors collection
+            UNIMPORTABLE[info.name] = traceback.format_exc(limit=3)[-600:]
+            continue
         taken: set[int] = set()  # by IDENTITY: one class, one pair, whatever it is called
         for value in vars(module).values():
             if (
@@ -717,6 +798,25 @@ def test_a_reference_target_is_emitted_even_though_no_one_named_it() -> None:
     )
 
 
+def test_no_module_of_the_graded_tree_failed_to_import() -> None:
+    """:data:`UNIMPORTABLE`, read: what the pairing SKIPPED, named rather than silent.
+
+    ``graded()`` cannot raise -- it runs at parametrize time, where a raise errors this
+    file's collection instead of reddening a test -- so an unimportable module is
+    recorded and stepped over.  A skip nothing reports is a census quietly taken over a
+    subset, which is the shape §8's last paragraph forbids, so this is the report.
+
+    It is deliberately NOT the whole of the import obligation.  ``graded()`` only reaches
+    the modules a walk of the package yields and only asks them to IMPORT; the second
+    question -- whether every class of each one RESOLVES -- needs
+    ``model_json_schema()``, and the obligation over a fresh tree in a child process is
+    ``tests/test_the_tree_imports.py``'s.  This one says the pairing below ranges over
+    every module of the tree, which is that census's own precondition.
+    """
+    graded()
+    assert UNIMPORTABLE == {}, sorted(UNIMPORTABLE)
+
+
 def test_the_pairing_is_intrinsic_to_every_class_the_tree_carries() -> None:
     """§2: the class names its schema, so nothing aims the grader at a tree.
 
@@ -730,11 +830,14 @@ def test_the_pairing_is_intrinsic_to_every_class_the_tree_carries() -> None:
       nested class is a subschema (and the previous arrangement could not bind
       one at all -- a nested class had no row and so no ``strict_validate``).
 
-    ``graded()`` reads the COMMITTED TREE, so the population it is compared against
-    is the tree's own (:func:`tree_population`) and not the steps' union.  They were
-    the same function and the equality above held only because the tree happened to
-    carry every closure document some past run had written
-    (``adcp-client-python-10l.73``).
+    ``graded()`` reads the tree the SHIPPED population is emitted from, so the population
+    it is compared against is that one (:func:`tree_population`) and not the steps' union.
+    They were the same function and the equality above held only because the tree happened
+    to carry every closure document some past run had written
+    (``adcp-client-python-10l.73``).  Both sides are now one run's: the documents come from
+    the compile and the classes come from the tree that compile wrote, so neither can be
+    stale with respect to the other -- which is what makes the first clause a claim about
+    the COMPILER rather than about when ``src/`` was last regenerated.
     """
     emitted = set(compiled(BUNDLE, tree_population()).emitted)
     rows = graded()
@@ -6072,11 +6175,19 @@ def test_a_typed_additional_properties_is_a_typed_pydantic_extra() -> None:
 def test_every_module_of_the_tree_imports_and_every_class_of_it_is_defined() -> None:
     """Every file of the tree IMPORTED, which is one obligation and not a derivation.
 
-    ``graded()`` imports the tree too, but at COLLECTION time and only for the modules
-    that bind a pair -- so a module whose annotation names a symbol it does not import
-    takes the whole test file down with an ``ImportError`` before a single assertion
-    runs, and a module that imports but leaves a class unresolved reports
-    ``harness_error`` on every pair of it.  Neither reads as the one-line defect it is.
+    ``graded()`` imports the tree too, but at COLLECTION time, and the SECOND question is
+    the one it cannot ask: a module that imports while leaving a class unresolved binds
+    its pairs and reports ``harness_error`` on each of them, three test files from the
+    one-line defect that caused it.  This asks both of a module, once, and names it.
+
+    It no longer stands behind its own precondition, which is what it stood behind: a
+    module that did not import used to raise inside ``graded()`` at parametrize time and
+    take this file's collection -- and therefore this test -- down with it.  ``graded()``
+    records such a module in :data:`UNIMPORTABLE` and steps over it now, so an
+    unimportable module reddens checks and errors nothing.  The obligation over a fresh
+    tree in a CHILD process, which is where it belongs for the same decision's other
+    clause, is ``tests/test_the_tree_imports.py``'s; this is the in-process reading of it
+    over the same tree, and it costs the import the pairing is already paying for.
 
     **Measured at ``adcp-client-python-10l.21``, which is why this exists.**
     ``render.klass`` filters the typed ``__pydantic_extra__`` annotation's reported
@@ -6691,17 +6802,17 @@ def test_the_committed_tree_is_what_a_fresh_run_emits(tmp_path) -> None:
             if p.is_file() and "__pycache__" not in p.parts
         }
 
-    committed, fresh = tree(TREE), tree(tmp_path / "_schemas")
-    assert sorted(fresh) == sorted(committed)
-    for rel in sorted(fresh):
-        assert fresh[rel] == committed[rel], rel
+    committed, emitted = tree(COMMITTED), tree(tmp_path / "_schemas")
+    assert sorted(emitted) == sorted(committed)
+    for rel in sorted(emitted):
+        assert emitted[rel] == committed[rel], rel
     # Two files beside the tree, which is the set the run INTENDS and not a floor: the
     # alias module (D5) and the envelope bases (``codegen/lower/envelope.py``).  Each
     # holds types that belong to no document, so neither has a domain to live under and
     # neither can sit inside the private tree; both are compared byte for byte below.
     assert sorted(out.beside) == ["constraints.py", "envelopes.py"], sorted(out.beside)
     for rel in sorted(out.beside):
-        assert (tmp_path / rel).read_text() == (TREE.parent / rel).read_text(), rel
+        assert (tmp_path / rel).read_text() == (COMMITTED.parent / rel).read_text(), rel
 
 
 def test_a_document_whose_path_is_also_a_directorys_is_that_packages_root() -> None:
