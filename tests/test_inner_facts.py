@@ -125,6 +125,29 @@ def _stated_default(document: str, root: Any, sub: Any) -> Any:
     return target["default"] if isinstance(target, dict) and "default" in target else MISSING
 
 
+def _same_instance_below(node: dict, pointer: str) -> list[tuple[str, dict]]:
+    """Every subschema reached from ``node`` by SAME-INSTANCE hops alone, with its
+    pointer: the descent §2's intersection follows.
+
+    ``oneOf``/``anyOf``/``allOf`` and nothing else, to any depth.  draft-07 holds each
+    of those against the instance the node describes, so a statement the node makes
+    about a key holds at every one of them -- which is what makes a chain of them one
+    instance and a ``properties`` or ``items`` hop a different one.  ``if``/``then``
+    are out for ``_base.SAME_INSTANCE_LIST``'s own reason read on this keyword: a
+    ``then`` applies only where the condition holds, so it does not state that the key
+    is required.
+    """
+    out: list[tuple[str, dict]] = []
+    for word in ("oneOf", "anyOf", "allOf"):
+        for i, branch in enumerate(node.get(word) or ()):
+            if not isinstance(branch, dict):
+                continue
+            where = f"{pointer}/{word}/{i}"
+            out.append((where, branch))
+            out += _same_instance_below(branch, where)
+    return out
+
+
 def _defaults_on_required_properties() -> dict[tuple[str, str], Any]:
     """Every (document, pointer) in the bundle where a property's declaration states a
     ``default`` -- its own, or its local ``$ref`` target's -- and its enclosing object
@@ -152,33 +175,55 @@ def _defaults_on_required_properties() -> dict[tuple[str, str], Any]:
     ``transition_mode`` and defaults it to ``instant`` while all six of its branches
     restate the key: the run reports the drop at the object's pointer and at each
     branch's, which is seven sites for one stated fact.
+
+    **THE TWO HALVES OF THE SHAPE MAY SIT AT TWO DIFFERENT POINTERS, and the descent is
+    what reaches that.**  §2's intersection is followed as far as the pointer goes, so
+    the ``default`` may be the enclosing object's while the ``required`` is a branch's
+    OWN -- and then the key is required and defaulted at the branch, which is exactly
+    what ``compiler.fields`` is handed there.  Two readings this had and now does not:
+    it descended ONE combinator hop, so a branch of a branch was outside the
+    enumeration; and it asked the enclosing node's ``required`` before looking at any
+    branch at all, so a default the object states WITHOUT requiring was never carried
+    down.  ``media-buy/proposal-refinement.json`` is both at once -- its root states
+    ``change_kind`` with ``default: "amendment"`` and requires only ``proposal_id``,
+    while ``/oneOf/1/anyOf/6`` requires ``change_kind`` -- and the run reported the drop
+    there against an enumeration that did not hold the site.
+
+    :func:`_same_instance_below` is the descent, and it is the SAME-INSTANCE hops only:
+    a ``properties`` or an ``items`` hop moves to another instance and its node is
+    enumerated on its own by the walk above.
     """
     found: dict[tuple[str, str], Any] = {}
     for document in bundle.portable(BUNDLE):
         root = bundle.read(BUNDLE, document)
         for pointer, node in bundle.nodes(root):
             props = node.get("properties") if isinstance(node, dict) else None
-            demanded = node.get("required") if isinstance(node, dict) else None
-            if not isinstance(props, dict) or not isinstance(demanded, list):
+            if not isinstance(props, dict):
                 continue
+            demanded = node.get("required") if isinstance(node, dict) else None
+            demanded = demanded if isinstance(demanded, list) else []
             for key, sub in props.items():
                 stated = _stated_default(document, root, sub)
-                if key not in demanded or stated is MISSING:
+                if stated is MISSING:
                     continue
-                found[(document, f"{pointer}/properties/{key}")] = stated
-                # §2's intersection at every branch of this object, which is where the
-                # same fact is handed to a second declaration.  The branch's own
-                # ``default`` wins where it states one, which is the precedence the
-                # intersection gives every keyword the two declarations share.
-                for word in ("oneOf", "anyOf", "allOf"):
-                    for i, branch in enumerate(node.get(word) or ()):
-                        if not isinstance(branch, dict):
-                            continue
-                        own = (branch.get("properties") or {}).get(key)
-                        theirs = _stated_default(document, root, own)
-                        found[(document, f"{pointer}/{word}/{i}/properties/{key}")] = (
-                            stated if theirs is MISSING else theirs
-                        )
+                here = key in demanded
+                if here:
+                    found[(document, f"{pointer}/properties/{key}")] = stated
+                # §2's intersection at every same-instance descendant of this object,
+                # which is where the same fact is handed to a second declaration.  The
+                # branch's own ``default`` wins where it states one, which is the
+                # precedence the intersection gives every keyword the two declarations
+                # share -- and the requiredness holds where EITHER view states it, which
+                # is the union §2's intersection spells for that keyword.
+                for where, branch in _same_instance_below(node, pointer):
+                    own = (branch.get("properties") or {}).get(key)
+                    theirs = _stated_default(document, root, own)
+                    wanted = branch.get("required")
+                    if not here and key not in (wanted if isinstance(wanted, list) else []):
+                        continue
+                    found[(document, f"{where}/properties/{key}")] = (
+                        stated if theirs is MISSING else theirs
+                    )
     return found
 
 

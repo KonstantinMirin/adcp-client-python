@@ -102,7 +102,7 @@ from adcp.types._base import (
     UNDERDETERMINED,
     Approximation,
     SchemaRef,
-    entailed_types,
+    entails_type,
 )
 from codegen import attribution, bundle, dump_exemptions, keywords
 from codegen.keywords import Position, Rung
@@ -2278,11 +2278,15 @@ def _entails_type(doc: dict, value: Any) -> bool:
         implied = {_JSON_TYPE.get(type(m)) for m in members}
         return len(implied) == 1 and value in implied
     # **The two combinators are OR-ed and the first one present does not decide
-    # alone**, which is why :func:`entailed_types` answers with a SET: ``oneOf`` and
+    # alone**, which is why ``_base.entailed_types`` answers with a SET: ``oneOf`` and
     # ``anyOf`` are independent assertions about the same instance, so a node stating
-    # both must satisfy both and either one forcing the type is enough.  Membership and
-    # not equality, for exactly that reason.
-    if value in entailed_types(doc):
+    # both must satisfy both and either one forcing the type is enough.
+    #
+    # ``entails_type`` and not the set directly, because ``value`` is whatever the MODEL
+    # renders and draft-07's ``type`` may be a LIST -- which is no set member.  That
+    # normalisation is the derivation's and is applied to both sides there, so this
+    # reader cannot come to read the list form differently from ``applied_schema``.
+    if entails_type(doc, value):
         return True
     # **An ``allOf`` where ANY conjunct entails it, which is the DUAL of the arm above
     # and the fourth shape of the same question** (``adcp-client-python-10l.21``).  A

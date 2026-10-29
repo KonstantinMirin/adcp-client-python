@@ -333,7 +333,31 @@ IGNORED_BY_A_NON_OBJECT = frozenset(
 )
 
 
-def entailed_types(node: Mapping[str, Any]) -> frozenset[str]:
+def _as_a_member(word: Any) -> Any:
+    """A ``type`` value as a SET MEMBER: draft-07's LIST form becomes a tuple.
+
+    draft-07's ``type`` is a word or a list of them, and both are assertions about the
+    same instance -- so :func:`entailed_types` answers about both, and a set is what it
+    answers with, which a list cannot be a member of.  The tuple keeps the document's
+    own order, so two spellings of one list are two members and neither is read as the
+    other.
+    """
+    return tuple(word) if isinstance(word, list) else word
+
+
+def entails_type(node: Mapping[str, Any], value: Any) -> bool:
+    """Does this node's COMBINATOR force exactly ``value`` on its own instance?
+
+    :func:`entailed_types` asked of one candidate, for the reader that holds a ``type``
+    value and not a word: ``codegen.harness``'s comparison is handed whatever the MODEL
+    renders, which draft-07 lets be a list, and a list is no set member.  So the one
+    normalisation is applied to both sides here rather than at the call, which is what
+    keeps the two readers of the derivation from disagreeing about the list form.
+    """
+    return _as_a_member(value) in entailed_types(node)
+
+
+def entailed_types(node: Mapping[str, Any]) -> frozenset[Any]:
     """The ``type`` words a node's COMBINATORS force on the instance it describes.
 
     draft-07 holds a ``oneOf``/``anyOf`` against the same instance the node describes,
@@ -359,6 +383,14 @@ def entailed_types(node: Mapping[str, Any]) -> frozenset[str]:
     assertions and a node may state both; the clauses themselves cannot collide, since
     the second requires a branch list that states no ``type`` word.
 
+    The members are ``type`` VALUES read through :func:`_as_a_member`, so draft-07's
+    list form is a tuple here -- a branch list whose every member states
+    ``["string", "null"]`` forces that list, which no single word expresses, and
+    :func:`entails_type` is the reader that normalises the other side.
+    :func:`applied_schema` takes an answer only where it is one ``str``, because what it
+    does with one is conjoin ``type: <word>`` into the node below and a list admits more
+    than one type -- the same reading its own clause already gives a STATED list.
+
     **Declared in the package, beside :data:`SAME_INSTANCE_LIST`, for that data's own
     reason**: the emitter decides whether a node can become a class from this answer,
     the runtime decides what that class's schema is from :func:`applied_schema`, and
@@ -367,15 +399,15 @@ def entailed_types(node: Mapping[str, Any]) -> frozenset[str]:
     narrower than the schema it names, or the same disagreement showing up as the
     verifier reporting a fact the emitter read off the document.
     """
-    out: set[str] = set()
+    out: set[Any] = set()
     for combinator in SAME_INSTANCE_LIST[1:]:  # anyOf, oneOf -- not the conjunct list
         branches = node.get(combinator)
         if not isinstance(branches, list) or not branches:
             continue
         if not all(isinstance(b, dict) for b in branches):
             continue
-        stated = {b.get("type") for b in branches}
-        if len(stated) == 1 and isinstance(word := next(iter(stated)), str):
+        stated = {_as_a_member(b.get("type")) for b in branches}
+        if len(stated) == 1 and (word := next(iter(stated))) is not None:
             out.add(word)
         elif (
             combinator == "oneOf"
@@ -590,12 +622,20 @@ def applied_schema(root: dict, pointer: str) -> dict:
             # there admits nothing, and a word picked off such a list would be this
             # function's invention rather than the document's statement.
             #
+            # And for one ``str``, which is the same reading the STATED clause already
+            # takes of a type LIST: a ``["object", "null"]`` admits a null, so there is
+            # no single word to conjoin and nothing is carried.
+            #
             # INHERITED through a chain of such hops: a node asserting nothing passes
             # its own enclosing assertion down.
             if isinstance(declared, str):
                 enclosing = declared
-            elif isinstance(node, dict) and len(entailed := entailed_types(node)) == 1:
-                enclosing = next(iter(entailed))
+            elif (
+                isinstance(node, dict)
+                and len(entailed := entailed_types(node)) == 1
+                and isinstance(word := next(iter(entailed)), str)
+            ):
+                enclosing = word
             if isinstance(node, dict):
                 conjoined += _conjunction(node, part)
             # **A second CUT drops the first one's siblings rather than guessing how
