@@ -2387,10 +2387,10 @@ def _constrains_nothing(keyword: str, doc: Mapping[str, Any], *, required: bool 
     dropped by a model that omits it, so reporting it as ``missing`` says the model is
     wider than its schema when it is not.
 
-    **Two arms, and NEITHER is the delegated resolver's.**  ``docs/plan/architecture.md``
+    **Three arms, and NONE is the delegated resolver's.**  ``docs/plan/architecture.md``
     §9 deletes every fold that undoes a rewriting of that resolver and keeps the
-    readings this pipeline's own output forces; these two are the second kind -- one
-    reads a keyword the DOCUMENT itself writes, the other grades a decision §5 of the
+    readings this pipeline's own output forces; these are the second kind -- one
+    reads a keyword the DOCUMENT itself writes, the others grade a decision §5 of the
     semantics document made:
 
     * **``required: []``** -- an empty list demands no key, which is what silence
@@ -2404,6 +2404,12 @@ def _constrains_nothing(keyword: str, doc: Mapping[str, Any], *, required: bool 
       which also REPORTS the drop), and this arm is the grading half of the same
       decision, gated on the same shape.  5 of the bundle's 339 property defaults
       sit on a required property.
+    * **a constraint beside a ``const`` the PIN SATISFIES** -- §5's ``const`` row, "the
+      constraint narrows nothing the ``const`` has not already decided, so a model that
+      restates it and one that does not admit the same instances".  Gated on the
+      document's own draft-07 validator saying the pin is valid against that one
+      keyword, with ``format`` excluded because that library decides it only when handed
+      a checker.  24 facts; the arm below says where each is.
 
     **DELETED with the delegated resolver: ``enum: [false, true]`` at a node the
     document declares ``boolean``.**  That arm restored a finite type the resolver had
@@ -2434,6 +2440,57 @@ def _constrains_nothing(keyword: str, doc: Mapping[str, Any], *, required: bool 
     """
     if keyword == "required":
         return doc.get("required") == []
+    if "const" in doc and keyword not in ("const", "format"):
+        # **A CONSTRAINT BESIDE A ``const`` THE PIN SATISFIES, which is the row §5's
+        # ``const`` row named and left for the step whose population reached one.**  That
+        # row: "``{v}`` intersected with any non-descending constraint is ``{v}`` where the
+        # pin satisfies the constraint and EMPTY where it does not ... the constraint
+        # narrows nothing the ``const`` has not already decided, so a model that restates
+        # it and one that does not admit the same instances", and then the ceiling in its
+        # own words -- "a ``Literal`` renders ``const`` and a type word and no ``pattern``,
+        # so §8 would report the document's own ``pattern`` as *missing* at a pair ... the
+        # step whose population reaches one adds the comparison's own row rather than this
+        # one hiding the fact with a ``WithJsonSchema``".  This is that row.
+        #
+        # It belongs HERE and not among the model-only admissions, because the question is
+        # this function's own: does a DOCUMENT fact admit exactly what its absence admits.
+        # Beside a satisfied pin it does -- the node's accepted set is the single value
+        # either way -- so a model that omits it is not wider.
+        #
+        # **The PIN is checked, by the document's own draft-07 validator, and the gate is
+        # the check and not the keyword's name.**  ``lower.const`` decides the same
+        # question with the same library on the emitting side ("the pin does not -> the
+        # node admits NOTHING, and a ``Literal`` of the value would be a model wider than
+        # its schema"), so a pin that FAILS its sibling never reaches a model at all --
+        # and were one to, this returns ``False`` and the fact lands in ``missing``, which
+        # is the direction §2 requires.  A keyword holding a SUBSCHEMA is excluded by the
+        # caller, which asks only about facts at this node.
+        #
+        # **``format`` IS EXCLUDED BY NAME, and the reason is a measurement rather than a
+        # keyword list**: ``jsonschema`` treats ``format`` as a pure ANNOTATION unless it
+        # is handed a checker, so ``Draft7Validator({"format": "uri"}).is_valid(v)`` is
+        # true of ``"not a uri at all"`` -- admitting it here would read "valid" off a
+        # check that was never made, which is ``codegen.lower.const``'s own sentence for
+        # why that module passes ``Draft7Validator.FORMAT_CHECKER`` and reads which formats
+        # the installed environment can DECIDE.  §5's ``const`` row decides the keyword
+        # ("a ``format`` beside the pin compiles to NOTHING and the pin alone is rendered
+        # ... the pin is checked against the format", 2026-10-29), so its grading half is
+        # owed -- with that module's two readings, not with this one's bare validator.
+        # Measured at **69 facts**, every one a ``format: uri`` beside a pin, on documents
+        # that already emit; they stay in ``missing`` until that half is written.
+        #
+        # Measured over the 1,054 portable documents, with ``format`` excluded: **24
+        # facts**.  8 are ``minLength: 1`` and ``maxLength: 64`` on ``core/error.json``'s
+        # ``code`` at 3 pairs of ``media-buy/get-reporting-status-response.json``, where a
+        # branch pins it to ``"NOT_FOUND"`` -- a 9-character string, inside both bounds --
+        # reached the day §5's ``additionalProperties`` row at CONJ stopped refusing that
+        # document.  The other 16 are the ``pattern`` the row's own ceiling names, on
+        # documents that already emit: ``core/postal-area.json`` and six more pin a
+        # ``country`` whose base states ``^[A-Z]{2}$``, and ``"US"`` matches it.
+        try:
+            return jsonschema.Draft7Validator({keyword: doc[keyword]}).is_valid(doc["const"])
+        except Exception:  # noqa: BLE001 -- a malformed keyword value decides nothing
+            return False
     return keyword == "default" and required
 
 

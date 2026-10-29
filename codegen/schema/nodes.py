@@ -281,6 +281,36 @@ class Composition(Base):
     #: core/forecast-point-dimensions.json}``.  0 nodes state one in the bundle's own
     #: text, so every node reaching this field is one §2's intersection rule composed.
     contains: Any = None
+    #: **The VALUE constraints this node states BESIDE its conjunct list**, in the
+    #: document's own spelling, by the same classification every value-carrying kind's
+    #: facts take (``parse.value_facts``) -- less the keys that are RULE sources at this
+    #: position, which :attr:`Base.rules` already carries and ``lower.rules`` is the one
+    #: reader of.
+    #:
+    #: §5's ``$ref`` row at CONJ is what reads them: "the target is this node's own TYPE,
+    #: and the other conjuncts **and the ``allOf``'s siblings** constrain it, which is
+    #: §2's intersection at a node that declares no fields of its own", and §5's group (a)
+    #: names the sentence's unwritten half -- "the refusals reading '*X* is not a class, so
+    #: it cannot be a base' are the unimplemented half of that sentence".  A bound stated
+    #: beside the ``allOf`` is one of those siblings, so it constrains the type the
+    #: conjuncts supply; a node whose conjuncts are all class BASES has no such type and
+    #: ``compiler.lower_composition`` refuses there, exactly as it does for a ``contains``
+    #: and for a value set.
+    #:
+    #: :attr:`contains` is the precedent and the arrangement is deliberately the same: the
+    #: arm that claims the node carries the siblings its handler is the one reader of.
+    #:
+    #: Measured over the 1,054 portable documents, on the documents' own text: **12
+    #: composing nodes state a key of this classification beside an ``allOf``, and 2 of
+    #: them reach this field** -- ``core/catalog-selection.json`` at ``/properties/query``
+    #: (``minLength: 1`` over a ``$ref`` to a string) and
+    #: ``trusted-match/context-match-response.json`` at
+    #: ``/properties/signals_by_provider/additionalProperties/properties/targeting_kvs``
+    #: (``minItems: 1`` over a local ``$ref`` to an array).  Of the other 10, 4 state
+    #: ``type: array`` and are claimed by the array kind before the ``allOf`` arm
+    #: (``adcp-client-python-10l.64``), and 6 state only a key that is a RULE here --
+    #: ``uniqueItems``, ``minProperties``, ``maxProperties``.
+    facts: Mapping[str, Any] = field(default_factory=dict)
     word: Any = None
 
 

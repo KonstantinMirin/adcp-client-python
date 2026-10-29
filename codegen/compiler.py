@@ -2518,6 +2518,7 @@ def _the_conjuncts_own_type(
     fields_declared: Collection[str],
     bases: Sequence[ir.TypeRef],
     rule_nodes: Sequence[Mapping[str, Any]],
+    facts: Mapping[str, Any],
 ) -> Decided | Refusal | TargetBranches:
     """§5's ``$ref`` row at CONJ where the target is NOT a class: the node's own TYPE.
 
@@ -2540,6 +2541,28 @@ def _the_conjuncts_own_type(
       compose with;
     * the node declares fields -- §5's distribution clause, because a UNION root has one
       field set per branch and conjunction distributes over disjunction.
+
+    **``facts`` IS "the ``allOf``'s siblings constrain it", read at the siblings that are
+    BOUNDS** (:attr:`codegen.schema.nodes.Composition.facts`, and §5's group (a): "the
+    refusals reading '*X* is not a class, so it cannot be a base' are the unimplemented
+    half of that sentence").  §2 binds a constraint to the TYPE, and the type here is the
+    target's symbol -- so the bound rides on the :class:`Decided` beside it, in the one
+    carrier ``compiler.fields`` already folds into :attr:`codegen.ir.TypeRef.facts` for
+    every other node's constraints, and the position's own cell is what says where it
+    lands: ``minItems`` at PROP is "-> on the field", ``minLength`` at PROP is
+    "``min_length`` / ``max_length`` on the type".  A position with NO field of its own
+    asks :func:`carried`, which refuses where ``codegen.constraints`` has no spelling for
+    the shape -- so nothing is dropped at any of the nine.
+
+    It is EXACT and owes no declaration: draft-07 holds every conjunct and every sibling
+    against the same instance, so the model states the conjunction the document states.
+
+    The two documents with a population, measured over the 1,054 portable documents:
+    ``core/catalog-selection.json`` at ``/properties/query``, a ``minLength: 1`` beside a
+    ``$ref`` to ``core/catalog.json#/properties/query``, and
+    ``trusted-match/context-match-response.json`` at
+    ``/properties/signals_by_provider/additionalProperties/properties/targeting_kvs``, a
+    ``minItems: 1`` beside a local ``$ref`` to an array definition.
 
     **THE 4 DISTRIBUTE, and §5's ``$ref`` row says so** (53cb6100, and
     ``adcp-client-python-10l.68``) -- 2 of them all the way, and 2 as far as
@@ -2643,6 +2666,24 @@ def _the_conjuncts_own_type(
         # and a container state one thing about the instance and there is nothing to
         # distribute, which is why the sentence below still refuses those.
         if target.kind is TargetKind.UNION and target.branches is not None:
+            if facts:
+                # A BOUND beside a node that DISTRIBUTES.  The clause's sibling has a type
+                # to constrain only where the answer IS a type; the distribution's answer
+                # is a union base over one class per branch, and a ``minLength`` says
+                # nothing about an instance of a class -- so the bound would be dropped,
+                # which §2 forbids by silence.  0 sites over the portable population:
+                # both nodes stating one compose a single non-class target and declare no
+                # fields, so this is written so the first one is loud.
+                return Refusal(
+                    min(facts),
+                    where,
+                    f"this node states {sorted(facts)} beside {symbol}, a union root "
+                    "section 5's $ref row DISTRIBUTES over: the distribution's answer is "
+                    "one class per branch, and a bound on a string or a list says nothing "
+                    "about an instance of a class, so the sibling has no type to "
+                    "constrain and dropping it would lose the document's own bound",
+                    kind=kind_for(min(facts), node.position),
+                )
             return _distributes(where, target.branches, fields_declared, conj)
         return Refusal(
             "allOf",
@@ -2749,6 +2790,12 @@ def _the_conjuncts_own_type(
         # ``contains``) and ``as_the_object`` carries a statement about which KEYS
         # arrived, and the reductions in ``lower.rules`` are what split them.  Each half
         # is already a function of the document's content (P7).
+        #
+        # ``facts`` rides in the OTHER slot, for §2's reason rather than for symmetry: a
+        # rule is a callable bound to the annotated type and a bound is a value the field
+        # or the alias states, so the two have different carriers and a node may state
+        # both.  :attr:`Decided.constraints` is the one the walk already folds into
+        # :attr:`ir.TypeRef.facts`.
         return Decided(
             ir.TypeRef(
                 symbol,
@@ -2757,9 +2804,10 @@ def _the_conjuncts_own_type(
                     *lower_rules.on_a_value(beside, contains=beside.get("contains")),
                     *at_the_value.carried,
                 ),
-            )
+            ),
+            dict(facts),
         )
-    return Decided(ir.TypeRef(symbol, local=True))
+    return Decided(ir.TypeRef(symbol, local=True), dict(facts))
 
 
 #: The mixin §4 puts FIRST on a union base, as the one spelling both sites name it by.
@@ -3252,9 +3300,26 @@ def lower_composition(
     #: declaration of ``core/signal-coverage-forecast.json`` refused with
     #: ``DEFERRED_TO_A_LATER_ROW`` on this very keyword.
     contains = getattr(node, "contains", None)
+    #: **The node's own VALUE CONSTRAINTS, which are the SAME siblings read by the same
+    #: clause** (:attr:`nodes.Composition.facts`).  §5's ``$ref`` row at CONJ: "the target
+    #: is this node's own TYPE, and the other conjuncts **and the ``allOf``'s siblings**
+    #: constrain it", and §5's group (a) names the half that was missing -- "the refusals
+    #: reading '*X* is not a class, so it cannot be a base' are the unimplemented half of
+    #: that sentence".  A ``minLength`` beside an ``allOf`` is one of those siblings.
+    #:
+    #: CLAIMED here and read by :func:`_the_conjuncts_own_type`, which is the pair §3
+    #: requires of a lowering cell -- ``minLength``'s and ``minItems``' cells are a
+    #: lowering effect at every position the walk decides a node at, so a screen that
+    #: drops one promises "a later D2 row does" for a row that would have to be this one.
+    #: It reached that promise, measured on both documents the field has a population at:
+    #: ``core/catalog-selection.json`` refused on ``minLength`` at ``/properties/query``
+    #: with ``DEFERRED_TO_A_LATER_ROW``, carrying 5 chained documents with it, and
+    #: ``trusted-match/context-match-response.json`` on ``minItems``.
+    facts: Mapping[str, Any] = getattr(node, "facts", {})
     claimed = COMPOSING | stated.screen | ({union.combinator} if union is not None else set())
     if contains is not None:
         claimed = claimed | {"contains"}
+    claimed = claimed | set(facts)
     screened = check_keywords(node, claimed, mod=mod)
     if screened is not None:
         return screened
@@ -3735,6 +3800,65 @@ def lower_composition(
             kind=Kind.DEFERRED,
         )
 
+    if node.rules.get("uniqueItems") is True:
+        # **THE NODE'S OWN ``uniqueItems``, WHICH THIS HANDLER CLAIMS AND NOTHING
+        # LOWERS**, split into the two arms draft-07's keyword groups give it.
+        #
+        # ``rules_at``'s ``screen`` is ``frozenset(node.rules)`` -- every key whose cell
+        # is RULE here, claimed whatever came of it -- while the rule itself is
+        # ``lower.rules._distinct``, which reads a ``uniqueItems`` ONE LEVEL DOWN, off the
+        # array a PROPERTY of this node holds.  A composing node's own ``uniqueItems`` is
+        # about its OWN instance, so ``_distinct`` never sees it and the claim is empty:
+        # the keyword was neither lowered nor refused.  That is §3's "a keyword whose cell
+        # lowers must be claimed by its handler" read in the other direction, and §2's
+        # "nothing is approximated by silence" is what makes it this row's business.
+        #
+        # **The arm is chosen by what the conjuncts make the instance**, which is the same
+        # question §5's ``$ref`` row at CONJ already answers for every other sibling:
+        #
+        # * conjuncts that are all class BASES make the instance an OBJECT, and draft-07
+        #   applies ``uniqueItems`` to an ARRAY and ignores it for every other instance --
+        #   so the keyword constrains nothing here and the drop is EXACT.  Dropped and
+        #   REPORTED, which is §7's own shape for a name that cannot constrain an instance,
+        #   and not refused.  0 sites over the portable population.
+        # * a non-class TARGET supplies the type (``conjoined``), and where that target is
+        #   an array the keyword DOES constrain it -- §5's ``uniqueItems`` row decides the
+        #   rule, and neither of its two halves claims it at this node: the class above
+        #   does not, because ``_distinct`` reads the property declaration's own ``type``
+        #   word and this declaration's array-ness is behind a ``$ref`` under the
+        #   ``allOf``; and the value-level ``Distinct`` is gated on "no class encloses the
+        #   array", which is false at a PROP whose class holds the field.  So the obstruction
+        #   is unwritten code at the rules seam and this is a DEFERRAL naming it.
+        #
+        # Measured over the 1,054 portable documents, on the documents' own text: **3
+        # composing nodes state ``uniqueItems``, all three in ``core/catalog-selection.json``
+        # at ``/properties/ids``, ``/properties/gtins`` and ``/properties/tags``, each a
+        # bare ``$ref`` to an array property of ``core/catalog.json``.**  Before this arm
+        # the document emitted with all three dropped: the class carried no ``UniqueItems``
+        # rule, the fields no ``json_schema_extra``, and the schema comparison reported 51
+        # ``missing /…/uniqueItems`` facts over the document and the 5 that reference it --
+        # a model accepting duplicates its document refuses, with no declaration.
+        if conjoined:
+            return Refusal(
+                "uniqueItems",
+                pointer,
+                "this node states uniqueItems beside an allOf whose target supplies its "
+                "TYPE (section 5's $ref row at CONJ): the keyword constrains that type "
+                "where it is an array, and neither half of section 5's uniqueItems row "
+                "claims it here -- the class holding the field does not, because "
+                "lower.rules._distinct reads the property declaration's own type word and "
+                "this declaration's array-ness is stated behind the $ref, and the "
+                "value-level Distinct is the row's answer only where no class encloses the "
+                "array.  Dropping it would widen the model to accept duplicates the "
+                "document refuses",
+                kind=kind_for("uniqueItems", position),
+            )
+        mod.carries_nothing.append(
+            f"{pointer}: uniqueItems: this node's conjuncts are all class bases, so its "
+            "instance is an object, and draft-07 applies uniqueItems to an array and "
+            "ignores it for every other instance -- the keyword constrains no instance "
+            "here and the class carries nothing for it"
+        )
     if contains is not None and not conjoined:
         # **A ``contains`` beside conjuncts that are all BASES.**  §5's row makes the
         # sibling constrain the TYPE a non-class target supplies, and a node whose
@@ -3772,6 +3896,27 @@ def lower_composition(
             "narrow and dropping the keyword would lose the document's own value set",
             kind=kind_for("enum", Position.CONJ),
         )
+    if facts and not conjoined:
+        # **A BOUND beside conjuncts that are all BASES, which §5's row does not reach
+        # either**, and the reasoning is the two arms' above read at a third sibling: the
+        # row's answer is the TARGET as this node's own TYPE, constrained; a node whose
+        # conjuncts are classes has no such type, and a ``minLength`` or a ``minItems``
+        # says nothing about an instance of a class -- draft-07 applies a constraint
+        # keyword only to instances of the type it is defined for.  0 sites over the
+        # portable population: both nodes that state one compose a non-class target, so
+        # this is written so the first one is loud rather than emitted with the bound
+        # dropped.
+        return Refusal(
+            min(facts),
+            pointer,
+            f"this node states {sorted(facts)} beside conjuncts that are all class "
+            "bases: section 5's $ref row at CONJ makes a sibling constrain the TYPE a "
+            "non-class target supplies, and this node's type is a composed class -- a "
+            "bound on a string or a list says nothing about an instance of a class, so "
+            "there is nothing here for it to constrain and dropping it would lose the "
+            "document's own bound",
+            kind=kind_for(min(facts), position),
+        )
     #: §5's DISTRIBUTION clause, where the row above answered with the target's BRANCHES:
     #: the conjunct's own pointer, the branches, and the node each branch class is
     #: declared from.  ``None`` at every other node, which is what the tail below reads to
@@ -3804,6 +3949,13 @@ def lower_composition(
                 if contains is not None
                 else conjunct_rules
             ),
+            # **And the node's own BOUNDS are the same clause's other siblings**
+            # (:attr:`nodes.Composition.facts`): "the other conjuncts AND THE ``allOf``'s
+            # SIBLINGS constrain it".  A ``contains`` is a sibling that becomes a RULE and
+            # a bound is one that becomes a CONSTRAINT, so the two travel in the two
+            # carriers §2 already keeps apart -- :attr:`ir.TypeRef.validators` and
+            # :attr:`Decided.constraints` -- rather than in one list the callee splits.
+            facts=facts,
         )
         if isinstance(answered, Decided) and conjunct_values:
             # **§5's ``enum`` row at CONJ, applied to the type the row above decided.**
@@ -4752,6 +4904,36 @@ def _at_least_as_tight(
         return (
             isinstance(c, list) and isinstance(b, list) and all(member in b for member in c)
         )
+    if keyword == "additionalProperties":
+        # **``false`` IS THE TIGHTEST VALUE THIS KEYWORD TAKES, and §5's own row at CONJ
+        # is what says so** (``adcp-client-python-10l.101``): "``true`` is the identity and
+        # contributes nothing, ``false`` on any conjunct closes the composed object, and
+        # two typed ones intersect their value schemas; a typed conjunct beside a ``true``
+        # one is a widening and refuses."  A conjunct that closes the composed object
+        # admits a subset of what any other value admits, so a child stating ``false``
+        # says at least what the base says at this keyword, whatever the base says -- and
+        # :func:`_intersection` then keeps the child's ``false``, which is the row's
+        # "closes the composed object" written as a merge.
+        #
+        # **MEASURED with ``Draft7Validator`` on the one live pair** --
+        # ``media-buy/get-reporting-status-response.json`` at
+        # ``/oneOf/1/oneOf/0/properties/adcp_error``, whose restatement is
+        # ``{type: object, properties: {code: {const: NOT_FOUND}, message: {const: …}},
+        # required: [code, message], additionalProperties: false}`` over
+        # ``core/error.json``'s 11 properties and ``additionalProperties: true``.  The
+        # restatement admits exactly ONE object (both keys required, no other key
+        # admitted); ``core/error.json`` accepts that object; and it refuses every payload
+        # with a twelfth key that the base accepts.  So the child's accepted set is a
+        # SUBSET of the base's and the pair is ordered -- the refusal's own sentence,
+        # "neither declaration narrows the other", was false of this document at this
+        # keyword.
+        #
+        # ``True`` and a TYPED value both fall through to the closing ``False``, which is
+        # the row's other three readings and none of them is written: a child stating
+        # ``true`` over a base's ``false`` or typed value is the widening §2 forbids, and
+        # two typed value schemas intersect by a rule no row has. ``{}`` IS ``true`` (§5)
+        # and is answered by the same fall-through, since it is not ``False``.
+        return c is False
     if keyword == "required":
         # **A ``required`` pair is ALWAYS ordered, because its composition is the UNION
         # and neither side can loosen it** -- which is §2's intersection rule read at this
