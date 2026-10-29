@@ -1218,19 +1218,31 @@ def test_eight_open_branches_requiring_one_name_separate_on_their_nested_nots() 
 #: separator could reach would leave this set, and a new one joining it is a document the
 #: derivation has stopped reading.
 #:
-#: Every member but one is an ``anyOf`` the document states as a CONSTRAINT -- branches
-#: that narrow one shape rather than alternating between shapes, which §4 compiles to a
-#: rule (``AtLeastOne`` / ``PresenceGroups``) and not to a discriminated union, so no
+#: Every member is an ``anyOf`` the document states as a CONSTRAINT -- branches that
+#: narrow one shape rather than alternating between shapes, which §4 compiles to a rule
+#: (``AtLeastOne`` / ``PresenceGroups``) and not to a discriminated union, so no
 #: separator is owed one.  ``adagents.json#/oneOf/1/allOf/0/anyOf`` says so in its own
-#: ``$comment``: "Each arm asserts non-emptiness directly."  The two ``viewability``
-#: nodes state one branch that forbids four metrics and one that requires ``standard``;
-#: ``core/postal-country-system.json`` narrows ``country`` and ``system`` ten ways; and
-#: the last three are "at least one of these two keys".
+#: ``$comment``: "Each arm asserts non-emptiness directly."
+#: ``core/postal-country-system.json`` narrows ``country`` and ``system`` ten ways; the
+#: last three are "at least one of these two keys".
+#:
+#: **The two ``viewability`` nodes LEFT this set, and the set is where the departure is
+#: recorded** (``adcp-client-python-10l.64``, corrected at ``10l.76``).
+#: ``core/canonical-forecast-point.json`` and ``core/forecast-point.json`` at
+#: ``/properties/viewability/anyOf`` state one branch that forbids four metrics and one
+#: that requires ``standard``, and they were named here as constraints a separator is not
+#: owed.  They are no longer in the population this set partitions at all:
+#: ``schema.presence_clause`` reads a branch stating ONLY a ``not`` over required groups
+#: as a presence clause with an empty required group, so both nodes are presence-only and
+#: :func:`_authored_unions`' own gate excludes them -- "a presence-only combinator is
+#: excluded ... it lowers to a rule on the enclosing class".  The entries went stale in
+#: the commit that made the sentence above literally true of them, which is the one place
+#: a census of a derived population can go stale: the derivation moved and the name did
+#: not move with it.  Removing them is the pin FOLLOWING the behaviour, and the partition
+#: is what reported the gap.
 _INSEPARABLE_CONSTRAINTS = frozenset(
     {
         "adagents.json#/oneOf/1/allOf/0/anyOf",
-        "core/canonical-forecast-point.json#/properties/viewability/anyOf",
-        "core/forecast-point.json#/properties/viewability/anyOf",
         "core/postal-country-system.json#/anyOf",
         "media-buy/buy-products-request.json#/anyOf",
         "media-buy/request-proposals-request.json#/anyOf",
