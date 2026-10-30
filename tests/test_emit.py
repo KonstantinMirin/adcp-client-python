@@ -9378,7 +9378,7 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     # ``creative/list-creatives-response.json`` at
     # ``/properties/creatives/items``.  That node carries a nested ``oneOf`` beside an
     # ``additionalProperties``, and §5's ``allOf`` row ("beside a union → the same, onto
-    # the base") plus ``nodes.Union.siblings`` put the union arm BEFORE the ``allOf``
+    # the base") plus ``nodes.Union.conjuncts`` put the union arm BEFORE the ``allOf``
     # arm -- where ``emit.ROWS`` gave a composing union ROOT to the union row and
     # ``_decide`` gave every other position to the ``allOf`` arm, so root and non-root
     # disagreed about the precedence.  With one path the node reaches the union arm,
