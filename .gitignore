@@ -19,11 +19,16 @@ docs/plan/*.html
 # pytest report artifacts: a run is a dated measurement, not source.
 test-results/
 
-# the accepts corpus: drawn instances held between runs, keyed by the record they were
-# drawn from (tests/corpus.py).  A derived artifact, regenerated on a miss.
+# the accepts corpus: drawn instances held between runs, keyed on the bundle document and
+# pointer they were drawn for (tests/corpus.py).  A derived artifact, regenerated on a miss.
 .accepts-corpus/
 
 # Derived: tests/emitted.py's cross-process compile cache, keyed on the compiler's own
 # source so a codegen edit moves the key.  Never committed -- a committed one is a file
 # a reader could edit into a result no compiler produced.
 .emit-cache/
+
+# Both of the above once ADCP_CACHE points them inside a checkout: the default is beside
+# the checkouts instead, so neither is normally here at all.  Ignored by NAME because the
+# two stores are keyed on content and share one root across worktrees.
+.adcp-cache/

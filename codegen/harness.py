@@ -232,54 +232,67 @@ _DRAW_VERSION = f"hypothesis={hypothesis.__version__} hjs={hypothesis_jsonschema
 
 
 def corpus_key(
-    schema: Mapping[str, Any], *, examples: int, custom_formats: Mapping[str, Any] = ()
+    identity: Any, *, examples: int, custom_formats: Mapping[str, Any] = ()
 ) -> str:
-    """The content address of the instances :func:`check_accepts` draws from ``schema``.
+    """The content address of the instances :func:`check_accepts` draws, under ``identity``.
 
-    **The whole of why a delta needs no dependency graph.**  Four things decide what a draw
-    may legitimately produce -- the schema handed to ``from_schema``, the example count, the
-    format strategies and the generator itself -- and all four are hashed here, so a hit
-    cannot describe a schema the harness was not asked about.
+    **``identity`` is what the CALLER says makes two draws the same question, and this
+    function hashes it beside the three facts it owns**: the example count, the format
+    strategies and the generator.  It is never derived from the schema the draw is handed,
+    and the reason is the defect this signature exists to close.
 
-    **It is a content address and NOT a claim that the draw is a pure function of them**,
-    and that distinction is measured rather than assumed: over two full passes of the same
-    1,664 pairs at the same pinned inputs, **23 pairs (1.4%) drew a different instance**,
-    and re-running one identical 208-pair shard of one pass differed from itself on 3.  The
-    seed is not the cause -- ``_SETTINGS`` fixes ``derandomize`` -- nor is
-    ``PYTHONHASHSEED``, nor the recursion limit; what moves is process-global state inside
-    ``hypothesis`` whose lifetime garbage collection governs, so the witness a pair gets
-    today depends on what else its worker drew and when the collector ran.  **Which is why
-    the held instance is re-offered to the DOCUMENT before it counts**
-    (:func:`corpus_defect`) instead of being trusted because its key matched: the key says
-    the SCHEMA has not moved, and the document says the instance is still one it admits.
-    Holding the witness makes the suite's evidence reproducible where the draw does not --
-    ``_SETTINGS``' own comment intends exactly that and does not achieve it.
+    **THE SCHEMA IS NOT A STATIC FACT ABOUT THE DOCUMENT, BECAUSE THE RESOLVER IS OURS.**
+    The schema ``check_accepts`` draws from is ``bundle.record``'s output -- this package's
+    own inliner -- read at a pointer and inlined again by :func:`resolve`.  Keyed on that,
+    the address moved with every change to how we inline, for the share of the bundle whose
+    record differs from its raw document at all; the reading is ``bundle.record`` against
+    ``bundle.read`` over ``bundle.portable``, and it is most of it.  So every held instance
+    was redrawn on a change that altered no document, at the per-pair cold cost
+    ``tests/corpus.py`` tabulates.  The document was static the whole time; only our
+    rendering of it moved, and the key was tied to the rendering.
 
-    **The schema is the self-contained record's own node, which is what makes the key
-    cover the dependency closure.**  ``bundle.record`` inlines every cross-document
-    ``$ref`` and rewrites nothing, so the packaged document carries its whole dependency
-    closure as literal text -- measured on the committed tree at 889 records, 41.7 MB,
-    **87 remaining ``$ref`` occurrences and every one of them LOCAL** (``#/...``, a pointer
-    into the same record).  ``check_pair``'s schema is read out of that one record through
-    ``applied_schema`` and inlined by :func:`resolve` against that same record, so no byte
-    of any other document reaches this call.
+    **It was hashing the argument at the call site, which is the natural key right up to
+    the point where the argument is OURS.**  The record is what ``from_schema`` is handed,
+    so hashing it is hashing the input -- correct if the resolved document were a given,
+    wrong because this package resolves it and this package changes.  So the identity comes
+    from the caller, which is the half of the seam that can see upstream:
+    ``bundle.source_identities`` is one answer for a bundle document -- that document's own
+    raw bytes and its raw reference closure's -- and a caller handing a literal schema is
+    its own answer, since a literal is already static.
 
-    Therefore a change to a dependency changes the dependent's key BY CONSTRUCTION: the
-    inlined copy is part of the dependent's record, the record's bytes change, the node's
-    bytes change, and the hash changes with them.  ``Provenance``'s title appears 419 times
-    across 134 records and ``Image Asset``'s 199 times across 109, so editing either moves
-    every one of those keys in the same commit that moves the record -- without an edge
-    list, and without a hand-maintained map that could disagree with the inliner.  A map
-    would be the second copy ``docs/plan/architecture.md`` §3 forbids; this derives the
-    same answer from the bytes the draw actually reads.
+    **THE KEY WAS NEVER THE SAFETY NET AND MUST NOT BE MISTAKEN FOR ONE.**
+    :func:`corpus_defect` re-offers every held instance to the DOCUMENT on every read, and
+    its own docstring states the principle: a held corpus is a derived equality and never a
+    stored answer.  So the key answers "is this the same question" and the document answers
+    "is this value still admissible".  Two different inlinings of one document admit the
+    same instances; a held instance that still conforms is still evidence, and the re-read
+    proves that each time rather than assuming it.
+
+    **It is a content address and NOT a claim that the draw is a pure function of its
+    inputs**, which was measured rather than assumed: over two full passes of one pinned
+    population a small share of pairs drew a different instance, and re-running one
+    identical shard of one pass differed from itself -- the reading is the instances two
+    passes hold for one key, and the share is read there.  The seed is not the cause
+    (``_SETTINGS`` fixes ``derandomize``), nor ``PYTHONHASHSEED``, nor the recursion limit;
+    what moves is process-global state inside ``hypothesis`` whose lifetime garbage
+    collection governs.  Holding the witness makes the suite's evidence reproducible where
+    the draw is not -- ``_SETTINGS``' own comment intends exactly that and does not achieve
+    it.
+
+    **WHAT A LOOSER KEY CAN FIND, and it is reported rather than guarded against.**  The
+    draw is over the RESOLVED schema, so a resolution change could in principle alter what
+    is DRAWABLE where the accepted set is identical -- a ``$ref`` the resolver used to fail
+    on.  That is what the re-validation is for, and a rejection is a finding: the rate is
+    read off :attr:`AcceptsResult.outcome` ``== "corpus_rejected"`` over the population, and
+    a non-zero one says the looser key reached a pair whose question really did move.
 
     The serialisation is ``json.dumps(..., sort_keys=True)``, the same canonical spelling
-    ``canonicalisation_shared_within_one_call`` keys its within-call memo with, so the two
-    cannot disagree about when two schemas are the same schema.
+    ``canonicalisation_shared_within_one_call`` keys its within-call memo with, so two
+    callers cannot disagree about when two identities are one identity.
     """
     material = json.dumps(
         {
-            "schema": schema,
+            "identity": identity,
             "examples": examples,
             "formats": sorted(custom_formats),
             "draw": _DRAW_VERSION,
@@ -954,6 +967,7 @@ def check_accepts(
     seen: list[Any] | None = None,
     ref: SchemaRef | None = None,
     corpus: Any = None,
+    identity: Any = None,
 ) -> AcceptsResult:
     """The accepts check: every instance the schema admits, ``accept`` admits --
     and what it constructed, DUMPED back out, is an instance the schema admits too.
@@ -1028,9 +1042,25 @@ def check_accepts(
       to the store afterwards, and only where the draw produced the whole obligation, so a
       short or errored draw is never held.  A miss therefore COSTS and cannot pass:
       adding a document adds one key, changing one changes that key and every dependent's
-      with it (the record inlines, so their bytes moved too), and an absent corpus is one
-      full cold run.
+      with it (``identity`` carries the closure, so their identities moved too), and an
+      absent corpus is one full cold run.
+
+    **``identity`` is REQUIRED with a ``corpus`` and there is no fallback, because the
+    fallback was the defect.**  :func:`corpus_key` says why ``schema`` cannot stand in for
+    it: the schema here is ``bundle.record``'s rendering of a document, so keying on it
+    redrew the bundle whenever the inliner moved and no document had.  Defaulting to the
+    schema would leave that door open for any caller who forgot the argument -- silently,
+    and visible only as a cold run nobody ordered -- so a store with no identity beside it
+    raises instead.  A caller with no static identity to offer passes ``corpus=None`` and
+    draws, which costs time and grades the same thing.
     """
+    if corpus is not None and identity is None:
+        raise ValueError(
+            "a corpus needs the draw's STATIC identity: the schema handed here is "
+            "bundle.record's rendering of a document, so keying on it misses every "
+            "entry whenever the inliner moves.  Pass identity= (see "
+            "bundle.source_identities) or corpus=None."
+        )
     res = AcceptsResult()
     cf = dict(custom_formats)
     #: The instances this check drew, in order, HANDED BACK to the caller when it
@@ -1077,7 +1107,7 @@ def check_accepts(
     #: produces.
     held = None
     if corpus is not None:
-        res.corpus_key = corpus_key(schema, examples=examples, custom_formats=cf)
+        res.corpus_key = corpus_key(identity, examples=examples, custom_formats=cf)
         held = corpus.get(res.corpus_key)
     if held is not None:
         defect = corpus_defect(schema, held, examples, validator_cls=validator_cls)
@@ -4238,6 +4268,23 @@ class Pair:
     #: rather than passing on a declaration nobody handed it.
     declared: tuple[Approximation, ...] = ()
 
+    #: **The STATIC identity of the question this pair's draw asks**, for the held accepts
+    #: corpus and for nothing else.  ``harness.corpus_key`` hashes it; this module never
+    #: derives it.
+    #:
+    #: **A stated field and not a read off :attr:`schema`, which is the whole point.**
+    #: :attr:`schema` is ``bundle.record``'s rendering of a document -- our inliner's
+    #: output read at a pointer -- so an identity taken from it moves when the inliner
+    #: does and the corpus is redrawn for a bundle nobody changed.  The caller is the half
+    #: of the seam that can see upstream: ``bundle.source_identities`` is the raw bytes of
+    #: a document and of its raw reference closure, and the pointer beside it says which
+    #: node of that document this pair is.
+    #:
+    #: ``None`` is NOT fail-safe here and is not treated as such: ``check_accepts`` raises
+    #: rather than falling back to the schema, because a silent fallback is the defect
+    #: (:func:`corpus_key`).  A caller with nothing static to offer grades with no corpus.
+    identity: Any = None
+
 
 @dataclass
 class PairReport:
@@ -5141,6 +5188,11 @@ def check_pair(
     instance the accepts check produced, so a replayed instance reaches them exactly as a
     drawn one does and neither needs a store of its own.  :func:`check_accepts` says what
     a hit, a miss and a rejected entry each do.
+
+    The key the store is read under comes from :attr:`Pair.identity` and never from
+    :attr:`Pair.schema`: the schema is a RENDERING of a document and the identity is the
+    document, which is :func:`corpus_key`'s whole argument.  A ``corpus`` beside a pair
+    carrying no identity raises there rather than keying on the rendering.
     """
     rep = PairReport(
         name=pair.name, model_repr=getattr(pair.model, "__name__", repr(pair.model))[:120]
@@ -5185,6 +5237,7 @@ def check_pair(
         seen=accepted,
         ref=pair.ref,
         corpus=corpus,
+        identity=pair.identity,
     )
     #: Measured only where the generator errored, because that is the only pair the
     #: measurement says anything about -- 2 of 1,079 on the emitted tree, so the

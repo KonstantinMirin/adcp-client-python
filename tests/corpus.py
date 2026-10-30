@@ -37,14 +37,18 @@ replaces both, because what it holds is the instance and not the strategy.  Over
 pairs in one process the same comparison is **2,015.6 s cold against 39.6 s warm**, with
 1,662 replayed, 0 rejected and every verdict identical.
 
-**WHAT MAKES THE DELTA CORRECT WITHOUT A DEPENDENCY GRAPH.**  ``harness.corpus_key``
-carries the argument; the short form is that ``bundle.record`` inlines every
-cross-document ``$ref``, measured on the committed tree at **87 remaining ``$ref``
-occurrences, every one of them local**, so a record is self-contained and a change to any
-dependency has already changed the dependent record's bytes.  Hash the record's node and
-the key covers the closure by construction.  There is no edge list here and there must not
-be one: a hand-maintained map is the second copy §3 forbids and it could drift from the
-inliner.
+**WHAT THE KEY IS OVER, AND THE ONE THING IT MUST NOT BE OVER.**  ``harness.corpus_key``
+carries the argument; the short form is that the key is the DOCUMENT's and never our
+rendering of it.  Keyed on the record -- ``bundle.record``'s output, this package's own
+inliner -- the address moved with every change to how we inline, for the share of the
+bundle whose record differs from its raw document at all (the reading is ``bundle.record``
+against ``bundle.read`` over ``bundle.portable``, and it is most of it), so every entry
+below was redrawn at the per-pair cost tabulated above for a change that altered no
+document.  So the key is over ``bundle.source_identities`` instead: a document's own raw
+bytes and the raw bytes of its reference closure, which is where the closure the record's
+self-containment used to buy now comes from.  There is still no edge list anybody
+maintains -- the graph is read off the ``$ref`` strings the documents write -- and a
+hand-maintained map would be the second copy §3 forbids.
 
 **AND THE DRAW THIS REPLACES IS NOT REPRODUCIBLE.**  Measured before the store was built,
 because the answer decided whether to build one: two full passes over the same 1,664 pairs
@@ -53,7 +57,7 @@ identical 208-pair shard re-run differed from itself on 3.  Not the seed -- ``_S
 fixes ``derandomize`` -- not ``PYTHONHASHSEED``, not the recursion limit; process-global
 state inside ``hypothesis`` whose lifetime garbage collection governs.  Every verdict was
 identical in every one of those runs.  So holding the witness REMOVES drift rather than
-adding it: what the scheduler decides today, the key decides from the record's bytes, and
+adding it: what the scheduler decides today, the key decides from the bundle's bytes, and
 the document still decides whether the held value is admissible.
 
 **AND WHAT MAKES A STALE ENTRY SAFE.**  Nothing here decides whether an entry may be
@@ -94,10 +98,15 @@ ROOT = Path(__file__).resolve().parents[1]
 #: checkout's first run is a full cold run.**
 #:
 #: **SHARED ACROSS WORKTREES, because the key is a content address and a worktree is not
-#: one of its inputs** (measured 2026-10-29).  ``harness.corpus_key`` hashes the schema,
-#: the example count, the format strategies and the generator version; none of those is
-#: where the checkout sits, so an entry one lane draws answers every other lane's question
-#: about the same document.  Held per worktree it did not: **7,343 entries across nine
+#: one of its inputs** (measured 2026-10-29).  ``harness.corpus_key`` hashes the caller's
+#: static identity for the draw, the example count, the format strategies and the generator
+#: version; the identity ``test_emit.identity_of`` hands it is a document's BUNDLE-RELATIVE
+#: name, its pointer and a digest of raw bytes, so none of those is where the checkout sits
+#: and an entry one lane draws answers every other lane's question about the same document.
+#: **It now reaches FURTHER across lanes than it did**, for the same reason the key moved at
+#: all: a lane holding a different inliner used to compute a different key for the same
+#: document, so sharing the store shared nothing with it.  Held per worktree it did not:
+#: **7,343 entries across nine
 #: stores holding 1,830 unique keys**, so 5,513 draws were paid again for an answer another
 #: store already had -- at 0.15 s to 2,356 s each.  The two lanes with the emptiest stores
 #: (8 entries and 0) were the two whose validation ran longest.
