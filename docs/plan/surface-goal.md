@@ -44,9 +44,20 @@ This is the rule the whole cross-check hangs on, and getting it wrong turns the 
 copying a thing we rewrote because it was wrong. Upstream is not the specification. The schema is.
 So an upstream name with no class of ours is **unresolved until it carries one of two verdicts**:
 
-- **WE MISSED SOMETHING.** A schema node exists that we do not represent, or represent as part of
-  another class. This is the only verdict that produces compiler work, and it is a real defect:
-  name the document and the pointer, and the fix is in the walk.
+- **WE REPRESENT IT DIFFERENTLY.** A schema node exists that we fold into another class rather
+  than giving a class of its own. **This is not a defect by itself** — a fold is frequently the
+  correct answer and the reason their count is higher. It splits three ways, and the verdict says
+  which:
+  - *the fold keeps every fact the schema states and is comfortable to use* — **we are right and
+    their class is redundant.** No work. This is the expected outcome for most of them.
+  - *the fold keeps every fact but is awkward for a caller* — a DX question, answered by an export
+    or a name, never by splitting the class. Not a correctness fix.
+  - *the fold loses something the schema states* — **our defect**, and the fix is in the walk.
+
+  **The two checks already answer which of the three it is, and upstream's opinion is not
+  consulted.** If the fold dropped a constraint, the schema admits a payload we refuse, or refuses
+  one we accept, and the draw finds it. If it dropped nothing, there is nothing to find. So an
+  upstream class is a prompt to go and look at a node; it is never the evidence about that node.
 - **THEY EMIT A CLASS THAT SHOULD NOT EXIST.** Three shapes, and the verdict must say which: two
   of their classes carry the same schema node (a duplicate); the class is not schema-derived at
   all but belongs to one of their hand-written ergonomic, eager, forward-compat, partial, legacy
@@ -56,6 +67,16 @@ So an upstream name with no class of ours is **unresolved until it carries one o
 Neither verdict may be reached by reading the two class definitions side by side. **Name the
 schema node, or say there isn't one.** A count of unmatched names with no verdicts attached is not
 a result, and "upstream has it so we should too" is the specific mistake this rule exists to stop.
+
+**Upstream GROUNDS us; it does not correct us.** Its value is that it was built from the same
+schemas, so a difference is a cheap pointer at a node worth a second look. That is the whole of its
+authority. Where we and upstream disagree about a node, the schema decides, and the schema is
+consulted by drawing values — not by reading their class.
+
+**And the migration layer comes AFTER.** A set of aliases letting an application keep its current
+import spellings is owed and will be built, but it is not this work and must not be allowed to
+shape it: designing the classes to make the aliases easy is how upstream's mistakes get copied in
+through the back door. Build the correct surface, then map onto it.
 
 And parity is **one-directional**. Every name upstream exposes needs a counterpart in ours.
 The reverse is not required: upstream duplicates classes and is believed wrong about unions, so a
