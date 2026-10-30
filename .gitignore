@@ -32,3 +32,9 @@ test-results/
 # the checkouts instead, so neither is normally here at all.  Ignored by NAME because the
 # two stores are keyed on content and share one root across worktrees.
 .adcp-cache/
+
+# The suite's scratch: pytest's basetemp and every tempfile.mkdtemp, which tests/conftest.py
+# points at a DISK path beside the checkout because /tmp here is a 63 GB tmpfs and a fresh
+# package is 841 MB per tmp_path. Normally not here at all; ignored by name for the case
+# ADCP_SCRATCH points it back inside a checkout, which is the same defence .adcp-cache has.
+.adcp-scratch/
