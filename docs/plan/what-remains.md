@@ -45,9 +45,17 @@ Re-measured 2026-10-30, because the 21 references this row used to claim were a 
 population of the member is one `ajv-errors` extension, which `rebuild-plan.md` §7 decided on
 2026-10-26 becomes §6's — half of that decision landed and this is the other half.
 
-**Relocation**, and the gate is a reported-drop reading rather than a reference count: the one
-portable document carrying the keyword carries it twice, at `/allOf/1` and at `/then`, and only the
-first is reported today.
+**DONE 2026-10-30.** `errorMessage`'s cell is `Effect.NOTHING` with a `reported` column, and
+`Effect.REFUSE` is deleted — **0 references repo-wide by AST**, over `codegen/` and `tests/` both,
+so "refuse a document on a keyword" is now a name error. The gate was the reported-drop reading
+rather than a reference count: the one portable document carrying the keyword carries it twice, at
+`/allOf/1` and at `/then`, and the report went from **73 notes over 15 documents to 74 over the
+same 15**, both occurrences named. §7's generated grid is empty, so its title is a fact the
+artifact holds. The emitted model is byte-identical over all 1,054 documents — 2,138 files by
+SHA-256, plus the records, the declared and adopted tables, the approximations and the drops — so
+nothing widened and nothing tightened.
+
+What step 8 still owes from this clause is `Rung` and `widens_to` on the cell.
 
 ## C. The waves — not started
 

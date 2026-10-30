@@ -1317,9 +1317,14 @@ admitted **by name**. Several carry something anyway, and the table says what.
 **`errorMessage` and the registry data keys join this section on 2026-10-26**, from §7. Neither
 constrains an instance — `errorMessage` customises an `ajv-errors` message and the registry keys
 are a registry's own instance data — so no annotation drops a fact for them and there is nothing
-to widen. They are admitted by name, compile to nothing, and are reported, which is the answer
-`$comment` already gets. The grid below is generated and does not yet carry their rows; §7 says
-what refusing them was buying and where that now shows up.
+to widen. They are admitted by name and compile to nothing. **Whether the reader is TOLD is a separate
+column of the cell, and the two rows answer it differently** (decided 2026-10-30): a dropped
+`errorMessage` is reported, the registry data keys are not, and neither is `$comment`. Three
+cells settle it by agreeing in every other field and differing here — a comment is manifestly a
+note and a registry's own data is manifestly data, so a reader who is not told has lost nothing,
+while `errorMessage` sits BESIDE a constraint and a reader who is not told has no way to see that
+the class carries nothing for it. `errorMessage` is the only reported cell in the table. §7 says
+what refusing these two was buying and where it now shows up.
 
 <!-- generated from codegen/keywords.py -->
 | keyword | what it does, or why nothing |
@@ -1382,9 +1387,11 @@ document. The section stays, with its membership still a projection of the decla
 a reader looking for "which keywords refuse" has to find the answer, and because the one
 refusal left in the compiler is not a keyword's at all.
 
-Both rows move to §6. Each was refused for a reason that was never about the document's
-accepted set, and **the registry keys have moved while `errorMessage` has not**: its cell is the
-last `REFUSE` in the table, so it is also what keeps `Effect.REFUSE` alive.
+Both rows have moved to §6, each refused for a reason that was never about the document's
+accepted set. **`errorMessage`'s cell was the last `REFUSE` in the table, and moving it is what
+let `Effect.REFUSE` retire (2026-10-30).** The effect no longer exists, so "refuse a document on
+a keyword" is a name error rather than a path the compiler can take — which is the whole of what
+that step was buying.
 
 - **`errorMessage`** has no Pydantic rendering, and never needed one: it customises a validator's
   message and constrains no instance, so an annotation that omits it omits no fact. The drop is
@@ -1427,17 +1434,22 @@ it (§9).
 | --- | --- |
 <!-- end generated -->
 
-The grid above is generated, so it carries whatever cells still say `REFUSE`; it empties when
-`errorMessage`'s cell moves, and the section's title becomes literally true.
+The grid above is generated and is **EMPTY**, because no cell can say `REFUSE` any more. The
+section's title is therefore a fact the artifact holds rather than a claim its prose makes, which
+is the only form in which this document is worth reading.
 
 **The drop is reported at every position the keyword occupies, and not only where a conjunct
 encloses it.** `media-buy/sync-catalogs-request.json` is the one portable document carrying
-`errorMessage`, and it carries it twice — at `/allOf/1` and at `/then`. The reader is told about
-the first and not the second, because the channel that builds the note screens `CONJ` while the
-cell refuses at every position. A keyword's effect is a decision about the keyword at a position;
+`errorMessage`, and it carries it twice — at `/allOf/1` and at `/then`. The reader used to be
+told about the first and not the second, because the channel that built the note screened `CONJ`
+while the cell refused at every position, and `/then` is a RULE source the rule lowering reads
+raw, so no screen ever saw it. A keyword's effect is a decision about the keyword at a position;
 a report that reaches one position and not another is a defect in the channel, not a second
-decision, and the reading that settles it is the count of reported drops naming the keyword —
-two, where it is one today.
+decision. **So the channel is a function of the DOCUMENT** — `bundle.reported_drops` over the one
+descent walk, which carries the position the column assigned and cannot privilege one — and the
+reading that settles it is the number of reported drops naming the keyword: **two as of
+2026-10-30, where it was one**, inside a report that went from 73 notes over 15 documents to 74
+over the same 15.
 
 A keyword in none of §5, §6 or §7 is one the bundle does not use. The first document to carry one
 **widens its node to `Any`** — §5's rung TOP — and declares the approximation, so a new keyword
