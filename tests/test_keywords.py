@@ -235,10 +235,25 @@ def test_a_prefixed_key_with_no_row_is_admitted_and_reported() -> None:
     assert not keywords.unlisted_extension("x-enum-descriptions")
 
 
-def test_a_keyword_with_no_row_is_the_answer_that_refuses_by_name() -> None:
-    """``None`` and not a REFUSE cell: the two refuse for different reasons."""
+def test_a_keyword_with_no_row_is_the_only_answer_that_refuses_by_name() -> None:
+    """``None`` is the WHOLE of "refused by name" now.
+
+    It was one of two: a key with no row, and a key whose cell said ``REFUSE``.  §7 is
+    empty and the effect is retired (§14 step 8), so a key the table GIVES a row is
+    admitted whatever that row says -- ``errorMessage`` was the last ``REFUSE`` cell and
+    is NOTHING, with its drop reported (``tests/test_reported_drop.py``).
+    """
     assert cell("multipleOfNothing", Position.ROOT) is None
-    assert cell("errorMessage", Position.ROOT).effect is Effect.REFUSE
+    # A key with no row DECLARES: the screen can refuse on it, because a keyword the
+    # bundle did not use before could constrain anything.
+    assert keywords.declares("multipleOfNothing", Position.ROOT)
+    assert cell("errorMessage", Position.ROOT).effect is Effect.NOTHING
+    assert not keywords.declares("errorMessage", Position.ROOT)
+    # **And there is no effect for a cell to refuse WITH**, which is what retiring it
+    # buys: a future "refuse a document on a keyword" is a name error here rather than a
+    # silent path.  Asserted on the enum's own membership, so an effect added back under
+    # any spelling of the old name reddens.
+    assert "REFUSE" not in Effect.__members__
 
 
 def test_the_compared_set_is_the_rendered_column_and_names_no_keyword_twice() -> None:
@@ -262,34 +277,49 @@ def test_the_compared_set_is_the_rendered_column_and_names_no_keyword_twice() ->
     for keyword in at_prop:
         answer = cell(keyword, Position.PROP)
         assert answer.effect is not Effect.NOTHING or keyword == "x-", keyword
-    # A REFUSE cell renders nothing, because no model exists for the document to grade.
-    for keyword in keywords.TABLE:
-        for position in Position:
-            answer = cell(keyword, position)
-            if answer.effect is Effect.REFUSE:
-                assert not answer.rendered, (keyword, position)
+    # A cell whose DROP IS REPORTED renders nothing: the keyword constrains no instance,
+    # so there is no fact for the comparison to grade and a note is the whole answer.
+    # (It read "a REFUSE cell renders nothing, because no model exists for the document
+    # to grade" until §7's set emptied; the population is the same one cell and the
+    # reason it renders nothing is now the cell's own rather than the document's loss.)
+    reported = claimed(
+        "cells whose drop is reported",
+        {
+            (keyword, position)
+            for keyword in keywords.TABLE
+            for position in Position
+            if (answer := cell(keyword, position)) is not None and answer.reported
+        },
+    )
+    for keyword, position in reported:
+        answer = cell(keyword, position)
+        assert not answer.rendered, (keyword, position)
+        assert keyword not in keywords.rendered_at(position), (keyword, position)
 
 
 def test_a_refusals_kind_comes_from_the_cell_and_not_from_a_raise_site() -> None:
-    """§3 of the architecture document, as the three answers the cell gives.
+    """§3 of the architecture document, as the two answers the TABLE gives.
 
-    A ``REFUSE`` cell is a VERDICT -- the obstruction belongs to the document.  A cell
-    with a lowering effect whose handler has no code for the shape yet is a DEFERRAL,
-    which is §9's first rule: minting a verdict for unwritten code reports clearable
-    work as finished.  A cell that carries nothing is admitted and mints nothing.
+    A key with no row is a VERDICT -- the obstruction belongs to the document, which did
+    not have to carry a keyword the bundle never used.  A cell with a lowering effect
+    whose handler has no code for the shape yet is a DEFERRAL, which is §9's first rule:
+    minting a verdict for unwritten code reports clearable work as finished.  A cell that
+    carries nothing is admitted and mints nothing.
+
+    **There were THREE and the first one went with ``Effect.REFUSE``** (§14 step 8): "a
+    key whose cell is REFUSE is a VERDICT".  ``errorMessage`` was the last cell saying it
+    and left this assertion the way ``version`` left it before -- for the same reason, the
+    third answer rather than a looser second one.
     """
     from codegen import compiler, refusal
 
-    assert compiler.kind_for("errorMessage", Position.ROOT) is refusal.Kind.VERDICT
-    # **``version`` LEFT this assertion at ``adcp-client-python-10l.20``, and the reason
-    # is the third answer rather than a looser second one.**  The registry data keys are
-    # NOTHING at every position now (section 6 of the semantics document, section 3 of the
-    # architecture document), so they mint NOTHING -- which is this docstring's own third
-    # case -- and asking for a kind is asking a question no site asks: a NOTHING key is
-    # ADMITTED by the screen and never reaches a refusal.  Asserted as the admission,
-    # which is the fact that replaced the kind.
-    assert cell("version", Position.ROOT).effect is Effect.NOTHING
-    assert not lowers(cell("version", Position.ROOT))
+    # ``errorMessage`` and ``version`` are both NOTHING now and both mint NOTHING: asking
+    # for a kind is asking a question no site asks, because the screen ADMITS such a key
+    # and it never reaches a refusal.  Asserted as the admission, which is the fact that
+    # replaced the kind in each case.
+    for admitted in ("errorMessage", "version"):
+        assert cell(admitted, Position.ROOT).effect is Effect.NOTHING, admitted
+        assert not lowers(cell(admitted, Position.ROOT)), admitted
     # No row at all: a keyword the bundle did not use before, which is the document's
     # own property and so a verdict.
     assert compiler.kind_for("nosuchkeyword", Position.ROOT) is refusal.Kind.VERDICT
@@ -547,11 +577,17 @@ def test_no_claim_set_names_a_keyword_the_table_admits_for_free() -> None:
     This is the half of §3 the table CAN hold about a handler's coverage, and it is the
     bead's "every keyword a module screens is read from the table" in the one direction a
     claim set can be read in.  ``compiler._screen`` asks ``handled`` FIRST and then the
-    cell, so a claimed keyword whose cell neither LOWERS nor REFUSES at any position is an
+    cell, so a claimed keyword whose cell does not LOWER at any position is an
     entry the screen would have passed over anyway: a leftover from when these sets were
     ADMISSION lists, which §14 step 5 says is "the table's answer now and is gone from all
     of them".  Such an entry reads as a decision about the keyword, and the table has
     already made the only one there is.
+
+    **The predicate had a second clause until §14 step 8** -- "neither LOWERS nor
+    REFUSES" -- and it covered one claim: ``lower_composition`` handed the screen the
+    names whose cell said ``REFUSE``, so that the drop it had just reported was not then
+    refused on.  §7 is empty and no cell can refuse, so LOWERING is the whole of what a
+    claim can be about.
 
     **It found one**: ``lower.enum.CLAIMS`` claimed ``default``, whose cell is ANNOTATION
     everywhere and FIELD at PROP -- never TYPE or RULE -- while the comment beside it said
@@ -569,7 +605,7 @@ def test_no_claim_set_names_a_keyword_the_table_admits_for_free() -> None:
     for (module, line), keywords_claimed in sorted(sites.items()):
         for keyword in sorted(keywords_claimed):
             answers = [cell(keyword, p) for p in Position]
-            if any(a is not None and (lowers(a) or a.effect is Effect.REFUSE) for a in answers):
+            if any(a is not None and lowers(a) for a in answers):
                 continue
             effects = sorted({str(a.effect).split(".")[-1] for a in answers if a is not None})
             free.append((module, line, keyword, effects or ["NO ROW"]))

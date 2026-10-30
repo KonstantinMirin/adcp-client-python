@@ -484,6 +484,16 @@ def lower_document(
 
         object_constrained=bundle.constrained_to_object(doc),
     )
+    # **§7's REPORTED DROPS, at every position the document states one at.**  "The drop is
+    # reported at every position the keyword occupies, and not only where a conjunct
+    # encloses it [...] a report that reaches one position and not another is a defect in
+    # the channel, not a second decision."  So the channel is a function of the DOCUMENT,
+    # read off ``bundle.reported_drops`` -- the one descent walk -- and written here,
+    # beside ``object_constrained`` and ``asserted``, which are the document's other
+    # derived facts.  Not in the walk: the walk arrives at the positions it lowers from,
+    # and a ``then``'s subschema is a RULE source that ``lower.rules`` reads RAW, so no
+    # screen is asked there and the one occurrence at ``/then`` reached no reader at all.
+    compiler.report_reported_drops(bundle.reported_drops(doc), mod)
     # **ONE PATH, and it is now §5's sentence verbatim: "A document is ``parse(raw,
     # position=ROOT)`` followed by ``decide``."**  The second dispatch on a root's KIND
     # went in part two; the parser is what this commit adds, so the raw document is read

@@ -354,8 +354,8 @@ def no_type_to_lower_onto(refused: Refusal, node: nodes.Typeless) -> Refusal:
     **The kind travels unchanged and the CELL decides which keys this answers for.**  The
     screen already derived the kind from the table (``compiler.kind_for``), so nothing is
     minted here; and the test is ``keywords.lowers``, never the refusal's own sentence --
-    a key with NO ROW and a key the table REFUSES each keep the words §3 and §7 give them,
-    because this row has nothing to add about either.
+    a key with NO ROW keeps the words §3 gives it, because this row has nothing to add
+    about it.
 
     Measured over the 1,054 portable documents: one node reaches it,
     ``compliance/comply-test-controller-response.json`` at

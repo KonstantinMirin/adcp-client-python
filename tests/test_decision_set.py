@@ -292,13 +292,17 @@ NOT_PINNED_HERE: Mapping[str, str] = {
         "bound; the strings it carries are the emitted artifact's own and every emitted "
         "module that spells one grades them."
     ),
-    "codegen.keywords._REFUSED and _REGISTRY_KEYS": (
+    "codegen.keywords._REGISTRY_KEYS and the errorMessage row": (
         "ALREADY GRADED BY A GENERATED ARTIFACT.  The table generates sections 5, 6 and "
         "7's grids and test_keywords.test_the_committed_grids_are_what_the_table_"
         "generates asserts the committed document equals what the table generates, so a "
         "changed cell either moves the document in the same diff or reddens.  The two "
-        "cells that carry the decision are asserted by name besides "
-        "(errorMessage -> REFUSE -> VERDICT, version -> NOTHING and admitted)."
+        "cells that carry the decision are asserted by name besides: both are NOTHING "
+        "and admitted, and errorMessage's drop is REPORTED, which "
+        "tests/test_reported_drop.py grades at every position the corpus states it at.  "
+        "They were _REFUSED, a dict of their own holding section 7's rows; section 7 is "
+        "empty and they are declared in _ADMITTED, which is the section they project "
+        "into, so there is no second list for grid_of to disagree with."
     ),
     "codegen.constraints.HTTPS_ONLY, URL and HTTP_URL": (
         "COVERED BY THE DERIVED MAPPING below, and pinning them beside it would be the "

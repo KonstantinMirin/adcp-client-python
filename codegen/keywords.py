@@ -8,9 +8,9 @@ names the four readers that derive from it and the rule that nothing else under
 * **admission** -- the keyword screen (``compiler.check_keywords`` today,
   ``schema/parse.py`` after section 14 step 5) looks every key up at the node's
   POSITION: ``NOTHING``, ``ANNOTATION`` and ``NAME`` are admitted and carried
-  nowhere by the screen; ``REFUSE`` refuses the document as a VERDICT; a key with no
-  row refuses the document as a VERDICT naming a keyword the bundle did not use
-  before; a ``FIELD`` effect is a fact the ENCLOSING field carries, so the node's own
+  nowhere by the screen; a key with NO ROW refuses the document as a VERDICT naming a
+  keyword the bundle did not use before, and is the ONLY answer that refuses it;
+  a ``FIELD`` effect is a fact the ENCLOSING field carries, so the node's own
   screen admits it too; and a ``TYPE`` or ``RULE`` effect is a fact the node's own kind
   consumes, so a handler with no code for it yet is a DEFERRAL.
 * **descent** -- :attr:`Cell.descends` is the position the subschema(s) a structural
@@ -24,7 +24,7 @@ names the four readers that derive from it and the rule that nothing else under
   ``{k for k in TABLE if cell(k, p).rendered}`` (:func:`rendered_at`).
 
 **Where a refusal's KIND comes from.**  Section 3 of the architecture document: the
-kind is derived from the cell and never chosen at a raise site.  A ``REFUSE`` cell,
+kind is derived from the cell and never chosen at a raise site.  A key with NO ROW,
 or a document contradicting itself, is a VERDICT; a cell with a lowering effect whose
 handler has no code for the shape yet is a DEFERRAL.  ``compiler.kind_for`` is that
 derivation and it is the only place the two are told apart.
@@ -70,11 +70,14 @@ a co-occurrence that is not a position needs -- the table is keyed by position a
 co-occurrence is not one, so it belongs to the sentence of the cell it qualifies.
 
 **Which grid a row renders into is derived, not listed twice.**  Section 3: section 6
-is the rows that compile to no type, no rule and no base, and section 7 is the REFUSE
-rows, "so each section is a projection and not a second list".  :func:`grid_of` is
-that projection; :attr:`Row.grid` names which of section 5's seven sub-tables a
+is the rows that compile to no type, no rule and no base, "so each section is a
+projection and not a second list".  :func:`grid_of` is that projection;
+:attr:`Row.grid` names which of section 5's seven sub-tables a
 section 5 row belongs to, which is a taxonomy of keyword family and is derivable from
-nothing else.
+nothing else.  **Section 7's projection is EMPTY**, because no keyword's presence
+refuses a document and there is no ``Effect.REFUSE`` for a cell to say it with; the
+region is still generated, and its emptiness is what makes section 7's title a fact the
+document holds rather than a claim its prose makes.
 
 **The ``x-`` namespace rule** (semantics section 6): a key with the prefix is
 admitted, and every such key the bundle carries is also a row -- so a prefixed key
@@ -113,8 +116,16 @@ class Effect(StrEnum):
     ``TYPE``, ``FIELD`` and ``RULE`` are the three that COMPILE to something
     (:data:`COMPILES`), which is what puts a row in section 5 rather than section 6;
     ``TYPE`` and ``RULE`` are the two the NODE'S OWN handler writes (:data:`LOWERED`).
-    ``NAME``, ``ANNOTATION`` and ``NOTHING`` are admitted and cost a handler nothing;
-    ``REFUSE`` is the document's own obstruction.
+    ``NAME``, ``ANNOTATION`` and ``NOTHING`` are admitted and cost a handler nothing.
+
+    **There is no ``REFUSE``, and its absence is the point** (section 14 step 8, retired
+    2026-10-30).  Section 7 of the semantics document is empty and its grid is the empty
+    projection: no keyword's presence refuses a document, so there is no effect for a
+    cell to say it with, and "refuse a document on a keyword" is a name error here rather
+    than a path the compiler can silently take.  The member survived step 8 because 1 of
+    141 primary refusals sat on a ``REFUSE`` cell and retiring it early would have
+    crashed 140 documents; ``refused`` is 0 now and the last cell to say it --
+    ``errorMessage`` -- is NOTHING with :attr:`Cell.reported` set.
     """
 
     #: The node's own type, or the class it becomes.  Written by the handler for the
@@ -132,8 +143,6 @@ class Effect(StrEnum):
     ANNOTATION = "ANNOTATION"
     #: Nothing at all.
     NOTHING = "NOTHING"
-    #: The document is refused on this keyword here.
-    REFUSE = "REFUSE"
 
 
 #: The effects that COMPILE TO SOMETHING -- a type, a field or a rule.  Section 6's
@@ -218,6 +227,27 @@ class Cell(NamedTuple):
     #: :func:`codegen.lower.approximate.approximate` would turn into a ``BuildFailure``
     #: at the first document to need it.
     widens_to: Rung | None = None
+    #: **Is the drop REPORTED wherever the document states this keyword.**
+    #: ``docs/plan/rebuild-plan.md`` section 7, on ``errorMessage`` joining section 6:
+    #: "it customises a validator's message and constrains no instance, so an annotation
+    #: that omits it omits no fact.  The drop is reported, as it was" -- and, beside it,
+    #: "**the drop is reported at every position the keyword occupies, and not only where
+    #: a conjunct encloses it**".
+    #:
+    #: A FIELD and not derived from :attr:`effect`, and the test section 3 sets for that
+    #: is met: ``$comment`` and the registry data keys are NOTHING at every position and
+    #: are reported NOWHERE, because a note about them tells a reader nothing they could
+    #: have believed otherwise -- a comment is manifestly a note and a registry's own
+    #: data is manifestly data.  ``errorMessage`` is NOTHING too and sits BESIDE a
+    #: constraint, on a ``not`` or on a ``then``, so a reader who is not told has no way
+    #: to see that the class carries nothing for it.  Cells whose other fields agree
+    #: take different answers, which is what makes this the cell's own decision.
+    #:
+    #: It is a REPORT and not an approximation: a cell that states no fact has nothing to
+    #: widen (:func:`states_a_fact`), so this never co-occurs with a rung.  The two
+    #: channels section 10 forbids summing stay two (``Module.carries_nothing`` against
+    #: ``Module.approximations``).
+    reported: bool = False
 
 
 class Row(NamedTuple):
@@ -227,7 +257,7 @@ class Row(NamedTuple):
     #: The positions whose answer differs from :attr:`default`.
     at: Mapping[Position, Cell] = {}
     #: Which of section 5's seven sub-grids this row's line belongs to.  Empty for a
-    #: section 6 or section 7 row, whose grid :func:`grid_of` derives.
+    #: section 6 row, whose grid :func:`grid_of` derives.
     grid: str = ""
     #: The grid line's keyword column where it is not the row's own name -- the two
     #: lines whose column is prose rather than a list of keywords.  Every row of one
@@ -244,6 +274,8 @@ STRUCTURE, VALUES, STRINGS = "structure", "values", "strings"
 NUMBERS, ARRAYS, OBJECTS, COMBINATORS = "numbers", "arrays", "objects", "combinators"
 SECTION_5 = (STRUCTURE, VALUES, STRINGS, NUMBERS, ARRAYS, OBJECTS, COMBINATORS)
 #: Section 6 and section 7, which are projections of the cells and not declared.
+#: :data:`REFUSED` is the EMPTY projection -- no cell can be in it -- and survives as the
+#: NAME of section 7's generated region, which :data:`GRIDS` is zipped against.
 ADMITTED, REFUSED = "admitted", "refused"
 GRIDS = (*SECTION_5, ADMITTED, REFUSED)
 
@@ -1373,9 +1405,19 @@ for _name in _EXTENSIONS:
 
 
 # --------------------------------------------------------------------------- #
-# section 7: keywords we refuse
+# section 6, continued: the two groups that came from section 7 on 2026-10-26
 # --------------------------------------------------------------------------- #
-#: A registry's own instance data at a schema root.  Section 7 names them on one line
+# **Section 7 has no rows and no dict.**  Both of its groups moved to section 6 by the
+# owner's directive, "each refused for a reason that was never about the document's
+# accepted set", and they are declared HERE because that is the section they render into:
+# a dict of its own, kept beside this one and spread after it, would be a second list for
+# `grid_of` to disagree with.
+#
+# `_ADMITTED` and not `_REFUSED` is also where the ORDER comes from.  Insertion order is
+# section 6's own grid order (`TABLE`), so these rows come after the `x-` namespace, which
+# is where the committed grid already carries the registry line.
+#
+#: A registry's own instance data at a schema root.  Section 6 names them on one line
 #: and the names are in its why column, so every row carries that line's label.
 _REGISTRY_KEYS = (
     "version",
@@ -1399,23 +1441,31 @@ _REGISTRY_KEYS = (
     "versioning",
 )
 
-_REFUSED: dict[str, Row] = {
-    "errorMessage": Row(
-        Cell(
-            Effect.REFUSE,
-            False,
-            None,
-            "An `ajv-errors` extension customising a validator's message. It has no "
-            "Pydantic rendering, and a conjunct carrying one contributes nothing, so "
-            "the drop is reported rather than silent.",
-        )
+# **`errorMessage` is NOTHING at every position, and its drop is REPORTED at every
+# position.**  Section 7: "it customises a validator's message and constrains no instance,
+# so an annotation that omits it omits no fact.  The drop is reported, as it was" -- and
+# "**the drop is reported at every position the keyword occupies, and not only where a
+# conjunct encloses it**".  ONE cell and no override is what says "every position": the
+# position rule is not a second decision to be taken per cell, so the row states the
+# answer once (:attr:`Cell.reported`, and ``bundle.reported_drops`` is the channel).
+_ADMITTED["errorMessage"] = Row(
+    Cell(
+        Effect.NOTHING,
+        False,
+        None,
+        "Nothing. An `ajv-errors` extension customising a validator's message, so it "
+        "constrains no instance and an annotation that omits it omits no fact. It has "
+        "no Pydantic rendering and never needed one. **The drop is reported**, at every "
+        "position the document states it at.",
+        reported=True,
     )
-}
+)
+
 # **The registry data keys are NOTHING at every position** (section 6 of the semantics
 # document, and section 3 of the architecture document: "`errorMessage` and the registry
 # data keys move into section 6's projection, where they always belonged: each is NOTHING
-# at every position").  Section 7 says why the REFUSE cell was never a statement about the
-# document's accepted set: "the first half was answering a question nobody asked --
+# at every position").  Section 7 says why the old REFUSE cell was never a statement about
+# the document's accepted set: "the first half was answering a question nobody asked --
 # admitting a key by name says it carries no acceptance meaning, which for instance data is
 # simply true, and draft-07 says the same thing by ignoring it. The second half was real --
 # the refusal was a SIGNAL about the document, not a statement about its accepted set --
@@ -1428,11 +1478,11 @@ _REFUSED: dict[str, Row] = {
 # upstream request, that the registry either drop its `$schema` or declare a schema, is the
 # issue list's and not a declaration's (section 5(b), corrected 2026-10-26).
 #
-# They stay in `_REFUSED` as the dict this file builds the table from and leave section 7's
-# PROJECTION, because `grid_of` reads the EFFECT and not the dict: a row NOTHING at every
-# position projects into section 6.
+# They are NOT `reported`, and the difference from `errorMessage` above is the cell's own
+# decision: a registry's own data at a schema root is manifestly data, so a note saying the
+# class carries nothing for it tells a reader nothing they could have believed otherwise.
 for _name in _REGISTRY_KEYS:
-    _REFUSED[_name] = Row(
+    _ADMITTED[_name] = Row(
         Cell(Effect.NOTHING, False, None, _REGISTRY_COMPILES), label=_REGISTRY_LABEL
     )
 
@@ -1450,8 +1500,8 @@ def states_a_fact(effect: Effect) -> bool:
 
     That is exactly :data:`COMPILES`: section 6's preamble is this predicate's
     complement ("none of these can constrain an instance, so none compiles to a type, a
-    rule or a base"), and a ``NAME`` is a symbol, an ``ANNOTATION`` is a description or
-    a deprecation, and a ``REFUSE`` cell refuses the document instead of widening it.
+    rule or a base"), and a ``NAME`` is a symbol while an ``ANNOTATION`` is a description
+    or a deprecation.
     So the NONE-ness of ``widens_to`` is decided by the effect and its VALUE is not,
     which is the division section 3 draws when it says the field is needed because
     "cells whose other three fields agree take different rungs".
@@ -1636,7 +1686,6 @@ TABLE: Mapping[str, Row] = _with_rungs(
         **_OBJECTS,
         **_COMBINATORS,
         **_ADMITTED,
-        **_REFUSED,
     }
 )
 
@@ -1793,11 +1842,12 @@ def pins_a_floor(keyword: str) -> bool:
 def cell(keyword: str, position: Position) -> Cell | None:
     """This keyword's answer at this position, or ``None`` where it has no row.
 
-    ``None`` is the answer that refuses the document BY NAME: a keyword in none of
-    sections 5, 6 and 7 is one the bundle does not use, and the first document to
-    carry one is loud rather than ignored.  A caller distinguishes it from every
-    other answer, which is why it is ``None`` and not a REFUSE cell -- the two have
-    different reasons and a reader should not have to tell them apart by prose.
+    ``None`` is the answer that refuses the document BY NAME, and since section 14 step 8
+    it is the ONLY answer that refuses it at all: a keyword in none of sections 5, 6 and 7
+    is one the bundle does not use, and the first document to carry one is loud rather
+    than ignored.  It was never a ``REFUSE`` cell -- "the two have different reasons and a
+    reader should not have to tell them apart by prose" -- and the other reason is gone,
+    so a key with a row is admitted whatever its row says.
     """
     row = TABLE.get(keyword)
     if row is None:
@@ -1871,11 +1921,19 @@ def declares(keyword: str, position: Position) -> bool:
     in the other direction.  A
     key that annotates without constraining is not a declaration; a key with no row is,
     because a keyword the bundle did not use before could constrain anything.
+
+    **One clause, where there were two**, since ``Effect.REFUSE`` retired: a cell that
+    REFUSED was a declaration because the screen could refuse the document on it, and no
+    cell can.  So a key with a row declares exactly when the node's own handler has to
+    write something for it, and a key whose drop is merely REPORTED
+    (:attr:`Cell.reported`) is not a declaration -- ``bundle.reported_drops`` reads the
+    document for those, not this predicate, which is what keeps the report out of the set
+    the screen can refuse on.
     """
     answer = cell(keyword, position)
     if answer is None:
         return not admitted_by_prefix(keyword)
-    return lowers(answer) or answer.effect is Effect.REFUSE
+    return lowers(answer)
 
 
 def admitted_by_prefix(keyword: str) -> bool:
@@ -1899,10 +1957,17 @@ def grid_of(keyword: str) -> str:
 
     Section 3 of the architecture document: section 6 is the rows that compile to no
     type, no rule and no base -- which is section 6's own preamble, "none of these can
-    constrain an instance, so none compiles to a type, a rule or a base" -- and
-    section 7 is the REFUSE rows.  So each is a projection and not a second list, and
-    only section 5's seven sub-tables are declared (:attr:`Row.grid`), the family of a
-    keyword being derivable from no other column.
+    constrain an instance, so none compiles to a type, a rule or a base".  So it is a
+    projection and not a second list, and only section 5's seven sub-tables are declared
+    (:attr:`Row.grid`), the family of a keyword being derivable from no other column.
+
+    **:data:`REFUSED` is the EMPTY projection and this function never returns it.**
+    ``docs/plan/architecture.md`` section 3: "section 7's projection is now the empty one,
+    because ``Effect.REFUSE`` is gone and no row can be in it; the generator still writes
+    the region, and the region being empty is what makes 'no keyword refuses' a fact the
+    document holds rather than a claim its prose makes."  So the grid NAME survives, as
+    the region's name -- the generator zips :data:`GRIDS` against the document's marked
+    regions -- and no arm here can reach it.
 
     **A row that carries nothing but HOLDS a subschema is section 5's**, and
     ``definitions`` is why the descent column is read here: it compiles to nothing at
@@ -1912,9 +1977,7 @@ def grid_of(keyword: str) -> str:
     """
     row = TABLE[keyword]
     cells = (row.default, *row.at.values())
-    if all(c.effect is Effect.REFUSE for c in cells):
-        return REFUSED
-    if any(c.effect in COMPILES or c.effect is Effect.REFUSE for c in cells):
+    if any(c.effect in COMPILES for c in cells):
         return row.grid
     if any(c.descends is not None for c in cells):
         return row.grid

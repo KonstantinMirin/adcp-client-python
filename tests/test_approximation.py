@@ -209,7 +209,10 @@ def test_an_ours_attribution_is_the_cells_own_address_and_is_derived() -> None:
     """
     assert keywords.address("uniqueItems") == f"{keywords.DOCUMENT} §5 arrays/uniqueItems"
     assert keywords.address("description") == f"{keywords.DOCUMENT} §6 admitted/description"
-    assert keywords.address("errorMessage") == f"{keywords.DOCUMENT} §7 refused/errorMessage"
+    # ``errorMessage`` was §7's one row and reads §6 now: the section a reader goes to is
+    # the PROJECTION of the cell, so moving the cell moved the address with it and no
+    # second list had to be edited.
+    assert keywords.address("errorMessage") == f"{keywords.DOCUMENT} §6 admitted/errorMessage"
     assert keywords.address("frobnicate") == f"{keywords.DOCUMENT} §7 (no row): frobnicate"
     assert attribution_for(DOC, "#/properties/x", "uniqueItems") == keywords.address("uniqueItems")
 

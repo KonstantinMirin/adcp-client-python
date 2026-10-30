@@ -29,8 +29,8 @@ def lower(node: nodes.Reference, mod: Module) -> ir.Decided | Refusal:
     co-occurrence so §8 does not grade it, and the run names it because a key that reads as
     a constraint and is inert is worth reading once.  :attr:`nodes.Reference.inert` is the
     parser's reading of that co-occurrence; this row reports it and screens it as claimed.
-    A key with NO ROW and a key whose cell is REFUSE still refuse, by name, through the
-    screen.
+    A key with NO ROW still refuses, by name, through the screen, and since §14 step 8 it
+    is the only key that does: no cell can refuse a document.
     """
     compiler.report_inert(node.inert, node.pointer, mod)
     refused = check_keywords(

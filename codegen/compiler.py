@@ -207,6 +207,38 @@ def report_inert(inert: "Collection[str]", pointer: str, mod: "Module") -> None:
     )
 
 
+def report_reported_drops(drops: "Collection[tuple[str, str]]", mod: "Module") -> None:
+    """The REPORTED half of a cell whose :attr:`keywords.Cell.reported` is set.
+
+    ``docs/plan/rebuild-plan.md`` §7 on ``errorMessage``: "it customises a validator's
+    message and constrains no instance, so an annotation that omits it omits no fact.
+    **The drop is reported, as it was**" -- and the position rule beside it, "the drop is
+    reported at every position the keyword occupies, and not only where a conjunct
+    encloses it".
+
+    **A function of the DOCUMENT and not of the walk**, which is what that rule costs and
+    is why ``drops`` is handed in rather than collected here.  ``bundle.reported_drops``
+    is the census, over the one descent walk; this is the SENTENCE, here because §11 gives
+    the declaration layer positions, keywords, cells and descent and denies it text.  The
+    channel this replaces was ``lower_composition``'s conjunct worklist, which reported
+    the one occurrence a conjunct enclosed and could not reach the one at ``/then`` --
+    "a report that reaches one position and not another is a defect in the channel, not a
+    second decision".
+
+    Reported rather than silent, and on the MODULE rather than raised: a drop is not a
+    refusal (the document still emits) and it is not nothing (a reader has to be able to
+    see that the class does not carry the name).  :attr:`Module.carries_nothing` is that
+    channel and ``emit`` prints it.
+    """
+    mod.carries_nothing.extend(
+        f"{pointer or '/'}: {key}: section 6 admits this keyword by name and it "
+        "constrains no instance, so the class carries nothing for it (section 2, 'a "
+        "keyword we cannot express': a name that cannot constrain an instance compiles "
+        "to nothing)"
+        for pointer, key in drops
+    )
+
+
 
 # --------------------------------------------------------------------------- #
 # names (D3) are ``codegen/lower/names.py``'s now
@@ -1390,17 +1422,22 @@ def kind_for(key: str, position: Position) -> Kind:
     """The KIND of the refusal this key mints, read off the CELL.
 
     ``docs/plan/architecture.md`` §3: "a refusal's kind is derived from the cell and
-    never chosen at a raise site."  Three answers and each is the cell's:
+    never chosen at a raise site."  Two answers and each is the table's:
 
-    * a key whose cell is REFUSE is a VERDICT -- the obstruction belongs to the
-      document, which is what §7 of the semantics document decided about it;
-    * a key with NO ROW is a VERDICT too, and for a different reason worth keeping
-      apart: a keyword in none of §5, §6 or §7 is one the bundle did not use, so there
-      is no lowering to schedule and answering "a later row does" about it would
-      promise an unscheduled row;
+    * a key with NO ROW is a VERDICT: a keyword in none of §5, §6 or §7 is one the
+      bundle did not use, so the obstruction is the document's -- there is no lowering
+      to schedule and answering "a later row does" about it would promise an unscheduled
+      row;
     * a key whose cell is a LOWERING effect and whose handler claims nothing is a
       DEFERRAL -- §9's first rule, because minting a verdict for unwritten code reports
       clearable work as finished.
+
+    **There were three, and the third went with ``Effect.REFUSE``** (§14 step 8): "a key
+    whose cell is REFUSE is a VERDICT -- the obstruction belongs to the document, which
+    is what §7 of the semantics document decided about it".  §7 decided the opposite on
+    2026-10-26 and is empty, so the arm has no cell that can reach it and the VERDICT
+    answer is the no-row one alone.  A cell that CARRIES nothing mints nothing at all:
+    the screen admits it and never reaches a refusal.
 
     *Why derived.*  The reviews record the two kinds assigned by hand at a raise site
     and the assignment coming out inverted in bulk: a cell the semantics document
@@ -1409,12 +1446,11 @@ def kind_for(key: str, position: Position) -> Kind:
     was made.  Measured on the base tree (``5d92cf2c0``, 406 emitted and 648 refused of
     1,054), the old reading -- "is the name in draft-07's meta-schema" -- called 11 of
     the 648 a verdict about a non-keyword: ``discriminator`` 7, ``notes`` 2,
-    ``enumMetadata`` 1, ``last_updated`` 1.  Of those four names the table admits three
-    (§6) and refuses one (§7), so the same four reach three different answers now and
-    none of them is read off a meta-schema.
+    ``enumMetadata`` 1, ``last_updated`` 1.  The table admits all four (§6) and refuses
+    none, so none of them mints a kind now and none is read off a meta-schema.
     """
     answer = keywords.cell(key, position)
-    if answer is None or answer.effect is keywords.Effect.REFUSE:
+    if answer is None:
         return Kind.VERDICT
     return Kind.DEFERRED
 
@@ -1509,9 +1545,9 @@ def check_keywords(
     ``docs/plan/architecture.md`` §3's admission reader is exactly these arms:
 
     * a cell that carries NOTHING, ANNOTATES or names (``NAME``) is admitted and
-      carried nowhere by the screen;
-    * a cell that is REFUSE refuses the document, and :func:`kind_for` makes it a
-      VERDICT;
+      carried nowhere by the screen.  **There is no arm that refuses on a cell**: §7 is
+      empty and ``Effect.REFUSE`` is retired (§14 step 8), so the only keyword a
+      document is refused on is one the table gives no row;
     * a key with NO ROW refuses the document as a VERDICT naming a keyword the bundle
       did not use before -- unless it is in the ``x-`` namespace, which is admitted by
       PREFIX because a vendor extension cannot be a schema keyword, and REPORTED,
@@ -1577,11 +1613,12 @@ def _screen(
     """The admission reader itself, over keys already in the order the report wants."""
     for key in keys:
         # **``handled`` is asked FIRST**, before the cell, because a caller that claims
-        # a key has already decided what happens to it -- including a key the table
-        # REFUSES: ``lower_composition`` hands its ``foreign`` set here precisely so
-        # that an ``errorMessage`` on a conjunct is DROPPED AND REPORTED, which is §7's
-        # own answer for it, rather than refused on the very name the drop accounted
-        # for.  Measured on ``media-buy/sync-catalogs-request.json``.
+        # a key has already decided what happens to it, and the screen may not re-decide
+        # it.  The clause that used to be here -- an ``errorMessage`` handed in by
+        # ``lower_composition`` so that the key the drop accounted for was not then
+        # refused on -- is gone with ``Effect.REFUSE``: a cell carrying NOTHING never
+        # reaches a refusal in the first place, so nothing has to be claimed to protect
+        # it.  Measured on ``media-buy/sync-catalogs-request.json``.
         if key in handled:
             continue
         answer = keywords.cell(key, position)
@@ -1596,8 +1633,12 @@ def _screen(
                     )
                 continue
             return Refusal(key, pointer, NO_SUCH_KEYWORD, kind=kind_for(key, position))
-        if answer.effect is keywords.Effect.REFUSE:
-            return Refusal(key, pointer, why or answer.compiles, kind=kind_for(key, position))
+        # **No arm here refuses on a CELL.**  §7 is empty, so a key with a row is either
+        # a fact this node's kind consumes -- a DEFERRAL below where the handler has not
+        # claimed it -- or admitted.  A key whose drop is REPORTED is admitted here too:
+        # the note is ``bundle.reported_drops``' and reaches every position, where an arm
+        # in this screen would reach only the positions a walk arrives at
+        # (``/then``'s subschema is a RULE source read raw, and the screen never sees it).
         if not keywords.lowers(answer):
             continue
         return Refusal(
@@ -3552,40 +3593,16 @@ def lower_composition(
         where, conjunct = unread.pop(0)
         if not isinstance(conjunct, dict):
             return Refusal("allOf", where, "a conjunct that is not a schema", kind=Kind.VERDICT)
+        # **A key whose cell carries NOTHING is not in ``keys`` at all**, so this loop
+        # has nothing to subtract and nothing to report.  It used to hold both: a set of
+        # names whose cell said REFUSE, dropped from ``keys`` and reported here, with
+        # ``errorMessage`` at ``media-buy/sync-catalogs-request``'s ``/allOf/1`` the one
+        # occurrence.  The cell is NOTHING now (§7, 2026-10-26), so ``keywords.declares``
+        # answers no for it and ``declaring`` leaves it out -- and the REPORT moved to
+        # ``bundle.reported_drops``, which is the whole of §7's position rule: this
+        # worklist reads CONJ and the same document states the keyword at ``/then`` as
+        # well, where no conjunct encloses it and this channel could never have reached.
         keys = set(declaring(conjunct, Position.CONJ))
-        # **A key whose CELL refuses contributes nothing to a conjunct, and the walk
-        # says so.**  Section 7's ``errorMessage`` row states it for the one name that
-        # occurs: "it has no Pydantic rendering, and a conjunct carrying one
-        # contributes nothing, so the drop is reported rather than silent".
-        # ``media-buy/sync-catalogs-request`` at ``/allOf/1`` states it beside a
-        # ``not``, and ``min(keys)`` reported the document on ``errorMessage`` with
-        # ``DEFERRED`` -- a deferral promising a row for a name no row can ever lower.
-        #
-        # Read off the cell rather than off draft-07's meta-schema, which is what this
-        # asked before: the meta-schema answers "is this a keyword", and the question
-        # is "does this keyword contribute anything here".  A key with NO ROW is not
-        # dropped -- it refuses below, because a keyword the bundle did not use before
-        # could constrain anything.
-        #
-        # Reported rather than silent, and reported on the MODULE rather than raised: a
-        # drop is not a refusal (the document still emits) and it is not nothing (a
-        # reader has to be able to see that the class does not carry the name).
-        # :attr:`Module.carries_nothing` is that channel and ``emit`` prints it.
-        foreign = {
-            k
-            for k in keys
-            if (c := keywords.cell(k, Position.CONJ)) is not None
-            and c.effect is keywords.Effect.REFUSE
-        }
-        if foreign:
-            mod.carries_nothing.extend(
-                f"{where}: {k}: section 7 refuses this keyword, so it constrains no "
-                "instance and the class carries nothing for it (section 2, 'a keyword "
-                "we cannot express': a name that cannot constrain an instance compiles "
-                "to nothing)"
-                for k in sorted(foreign)
-            )
-            keys -= foreign
         if "$ref" in keys and keys != {"$ref"}:
             # A conjunct that is a ``$ref`` AND something else.  **The CONSTRAINING
             # siblings compile to nothing and are REPORTED** -- §5's ``$ref`` row as
@@ -3596,9 +3613,8 @@ def lower_composition(
             # below binds it.
             #
             # What is left refuses by name: a key with NO ROW is a keyword the bundle
-            # did not use before and could constrain anything (§9).  A REFUSE cell is
-            # §7's own answer and ``foreign`` above has already dropped and reported
-            # it, so it never reaches here.
+            # did not use before and could constrain anything (§9).  That is the ONLY
+            # thing left to refuse on -- §7 is empty, so no cell can be the answer here.
             inert = inert_beside_a_reference(conjunct, where, Position.CONJ, mod)
             remaining = keys - {"$ref"} - inert
             if remaining:
@@ -3770,17 +3786,18 @@ def lower_composition(
         # rather than being emitted with the combinator dropped.
         screen = frozenset(declaration_rule_sources(conjunct, Position.CONJ))
         if keys <= INLINE | screen | CONJ_COMPOSES:
-            # ``foreign`` is handed to the screen as CLAIMED, because this arm has
-            # already decided what happens to it: it is dropped and reported.  Left
-            # out, ``check_keywords`` walks ``sorted(node)`` and refuses on the very
-            # name the drop above accounted for, which loses the document and leaves
-            # the drop record unwritten -- measured on
-            # ``media-buy/sync-catalogs-request.json``.
+            # The claim set is this arm's own coverage and nothing else.  It carried a
+            # ``foreign`` set too -- the names whose cell said REFUSE, handed in as
+            # CLAIMED so that ``check_declaration`` did not refuse on the very name this
+            # loop had just dropped and reported.  With §7 empty there is no such name:
+            # a cell carrying NOTHING is admitted by the screen on its own, and the drop
+            # is reported by ``bundle.reported_drops`` at every position the document
+            # states it at rather than at the ones a conjunct encloses.
             unadmitted = check_declaration(
                 conjunct,
                 where,
                 Position.CONJ,
-                set(INLINE) | screen | set(CONJ_COMPOSES) | foreign,
+                set(INLINE) | screen | set(CONJ_COMPOSES),
                 mod=mod,
             )
             if unadmitted is not None:

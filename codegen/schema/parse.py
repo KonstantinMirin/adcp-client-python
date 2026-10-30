@@ -56,7 +56,8 @@ implies them.**  A handler never sees a mapping the document does not state:
 **The screen and the classification INTERLEAVE, and §4 is where that is decided** (settled
 2026-10-26, after this row found that the section's "four things … in this order" could not
 be taken literally).  §4 now says it: three admission arms answer from
-``cell(keyword, position)`` alone -- a key with no row, a REFUSE cell, a NOTHING cell -- and
+``cell(keyword, position)`` alone -- a key with no row, a NOTHING cell, an ANNOTATION or a
+NAME cell -- and
 run before anything is classified; the fourth cannot, because §3's reader ends "any other
 effect is a fact the node's kind consumes" and whether a lowering effect is CLAIMED or is a
 DEFERRAL is a question about which kind owns the node, so that arm runs after the
