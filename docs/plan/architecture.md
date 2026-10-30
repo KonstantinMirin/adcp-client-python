@@ -209,6 +209,36 @@ What this buys: a payload is drawn **once per (document, draw version) in the pr
 not once per checkout per lane per key-space change. What it costs is 0.4 MB in the tree and a
 redraw step on a bundle bump, which is the same discipline the packaged records already carry.
 
+### The widening store's currency is the OBLIGATION, not a second gate (decided 2026-10-30)
+
+§8's widening obligation draws too, at three sites, and those draws now have a store of their own
+in a separate key space and a separate directory. The accepts gate's shape **does not transfer to
+it**, and the reason is worth stating because it looks like an omission: `live_keys()` reads every
+graded pair's accepts key with no draw at all, where the widening space's live set depends on
+which borrowed base hosted each declaration's location — decided by placement attempts against the
+pair's own accepts instance. So the exact set is knowable only by RUNNING the obligation, and on a
+cold floor that costs the very draws the gate would be reporting are owed. A gate over the cheap
+superset would demand entries for draws that never happen.
+
+**The accepts gate exists to close a hole that does not exist here.** A stale accepts entry is
+*silently* correct: its key stops matching, the pair redraws, and nothing reddens. A stale widening
+entry cannot be silent, because every held base is placed and offered to the DOCUMENT before the
+entry point sees it — so it either still hosts the location, in which case the check is real, or it
+fails placement and the declaration is reported `unproved`, which §8 treats as **as much a failure
+as a narrowing.** Staleness here is self-reporting. The obligation is the currency gate.
+
+So the floor is committed as it fills, graded on its SHAPE, and **no second derived artifact is
+minted to record which keys the population asks for.** That artifact would need its own equality,
+and that equality would need the same thing one level further out — the regress `tests/corpus.py`'s
+original argument was right to fear. Leaving the space cache-only is also refused: the saving is
+real and crosses checkouts, measured at 233.75 s against 0.47 s over 17 pairs with 0 verdicts
+changed.
+
+A position whose draw never returns is held by nothing under any of these choices — two of them
+exceed 900 s on an 8,145,255-byte conjunction and one exceeds 600 s on a 6,832,209-byte node. That
+residue is not a currency question. It is the document-derived construction decision, and it is
+open.
+
 ### The suite's scratch goes on DISK, not in RAM (decided 2026-10-30)
 
 `/tmp` on this machine is a **63 GB tmpfs — it is RAM.** The suite materialises a fresh package per
