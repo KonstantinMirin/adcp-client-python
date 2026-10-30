@@ -88,18 +88,91 @@ testpaths = ["tests"]
 # current ones. No serial figure is restated beside them because none was taken: a serial
 # run of this suite is the 17,061 s of worker time the last row of the table reports.
 #
-# **MEMORY IS NOT THIS SUITE'S CEILING AND THE OOM FIGURE DOES NOT REPRODUCE.**  The
-# line this replaces said "runs here have been killed by the OOM killer at fifteen
-# Python processes against 5 GB of swap", and re-measured at
-# ``adcp-client-python-10l.31`` on this box -- 24 cores, 125 GB of RAM, 88 GB of it
-# available -- a full run at ``-n 24`` peaks at **10.35 GB resident across all 25
-# processes at once**: 1,211 MB in the worst worker, 331 MB median. Swap is 4,090 MB with
-# 2,625 MB of it long since paged out by other services, and it moved by 2 MB across the
-# whole 57-minute run. Fifteen workers is about 6.5 GB. Whatever that figure measured, it
-# was not this suite on this machine, and a cap set to protect memory protects nothing.
-# ``rss_sampler.sh`` takes the figure and ``suite_report.py`` reduces it; the sampler
-# scopes to one run's own process tree, because the form that summed every ``.venv``
+# **MEMORY IS THIS SUITE'S OTHER CEILING, AND THE FIGURE THAT SAID OTHERWISE WAS A
+# READING OF A SMALLER TREE.**  What stood here was "memory is not this suite's ceiling
+# and the OOM figure does not reproduce", over a ``-n 24`` measurement taken at
+# ``adcp-client-python-10l.31``: 10.35 GB resident across all 25 processes at once,
+# 1,211 MB in the worst worker, 331 MB median, against 88 GB available.  **Re-measured at
+# ``-n 10`` on 2026-10-30 (``adcp-client-python-3be.18``), over the tree whose wall clock
+# the table below reports: 93.7 GB resident across 11 processes at once, 14,521 MB in the
+# worst worker, 11,393 MB median** -- 1,253 samples at 5 s, sampler attached BEFORE pytest.
+# Summed, 9.1x the figure it replaces; in the MEDIAN worker, 34x.
+# The old reading was not wrong when it was taken and it is not a reading of this suite:
+# it predates the emitted set the paragraph above already calls an eleven-fold growth in
+# wall clock, and what grew is the thing that holds the memory -- ``check_accepts`` over a
+# RESOLVED schema, which for ``media-buy/get-media-buy-delivery-response.json#`` is
+# 2,701,506 bytes and 1,846.8 s of one worker.  So a cap set to protect memory now
+# protects something, which is the opposite of what this paragraph used to conclude.
+#
+# **ATTACH THE SAMPLER BEFORE PYTEST, because a late sample is a FLOOR and reads like a
+# peak.**  A second run of the same suite was sampled only from 3 h 15 m in, and its
+# largest per-sample sum ROSE monotonically for as long as it was watched -- 70.4 GB after
+# 18 minutes of sampling, 77.9 GB after 25, 86.3 GB after 33, all of them "the peak" at the
+# moment they were read and all of them under the 93.7 GB a run watched from the start
+# reports.  The three numbers of that curve are kept here as the shape of the mistake, not
+# as readings of anything.  If a figure has to be cited off a late sample, cite it as
+# "at least".
+#
+# **AND THE RUN WATCHED FROM THE START DID NOT SURVIVE EITHER.**  MemAvailable reached
+# **1.0 GB of 125** and the kernel took two workers -- ``gw4`` at 1 h 37 m and ``gw0`` at
+# 2 h 05 m, ``oom_kill`` 50 -> 52, each one a ``node down: Not properly terminated`` in the
+# log and each one restarted by xdist with its queue re-dispatched.
+# Moving the scratch to disk removes the tmpfs term below and does NOT remove this one:
+# the dominant term is worker RSS, the median worker is 11.4 GB, and ten of those plus a
+# master do not fit beside anything else on this box.  So the honest statement of the
+# ceiling is that the suite at ``-n 10`` needs the machine to itself, and the next measured
+# step is whether a lower ``--maxprocesses`` trades wall clock for a run that completes --
+# not a figure this file can assert without taking it.
+#
+# **HOW TO RE-DERIVE IT -- and state the reading WITH this derivation, never the figure
+# alone**, which is what let the paragraph above go an order of magnitude stale while
+# every lane read it:
+#
+#     out=/srv/ws/.adcp-measure/$(date +%s)        # a DISK path; see SCRATCH below
+#     mkdir -p "$out"
+#     PYTHONPATH=.:src ./.venv/bin/python -m pytest tests/ -p no:randomly -v -rf \
+#         --durations=25 --junitxml="$out/run.xml" > "$out/run.log" 2>&1 &
+#     ./rss_sampler.sh "$out/rss.txt" "$!" &                 # the MASTER's pid
+#     ./.venv/bin/python suite_report.py "$out/run.log" "$out/run.xml" "$out/rss.txt"
+#
+# ``rss_sampler.sh`` takes the figure and ``suite_report.py`` reduces it to the two the
+# ceiling question needs: ``PEAK RSS per process`` decides whether ONE worker can be
+# killed on its own, and ``PEAK CONCURRENT TOTAL`` -- the per-SAMPLE sum, not the sum of
+# the per-process peaks -- is the only one the kernel acts on.  The sampler is given the
+# master's pid and walks its descendants, because the form that summed every ``.venv``
 # process on the box could not be read during an epic, which is when it is read.
+# ``/proc/vmstat``'s ``oom_kill`` counter, read before and after, is what says whether a
+# run survived -- and it is the only thing that does, because ``pytest-xdist`` RESTARTS a
+# killed worker (see ``--max-worker-restart`` below) and the summary line says nothing
+# about it.  Both runs of 2026-10-30 are readable only through that counter: the
+# late-sampled one went **49 -> 50 at the moment it exited**, after 3 h 53 m, with six of
+# its ten workers already in state ``Z`` and six replacements spawned from 1 h 10 m onward;
+# the sampled-from-the-start one went **50 -> 52**, at 1 h 37 m and again at 2 h 05 m, and
+# kept running on replacements.  Neither run reports any of it.  That is the third and
+# fourth attempt at the wall clock below to meet the kernel rather than anything in the
+# code, and a lane that reads only the summary line will record the fourth as a success.
+#
+# **AND THE SCRATCH IS A SECOND CLAIM ON THE SAME RAM, which no RSS figure shows.**
+# ``/tmp`` on this box is a 63 GB TMPFS, so a byte written there is a byte of RAM that is
+# in NO process's RSS -- the two readings add, and a ceiling computed from either alone is
+# wrong by the other.  Measured during the late-sampled run: 86.3 GB of resident workers
+# beside 23 GB in ``/tmp``, against 125 GB total, with MemAvailable at 13.4 GB and SwapFree
+# at **4 kB** of 3 GB.  10.2 GB of that tmpfs was orphaned scratch from torn-down lanes with
+# ZERO open handles -- checked, then removed, which returned MemAvailable to 16.5 GB and
+# SwapFree to 87 MB without touching the run.  **That 10.2 GB was larger than the headroom
+# the run had left**: MemAvailable still reached 6.1 GB afterwards, so without the reclaim
+# the same run would have met the kernel again, which is the sense in which orphaned
+# scratch on a tmpfs is not free.  ``tests/conftest.py``'s ``SCRATCH`` keeps
+# the suite's own share of that off a memory-backed filesystem and
+# ``tests/test_scratch_is_on_disk.py`` reads it back off ``/proc/mounts``;
+# ``docs/plan/architecture.md`` ("The suite's scratch goes on DISK, not in RAM",
+# 2026-10-30) is the decision.  Read back AFTER it, and the cleanest reading was an
+# accident of timing: during the sampled run above, ANOTHER lane's suite without this fix
+# put **835,248 kB** into ``/tmp`` while this one put **836,064 kB** of the same package on
+# ``/dev/md2``, and this run's own share of ``/tmp`` never exceeded **228 kB**.  Before the
+# fix a run's basetemp in ``/tmp`` was **828,044 kB**.  The seven bare
+# ``tempfile.mkdtemp()`` calls in this suite remove nothing they make, which is where
+# 31 directories holding 818 MB of that tmpfs came from.
 #
 # **WHAT THE CEILING IS INSTEAD: ONE INDIVISIBLE WORK UNIT.**  Three full runs on this
 # tree, same bundle, same pins, and the SAME THREE FAILURES BY NAME in all three:
@@ -118,10 +191,22 @@ testpaths = ["tests"]
 # that gap is the duplicated pass the next paragraph removes.
 #
 # So ``--maxprocesses`` STAYS AT TEN, for the measured reason and not the old one: ten
-# workers finish everything divisible in 2,111 s, the extra fourteen buy 16%, and leaving
-# them free is what lets a second lane's suite run beside this one -- the normal case
-# during an epic.  Override upward on an idle machine with ``-n 24`` for that 16%; a
-# single test still runs alone under ``-n 0``.
+# workers finish everything divisible in 2,111 s and the extra fourteen buy 16%.  Override
+# upward with ``-n 24`` for that 16% on a machine that is idle IN MEMORY, which on this box
+# means ~100 GB free and not merely cores free; a single test still runs alone under
+# ``-n 0``.
+#
+# **THE FOURTEEN FREE CORES ARE NOT AN INVITATION TO A SECOND CONCURRENT FULL SUITE**, and
+# the sentence that stood here said they were -- "leaving them free is what lets a second
+# lane's suite run beside this one, the normal case during an epic".  That followed from
+# the 10.35 GB the paragraph above corrects, and at 93.7 GB a run it is false: two full
+# suites at once is ~187 GB of a 125 GB box.  Two attempts at the wall clock below died of
+# worker OOM for exactly that reason, and ``pytest-xdist``'s ``--max-worker-restart``
+# default of ``4 * numprocesses`` is what hides it -- a killed worker is RESTARTED, so the
+# run keeps going with its queue re-dispatched and reports a wall clock nothing can be read
+# off.  Before starting a full run, check for one already in flight (``ps -eo
+# pid,etime,args | grep '[p]ytest tests/'``) and wait for it; a bound with its cause beats
+# two runs that kill each other.  ``./check`` is the loop and costs 1.4 s.
 #
 # ``--dist=loadgroup`` is what moved the figure, and it is ``load`` plus one rule: tests
 # sharing an ``xdist_group`` mark go to one worker.  ``tests/test_emit.py``'s
