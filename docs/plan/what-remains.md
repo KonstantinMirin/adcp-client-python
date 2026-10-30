@@ -103,7 +103,11 @@ None of these is a document the compiler cannot express. They are our ability to
   carry an `allOf` index the document does not have; 2 classes cannot be graded at all and 144 of
   the old 235 approximation pointers did not resolve.
 - 292 red comparison pairs on a fresh tree, 196 on the committed one, against a `COMPARISON_FACTS`
-  pinned empty.
+  pinned empty. **Re-measured and re-pinned at `3be.23`: 155 red pairs over 75 documents carrying
+  1,086 facts (missing 718, differs 43, added 325), every one named in
+  `tests/test_the_comparison_census.py` and read in 53 s by `./check --compare` rather than behind
+  the pole. The pin is no longer empty; the 155 are still red, and 147 of them are a model wider
+  than its document.** The 8 red on `added` alone are classified there and none is a real narrowing.
 
 ## G. Upstream
 

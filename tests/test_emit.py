@@ -60,7 +60,6 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import traceback
 import types
 from dataclasses import replace
 from pathlib import Path
@@ -82,7 +81,6 @@ from adcp.types._base import (
     WIDENED,
     AdCPBaseModel,
     AdCPRootModel,
-    SchemaBound,
     applied_schema,
     BranchDispatchMixin,
     REGEX_ENGINE,
@@ -116,6 +114,7 @@ from codegen.harness import (
     violated_keywords,
 )
 from codegen.lower import rules
+import compared
 import corpus
 from compiled import compiled
 import fresh
@@ -358,7 +357,12 @@ class Graded(NamedTuple):
 #: ``test_the_pairing_is_intrinsic_to_every_class_the_tree_carries`` reports from the
 #: other side, and ``tests/test_the_tree_imports.py`` reports in a child process over the
 #: same tree without importing anything of it here.
-UNIMPORTABLE: dict[str, str] = {}
+#:
+#: **THE SAME DICT OBJECT ``tests/compared.py`` FILLS**, because the walk moved there with
+#: :func:`graded`'s body (``adcp-client-python-3be.23``) and this name is what the test
+#: below reads.  An alias and not a copy: a copy taken at import time would be empty
+#: whatever the walk later found.
+UNIMPORTABLE: dict[str, str] = compared.UNIMPORTABLE
 
 
 @functools.cache
@@ -412,51 +416,18 @@ def graded() -> list[Graded]:
     ``model_rebuild(force=True)`` is not cheap; it is read at parametrize time and by
     several tests, and the result is a function of the tree alone.  The returned list is
     SHARED: read it, do not mutate it.
-    """
-    pkg = fresh.schemas()
-    if pkg is None:
-        return []
 
-    out: list[Graded] = []
-    for info in sorted(pkgutil.walk_packages(pkg.__path__, pkg.__name__ + "."), key=lambda i: i.name):
-        try:
-            module = importlib.import_module(info.name)
-        except Exception:  # noqa: BLE001 -- see UNIMPORTABLE: a raise here errors collection
-            UNIMPORTABLE[info.name] = traceback.format_exc(limit=3)[-600:]
-            continue
-        taken: set[int] = set()  # by IDENTITY: one class, one pair, whatever it is called
-        for value in vars(module).values():
-            if (
-                isinstance(value, type)
-                # **``SchemaBound`` and not ``AdCPBaseModel``, because §8 of the
-                # architecture document requires a ROOT MODEL to be paired exactly as a
-                # class is**: "each must carry ``__adcp_schema__``, ``strict_validate``
-                # and a rule tuple exactly as a class does, or a root model and a class
-                # disagree about what their document accepts."  ``SchemaBound`` is the
-                # mixin that carries those two, so it is the predicate that says "this
-                # object is a pair"; ``AdCPBaseModel`` says "this object is a class",
-                # which is a narrower question and the wrong one here.  Measured at §14
-                # step 9: the six root models the step's three producers declare --
-                # ``core/acceptance-policy-profile-ids.json``,
-                # ``core/forecast-point-dimensions.json``,
-                # ``core/reporting-verification-profile-set.json``,
-                # ``media-buy/product-fields.json`` and the two
-                # ``core/targeting-*-age-*-constraint.json`` -- emitted into the tree
-                # and reached NO pair, which
-                # ``test_the_pairing_is_intrinsic_to_every_class_the_tree_carries``
-                # reports as a document that emits and is not graded.
-                and issubclass(value, SchemaBound)
-                and "__adcp_schema__" in value.__dict__
-                and value.__module__ == info.name
-                and id(value) not in taken
-            ):
-                taken.add(id(value))
-                out.append(Graded(value.__adcp_schema__, value, value.strict_validate, info.name))
-        ref = vars(module).get("__adcp_schema__")
-        if isinstance(ref, SchemaRef) and callable(vars(module).get("strict_validate")):
-            (symbol,) = module.__all__
-            out.append(Graded(ref, getattr(module, symbol), module.strict_validate, info.name))
-    return out
+    **THE WALK ITSELF IS ``tests/compared.py``'s AND THIS IS A WRAPPER**
+    (``adcp-client-python-3be.23``).  §8's comparison moved into the fast loop and needs
+    the same pairing this file parametrises over -- and a second walk of its own would be
+    a census over however many pairs that walk turned out to find, which is the
+    two-populations defect ``tests/compiled.py``'s key exists to prevent one layer down.
+    So there is ONE pairing of the fresh tree: ``compared.pairs()`` performs it, carries
+    every decision the paragraphs above record, and fills the same
+    :data:`UNIMPORTABLE`; this function wraps each row in :class:`Graded`, which is the
+    type this file's parametrize ids and helpers read.
+    """
+    return [Graded(*row) for row in compared.pairs()]
 
 
 #: **The ``format`` strategies the LIBRARY does not ship**, handed to ``check_pair`` as
@@ -1255,16 +1226,17 @@ NON_PASS_PAIRS: dict[str, list[str]] = {
     # ``set(by_outcome) == {"pass"} | set(NON_PASS_PAIRS)`` would then demand an
     # outcome no pair has.
 }
-#: **THE TWO ZEROS ARE GONE, REPLACED BY :data:`COMPARISON_FACTS`, and that is row .3's
+#: **THE TWO ZEROS ARE GONE, REPLACED BY THE COMPARISON CENSUS, and that is row .3's
 #: doing rather than a pin being loosened.**  They were pinned at 0 beside an ``added``
 #: zero -- the specification's symmetric comparison, "a fact the model adds reddens and a
 #: fact it drops reddens" -- and all three were green.  Row .3's 30 red facts make a
 #: zero unreachable, and three integers beside each other cannot say WHICH facts they
-#: count, so the set names every one by pair, pointer and DIRECTION and the three totals
-#: are derived from it in
-#: ``test_the_harness_result_is_counted_over_the_whole_population``.  That is as strong
-#: as the zeros at detecting a thirty-first fact and stronger at attributing the thirty:
-#: a fact arriving, leaving or changing direction reddens with the pair named.
+#: count, so the set names every one by pair, pointer and DIRECTION.  That is as strong
+#: as the zeros at detecting one more fact and stronger at attributing the ones there
+#: are: a fact arriving, leaving or changing direction reddens with the pair named.  The
+#: set is ``tests/test_the_comparison_census.py``'s ``COMPARISON_FACTS`` as of
+#: ``adcp-client-python-3be.23``, where it holds the live 155 pairs and is read in 53 s
+#: rather than behind this file's 2,793 pair reports.
 #: The pairs whose LIVENESS check has no payload, by name.  Written once and read by the
 #: two tests that need it, so ``pass`` is the complement of a named set rather than an
 #: arithmetic over two pins.  These are the same two pairs ``NON_PASS_PAIRS`` names and
@@ -2601,23 +2573,29 @@ def test_the_harness_result_is_counted_over_the_whole_population() -> None:
         {name for name, r in pairs.items() if r.comparison.model_facts},
         inside=set(pairs),
     )
-    # **THE THREE TOTALS ARE DERIVED FROM :data:`COMPARISON_FACTS` AND NOT PINNED, which
-    # is what row .3 forced.**  They were 0, 0 and 0, and the ``added`` zero carried the
-    # sentence "none of them narrows".  Row .3 produced 30 red facts over 27 pairs and
-    # ``COMPARISON_FACTS`` names every one by pair and pointer, so the totals here are
-    # that set's own arithmetic rather than three numbers beside it -- a fact arriving or
-    # leaving reddens where it can be attributed, and a fact MOVING between the three
-    # directions reddens here.  ``test_every_class_passes_all_three_checks`` is RED on
-    # all 27 and stays red; §14 step 3 makes these findings and not a fold's absence.
-    named = collections.Counter(
-        fact.split(" ")[0] for facts in COMPARISON_FACTS.values() for fact in facts
-    )
+    # **THE THREE TOTALS ARE THE POLE'S OWN READING AGAINST THE FAST CENSUS'S, and that
+    # is what ``adcp-client-python-3be.23`` made of them.**  They were three pinned
+    # zeros, then row ``.3`` derived them from ``COMPARISON_FACTS`` -- which moved to
+    # ``tests/test_the_comparison_census.py``, where it is read in 53 s instead of behind
+    # these 2,793 pair reports and where it holds the 155 pairs it actually has.
+    #
+    # What is asserted here is the one thing that file cannot assert: that THIS pass and
+    # that one are reading the same comparison.  ``check_pair`` reaches the comparison
+    # with five arguments and ``tests/compared.py`` passes the same five; if either side
+    # ever changes one, these two direction counts diverge and this reddens with both
+    # readings printed.  Nothing about the FACTS is pinned here -- that is the census
+    # file's -- so this cannot go stale against a bundle version.
+    #
+    # It costs this worker ONE comparison pass (~45 s, measured) beside the 3,300 s of
+    # pair reports it already owns, because ``compared.census()`` is cached per process
+    # and the census file's own tests run in their own ``xdist_group``.
     live = collections.Counter()
     for r in reports:
         live["added"] += len(r.comparison.added)
         live["missing"] += len(r.comparison.missing)
         live["differs"] += len(r.comparison.differs)
-    assert +live == +named, (dict(live), dict(named))
+    fast = compared.by_direction(compared.census().red)
+    assert +live == +fast, {"this pass": dict(live), "./check --compare": dict(fast)}
     # **§8's TWO SET EQUALITIES, over the whole emitted tree.**  "Two checks stand above
     # the three, and each is an equality between two sets neither of which is
     # hand-written.  Nothing else in this section means anything until both hold, because
@@ -10456,70 +10434,25 @@ def test_every_conjunct_contributes_every_part_of_itself() -> None:
 #: of a quantity every emitting row moves, and `tests/test_every_check_names_its_set.py`
 #: refuses it for that reason.  The KEY SET is still asserted exactly, which is what
 #: catches a fourth fold starting to fire or one of the three stopping.
-#: **THE COMPARISON'S OWN RED FACTS OVER THE GRADED TREE, BY PAIR AND POINTER.**
-#: 0 before ``adcp-client-python-10l.3``, 30 over 27 pairs as that row first measured
-#: them, and 5 over 5 pairs once the row wrote the reading §9 keeps for a mapping's
-#: ``additionalProperties: true`` (``harness._silent_about_extras``): 25 facts over 23
-#: pairs were ONE mechanism and it is cleared here rather than filed.  The 5 left were
-#: the row's PRODUCT rather than a regression -- architecture §14 step 3 makes a
-#: comparison failure that appears once ``bundle.record`` is this package's own inliner a
-#: REAL FINDING, so no fold was added or kept to quiet one.
-#:
-#: **0 LEFT OF THE 5, AND THE SET IS EMPTY.**  §14 step 5 cleared bead ``.19``'s two
-#: BRANCH pairs with ``lower_union``'s "silence inherits",
-#: ``adcp-client-python-10l.18`` cleared the two ``model_drops_a_fact`` pairs with
-#: ``harness._described_by_the_conjunct``, and ``adcp-client-python-10l.19`` clears the
-#: last one -- ``core/requirements/catalog-field-binding.json#``'s ``added /type`` --
-#: with ``harness._branch_target``, the local-``$ref`` reading ``_normalize`` already
-#: took at a NODE taken at a union BRANCH as well.  Each was cleared by writing the
-#: rule the semantics document states, not by admitting the fact: the two counts in
-#: ``COMPOSED_FOLD_FLOORS`` and here are one measurement read from two ends.
-#:
-#: **An EMPTY dict and not a deleted name.**  The set is what
-#: ``test_the_comparison_reads_a_composed_document_by_intersection`` asserts the live
-#: red facts against and what the three per-direction totals in
-#: ``test_the_harness_result_is_counted_over_the_whole_population`` are derived from, so
-#: empty is the strongest state it has: every direction is examined and every one is
-#: zero, and a fact arriving reddens with its pair, pointer and direction named.  That
-#: is strictly stronger than the three pinned zeros row ``.3`` replaced, which could
-#: say that a fact had appeared but not which.
-#:
-#: Each fact is written ``"<direction> <pointer>"``, so the three per-direction totals
-#: in ``test_the_harness_result_is_counted_over_the_whole_population`` are this set's
-#: own arithmetic and carry no integer of their own -- and a fact that MOVED between
-#: ``added``, ``missing`` and ``differs`` reddens, which a count per direction could
-#: not see.
-COMPARISON_FACTS: dict[str, list[str]] = {
-    # **``core/media-buy-frequency-cap-requirement.json#`` and
-    # ``core/media-buy-support-requirements.json#`` are GONE, which is
-    # ``adcp-client-python-10l.18`` clearing ``_composed``'s description ceiling.**  Each
-    # reported one ``differs`` -- the first at
-    # ``/properties/supported_control_modes/items/description`` and the second at the
-    # same node reached through a ``$ref``, under
-    # ``/properties/frequency_cap_constraints``.  The base declares the element as
-    # ``enums/frequency-cap-control-mode.json`` and the document's own overlay narrows it
-    # to ``enums/media-buy-frequency-cap-control-mode.json``; the gap-fill kept the
-    # BASE's description at a pointer where §6 gives it to the document's own, so a class
-    # typed by the narrowing declaration read as dropping a fact.
-    # ``harness._described_by_the_conjunct`` is the reading, and the two documents are
-    # the whole of its population on this tree.
-    #
-    # **``core/requirements/catalog-field-binding.json#`` IS GONE TOO, and with it bead
-    # ``.19``'s last pair.**  It reported ``added /type``: §4's union base is a pydantic
-    # model and renders ``type: object``, the root states no ``type`` of its own, and
-    # ``_entails_type``'s union derivation asks each branch for a ``type`` word -- which
-    # two of the three branches state through ``#/definitions/ScalarBinding`` and
-    # ``#/definitions/AssetPoolBinding`` rather than in their own text.  The DOCUMENT
-    # states the fact and the comparison was not reading it: ``_normalize`` took the
-    # local-``$ref`` reading at a NODE and not at the branches inside a combinator, and
-    # ``harness._branch_target`` takes it at a branch, by the one function and so on
-    # both sides.  The two BRANCH pairs went earlier, by §14 step 5 and
-    # ``lower_union``'s "silence inherits".  Nothing was added to the verifier to quiet
-    # a failure: the reading is §9's own "a nested class hoisted to ``$defs``", applied
-    # one level in, and ``tests/test_comparison_document_side.py`` counts every site it
-    # can fire at and names the four it changes an answer at.
-}
-
+# **:data:`COMPARISON_FACTS` IS NOT HERE ANY MORE: it is
+# ``tests/test_the_comparison_census.py``'s, with the 155 pairs and 1,086 facts it
+# actually holds** (``adcp-client-python-3be.23``).
+#
+# It stood here as an EMPTY dict, and the comment defending the empty is the whole of why
+# it moved: "empty is the strongest state it has: every direction is examined and every
+# one is zero, and a fact arriving reddens with its pair, pointer and direction named."
+# That was true of the tree it was written on.  Both of its readers are below and both sit
+# behind ``graded()``/``graded_reports()`` -- the pole, 6-7 hours and twice killed by the
+# kernel -- so the set grew to 155 pairs over 75 documents while nothing could read it,
+# which is the same rot ``tests/test_the_declared_backlog.py`` records for the declared
+# backlog and the ninth stale census of this epic.
+#
+# The comparison needs no pair report, no draw and no dump: ``tests/compared.py`` calls
+# ``harness.compare_schema`` with the five arguments ``harness.check_pair`` calls it with,
+# so the reading is the same one and is 53 s instead of hours.  What stays HERE is what
+# genuinely needs the pole -- the fold counters below, which monkeypatch the harness and
+# count where each fold CHANGES a reading, and the census test's cross-check that the
+# POLE's own ``comparison`` reports agree, direction for direction, with that fast census.
 
 #: **Re-MEASURED at row .3's tip, and ``agreed`` is gone rather than lowered.**  The
 #: same-title lift is deleted with the delegated resolver (architecture §9): it fired
@@ -10551,9 +10484,10 @@ COMPARISON_FACTS: dict[str, list[str]] = {
 #: ``description`` two views state to the view that states the composed VALUE SET, which
 #: is §6's "a composed base's loses to the document's own" read where §2's intersection
 #: puts it.  Its 2 sites are ``core/media-buy-frequency-cap-requirement.json`` and
-#: ``core/media-buy-support-requirements.json``, which are exactly the two pairs that
-#: left ``COMPARISON_FACTS`` -- so the floor and the facts are one measurement read from
-#: two ends, and a reading that stopped firing would redden here as well as there.
+#: ``core/media-buy-support-requirements.json``, which are exactly the two pairs that left
+#: the comparison census (``tests/test_the_comparison_census.py`` as of
+#: ``adcp-client-python-3be.23``) -- so the floor and the facts are one measurement read
+#: from two ends, and a reading that stopped firing would redden here as well as there.
 COMPOSED_FOLD_FLOORS = {"vocabulary": 5, "tighter:enum": 6, "description": 2}
 
 
@@ -10592,17 +10526,16 @@ def test_the_comparison_reads_a_composed_document_by_intersection(
     stops matching, if a document leaves the population, or if a fourth fold starts
     firing.
 
-    **Beside them, the comparison's own verdict over the same run, which was 0 facts in
-    all three directions, is 30 NAMED facts as row .3 measured them, and is 1 here.**
-    Row .3's 5 are down to 1: ``_silent_about_extras`` cleared 25 over 23 pairs,
-    ``lower_union``'s "silence inherits" cleared the 2 BRANCH pairs of bead ``.19``, and
-    ``_described_by_the_conjunct`` clears the 2 this row names.  What is left is
-    ``core/requirements/catalog-field-binding.json#``'s ``added /type``, which
-    ``NON_PASS_PAIRS`` attributes.  The set is asserted rather than the count, so it is
-    exactly as strong as the zero was at detecting a second fact.
-    ``test_every_class_passes_all_three_checks`` is RED on the pair behind it and stays
-    red -- architecture §14 step 3 makes a comparison failure appearing here a real
-    finding, so nothing was added to the verifier to quiet one.
+    **THE COMPARISON'S OWN RED FACTS ARE NO LONGER ASSERTED HERE**
+    (``adcp-client-python-3be.23``).  They were -- ``assert red == COMPARISON_FACTS``,
+    against a set this file carried -- and that assertion ran only as part of a 6-7 hour
+    pass, which is how the set came to hold 0 entries against a live 155 pairs with
+    nothing red.  ``tests/test_the_comparison_census.py`` holds them now, over the same
+    pairing and through the same ``compare_schema`` call, in 53 s; this test keeps the
+    loop because the three folds are monkeypatched and the population is what drives
+    them.  ``test_every_class_passes_all_three_checks`` stays RED on every pair behind
+    those facts -- architecture §14 step 3 makes a comparison failure appearing here a
+    real finding, so nothing was added to the verifier to quiet one.
     """
     hits: collections.Counter[str] = collections.Counter()
     tighter, vocabulary = harness._tighter, harness._one_vocabulary
@@ -10632,7 +10565,6 @@ def test_the_comparison_reads_a_composed_document_by_intersection(
 
     pairs = graded()
     assert pairs, "no graded pair: every count below would be 0 and would say nothing"
-    red: dict[str, list[str]] = {}
     for one in pairs:
         pair = pair_of(one)
         # **``declared=`` and ``at=``, exactly as ``harness.check_pair`` passes them**
@@ -10640,28 +10572,18 @@ def test_the_comparison_reads_a_composed_document_by_intersection(
         # nothing to read a widening against, so every fact §5(b)'s two rows now declare
         # read as *missing* here while the pair itself passes -- two readings of one
         # comparison, which is the disagreement §8's second equality exists to forbid.
-        result = harness.compare_schema(
+        #
+        # **THE RESULT IS NOT READ FOR ITS FACTS HERE** and the pin it used to be
+        # asserted against is ``tests/test_the_comparison_census.py``'s
+        # (``adcp-client-python-3be.23``): the call is made because the three folds are
+        # monkeypatched above and this is what drives them over the whole population.
+        harness.compare_schema(
             pair.schema,
             pair.model,
             document=pair.document,
             declared=pair.declared,
             at=pair.ref.pointer if pair.ref is not None else "#",
         )
-        # The DIRECTION beside the pointer, which is the form
-        # :data:`COMPARISON_FACTS` is written in: a fact that moved between the three
-        # directions is a different fact about the model.
-        facts = [
-            f"{direction} {f.split(':')[0]}"
-            for direction, lines in (
-                ("added", result.added),
-                ("missing", result.missing),
-                ("differs", result.differs),
-            )
-            for f in lines
-        ]
-        if facts:
-            red[f"{one.ref.document}{one.ref.pointer}"] = sorted(facts)
-    assert red == COMPARISON_FACTS, red
     assert set(hits) == set(COMPOSED_FOLD_FLOORS), dict(hits)
     for fold, floor in sorted(COMPOSED_FOLD_FLOORS.items()):
         ratchet(

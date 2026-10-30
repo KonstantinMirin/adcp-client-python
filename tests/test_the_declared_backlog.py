@@ -110,6 +110,17 @@ def _carried() -> dict[tuple[str, str, str], Any]:
 #: against was the one ``./check`` prints -- 117 facts in 50 documents -- which nothing
 #: compared to this set.
 #:
+#: **RE-PINNED AT ``adcp-client-python-3be.23``: 117 IN 50 -> 120 IN 53, and this time the
+#: check DID run and said so.**  The three that arrived are
+#: ``media-buy/proposal-refinement.json#/oneOf/1/anyOf``,
+#: ``media-buy/refine-proposals-request.json#/properties/refinements/items/oneOf/1/anyOf``
+#: and ``media-buy/request-proposals-request.json#/anyOf``, each an ``anyOf`` at the JOIN
+#: rung the dispatch cannot separate, and nothing is pinned-and-no-longer-declared.  So
+#: this is the move ``docs/plan/unimplemented.md``'s A-13 calls a RELOCATION rather than a
+#: loosening: the gap was three sites of ONE shape already here eighteen times, read off a
+#: run three rows after the set was written, and the figure ``./check`` prints -- 120 facts
+#: in 53 documents -- is the same reading from the other end.
+#:
 #: **AND THE POPULATION MOVED WITH IT, which is the same decision ``10l.105`` makes about
 #: the import obligation**: "the obligation ranges over the tree a fresh run EMITS, not the
 #: one committed".  This set is now compared against the APPROXIMATIONS OF A FRESH
@@ -133,10 +144,11 @@ def _carried() -> dict[tuple[str, str, str], Any]:
 #: * ``oneOf`` at the JOIN rung, UNDERDETERMINED -- **18 sites in 16 documents**: §4's
 #:   dispatch cannot separate the branches, which is the one kind §8 gives an instrument of
 #:   its own (``underdetermined_census``, below) and the one the comparison cannot see.
-#: * ``anyOf`` at the JOIN rung, UNDERDETERMINED -- **18 sites in 15 documents**, the same
+#: * ``anyOf`` at the JOIN rung, UNDERDETERMINED -- **21 sites in 18 documents**, the same
 #:   shape under the other combinator.  ``harness.inseparable_unions`` draws no
-#:   root/nested distinction and must not, so both positions are here.
-#: * ``maxLength`` at the KEYWORD rung -- **1 site**, and it is the only one of the 117 that
+#:   root/nested distinction and must not, so both positions are here.  This is the one
+#:   group that moved at ``adcp-client-python-3be.23`` (18 in 15 -> 21 in 18).
+#: * ``maxLength`` at the KEYWORD rung -- **1 site**, and it is the only one of the 120 that
 #:   is a plain keyword rather than a structural answer:
 #:   ``compliance/comply-test-controller-response.json`` at
 #:   ``#/oneOf/6/properties/recorded_calls/items/properties/payload``.
@@ -144,12 +156,12 @@ def _carried() -> dict[tuple[str, str, str], Any]:
 #: **Grown by EMISSION and not by permissiveness**, which is the reading
 #: ``codegen/dump_exemptions.py``'s own instrument records for the same shape: "the number
 #: of positions one upstream pattern reaches is a property of how much of the bundle is
-#: packaged, not of how permissive the SDK is".  80 of the 117 are one cell at 80
-#: positions; 36 are one derivation at 36 unions; 1 is a keyword.  **Three causes, not
-#: 117.**
+#: packaged, not of how permissive the SDK is".  80 of the 120 are one cell at 80
+#: positions; 39 are one derivation at 39 unions; 1 is a keyword.  **Three causes, not
+#: 120.**
 DECLARED_WIDENINGS = {
 
-    # anyOf at JOIN: 18 sites in 15 documents
+    # anyOf at JOIN: 21 sites in 18 documents
     ('adagents.json', '#/oneOf/1/anyOf', 'anyOf'),
     ('compliance/comply-test-controller-request.json', '#/properties/params/properties/result/anyOf', 'anyOf'),
     ('compliance/task-completion-data.json', '#/anyOf', 'anyOf'),
@@ -167,6 +179,14 @@ DECLARED_WIDENINGS = {
     ('media-buy/get-media-buys-response.json', '#/properties/media_buys/items/properties/available_actions/items/anyOf', 'anyOf'),
     ('media-buy/list-creative-formats-response.json', '#/properties/formats/items/properties/assets/items/oneOf/0/oneOf/14/properties/requirements/properties/offering_asset_constraints/items/properties/asset_requirements/anyOf', 'anyOf'),
     ('media-buy/list-creative-formats-response.json', '#/properties/formats/items/properties/assets/items/oneOf/1/properties/assets/items/oneOf/14/properties/requirements/properties/offering_asset_constraints/items/properties/asset_requirements/anyOf', 'anyOf'),
+    # The three ``adcp-client-python-3be.23`` re-pinned: declared by a fresh run and not
+    # by the tree this set was last read off.  All three are the SAME SHAPE as the
+    # eighteen above -- an ``anyOf`` at the JOIN rung whose branches §4's dispatch cannot
+    # separate -- and all three are the proposal/refinement closure, which is the part of
+    # the bundle that emitted since.
+    ('media-buy/proposal-refinement.json', '#/oneOf/1/anyOf', 'anyOf'),
+    ('media-buy/refine-proposals-request.json', '#/properties/refinements/items/oneOf/1/anyOf', 'anyOf'),
+    ('media-buy/request-proposals-request.json', '#/anyOf', 'anyOf'),
     ('trusted-match/provider-registration.json', '#/anyOf', 'anyOf'),
     # maxLength at KEYWORD: 1 sites in 1 documents
     ('compliance/comply-test-controller-response.json', '#/oneOf/6/properties/recorded_calls/items/properties/payload', 'maxLength'),
