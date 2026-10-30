@@ -76,8 +76,15 @@ def test_a_nested_name_is_the_position_and_not_the_path_to_it() -> None:
     The root is ``pascal_case(title)``; a property is ``<Property>``; an element is
     ``<Property>Item`` and a mapping value ``<Property>Value``, which are ONE segment
     each because ``Item`` and ``Value`` name no position on their own; a ``definitions``
-    entry is ``<Root><Key>``, which is one segment for the same reason the element is --
-    the section states the prefix as part of the name.
+    entry is ``<Key>`` and NOT ``<Root><Key>`` (§4, 2026-10-28) -- the module path already
+    carries the document, so the entry does not repeat it.
+
+    **The root is still a SEGMENT of the entry's chain, and that is where the prefix
+    went**: §4 makes the prefix "what the collision rule spends when two entries of one
+    module need it, not what every entry pays up front", so the chain is two deep and
+    ``spelling`` at depth 2 is the name the old rule gave.  Asserted here beside the
+    short name, because a one-segment entry would spell the same at depth 1 and the two
+    readings are only told apart by what a collision can reach.
     """
     hops: dict[str, names.Hop] = {
         "": names.Root("Media Buy"),
@@ -95,7 +102,7 @@ def test_a_nested_name_is_the_position_and_not_the_path_to_it() -> None:
         "/properties/packages/items": "PackagesItem",
         "/properties/targets": "Targets",
         "/properties/targets/additionalProperties": "TargetsValue",
-        "/definitions/budget": "MediaBuyBudget",
+        "/definitions/budget": "Budget",
         "/properties/key/propertyNames": "",
     }, spelled
     # And the whole chain is the name the fold gave before the rule was written, which
@@ -103,6 +110,10 @@ def test_a_nested_name_is_the_position_and_not_the_path_to_it() -> None:
     assert names.spelling(names.segments("/properties/packages/items", hops), 2) == (
         "MediaBuyPackagesItem"
     )
+    # The dropped ``<Root>`` prefix is the entry's ANCESTOR segment and the collision rule
+    # can still spend it, which is the half the short name above cannot show.
+    assert names.segments("/definitions/budget", hops) == ("MediaBuy", "Budget")
+    assert names.spelling(names.segments("/definitions/budget", hops), 2) == "MediaBuyBudget"
 
 
 def test_all_n_colliders_lengthen_and_a_name_is_not_a_function_of_the_order() -> None:
@@ -436,17 +447,47 @@ def test_rung_two_reads_every_pin_the_branch_states_in_the_documents_key_order()
     ) == ("PostalCountrySystemPostalCodeZA",)
 
 
-def test_a_rung_that_collides_has_not_identified_the_branch_so_both_fall() -> None:
-    """§4: "Where a rung derives one name for two branches it has not identified either,
-    so both fall to the next rung."
+def test_a_boolean_pin_contributes_no_segment_because_true_names_nothing() -> None:
+    """§4, decided 2026-10-29: :data:`names.A_BOOLEAN_PIN_NAMES_NOTHING`.
 
-    ``trusted-match/provider-registration.json``'s own shape: two branches pinning
-    ``context_match: true`` and ``identity_match: true``.  The value ``true`` is the same
-    on both and names neither, so rung 2 answers ONE name for the pair and rung 3's
-    ``required`` set is what identifies them.  Both halves are asserted, because the
-    second means nothing without the first: that the rung really does collide, and that
-    the fall lands on the required set.
+    A pin identifies a branch by its VALUE, and a boolean's two values are the same two
+    for every property in the bundle -- so this is not a carve-out from the key-order
+    rule, it is the section's own sentence that ``true`` on both branches "names
+    neither", applied per PIN instead of per branch.
+
+    Both halves of the measured population are asserted, because the rule reaches two
+    shapes and a reading that dropped the whole rung would pass only one:
+
+    * a branch pinning something IDENTIFYING beside a ``true`` keeps the identifying pin
+      and loses the boolean -- ``core/package-signal-targeting.json``'s
+      ``PackageSignalTargetingBinaryTrue`` becomes ``PackageSignalTargetingBinary``;
+    * a branch whose pins are ALL boolean answers nothing at rung 2 and falls through --
+      ``governance/sync-plans-request.json``'s ``BudgetTrue`` becomes
+      ``BudgetReallocationUnlimited``, the property whose PRESENCE identifies it.
+
+    The second half is also how the rule SUBSUMES the collision case rather than sitting
+    beside it (§4): ``trusted-match/provider-registration.json``'s two branches pin
+    ``context_match: true`` and ``identity_match: true``, which the collision clause
+    reached by deriving one name for the pair and falling.  Rung 2 now answers nothing
+    for either, so ONE rule gets them there -- asserted below as the rung answering
+    ``None``, which is what tells the two routes apart.
     """
+    base = ("PackageSignalTargeting",)
+    # Identifying beside a boolean: the boolean goes, the identifying pin stays.
+    assert names.branch_identity(
+        names.Branch(parent="/x", pins=("binary", True), index=0), base
+    ) == ("PackageSignalTargetingBinary",)
+    # And the rule is on the VALUE, not on the position: a trailing identifying pin keeps
+    # its place in the document's key order.
+    assert names.branch_identity(
+        names.Branch(parent="/x", pins=(True, "binary"), index=0), base
+    ) == ("PackageSignalTargetingBinary",)
+    assert names.identifying_pins((True, "binary", False)) == ("binary",)
+    # ``0`` and ``1`` are not booleans, and ``isinstance(True, int)`` is why this is
+    # asserted: a test on the wrong type would swallow a numeric pin.
+    assert names.identifying_pins((0, 1)) == (0, 1)
+
+    # All-boolean: rung 2 answers NOTHING, so the branch falls -- one rule, not two.
     hops = {
         "": names.Root("TMP Provider Registration"),
         "/anyOf/0": names.Branch(
@@ -456,16 +497,80 @@ def test_a_rung_that_collides_has_not_identified_the_branch_so_both_fall() -> No
             parent="", pins=(True,), required=("identity_match",), index=1
         ),
     }
-    base = ("TMPProviderRegistration",)
-    assert names.branch_identity(hops["/anyOf/0"], base) == names.branch_identity(
-        hops["/anyOf/1"], base
-    ), "rung 2 must collide for the fall to be what resolves this"
+    registration = ("TMPProviderRegistration",)
+    assert (
+        names.branch_rungs(hops["/anyOf/0"], registration)[0]
+        == ("TMPProviderRegistrationContextMatch",)
+    ), "rung 2 must answer NOTHING, so the required set is the FIRST rung and not a fall"
     spelled = names.spell_the_rungs(_ladders(hops))
     assert not isinstance(spelled, Refusal), spelled
     assert spelled == {
         "": "TMPProviderRegistration",
         "/anyOf/0": "TMPProviderRegistrationContextMatch",
         "/anyOf/1": "TMPProviderRegistrationIdentityMatch",
+    }, spelled
+
+
+def test_a_rung_that_collides_has_not_identified_the_branch_so_both_fall() -> None:
+    """§4: "Where a rung derives one name for two branches it has not identified either,
+    so both fall to the next rung."
+
+    The clause STANDS after the boolean rule subsumed its measured population
+    (``trusted-match/provider-registration.json``, now reached by rung 2 answering
+    nothing), so it is graded on two branches pinning the same IDENTIFYING value -- which
+    is the general shape and the one the boolean rule does not reach.  Both halves are
+    asserted, because the second means nothing without the first: that the rung really
+    does collide, and that the fall lands on the required set.
+    """
+    hops = {
+        "": names.Root("Doc"),
+        "/anyOf/0": names.Branch(
+            parent="", pins=("shared",), required=("context_match",), index=0
+        ),
+        "/anyOf/1": names.Branch(
+            parent="", pins=("shared",), required=("identity_match",), index=1
+        ),
+    }
+    base = ("Doc",)
+    assert names.branch_identity(hops["/anyOf/0"], base) == names.branch_identity(
+        hops["/anyOf/1"], base
+    ), "rung 2 must collide for the fall to be what resolves this"
+    spelled = names.spell_the_rungs(_ladders(hops))
+    assert not isinstance(spelled, Refusal), spelled
+    assert spelled == {
+        "": "Doc",
+        "/anyOf/0": "DocContextMatch",
+        "/anyOf/1": "DocIdentityMatch",
+    }, spelled
+
+
+def test_two_positions_deriving_one_definitions_key_both_spend_the_root_prefix() -> None:
+    """§4's dropped ``<Root>`` prefix is "what the collision rule spends when two entries
+    of one module need it, not what every entry pays up front" (2026-10-28).
+
+    ``brand.json``'s own measured shape: ``/definitions/contact`` and
+    ``/definitions/brand/properties/contact`` both derive ``Contact``, so ALL N lengthen
+    -- the entry spends its root segment and the property spends its own nearest ancestor.
+    That is the collision rule unchanged; what the decision moved is that the entry pays
+    it only HERE, and its 50 siblings in the same module do not.
+    """
+    hops: dict[str, names.Hop] = {
+        "": names.Root("Brand Discovery"),
+        "/definitions/contact": names.Entry("contact"),
+        "/definitions/brand": names.Entry("brand"),
+        "/definitions/brand/properties/contact": names.Property(
+            "/definitions/brand", "contact"
+        ),
+        "/definitions/domain": names.Entry("domain"),
+    }
+    spelled = names.spell(_chains(hops))
+    assert not isinstance(spelled, Refusal), spelled
+    assert spelled == {
+        "": "BrandDiscovery",
+        "/definitions/contact": "BrandDiscoveryContact",
+        "/definitions/brand": "Brand",
+        "/definitions/brand/properties/contact": "BrandContact",
+        "/definitions/domain": "Domain",
     }, spelled
 
 
