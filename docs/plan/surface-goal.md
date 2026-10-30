@@ -24,8 +24,8 @@ from. Dumped from the emitted tree, not written by hand. A diff of the manifest 
 surface for every change to the surface — a rename, a move, a new export shows up as a line.
 
 **2. The CROSS-CHECK against upstream.** Every name the upstream wheel exposes publicly, against
-ours. For each: present, renamed (and to what), relocated (and where), or **missing**. Missing is
-the finding.
+ours. For each: present, renamed (and to what), relocated (and where), or absent. **An absent name
+is a QUESTION, not a finding** — the rule below says what the question is and what answers it.
 
 Both are derived. Neither asserts anything about `codegen/`.
 
@@ -78,12 +78,9 @@ import spellings is owed and will be built, but it is not this work and must not
 shape it: designing the classes to make the aliases easy is how upstream's mistakes get copied in
 through the back door. Build the correct surface, then map onto it.
 
-And parity is **one-directional**. Every name upstream exposes needs a counterpart in ours.
-The reverse is not required: upstream duplicates classes and is believed wrong about unions, so a
-smaller count on our side is expected and a surplus on theirs is a candidate finding against them.
-Where the two represent one node differently, **the document decides, proved against
-`Draft7Validator` payload by payload** — not by reading the two class definitions, and not by
-treating upstream as an oracle.
+And the comparison is **one-directional**. Every name upstream exposes gets a verdict; the
+reverse is not asked. A smaller count on our side is the EXPECTED outcome, not a deficit to close:
+upstream duplicates classes and is wrong about unions, and we fold where folding is right.
 
 ## What the surface must satisfy
 
@@ -93,11 +90,12 @@ Each of these is observable, and each is currently false:
   PaginationRequest` and that the domain is derived from the document's own path.
   `adcp.types.<domain>` does not exist; `types/__init__.py` says "until then this is the package
   marker". Every consumer import today is the private `_schemas` path.
-- **A class a union can return is reachable and named for what it is.** `__all__` in
+- **A class a union can return is reachable and named for what it is.** The NAMING half is done —
+  the branches carry meaningful names now, not `Branch7`. The EXPORT half is not: `__all__` in
   `core/requirements/asset_requirements.py` names the union base and none of its twelve branches,
-  so a caller who receives an `AssetRequirements` cannot name the branch it got. Nineteen classes
-  over six documents are named `…Branch<N>` — and the target's class name is already in their own
-  base list (`class AssetRequirementsBranch7(AssetRequirements, JavaScriptAssetRequirements)`).
+  and tree-wide **611 of 613 branch classes cannot be imported at all**, so a caller who receives
+  an `AssetRequirements` cannot name the branch it got. This is the whole reason for the rewrite,
+  and it is the one thing still missing from the artifact.
 - **One import path per class.** `.111`: `core/vendor_pricing_option.py` binds five names to two
   classes each in one namespace.
 - **Every name an application uses today resolves.** Aliases are expected and must be designed
