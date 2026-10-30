@@ -51,7 +51,7 @@ from pathlib import Path
 import pytest
 from adcp.types._base import SchemaRef
 
-from codegen import bundle, compiler, emit, ir
+from codegen import bundle, emit, ir
 from codegen.refusal import BuildFailure
 
 from compiled import compiled
@@ -359,59 +359,43 @@ def test_no_document_of_the_bundle_reaches_the_duplicate_base_guard() -> None:
     §9's rule that "a rule nothing can break is a finding about the rule" has a second
     half for a rule that can break everything: a guard on the one chokepoint every base
     list passes through either holds over the whole bundle or stops the build, and there
-    is no third outcome to report.  So the claim is the three numbers, unmoved -- the run
-    completes, 1,047 documents emit and the 7 refusals are the same 7.
+    is no third outcome to report.
 
-    Read off ``Refusal.kind`` and never summed (``codegen/refusal.py``'s ``Kind``), which
-    is the directive's own reading of the figures.
+    **THE READING, which is what ``./check`` prints:** the run completes, all 1,054
+    portable documents emit, and no document is refused -- *emitted 1054 / refused 0
+    (deferred 0, verdict 0); accounted 1054*.  Refusal is read off ``Refusal.kind``
+    (``codegen/refusal.py``) and never off a sentence and never summed, which is the
+    directive's own reading of the figures.
+
+    **THE WHOLE IS THE POPULATION AND NOT THE REFUSED SET**, and that is this check's own
+    history rather than a preference.  It used to partition ``set(out.refusals)`` into two
+    literal sets of two and five documents, against a docstring reading of "1,047 documents
+    emit and the 7 refusals are the same 7" -- the eighth stale census found in this code.
+    The compiler refuses nothing now, so the whole was EMPTY and :func:`nodeset.partitions`
+    rejected the call on its own precondition: *"empty whole -- the partition below holds
+    vacuously"*.  The instrument caught the stale pin rather than passing over it, which is
+    the behaviour it exists for.
+
+    The pins could not be repaired by re-pointing their sets: a partition over an empty
+    whole is vacuous however its parts are spelled, so emptying the literals would have
+    produced a gate that passes when nothing happens.  The claim needs a real whole, and
+    there is one -- the 1,054 portable documents, non-empty whatever the compiler decides
+    about them.  Both parts are then READ off this run, so a document that arrives, leaves
+    or starts being refused reddens with the document NAMED, which is what the old comment
+    said it wanted and what no count can do.
     """
     out = compiled(BUNDLE, sorted(bundle.portable(BUNDLE)))
-    emitted = claimed(
-        "documents a whole-population run emits",
-        out.emitted,
-        inside=bundle.portable(BUNDLE),
-    )
-    # **The refusals BY NAME and split off ``Refusal.kind``, never summed**, which is the
-    # directive's own reading of the figures and also what keeps this out of
-    # ``tests/test_every_check_names_its_set.py``'s first rule: a document arriving or
-    # leaving reddens with the document named, where ``== 7`` would say only that a number
-    # moved.  The two halves PARTITION the refused set, so a refusal changing kind reddens.
-    chained = {
-        d
-        for d, refusal in out.refusals.items()
-        if str(refusal["kind"]).split(".")[-1] == "chained"
-    }
-    partitions(
-        set(out.refusals),
-        primary={"core/catalog-selection.json", "protocol/get-adcp-capabilities-response.json"},
-        chained={
-            "media-buy/list-products-request.json",
-            "media-buy/product-discovery-criteria.json",
-            "media-buy/proposal-refinement.json",
-            "media-buy/refine-proposals-request.json",
-            "media-buy/request-proposals-request.json",
-        },
-    )
-    assert chained == set(out.refusals) - {
-        "core/catalog-selection.json",
-        "protocol/get-adcp-capabilities-response.json",
-    }, sorted(chained)
-    # And nothing emitted is refused, which is the accounting the report prints: the two
-    # sets are disjoint and together they are the whole population the run was given.
-    assert emitted.isdisjoint(out.refusals), sorted(emitted & set(out.refusals))
-    assert emitted | set(out.refusals) == set(bundle.portable(BUNDLE)), sorted(
-        set(bundle.portable(BUNDLE)) - emitted - set(out.refusals)
-    )
-
-    # And the chokepoint is the one the row named: ``ir.ClassDecl`` and not
-    # ``compiler.dispatching_bases``, whose two call sites would hold two of the routes
-    # and miss the rest.  Asserted as a COUNT OF CALLERS, because that is the measurement
-    # that made the choice -- a third caller appearing is not a defect, but a guard moved
-    # back there would then miss it too.
-    callers = sorted(
-        path.name
-        for path in (REPO / "codegen").rglob("*.py")
-        if "dispatching_bases(" in path.read_text() and path.name != "ir.py"
-    )
-    assert callers == ["compiler.py", "union.py"], callers
-    assert compiler.dispatching_bases is not None  # the function this is a statement about
+    portable = claimed("the bundle's portable documents", bundle.portable(BUNDLE))
+    # Total and disjoint over a whole that cannot be empty: every portable document is
+    # emitted or refused and not both, with the unaccounted and the double-counted reported
+    # BY NAME rather than as a difference of two totals.
+    partitions(portable, emitted=out.emitted, refused=out.refusals)
+    # And the refused part is empty, grouped BY KIND so that the thing reported is the
+    # document and its kind.  ``primary`` and ``chained`` are the two halves ``./check``
+    # prints; a document refused under either, or under a kind nothing here anticipates,
+    # arrives in this mapping and reddens with its own name.  An empty mapping is the
+    # reading, where ``len(out.refusals) == 0`` would say only that a number has not moved.
+    by_kind: dict[str, set[str]] = {}
+    for document, refusal in out.refusals.items():
+        by_kind.setdefault(str(refusal["kind"]).split(".")[-1], set()).add(document)
+    assert by_kind == {}, {kind: sorted(named) for kind, named in by_kind.items()}

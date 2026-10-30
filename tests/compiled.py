@@ -41,6 +41,18 @@ for the same key, and a half-written pickle read by a sibling would be a corrupt
 :class:`Emitted` rather than a miss.  A read that fails for any reason falls through to
 compiling, so the cache can only cost time, never correctness.
 
+**THE KEY NAMES THE BUNDLE AND NOT THE CALLER'S SPELLING OF IT**, which is
+``adcp-client-python-q3a``'s first finding and cost one copy of an 842 MB answer per
+spelling: the path went into the key as the caller wrote it, and the two entry points write
+it differently.  :func:`_bundle_name` is the normalisation and carries the measurement.
+
+**AND AN ENTRY NOTHING HAS ASKED FOR IS DROPPED BY THE NEXT RUN THAT ASKS**, which is the
+same row's second finding and the reason the first one was expensive rather than merely
+untidy: an entry is permanent, so the store grew by 842 MB per (compiler revision x
+spelling x population) until a human removed 98 entries of 103 by hand.
+:data:`KEPT_SECONDS` states the rule and :func:`_prune` is the act; both are safe for
+exactly the reason above -- the worst a missing entry can do is cost a compile.
+
 ``adcp-client-python-10l.51``'s finding is the warning this follows.  ``graded_reports()``
 was already ``functools.cache``d and its docstring claimed the cache made its pole one
 pass instead of three -- but three of its four readers landed on different workers and
@@ -61,10 +73,14 @@ import functools
 import hashlib
 import os
 import pickle
+import time
 from collections.abc import Iterable
 from pathlib import Path
 
 from codegen import emit
+
+#: This checkout, which the bundle is named RELATIVE TO in the key (:func:`_bundle_name`).
+REPO = Path(__file__).resolve().parents[1]
 
 #: Where a compile is held between processes.  Gitignored: it is derived, and a committed
 #: one would be a file a reader could edit into a result no compiler produced.
@@ -111,19 +127,54 @@ def _compiler_digest() -> str:
     describes code it did not run -- the exact defect this key exists to prevent, one
     package boundary further out.
     """
-    root = Path(__file__).resolve().parent.parent
-    paths = [*sorted((root / "codegen").rglob("*.py")), *(root / p for p in _PACKAGE_INPUTS)]
+    paths = [*sorted((REPO / "codegen").rglob("*.py")), *(REPO / p for p in _PACKAGE_INPUTS)]
     h = hashlib.sha256()
     for path in paths:
-        h.update(path.relative_to(root).as_posix().encode())
+        h.update(path.relative_to(REPO).as_posix().encode())
         h.update(path.read_bytes())
     return h.hexdigest()
+
+
+def _bundle_name(bundle: str) -> str:
+    """The bundle in the key: its path RELATIVE TO THIS CHECKOUT, in posix form.
+
+    **Measured at ``adcp-client-python-q3a``, where one bundle was held under two keys and
+    two 842 MB pickles.**  The path went into the key as the CALLER SPELLED IT, and the two
+    entry points spell it differently -- ``./check`` has ``Path("schemas/cache/3.2")`` and
+    every module under ``tests/`` has ``REPO / "schemas" / "cache" / "3.2"`` -- so at trunk
+    ``3f757728`` one population of 1,054 documents and one compiler gave
+    ``fc2222b39088cb00...`` relative and ``b7e473ca16f94ddc...`` absolute.  The store held
+    the relative one, so a lane that warmed it with the fast loop had not warmed the entry
+    the gate reads: ``./check`` and the suite did not share the compile they are documented
+    to share, and each spelling cost its own permanent 842 MB.
+
+    **Relative to the checkout and not merely absolute**, which is the half the two
+    spellings hide.  The store is SHARED ACROSS WORKTREES on the strength of the key being
+    a function of the compiler's bytes (:data:`CACHE_ROOT`) -- and an absolute bundle path
+    makes it a function of the directory a lane happened to clone into as well, so two
+    worktrees holding the same compiler computed two keys and wrote the same answer twice.
+    Named relative, they compute one, and that claim of :data:`CACHE_ROOT`'s becomes true.
+
+    **Over the PATH and never over the bundle's CONTENT**, which was the tempting repair
+    and is the expensive one: the population is already in the key, and a digest over 836
+    MB of resolved JSON would be paid on every lookup to answer what the path answers for
+    free.
+
+    A bundle OUTSIDE this checkout keeps its resolved absolute path.  It is a different
+    bundle, there is nothing to name it relative to, and a key that collided with the
+    checkout's own would be the one failure this module may not have.
+    """
+    resolved = Path(bundle).resolve()
+    try:
+        return resolved.relative_to(REPO).as_posix()
+    except ValueError:
+        return resolved.as_posix()
 
 
 def _key(bundle: str, population: tuple[str, ...]) -> str:
     h = hashlib.sha256()
     h.update(_compiler_digest().encode())
-    h.update(bundle.encode())
+    h.update(_bundle_name(bundle).encode())
     for document in population:
         h.update(b"\x00")
         h.update(document.encode())
@@ -144,6 +195,81 @@ def digest(bundle: Path, population: Iterable[str]) -> str:
     return _key(str(bundle), tuple(population))
 
 
+#: How long an entry is kept after the last time a run ASKED FOR IT.
+#:
+#: **The retention is over the entry's mtime, and the mtime is refreshed on every ask**
+#: (:func:`_asked_for`), so it reads "when a lane last wanted this compile" and not "when
+#: this compiler revision was built".  That is the rule, and it is the one rule here: an
+#: entry nothing has asked for in twelve hours is a compiler revision no checkout holds any
+#: more, and it goes.  Nothing else is consulted -- not the number of entries, not the free
+#: space, not which revision is trunk -- because every one of those needs a reader to agree
+#: about what the right answer is, and this one does not.
+#:
+#: **Twelve hours, which is ``tests/fresh.py``'s figure for the store beside this one**, and
+#: for its reason: ``pyproject.toml``'s own measurement of this suite is a 55-minute full
+#: run, so an entry a live run is reading was asked for inside the last hour and is eleven
+#: hours from eligible.  The margin is the first half of the safety argument.
+#:
+#: **The second half is that a lost race costs a compile and never a verdict**, which is
+#: the module docstring's property and the whole reason a prune is allowed here at all.  A
+#: reader is one ``read_bytes()`` of a complete pickle: an unlink after it opens the file
+#: leaves the inode alive until it closes, and an unlink before it opens is ``ENOENT`` --
+#: which :func:`_compiled` already treats as a miss, exactly as it treats a pickle from
+#: another Python.  So the worst this rule can do to a concurrent worker is 280 s, and
+#: there is no third outcome in which it hands anybody a different answer.
+#:
+#: **Measured, and it is why this exists.**  With no prune the store reached 103 entries of
+#: 842,068,270 bytes -- 55 GB on a root filesystem at 96% with 81 GB free -- of which 98 had
+#: been neither written nor read in eight hours.  Removing those 98 by hand freed 50.2 GB
+#: and took the disk to 93%.  A store whose bound is whoever notices is not bounded.
+KEPT_SECONDS = 12 * 60 * 60
+
+
+def _prune(store: Path, keep: str) -> None:
+    """Drop every entry of ``store`` that nothing has asked for in :data:`KEPT_SECONDS`.
+
+    ``keep``'s own entry is never dropped, whatever its mtime: the ask that triggers a
+    prune may not be the ask the prune cuts off.  The EXEMPTION IS THE ENTRY AND NOT THE
+    KEY, which is a distinction the store was already paying for: measured at
+    ``adcp-client-python-q3a`` it held an abandoned ``<key>.<pid>.tmp`` of 842,068,270 bytes
+    under the LIVE key, which a rule exempting that whole prefix would never remove.  A
+    staging file therefore goes by mtime like anything else, and that cannot reach a LIVE
+    writer's: writing 842 MB advances the file's mtime as it goes, so a staging file in
+    flight is seconds old and not twelve hours.
+
+    Best effort in every direction, like the cache write above: a failure here can only
+    cost disk.
+    """
+    cutoff = time.time() - KEPT_SECONDS
+    for path in store.iterdir():
+        if path.name == f"{keep}.pickle":
+            continue
+        try:
+            if path.stat().st_mtime >= cutoff:
+                continue
+            path.unlink()
+        except OSError:
+            continue
+
+
+def _asked_for(held: Path, key: str) -> None:
+    """Record that ``key`` was wanted now, and drop what nothing has wanted since.
+
+    Called on the hit and on the miss, so the rule runs wherever the store is touched and
+    there is nothing for a lane to remember to run -- which is the half
+    ``tests/fresh.py``'s store had and this one did not.  ``tests/test_the_compile_store.py``
+    grades the rule and this wiring separately.
+    """
+    try:
+        os.utime(held)
+    except OSError:
+        pass
+    try:
+        _prune(STORE, keep=key)
+    except OSError:
+        pass
+
+
 @functools.cache
 def _compiled(bundle: str, population: tuple[str, ...]) -> emit.Emitted:
     """The one compile, keyed by the compiler's source, the bundle and the population.
@@ -159,11 +285,15 @@ def _compiled(bundle: str, population: tuple[str, ...]) -> emit.Emitted:
     a silently different answer.  That is what makes the disk layer unable to affect a
     verdict: the worst it can do is cost 280 s.
     """
-    held = STORE / f"{_key(bundle, population)}.pickle"
+    key = _key(bundle, population)
+    held = STORE / f"{key}.pickle"
     try:
-        return pickle.loads(held.read_bytes())
+        out = pickle.loads(held.read_bytes())
     except Exception:
         pass
+    else:
+        _asked_for(held, key)
+        return out
     out = emit.emit(Path(bundle), list(population))
     try:
         STORE.mkdir(parents=True, exist_ok=True)
@@ -172,6 +302,7 @@ def _compiled(bundle: str, population: tuple[str, ...]) -> emit.Emitted:
         os.replace(staged, held)
     except Exception:
         pass
+    _asked_for(held, key)
     return out
 
 
