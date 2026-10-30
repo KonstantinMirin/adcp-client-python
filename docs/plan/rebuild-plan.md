@@ -1642,6 +1642,24 @@ defect it exists to catch. `added` is therefore never declarable.
 
 This rule is what makes §5's `properties` row at CONJ gradable.
 
+**A declaration is counted at the `SchemaRef` spelling of its pointer, and at no other (decided
+2026-10-30).** A node reached through an `allOf` conjunct has two spellings — the one the document
+writes and the one §2's intersection produces, `{**child, "allOf": [base]}`, which puts an index
+below every pointer the document has no `allOf` at. `render.declared_at` tests a prefix on ONE
+spelling, `compiler.schema_ref`'s, and `compiler.schema_ref` is its sole producer; a declaration
+written at the other spelling therefore attaches to the wrong class or to none.
+
+**This is one rule and it settles three separate readings**, which is why it is stated here rather
+than per site. Measured on `adagents.json`: `#/oneOf/1/anyOf` is declared and separable while
+`#/oneOf/1/allOf/0/anyOf` is inseparable and declared by nothing — one union, two spellings,
+counted twice, and the same pair appears five times over. So the stale half of §8's
+UNDERDETERMINED equality, the over-count in the declared backlog, and the approximation instances
+no strict walk can resolve are not three defects. They are one spelling question asked in three
+places.
+
+The reading that follows: §2 asks a declaration to be a fact §8 can look for in the document and
+find. A pointer that resolves to nothing is not that, whatever it is counted against.
+
 **An ANNOTATION is not a fact these three checks grade, at any pointer.** The predicate is
 `bundle.is_an_annotation(keyword, position)` — §1's own, the one `record` already reads to settle
 a `$ref`'s sibling. An annotation is a key whose cell compiles to no type, no field and no rule,
