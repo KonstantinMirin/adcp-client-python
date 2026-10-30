@@ -148,6 +148,38 @@ nobody can audit against the table that was supposed to hold it.
 
 ---
 
+### The seam collapse goes AFTER the declared-backlog equality, and the walk's per-node entry goes with the carriers (decided 2026-10-30)
+
+**Order.** §2 collapsed this seam in writing and stated the trade: *"A guarantee the type checker
+held is now held by a test, and saying so is better than pretending the trade did not happen."* It
+named three replacements, and one of them is §8's *"two equalities that catch a widening nobody
+declared"*. **That equality is red today**, off by three `anyOf` sites in `media-buy/`.
+
+So the collapse waits on it, and the reason is not tidiness. Every one of the 93 sites sits at a
+position no portable document reaches — that is what `refused == 0` means — so each conversion is
+invisible to `./check`, invisible to the byte compare, **and invisible to the equality that would
+catch the first document to reach one.** Run first, the collapse moves 93 answers from an instrument
+that works to one that does not yet; run after, each lands against a green equality. A red test
+cannot fail more.
+
+**And the collapse cannot be sized up front.** Collapsing the dispatch alone yields 12 type errors,
+not 93: the handlers still answer the sum type, so the checker sees one ring at a time. The work is
+ring by ring and the figure after each ring is the only honest estimate of the next.
+
+**Where the walk's per-node entry lives.** §11's table does not say, and it is the question that
+kept `lower_node` in `compiler.py`. It cannot go in `lower/names.py`: that module is a leaf of the
+decision layer, and hosting the entry would make it the hub every handler recurses through and need
+a second deferred import to break a second cycle. It cannot go in `lower/decide.py` either —
+`decide.py` imports the handlers, so a handler recursing through it is a module cycle rather than a
+deferred edge.
+
+**It goes where the CARRIERS go.** Both the dispatch and the handlers need the entry and neither
+owns it, which is what `compiler.py` accidentally is today; what makes that accidental rather than
+designed is that `compiler.py` also holds `Module`, `Shape`, `Target` and `Decided`. `Decided` is
+now `ir.py`'s. As the rest follow, the entry is a thin module importing `ir` and `decide`, with the
+handlers importing `ir` alone — and §11's table gains the row it is missing, naming that module and
+the one direction its arrow runs.
+
 ### The suite's scratch goes on DISK, not in RAM (decided 2026-10-30)
 
 `/tmp` on this machine is a **63 GB tmpfs — it is RAM.** The suite materialises a fresh package per
