@@ -107,7 +107,7 @@ from codegen.refusal import Kind, Refusal
 from codegen.schema import nodes
 
 if TYPE_CHECKING:  # pragma: no cover -- the annotation only; see :func:`assign`
-    from codegen.compiler import Decided, Module
+    from codegen.compiler import Module
 
 #: **The stated scope of the content dedup** (§14 step 7's own words for this row, and
 #: §9's rule behind it).  Read by ``tests/test_emit.py``, so the sentence the code states
@@ -734,7 +734,7 @@ def adopt(mod: Module, pointer: str, declared: str) -> ir.TypeRef | Refusal:
 # --------------------------------------------------------------------------- #
 # §2's rule at a node some OTHER document names: the alias that holds the symbol
 # --------------------------------------------------------------------------- #
-def alias_for(pointer: str, node: nodes.Base, decided: Decided) -> ir.AliasDecl:
+def alias_for(pointer: str, node: nodes.Base, decided: ir.Decided) -> ir.AliasDecl:
     """One node's own decision, as the alias that names it.
 
     Shared by the THREE rows that declare an alias -- a root
@@ -765,7 +765,7 @@ def alias_for(pointer: str, node: nodes.Base, decided: Decided) -> ir.AliasDecl:
 
 
 def name_the_node(
-    mod: Module, pointer: str, node: nodes.Base, decided: Decided
+    mod: Module, pointer: str, node: nodes.Base, decided: ir.Decided
 ) -> ir.TypeRef | Refusal:
     """Give a node a SYMBOL in its own module, because a ``$ref`` elsewhere names it.
 

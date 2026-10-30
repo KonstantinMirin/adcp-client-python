@@ -241,7 +241,7 @@ class TypeRef:
     #: states the format in its own rendered schema -- so this field is the other
     #: case, and it rides as ``json_schema_extra`` so the fact reaches the
     #: model's schema where the comparison grades it.  The two are exclusive by
-    #: construction (``compiler.Decided``): a format is in the type or in here, and
+    #: construction (:class:`Decided`): a format is in the type or in here, and
     #: never in both and never nowhere.  Dropping it would lose a fact the
     #: document states.
     format: str | None = None
@@ -261,6 +261,40 @@ class TypeRef:
     #: A tuple and not a set: the order is the document's, so the rendered annotation is
     #: a function of the document's content (P7).
     validators: tuple[ValueRule, ...] = ()
+
+
+@dataclass(frozen=True)
+class Decided:
+    """What the walk decided one schema node IS.
+
+    ``format`` is set only when ``type`` does NOT already carry the format -- the
+    compiler then states it as an annotation rather than as a type.  Keeping the
+    two separate here is what makes the drop impossible to make by accident: a
+    format is either in the type or in this field, and never nowhere.
+
+    **Declared HERE and not in ``codegen/compiler.py``, which is §14 step 10's own move**
+    (``adcp-client-python-3be.6``, after ``3be.5`` measured what blocked it).  Three
+    reasons, and the third is the one that forced it:
+
+    * it is what §11's table already says.  The decision layer's output is
+      "``Node`` -> ``Lowering``", and §7 declares this module as the layer that holds
+      "what the walk DECIDED, as values".  A node's decision is the IR's own vocabulary:
+      every field of this class is a :class:`TypeRef` or a fact about one.
+    * every handler returns one and the walk's own carrier does not.  ``Module`` is the
+      walk's mutable accumulator and this is a frozen value; one module holding both put
+      the seam's TYPE behind an import of the walk's state.
+    * ``lower/names.py`` could not construct one.  Its arrow to ``compiler`` is
+      ``TYPE_CHECKING``-only while ``compiler`` imports it at module level (D13), so a
+      runtime ``compiler.Decided`` there turns a reported cycle into a real one -- which
+      is exactly why ``3be.5`` left ``lower_node``'s wrapper in ``compiler.py`` and said
+      so.  This module imports nothing of ``codegen`` at all, so naming it from
+      ``names.py`` adds no edge: it is the one place in the package every layer may
+      already reach.
+    """
+
+    type: TypeRef
+    constraints: dict[str, Any] = field(default_factory=dict)
+    format: str | None = None
 
 
 @dataclass(frozen=True)

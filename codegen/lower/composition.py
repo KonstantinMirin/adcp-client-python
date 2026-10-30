@@ -17,23 +17,23 @@ their pointers -- and the merge's result goes through the parser like any other 
 from __future__ import annotations
 
 from codegen import compiler, ir
-from codegen.compiler import Decided, Module
+from codegen.compiler import Module
 from codegen.refusal import Refusal
 from codegen.schema import nodes
 
 
-def lower(node: nodes.Composition, mod: Module) -> Decided | Refusal:
+def lower(node: nodes.Composition, mod: Module) -> ir.Decided | Refusal:
     """The composed class, declared at this node's POINTER, as a local type.
 
     A conjunct's refusal is returned upward unchanged (§6), naming the conjunct's own
     pointer rather than this node's.
     """
     declared = compiler.lower_composition(node, mod)
-    if isinstance(declared, (Refusal, Decided)):
-        # A :class:`Decided` is §5's ``$ref`` row at CONJ where the target is not a class
+    if isinstance(declared, (Refusal, ir.Decided)):
+        # A :class:`codegen.ir.Decided` is §5's ``$ref`` row at CONJ where the target is not a class
         # (§14 step 9): the node declares no fields, so there is no class to declare and
         # the target is the node's own TYPE.  It is returned unchanged -- this row's job
         # is to turn a declared class's POINTER into a type, and that answer already is
         # one.
         return declared
-    return Decided(ir.TypeRef(declared, local=True))
+    return ir.Decided(ir.TypeRef(declared, local=True))

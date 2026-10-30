@@ -70,7 +70,7 @@ this bundle:
   this emitter cannot lower is refused by all three.  Probed by removing it and
   reading the crash;
 * a ``const`` its own ``type`` REFUSES.  Such a node admits NOTHING, and a
-  ``Literal`` of the value would be a model wider than its schema.  Decided by the
+  ``Literal`` of the value would be a model wider than its schema.  ir.Decided by the
   document's own validator rather than by a type table of this module's, so there is
   no second reading of draft-07 here to drift from the schema half's.
 
@@ -195,7 +195,7 @@ _FORMATS = jsonschema.Draft7Validator.FORMAT_CHECKER
 _DECIDABLE = frozenset(_FORMATS.checkers)
 
 
-def lower(node: nodes.Constant, mod: compiler.Module) -> compiler.Decided | Refusal:
+def lower(node: nodes.Constant, mod: compiler.Module) -> ir.Decided | Refusal:
     """What one ``const`` node IS: the value it pins.
 
     The ``Literal`` TEXT is the RENDERER's -- ``ir.TypeRef.literals`` carries the
@@ -313,7 +313,7 @@ def lower(node: nodes.Constant, mod: compiler.Module) -> compiler.Decided | Refu
     # states a constraint of a WIDER set than the one the node has, which is a fact about
     # no instance this node admits.
     #
-    # So the ``format`` reaches :func:`decides` instead of :attr:`compiler.Decided.format`,
+    # So the ``format`` reaches :func:`decides` instead of :attr:`ir.Decided.format`,
     # and the division between the two carriers is gone: every statement this node makes
     # about its value is one thing, checked in one loop, and the pin decides all of it.
-    return compiler.Decided(ir.TypeRef(literals=(value,)))
+    return ir.Decided(ir.TypeRef(literals=(value,)))

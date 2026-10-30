@@ -30,9 +30,17 @@ the verifier.
 What is here, in D13's own terms: the field builder (:func:`fields`), the class
 declarer (:func:`declare_object`, and :func:`declare_alias` beside it for a root
 D2 makes an alias), and the carriers a lowering is handed (:class:`Module`,
-:class:`Shape`, :class:`Target`, :class:`Decided`), with the keyword screen
+:class:`Shape`, :class:`Target`), with the keyword screen
 (:func:`check_keywords`), the name rules (D3) and :func:`lower_object` -- which is
 :func:`fields` plus :func:`declare_object` and has nothing else in it -- alongside.
+
+**The SEAM'S OWN TYPE is not here, which is §14 step 10's first move**
+(``adcp-client-python-3be.6``).  :class:`codegen.ir.Decided` is what every handler
+returns, and it is declared in ``codegen/ir.py`` -- the layer §7 gives "what the walk
+DECIDED, as values" and the one module of this package that imports no other.  The three
+carriers above are the walk's own mutable state and a decision is not: keeping the seam's
+type beside them put it behind an import of ``compiler``, which is why ``lower/names.py``
+-- whose arrow here is ``TYPE_CHECKING``-only, D13's direction -- could not construct one.
 
 **The per-node ENTRY is here and the per-node DISPATCH is not** (§5, and
 ``adcp-client-python-3be.5``).  :func:`lower_node` is what a handler calls for a child,
@@ -612,21 +620,6 @@ def branches_of(
     )
 
 
-@dataclass(frozen=True)
-class Decided:
-    """What the walk decided one schema node IS.
-
-    ``format`` is set only when ``type`` does NOT already carry the format -- the
-    compiler then states it as an annotation rather than as a type.  Keeping the
-    two separate here is what makes the drop impossible to make by accident: a
-    format is either in the type or in this field, and never nowhere.
-    """
-
-    type: ir.TypeRef
-    constraints: dict[str, Any] = field(default_factory=dict)
-    format: str | None = None
-
-
 #: What a reference site answers when the run resolved none: a document lowered on its
 #: own resolves no reference.  A SENTENCE and not a refusal, because the site's own
 #: pointer is what a refusal has to name and only the asking node holds it -- so the
@@ -693,7 +686,7 @@ def decide(
     *,
     objectish: bool = False,
     of_a_root_union: bool = False,
-) -> Decided | Refusal:
+) -> ir.Decided | Refusal:
     """PARSE one raw subschema at a position, then dispatch on the kind the parser decided.
 
     **ONE caller is left and it is the one re-entry §5 names**: :func:`local_reference`,
@@ -727,7 +720,7 @@ def decide(
 
 def lower_node(
     node: nodes.Node, mod: "Module", *, of_a_root_union: bool = False
-) -> Decided | Refusal:
+) -> ir.Decided | Refusal:
     """What one PARSED node is: §4's content dedup, the ONE dispatch, and a SYMBOL where
     another document names the node.
 
@@ -781,7 +774,7 @@ def lower_node(
     if collapsed is not None:
         mod.adopted[pointer] = collapsed
         bound = names.adopt(mod, pointer, collapsed)
-        return bound if isinstance(bound, Refusal) else Decided(bound)
+        return bound if isinstance(bound, Refusal) else ir.Decided(bound)
     decided = decide(node, mod, of_a_root_union=of_a_root_union)
     if isinstance(decided, Refusal):
         return decided
@@ -792,7 +785,7 @@ def lower_node(
         # The node's facts moved onto the ALIAS, so what the parent holds is the symbol
         # and nothing else: a constraint restated beside it would be the second spelling
         # P2 removes.
-        decided = Decided(named)
+        decided = ir.Decided(named)
     if decided.type.local and decided.type.path == pointer:
         mod.collapsed.append((node, pointer))
     return decided
@@ -1435,7 +1428,7 @@ NO_SUCH_KEYWORD = (
     "refuses by name rather than being emitted with it ignored"
 )
 
-def carried(decided: Decided, pointer: str, what: str, mod: Module) -> ir.TypeRef | Refusal:
+def carried(decided: ir.Decided, pointer: str, what: str, mod: Module) -> ir.TypeRef | Refusal:
     """The type of a node at a position with NO FIELD to carry its facts.
 
     Three positions ask: an array's ELEM and a mapping's MAPV
@@ -1746,13 +1739,18 @@ def fields(
         spelled[fname] = key
         is_distinct = key in distinct
         if key in reuse:
-            held = reuse[key]
+            # Bound under its own name and not onto ``held``: ``held`` above is the NAMES
+            # nothing declares (``undeclared``'s reading) and this is a decided
+            # :class:`codegen.ir.Field`.  One name for two types made the checker read
+            # ``.type`` off a ``tuple[str, ...]`` -- three of §14 step 6's six errors --
+            # and the comment at ``undeclared``'s own site still means the outer one.
+            reused = reuse[key]
             # The REUSED field's type ALREADY states its bound and its format (§2, and
             # :attr:`codegen.ir.TypeRef.facts`), so it is taken whole: splitting the
             # three back out and recombining them is what two carriers of one fact
             # invites, and the base decided this type at its own pointer.
-            field_type = held.type
-            is_distinct = held.distinct
+            field_type = reused.type
+            is_distinct = reused.distinct
         else:
             # **§4's nested name rule as a HOP and not as a name** (§7): what this
             # records is the structural fact -- this child hangs off the class at
@@ -1764,7 +1762,7 @@ def fields(
             decided_type = lower_node(child, mod)
             if isinstance(decided_type, Refusal):
                 return decided_type
-            # §2: **constraints bind to the TYPE, not the field.**  A :class:`Decided`
+            # §2: **constraints bind to the TYPE, not the field.**  A :class:`codegen.ir.Decided`
             # carries the three apart because a format is either IN the type or beside
             # it and never in both; the field carries one type that states all of them,
             # so the same bound reached through a list, a mapping value or a union
@@ -2641,7 +2639,7 @@ def _the_conjuncts_own_type(
     bases: Sequence[ir.TypeRef],
     rule_nodes: Sequence[Mapping[str, Any]],
     facts: Mapping[str, Any],
-) -> Decided | Refusal | TargetBranches:
+) -> ir.Decided | Refusal | TargetBranches:
     """§5's ``$ref`` row at CONJ where the target is NOT a class: the node's own TYPE.
 
     "Where it is not -- a scalar, an enum, a container, or a union root, whose instance
@@ -2668,7 +2666,7 @@ def _the_conjuncts_own_type(
     BOUNDS** (:attr:`codegen.schema.nodes.Composition.facts`, and §5's group (a): "the
     refusals reading '*X* is not a class, so it cannot be a base' are the unimplemented
     half of that sentence").  §2 binds a constraint to the TYPE, and the type here is the
-    target's symbol -- so the bound rides on the :class:`Decided` beside it, in the one
+    target's symbol -- so the bound rides on the :class:`codegen.ir.Decided` beside it, in the one
     carrier ``compiler.fields`` already folds into :attr:`codegen.ir.TypeRef.facts` for
     every other node's constraints, and the position's own cell is what says where it
     lands: ``minItems`` at PROP is "-> on the field", ``minLength`` at PROP is
@@ -2916,9 +2914,9 @@ def _the_conjuncts_own_type(
         # ``facts`` rides in the OTHER slot, for §2's reason rather than for symmetry: a
         # rule is a callable bound to the annotated type and a bound is a value the field
         # or the alias states, so the two have different carriers and a node may state
-        # both.  :attr:`Decided.constraints` is the one the walk already folds into
+        # both.  :attr:`codegen.ir.Decided.constraints` is the one the walk already folds into
         # :attr:`ir.TypeRef.facts`.
-        return Decided(
+        return ir.Decided(
             ir.TypeRef(
                 symbol,
                 local=True,
@@ -2929,7 +2927,7 @@ def _the_conjuncts_own_type(
             ),
             dict(facts),
         )
-    return Decided(ir.TypeRef(symbol, local=True), dict(facts))
+    return ir.Decided(ir.TypeRef(symbol, local=True), dict(facts))
 
 
 #: The mixin §4 puts FIRST on a union base, as the one spelling both sites name it by.
@@ -3008,11 +3006,11 @@ def _carries_the_mixin(base: ir.TypeRef, mod: "Module", seen: frozenset[str]) ->
 
 
 def _the_vocabularys_intersection(
-    decided: Decided,
+    decided: ir.Decided,
     stated: Sequence[tuple[str, Mapping[str, Any]]],
     reference: "nodes.Reference",
     mod: "Module",
-) -> Decided | Refusal:
+) -> ir.Decided | Refusal:
     """§5's ``enum`` row at CONJ: the TYPE :func:`_the_conjuncts_own_type` decided,
     narrowed to the intersection of the target's vocabulary with the conjuncts' own.
 
@@ -3238,7 +3236,7 @@ def lower_composition(
     union: UnionBase | None = None,
     inherits: Shape | None = None,
     base_if_none_composes: ir.TypeRef | None = None,
-) -> str | Decided | Refusal:
+) -> str | ir.Decided | Refusal:
     """Append the class for an ``allOf`` node and return its POINTER.
 
     **CONVERTED to node fields, and ``schema/nodes.py`` says which half of this row stays
@@ -3973,7 +3971,12 @@ def lower_composition(
         # schema comparison reported 51 ``missing /…/uniqueItems`` facts over the document
         # and the 5 that reference it -- a model accepting duplicates its document
         # refuses, with no declaration.  That is what the gate reading a conjunct closes.
-        if not a_conjunct_declares_an_array((c.raw for c in node.conjuncts), mod.resolve_node):
+        # ``conjuncts`` and not ``node.conjuncts``: this parameter is a ``nodes.Base`` and
+        # three kinds declare the field, so the ONE reading this function makes of it is
+        # the ``getattr`` above -- the direct access was §14 step 6's sixth error and the
+        # local is also the safer spelling, answering ``()`` where the kind has none
+        # rather than raising an ``AttributeError`` that names no document.
+        if not a_conjunct_declares_an_array((c.raw for c in conjuncts), mod.resolve_node):
             mod.carries_nothing.append(
                 f"{pointer}: uniqueItems: this node's conjuncts put no array at its "
                 "instance, and draft-07 applies uniqueItems to an array and ignores it "
@@ -4087,10 +4090,10 @@ def lower_composition(
             # SIBLINGS constrain it".  A ``contains`` is a sibling that becomes a RULE and
             # a bound is one that becomes a CONSTRAINT, so the two travel in the two
             # carriers §2 already keeps apart -- :attr:`ir.TypeRef.validators` and
-            # :attr:`Decided.constraints` -- rather than in one list the callee splits.
+            # :attr:`codegen.ir.Decided.constraints` -- rather than in one list the callee splits.
             facts=facts,
         )
-        if isinstance(answered, Decided) and conjunct_values:
+        if isinstance(answered, ir.Decided) and conjunct_values:
             # **§5's ``enum`` row at CONJ, applied to the type the row above decided.**
             # The reference is the one that supplied the type, which is the same
             # ``conjoined[0]`` the row reads, and the narrowing is §2's intersection over
@@ -4961,7 +4964,7 @@ def _reused(
     return held
 
 
-def _constraining(node: dict) -> dict:
+def _constraining(node: Mapping[str, Any]) -> dict[str, Any]:
     """What a declaration says about the INSTANCE.
 
     ``default``, ``description`` and every other key whose CELL carries nothing
@@ -4972,6 +4975,11 @@ def _constraining(node: dict) -> dict:
 
     Read at PROP, which is the position every caller asks it at: a restatement is a
     property's declaration against the base's.
+
+    Typed over ``Mapping`` because :func:`declaring` -- its one delegate, and the only
+    thing it does -- already is: a caller holding a conjunct as a ``Mapping[str, Any]``
+    was §14 step 6's fourth error, and narrowing the CALLER would have been a claim about
+    a value this function never writes to.
     """
     return declaring(node, Position.PROP)
 
@@ -6119,7 +6127,7 @@ def declare_root_model(
     node: nodes.Base,
     decided: ir.TypeRef,
     rules: tuple[Rule, ...] = (),
-) -> Decided | Refusal:
+) -> ir.Decided | Refusal:
     """§4's THIRD root shape: a root that is neither a class nor an alias.
 
     ``docs/plan/rebuild-plan.md`` §4's table gives three rows to one: "an array at a
@@ -6147,7 +6155,7 @@ def declare_root_model(
     a class's rule keyed on a property is (``AdCPRootModel``'s docstring carries the
     three MRO measurements).
 
-    It returns a :class:`Decided` and not a pointer, because the three callers each want
+    It returns a :class:`codegen.ir.Decided` and not a pointer, because the three callers each want
     the node's TYPE back: the root model is a local symbol like any class the walk
     declares, and ``lower/names.py`` binds the pointer to it.
     """
@@ -6164,10 +6172,10 @@ def declare_root_model(
     )
     if collision is not None:
         return collision
-    return Decided(ir.TypeRef(pointer, local=True))
+    return ir.Decided(ir.TypeRef(pointer, local=True))
 
 
-def local_reference(mod: Module, pointer: str, at: str) -> Decided | Refusal:
+def local_reference(mod: Module, pointer: str, at: str) -> ir.Decided | Refusal:
     """What a LOCAL ``$ref`` decides to: the node of THIS document that it names.
 
     :func:`name_the_node`'s sibling, and the division is which document the reference
@@ -6233,7 +6241,7 @@ def local_reference(mod: Module, pointer: str, at: str) -> Decided | Refusal:
     Measured spellable for all 163 of the bundle's entry keys.
     """
     if pointer in mod.at:
-        return Decided(ir.TypeRef(pointer, local=True))
+        return ir.Decided(ir.TypeRef(pointer, local=True))
     if pointer in mod.resolving:
         return Refusal(
             "$ref",
@@ -6278,7 +6286,7 @@ def local_reference(mod: Module, pointer: str, at: str) -> Decided | Refusal:
 
 
 def declare_alias(
-    mod: Module, pointer: str, doc: nodes.Base, decided: Decided
+    mod: Module, pointer: str, doc: nodes.Base, decided: ir.Decided
 ) -> str | Refusal:
     """Declare the module for a root D2 makes an ALIAS rather than a class.
 

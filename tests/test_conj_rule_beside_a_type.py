@@ -183,7 +183,7 @@ def _reaching() -> tuple[Site, ...]:
                 a_class_as_well=bool(fields_declared or bases),
                 beside=tuple(sorted({k for one in rule_nodes for k in one})),
                 validators=(
-                    answer.type.validators if isinstance(answer, compiler.Decided) else ()
+                    answer.type.validators if isinstance(answer, ir.Decided) else ()
                 ),
                 refusal=answer if isinstance(answer, Refusal) else None,
                 distributed=(
@@ -701,7 +701,7 @@ def test_two_conjuncts_stating_one_rule_keyword_refuse_rather_than_drop_one() ->
         rule_nodes=[{"not": {"const": "video"}}],
         facts=(),
     )
-    assert isinstance(one, compiler.Decided), one
+    assert isinstance(one, ir.Decided), one
     assert one.type == ir.TypeRef("MediaType", local=True, validators=(NotValue(("video",)),)), one
 
 

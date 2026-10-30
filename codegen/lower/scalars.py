@@ -25,7 +25,7 @@ from codegen import compiler, ir
 from codegen import constraints as constraints_module
 from codegen import keywords
 from codegen.keywords import Position
-from codegen.compiler import SCALAR, Decided, Module, check_keywords
+from codegen.compiler import SCALAR, Module, check_keywords
 from codegen.refusal import Kind, Refusal
 from codegen.schema import nodes
 
@@ -153,7 +153,7 @@ def _named_alias(
     return ir.TypeRef(path)
 
 
-def name_the_constraint(decided: Decided, mod: compiler.Module) -> ir.TypeRef | None:
+def name_the_constraint(decided: ir.Decided, mod: compiler.Module) -> ir.TypeRef | None:
     """Section 2's NAMED carrier for a decided node whose position has no field.
 
     ``compiler.carried`` asks this at the three positions that cannot hold a fact on a
@@ -166,7 +166,7 @@ def name_the_constraint(decided: Decided, mod: compiler.Module) -> ir.TypeRef | 
     bound it twice -- and ``codegen/__main__.py`` retired that half.
 
     **It does not re-read the node, and that is deliberate.**  Everything it needs is
-    on the :class:`Decided` the walk already produced -- the scalar's own type word is
+    on the :class:`codegen.ir.Decided` the walk already produced -- the scalar's own type word is
     recoverable from :data:`SCALAR`, a container names itself in ``Type.container`` --
     so there is no second reading of a node's constraints to disagree with
     :func:`lower`'s.
@@ -211,7 +211,7 @@ _SCALAR_WORD = {path: word for word, path in SCALAR.items()}
 # --------------------------------------------------------------------------- #
 # the three rows
 # --------------------------------------------------------------------------- #
-def lower(node: nodes.Scalar, mod: Module) -> Decided | Refusal:
+def lower(node: nodes.Scalar, mod: Module) -> ir.Decided | Refusal:
     """One scalar type word: the constraint facts on the TYPE, and the format.
 
     §2: **constraints bind to the type, not the field.**  A constrained scalar is
@@ -285,8 +285,8 @@ def lower(node: nodes.Scalar, mod: Module) -> Decided | Refusal:
     ):
         selected = FORMAT_TYPES[fmt](node.facts)
         if fmt in URL_FORMATS:
-            return Decided(ir.TypeRef(selected, validators=bound))
-        return Decided(ir.TypeRef(selected, validators=bound), constraints)
+            return ir.Decided(ir.TypeRef(selected, validators=bound))
+        return ir.Decided(ir.TypeRef(selected, validators=bound), constraints)
     path = constraints_module.resolve(word, constraints)
     if path is not None:
         # **The rule goes on THIS SITE's type and never on the shared alias.**  An alias
@@ -294,10 +294,10 @@ def lower(node: nodes.Scalar, mod: Module) -> Decided | Refusal:
         # stating that constraint, so a validator written into its declaration would
         # narrow every other site -- which is the one direction D4 does not permit.  The
         # alias is the inner type and the ``Annotated`` around it is this node's own.
-        return Decided(
+        return ir.Decided(
             replace(_named_alias(path, word, constraints, mod), validators=bound), format=fmt
         )
-    return Decided(ir.TypeRef(SCALAR[word], validators=bound), constraints, format=fmt)
+    return ir.Decided(ir.TypeRef(SCALAR[word], validators=bound), constraints, format=fmt)
 
 
 def selects_a_url_type(fmt: str | None, constraints: Mapping[str, Any]) -> bool:
@@ -330,12 +330,12 @@ def selects_a_url_type(fmt: str | None, constraints: Mapping[str, Any]) -> bool:
     )
 
 
-def null(node: nodes.Null, mod: Module) -> Decided | Refusal:
+def null(node: nodes.Null, mod: Module) -> ir.Decided | Refusal:
     """``type: null``: nothing, which is ``None``."""
     refused = check_keywords(node, {"type"}, mod=mod)
     if refused is not None:
         return refused
-    return Decided(ir.TypeRef("None"))
+    return ir.Decided(ir.TypeRef("None"))
 
 
 def no_type_to_lower_onto(refused: Refusal, node: nodes.Typeless) -> Refusal:
@@ -378,7 +378,7 @@ def no_type_to_lower_onto(refused: Refusal, node: nodes.Typeless) -> Refusal:
     )
 
 
-def typeless(node: nodes.Typeless, mod: Module) -> Decided | Refusal:
+def typeless(node: nodes.Typeless, mod: Module) -> ir.Decided | Refusal:
     """No type and no kind keyword: a ``not`` over a value, or nothing.
 
     **At ROOT the answer is §4's third root shape, and both of the refusals that stood
@@ -534,4 +534,4 @@ def typeless(node: nodes.Typeless, mod: Module) -> Decided | Refusal:
     # typeless node is ``Any``, and ``Annotated[Any, AfterValidator(NotValue(…)))]`` is
     # ``Any`` minus the values the document excludes, which is the document's own reading
     # -- ``{"not": {"const": v}}`` admits every instance but ``v``.
-    return Decided(ir.TypeRef("typing.Any", validators=lower_rules.on_a_value(node.rules)))
+    return ir.Decided(ir.TypeRef("typing.Any", validators=lower_rules.on_a_value(node.rules)))

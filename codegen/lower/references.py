@@ -13,13 +13,13 @@ screen is the table's, at the node's own position, over the one set this row cla
 from __future__ import annotations
 
 from codegen import bundle, compiler, ir
-from codegen.compiler import Decided, Module, check_keywords
+from codegen.compiler import Module, check_keywords
 from codegen.keywords import Position
 from codegen.refusal import Kind, Refusal
 from codegen.schema import nodes
 
 
-def lower(node: nodes.Reference, mod: Module) -> Decided | Refusal:
+def lower(node: nodes.Reference, mod: Module) -> ir.Decided | Refusal:
     """An IMPORT of the target's symbol, or the local entry's own declaration.
 
     **A CONSTRAINING sibling compiles to NOTHING and is REPORTED**, which is §5's ``$ref``
@@ -71,10 +71,10 @@ def lower(node: nodes.Reference, mod: Module) -> Decided | Refusal:
     # wins, which is read where the field is built.
     if target.described is not None:
         mod.described[node.pointer] = target.described
-    return Decided(ir.TypeRef(target.symbol, local=True))
+    return ir.Decided(ir.TypeRef(target.symbol, local=True))
 
 
-def _root(node: nodes.Reference, mod: Module) -> Decided | Refusal:
+def _root(node: nodes.Reference, mod: Module) -> ir.Decided | Refusal:
     """§5(a)'s bare-``$ref`` root: a SUBCLASS of the target where the target is a class.
 
     "Refused because binding this module's symbol to another module's class would be a
@@ -139,7 +139,7 @@ def _root(node: nodes.Reference, mod: Module) -> Decided | Refusal:
         # TYPE**" -- and a bare ``$ref`` root IS a composing node with one ``$ref``
         # conjunct and no properties of its own (the docstring above says so), so this
         # arm is that sentence at a root and not a fourth answer.
-        return Decided(ir.TypeRef(mod.importing(target.symbol, target.where), local=True))
+        return ir.Decided(ir.TypeRef(mod.importing(target.symbol, target.where), local=True))
     mod.importing(target.symbol, target.where)
     declared = compiler.declare_object(
         node,
@@ -158,7 +158,7 @@ def _root(node: nodes.Reference, mod: Module) -> Decided | Refusal:
     )
     if isinstance(declared, Refusal):
         return declared
-    return Decided(ir.TypeRef(declared, local=True))
+    return ir.Decided(ir.TypeRef(declared, local=True))
 
 
 #: Re-exported so ``emit`` keeps one spelling of the reading when it needs the two halves

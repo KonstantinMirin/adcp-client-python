@@ -1538,7 +1538,7 @@ def lower_union(
     )
     if isinstance(stated_base, Refusal):
         return stated_base
-    if isinstance(stated_base, compiler.Decided):
+    if isinstance(stated_base, ir.Decided):
         # §5's ``$ref`` row at CONJ answered with a TYPE: the root's one conjunct
         # resolves to something that is not a class, so there is no base class for the
         # branches to subclass.  §4 makes the base the symbol every referrer imports and
@@ -1707,7 +1707,7 @@ def lower_union(
             )
             if isinstance(composed, Refusal):
                 return composed
-            if isinstance(composed, compiler.Decided):
+            if isinstance(composed, ir.Decided):
                 # §5's ``$ref`` row at CONJ answered with a TYPE rather than a class
                 # (§14 step 9): the branch's conjunct resolves to something that is not a
                 # class, so the composition declared none.  §4 makes a branch of a ROOT
@@ -1947,7 +1947,7 @@ def composes_its_siblings(node: "nodes.Union") -> bool:
     return bool(frozenset(node.declares) & carried_by_a_class(node))
 
 
-def lower(node: "nodes.Union", mod: compiler.Module) -> compiler.Decided | Refusal:
+def lower(node: "nodes.Union", mod: compiler.Module) -> ir.Decided | Refusal:
     """§4's union row, at the node's own POSITION: a base plus one class per branch at a
     document ROOT, and one ``A | B`` type below it.
 
@@ -1975,11 +1975,11 @@ def lower(node: "nodes.Union", mod: compiler.Module) -> compiler.Decided | Refus
         base = lower_union(node, mod)
         if isinstance(base, Refusal):
             return base
-        return compiler.Decided(ir.TypeRef(base, local=True))
+        return ir.Decided(ir.TypeRef(base, local=True))
     return nested(node, mod)
 
 
-def nested(node: "nodes.Union", mod: compiler.Module) -> compiler.Decided | Refusal:
+def nested(node: "nodes.Union", mod: compiler.Module) -> ir.Decided | Refusal:
     """``A | B`` for a ``oneOf``/``anyOf`` at a pointer that is NOT a document root AND
     that states nothing beside the combinator.
 
@@ -2183,7 +2183,7 @@ def _undetermined(node: "nodes.Union", mod: compiler.Module) -> None:
     )
 
 
-def _arms(node: "nodes.Union", mod: compiler.Module) -> compiler.Decided | Refusal:
+def _arms(node: "nodes.Union", mod: compiler.Module) -> ir.Decided | Refusal:
     """The ``A | B`` itself, with no sibling screen: the two callers differ in that alone.
 
     :func:`nested` screens the node's siblings and :func:`_alias` does not, because a
@@ -2259,8 +2259,8 @@ def _arms(node: "nodes.Union", mod: compiler.Module) -> compiler.Decided | Refus
     if len(unique) == 1:
         # Two branches that lower to one type are one type, and saying ``X | X`` would
         # be a second spelling of it.  ``multi_type`` dedupes for the same reason.
-        return compiler.Decided(unique[0])
-    return compiler.Decided(ir.TypeRef(container="union", of=unique))
+        return ir.Decided(unique[0])
+    return ir.Decided(ir.TypeRef(container="union", of=unique))
 
 
 def _inherited(parsed: "nodes.Node", mod: compiler.Module) -> Inherited | Refusal:

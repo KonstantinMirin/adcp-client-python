@@ -86,7 +86,7 @@ from codegen.lower import approximate, names, rules
 from codegen.schema import nodes
 from codegen.schema import parse as nodes_parse
 from codegen.keywords import Position, declares
-from codegen.compiler import Decided, Module
+from codegen.compiler import Module
 from codegen.refusal import Kind, Refusal
 
 #: An ARRAY's own bounds, in the document's spelling, and the ones a field holding
@@ -181,7 +181,7 @@ KEY_BOUNDS = ("minProperties", "maxProperties")
 ARM = nodes_parse.ARM
 
 
-def _inner(decided: Decided, pointer: str, what: str, mod: Module) -> ir.TypeRef | Refusal:
+def _inner(decided: ir.Decided, pointer: str, what: str, mod: Module) -> ir.TypeRef | Refusal:
     """The decided type of something INSIDE a container, named where it needs to be.
 
     A constraint or a format on an inner node has nowhere to go: the compiler's
@@ -380,7 +380,7 @@ def _the_conjuncts_constrain_the_array(node: nodes.Array) -> tuple[Any, ...] | R
 # --------------------------------------------------------------------------- #
 # the rows
 # --------------------------------------------------------------------------- #
-def array(node: nodes.Array, mod: Module) -> Decided | Refusal:
+def array(node: nodes.Array, mod: Module) -> ir.Decided | Refusal:
     """``list[X]``, with ``minItems``/``maxItems`` on the LIST and not on ``X``.
 
     The bound comes back in the document's own spelling and rides on the field
@@ -491,10 +491,10 @@ def array(node: nodes.Array, mod: Module) -> Decided | Refusal:
             ir.TypeRef(container="list", of=(element,), facts=bounds, validators=bound),
             rules=(UniqueItems(ir.ROOT_FIELD),) if node.distinct else (),
         )
-    return Decided(ir.TypeRef(container="list", of=(element,), validators=bound), bounds)
+    return ir.Decided(ir.TypeRef(container="list", of=(element,), validators=bound), bounds)
 
 
-def mapping(node: nodes.Mapping_, mod: Module) -> Decided | Refusal:
+def mapping(node: nodes.Mapping_, mod: Module) -> ir.Decided | Refusal:
     """``dict[K, V]`` for an object node that declares no property.
 
     The node has no field to hang a class on and no property name to derive a class
@@ -588,7 +588,7 @@ def mapping(node: nodes.Mapping_, mod: Module) -> Decided | Refusal:
                 approximate.declare(
                     mod, pointer, "additionalProperties", position, stated_extra
                 )
-            return Decided(
+            return ir.Decided(
                 ir.TypeRef(
                     container="dict", of=(ir.TypeRef("typing.Any"),), key=ir.TypeRef("str")
                 ),
@@ -659,7 +659,7 @@ def mapping(node: nodes.Mapping_, mod: Module) -> Decided | Refusal:
         )
         if isinstance(patterned, Refusal):
             return patterned
-        return Decided(
+        return ir.Decided(
             ir.TypeRef(container="dict", of=(patterned,), key=key),
             bounds,
         )
@@ -679,7 +679,7 @@ def mapping(node: nodes.Mapping_, mod: Module) -> Decided | Refusal:
     value = _value(node.value, f"{pointer}/additionalProperties", pointer, mod, stated=ap)
     if isinstance(value, Refusal):
         return value
-    return Decided(ir.TypeRef(container="dict", of=(value,), key=key), bounds)
+    return ir.Decided(ir.TypeRef(container="dict", of=(value,), key=key), bounds)
 
 
 def _value(
@@ -814,7 +814,7 @@ def _key_type(node: nodes.Node, mod: Module) -> ir.TypeRef | Refusal:
     return _inner(decided, node.pointer, "the key", mod)
 
 
-def multi_type(node: nodes.MultiType, mod: Module) -> Decided | Refusal:
+def multi_type(node: nodes.MultiType, mod: Module) -> ir.Decided | Refusal:
     """``X | Y`` for a node whose ``type`` is a list, each keyword on its OWN arm.
 
     An arm is the node re-cut to one type, carrying only the keywords that type can
@@ -929,8 +929,8 @@ def multi_type(node: nodes.MultiType, mod: Module) -> Decided | Refusal:
         arms.append(arm)
     unique = ir.deduped(arms)  # document order, deduped; see ir.deduped for why not a hash
     if len(unique) == 1:
-        return Decided(unique[0])
-    return Decided(ir.TypeRef(container="union", of=unique))
+        return ir.Decided(unique[0])
+    return ir.Decided(ir.TypeRef(container="union", of=unique))
 
 
 # --------------------------------------------------------------------------- #
