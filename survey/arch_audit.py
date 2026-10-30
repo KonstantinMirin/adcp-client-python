@@ -164,28 +164,59 @@ DRAFT07 = {
 }
 
 
+#: The census's own threshold: a collection counts where it names at least this many
+#: draft-07 keywords and NOTHING but draft-07 keywords.  Three, because a one- or
+#: two-name ``in (...)`` is a per-keyword dispatch arm rather than a table of keywords --
+#: at one name there are 78 of them and the census stops being an instrument.
+FLOOR = 3
+
+
+def keyword_collections() -> list[tuple[str, int, bool, tuple[str, ...]]]:
+    """The §3 census: ``(module, line, is a dict's keys, the keywords)`` per site.
+
+    **The one derivation of it**, so the CLI below and
+    ``tests/test_keywords.py::test_the_keyword_set_literal_census_is_the_sites_named_here``
+    cannot report two different numbers.  A census printed by one reader and gated by
+    another is how seven of this epic's censuses went stale
+    (``adcp-client-python-3be.8``).
+    """
+    out: list[tuple[str, int, bool, tuple[str, ...]]] = []
+    for name, path in sorted(modules().items()):
+        if name == "codegen.keywords" or not name.startswith("codegen"):
+            continue
+        tree = ast.parse(path.read_text())
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.Set, ast.List, ast.Tuple)):
+                elements, keys = node.elts, False
+            elif isinstance(node, ast.Dict):
+                elements, keys = node.keys, True
+            else:
+                continue
+            vals = [e.value for e in elements if isinstance(e, ast.Constant) and isinstance(e.value, str)]
+            hits = tuple(v for v in vals if v in DRAFT07)
+            # ``len(hits) == len(vals)`` and NOT ``== len(elements)``: a claim set
+            # written ``{"type", "properties", *stated.screen}`` spreads a derived set
+            # beside its literal names, and the literal names are what the census is
+            # about.  Tightening this to the whole collection silently dropped three
+            # sites when it was tried.
+            if len(hits) >= FLOOR and len(hits) == len(vals):
+                out.append((name, node.lineno, keys, hits))
+    return out
+
+
 def cmd_keywords() -> None:
     mods = modules()
     print("# importers of codegen.keywords")
     for name, path in sorted(mods.items()):
         if any(m == "codegen.keywords" or m.startswith("codegen.keywords.") for m in imports_of(path)):
             print(f"  {name}")
-    print("# literal keyword collections (>=3 draft-07 keywords) outside codegen/keywords.py")
-    for name, path in sorted(mods.items()):
-        if name == "codegen.keywords" or not name.startswith("codegen"):
-            continue
-        tree = ast.parse(path.read_text())
-        for node in ast.walk(tree):
-            if isinstance(node, (ast.Set, ast.List, ast.Tuple)):
-                vals = [e.value for e in node.elts if isinstance(e, ast.Constant) and isinstance(e.value, str)]
-                hits = [v for v in vals if v in DRAFT07]
-                if len(hits) >= 3 and len(hits) == len(vals):
-                    print(f"  {name}:{node.lineno}: {hits}")
-            if isinstance(node, ast.Dict):
-                keys = [k.value for k in node.keys if isinstance(k, ast.Constant) and isinstance(k.value, str)]
-                hits = [v for v in keys if v in DRAFT07]
-                if len(hits) >= 3 and len(hits) == len(keys) and keys:
-                    print(f"  {name}:{node.lineno} (dict keys): {hits}")
+    sites = keyword_collections()
+    print(
+        f"# literal keyword collections (>={FLOOR} draft-07 keywords) outside "
+        f"codegen/keywords.py: {len(sites)}"
+    )
+    for name, line, keys, hits in sites:
+        print(f"  {name}:{line}{' (dict keys)' if keys else ''}: {list(hits)}")
 
 
 PY_MARKERS = ("def ", "class ", "import ", "from ", " = Field(", "model_config")

@@ -4893,23 +4893,20 @@ def _annotates_differently(child: dict, base: dict) -> bool:
     return any(child.get(k) != base.get(k) for k in RENDERED)
 
 
-#: The ordering keywords, and the direction a NARROWER value moves in.  ``+1`` means a
-#: narrower restatement states a LARGER number (a floor rises), ``-1`` a smaller one (a
-#: ceiling falls).  ``exclusiveMinimum``/``exclusiveMaximum`` are draft-07's numeric
-#: form and compare the same way as the inclusive pair; draft-04's boolean form does not
-#: appear in this bundle and would not compare, so a non-number refuses below.
-_BOUNDS = {
-    "minimum": 1,
-    "exclusiveMinimum": 1,
-    "minLength": 1,
-    "minItems": 1,
-    "minProperties": 1,
-    "maximum": -1,
-    "exclusiveMaximum": -1,
-    "maxLength": -1,
-    "maxItems": -1,
-    "maxProperties": -1,
-}
+#: The ordering keywords, READ OFF the declaration (:data:`keywords.RANGES`) rather than
+#: listed: a narrower restatement of a FLOOR states a LARGER number and a narrower
+#: restatement of a CEILING a smaller one, which is :func:`keywords.pins_a_floor`'s one
+#: bit.  ``exclusiveMinimum``/``exclusiveMaximum`` are draft-07's numeric form and compare
+#: the same way as the inclusive pair, which is why the declaration's EXCLUSIVE column is
+#: not read here; draft-04's boolean form does not appear in this bundle and would not
+#: compare, so a non-number refuses below.
+#:
+#: It was a literal of ten entries, and the verifier held the same fact in two more
+#: (``adcp-client-python-3be.8``).  §9's reason for one declaration is the one that bit:
+#: "both halves must read the same declaration or the grade means nothing" -- and the two
+#: had drifted, this one carrying ``minProperties``/``maxProperties`` where
+#: ``harness._tighter`` did not.
+_BOUNDS = keywords.FLOORS | keywords.CEILINGS
 
 
 class Holds(StrEnum):
@@ -5073,7 +5070,7 @@ def _at_least_as_tight(
             return False  # draft-04's boolean exclusiveMinimum: a different keyword
         if not isinstance(c, int | float) or not isinstance(b, int | float):
             return False
-        return c >= b if _BOUNDS[keyword] > 0 else c <= b
+        return c >= b if keywords.pins_a_floor(keyword) else c <= b
     if keyword == "$ref":
         # **Two whole-content references are ordered by their TARGETS and by nothing
         # else**, which is :meth:`Module.resolve_node`'s one documented site: "two
@@ -5502,22 +5499,18 @@ _AXES: tuple[frozenset[str], ...] = (frozenset({"const", "enum"}),)
 #: :data:`HOLDS`, which names the two keywords §2's intersection RECURSES into; this names
 #: the wider fact that a keyword belongs to a container's row group, which is what decides
 #: whether two declarations are two declarations of ONE container.
+#:
+#: **It is now that reading and no longer a transcription of it**
+#: (``adcp-client-python-3be.8``): :func:`keywords.constrains_container` is the projection
+#: of the grid family and :data:`keywords.ARM` together, and the two sets it returns are
+#: the two written here, with ONE difference -- ``additionalItems`` is gone.  That keyword
+#: has no ROW, so a declaration stating one refuses by name at the screen long before this
+#: predicate is asked, and bundle 3.2 states **0 of them** (measured over the cache; the
+#: verifier's descent records the same 0 for its own reason).  A list naming a keyword the
+#: table does not is the drift this row exists to remove: it reads as a decision about
+#: ``additionalItems`` and there is none.
 _CONTAINER_KEYWORDS: Mapping[str, frozenset[str]] = {
-    "object": frozenset(
-        {
-            "properties",
-            "required",
-            "additionalProperties",
-            "patternProperties",
-            "propertyNames",
-            "minProperties",
-            "maxProperties",
-            "dependencies",
-        }
-    ),
-    "array": frozenset(
-        {"items", "additionalItems", "contains", "minItems", "maxItems", "uniqueItems"}
-    ),
+    word: keywords.constrains_container(word) for word in ("object", "array")
 }
 
 

@@ -173,7 +173,7 @@ def read(bundle: Path, document: str) -> dict:
 #: than an assumption: measured over all nine positions, the column is the same
 #: fifteen keywords with the same child position at each one.  A row that ever
 #: differed would make this a per-position read, not a second table.
-_DESCENDS = keywords.descends_at(keywords.Position.ROOT)
+DESCENDS = keywords.descends_at(keywords.Position.ROOT)
 
 #: Of those keywords, the ones whose subschemas are reached THROUGH A NAME, and the
 #: ones that hold a LIST of them.  Everything else in the column holds exactly one
@@ -186,12 +186,20 @@ _DESCENDS = keywords.descends_at(keywords.Position.ROOT)
 #: list.  MAPV is the one position two keywords reach by different spellings --
 #: ``patternProperties`` holds pattern → schema there and ``additionalProperties``
 #: holds one schema -- so that one name is written, and it is the only one.
-_HELD_BY_NAME = frozenset(
-    {k for k, p in _DESCENDS.items() if p in (keywords.Position.PROP, keywords.Position.DEF)}
+#:
+#: **Public because the VERIFIER reads them** (``harness._DESCEND_MAP`` and its two
+#: siblings), which §9 permits by name: ``codegen.bundle`` is in the verifier's import
+#: set "for the record and the document set", and §9's own sentence is that the record
+#: is read "by the verifier's own walk ... over the descent column of the table".  The
+#: grammar is draft-07's spelling of what the column holds, so a second derivation of
+#: it in the verifier would be a second reading of one grammar and would carry the one
+#: written name (``patternProperties``) twice.
+HELD_BY_NAME = frozenset(
+    {k for k, p in DESCENDS.items() if p in (keywords.Position.PROP, keywords.Position.DEF)}
     | {"patternProperties"}
 )
-_HELD_IN_A_LIST = frozenset(
-    k for k, p in _DESCENDS.items() if p in (keywords.Position.BRANCH, keywords.Position.CONJ)
+HELD_IN_A_LIST = frozenset(
+    k for k, p in DESCENDS.items() if p in (keywords.Position.BRANCH, keywords.Position.CONJ)
 )
 
 #: The combinators and the conditionals, READ OFF the declaration's descent column
@@ -199,14 +207,14 @@ _HELD_IN_A_LIST = frozenset(
 #: conditional holds one at a RULE, which is what each one IS.  Two literals before
 #: this, and a keyword joining either family had to be written here as well as in the
 #: table (``docs/plan/architecture.md`` §11: the descent column is the one owner).
-COMPOSITION = tuple(sorted(_HELD_IN_A_LIST))
-CONDITIONAL = tuple(k for k, p in _DESCENDS.items() if p is keywords.Position.RULE)
+COMPOSITION = tuple(sorted(HELD_IN_A_LIST))
+CONDITIONAL = tuple(k for k, p in DESCENDS.items() if p is keywords.Position.RULE)
 #: The two keywords holding a bag of named subschemas, READ OFF the declaration's
 #: descent column rather than named: they are the keywords whose subschemas occupy a
 #: DEF position, which is what a definitions section IS.  ``compiler.check_keywords``
 #: admits them at every node from the same table and the selectors below exclude a
 #: document declaring one, so there is no literal here for the pair to drift from.
-DEFINITIONS = frozenset(k for k, p in _DESCENDS.items() if p is keywords.Position.DEF)
+DEFINITIONS = frozenset(k for k, p in DESCENDS.items() if p is keywords.Position.DEF)
 
 
 def subschemas(node: Mapping) -> Iterator[tuple[str, str, object, keywords.Position]]:
@@ -227,14 +235,14 @@ def subschemas(node: Mapping) -> Iterator[tuple[str, str, object, keywords.Posit
     its result is in document order and the run reads the first of them by name.
     """
     for keyword, held in node.items():
-        position = _DESCENDS.get(keyword)
+        position = DESCENDS.get(keyword)
         if position is None:
             continue
-        if keyword in _HELD_BY_NAME:
+        if keyword in HELD_BY_NAME:
             if isinstance(held, dict):
                 for key, sub in held.items():
                     yield keyword, f"/{keyword}/{escape_key(key)}", sub, position
-        elif keyword in _HELD_IN_A_LIST:
+        elif keyword in HELD_IN_A_LIST:
             if isinstance(held, list):
                 for i, sub in enumerate(held):
                     yield keyword, f"/{keyword}/{i}", sub, position
@@ -993,7 +1001,7 @@ def record(bundle_dir: Path, document: str) -> dict | Refusal:
                 return answer
             done[suffix] = answer
         return {
-            key: rebuilt(key, value, done) if key in _DESCENDS else copy.deepcopy(value)
+            key: rebuilt(key, value, done) if key in DESCENDS else copy.deepcopy(value)
             for key, value in node.items()
         }
 
@@ -1020,7 +1028,7 @@ def rebuilt(keyword: str, held: object, done: Mapping[str, object]) -> object:
     def done_or_copy(suffix: str, sub: object) -> object:
         return done[suffix] if suffix in done else copy.deepcopy(sub)
 
-    if keyword in _HELD_BY_NAME and isinstance(held, dict):
+    if keyword in HELD_BY_NAME and isinstance(held, dict):
         return {
             key: done_or_copy(f"/{keyword}/{escape_key(key)}", sub)
             for key, sub in held.items()

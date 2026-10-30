@@ -226,7 +226,13 @@ ROOT_CLAIMS = frozenset({"type", "properties", "required", "additionalProperties
 #: by itself unblocks a branch in 17 of these 41, and without this entry such a document
 #: would emit a base that drops its composed bases -- caught by the comparison as a
 #: ``missing``, so a red gate rather than a named refusal.
-ROOT_CONJUNCTS = ("allOf", "properties", "required", "additionalProperties")
+#:
+#: **The four names are :data:`nodes.ROOT_SIBLINGS` and are read, not restated**
+#: (``adcp-client-python-3be.8``): ``schema/parse.py`` collects exactly these four into
+#: :attr:`nodes.Union.siblings`, in exactly this order, so a second tuple here was one
+#: shape written twice -- and the ORDER is the half a membership check would not have
+#: caught, since it is what decides the keyword each of these documents is reported on.
+ROOT_CONJUNCTS = nodes.ROOT_SIBLINGS
 
 #: What a BRANCH may carry and still be a class this module declares.
 #:

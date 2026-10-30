@@ -845,11 +845,11 @@ def _union(
         # other kind that can state one reads it, so ``compiler.lower_composition``
         # takes the node's requiredness off one field name whatever kind it is handed.
         required=tuple(raw["required"]) if isinstance(raw.get("required"), list) else (),
-        siblings={
-            k: raw[k]
-            for k in ("allOf", "properties", "required", "additionalProperties")
-            if k in raw
-        },
+        # :data:`nodes.ROOT_SIBLINGS` and not the four names: the field and the keywords
+        # that fill it are declared together, and ``lower.union.ROOT_CONJUNCTS`` reads the
+        # same tuple -- so the ORDER a root is reported in cannot drift from the order the
+        # parser collects (``adcp-client-python-3be.8``).
+        siblings={k: raw[k] for k in nodes.ROOT_SIBLINGS if k in raw},
         word=word,
         **common,
     )
