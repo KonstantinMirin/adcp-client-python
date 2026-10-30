@@ -71,6 +71,18 @@ from compiled import CACHE_ROOT, compiled, digest
 REPO = Path(__file__).resolve().parents[1]
 BUNDLE = REPO / "schemas" / "cache" / "3.2"
 
+#: The package set every reader of this tree needs to turn a document into a FILE.
+#:
+#: ``emit.module_file(document, packages)`` is the only reading that answers "which file
+#: holds this document's module", and it needs the package set because a document whose
+#: path is also a directory's is written to ``<path>/__init__.py``
+#: (``docs/plan/architecture.md``, the layout rule beside ``write``, 2026-10-29).  Held
+#: HERE, beside the tree the readers open, and as a constant rather than a call at each
+#: site: ``bundle.package_roots`` is "a function of the BUNDLE and not of the run's
+#: document set", so one value serves every reader and no reader can be handed a set
+#: derived from its own population by accident.
+PACKAGES = bundle.package_roots(BUNDLE)
+
 #: Where a materialised tree is held between processes.  Beside the compile store and
 #: gitignored for the same reason: it is derived, and a committed one would be a tree a
 #: reader could edit into a result no compiler produced.

@@ -154,6 +154,11 @@ BUNDLE = REPO / "schemas" / "cache" / "3.2"
 #: compiler.
 TREE = fresh.TREE
 
+#: The package set, re-exported from where the tree is: the second argument every
+#: ``emit.module_file`` call in this file and in ``tests/test_enum.py`` needs.  One name
+#: for one value, for the reason ``TREE`` is one name here.
+PACKAGES = fresh.PACKAGES
+
 #: ``src/adcp/types/_schemas``: the ARTIFACT a consumer installs.
 #:
 #: Read by ``test_the_committed_tree_is_what_a_fresh_run_emits`` and by nothing else here.
@@ -3225,7 +3230,14 @@ def test_no_schema_the_package_carries_has_an_unresolved_reference() -> None:
 # the emitted text
 # --------------------------------------------------------------------------- #
 def _source(document: str) -> str:
-    return (TREE / f"{emit.module_path(document)}.py").read_text()
+    """The text of the FILE holding one document's module, off the fresh tree.
+
+    ``module_file`` and not ``module_path``: the second is the NAME's path, and
+    ``brand.json`` -- whose path is also a directory's -- is a package ROOT whose file is
+    ``brand/__init__.py``, so a reader spelling ``brand.py`` asks for a file the emitter
+    is decided never to write.
+    """
+    return (TREE / f"{emit.module_file(document, PACKAGES)}.py").read_text()
 
 
 @functools.lru_cache(maxsize=None)
@@ -5178,7 +5190,7 @@ def test_unique_items_is_a_rule_on_the_holder_because_no_constraint_renders_it()
         {
             d
             for d in out.emitted
-            if "Distinct(" in out.files[f"{emit.module_path(d)}.py"]
+            if "Distinct(" in out.files[f"{emit.module_file(d, PACKAGES)}.py"]
         },
         inside=set(out.emitted),
     )
@@ -6759,7 +6771,7 @@ def test_one_documents_module_is_the_same_text_alone_as_with_the_whole_bundle() 
     A leaf scalar would satisfy the property for free.
     """
     document = "creative/preview-render.json"
-    rel = emit.module_path(document) + ".py"
+    rel = emit.module_file(document, PACKAGES) + ".py"
     whole = compiled(BUNDLE, population())
     assert document in whole.emitted, sorted(whole.refusals)[:5]
     # The three facts that make this document a real test of the property, each read as
@@ -6942,7 +6954,7 @@ def test_a_document_whose_path_is_also_a_directorys_is_that_packages_root() -> N
             if isinstance(node, ast.ImportFrom) and node.level == 1:
                 raise AssertionError(f"{stem}/__init__.py imports its own package: {node.module}")
         for other in sorted(inward):
-            text = (TREE / f"{emit.module_path(other)}.py").read_text()
+            text = (TREE / f"{emit.module_file(other, roots)}.py").read_text()
             spelled = emit.relative_module(other, document, roots)
             assert f"from {spelled} import " not in text, (other, spelled)
 
@@ -10270,8 +10282,9 @@ def test_every_conjunct_contributes_every_part_of_itself() -> None:
             # ``test_the_committed_tree_is_what_a_fresh_run_emits`` is the tie D14 says
             # carries every committed-tree reader; this states it for the modules whose
             # conjuncts this grades, so the tie is part of THIS clause's input.
-            written = out.files[f"{emit.module_path(document)}.py"]
-            assert written == (TREE / f"{emit.module_path(document)}.py").read_text(), document
+            rel = f"{emit.module_file(document, PACKAGES)}.py"
+            written = out.files[rel]
+            assert written == (TREE / rel).read_text(), document
             declared_here = getattr(module, here[pointer])
             if not isinstance(declared_here, type):
                 # **A COMPOSING NODE THAT IS NOT A CLASS, and §5's ``$ref`` row at CONJ

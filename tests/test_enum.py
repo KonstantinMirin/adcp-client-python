@@ -51,7 +51,7 @@ from codegen import refusal as refusal_module
 from compiled import compiled
 import populations
 from conftest import refusal_from
-from tests.test_emit import BUNDLE, graded, population, TREE
+from tests.test_emit import BUNDLE, graded, PACKAGES, population, TREE
 from tests.nodeset import claimed, partitions
 
 def _probe(raw: dict, pointer: str = "", position: Position = Position.PROP) -> schema_nodes.Base:
@@ -80,13 +80,18 @@ def root_enums() -> list[str]:
 def emitted_enum_classes() -> list[tuple[str, str, ast.ClassDef]]:
     """``(document, module source, class)`` for every enum class in the tree.
 
-    Read off the AST of what was committed, and selected by the BASE the compiler
-    rendered rather than by a name convention, so a class that stopped being an
-    enumeration drops out of the population instead of being graded as one.
+    Two readings, and they are different readings of different things.  WHICH CLASSES
+    are collected is read off the AST and selected by the BASE the compiler rendered, so
+    a class that stopped being an enumeration drops out of the population instead of
+    being graded as one.  WHICH FILE each document's module is in is a derivation and
+    not a scan, and the derivation is ``emit.module_file`` -- a document whose path is
+    also a directory's is a package ROOT written to ``<path>/__init__.py``, so
+    ``module_path`` (the NAME's path) names no file for ``brand.json`` and the read
+    raised ``FileNotFoundError`` on ``brand.py``.
     """
     out: list[tuple[str, str, ast.ClassDef]] = []
     for document in sorted({g.ref.document for g in graded()}):
-        src = (TREE / f"{emit.module_path(document)}.py").read_text()
+        src = (TREE / f"{emit.module_file(document, PACKAGES)}.py").read_text()
         for node in ast.walk(ast.parse(src)):
             if isinstance(node, ast.ClassDef) and {
                 b.id for b in node.bases if isinstance(b, ast.Name)
@@ -307,7 +312,7 @@ def test_an_enum_node_is_a_class_over_an_enum_base_and_is_not_also_assigned() ->
         doc = bundle.read(BUNDLE, document)
         module = importlib.import_module(f"{emit.PACKAGE}.{emit.module_path(document).replace('/', '.')}")
         (symbol,) = module.__all__
-        tree = ast.parse((TREE / f"{emit.module_path(document)}.py").read_text())
+        tree = ast.parse((TREE / f"{emit.module_file(document, PACKAGES)}.py").read_text())
         declared = [n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == symbol]
         assert len(declared) == 1, document
         assert {b.id for b in declared[0].bases if isinstance(b, ast.Name)} <= {
@@ -423,7 +428,7 @@ def test_the_injectivity_check_binds_to_the_function_that_actually_runs() -> Non
                 nodes.add((document, pointer))
             else:  # routed to a ``Literal``, so no class was minted from it
                 source = compiled(BUNDLE, population()).files[
-                    f"{emit.module_path(document)}.py"
+                    f"{emit.module_file(document, PACKAGES)}.py"
                 ]
                 minted = {
                     frozenset(n for n, _ in _members(cls))
@@ -455,7 +460,7 @@ def test_enum_descriptions_are_carried_into_the_member_docstrings() -> None:
     entries: set[tuple[str, str, str]] = set()
     multiline: set[tuple[str, str, str]] = set()
     for document in sorted({g.ref.document for g in graded()}):
-        tree = ast.parse((TREE / f"{emit.module_path(document)}.py").read_text())
+        tree = ast.parse((TREE / f"{emit.module_file(document, PACKAGES)}.py").read_text())
         rendered = {
             frozenset(n for n, _ in _members(cls)): _docstrings(cls)
             for cls in ast.walk(tree)
@@ -902,7 +907,7 @@ def test_two_members_spelling_one_name_give_a_literal_of_both_and_no_enum_class(
     out = compiled(BUNDLE, population())
     assert document not in out.refusals, out.refusals[document]
     assert document in out.emitted
-    source = out.files[f"{emit.module_path(document)}.py"]
+    source = out.files[f"{emit.module_file(document, PACKAGES)}.py"]
     assert "'clickTag'" in source and "'clickTAG'" in source, source
 
 
@@ -952,7 +957,7 @@ def test_an_integer_enum_becomes_an_int_enum_at_the_three_nodes_that_carry_one()
         module = importlib.import_module(
             f"{emit.PACKAGE}.{emit.module_path(document).replace('/', '.')}"
         )
-        tree = ast.parse((TREE / f"{emit.module_path(document)}.py").read_text())
+        tree = ast.parse((TREE / f"{emit.module_file(document, PACKAGES)}.py").read_text())
         at_this_node = [
             cls
             for cls in ast.walk(tree)
@@ -1196,10 +1201,17 @@ def test_the_emitted_tree_still_declares_every_module_it_imports() -> None:
     which is the function ``lower_document`` makes the symbol with -- so this cannot
     pass by restating what the tree happens to hold.
     """
+    # **THE TWO READINGS ARE BOTH NEEDED HERE and they are not interchangeable**, which
+    # is why each has its own name below.  ``module`` is the NAME's path and it is what a
+    # relative import's TAIL resolves to, so it is the key ``exported`` is held under and
+    # the key ``target`` is looked up by.  ``file`` is the FILE that holds it, which is
+    # what gets opened AND what the LEADING DOTS count hops up from -- the same asymmetry
+    # ``emit.relative_module`` is written to: ``brand.json`` is a package root, so its
+    # name is ``brand`` and its file is ``brand/__init__``, one level deeper.
     exported: dict[str, set[str]] = {}
     for document in sorted({g.ref.document for g in graded()}):
         module = emit.module_path(document)
-        tree = ast.parse((TREE / f"{module}.py").read_text())
+        tree = ast.parse((TREE / f"{emit.module_file(document, PACKAGES)}.py").read_text())
         listed = [
             e.value
             for n in tree.body
@@ -1215,11 +1227,12 @@ def test_the_emitted_tree_still_declares_every_module_it_imports() -> None:
     checked: set[tuple[str, str, str]] = set()
     for document in sorted({g.ref.document for g in graded()}):
         module = emit.module_path(document)
-        tree = ast.parse((TREE / f"{module}.py").read_text())
+        file = emit.module_file(document, PACKAGES)
+        tree = ast.parse((TREE / f"{file}.py").read_text())
         for n in ast.walk(tree):
             if not isinstance(n, ast.ImportFrom) or not n.level:
                 continue
-            up = Path(module).parent
+            up = Path(file).parent
             for _ in range(n.level - 1):
                 up = up.parent
             target = str(up / (n.module or "").replace(".", "/"))

@@ -363,7 +363,7 @@ def test_the_base_module_is_a_function_of_the_bundle_and_not_of_the_run() -> Non
     what a consumer's import resolves against.
     """
     document = "brand/creative-approval-response.json"
-    rel = emit.module_path(document) + ".py"
+    rel = emit.module_file(document, fresh.PACKAGES) + ".py"
     alone = compiled(BUNDLE, [document])
     # Against the WHOLE-POPULATION run's own output, read off the tree a fresh run wrote
     # (``docs/plan/architecture.md``, 2026-10-29, and ``tests/fresh.py``): comparing a

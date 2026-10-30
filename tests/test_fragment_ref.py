@@ -406,9 +406,8 @@ def test_the_named_node_population_is_read_off_the_bundle_and_not_off_a_run() ->
 
     document = "core/version-envelope.json"
     alone = compiled(BUNDLE, [document])
-    assert alone.files[f"{emit.module_path(document)}.py"] == (
-        TREE / f"{emit.module_path(document)}.py"
-    ).read_text()
+    rel = f"{emit.module_file(document, fresh.PACKAGES)}.py"
+    assert alone.files[rel] == (TREE / rel).read_text()
 
 
 def test_a_named_node_is_declared_once_in_its_own_module_and_the_property_uses_it() -> None:
@@ -424,7 +423,9 @@ def test_a_named_node_is_declared_once_in_its_own_module_and_the_property_uses_i
     byte compare below, separately.  Read off the AST, not the text.
     """
     document = "core/version-envelope.json"
-    tree = ast.parse(compiled(BUNDLE, [document]).files[f"{emit.module_path(document)}.py"])
+    tree = ast.parse(
+        compiled(BUNDLE, [document]).files[f"{emit.module_file(document, fresh.PACKAGES)}.py"]
+    )
     aliases = {
         t.target.id: t.value
         for t in tree.body
@@ -873,7 +874,7 @@ def test_the_committed_tree_is_the_fresh_emission_of_the_derived_population() ->
     the file THIS step touches, so a regression here names this step.
     """
     document = "core/version-envelope.json"
-    rel = f"{emit.module_path(document)}.py"
+    rel = f"{emit.module_file(document, fresh.PACKAGES)}.py"
     assert compiled(BUNDLE, [document]).files[rel] == (TREE / rel).read_text()
 
 
