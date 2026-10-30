@@ -20,8 +20,10 @@ names the four readers that derive from it and the rule that nothing else under
 * **lowering** -- a handler asks which of the keywords on its node are TYPE facts,
   which are RULE sources, which are annotations it carries.  Section 14 step 8's
   reader; this row declares the column.
-* **grading** -- the comparison's compared set is
+* **the document-side fold** -- the facts a fold carries from a conjunct into the node
+  it composes, and from a union's branches into their agreement, are
   ``{k for k in TABLE if cell(k, p).rendered}`` (:func:`rendered_at`).
+  ``harness.FOLDED_FACTS`` is that set at ROOT, which is where every fold is entered.
 
 **Where a refusal's KIND comes from.**  Section 3 of the architecture document: the
 kind is derived from the cell and never chosen at a raise site.  A key with NO ROW,
@@ -29,26 +31,24 @@ or a document contradicting itself, is a VERDICT; a cell with a lowering effect 
 handler has no code for the shape yet is a DEFERRAL.  ``compiler.kind_for`` is that
 derivation and it is the only place the two are told apart.
 
-**What ``rendered`` asks.**  Does a faithful model state this keyword as a FACT in
-``model_json_schema()`` -- a value the comparison can compare for equality?  Section 8
-of the semantics document gives a keyword four answers, and they are alternatives: the
-model *renders it as a fact*, *descends it as structure*, *enforces it as a rule*, or
-*carries nothing*.  So:
+**What ``rendered`` asks.**  Does a faithful model state this keyword as a FACT about a
+value -- one self-contained assertion, at one pointer, that a fold can carry from the
+node that states it to the node it applies to?  Section 8 of the semantics document
+gives a keyword four answers, and they are alternatives: the model *renders it as a
+fact*, *descends it as structure*, *enforces it as a rule*, or *carries nothing*.  So:
 
 * a keyword the model states as STRUCTURE -- ``properties``, ``items``,
   ``propertyNames``, ``patternProperties``, ``$ref``, the combinators, the
-  conditionals -- has :attr:`Cell.descends` set and ``rendered=False``.  It is graded
-  by DESCENDING it, which is the descent column's job and not the rendered column's;
-  a comparison that also compared it as a value would report a spelling as a
-  difference and leave the facts inside it ungraded.
-* a keyword the model enforces as a RULE renders nothing in ``model_json_schema()``,
-  so ``rendered=False`` -- section 8: "a keyword the declaration compiles to a rule
-  renders nothing in the model's schema, so the comparison grades it against the
-  class's rule tuple".  That rule-tuple reader is section 8's and is not built here,
-  so ``minProperties``/``maxProperties``/``dependencies`` are declared ``RULE`` and
-  ungraded for now.  ``uniqueItems`` is the one exception and the document states it:
-  section 5 writes a ``json_schema_extra={"uniqueItems": true}`` beside the rule
-  "so it is graded", so its cell is ``RULE`` and ``rendered=True``.
+  conditionals -- has :attr:`Cell.descends` set and ``rendered=False``.  It is read by
+  DESCENDING it, which is the descent column's job and not the rendered column's; a
+  fold that carried it as a value would copy a whole subtree to the composed pointer
+  and bury the facts inside it one level deeper than the walk looks.
+* a keyword the model enforces as a RULE renders nothing about the value on its own
+  node, so ``rendered=False``: it compiles to a validator the class runs, which is not
+  a fact at a pointer and so is not a fact a fold can carry.  ``uniqueItems`` is the
+  one exception and the document states it: section 5 writes a
+  ``json_schema_extra={"uniqueItems": true}`` beside the rule, so its cell is ``RULE``
+  and ``rendered=True``.
 
 **``compiles`` is why generation is possible at all.**  The grid's prose column is
 English and no triple of ``effect``, ``rendered`` and ``descends`` writes it, so the
@@ -392,7 +392,7 @@ _STRUCTURE: dict[str, Row] = {
             "admits an object carrying `x` with any value, which is what the `type` "
             "row already gives an absent type word, so nothing is dropped and no "
             "declaration is owed. The model-only `properties` entry it renders is "
-            "the empty schema, which §8 folds by reading `{}` as the `true` it is. "
+            "the empty schema, which states nothing the document does not. "
             "`required: []` → nothing.",
         ),
         {
@@ -465,9 +465,9 @@ _STRUCTURE: dict[str, Row] = {
             "REPORTED: draft-07 ignores every sibling of `$ref`, so the keyword "
             "constrains no instance and the document's accepted set is the target's "
             "alone. The record keeps the key, because §3 drops none; the "
-            "declaration's cell says it compiles to nothing at this co-occurrence, so "
-            "§8 does not grade it; and the report names it, because a key that reads "
-            "as a constraint and is inert is worth reading once. Refusing it instead "
+            "declaration's cell says it compiles to nothing at this co-occurrence; and "
+            "the report names it, because a key that reads as a constraint and is "
+            "inert is worth reading once. Refusing it instead "
             "would refuse a document whose accepted set its own draft decides, and "
             "letting the referring value win would make the record state an "
             "acceptance fact the bundle does not — §9's last rule.",
@@ -528,8 +528,8 @@ _VALUES: dict[str, Row] = {
             "admits nothing: the pin is checked against the format, and where it "
             "satisfies it the `Literal` is already strictly tighter than any type the "
             "format would select, while where it does not the node is §5's empty "
-            "intersection and refuses upstream. So no fact is dropped and §8 grades the "
-            "`format` as not rendered at this co-occurrence "
+            "intersection and refuses upstream. So no fact is dropped, and the cell "
+            "declares the `format` as rendering nothing at this co-occurrence "
             "(`adcp-client-python-10l.70`, decided 2026-10-29). "
             "A `str`, `bool` or `int` value; an object, array, `null` or float "
             "refuses. On a branch's property → also the second of the branch-naming "
@@ -592,8 +592,8 @@ _VALUES: dict[str, Row] = {
             # is named, the `StrEnum` is the key type and renders the same way."
             #
             # ``rendered`` is True for exactly that reason: the fact reaches
-            # ``model_json_schema()`` under the document's own keyword, so §8 compares it
-            # rather than having to excuse it.
+            # ``model_json_schema()`` under the document's own keyword, so the model
+            # states the document's own fact rather than an approximation of it.
             Position.KEY: Cell(
                 Effect.TYPE,
                 True,
@@ -624,9 +624,9 @@ _VALUES: dict[str, Row] = {
                 " beside a `$ref` whose target is an enumeration → §2's intersection of "
                 "the two vocabularies, rendered as a `Literal` over the TARGET's MEMBERS "
                 "and not over their raw values. The two dump identically — "
-                "`{\"enum\": [the members], \"type\": \"string\"}` — so §8 compares the "
+                "`{\"enum\": [the members], \"type\": \"string\"}` — so they state the "
                 "same fact either way, and the member form keeps the imported symbol a "
-                "caller can name: where §8 cannot tell two renderings apart, DX decides. "
+                "caller can name: where two renderings state one fact, DX decides. "
                 "A vocabulary the target does not contain is the empty intersection and "
                 "refuses, by the same rule that refuses a member the node's own "
                 "constraints exclude.",
@@ -942,9 +942,9 @@ _OBJECTS: dict[str, Row] = {
             "`content-standards/get-content-standards-response.json#/oneOf/0`, where "
             "the union base states `allow` from the root's envelope conjunct and the "
             "composed target's default `ignore` wins the merge, so the model drops keys "
-            "the document admits and §8 reports `missing /additionalProperties`. The "
+            "the document admits. The "
             "value is read from what the document states at the class's own pointer "
-            "after §8's pairing fold — which is where the root's conjunct arrives — and "
+            "after the document-side fold — which is where the root's conjunct arrives — and "
             "written on the class, so MRO order decides nothing a document states. "
             "On a mapping (no `properties`) → the VALUE type; `true` or "
             "`{}` → `Any`; `false` → refused, it admits only the empty object. Beside "
@@ -1299,23 +1299,26 @@ _ADMITTED: dict[str, Row] = {
         )
     ),
     #: **``rendered`` is FALSE here and §6's row says "Rendered, so graded" -- a
-    #: DEVIATION, measured, and reported on the row rather than resolved by this one.**
+    #: DEVIATION, and it is declared on the row rather than resolved by this one.**
     #:
     #: The emitter writes nothing for ``deprecated``: no ``Field(deprecated=True)``, no
-    #: ``json_schema_extra`` on a class.  Measured by setting this cell to ``True`` and
-    #: grading the committed tree: 117 pairs over 105 documents report the keyword
-    #: ``missing`` -- 115 at a property of a root class, 25 at a property of a nested
-    #: one, 11 at a class root, 2 inside an array element -- and NOTHING ELSE moves.
-    #: The report is correct: the model does not state a fact its document states.
+    #: ``json_schema_extra`` on a class.  Measured over the committed tree, the keyword
+    #: is stated by 105 documents at 153 positions -- 115 at a property of a root class,
+    #: 25 at a property of a nested one, 11 at a class root, 2 inside an array element
+    #: -- and the model states none of them.
+    #:
+    #: ``False`` is therefore the declaration that matches the emitter, and the column's
+    #: one live reader makes the direction matter: ``rendered_at`` is the set the
+    #: document-side FOLD carries, so declaring ``True`` for a keyword the emitter never
+    #: writes would make the fold carry a fact to a composed pointer that no artifact
+    #: states there.
     #:
     #: It is not resolved here because the emitter half is a handler edit and §14 gives
     #: no step that carries it: step 8's list of unwritten cells names root siblings on
     #: a union base, a scalar target as a composing node's type, the type-bound
     #: validators for ``uniqueItems``/``contains``/``not``, a one-class union, and the
-    #: manifest dispatch source -- and not this.  So the choice at this row is between
-    #: a declaration that states what §6 states and 117 red pairs with no row to clear
-    #: them, or this line.  Flipping it is the whole of the change once a row owns the
-    #: emitter half, and the measurement above is what that row inherits.
+    #: manifest dispatch source -- and not this.  Flipping it is the whole of the change
+    #: once a row owns the emitter half.
     "deprecated": Row(
         Cell(Effect.NOTHING, False, None, "A `false` → nothing. Rendered, so graded."),
         {
@@ -1775,8 +1778,8 @@ RANGES: tuple[tuple[str, str], ...] = (
 #: distinguishes ``minimum: 0`` from ``exclusiveMinimum: 0``, and the two differ on exactly
 #: one instance".  A reader that has to name a value AT a bound needs this column: an
 #: exclusive bound admits no instance at it, so "the bound exactly" is not a value class
-#: the document has (``harness.value_classes``), while a narrowing comparison and a fold
-#: order the two the same way and read :data:`RANGES` alone.
+#: the document has (``harness.value_classes``), while a fold orders the two the same way
+#: and reads :data:`RANGES` alone.
 EXCLUSIVE: frozenset[str] = frozenset({"exclusiveMinimum", "exclusiveMaximum"})
 
 
@@ -1833,7 +1836,7 @@ def pins_a_floor(keyword: str) -> bool:
 
     The one question both halves ask of a bound, and the reason :data:`RANGES` is declared
     rather than held per reader: a floor rises as it narrows and a ceiling falls, so a
-    comparison, a fold and a draw all turn on this one bit and must turn on the same one.
+    fold and a draw both turn on this one bit and must turn on the same one.
     """
     return keyword in FLOORS
 
@@ -1856,12 +1859,16 @@ def cell(keyword: str, position: Position) -> Cell | None:
 
 
 def rendered_at(position: Position) -> frozenset[str]:
-    """The comparison's compared set: every keyword a faithful model RENDERS here.
+    """Every keyword a faithful model RENDERS as a fact about a value here.
 
-    Section 8 of the semantics document: "the comparison's keyword set equals the set
-    the declaration renders.  A keyword the declaration renders and the comparison
-    does not carry is a defect in the comparison.  Nothing else in this section means
-    anything until that holds, because every other check inherits its reach."
+    **The set the document-side FOLD ranges over** (``harness.FOLDED_FACTS``, which is
+    this set at ROOT): a conjunct's facts are carried into the node it composes and a
+    union's branch agreement into the branches' common node, and a keyword missing from
+    this set is one the fold silently refuses to carry -- so a declaration made at the
+    composed pointer, which is where ``emit._folded`` writes it, cannot be found there
+    by ``harness.check_widening``'s walk.  A hand-written list beside the fold is the
+    one way the fold can be complete with respect to itself and blind to everything
+    beyond it, so it is read off the declaration instead.
     """
     return frozenset(k for k in TABLE if (c := cell(k, position)) is not None and c.rendered)
 

@@ -41,22 +41,21 @@ nothing to restate; the only spelling that could add one
 (``Annotated[Literal[...], WithJsonSchema(...)]``) would be the emitter writing the
 model's schema by hand.
 
-**No comparison row is needed for the 832 TYPELESS const nodes either**, and that
-is a measurement rather than a hope.  ``const`` is already in ``harness.FACTS``, so
-the document's own pin is compared in both directions; and where the document
-states no ``type`` the model states one it does not, which
-``harness._entails_type`` already derives FROM THE DOCUMENT'S OWN ``const``
-(``_JSON_TYPE.get(type(doc["const"])) == value``).  That rule's docstring was
-written for exactly this rendering, and it is gated on the value, so a model
-claiming ``integer`` over a string ``const`` still reddens.  Nor does resolution
-undo it: ``bundle.record`` is this package's own inliner and copies a node with every
+**The 832 TYPELESS const nodes need nothing of their own either**, and that is a
+measurement rather than a hope.  The pin is the whole of what such a node admits, so
+``harness.check_accepts`` has exactly one value to place and ``Literal[value]`` takes
+it, and the dump round trip hands that same value back for the document's own
+validator to re-read.  The type word pydantic writes beside the literal is derived
+from the VALUE, so it states nothing the pin has not already decided: no fact is
+dropped at such a node and there is no widening to declare.  Nor does resolution
+drop one: ``bundle.record`` is this package's own inliner and copies a node with every
 key it states, at the referrer as much as at the target -- which is what row .3
 closed.  The delegated resolver it replaced reduced any FINITE value set to that set
 alone and dropped every annotation at it while inlining, so a ``const`` node kept its
 ``type`` and ``description`` in its own packaged document and lost both inside a
 document referencing it; ``tests/test_emit.py``'s
 ``test_a_const_node_inlined_through_a_ref_keeps_its_annotations`` is the measurement
-on the pair that forced the comparison row now deleted (architecture §9).
+that this inliner does not (architecture §9).
 
 **TWO REFUSALS.**  Both come from ``lower.union._literal``, which is where this row
 lived while it was scoped to one branch property, and both have a population of 0 in
@@ -77,14 +76,13 @@ this bundle:
 **KNOWN CEILING**, named rather than coded against because this bundle does not
 reach it: a node whose ``type`` word is a SUPERTYPE of the value's own -- the only
 such pair left once ``float`` is refused is ``{"type": "number", "const": 3}`` --
-passes that validator and renders ``type: integer``, which the comparison reports as
-``differs``.  Measured exactly: **0 of the 1,486** const nodes state a ``type`` word
-that a one-member ``Literal`` does not render, and 0 state a ``type`` LIST.  The
-failure is a reddened gate rather than a silent widening, so the step whose
-population reaches one decides between refusing the node and widening the
-annotation; a check here today would need a second copy of ``harness._JSON_TYPE``,
-which a lowering cannot import (D13) and which is the duplicate that costs more than
-the ceiling.
+passes that validator, and the ``Literal`` then pins the value's own JSON type where
+the document named a wider one.  Measured exactly: **0 of the 1,486** const nodes
+state a ``type`` word that a one-member ``Literal`` does not render, and 0 state a
+``type`` LIST.  The step whose population reaches one decides between refusing the
+node and widening the annotation; a check here today would need this row's own table
+of which JSON type a Python value renders as, and such a table is the duplicate that
+costs more than the ceiling.
 """
 
 from __future__ import annotations
@@ -215,15 +213,10 @@ def lower(node: nodes.Constant, mod: compiler.Module) -> ir.Decided | Refusal:
     * the pin satisfies it -> ``Literal[v]`` is exactly the document's own set.  Nothing
       is dropped and no approximation is declared, because nothing is approximated: the
       constraint narrows nothing the ``const`` has not already decided, so a model that
-      restates it and one that does not admit the same instances.  **KNOWN CEILING, named
-      because this bundle does not reach it**: a ``Literal`` renders ``const`` and a type
-      word and no ``pattern``, so §8 would report the document's own ``pattern`` as
-      *missing* at a pair -- the entailment that already derives a type word FROM the
-      ``const`` (``harness._entails_type``) has no clause for a constraint the ``const``
-      satisfies.  Population 0 today: the one node the intersection rule reaches is in a
-      document refused on its branch names, so no emitted pair carries one, and the step
-      whose population reaches one adds the comparison's own row rather than this one
-      hiding the fact with a ``WithJsonSchema``;
+      restates it and one that does not admit the same instances: the draw has the pin to
+      place either way, and the dump hands the pin back for the document's own validator
+      to re-read against the constraint.  Population 0 today in any case -- the one node
+      the intersection rule reaches is in a document refused on its branch names;
     * the pin does not -> the node admits NOTHING, and a ``Literal`` of the value would
       be a model wider than its schema.  That is the refusal the row already had for the
       ``type`` word alone, now asked of everything the node states, because the ``type``
@@ -301,8 +294,8 @@ def lower(node: nodes.Constant, mod: compiler.Module) -> ir.Decided | Refusal:
     # "because a fixed value either satisfies the format or the node admits nothing: the
     # pin is checked against the format, and where it satisfies it the ``Literal`` is
     # already strictly tighter than any type the format would select, while where it does
-    # not the node is §5's empty intersection and refuses upstream.  So no fact is dropped
-    # and §8 grades the ``format`` as not rendered at this co-occurrence."
+    # not the node is §5's empty intersection and refuses upstream."  So no fact is
+    # dropped at this co-occurrence, and nothing is declared for it.
     #
     # **This REPLACES the arm that rode it** as ``json_schema_extra={"format": …}``, and
     # the two readings differ on one question: is the ``format`` a fact the pin DROPS?

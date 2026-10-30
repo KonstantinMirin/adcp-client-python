@@ -27,10 +27,10 @@
 # same reason, and so does the bd memory on sibling worktrees.  A lane that measures this
 # gate the other way will report a number that is about its PATH and not about this code.
 #
-# A COLLECTION ERROR IS NOT A GREEN RUN.  The verdict below matches "failed|error", for
-# the reason `perturb_dump_exemptions.sh` records: a perturbation that leaves a
-# SyntaxError never runs, and a scraper reading only "N failed" scores that as a guard
-# that cannot redden -- the exact opposite of what it measured.
+# A COLLECTION ERROR IS NOT A GREEN RUN.  The verdict below matches "failed|error" for
+# this reason: a perturbation that leaves a SyntaxError never runs, and a scraper reading
+# only "N failed" scores that as a guard that cannot redden -- the exact opposite of what
+# it measured.
 set -u
 cd "$(dirname "$0")" || exit 1
 

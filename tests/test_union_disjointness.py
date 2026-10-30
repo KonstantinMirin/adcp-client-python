@@ -26,17 +26,15 @@ assertions below are on the dispatch and not on the emitted set.
 
 from __future__ import annotations
 
-import importlib
 import json
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Any, Literal, NamedTuple
+from typing import Any, NamedTuple
 
 from jsonschema import Draft7Validator
-from pydantic import create_model
 
-from adcp.types._base import UNDERDETERMINED, SchemaRef, schema_at
+from adcp.types._base import UNDERDETERMINED
 from compiled import compiled
 from codegen import bundle, compiler, emit, harness, keywords
 from codegen.keywords import Rung
@@ -934,10 +932,9 @@ def test_the_pinned_value_clauses_population_is_one_site_and_the_exclusion_is_me
     the branches themselves."
 
     **NOT LANDED, and filed as adcp-client-python-6zg** -- §8 has no pairing rule for a
-    class that is the union of its branches, and the companion test below measures what
-    collapsing the one site costs.  This one is the population, because the count is what
-    the previous instalment got wrong: it read 3 DOCUMENTS off nearby refusals, and the
-    clause's own shape holds at one site.
+    class that is the union of its branches.  What is graded here is the POPULATION,
+    because the count is what the previous instalment got wrong: it read 3 DOCUMENTS off
+    nearby refusals, and the clause's own shape holds at one site.
 
     The exclusion is the interesting half and it is the clause's own word "only": 4 sites
     match when annotations are ignored and 3 of them have branches differing in a
@@ -979,67 +976,6 @@ def test_the_pinned_value_clauses_population_is_one_site_and_the_exclusion_is_me
             if len({json.dumps(b.get(key), sort_keys=True) for b in branches}) > 1
         }
         assert differing & (_ANNOTATIONS | {"properties"}) - {"properties"}, (site, differing)
-
-
-def test_collapsing_the_one_pinned_value_site_reports_three_added_facts() -> None:
-    """What landing §5's clause costs TODAY, measured rather than forecast.
-
-    ``core/canonical-media-buy-action.json`` emits as a base and three branches and all
-    of its pairs pass all three checks.  Handed the merged class the clause asks for --
-    each pinned field admitting the union of the branches' values -- the comparison
-    reports ``model_adds_a_fact`` with three ``added`` facts, because the document's ROOT
-    states ``oneOf`` and no ``properties`` of its own.
-
-    That is not a defect in the comparison and ``harness._composed`` says why in as many
-    words: "``anyOf``/``oneOf`` at a root are left alone, and must be.  A branch's
-    properties are satisfied by SOME branch, not by every instance, so folding one in the
-    way a conjunct is folded would state a fact the document does not state."  What is
-    missing is the THIRD of §8's pairing rules for a class cut out of a combinator -- it
-    has the branch-under-the-root's-siblings rule and its type-list dual, and none for a
-    class that is the union of its branches.  **adcp-client-python-6zg**, reported rather
-    than chosen, which is what this row did for §4's fourth mechanic.
-
-    This test is what reddens when that sentence lands.
-    """
-    document = "core/canonical-media-buy-action.json"
-    doc = bundle.record(BUNDLE, document)
-    branches = doc["oneOf"]
-    tasks = tuple(b["properties"]["task"]["const"] for b in branches)
-    actions = tuple(sorted({a for b in branches for a in b["properties"]["action"]["enum"]}))
-    merged = create_model(
-        "CanonicalMediaBuyAction",
-        __doc__=doc["description"],
-        task=(Literal[tasks], ...),
-        action=(Literal[actions] | None, None),
-    )
-    res = harness.compare_schema(
-        doc, merged, document=doc, position=keywords.Position.ROOT, at="#"
-    )
-    assert res.outcome == "model_adds_a_fact", (res.outcome, res.detail)
-    assert sorted(f.split(":")[0] for f in res.added) == [
-        "/properties/action",
-        "/properties/task",
-        "/required",
-    ], res.added
-    assert (res.missing, res.differs) == ([], []), res
-
-    # The control: as a base and three branches, every pair the document emits PASSES.
-    for symbol in (
-        "CanonicalMediaBuyAction",
-        "CanonicalMediaBuyActionControlMediaBuy",
-        "CanonicalMediaBuyActionRefineProposals",
-        "CanonicalMediaBuyActionSyncCreatives",
-    ):
-        cls = getattr(
-            importlib.import_module("adcp.types._schemas.core.canonical_media_buy_action"),
-            symbol,
-        )
-        ref = cls.__adcp_schema__
-        node = schema_at(ref)
-        got = harness.compare_schema(
-            node, cls, document=schema_at(SchemaRef(ref.document, "#")), at=ref.pointer
-        )
-        assert got.outcome == "pass", (symbol, got)
 
 
 # --------------------------------------------------------------------------- #

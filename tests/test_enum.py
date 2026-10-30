@@ -1,20 +1,18 @@
 """Grade D2's enumeration row: an ``enum`` node becomes a ``StrEnum``/``IntEnum``.
 
 **Why this file exists at all, and what the harness does and does not reach.**
-``tests/test_emit.py`` grades every emitted pair through the three checks, and for
-an enumeration two of the three are nearly blind: the accepts and invalid-payload checks
-run through ``strict_validate``, whose SCHEMA half refuses a non-member whatever
-the annotation says, so they grade the document and not the model.  Measured as a
-test below (:func:`test_the_schema_comparison_is_what_grades_this_row`), and the
-result corrects a finding carried forward from an earlier attempt at this step:
-the SCHEMA COMPARISON does grade it now, because ``enum`` is in
-the compared set -- a node lowered to the scalar its ``type`` names states no
-``enum`` where the document states one, and that reddens.
+``tests/test_emit.py`` grades every emitted pair through its checks, and on an
+enumeration they are blind: the accepts draw and the liveness check both run through
+``strict_validate``, whose SCHEMA half refuses a non-member whatever the annotation
+says, so they grade the document and not the model.  Measured as a test below
+(:func:`test_the_accepts_and_liveness_checks_are_blind_to_this_row`): the enum
+widening -- an enum node lowered to the scalar its ``type`` names -- leaves both
+halves green.
 
-What the harness still cannot see is everything about the enumeration that is not
-an accepted set: the member NAMES, the per-member descriptions, and the base.  A
-lower-cased member is caught by nothing except an import failure, and that is why
-the upper-casing is asserted here over the whole emitted population.
+So nothing but this file grades the row, and that reaches everything about an
+enumeration: the accepted set, the member NAMES, the per-member descriptions, and the
+base.  A lower-cased member is caught by nothing except an import failure, and that is
+why the upper-casing is asserted here over the whole emitted population.
 
 Every assertion is over something DERIVED -- the population off the bundle, the
 members off the document, the names off the function that runs -- so a pass cannot
@@ -28,21 +26,14 @@ import enum as pyenum
 import importlib
 import json
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Any
 
 import pytest
-from pydantic import Field, TypeAdapter, ValidationError
+from pydantic import TypeAdapter, ValidationError
 
 from adcp.types._base import SchemaRef, schema_at
-from codegen import bundle, compiler, emit, harness, ir, keywords, render
+from codegen import bundle, compiler, emit, ir, keywords, render
 from codegen.keywords import Position
-from codegen.harness import (
-    _entails_type,
-    _narrows_nothing,
-    _text,
-    compare_schema,
-    compared_facts,
-)
 from codegen.lower import enum as lower_enum
 from codegen.lower import names
 from codegen.schema import nodes as schema_nodes
@@ -450,7 +441,8 @@ def test_the_injectivity_check_binds_to_the_function_that_actually_runs() -> Non
 def test_enum_descriptions_are_carried_into_the_member_docstrings() -> None:
     """137 nodes carry ``enumDescriptions`` and a previous attempt dropped all of
     them, for the same reason a hand-rolled renderer dropped 142 property
-    descriptions: nothing compares an annotation that changes no accepted set.
+    descriptions: nothing in the harness grades an annotation, which changes no
+    accepted set.
 
     The compiler's own enum printer has the slot, so this asserts that every
     entry of every node the walk REACHES is in the emitted text -- counted, so it
@@ -480,15 +472,17 @@ def test_enum_descriptions_are_carried_into_the_member_docstrings() -> None:
                 if not isinstance(text, str) or not text:
                     continue
                 entries.add((document, pointer, member))
-                # Verbatim where the description is one line, and compared by its
-                # WORDS where it is not: the compiler indents a multi-line
-                # docstring into the class body, so the literal differs by exactly
-                # that indentation.  ``harness._text`` is the normalizer the schema
-                # comparison already uses for a description, rather than a second
-                # one that could be looser.
+                # Verbatim where the description is one line, and by its WORDS where
+                # it is not: the compiler indents a multi-line docstring into the class
+                # body, so the literal differs by exactly that indentation and nothing
+                # else (:func:`_by_words`).
                 if "\n" in text:
                     multiline.add((document, pointer, member))
-                    assert _text(got.get(member)) == _text(text), (document, pointer, member)
+                    assert _by_words(got.get(member)) == _by_words(text), (
+                        document,
+                        pointer,
+                        member,
+                    )
                 else:
                     assert got.get(member) == text, (document, pointer, member)
     # Three non-empty sets rather than three counts: the per-member assertion in the
@@ -500,9 +494,20 @@ def test_enum_descriptions_are_carried_into_the_member_docstrings() -> None:
     claimed("multi-line descriptions compared", multiline)
 
     # The whole block is an annotation, so NO check in the harness grades it:
-    # `enumDescriptions` is not a fact the comparison compares.  P2 in
+    # `enumDescriptions` is not even a keyword a faithful model renders.  P2 in
     # ``docs/plan/step3-prediction.md`` predicted that before it was probed.
-    assert "enumDescriptions" not in compared_facts(Position.ROOT)
+    assert "enumDescriptions" not in keywords.rendered_at(Position.ROOT)
+
+
+def _by_words(x: Any) -> Any:
+    """A description read by its words and not by its line breaks.
+
+    The compiler indents a multi-line docstring into the class body, so the emitted
+    literal and the document's own text differ by exactly that indentation.  A
+    non-string travels through unchanged, so a member the emitted class does not
+    carry at all is still a mismatch rather than a crash.
+    """
+    return " ".join(x.split()) if isinstance(x, str) else x
 
 
 def _docstrings(cls: ast.ClassDef) -> dict[str, str]:
@@ -652,56 +657,23 @@ def test_a_root_enum_binds_its_schema_and_strict_validate_at_module_scope() -> N
     assert [e["type"] for e in caught.value.errors()] == ["enum"]
 
 
-def test_the_schema_comparison_is_what_grades_this_row() -> None:
-    """P3 as a test, and it CORRECTS a finding carried forward from an earlier
-    attempt at this step.
+def test_the_accepts_and_liveness_checks_are_blind_to_this_row() -> None:
+    """The finding this file rests on, measured rather than carried forward.
 
-    That attempt measured the enum widening -- an enum node lowered to the scalar
-    its ``type`` names -- as leaving ``check_pair`` green in both directions, and
-    concluded that nothing in the harness can grade the row.  Two of the three
-    checks are still blind, for the reason they are blind to everything:
-    ``strict_validate``'s schema half refuses a non-member whatever the
-    annotation says.  The SCHEMA COMPARISON is not, because ``enum`` is in the
-    compared set: the widened model states no ``enum`` where the document states
-    one.
+    The enum widening -- an enum node lowered to the scalar its ``type`` names --
+    leaves both halves of ``check_pair`` green, for the reason they are blind to
+    everything the annotation does not decide: ``strict_validate``'s schema half
+    refuses a non-member whatever the annotation says, so the draw accepts what the
+    document accepts, the dump validates, and the liveness check gets its refusal from
+    the document.  So nothing here grades the enumeration, and everything this file
+    asserts about one it asserts over the emitted population itself.
 
-    Graded on the document of a real root enum, with the faithful model beside the
-    widened one so the two reports are read against each other rather than in
-    isolation.
+    Graded on the document of a real root enum, through the production shape of an
+    entry point: the document decides, then the annotation builds.
     """
     document = next(d for d in root_enums() if d in compiled(BUNDLE, population()).emitted)
     doc = schema_at(SchemaRef(document, "#"))
-    module = importlib.import_module(
-        f"{emit.PACKAGE}.{emit.module_path(document).replace('/', '.')}"
-    )
-    (symbol,) = module.__all__
 
-    assert "enum" in compared_facts(Position.ROOT)
-    faithful = compare_schema(doc, getattr(module, symbol))
-    widened = compare_schema(doc, str)  # the scalar the document's `type` names
-
-    assert faithful.outcome == "pass", (faithful.missing, faithful.differs, faithful.added)
-    assert widened.outcome == "model_drops_a_fact", widened
-    # **``/description`` left this list at ``adcp-client-python-10l.21``'s seventh
-    # instalment and the row's own fact is untouched.**  It read
-    # ``["/enum", "/description"]``: the widened model is a bare ``str``, so it stated
-    # neither the vocabulary nor the root's text.  §8's annotation clause (added
-    # 2026-10-27) takes an annotation out of the compared set at every pointer --
-    # ``harness.grades_a_difference``, off ``bundle.is_an_annotation`` -- because an
-    # annotation states nothing about acceptance and these checks grade acceptance.  The
-    # fact is still LOOKED FOR, so the pair keeps its evidence; what goes is the report.
-    # The reading is
-    # not weaker: the list is still an EQUALITY and not a containment, so a fact
-    # arriving reddens, and the fact that grades THIS row is ``enum``, which is what the
-    # docstring above says and what the assertion still names.
-    assert ["/enum"] == [m.split(":")[0] for m in widened.missing], widened.missing
-    # The two sets the sentence above is about, so the move is attributable: the
-    # declaration RENDERS a description and the checks do not GRADE one.
-    assert "description" in compared_facts(Position.ROOT)
-    assert not harness.grades_a_difference("description", Position.ROOT)
-    # ... and the other two checks really are blind to it: the widened annotation
-    # accepts and refuses exactly what the document does, because the schema half
-    # answers first.
     from codegen.harness import check_accepts, check_pair, Pair
 
     adapter = TypeAdapter(str)
@@ -717,103 +689,6 @@ def test_the_schema_comparison_is_what_grades_this_row() -> None:
     assert wide.accepts.outcome == "pass"
     assert wide.liveness.outcome == "pass", (wide.liveness.how, wide.liveness.detail)
     assert wide.graded_instances > 0, wide.graded_instances
-    assert wide.outcome.startswith("comparison:"), wide.outcome
-
-
-def test_the_type_an_enums_members_force_is_excused_and_a_narrowing_is_not() -> None:
-    """The one instrument clause that SURVIVES row .3, and each case of it falsified.
-
-    This used to be ``_narrows_nothing``'s enum row, which excused a model-only
-    ``type``, ``description`` and ``default`` at an enum node.  Its reason was the
-    delegated resolver: ``hypothesis_jsonschema``'s ``canonicalish`` reduces an enum
-    node to its ``enum`` ALONE, so a faithful enumeration stated three facts its own
-    resolved document no longer did.  ``bundle.record`` copies the node, so the
-    ``description`` and the ``default`` are now COMPARED against the document's own and
-    the row's two annotation clauses are deleted (architecture §9).
-
-    **The ``type`` clause has a second source the record does not touch, so it stays
-    and it MOVED to the function that asks its question.**  164 nodes of the raw 3.2
-    bundle, in 79 documents, state an ``enum`` and no ``type`` -- the document's own
-    text, not a view of it -- and a pydantic ``StrEnum`` renders
-    ``{"enum": [...], "type": "string"}``.  So the answer is "the type the node's own
-    content forces", which is ``_entails_type``'s question, beside the ``const``
-    derivation it already carried.
-
-    The canonicalization is still measured here rather than cited, because it is what
-    the deletion rests on: the resolver really did drop the three, and the record
-    really does not.
-    """
-    from hypothesis_jsonschema._canonicalise import canonicalish
-
-    stated = {"type": "string", "enum": ["a", "b"], "description": "d", "default": "a"}
-    assert canonicalish(stated) == {"enum": ["a", "b"]}
-    # ... and the same node WITHOUT the enum keeps all four, so this is the
-    # enum collapse and not a general drop.
-    kept = {"type": "string", "minLength": 1, "description": "d", "default": "x"}
-    assert canonicalish(kept) == kept
-    # The record performs no such reduction: the node is copied through a reference
-    # with every key it states, which is the whole of why the two clauses are gone.
-    assert bundle.record(BUNDLE, "core/catalog-selection.json")["properties"]["type"].keys() >= {
-        "description",
-        "enum",
-        "type",
-    }
-
-    doc = {"enum": ["a", "b"]}
-
-    class Faithful(pyenum.StrEnum):
-        """d"""
-
-        A = "a"
-        B = "b"
-
-    # The model states the TYPE its members force, which is excused.
-    #
-    # **It stated a ``description`` beside it and that half moved at
-    # ``adcp-client-python-10l.21``'s seventh instalment.**  ``added`` read
-    # ``["/description"]``: the docstring is a fact the model states and
-    # ``{"enum": ["a", "b"]}`` does not.  §8's annotation clause (added 2026-10-27) says
-    # "``added``, ``missing`` or ``differs`` on an annotation reports a difference that
-    # cannot change what a payload is accepted as", so the fact is still LOOKED FOR --
-    # ``model_facts`` is still 2 -- and no difference about it is reported.  The clause
-    # this test is ABOUT is the ``type`` row, which is unchanged and is falsified on
-    # ``_entails_type`` below.
-    #
-    # Not weaker in the direction that matters, and the rule that answers for a
-    # description is asserted unchanged further down:
-    # ``_narrows_nothing("description", "anything", doc) is False``.  So what moved is
-    # the REPORT and neither the compared set nor the rule, and a row that puts a
-    # difference about an annotation back on the wire gets its answer from the same rule.
-    excused = compare_schema(doc, Faithful)
-    assert excused.model_facts == 2, excused.model_facts  # type and description
-    assert excused.added == [], excused.added
-    assert not harness.grades_a_difference("description", Position.ROOT)
-
-    # Each case, falsified on the RULE.  End to end is the wrong level for these: every
-    # model that states a wrong type without also stating the enum is already caught as
-    # ``model_drops_a_fact``, so a report read off one says nothing about whether this
-    # clause excused anything.
-    assert _entails_type({"enum": ["a", "b"]}, "string") is True
-    assert _entails_type({"enum": ["a", "b"]}, "integer") is False
-    assert _entails_type({"enum": ["a", 1]}, "string") is False  # no one implied type
-    # bool is not int here, because ``_JSON_TYPE`` is keyed on the EXACT type: a model
-    # claiming ``integer`` over a boolean enum is a narrowing and stays reported.
-    assert _entails_type({"enum": [True, False]}, "integer") is False
-    assert _entails_type({"enum": [True, False]}, "boolean") is True
-    assert _entails_type({"enum": []}, "string") is False  # not an enum to imply from
-    # Anything else beside an enum is reported, so the clause excuses ONE keyword and
-    # not "whatever sits beside an enum".
-    assert _narrows_nothing("minLength", 5, doc) is False
-    assert _narrows_nothing("description", "anything", doc) is False
-    assert _narrows_nothing("default", "a", doc) is False
-    # ``default: None`` stays excused, and by the OTHER clause: it is D4's spelling of
-    # an absent key and has nothing to do with the enum.
-    assert _narrows_nothing("default", None, doc) is True
-    assert _narrows_nothing("default", None, doc, required=True) is False
-
-    # And end to end, a constraint at an enum node is still in ``added``.
-    narrower = compare_schema(doc, Annotated[str, Field(min_length=5)])
-    assert "/minLength" in [a.split(": ")[0] for a in narrower.added], narrower.added
 
 
 # --------------------------------------------------------------------------- #
@@ -986,8 +861,7 @@ def test_the_base_comes_from_the_members_which_is_what_admits_a_typeless_node() 
 
     Reading the base off the members is what lowers them -- and it is a faithful
     reading rather than a fallback, because ``type`` and the members agree at all
-    1,069 nodes, measured here, and the schema comparison grades ``type`` either
-    way.
+    1,069 nodes, measured here.
     """
     counted = {"typed": 0, "typeless": 0, "disagreeing": 0}
     for document in bundle.portable(BUNDLE):

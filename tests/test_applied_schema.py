@@ -12,8 +12,9 @@ that branch admits a string, so ``compiler.lower_object`` refused to build a cla
 for it -- 10 documents of the 3.2 bundle, with 34 more chaining off them through a
 ``$ref`` -- and ``_base.schema_at`` returned that same isolated node as the schema a
 branch class would then be graded against.  Fixing only the first turned one defect
-into four reds: ``core/activation-key.json``'s two branch pairs reported
-``accepts:model_refused_valid`` and ``model_adds_a_fact`` at ``/type``.  So the rule
+into two reds: ``core/activation-key.json``'s two branch pairs reported
+``accepts:model_refused_valid`` -- the draw produced an object and the class refused
+it, because the schema the pair was graded against still said a string would do.  So the rule
 is spelled ONCE, in ``_base.applied_schema``, and the emitter derives its answer from
 the function the runtime resolves ``__adcp_schema__`` through.
 
@@ -46,7 +47,7 @@ from pydantic import ValidationError
 from adcp.types import _base
 from adcp.types._base import AdCPBaseModel, SchemaRef, applied_schema, schema_at
 from compiled import compiled
-from codegen import bundle, emit, harness, keywords
+from codegen import bundle, emit, keywords
 from codegen import refusal as refusal_module
 from conftest import refusal_from
 
@@ -310,14 +311,13 @@ def test_the_difference_between_the_two_halves_is_a_schema_fact() -> None:
     # carries the root's declaration OF THAT PROPERTY, and that declaration's
     # description is the document's own at the instance this node describes.
     #
-    # §8: "there is no pointer at which an annotation is graded, because it is not among
-    # the facts being compared."  So the claim is asserted against the INSTRUMENT and
-    # not by absence, which is the stronger direction -- a strip is one site that can be
-    # forgotten, and this is the compared set itself, at every position:
+    # §8: "there is no pointer at which an annotation is graded."  So the claim is
+    # asserted against the TABLE and not by absence, which is the stronger direction --
+    # a strip is one site that can be forgotten, and ``bundle.is_an_annotation`` reads
+    # the effect column itself, at every position:
     for keyword in ("title", "description"):
         for position in keywords.Position:
             assert bundle.is_an_annotation(keyword, position), (keyword, position)
-            assert not harness.grades_a_difference(keyword, position), (keyword, position)
     # Non-vacuous in the direction that matters: the descent really does carry one, so
     # the two lines above are not a property of a loop that met neither key.
     assert "description" in asserted, sorted(asserted)
@@ -366,8 +366,9 @@ def test_what_is_conjoined_at_a_constrained_node_is_its_object_type_and_its_root
     is not a spliced conjunct and §6 does not answer it: it is the document's
     declaration at the instance this node describes.  §8 settles what it means -- "there
     is no pointer at which an annotation is graded" -- and the check above asserts it
-    against the compared set rather than against the splice.  So this clause keeps the
-    claim it can keep, over the function that makes the splice, where it is exhaustive.
+    against the TABLE's effect column rather than against the splice.  So this clause
+    keeps the claim it can keep, over the function that makes the splice, where it is
+    exhaustive.
     """
     constrained, _ = census()
     added: dict[str, set[str]] = {}

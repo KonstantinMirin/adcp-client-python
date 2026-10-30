@@ -280,8 +280,7 @@ for k, c in NEVER:
 A(f"""{row(["<code>deprecated</code>", "<b>179</b>", "no",
       '<span class="f">draft-07 annotation</span> &mdash; 179 sites in 95 documents; pydantic '
       'CAN render it (<code>Field(deprecated=True)</code>) and the emitted tree renders it '
-      'nowhere, so it is a <code>missing</code> fact waiting for the first graded document '
-      'that carries one'], "t")}
+      'nowhere, and the plan has never said which way it should go'], "t")}
 </tbody></table>
 
 <div class="note"><b>Named, but by example only.</b> Three of the bead&rsquo;s four JSON Schema
@@ -413,8 +412,7 @@ conformance tooling should reject repeated <code>kind</code> values.&rdquo;</p>
 
 <p>A D6 rule enforcing one makes the class refuse a payload
 <code>strict_validate</code>&rsquo;s schema half accepts: <code>check_accepts</code> draws from
-the document and reports <code>model_refused_valid</code>, while the schema comparison sees
-nothing at all, a rule having no rendering in <code>model_json_schema()</code>. That is the
+the document and reports <code>model_refused_valid</code>. That is the
 model-narrower-than-its-document direction, which &sect;6 names as the only one that makes a
 correct SDK refuse valid traffic. D6&rsquo;s &ldquo;a rule narrows the constructor; acceptance
 stays with the schema&rdquo; holds for its seven families because every one is a keyword the
@@ -625,12 +623,12 @@ measurement beside the decision whose population it is rather than rewriting D3.
       "<code>anyOf</code>. Spelled this way the document&rsquo;s accepted set is the CLOSED "
       "enum, so a closed <code>StrEnum</code> is faithful to the document and the document is "
       "narrower than its own author."])}
-{row(["<code>deprecated</code> is a <code>missing</code> fact in waiting", "179 sites in 95 documents",
+{row(["<code>deprecated</code> renders nowhere and nothing decides whether it should",
+      "179 sites in 95 documents",
       "pydantic renders <code>deprecated: true</code> from "
       "<code>Field(deprecated=True)</code>, and the emitted tree declares it nowhere &mdash; "
-      "its 17 textual hits are all inside descriptions. The schema comparison reports "
-      "<code>missing</code> 0 today; the first graded document carrying one changes that, and "
-      "the plan has never said which way it should go."])}
+      "its 17 textual hits are all inside descriptions. No document the emitter reaches today "
+      "carries one, and the plan has never said which way it should go."])}
 </tbody></table>
 
 <h2>7. What this row did not decide, and why</h2>
@@ -639,8 +637,8 @@ measurement beside the decision whose population it is rather than rewriting D3.
 <li><b><code>propertyNames</code> at a rule position</b> (2 nodes). Named above. Deciding it
 without a document that reaches it would be inventing the eighth family on no evidence.</li>
 <li><b>Whether <code>deprecated</code> should render.</b> The gap is named and measured; which
-way it goes is a rendering decision with a cost on the comparison, and no document the emitter
-reaches today carries one, so there is nothing to grade either answer against.</li>
+way it goes is a rendering decision, and no document the emitter reaches today carries one, so
+there is nothing to grade either answer against.</li>
 <li><b>Whether the bundle should enforce <code>x-adcp-validation</code>.</b> Upstream. A model
 carrying those rules would be narrower than the document it names.</li>
 <li><b>Whether to carry the <code>x-</code> facts onto the class</b> (a <code>ClassVar</code>

@@ -5,27 +5,23 @@ cell widened", and that exit condition is what makes this file necessary rather 
 optional: with ``APPROXIMATED`` at 0 over the whole bundle, every check the step adds is
 green over an empty set, and an instrument graded over an empty set is graded by nothing.
 So every arm here is exercised on a CONSTRUCTED pair -- a hand-written class, a hand-built
-declaration, and a document the two are compared against -- and each clause is asserted in
-BOTH directions: it catches the defect it is for, and it does not fire on the faithful
-case beside it.
+declaration, and a document the two are put to a draw against -- and each clause is
+asserted in BOTH directions: it catches the defect it is for, and it does not fire on the
+faithful case beside it.
 
-``docs/plan/rebuild-plan.md`` section 8 names the two set equalities and says why they are
-the whole of this row:
+``docs/plan/rebuild-plan.md`` section 8 says what stops a declaration from being an
+allowlist, and it is the accepts obligation: "Nobody can add an entry to make a failure go
+away without the model actually widening at that pointer, because the accepts draw then
+has to accept the values the keyword distinguishes."  That obligation
+(``harness.check_widening``) is the instrument perturbed here in both directions, beside
+the one equality the other KIND of declaration is held to: the set of unions declaring an
+UNDERDETERMINED approximation equals the set section 4's derivation cannot separate
+(``harness.underdetermined_census``, at the end of this file).
 
-1. "The comparison's keyword set equals the set the declaration renders."  Held by
-   ``tests/test_every_check_names_its_set.py`` over ``keywords.rendered_at``, which is
-   where a set equality between two derivations belongs; this file does not restate it.
-2. "**The approximated set equals the declared set.**  Every *approximated* fact has a
-   declaration (or it is *missing*), and every declaration has an *approximated* fact (or
-   it is *over-declared*).  Both directions, for the reason the first equality has them: a
-   set checked in one direction is complete with respect to itself, and what it omits
-   passes."
-
-Section 8 also says what stops the second from being an allowlist, and it is the accepts
-obligation: "Nobody can add an entry to make a failure go away without the model actually
-widening at that pointer, because the accepts draw then has to accept the values the
-keyword distinguishes.  A declaration is a claim with two instruments pointed at it."  Both
-instruments are perturbed here.
+The set equality between the keywords the document-side fold ranges over and the keywords
+a declaration renders is held by ``tests/test_keywords.py`` over ``harness.FOLDED_FACTS``
+and ``keywords.rendered_at``, which is where a set equality between two derivations
+belongs; this file does not restate it.
 """
 
 from __future__ import annotations
@@ -49,7 +45,6 @@ from adcp.types._base import (
     schema_at,
 )
 from codegen import attribution, bundle, compiler, emit, harness, ir, keywords, render
-from codegen.harness import Pair
 from codegen.keywords import Effect, Position, Rung
 from codegen.lower.approximate import approximate, attribution_for, declare, rung_for
 from codegen.refusal import BuildFailure
@@ -159,7 +154,8 @@ def test_a_rung_cannot_be_asked_of_a_cell_that_states_no_fact() -> None:
     """Section 3: "a handler that asks for one is a ``BuildFailure``".
 
     "The keyword states no fact, so a widening against it would be a declaration with
-    nothing to declare, and section 8 would report it as *over-declared* forever."
+    nothing to declare" -- an obligation :func:`harness.check_widening` could never
+    discharge, because there is no fact at that pointer for it to draw against.
     """
     assert keywords.cell("title", Position.ROOT).effect is Effect.NAME
     with pytest.raises(BuildFailure, match="states no fact"):
@@ -352,14 +348,15 @@ def test_nothing_is_written_where_nothing_was_approximated() -> None:
 
 
 def test_the_declaration_is_never_a_json_schema_extra() -> None:
-    """Section 7: "*Where it must NOT go.*  Not into ``Field(json_schema_extra=...)``.
-    That would put the approximation into ``model_json_schema()``, where section 8 of the
-    semantics document would read it as a fact the model states and the document does not
-    -- *added*, a defect.  The declaration is a class attribute precisely because it has to
-    be invisible to the comparison's own subject and visible to the comparison."
+    """Section 7: "*Where it must NOT go.*  Not into ``Field(json_schema_extra=...)``."
 
-    Asserted on the rendered class's own schema, which is the comparison's subject: the
-    attribute is reachable on the CLASS and absent from ``model_json_schema()`` at every
+    That would put the approximation into ``model_json_schema()``, where it would become a
+    fact the model's own rendered schema states and the document does not.  The declaration
+    is a class attribute precisely because a verifier has to be able to read it off the
+    class while the schema the class renders stays the document's.
+
+    Asserted in both places: the attribute is reachable on the CLASS
+    (:func:`harness.declarations_of`) and absent from ``model_json_schema()`` at every
     depth.
     """
     one = approximate(_ref("#/properties/tags"), "uniqueItems", Position.PROP, True)
@@ -399,10 +396,12 @@ def test_a_declaration_is_read_off_the_class_that_declares_it_and_not_off_its_ba
 def test_a_declaration_is_carried_by_every_declaration_whose_node_contains_it() -> None:
     """``render.declared_at``'s containment rule, which the pairing forces.
 
-    A pair's comparison descends from its own node into the whole subtree, so a fact at
-    ``#/properties/x/maxLength`` is reported by the root pair as well as by the nested
-    class's own pair; a declaration carried only by the nearest enclosing class would leave
-    the root pair reporting it *missing*.
+    A pair is graded over its own node and the whole subtree under it, and the obligation
+    that proves a declaration walks the declaration's pointer from the pair's OWN node
+    (:func:`harness.check_widening`), so a fact at ``#/properties/x/maxLength`` is reached
+    from the root class's node as well as from the nested class's own.  A declaration
+    carried only by the nearest enclosing class would be put to a draw at one of those
+    pairs and be unknown to the other.
     """
     inner = approximate(_ref("#/properties/x/properties/y"), "uniqueItems", Position.PROP, True)
     assert render.declared_at((inner,), _ref("#")) == (inner,)
@@ -434,17 +433,17 @@ def test_a_declaration_travels_with_the_fact_it_is_about() -> None:
     """**§8, decided 2026-10-27**: "a reference carries its target's declarations to the
     referring pointer, re-pointed by the same resolution that carried the facts."
 
-    "The second equality compares two sets of ``(pointer, keyword)`` pairs, so it holds
-    only while both sides agree on the pointer -- and they do not, by default.  A
-    declaration is minted at the NODE's pointer; the comparison reports a fact at the
-    pointer it WALKED."
+    A declaration is minted at the NODE's pointer, and the obligation that proves it walks
+    that pointer from the pair's own node -- so the two hold together only while they agree
+    about the pointer, and they do not, by default.
 
     **The two resolutions move a declaration differently and each one's own behaviour is
     what decides it**, which is the whole of what is asserted here:
 
     * a LOCAL reference is resolved by REPLACING the referring node with its target, so the
-      declaration MOVES -- an entry left at ``#/definitions/x`` is a declaration no pair
-      reaches, which §8 reports as *over-declared*;
+      declaration MOVES -- an entry left at ``#/definitions/x`` is at a pointer no instance
+      location exists under, which :func:`harness.check_widening` can only report as a
+      widening nobody proved;
     * a REMOTE one is inlined by ``bundle.record`` as a deep COPY, so the declaration is
       COPIED and the target document keeps its own for its own pairs.
     """
@@ -518,7 +517,7 @@ def test_a_declaration_travels_with_the_fact_it_is_about() -> None:
 
 
 # --------------------------------------------------------------------------- #
-# EQUALITY TWO, direction one: a decided widening is *approximated* and not *missing*
+# the widened pair the obligation is graded on, and the attribution it carries
 # --------------------------------------------------------------------------- #
 #: A document stating one fact the model below does not carry: section 5's ``uniqueItems``
 #: row at the KEYWORD rung, which is the row section 5 names first.
@@ -530,10 +529,7 @@ WIDE_DOCUMENT = {
 }
 
 
-# The model section 5's ``uniqueItems`` row widens to: ``list[str]``, no rule.  No
-# docstring on any probe class here, and that is load-bearing rather than terse: pydantic
-# renders one as ``description`` and the comparison would then report an ``added`` fact of
-# the test's own making, which would redden every clause below for the wrong reason.
+# The model section 5's ``uniqueItems`` row widens to: ``list[str]``, no rule.
 class Wide(AdCPBaseModel, extra="forbid"):
     __adcp_schema__: ClassVar[SchemaRef] = _ref()
     tags: list[str]
@@ -543,253 +539,6 @@ def _declaration_for_tags() -> Approximation:
     return approximate(
         _ref("#/properties/tags"), "uniqueItems", Position.PROP, True
     )
-
-
-def test_an_undeclared_widening_is_missing_and_a_declared_one_is_approximated() -> None:
-    """**Section 8's fifth outcome, and the perturbation that proves the split.**
-
-    "*missing* keeps its old meaning exactly -- the document states a compared fact, the
-    model does not, and nothing declares it -- and it is the only one of the six that the
-    directive leaves as a defect in the undeclared direction.  So the directive does not
-    loosen this check; it moves its subject from 'is the fact there' to 'is its absence
-    declared, attributed and proved wide'."
-
-    Both directions on ONE model and ONE document, so the only variable is the
-    declaration: with none the fact is *missing* and the pair reddens; with one it is
-    *approximated* and the pair passes with the figure reported.
-    """
-    bare = harness.compare_schema(WIDE_DOCUMENT, Wide)
-    assert [m for m in bare.missing if "uniqueItems" in m], bare.missing
-    assert bare.approximated == []
-    assert bare.outcome == "model_drops_a_fact"
-
-    declared = harness.compare_schema(WIDE_DOCUMENT, Wide, declared=(_declaration_for_tags(),))
-    assert declared.missing == [], declared.missing
-    assert len(declared.approximated) == 1, declared.approximated
-    assert "rung KEYWORD" in declared.approximated[0]
-    assert keywords.address("uniqueItems") in declared.approximated[0]
-    assert declared.approximated_at == [(DOC, "#/properties/tags", "uniqueItems")]
-    assert declared.outcome == "pass"
-
-
-def test_a_declaration_at_another_pointer_does_not_excuse_this_one() -> None:
-    """The declaration is keyed by POINTER and keyword, so it excuses one site and no other.
-
-    Without this the split would be a keyword-level allowlist, which is exactly what
-    section 8's second equality exists to prevent: "an allowlist is a set a human writes
-    and a check consults."
-    """
-    elsewhere = approximate(_ref("#/properties/other"), "uniqueItems", Position.PROP, True)
-    res = harness.compare_schema(WIDE_DOCUMENT, Wide, declared=(elsewhere,))
-    assert [m for m in res.missing if "uniqueItems" in m], res.missing
-    assert res.approximated == []
-
-
-def test_a_declaration_is_rebased_onto_the_pairs_own_pointer() -> None:
-    """A nested pair's comparison reports a pair-relative pointer and a declaration carries
-    an absolute one, so the two meet by subtracting the pair's own pointer.
-
-    Asserted by grading the SAME node as a nested pair: the declaration is unchanged and
-    the ``at`` is what moves, so a mistake in the rebasing shows as the fact going
-    *missing*.
-    """
-    node = WIDE_DOCUMENT["properties"]["tags"]
-    declared = (approximate(_ref("#/properties/tags"), "uniqueItems", Position.PROP, True),)
-    rebased = harness.compare_schema(
-        node, list[str], declared=declared, at="#/properties/tags", position=Position.PROP
-    )
-    assert rebased.approximated_at == [(DOC, "#/properties/tags", "uniqueItems")]
-    # And with the wrong base the fact is *missing*, which is what the rebasing buys.
-    wrong = harness.compare_schema(
-        node, list[str], declared=declared, at="#", position=Position.PROP
-    )
-    assert wrong.approximated == []
-    assert [m for m in wrong.missing if "uniqueItems" in m], wrong.missing
-
-
-# --------------------------------------------------------------------------- #
-# EQUALITY TWO, direction two: a declaration the model does not need is OVER-DECLARED
-# --------------------------------------------------------------------------- #
-# The same document, rendered FAITHFULLY: the ``uniqueItems`` fact is stated.
-class Faithful(AdCPBaseModel, extra="forbid"):
-    __adcp_schema__: ClassVar[SchemaRef] = _ref()
-    tags: list[str] = Field(json_schema_extra={"uniqueItems": True})
-
-
-def test_a_declaration_the_model_does_not_need_is_over_declared() -> None:
-    """**Section 8's sixth outcome, and the perturbation that proves it.**
-
-    "***over-declared*** -- an approximation is declared at a pointer and keyword where the
-    model DOES state the fact.  A defect, and the mirror of *missing*.  Without it the
-    declarations rot: a cell gets written, the widening stops happening, the declaration
-    stays, and it then hides the next real gap at the same pointer behind a stale excuse."
-
-    The perturbation is the row LANDING: the faithful model states the fact the widened one
-    dropped, and the declaration is the one left behind.  Both directions on one model: with
-    the stale declaration the pair reddens, without it the pair passes.
-    """
-    assert harness.compare_schema(WIDE_DOCUMENT, Faithful).outcome == "pass"
-    stale = harness.compare_schema(
-        WIDE_DOCUMENT, Faithful, declared=(_declaration_for_tags(),)
-    )
-    assert len(stale.over_declared) == 1, stale.over_declared
-    assert "outlives its widening" in stale.over_declared[0]
-    assert stale.outcome == "declaration_outlived_its_widening"
-    assert stale.approximated == []
-
-
-def test_a_declaration_for_a_fact_the_document_does_not_state_is_over_declared_too() -> None:
-    """Section 9: "**Never approximate on a keyword the walk itself inserted.**  An
-    approximation must name something the document states, or the document is blamed for
-    the compiler's own rewriting -- and the declaration then cannot be checked, because
-    section 8 looks for the fact in the document and does not find it."
-
-    Here the model states a bound its document does not, which the comparison already
-    reports as *added*; the declaration beside it names a fact the document never stated,
-    so it is over-declared as well -- and the two lines say different things to a reader.
-    """
-    document = {"type": "object", "properties": {"name": {"type": "string"}}}
-
-    class Narrow(AdCPBaseModel):
-        __adcp_schema__: ClassVar[SchemaRef] = _ref()
-        name: str = Field(max_length=10)
-
-    invented = approximate(_ref("#/properties/name"), "maxLength", Position.PROP, 10)
-    res = harness.compare_schema(document, Narrow, declared=(invented,))
-    assert [a for a in res.added if "maxLength" in a], res.added
-    assert len(res.over_declared) == 1, res.over_declared
-
-
-# --------------------------------------------------------------------------- #
-# the RUN-LEVEL equality, which is the one that cannot be complete with respect to itself
-# --------------------------------------------------------------------------- #
-def _pair(model: Any, declared: tuple[Approximation, ...], *, ref: SchemaRef | None = None) -> Pair:
-    ref = ref or _ref()
-    return Pair(
-        name=f"{ref.document}{ref.pointer}",
-        schema=WIDE_DOCUMENT,
-        model=model,
-        accept=model.strict_validate if hasattr(model, "strict_validate") else model,
-        document=WIDE_DOCUMENT,
-        ref=ref,
-        declared=declared,
-    )
-
-
-def _report(comparison: harness.ComparisonResult) -> harness.PairReport:
-    return harness.PairReport(name="probe", comparison=comparison)
-
-
-def test_the_declared_set_equals_the_approximated_set_in_both_directions() -> None:
-    """**Section 8's second equality, over the run, and each direction perturbed.**
-
-    "Every *approximated* fact has a declaration (or it is *missing*), and every
-    declaration has an *approximated* fact (or it is *over-declared*).  Both directions,
-    for the reason the first equality has them: a set checked in one direction is complete
-    with respect to itself, and what it omits passes."
-
-    Three states of ONE pair:
-
-    * the widened model with its declaration -- the sets are equal and the census passes;
-    * the FAITHFUL model with the declaration left behind -- the declared set is bigger,
-      and the pair's own comparison says why (*over-declared*);
-    * a declaration at a pointer no pair's comparison reaches -- the declared set is bigger
-      and NO pair reports anything, which is the hole a one-directional check leaves and
-      the direction this equality closes.
-    """
-    one = _declaration_for_tags()
-    equal = harness.census(
-        [(_pair(Wide, (one,)), _report(harness.compare_schema(WIDE_DOCUMENT, Wide, declared=(one,))))]
-    )
-    assert equal.outcome == "pass"
-    assert set(equal.declared) == equal.approximated == {(DOC, "#/properties/tags", "uniqueItems")}
-    assert equal.documents == 1
-
-    stale = harness.census(
-        [
-            (
-                _pair(Faithful, (one,)),
-                _report(harness.compare_schema(WIDE_DOCUMENT, Faithful, declared=(one,))),
-            )
-        ]
-    )
-    assert stale.outcome != "pass"
-    assert stale.over_declared, stale
-    assert stale.stale == [(DOC, "#/properties/tags", "uniqueItems")]
-    assert stale.undeclared_widenings, stale
-
-    # The hole a one-directional check leaves: a declaration at a pointer the comparison
-    # never visits is neither *approximated* nor *over-declared* at any pair, so only the
-    # run-level set difference can see it.
-    unreached = approximate(_ref("#/definitions/dead"), "uniqueItems", Position.DEF, True)
-    nowhere = harness.census(
-        [
-            (
-                _pair(Wide, (one, unreached)),
-                _report(harness.compare_schema(WIDE_DOCUMENT, Wide, declared=(one, unreached))),
-            )
-        ]
-    )
-    assert nowhere.outcome != "pass"
-    assert nowhere.stale == [(DOC, "#/definitions/dead", "uniqueItems")]
-    assert nowhere.over_declared == [], nowhere.over_declared
-    assert "no pair graded that pointer" in nowhere.undeclared_widenings[0]
-
-
-def test_an_underdetermined_declaration_is_not_stale_for_being_invisible() -> None:
-    """Section 8 exempts the one kind no comparison can report, and this holds that.
-
-    "An UNDERDETERMINED approximation (section 2) is invisible to all three checks, and
-    that is why it needs an instrument of its own ... The comparison matches, the draw
-    accepts and the dump validates, because the annotation admits exactly what the
-    document admits."
-
-    :func:`harness.census` is computed FROM the comparison's output, so a kind the
-    comparison cannot report could never enter its *approximated* half.  Read without the
-    exemption, every UNDERDETERMINED declaration is *over-declared* at every pair forever
-    -- which is the one kind section 8 removes from that outcome by name, and the kind
-    whose own instrument (:func:`harness.underdetermined_census`) holds it in both
-    directions instead.
-
-    **Both directions, and the second is what keeps the exemption from being a hole**: a
-    WIDENED declaration at the SAME pointer that no pair reports is still stale, so the
-    exemption is about the KIND and not about the pointer.  ``check_widening`` already
-    draws this exact line one function away, with this same sentence of section 8 quoted
-    at it.
-    """
-    invisible = approximate(
-        _ref("#/oneOf"), "oneOf", Position.ROOT, OVERLAPPING["oneOf"], kind=UNDERDETERMINED
-    )
-    exempt = harness.census(
-        [
-            (
-                _pair(Wide, (invisible,)),
-                _report(harness.compare_schema(WIDE_DOCUMENT, Wide, declared=(invisible,))),
-            )
-        ]
-    )
-    assert exempt.stale == [], exempt.stale
-    assert exempt.undeclared_widenings == [], exempt.undeclared_widenings
-    assert exempt.outcome == "pass", exempt
-    # It is still DECLARED, so the figures and the UNDERDETERMINED equality both see it:
-    # the exemption is from the *over-declared* outcome and from nothing else.
-    assert set(exempt.declared) == {(DOC, "#/oneOf", "oneOf")}
-    assert exempt.documents == 1
-
-    # The same pointer, the other kind: a WIDENED declaration no pair reports is stale.
-    # Without this the exemption could be read as "a declaration at a combinator is
-    # excused", which is a hole of the shape the first direction of this equality closes.
-    widened = invisible._replace(kind=WIDENED)
-    not_exempt = harness.census(
-        [
-            (
-                _pair(Wide, (widened,)),
-                _report(harness.compare_schema(WIDE_DOCUMENT, Wide, declared=(widened,))),
-            )
-        ]
-    )
-    assert not_exempt.stale == [(DOC, "#/oneOf", "oneOf")], not_exempt.stale
-    assert not_exempt.outcome != "pass"
 
 
 def test_an_attribution_the_registry_does_not_hold_is_a_defect() -> None:
@@ -1036,8 +785,8 @@ def test_a_mapping_value_has_an_instance_location_and_the_key_is_drawn() -> None
 
 
 def test_an_underdetermined_declaration_is_not_claimed_by_the_accepts_obligation() -> None:
-    """Section 2: an UNDERDETERMINED approximation is one "No comparison, draw or dump can
-    see", so claiming it here would report a pass this check cannot earn.
+    """Section 2: an UNDERDETERMINED approximation is one "No draw or dump can see", so
+    claiming it here would report a pass this check cannot earn.
 
     Its instrument is the disjointness equality below, and section 8 says so: "that is why
     it needs an instrument of its own."

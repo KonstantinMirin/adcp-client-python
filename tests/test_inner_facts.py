@@ -320,10 +320,10 @@ RELEASED: dict[str, tuple[str, ...]] = {
 #: ``governance/get-plan-audit-logs-response.json`` chained through
 #: ``core/attestation-reference.json``, whose
 #: ``/properties/embedded_credential/properties/value`` is a ``type`` LIST with a
-#: constraint on one arm -- a shape the comparison could not read, so the row refused
-#: the document rather than emit a node no check grades.  ``harness._type_list`` folds a
-#: model's ``anyOf`` of arms back to the list plus the per-arm facts, so the node is
-#: GRADED and both documents emit.
+#: constraint on one arm -- a shape no check could read, so the row refused the document
+#: rather than emit a node no check grades.  ``harness._type_list`` reads a union of arms
+#: back as the ``type`` list it spells plus the per-arm facts, so a declaration at such a
+#: node is provable and both documents emit.
 #: **EMPTY at ``adcp-client-python-10l.109``, and the entry that left is below rather
 #: than deleted** -- which is the whole of what this map is pinned for, taken to its end.
 #: ``core/media-buy.json`` was the last one and it EMITS; the assertion that caught it
@@ -391,8 +391,9 @@ def test_every_document_this_row_releases_emits_and_the_rest_name_their_next_key
 # the facts reach the model, which is what a named carrier is for
 # --------------------------------------------------------------------------- #
 def test_a_format_inside_a_container_reaches_the_models_own_schema() -> None:
-    """The element's ``format`` is in the rendered schema, where the comparison reads
-    it -- which is the whole point of naming the type rather than dropping it.
+    """The element's ``format`` is in the rendered schema, read off
+    ``model_json_schema()`` -- which is the whole point of naming the type rather than
+    dropping it.
 
     Asserted against the emitted CLASS and not against the module text: a name in the
     text proves the alias was referenced, and this proves the alias carries the fact.
@@ -432,14 +433,13 @@ def test_an_array_bound_on_a_branch_binds_that_branch_and_not_the_field() -> Non
 
 
 def test_a_stores_extra_key_type_is_enforced_although_pydantic_renders_none() -> None:
-    """The premise the comparison's ``extra_key_typed`` row rests on, measured.
+    """A ``propertyNames`` the model does not RENDER is still ENFORCED, measured.
 
-    ``harness._extra_key_typed`` admits a ``propertyNames`` the model does not RENDER,
-    on the ground that the model enforces it through the key type of its
-    ``__pydantic_extra__``.  That is an admission, so its premise is graded here rather
-    than left to the sentence that states it: a key one character past the document's
-    ``maxLength: 128`` is refused and a short one is accepted, and the rendered schema
-    really does carry no ``propertyNames``.
+    The class carries the document's key bound in the key type of its
+    ``__pydantic_extra__``, and pydantic renders nothing for it -- so the enforcement
+    cannot be read off the rendered schema and is graded on the ACCEPTED SET instead: a
+    key one character past the document's ``maxLength: 128`` is refused and a short one
+    is accepted, and the rendered schema really does carry no ``propertyNames``.
     """
     from adcp.types._schemas.governance.reported_outcome_error import ReportedOutcomeError as R
 
@@ -543,17 +543,14 @@ def test_a_root_required_the_branches_declare_is_root_required_and_not_a_field(
     # which is nothing.
     assert base._ROOT_REQUIRED == ("kind", "value"), base._ROOT_REQUIRED
     assert sorted(base.model_fields) == ["label"], sorted(base.model_fields)
-    # **AND THE BASE'S RENDERED SCHEMA STATES NO ``required``, which is the one fact
-    # section 8 has no reading for yet.**  Pinned here rather than left to the merge
-    # gate: the keyword's cell is ``rendered=True``, so ``harness.compared_facts``
-    # compares it, and ``_ROOT_REQUIRED`` is a ``ClassVar`` that no
-    # ``model_json_schema()`` carries -- so a base paired against its root node reports
-    # the document's two names ``missing``.  The fact is NOT dropped: section 8 pairs
-    # each branch class with "its branch node read UNDER THE ROOT'S SIBLINGS", where
-    # both names are the branch's own ``required`` and are compared and matched, and the
-    # model refuses a payload omitting either (below).  So the reading section 8 owes is
-    # that a root ``required`` the BRANCHES declare is graded at the branch pairs, and
-    # it lives in ``codegen/harness.py``.
+    # **AND THE BASE'S RENDERED SCHEMA STATES NO ``required``.**  Pinned here rather
+    # than left implicit: ``_ROOT_REQUIRED`` is a ``ClassVar`` and no
+    # ``model_json_schema()`` carries one, so the document's two names appear nowhere in
+    # the base's own rendering.  The fact is NOT dropped -- section 8 gives each branch
+    # class "its branch node read UNDER THE ROOT'S SIBLINGS", where both names are the
+    # branch's own ``required``, and the model refuses a payload omitting either
+    # (below).  So what the base carries the names FOR is the refusal's attribution,
+    # which is the clause above.
     assert "required" not in base.model_json_schema(), base.model_json_schema()
 
     # The accepted set, through the base's own dispatch: the branches' requiredness is

@@ -92,8 +92,8 @@ RUNTIME_MODULE = "adcp.types._runtime"
 #: annotation, and ``lower/containers.py`` keys a root array's ``UniqueItems`` rule on it
 #: -- because ``_runtime.supplied`` reads ``__pydantic_fields_set__``, and a root model
 #: supplies exactly this name.  A rule keyed on anything else would be a rule that never
-#: fires, which §8 of the semantics document cannot see: a rule renders nothing in a
-#: model's schema.
+#: fires, which only a direct ``model_validate`` would show: a rule renders nothing in
+#: a model's schema.
 ROOT_FIELD = "root"
 
 #: **The keywords a :attr:`TypeRef.facts` carries: a constraint of the VALUE, in the
@@ -239,8 +239,8 @@ class TypeRef:
     #: The document's ``format``, where the walk did NOT turn it into a type.
     #: D5 lets a format select one (``emit.FORMAT_TYPES``), and a selected type
     #: states the format in its own rendered schema -- so this field is the other
-    #: case, and it rides as ``json_schema_extra`` so the fact reaches the
-    #: model's schema where the comparison grades it.  The two are exclusive by
+    #: case, and it rides as ``json_schema_extra`` so the fact reaches the class at
+    #: the node the document states it at.  The two are exclusive by
     #: construction (:class:`Decided`): a format is in the type or in here, and
     #: never in both and never nowhere.  Dropping it would lose a fact the
     #: document states.
@@ -322,11 +322,10 @@ class Field:
     #: it on the constructor (``adcp.types._runtime.UniqueItems``); this flag is the
     #: other half, and it rides the ``json_schema_extra`` channel beside
     #: :attr:`TypeRef.format` and for the same reason -- pydantic removed
-    #: ``unique_items`` in v2, so no annotation states the fact, and the schema
-    #: comparison reads ``uniqueItems`` off a model's rendered schema
-    #: (``harness.FACTS``).  Rendering it where the document states it is what keeps
-    #: the comparison symmetric: the fact is TRUE of the model, because the schema half
-    #: and the rule both enforce it, so no admission row is needed in either direction.
+    #: ``unique_items`` in v2, so no annotation states the fact.  Rendering it where
+    #: the document states it is what keeps the two halves agreeing: the rule refuses a
+    #: duplicate on the constructor and the channel carries the keyword at the pointer
+    #: the document states it at, so nothing of the fact is owed a declaration.
     distinct: bool = False
     #: §6's ``deprecated`` row, which §14 step 8 and the ``deprecated`` row of the epic
     #: write the emitter half of.  Declared here because §7 declares it; nothing writes
@@ -464,8 +463,9 @@ class Member:
     #: It reaches the rendered class as the member's own docstring, which is the
     #: renderer's own slot for it -- 137 of the bundle's enum nodes carry the
     #: block and a previous attempt dropped every one of them, for the same
-    #: reason a hand-rolled renderer dropped 142 property descriptions: nothing
-    #: compares an annotation that changes no accepted set.
+    #: reason a hand-rolled renderer dropped 142 property descriptions: nothing the
+    #: harness draws or validates reads an annotation that changes no accepted set, so
+    #: only a reader of the emitted module notices the loss.
     description: str | None = None
 
 

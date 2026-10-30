@@ -34,8 +34,8 @@
 # CLEAN TREE and refuses to run otherwise.
 #
 # A COLLECTION ERROR IS NOT A GREEN RUN. The verdict below matches "failed|error" for
-# that reason, which is `perturb_dump_exemptions.sh`'s own lesson: a malformed
-# perturbation that never ran once scored as a guard that cannot redden.
+# that reason: a malformed perturbation never runs, prints no "failed", and a scraper
+# reading that as green scores a dead guard as a live one.
 set -u
 cd "$(dirname "$0")" || exit 1
 

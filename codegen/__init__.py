@@ -9,8 +9,8 @@ an installed module raising ``ModuleNotFoundError`` for every user of the SDK.
                 pair: the ACCEPTS check generates an instance the schema admits
                 and requires the entry point to admit it; the REFUSES check
                 mutates one keyword at a time and requires it to refuse; and the
-                SCHEMA COMPARISON compares the class's own
-                ``model_json_schema()`` to the document. Imports
+                WIDENING obligation puts every approximation the artifact
+                declares to a draw the model has to accept. Imports
                 ``jsonschema``, ``hypothesis``, ``hypothesis_jsonschema`` and
                 ``pydantic`` and nothing else — no sibling, no path, no
                 filesystem, and no name from the vocabulary it is pointed at.

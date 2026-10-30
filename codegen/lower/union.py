@@ -56,8 +56,8 @@ TARGET's class, which does not descend from this base -- true of a member, and t
 OWN ``#/<kw>/<i>`` pointer, carrying its own ``__adcp_schema__``, whose bases are this
 base and the target.  So ``isinstance(payload, Base)`` holds, the target's fields arrive
 by inheritance and nothing of the target is copied (P2), and the branch grades against its
-own node -- which the resolved document states as the target's content, so the comparison
-has a pointer for every inherited fact.  ``compiler.lower_composition`` is the reader,
+own node -- which the resolved document states as the target's content, so every inherited
+fact is one the branch's OWN pointer states.  ``compiler.lower_composition`` is the reader,
 handed the branch as the one-conjunct composition a ``$ref`` branch IS: the same binder,
 the same inherited :class:`compiler.Shape` and the same ``bases`` argument the composing
 branch above already uses, so there is no second reading of what a ``$ref`` conjunct
@@ -85,8 +85,8 @@ manifest states -- is ``salesagent-j3k2l.60``'s row and is unwritten, which is w
 overlap refusal is a DEFERRAL.
 
 An ``allOf`` conjunct list used to be the fourth entry here and is not one: it was never
-unlowerable, only unreachable.  The conjuncts sit at the branch's own node, so the grader
-has a pointer for every one of them, and what was missing was that the conjunct reader
+unlowerable, only unreachable.  The conjuncts sit at the branch's own node, so each of
+them has a pointer the pairing reads, and what was missing was that the conjunct reader
 lived in the product row where D13 keeps a lowering from importing it.  The reader is
 ``compiler.lower_composition`` now, so a composing branch is a class like any other --
 the union base FIRST, because ``isinstance(payload, Base)`` depends on it, and the
@@ -107,7 +107,7 @@ that states a sibling a class carries (:func:`composes_its_siblings`), and
 node's own position off the node -- which is why the widening is a dispatch and not a
 second reader.
 
-The GRADER half needed nothing either, and that was measured rather than assumed:
+The PAIRING half needed nothing either, and that was measured rather than assumed:
 ``_base.applied_schema`` conjoins :data:`adcp.types._base.SAME_INSTANCE_FACTS` at every
 ``allOf``/``anyOf``/``oneOf``/``then``/``else`` hop of the pointer it walks, and it never
 asked whether the hop was a root one.  So a branch class at
@@ -140,14 +140,14 @@ the combinator, and keeps the refusal for a sibling NO class carries -- whose te
 :func:`carried_by_a_class` derives that set and a list in the prose would be a fifth
 copy beside §3's four readers.
 
-WHAT THE ROOT MAY NOT CARRY, and this is the one refusal that is about the GRADER rather
-than about a missing lowering.  A root ``allOf``, ``properties``, ``required`` or
+WHAT THE ROOT MAY NOT CARRY, and this is the one refusal that is about what a class can
+NAME rather than about a missing lowering.  A root ``allOf``, ``properties``, ``required`` or
 ``additionalProperties`` applies to the whole document in draft-07, so it is a
 CONJUNCTION with every branch -- and for ``allOf`` that is D7's own wording.  A branch
 class inheriting those fields is the faithful reading of the document, and it is also
-unreportable: the branch's own ``__adcp_schema__`` names ``#/<kw>/<i>``, that node states
-none of the root's facts, and the schema comparison correctly reports the inherited ones
-as facts the model adds.  There is no JSON pointer to the conjunction, so there is nothing
+unnameable: the branch's own ``__adcp_schema__`` names ``#/<kw>/<i>``, that node states
+none of the root's facts, and the inherited ones are then facts the class states at a
+pointer that does not.  There is no JSON pointer to the conjunction, so there is nothing
 for the branch to name instead.  Emitting it is the row for a step that can name a
 conjunction; here it refuses.  Measured cost: 4 of the 44 for the three object facts, and
 41 documents for ``allOf`` -- 37 of whose conjuncts reference ``core/version-envelope.json``
@@ -184,8 +184,8 @@ from codegen.refusal import Kind, Refusal, first_refusal
 #: them, after every other keyword has been checked.  Left out of this set, they refuse
 #: through ``compiler.check_keywords``, which walks ``sorted(node)`` -- so a root carrying
 #: both ``additionalProperties`` and ``oneOf`` branches blocked by a later step's keyword
-#: was reported against ``additionalProperties``, this module's own grader-driven refusal,
-#: rather than against the keyword that is the reason.  Measured: the by-keyword profile
+#: was reported against ``additionalProperties``, this module's own :data:`ROOT_CONJUNCTS`
+#: refusal, rather than against the keyword that is the reason.  Measured: the by-keyword profile
 #: over the 156 read 55 ``additionalProperties`` / 42 ``allOf`` that way, and 0 / 55 this
 #: way.  Attribution is the point of a refusal report, and the same principle
 #: ``harness.violated_keywords`` is built on.
@@ -224,8 +224,10 @@ ROOT_CLAIMS = frozenset({"type", "properties", "required", "additionalProperties
 #: claims none of them to the fact above.  The widening it forecloses becomes reachable at
 #: the first branch repair: ``_base.applied_schema`` conjoins an enclosing ``type``, which
 #: by itself unblocks a branch in 17 of these 41, and without this entry such a document
-#: would emit a base that drops its composed bases -- caught by the comparison as a
-#: ``missing``, so a red gate rather than a named refusal.
+#: would emit a base that drops its composed bases -- the draw then places a payload the
+#: document admits, the class loses the keys those bases carried, and the dump the
+#: document re-reads is what reddens (``model_dropped_a_fact``): a red gate rather than a
+#: named refusal.
 #:
 #: **The four names are :data:`nodes.ROOT_SIBLINGS` and are read, not restated**
 #: (``adcp-client-python-3be.8``): the parser and this module read exactly these four, in
@@ -751,7 +753,7 @@ def applied_type(node: "nodes.Union", i: int) -> Any:
     ``type`` where it states a word, then whatever an enclosing node applies to the union
     -- :attr:`nodes.Base.applied`, which the parser read off
     ``bundle.constrained_to_object``, the same function over the one node walk.  So there
-    is one rule and the walk cannot come to disagree with the grader about it.
+    is one rule and the walk cannot come to disagree with the schema half about it.
     """
     branch = node.branch_raw[i]
     if isinstance(branch, Mapping) and "type" in branch:
@@ -1283,11 +1285,11 @@ def lower_union(
     # descends from -- so draft-07's reading, that a root keyword applies to the whole
     # instance and therefore to every branch, is what class inheritance already says.
     # It is admissible where a root ``properties`` is NOT (``ROOT_CONJUNCTS`` below)
-    # because the reason that one refuses is the GRADER: a branch class carrying an
-    # inherited field states a fact its own ``#/<kw>/<i>`` node does not, and the
-    # schema comparison correctly reports it as added.  A rule renders NOTHING in a
-    # model's JSON schema, so there is no fact for the comparison to gain, and the
-    # instrument that observes a rule is a direct ``model_validate``.
+    # because the reason that one refuses is what a class can NAME: a branch class
+    # carrying an inherited field states a fact its own ``#/<kw>/<i>`` node does not, and
+    # there is no pointer to the conjunction for it to name instead.  A rule renders
+    # NOTHING in a model's JSON schema, so it puts no such fact on the class at all, and
+    # the instrument that observes a rule is a direct ``model_validate``.
     #
     # ``rules_at`` subtracts the two combinators from a root whose branches are
     # shapes, so the union keyword arrives through ``{kw}`` alone and a root carrying
@@ -1412,7 +1414,7 @@ def lower_union(
         # WHICH branch an overlapping payload becomes is the fact dropped.
         #
         # **UNDERDETERMINED and not WIDENED**, which is §2's one instance of the kind: no
-        # comparison, draw or dump can see it, because the annotation admits exactly what
+        # draw or dump can see it, because the annotation admits exactly what
         # the document admits.  Its instrument is §8's third equality --
         # ``harness.underdetermined_census``, over §4's disjointness derivation in both
         # directions -- so a union that becomes separable loses its declaration and one
@@ -1488,7 +1490,7 @@ def lower_union(
     # does not and there is no pointer to the conjunction for it to name.  §8 now names
     # it: "a branch class of a root union is paired with its branch node read UNDER THE
     # ROOT'S SIBLINGS", and ``_base.applied_schema`` is the one reading of that pointer
-    # -- so the fact IS at the branch's own pointer and the grader reads it there.
+    # -- so the fact IS at the branch's own pointer and the pairing reads it there.
     #
     # ``compiler.lower_composition`` and not a reader of this module's own, because §5
     # says the keywords "compile as they would on any class -- fields, ``extra``, bases,
@@ -1589,8 +1591,9 @@ def lower_union(
             # This is bead ``adcp-client-python-10l.19``'s ``/description`` half.  Its
             # population is a branch that is a bare LOCAL reference: the branch node is
             # ``{"$ref": "#/definitions/X"}`` and carries no annotation of its own, while
-            # the entry declares a ``description`` -- so the two branch pairs of
-            # ``core/requirements/catalog-field-binding.json`` reported it ``missing``.
+            # the entry declares a ``description`` -- so the two branch classes of
+            # ``core/requirements/catalog-field-binding.json`` carried no description at
+            # all where the document states one at their own pointers.
             # ``compiler.fields`` transcribes a ``$ref`` sibling's description onto a
             # FIELD, and a branch class named off a reference has no such carrier.
             #
@@ -1810,18 +1813,19 @@ def lower_union(
 #: Why a nested union's SIBLING refuses, and why it is a verdict rather than a
 #: deferral.  The sentence is :data:`ROOT_CONJUNCTS`' reasoning at a nested pointer, and
 #: the mechanism it names is different: a root's branches are CLASSES and the fact is
-#: unreportable because a branch's ``#/<kw>/<i>`` node does not state it, while a nested
+#: unnameable because a branch's ``#/<kw>/<i>`` node does not state it, while a nested
 #: union is one TYPE and there is no slot on a ``ir.TypeRef`` for a sibling fact at
 #: all.  Both ends of that were measured on the pinned harness: the document states the
-#: sibling at this pointer and ``harness.compare_schema`` looks for it here, so a model
-#: whose node is a bare ``anyOf`` reports it ``missing`` -- a model wider than its
-#: document, by the keyword's own position.
+#: sibling at this very pointer -- which is where the document-side reading finds it
+#: (``harness._settled``) -- and the union's type has no slot that could answer for it,
+#: so dropping it is a model wider than its document with nothing at the pointer to say
+#: so.
 #:
 #: **The mechanism is a CONSTRAINING sibling's, and it is read as one** (§5's ``$ref``
 #: row draws the same line in the same table: "an annotation sibling -> the sibling's
 #: description wins; a constraining sibling -> refused").  A sibling §6 admits states
-#: nothing about an instance, so there is no fact for the union's type to carry and no
-#: fact for the comparison to miss.  The TABLE is the set of those: a sibling whose
+#: nothing about an instance, so there is no fact for the union's type to carry and
+#: nothing is dropped.  The TABLE is the set of those: a sibling whose
 #: cell carries nothing is admitted, and a sibling whose cell lowers is a constraining
 #: one and reaches this refusal.
 #:
@@ -1879,8 +1883,8 @@ _NESTED_SIBLING = (
     "and a nested union lowers to one type -- A | B -- which has no slot for a fact of "
     "its own: ir.TypeRef carries a container and its members and nothing else.  "
     "Conjoining it into each branch instead states it at a pointer the document does "
-    "not, and dropping it is a model wider than its document, which "
-    "harness.compare_schema reports as a missing fact at this very pointer"
+    "not, and dropping it is a model wider than its document at a pointer no class "
+    "names, so no declaration can carry the widening there"
 )
 
 #: ``discriminator`` beside a NESTED union is admitted by the TABLE, and the decision
@@ -1895,10 +1899,11 @@ _NESTED_SIBLING = (
 #: * The keyword CONSTRAINS NOTHING, so :data:`_NESTED_SIBLING`'s mechanism does not
 #:   reach it.  The same cell admits it at a root, and the two positions differ in
 #:   nothing the reason mentions.
-#: * The comparison does not look for it: ``keywords.rendered_at`` is the compared set
-#:   and the cell's ``rendered`` is ``False``, so a model whose node is a bare ``anyOf``
-#:   reports nothing ``missing`` at that pointer -- which is the second half of the
-#:   sentence above and the half that does not hold for a constraining sibling.
+#: * Nothing is dropped that any reading could look for: the cell's ``rendered`` is
+#:   ``False``, so the keyword is outside ``harness.FOLDED_FACTS`` -- the set the
+#:   document-side fold carries (``keywords.rendered_at``) -- and a nested union's node
+#:   holds no fact for it either way.  That is the second half of the sentence above, and
+#:   the half that does not hold for a constraining sibling.
 #: * It is already READ at this position: :func:`nested` names each branch through
 #:   :func:`branch_identity`, which reads ``discriminator.propertyName`` off the union's
 #:   own node (:func:`_const_pins`).
@@ -2032,18 +2037,16 @@ def nested(node: "nodes.Union", mod: compiler.Module) -> ir.Decided | Refusal:
     exclusivity is a statement about values, not about which keys are present.
 
     **Two refusals stood here and are gone, because each one's stated reason was a
-    claim about a harness that has since changed** (``salesagent-j3k2l.28``, §6 "every
-    fold applies to both sides").  One refused a branch that was a LOCAL ``$ref`` and
-    one refused a union whose shape ``harness._normalize`` folds, and both said the
-    fold ran on the MODEL's side alone -- so a faithful class would read as narrower
-    than its own document, which is the ``added`` direction.  ``_normalize`` now serves
-    both sides from one body of code with a per-side ``$ref`` root, reads ``oneOf`` as
-    well as ``anyOf``, and reads each branch through the finite-type rewrite one level
-    down, so neither claim holds.  Measured by lifting each refusal and grading the
-    population: the local-``$ref`` guard cost **8 documents** and its 43 ``added``
-    facts have no site left -- 0 new reports of any kind -- and the fold guard cost
-    **9**, whose folds grade green in both arms.  Together they took emitted from
-    **691 to 702 of 1054 portable** with ``added`` 0.
+    claim about a harness that has since changed** (``salesagent-j3k2l.28``).  One
+    refused a branch that was a LOCAL ``$ref`` and one refused a union whose shape
+    ``harness._normalize`` folds, and both said the fold could not run where the
+    document writes these shapes -- so a faithful class had no reading of its own
+    document to be graded against.  ``_normalize`` reads the DOCUMENT with a ``$ref``
+    root of its own, reads ``oneOf`` as well as ``anyOf``, and reads each branch
+    through the finite-type rewrite one level down, so neither claim holds.  Measured
+    by lifting each refusal and grading the population: the local-``$ref`` guard cost
+    **8 documents** and the fold guard **9**, with no new report of any kind from
+    either.  Together they took emitted from **691 to 702 of 1054 portable**.
     """
     # The sibling screen, with its own ``why``: a CONSTRAINING sibling of this node is a
     # conjunction with every branch, and the generic answer for a draft-07 keyword
@@ -2439,9 +2442,9 @@ def _plan(node: "nodes.Union", i: int, mod: compiler.Module) -> Branch | Refusal
     if "allOf" in branch:
         # **A branch that COMPOSES, which is a different position from a root ``allOf``
         # and is genuinely lowerable.**  The conjunct sits AT the branch's own node, so
-        # ``harness._composed`` folds its facts into the node the branch class names and
-        # the comparison has a pointer for every one of them -- none of the root case's
-        # unreportability applies here.
+        # ``harness._composed`` folds its facts into the node the branch class names, so
+        # every one of them is a fact the branch's OWN pointer states -- none of the root
+        # case's unnameability applies here.
         #
         # What it needs is the conjuncts BOUND, and it has them: a branch class's bases
         # are already the union base (§4, and ``isinstance(payload, Base)`` depends on

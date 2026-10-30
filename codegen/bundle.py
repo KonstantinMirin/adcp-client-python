@@ -45,10 +45,10 @@ def escape_key(key: str) -> str:
     the named import for that reach would have bought the ratchet a line and cost §9 its
     point.
 
-    One speller, because a pointer segment is spelled by FOUR readers --
-    :func:`subschemas`, ``harness._nodes``, ``harness.compare_schema``'s property
-    descent, and the mapping row's ``patternProperties`` pointer -- and the inverse is
-    beside it (:func:`node_at`).  A ``patternProperties`` expression is the first key in
+    One speller, because a pointer segment is spelled by THREE readers --
+    :func:`subschemas`, ``harness._nodes``, and the mapping row's
+    ``patternProperties`` pointer -- and the inverse is beside it (:func:`node_at`).
+    A ``patternProperties`` expression is the first key in
     this bundle that actually NEEDS it: the ``media-buy/get-products-response.json``
     extension pattern is ``^https?://[^@]+@sha256:[a-f0-9]{64}$``, whose two slashes
     would otherwise read as two pointer hops and make the refusal's own pointer
@@ -636,8 +636,8 @@ def declaring_site(
     over may state a ``description`` sibling, and §5's ``$ref`` row gives a sibling the
     other answer -- "the sibling's description wins" -- while :func:`record` inlines
     exactly that text at the REFERRING pointer.  So a chain that returned only the symbol
-    would make the model *missing* a fact at a pointer the comparison reaches, which is
-    §8's defect in the undeclared direction.  The FIRST sibling along the chain is the
+    would leave the class stating nothing at a pointer the record states a sentence at,
+    for a sentence the document itself wrote.  The FIRST sibling along the chain is the
     one taken, which is the record's own precedence: the referrer's own wins over it (read
     where the field is built) and it wins over the declarer's.
 
@@ -953,7 +953,8 @@ def record(bundle_dir: Path, document: str) -> dict | Refusal:
       URL, on a code path ``jsonschema`` deprecates and says "will shortly become an
       error".  Offline it raises instead.  So the package carries this.
     * ``check_pair``'s whole input is a document with no cross-document reference left
-      in it, and §8 compares against the document rather than against any
+      in it, and every check it runs -- the draw, the document's own verdict on what it
+      drew, the verdict on the dump -- reads THIS document rather than any
       canonicalisation of it.
 
     *Why our own, and what it replaced.*  This was ``hypothesis_jsonschema``'s resolver,
@@ -1230,9 +1231,7 @@ def undecidable_references(
       inside such an entry and no enclosing node's assertions descend into one --
       draft-07 gives a section no assertion behaviour, which is the same fact
       ``compiler.local_reference`` reads when it declares an entry only where a
-      reference names it, and that ``harness.compare_schema`` reads when it descends
-      ``properties``, ``items``, ``propertyNames`` and a typed
-      ``additionalProperties`` and not a section.
+      reference names it.
 
     **VALIDATION STARTS AT A DECLARED POINTER AND DESCENDS BY ASSERTION KEYWORDS, WHICH
     NEVER CROSS A SECTION BOUNDARY.**  That one sentence is the predicate.  For a

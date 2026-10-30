@@ -5,7 +5,7 @@
 whose precondition is the thing it checks is not a check" -- is about the import
 obligation, and these two had the same disease in a milder form, twice over:
 
-* they were read off ``census.declared``, the COMMITTED artifact, where §9's instruction
+* they were read off the COMMITTED artifact's own declarations, where §9's instruction
   ("ratchet the *ours* split down") is about what the WALK mints.  The two do not agree:
   the committed tree declares 130 sites in 59 documents and a fresh run mints 117 in 50.
 * they sat behind ``graded_reports()``, which builds 2,347 pair reports and takes the best
@@ -20,10 +20,6 @@ Neither instrument needs a pair, a draw or a dump.  The declared half is the run
 ``Emitted.approximations``; the UNDERDETERMINED equality needs the declarations and the
 documents of record (``bundle.record``), which is §9's own reading of what a document
 states.  Both are a warm second here.
-
-What stays in ``tests/test_emit.py``'s census test is exactly what needs the pairs: §8's
-two-direction equality between the DECLARED set and the APPROXIMATED set, where
-*approximated* is a verdict the comparison reaches at a pointer.
 """
 
 from __future__ import annotations
@@ -124,8 +120,8 @@ def _carried() -> dict[tuple[str, str, str], Any]:
 #: **AND THE POPULATION MOVED WITH IT, which is the same decision ``10l.105`` makes about
 #: the import obligation**: "the obligation ranges over the tree a fresh run EMITS, not the
 #: one committed".  This set is now compared against the APPROXIMATIONS OF A FRESH
-#: WHOLE-POPULATION RUN and not against ``census.declared``, which is read off the
-#: COMMITTED artifact -- and the two do not agree: the committed tree declares **130 sites
+#: WHOLE-POPULATION RUN and not against the COMMITTED artifact's own declarations
+#: (:func:`_carried`) -- and the two do not agree: the committed tree declares **130 sites
 #: in 59 documents**, 58 of which no fresh run makes and 45 of which a fresh run makes and
 #: it does not.  That gap is ``adcp-client-python-uqf``'s ("the committed tree is not what
 #: a fresh run emits") and it is held BY DIRECTION below
@@ -143,7 +139,7 @@ def _carried() -> dict[tuple[str, str, str], Any]:
 #:   ``adcp-client-python-10l.12`` is the row that owns the keyword.
 #: * ``oneOf`` at the JOIN rung, UNDERDETERMINED -- **18 sites in 16 documents**: §4's
 #:   dispatch cannot separate the branches, which is the one kind §8 gives an instrument of
-#:   its own (``underdetermined_census``, below) and the one the comparison cannot see.
+#:   its own (``underdetermined_census``, below).
 #: * ``anyOf`` at the JOIN rung, UNDERDETERMINED -- **21 sites in 18 documents**, the same
 #:   shape under the other combinator.  ``harness.inseparable_unions`` draws no
 #:   root/nested distinction and must not, so both positions are here.  This is the one
@@ -329,9 +325,8 @@ DECLARED_WIDENINGS = {
 #: :data:`DECLARED_WIDENINGS`' reason.  Over the COMMITTED artifact the two directions read
 #: 58 stale and 21 silent instead, and that difference is ``adcp-client-python-uqf``.
 #:
-#: Held as ``document#pointer`` and not as ``harness``'s own sentence, which is the
-#: spelling this file already uses for a produced line (``url_typed`` below): the sentence
-#: is constant text and the site is the fact.
+#: Held as ``document#pointer`` and not as ``harness``'s own sentence: the sentence is
+#: constant text and the site is the fact.
 UNDERDETERMINED_UNIONS: list[str] = [
 
     'adagents.json#/oneOf/1/allOf/0/anyOf',
@@ -467,9 +462,8 @@ def test_the_underdetermined_equality_holds_in_both_directions() -> None:
     so it stays at ``[]`` and reddens until that lands.
 
     ``silent`` arrives as ``harness``'s own SENTENCE and :data:`UNDERDETERMINED_UNIONS`
-    holds the SITE, so the site is taken off the front -- the spelling
-    ``tests/test_emit.py`` already uses for a produced line (its ``url_typed`` read).  The
-    suffix is constant text and the site is the fact.
+    holds the SITE, so the site is taken off the front: the suffix is constant text and
+    the site is the fact.
     """
     out = compiled(BUNDLE, sorted(bundle.portable(BUNDLE)))
     records = {
@@ -509,8 +503,8 @@ def test_the_committed_trees_declarations_are_the_runs() -> None:
     set is a decision -- each entry is a file that was not rewritten.
 
     **This is the figure that makes the two populations' disagreement actionable**, and
-    nothing held it before: the artifact's own declarations were what the census test
-    compared the backlog against, so the gap was not a quantity anywhere.
+    nothing held it before: the artifact's own declarations were what the backlog was
+    read against, so the gap was not a quantity anywhere.
     """
     minted, carried = set(_minted()), set(_carried())
     claimed("sites a fresh run declares", minted)

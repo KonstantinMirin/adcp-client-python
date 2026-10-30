@@ -13,8 +13,8 @@ constrained scalar it meets:
    site into an import of a content-equal one would invent a reference the
    citing document does not state AND would put the target root's own
    ``description`` into the citing field's rendered schema, which is a fact the
-   citing document does not state -- so the symmetric comparison would report it
-   as added.  Rung 1 is reached through a ``$ref`` or not at all.
+   citing document does not state.  Rung 1 is reached through a ``$ref`` or not
+   at all.
 2. **a type pydantic names**, and only where it states the document's own facts
    AND accepts the document's own set.  :func:`standard` is that rule, with both
    measurements in its docstring.
@@ -144,8 +144,7 @@ def url_type(node: Mapping[str, Any]) -> str:
     ``HttpUrl``'s own two ceilings are named at D5 and are accepted deliberately:
     it still refuses ``urn:`` and ``file:``, leaving 227 of 300 positions narrower
     than their document, and it renders ``maxLength: 2083`` and ``minLength: 1``
-    that no document states -- which is why ``harness.compare_schema`` carries one
-    hand-written row per added fact rather than a rule that admits any of them.
+    that no document states.
     """
     return f"{MODULE}.{URL if node.get('pattern') == HTTPS_ONLY else HTTP_URL}"
 
@@ -214,8 +213,9 @@ def standard(kind: str, constraints: Mapping[str, Any]) -> str | None:
 
     **Both halves are required: the type must state the document's own facts and
     accept the document's own set.**  That is a rule and not a list of blessed
-    names, and the schema comparison enforces the first half on every pair, so a
-    type admitted here cannot quietly state something else.  Re-measured on
+    names, and ``harness.check_accepts`` puts the second half to every pair -- an
+    instance drawn from the document, offered to the class -- so a type admitted
+    here cannot quietly refuse a value its own document accepts.  Re-measured on
     pydantic 2.13.5, rendering through ``TypeAdapter(T).json_schema()`` and
     acceptance through ``validate_python``:
 

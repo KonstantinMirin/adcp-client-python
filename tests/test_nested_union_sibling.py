@@ -11,9 +11,8 @@ it* ... No widening; the keyword compiles."  §14 step 9 lists it first among th
 rows.  The screened sentence says a sibling has "no slot for a fact of its own" on an
 ``ir.TypeRef`` -- true, and it does not reach this keyword, because the word is never
 carried on the union's type at all: ``schema.parse._union`` hands every branch
-``applied=<the word>``, so the fact is IN THE BRANCHES.  Both halves are graded below --
-the word reaching every branch node, and the comparison finding it at the union's own
-pointer -- and neither is read off the table.
+``applied=<the word>``, so the fact is IN THE BRANCHES.  That is graded below -- the word
+reaching every branch node, through the production parser -- and not read off the table.
 
 Measured over the 1,054 portable documents at ``9e759de``: 21 nodes reach this screen and
 **12 state the word and nothing else beside the combinator**; admitting it took ``emitted``
@@ -24,17 +23,20 @@ Measured over the 1,054 portable documents at ``9e759de``: 21 nodes reach this s
 with the reason written beside it -- it constrains nothing, so ignoring it cannot make
 the model wider than its document, and it is READ there as the property §4 "Names" takes
 a branch's name from.  ``union.nested``'s screen refused it, on a sentence whose stated
-mechanism is a CONSTRAINING sibling's: the fact has nowhere to go on a
-``ir.TypeRef``, and dropping it is reported ``missing`` by the comparison.
+mechanism is a CONSTRAINING sibling's: the fact has nowhere to go on an
+``ir.TypeRef``, so dropping it would leave the model wider than its document at that
+very pointer.
 
 That mechanism does not reach this keyword, and both halves are graded here:
 
 * the keyword constrains nothing, which §6's own row states -- "Nothing on the class.
   It names a branch where that branch pins more than one ``const``, and separately it
   CONFIRMS a dispatch key the branches already state -- it does not establish one";
-* the comparison does not look for it, so a model whose node is a bare ``oneOf`` is
-  reported ``missing`` nothing at that pointer.  That is asserted BY RUNNING the
-  comparison over a real pair, not by reading the compared set.
+* nothing is dropped that any reading carries: the cell's ``rendered`` is ``False``, so
+  the keyword is outside ``harness.FOLDED_FACTS`` -- the set the document-side fold
+  ranges over, ``keywords.rendered_at`` -- and a nested union's node holds no fact for
+  it either way.  Asserted as the CELL, in both directions, by
+  :func:`test_the_screen_admits_exactly_the_one_name`.
 
 A constraining sibling still refuses, which is the perturbation under each assertion: the
 screen was narrowed by two names and not opened.
@@ -56,8 +58,9 @@ different claim:
 * the 9 documents the old sentence refused are exactly the bundle's population for it,
   derived off the bundle, and NONE of them refuses on a sibling carrier any more;
 * ``account/sync-accounts-request.json`` -- §8's own measured case -- emits the shape §8
-  names, and its branch classes are graded against their nodes read UNDER the siblings
-  by the production comparison rather than by reading the compared set;
+  names, read off the classes the run WROTE: the base names the union's node and carries
+  the siblings, each branch is a subclass of it narrowing requiredness, and the union is
+  over the subclasses;
 * a sibling no class carries still refuses on the screen's own sentence, which is the
   perturbation: the screen was narrowed by a derived set and not opened.
 """
@@ -72,9 +75,8 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from adcp.types._base import schema_at
 from compiled import compiled
-from codegen import bundle, compiler, emit, harness, keywords
+from codegen import bundle, compiler, emit, keywords
 from codegen.lower import names
 from codegen.lower import union as lower_union
 from codegen.schema import nodes, parse as schema_parse
@@ -152,45 +154,6 @@ def test_the_position_this_row_is_about_is_a_real_population() -> None:
         for d, r in out.refusals.items()
         if "discriminator: a sibling of a nested" in r["detail"]
     ] == []
-
-
-def test_the_comparison_does_not_look_for_the_keyword_at_the_pointer_it_sits_at() -> (
-    None
-):
-    """The exit condition's harness half, RUN rather than read off the compared set.
-
-    ``media-buy/outcome-target.json`` is the one document of the population that emits,
-    and its union sits at ``/properties/goal`` with the keyword beside it.  The pair is
-    built the way the tree's own pairs are -- the document's own node against the class
-    that names it -- and the obligation is that nothing is reported ``missing`` or
-    ``differs`` at that pointer.  A keyword the comparison DID look for would be reported
-    there, which is the sentence the screen refused on and the half that does not hold.
-    """
-    document = "media-buy/outcome-target.json"
-    read = bundle.read(BUNDLE, document)
-    at = claimed(f"{document}'s discriminator sites", _sites(read))
-    assert at == {"/properties/goal"}, sorted(at)
-
-    out = compiled(BUNDLE, [document])
-    assert document in out.emitted, out.refusals.get(document)
-    resolved = bundle.record(BUNDLE, document)
-    classes = _declared(out, document)
-    root = claimed(
-        "classes naming the document root",
-        [c for c in classes if c.__adcp_schema__.pointer in ("#", "#/")],
-    )
-    (base,) = root
-    report = harness.compare_schema(resolved, base, document=resolved)
-    assert report.compared, report
-    assert not report.missing, report.missing
-    assert not report.differs, report.differs
-    assert not report.added, report.added
-    # The keyword's own pointer, named, so a green report over a node that never reached
-    # the union cannot pass for this assertion.
-    assert "goal" in base.model_fields, sorted(base.model_fields)
-    assert "discriminator" in resolved["properties"]["goal"], sorted(
-        resolved["properties"]["goal"]
-    )
 
 
 #: The phrase that identifies :data:`union._NESTED_SIBLING` in a refusal's own sentence.
@@ -316,7 +279,7 @@ def _union_node(declaration: dict[str, Any]) -> Any:
 # the fixtures and the two helpers, all through the production pipeline
 # --------------------------------------------------------------------------- #
 #: A document whose one nested union carries the keyword and nothing else.  Object root
-#: with a ``title``, so the root is a class the comparison has a pair for.
+#: with a ``title``, so the root is a class the emitter names.
 _NESTED: dict[str, Any] = {
     "$schema": DRAFT,
     "title": "Goal Holder",
@@ -401,7 +364,9 @@ def test_the_refusal_sentence_names_no_owner_for_the_position() -> None:
     """
     assert "needs a row" not in lower_union._NESTED_SIBLING
     assert "ROOT_CONJUNCTS" not in lower_union._NESTED_SIBLING
-    assert lower_union._NESTED_SIBLING.endswith("missing fact at this very pointer")
+    assert lower_union._NESTED_SIBLING.endswith(
+        "no declaration can carry the widening there"
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -500,44 +465,6 @@ def test_the_type_word_beside_a_nested_union_reaches_every_branch() -> None:
         states_its_own=kept,
     )
     assert told, "no branch takes the word, so the clause above holds vacuously"
-
-
-def test_the_comparison_finds_the_type_word_at_the_union_s_own_pointer() -> None:
-    """The harness half, RUN rather than read off the compared set.
-
-    This is the half :data:`union._NESTED_SIBLING` claimed could not hold: "the document
-    states the sibling at this pointer and ``harness.compare_schema`` looks for it here,
-    so a model whose node is a bare ``anyOf`` reports it ``missing``".  It holds for
-    ``type`` because the model's node is NOT a bare ``anyOf`` -- every arm carries the
-    word -- so there is a fact at that pointer for the comparison to find.
-
-    ``media-buy/product-refinement.json`` is the document: its root is an array whose
-    ``/items`` is ``{"type": "object", "discriminator": ..., "oneOf": [...]}``, which is
-    this population's own shape with both admitted names on one node.
-    """
-    document = "media-buy/product-refinement.json"
-    read = bundle.read(BUNDLE, document)
-    at = claimed(f"{document}'s worded nested union sites", _typed_nested_sites()[document])
-    assert at == {"/items"}, sorted(at)
-    assert read["items"]["type"] == "object", read["items"].get("type")
-
-    out = compiled(BUNDLE, [document])
-    assert document in out.emitted, out.refusals.get(document)
-    resolved = bundle.record(BUNDLE, document)
-    root = claimed(
-        "classes naming the document root",
-        [
-            c
-            for c in _declared(out, document)
-            if c.__adcp_schema__.pointer in ("#", "#/")
-        ],
-    )
-    (model,) = root
-    report = harness.compare_schema(resolved, model, document=resolved)
-    assert report.compared, report
-    assert not report.missing, report.missing
-    assert not report.differs, report.differs
-    assert not report.added, report.added
 
 
 def test_the_screen_admits_exactly_the_one_name() -> None:
@@ -771,15 +698,15 @@ def test_the_selector_is_derived_from_two_declarations_and_not_listed_here() -> 
 #: The clause §8 WITHDREW, pinned as ABSENT (``adcp-client-python-10l.47``).  §5's cell
 #: read "Shapes nested -> one type ``A | B``; a sibling beside it refuses" after §8 had
 #: already decided the composition answer at a union in ANY position, so the one document
-#: disagreed with itself for as long as the two readings coexisted.  A VALUE pin, in the
-#: shape ``tests/test_decision_set.py`` names third: the copy is COMPARED and never used,
-#: so a copy that went stale can only redden.
+#: disagreed with itself for as long as the two readings coexisted.  A VALUE pin: the
+#: copy is read by the assertion below and by nothing else, so a copy that went stale can
+#: only redden.
 WITHDRAWN = "a sibling beside it refuses"
 
 #: The triple the four readers of §3 derive from, pinned beside the prose.  The
 #: correction is a SENTENCE change and must be only that: the effect decides admission
-#: and whether a handler owes a lowering, ``rendered`` decides the compared set, and
-#: ``descends`` decides where the walk takes the branches.
+#: and whether a handler owes a lowering, ``rendered`` decides the set the document-side
+#: fold carries, and ``descends`` decides where the walk takes the branches.
 _UNION_CELL = (keywords.Effect.TYPE, False, keywords.Position.BRANCH)
 
 
@@ -801,7 +728,7 @@ def test_the_cell_the_four_readers_read_states_the_composition_answer() -> None:
     * The withdrawn clause is gone and the refusal is CONDITIONAL on the carrier.
     * The four readers of architecture §3 still read this cell, and each answer is a
       function of the pinned triple and not of the prose: admission and lowering off the
-      effect, the compared set off ``rendered``, the descent off ``descends``.
+      effect, the fold's set off ``rendered``, the descent off ``descends``.
     * The prose reaches NO reader under ``codegen/``.  ``compiler._screen`` is the one
       place a cell's ``compiles`` becomes a refusal's detail, and it reads it only where
       the effect is ``REFUSE``; this cell's is ``TYPE``, so the sentence is read by the
@@ -839,8 +766,8 @@ def test_the_cell_the_four_readers_read_states_the_composition_answer() -> None:
     assert keywords.lowers(answer)
     assert "oneOf" in keywords.combinators(at)
     assert "oneOf" not in keywords.rule_sources(at)
-    # grading: the compared set is the rendered column, and a combinator is graded by
-    # DESCENDING it rather than by comparing it as a value.
+    # the fold: the rendered column is the set the document-side fold carries, and a
+    # combinator is read by DESCENDING it rather than carried as a value.
     assert "oneOf" not in keywords.rendered_at(at)
     # descent: where the walk takes the branches, which is the position they are parsed at.
     assert keywords.descends_at(at)["oneOf"] is keywords.Position.BRANCH
@@ -888,38 +815,3 @@ def test_the_measured_case_emits_the_shape_section_8_names() -> None:
         assert required == set(branch["required"]), (arm, sorted(required))
     arms = tuple(classes[f"#{AT}/oneOf/{i}"] for i in range(len(node["oneOf"])))
     assert base._branch_models == arms, base._branch_models
-
-
-def test_the_branch_pairs_are_graded_under_the_siblings_and_report_nothing() -> None:
-    """§8's pairing rule at a NESTED union, RUN rather than read.
-
-    "A branch class of a union is paired with its branch node read under the union's
-    siblings ... so a field the branch inherits from the base is a fact its node states
-    and not one it added", and "at a union in ANY position, not only a root one".  The
-    harness half needed no change for the widening and this is what says so: the pairs
-    are built the way the tree's own are, and the direction that would catch the fact
-    being stated at a pointer the document does not -- ``added`` -- is silent, as are the
-    other three.
-
-    Asserted on the BASE's pair as well, because the base is the class that names the
-    node the siblings are stated at: a sibling dropped instead of composed would be
-    ``missing`` there.
-    """
-    out = compiled(BUNDLE, [MEASURED_CASE])
-    assert MEASURED_CASE in out.emitted, out.refusals.get(MEASURED_CASE)
-    resolved = bundle.record(BUNDLE, MEASURED_CASE)
-    at = {f"#{AT}", f"#{AT}/oneOf/0", f"#{AT}/oneOf/1"}
-    graded = claimed(
-        "pairs of the composed nested union",
-        [c for c in _declared(out, MEASURED_CASE) if c.__adcp_schema__.pointer in at],
-    )
-    assert {c.__adcp_schema__.pointer for c in graded} == at
-    for model in graded:
-        report = harness.compare_schema(
-            schema_at(model.__adcp_schema__), model, document=resolved
-        )
-        where = model.__adcp_schema__.pointer
-        assert report.compared, where
-        assert not report.missing, (where, report.missing)
-        assert not report.differs, (where, report.differs)
-        assert not report.added, (where, report.added)

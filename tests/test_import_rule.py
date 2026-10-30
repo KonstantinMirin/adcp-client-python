@@ -127,8 +127,8 @@ MODEL_LAYER_EXCEPTIONS: dict[str, str] = {}
 VERIFIER = frozenset({"harness.py", "dump_exemptions.py"})
 
 #: §9's permitted import set for the verifier, under ``codegen``.  ``codegen.keywords``
-#: is the DECLARATION -- §9 names it first, "for the compared set", and §9's own reason
-#: says why it is not a hole: "sharing DATA is a different matter from sharing a
+#: is the DECLARATION -- §9 names it first, for the folded facts and the rungs, and §9's
+#: own reason says why it is not a hole: "sharing DATA is a different matter from sharing a
 #: READING: the keyword table is the declared semantics, and both halves must read the
 #: same declaration or the grade means nothing."  ``codegen.bundle`` is the document of
 #: record and the document set; ``codegen.refusal`` is how a refusal the run recorded is
@@ -159,7 +159,7 @@ VERIFIER = frozenset({"harness.py", "dump_exemptions.py"})
 #: A hand-written entry names itself and can be audited, where a rule wide enough to
 #: admit it would admit the walk as well: this set may SHRINK and may not grow.
 #: ``codegen.attribution`` JOINS the set at §14 step 8, and §9 names it second: "its
-#: import set is the whole of that rule ... ``codegen.keywords`` (for the compared set and
+#: import set is the whole of that rule ... ``codegen.keywords`` (for the folded facts and
 #: the rungs), ``codegen.attribution`` (to grade an approximation's issue reference)".  §9
 #: also says what makes it not a hole, in the same breath as the keyword table:
 #: "``codegen.attribution`` joins the set and ``codegen.ir`` does not, which is the whole

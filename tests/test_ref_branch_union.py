@@ -41,7 +41,7 @@ from pydantic import ValidationError
 
 from adcp.types._base import BranchDispatchMixin
 from compiled import compiled
-from codegen import bundle, compiler, emit, harness
+from codegen import bundle, compiler, emit
 from codegen.lower import union as lower_union
 from codegen.refusal import Kind
 
@@ -124,7 +124,7 @@ def _imported(at: Path) -> tuple[Any, str]:
 def test_a_ref_branch_is_a_class_with_two_bases_and_the_dispatch_is_derived() -> None:
     """§4, the whole sentence: the target supplies the fields, the base the dispatch.
 
-    Six properties, and each one is a thing a wrong implementation gets wrong:
+    Five properties, and each one is a thing a wrong implementation gets wrong:
 
     * the branch is a class of its own, named by §4 "Names"'s ``const`` choice off the
       pin it inherits --
@@ -137,9 +137,8 @@ def test_a_ref_branch_is_a_class_with_two_bases_and_the_dispatch_is_derived() ->
       target is copied);
     * the base carries the DERIVED discriminator, with no ``discriminator`` keyword in
       the document to read it from;
-    * a payload comes back as the arm its ``kind`` names, which is the dispatch doing
-      the work rather than a union trying each branch;
-    * and the harness grades the branch against its own node.
+    * and a payload comes back as the arm its ``kind`` names, which is the dispatch doing
+      the work rather than a union trying each branch.
     """
     at = _fixture(_ROOT, _PINNED)
     try:
@@ -183,24 +182,6 @@ def test_a_ref_branch_is_a_class_with_two_bases_and_the_dispatch_is_derived() ->
         with pytest.raises(ValidationError) as caught:
             base.model_validate({"kind": "emu"})
         assert [e["type"] for e in caught.value.errors()] == ["oneOf"], caught.value.errors()
-
-        # **The graded pair**, built the way the tree's own pairs are: the SCHEMA half is
-        # the node at the pointer the CLASS names, read out of the resolved document, so
-        # a branch class that states a fact its own node does not is reported ``added``
-        # and one that drops a fact its node states is reported ``missing``.  This is the
-        # check the retired refusal's stated reason was about -- an inherited field being
-        # unreportable at the branch's pointer -- and for a ``$ref`` branch it is not:
-        # the resolved document carries the target's whole content AT that pointer.
-        resolved = bundle.record(at, "root.json")
-        for arm in base._branch_models:
-            node = resolved
-            for step in arm.__adcp_schema__.pointer.removeprefix("#").strip("/").split("/"):
-                node = node[int(step)] if isinstance(node, list) else node[step]
-            report = harness.compare_schema(node, arm, document=resolved)
-            assert report.compared, (arm.__name__, "nothing compared", report)
-            assert not report.missing, (arm.__name__, report.missing)
-            assert not report.differs, (arm.__name__, report.differs)
-            assert not report.added, (arm.__name__, report.added)
     finally:
         shutil.rmtree(at)
 
@@ -482,7 +463,8 @@ def test_the_dispatch_mixin_is_named_only_where_no_base_already_carries_it() -> 
 
 
 def test_the_nested_union_base_of_postal_area_imports_and_dispatches() -> None:
-    """``core/postal-area.json``, and the check is an IMPORT rather than a comparison.
+    """``core/postal-area.json``, and the check is an IMPORT rather than a reading of
+    the emitted text.
 
     Its ``/anyOf/0`` is a branch of the root union that composes a ``$ref`` whose target
     is a union ROOT, so §5's ``$ref`` row distributes the target's branches and the branch

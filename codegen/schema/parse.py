@@ -685,9 +685,9 @@ def _multi_type(
     #
     # Measured on ``core/delivery-metrics.json#/properties/quartile_data``, the bundle's
     # one emitted multi-type node whose ``object`` arm declares ``properties``: without
-    # this the nested class carried no docstring and §8's comparison reported the
-    # document's own ``/description`` as *missing* at the pair, while every other nested
-    # class in the same document carries one.  The FIELD carried it either way -- §6
+    # this the nested class carried no docstring at all, for a document that states
+    # ``/description`` at that very node, while every other nested class in the same
+    # document carries one.  The FIELD carried it either way -- §6
     # gives PROP a ``Field(description=…)`` -- so what was dropped was the class's half
     # and not the property's.
     #

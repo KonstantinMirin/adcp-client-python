@@ -137,8 +137,9 @@ TARGET = PythonVersion.PY_311
 #: Measured on pydantic 2.13.5, which is why it is a translation and not a refusal:
 #: ``Annotated[dict[str, int], Field(min_length=1, max_length=4)]`` renders
 #: ``{"type": "object", "minProperties": 1, "maxProperties": 4}`` -- the document's own
-#: spelling back again, so the symmetric comparison gains and drops nothing -- and
-#: enforces the bound (``{}`` refused, one key accepted, five refused).
+#: spelling back again, so the translation states neither more nor less than the keyword
+#: it came from -- and enforces the bound (``{}`` refused, one key accepted, five
+#: refused).
 #:
 #: It is HERE for the reason gate 1 is: a row states the document's keyword, and
 #: translating one into pydantic's vocabulary is this module's half of the seam.  The
@@ -519,8 +520,8 @@ def alias(decl: ir.AliasDecl) -> Rendered:
 
     The description rides in ``Field`` and not in a docstring, because an alias has no
     docstring slot: five of the bundle's scalar roots had their root ``description``
-    dropped for exactly that reason, and a ``Field(description=...)`` puts it in the
-    alias's own JSON schema where the schema comparison finds it.
+    dropped for exactly that reason, and a ``Field(description=...)`` is the one slot an
+    alias has for the sentence its document states.
     """
     fld = _field(
         ir.Field(
@@ -860,9 +861,8 @@ def root_model(decl: ir.RootModelDecl, declared: Sequence[Approximation] = ()) -
         # through ``json_schema_extra`` -- and ``type_hint`` alone is the type with the
         # ``Field`` dropped.  Measured on ``core/acceptance-policy-profile-ids.json``:
         # ``type_hint`` alone rendered ``root: list[StrMinLen1]`` and
-        # ``model_json_schema()`` then stated no ``uniqueItems``, so §8's comparison read
-        # the document's own keyword as *missing* at a root model whose rule tuple
-        # enforces it.
+        # ``model_json_schema()`` then stated no ``uniqueItems`` at all -- the fact §8
+        # needs RENDERED, absent from a root model whose rule tuple enforces it.
         f"{ir.ROOT_FIELD}: {annotation.annotated or annotation.type_hint}",
         f"__adcp_schema__: ClassVar[SchemaRef] = {decl.ref!r}",
     ]
@@ -935,21 +935,22 @@ def declared_at(approximations: Sequence[Approximation], ref: SchemaRef) -> tupl
     """Every approximation at or INSIDE the node ``ref`` names, in document order.
 
     **Containment and not the nearest declaration**, and the reason is the pairing §9
-    grades over.  A pair's comparison descends from its own node into the whole subtree --
-    a property's facts, an ``items``, a ``propertyNames`` -- so a root class's comparison
-    reports a fact at ``#/properties/x/maxLength`` as well as the nested class's own
-    comparison does.  A declaration carried only by the nearest enclosing class would
-    therefore leave the enclosing pair reporting that fact as *missing*, which is §8's
-    defect, for a widening the design declared.  Carrying it on every declaration whose
-    node contains it costs a repeated line in one module and makes both pairs read the
-    same answer.
+    grades over.  A pair is graded over its own node and the whole subtree under it -- a
+    property's facts, an ``items``, a ``propertyNames`` -- and the obligation that proves
+    a declaration walks the declaration's pointer from the pair's OWN node
+    (``harness.check_widening``), so a fact at ``#/properties/x/maxLength`` is reached
+    from the root class's node as well as from the nested class's own.  A declaration
+    carried only by the nearest enclosing class would be put to a draw at one of those
+    pairs and be unknown to the other, for a widening the design declared.  Carrying it
+    on every declaration whose node contains it costs a repeated line in one module and
+    makes both pairs read the same answer.
 
     Over-coverage in the other direction is harmless and measured: a root union's BASE is
-    at ``#`` and so contains ``#/oneOf/0/...``, which the base's own comparison never
-    visits because ``compare`` does not descend a combinator.  A declaration the
-    comparison does not reach is neither *approximated* nor *over-declared* at that pair;
-    the run-level equality (§8) ranges over the union of the pairs, where the branch pair
-    reports it.
+    at ``#`` and so contains ``#/oneOf/0/...``, so the base's own tuple carries a
+    branch's declaration as well as the branch pair's does.  Both pairs then put that
+    declaration to the same draw -- a combinator hop is a same-instance step of the
+    obligation's walk, so each reaches the same node -- and the repeated line buys a
+    second proof of one fact rather than a claim about anything else.
 
     The prefix test is on ONE spelling of a pointer -- ``SchemaRef``'s, which
     ``compiler.schema_ref`` is the sole producer of -- and the separator is part of the

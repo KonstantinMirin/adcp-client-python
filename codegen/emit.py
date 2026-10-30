@@ -772,8 +772,9 @@ def _under(pointer: str, into: str) -> bool:
     ``pointer`` is an :class:`adcp.types._base.Approximation`'s, so it carries the ``#``
     ``schema_ref`` spells; ``into`` is a :attr:`bundle.Edge.into`, which does not.  One
     spelling is reconciled here and in no second place, which is the whole reason this is
-    a function: §8's equality compares two sets of ``(pointer, keyword)`` pairs and a
-    second ``#``-stripping is how the two sides come to disagree about one pointer.
+    a function: the widening obligation walks a declaration's own ``(pointer, keyword)``
+    into the document (``harness.check_widening``), and a second ``#``-stripping is how a
+    declaration and the node it is about come to sit at two pointers.
     """
     base = f"#{into}"
     return pointer == base or pointer.startswith(f"{base}/")
@@ -785,7 +786,7 @@ def _travelled(document: str, one: Approximation, referrer: str, into: str) -> A
     The suffix below the fragment is kept exactly, because the resolution kept it: a
     declaration at ``#/definitions/x/items`` carried to a reference at
     ``#/properties/y`` is a declaration at ``#/properties/y/items``, which is the pointer
-    the comparison walks once the resolution has replaced the node.
+    ``harness.check_widening`` walks once the resolution has replaced the node.
 
     The attribution is RE-MINTED rather than carried, and §2 is why: an upstream
     attribution "is a property of a document and a pointer rather than of a keyword", so a
@@ -807,18 +808,18 @@ def _folded(document: str, one: Approximation, declared: Collection[str]) -> App
 
     The third of §8's four resolutions, under the same rule as the other two: a conjunct's
     facts are the composed node's -- ``compiler.lower_composition`` folds them into one
-    class and the comparison's ``harness._composed`` folds them on the document side -- so
-    a declaration about one of those facts belongs at the composed node's pointer, or the
-    comparison reports the fact *missing* at a pointer no declaration is at.  Measured:
+    class and ``harness._composed`` folds them on the document side -- so a declaration
+    about one of those facts belongs at the composed node's pointer, or the walk that
+    proves it reaches a node the document states no such keyword at.  Measured:
     ``core/account-with-authorization.json`` and ``account/list-accounts-response.json``
-    both reported ``missing`` for a widening declared one ``allOf/1`` hop away.
+    both minted a widening one ``allOf/1`` hop below the class the conjunct composes.
 
     **The evidence that the walk composed is the walk's own symbol table**, and that is why
     ``declared`` is a parameter: a conjunct hop whose PREFIX is a pointer this module
     declared a class at is a conjunct that was folded into that class.  A hop with no class
     above it was not folded and keeps its pointer, which is the fail-safe direction -- the
-    declaration then stands where it was minted and *over-declared* reports it if no pair
-    reaches it.
+    declaration then stands where the document states the fact, which is a pointer the
+    obligation's own walk still reaches.
     """
     segments = [s for s in one.pointer.lstrip("#").split("/") if s]
     for _ in range(_TRAVEL_DEPTH):
@@ -870,11 +871,11 @@ def repointed(
     * a REMOTE reference is inlined by ``bundle.record`` as a deep COPY, and the target
       document emits its own module and is graded by its own pairs -- so the declaration
       is COPIED to the referring pointer and the target keeps its own.
-    * a LOCAL reference is left in the record and resolved per side by the comparison's
-      own normalisation, which REPLACES the referring node with its target -- so the fact
-      is read at the referring pointer and at no other, and the declaration MOVES.  An
-      entry left behind would be a declaration no pair reaches, which §8 reports as
-      *over-declared*, "which is the outcome's whole purpose".
+    * a LOCAL reference is left in the record and resolved by the document-side reading
+      (``harness._normalize``), which REPLACES the referring node with its target -- so
+      the fact is read at the referring pointer and at no other, and the declaration
+      MOVES.  An entry left behind would name a pointer that reading resolves away, and
+      the widening obligation reports such a declaration unproved rather than passing it.
 
     ``own`` is this document's own declarations in document order and ``finished`` is
     document -> the declarations of a document the order has already finished.  A target
@@ -1218,8 +1219,9 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
     #: referrer re-points off whichever pointer its own fragment names.  Measured at
     #: ``formats/canonical/audio_daast.json`` and
     #: ``core/requirements/daast-asset-requirements.json``, which name
-    #: ``core/daast-tracker-constraints.json#/definitions/daast_versions`` and reported
-    #: the fact *missing* until this map existed.
+    #: ``core/daast-tracker-constraints.json#/definitions/daast_versions`` and carried
+    #: their declaration at a pointer the document states no such keyword at until this
+    #: map existed.
     minted: dict[str, tuple[Approximation, ...]] = {}
     #: ``$ref`` URI -> the NODE it names, for §2's intersection rule
     #: (:meth:`compiler.Module.resolve_node`).  **Run-level and not per document**, and

@@ -10,7 +10,7 @@ grader, and the plan. Everything else is written by a step of the plan.
 | | |
 |---|---|
 | `schemas/cache/3.2/` | 1,625 documents. The source of truth and the only input. |
-| `codegen/harness.py` | Grades a (schema document, Python class) pair in both directions. Imports `jsonschema`, `hypothesis`, `hypothesis_jsonschema`, `pydantic` and **no sibling, no path, no filesystem, and no name from the vocabulary it is pointed at** — which is why it can grade output that does not exist yet. |
+| `codegen/harness.py` | Grades a (schema document, Python class) pair on three checks. Imports `jsonschema`, `hypothesis`, `hypothesis_jsonschema`, `pydantic` and **no sibling, no path, no filesystem, and no name from the vocabulary it is pointed at** — which is why it can grade output that does not exist yet. |
 | `patches/8525/` | A PATCH SET: new documents plus a manifest of the pointers that become a `$ref`. Applied to the published bundle by `codegen/patch.py`, which produces the patched one; it is also the diff we ask upstream to take, and it retires when the backport lands. Admissibility is checked, not asserted — `tests/test_patch_8525.py` compares the record of every one of the 1,054 documents. |
 | `docs/plan/rebuild-plan.md` | Ten steps. The only work list. |
 | `docs/plan/sdk-type-generation.md` | Design intent, P1–P13. Non-negotiable. |
@@ -57,12 +57,15 @@ checks, with emitted plus refused equal to the bundle's own size and every
 refusal named by document, pointer and keyword.**
 
 N is **43** in this tree, over the 334 documents steps 1 and 2 name (85 leaf
-objects, 249 referencing a property), with 331 refused. The third check — the
-schema comparison — puts each class's own `model_json_schema()` against its
-document, and it is what grades the generated code: the accepts and refuses
-checks go through `strict_validate`, whose schema half answers first, so a model
-with `Any` on every field passes both over the same 75 instances a faithful one
-does.
+objects, 249 referencing a property), with 331 refused. What grades the generated
+code is the ROUND TRIP inside the accepts check: an instance drawn from the
+document reaches the class, and what the class DUMPS goes back to the document
+for its own verdict. Taking an instance is not enough by itself — a payload
+reaches the class through `strict_validate`, whose schema half answers first, so
+a model with `Any` on every field accepts the same 75 instances a faithful one
+does, and it is the dump that tells the two apart. The liveness check proves that
+class's schema half is connected at all, and `check_widening` puts every
+approximation the artifact declares to a draw of its own.
 
 ## Getting started
 

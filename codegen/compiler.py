@@ -343,10 +343,10 @@ class Shape:
     #: resolves ``allow`` from the root's envelope conjunct, the composed target
     #: ``ContentStandards`` carries the model base's default ``ignore``, it arrives second
     #: in the bases tuple, and the branch class resolved ``ignore`` -- dropping keys the
-    #: document admits, which §8 reported as ``missing /additionalProperties``.
+    #: document admits, so the dump lost every one of them.
     #:
-    #: So this is read where §8's pairing fold puts the fact -- what the document states
-    #: at the class's own pointer, which for a composing class is its own
+    #: So this is read where the document-side fold puts the fact -- what the document
+    #: states at the class's own pointer, which for a composing class is its own
     #: ``additionalProperties`` and, failing that, its bases' resolved value -- and
     #: WRITTEN on the class, so MRO order decides nothing a document states.  TRANSITIVE
     #: by construction like the other two: a class that composes records what it
@@ -363,10 +363,11 @@ def stated_extra(first: str | None, *rest: str | None) -> str | None:
     object"), which is draft-07's own conjunction and is the TIGHTER reading -- and §5's
     ``additionalProperties`` row does not send this to draft-07, it sends it to the fold:
     "the value is read from what the document states at the class's own pointer **after
-    §8's pairing fold**".  ``harness._composed`` gap-fills -- a keyword only a conjunct
-    states fills a gap and never overrides the node's own -- so the fold answers with the
-    FIRST view that states one, and a lattice answers with something the grader does not
-    read.  Measured on ``media-buy/decline-proposals-response.json#/anyOf/1``: the root
+    the document-side fold**".  ``harness._composed`` gap-fills -- a keyword only a
+    conjunct states fills a gap and never overrides the node's own -- so the fold answers
+    with the FIRST view that states one, and a lattice answers with something no document
+    states at that pointer.  Measured on
+    ``media-buy/decline-proposals-response.json#/anyOf/1``: the root
     states ``additionalProperties: false`` and the branch's ``$ref`` target states
     ``true``, the fold yields ``true``, and the lattice resolved ``forbid`` -- a model
     REFUSING keys the document admits, which is the one direction §2 forbids outright.
@@ -516,8 +517,8 @@ class Target:
     #: (``emit._declaring_site``), and the node it passed THROUGH may state a
     #: ``description`` sibling -- which the same row gives the other answer, "the
     #: sibling's description wins".  ``bundle.record`` inlines exactly that text at the
-    #: referring pointer, so a chain that dropped it would make the model *missing* a
-    #: fact at a pointer the comparison reaches.  The FIRST sibling along the chain, for
+    #: referring pointer, so a chain that dropped it would lose a fact the document
+    #: states at that very pointer.  The FIRST sibling along the chain, for
     #: the record's own precedence: the referrer's own wins over this, and this over the
     #: declarer's.
     described: str | None = None
@@ -919,9 +920,9 @@ class Module:
     #: the field's default".  :func:`local_reference` is the one writer, because it is the
     #: one place the resolution happens, and :func:`fields` is the one reader; the field
     #: rendered ``default: None`` where the document says ``"linear"`` until this carrier
-    #: existed, which is a *differs* and §8 pins that at zero
-    #: (``adcp-client-python-10l.26``, measured at ``core/daast-tracker-constraints.json``
-    #: and ``core/vast-tracker-constraints.json``).
+    #: existed (``adcp-client-python-10l.26``, measured at
+    #: ``core/daast-tracker-constraints.json`` and
+    #: ``core/vast-tracker-constraints.json``).
     #:
     #: Keyed by the REFERRER and not by the target, because one target may be named from
     #: two properties and the fact belongs to each field that resolves it.  A ``default``
@@ -934,8 +935,8 @@ class Module:
     #: one.  §5's ``$ref`` row resolves a fragment whose node is itself a ``$ref`` to the
     #: module that declares the symbol, and the node passed THROUGH may state a
     #: ``description`` sibling the same row makes authoritative; ``bundle.record``
-    #: inlines that text at the referring pointer, so dropping it is a *missing* fact at
-    #: a pointer the comparison reaches.
+    #: inlines that text at the referring pointer, so dropping it loses a fact the
+    #: document states at that very pointer.
     #:
     #: A second map rather than a wider :attr:`referred`, because the two carry different
     #: facts from different resolutions -- a ``default`` from a LOCAL target, a
@@ -1024,7 +1025,7 @@ class Module:
     #: entries.
     #:
     #: **A ``$ref`` is compared as a STRING and never followed, which is the CUT** §9 says
-    #: the comparison has to state: :class:`codegen.schema.nodes.Reference` carries the
+    #: an instrument has to state: :class:`codegen.schema.nodes.Reference` carries the
     #: URI and its two halves and no target, so a cycle through a reference is cut at the
     #: reference, at depth 0, on every node and not only on a cyclic one.  The cost is a
     #: measured population: two nodes naming ONE target through two spellings of the same
@@ -1845,9 +1846,7 @@ def fields(
                 # rather than refusing the document: the key is present in every
                 # instance the document admits, so the default can never be applied
                 # and a model that omits it accepts and rejects exactly what the
-                # document does.  ``harness._constrains_nothing`` says the same thing
-                # on the grading side, gated on the same shape, so the fact is folded
-                # rather than reported as a drop the model got wrong.
+                # document does.
                 #
                 # REPORTED, and that half is not optional: a fact the document states
                 # and the emitter silently discards is the one failure this pipeline
@@ -1869,7 +1868,7 @@ def fields(
             )
         )
     # **A required name NO declaration declares is a required field of type ``Any``**,
-    # which §8's empty-schema clause decides and which is EXACT rather than wide:
+    # which §5's ``required`` row decides and which is EXACT rather than wide:
     # ``required: ["x"]`` with no entry for ``x`` admits an object carrying ``x`` with
     # any value, and ``Any`` is what §5's ``type`` row already gives an absent type
     # word.  Nothing is widened, nothing is dropped and no declaration is owed, so this
@@ -1877,14 +1876,12 @@ def fields(
     #
     # **It was a refusal, and the refusal was a conflict between two of this compiler's
     # own decisions rather than anything a document got wrong.**  §5's ``required`` row
-    # called such a name "a presence rule with no field"; a rule renders no ``required``
-    # into a model's JSON schema while the keyword's own cell is ``rendered=True``, so
-    # the rule half reported ``differs`` at this pointer's ``/required`` -- and the field
-    # half reported the model-only ``properties`` entry as ``added``, which §8 had no
-    # fold for.  Both halves were red, so neither was written.  §8 now folds the entry
-    # (``harness._states_no_graded_fact``, reading the empty schema the way §5's
-    # ``additionalProperties`` row already reads it), and with the fold the field half is
-    # the faithful one.  27 of the 95 refusals, 5 of them primary.
+    # called such a name "a presence rule with no field": a rule enforces the key's
+    # presence on the constructor and declares nothing to hold its value, so the class
+    # had no place for a key every instance the document admits carries.  The field half
+    # has one, demands exactly what ``required`` demands, and dumps the key back where
+    # the document states it -- which is the faithful half.  27 of the 95 refusals, 5 of
+    # them primary.
     #
     # ``held`` is why this fires only where NOTHING holds the name: a key an INHERITED
     # field declares is the base's, and a CARRIED one is the union row's -- at a ROOT
@@ -1946,9 +1943,8 @@ def declare_object(
     the object row, the ``allOf`` row and a union BRANCH all arrive here -- so the
     ``allOf`` row gets its root's ``not``/``dependencies``/``minProperties`` by passing
     through rather than by repeating the object row's call.  A rule renders nothing in a
-    model's JSON schema, so the symmetric comparison neither gains nor loses a fact by
-    this; the only instrument that observes one is a direct ``model_validate``, which
-    is what ``src/adcp/types/_runtime.py`` records.
+    model's JSON schema, so the only instrument that observes one is a direct
+    ``model_validate``, which is what ``src/adcp/types/_runtime.py`` records.
 
     ``rule_nodes`` are the OTHER nodes whose rules are this class's -- an ``allOf``
     conjunct, which draft-07 applies to the same instance.  Empty for every row but
@@ -2027,9 +2023,9 @@ def declare_object(
         if isinstance(store, Refusal):
             return store
         extra_type = store.type
-    #: What the DOCUMENT gives this class for ``extra``, read where §8's pairing fold
-    #: puts the fact: this node's own ``additionalProperties`` first, and the value its
-    #: BASES resolved where the node states none (:attr:`Shape.extra`, which carries the
+    #: What the DOCUMENT gives this class for ``extra``, read where the document-side
+    #: fold puts the fact: this node's own ``additionalProperties`` first, and the value
+    #: its BASES resolved where the node states none (:attr:`Shape.extra`, which carries the
     #: whole reason).  Written onto the class unconditionally below, so pydantic's
     #: ``model_config`` merge along the MRO cannot decide it.
     #:
@@ -2627,8 +2623,8 @@ def _distributes(
     ``adcp-client-python-10l.76``).  It refused a node carrying a field its OWN
     declaration does not state -- one a sibling conjunct or a base contributes -- on the
     ground that "``_base.applied_schema`` drops the outer conjunct siblings at a second
-    cut", so the field was on the class and not at the branch's pointer and the pair
-    reported it ``added``.  That sentence was true of the walk and is not true of it now:
+    cut", so the field was on the class and the schema half it is graded against did not
+    reach it.  That sentence was true of the walk and is not true of it now:
     the drop is scoped to a second ``allOf`` CUT, and a ``oneOf``/``anyOf``/``then``/
     ``else`` hop moves to no other instance, so the sibling conjunct holds against the
     branch in the spelling it already has.  §8's third pairing rule followed as far as the
@@ -2637,22 +2633,23 @@ def _distributes(
 
     **Measured by ABLATION rather than by reading the sentence**, which is what this arm
     cost twice over: emitted with the screen lifted, all **14 pairs of
-    ``core/vendor-pricing-option.json``'s closure pass all three checks**, the five
-    distributed branch pairs comparing 47-53 facts each.  With the ``applied_schema``
-    scope put back and nothing else changed, the same five report exactly what this arm
-    claimed -- 3 ``added`` properties, ``differs /required`` and
-    ``accepts:model_refused_valid`` -- and the other nine still pass.  So the arm's
-    population was one document, its reason was one line of the verifier, and the two are
-    the same fact seen from both sides.
+    ``core/vendor-pricing-option.json``'s closure pass all three checks**, five of them
+    distributed branch pairs.  With the ``applied_schema`` scope put back and nothing
+    else changed, the same five report exactly what this arm claimed --
+    ``accepts:model_refused_valid``, the class refusing an instance its document admits
+    -- and the other nine still pass.  So the arm's population was one document, its
+    reason was one line of the verifier, and the two are the same fact seen from both
+    sides.
 
     The ``bases`` half of that arm is lifted on the same reason and has **population 0**:
     no node of the bundle reaches this function with a base and no restated key
     (``core/postal-area.json`` at ``/anyOf/0/allOf/0`` carries one and is claimed by arm 1
     above).  A base's fields come from a sibling ``$ref`` conjunct, which
     ``bundle.record`` inlines, so the walk conjoins them at the branch's pointer by the
-    same descent -- and the first document to state one is graded by §8 rather than
-    refused by a guess, which is loud in the direction §2 wants: an ``added`` is never
-    declarable and every emitted class is graded.
+    same descent -- and the first document to state one is graded rather than
+    refused by a guess, which is loud in the direction §2 wants: a class refusing what
+    its document accepts is never declarable, and every emitted class is drawn against
+    its own document.
 
     **BOTH ARMS ARE GONE, each for its own measured reason, and they left by different
     merges.**  Arm 1 refused a property this node and a target branch both declare,
@@ -2941,9 +2938,9 @@ def _the_conjuncts_own_type(
         # value's own annotated type.  An empty tuple here is §5's ``not`` row's own last
         # clause -- "Any other shape -> nothing on the model; the schema half answers and
         # the ceiling is named" -- and is the same answer ``lower.scalars`` already gives
-        # for the same statement beside a scalar's own type: ``not``'s cell is
-        # ``rendered=False``, so section 8 compares no fact at this pointer and the
-        # document's own ``strict_validate`` is what enforces it.
+        # for the same statement beside a scalar's own type: nothing on the model states
+        # ``not`` at this pointer and the document's own ``strict_validate`` is what
+        # enforces it.
         #
         # The two orders are CONCATENATED and not merged, because the two halves are
         # disjoint per keyword shape and one of them is always empty: ``on_a_value``
@@ -3057,10 +3054,10 @@ def _the_vocabularys_intersection(
 
     "Beside a ``$ref`` whose target is an enumeration → §2's intersection of the two
     vocabularies, rendered as a ``Literal`` over the TARGET's MEMBERS and not over their
-    raw values.  The two dump identically -- ``{"enum": [the members], "type":
-    "string"}`` -- so §8 compares the same fact either way, and the member form keeps the
-    imported symbol a caller can name: where §8 cannot tell two renderings apart, DX
-    decides."
+    raw values.  The two accept and dump identically -- a member's value IS the raw
+    value -- so the accepts draw and the round trip see the same instance either way, and
+    the member form keeps the imported symbol a caller can name: where no check can tell
+    two renderings apart, DX decides."
 
     **The intersection is computed over DECLARATIONS and the ORDER is the TARGET'S**, both
     of which are §2's and neither of which is a preference.  The declaration is read
@@ -3354,7 +3351,7 @@ def lower_composition(
     makes the shadow unspellable AND carries the document's own annotation**, which
     inheriting the field entirely did not: that left the class stating the BASE's
     ``default`` and ``description`` at a pointer its own document declares, the 28
-    ``differs`` of ``salesagent-j3k2l.36`` and two of them inversions.
+    annotations of ``salesagent-j3k2l.36`` and two of them inversions.
 
     The same rule closes the inventory's "41 subclass fields optional where their base
     requires them" by construction: a field the subclass does not declare keeps the
@@ -3984,10 +3981,10 @@ def lower_composition(
         # at ``/properties/ids``, ``/properties/gtins`` and ``/properties/tags``, each a
         # bare ``$ref`` to an array property of ``core/catalog.json``.**  With neither
         # half claiming them the document emitted and all three were dropped: the class
-        # carried no ``UniqueItems`` rule, the fields no ``json_schema_extra``, and the
-        # schema comparison reported 51 ``missing /…/uniqueItems`` facts over the document
-        # and the 5 that reference it -- a model accepting duplicates its document
-        # refuses, with no declaration.  That is what the gate reading a conjunct closes.
+        # carried no ``UniqueItems`` rule and the fields no ``json_schema_extra``, over
+        # the document and the 5 that reference it -- a model accepting duplicates its
+        # document refuses, with no declaration.  That is what the gate reading a
+        # conjunct closes.
         # ``conjuncts`` and not ``node.conjuncts``: this parameter is a ``nodes.Base`` and
         # three kinds declare the field, so the ONE reading this function makes of it is
         # the ``getattr`` above -- the direct access was §14 step 6's sixth error and the
@@ -4218,24 +4215,14 @@ def lower_composition(
             # (``adcp-client-python-10l.21``, fourth instalment).  The widening itself
             # is sound and lands: implemented over the 1,054 portable documents it takes
             # emitted 885 -> 910 and refused 169 -> 144.  What it cannot do is be
-            # GRADED.  §2 defines the one gradeable kind as "WIDENED -- ... §8's
-            # comparison sees every one of these, because the document states a fact the
-            # model does not", and §8's fifth outcome is the same direction:
-            # "*approximated* -- the document states the fact, the model does not".  The
-            # facts this row drops are NESTED facts the base's own declaration states a
-            # WIDER value for, so the comparison reports them in the two directions §8
-            # has no declared form for -- measured over the graded tree, 18 pairs report
-            # ``added /../field/enum`` beside the ``missing /../field/const`` a
-            # declaration could carry, ``core/assets/display-tag-asset.json#/oneOf/2``
-            # reports ``differs /../field/enum`` alone, and
-            # ``governance/check-governance-response.json`` reports ``differs
-            # ../action_binding/required``, ``differs ../action_id/type`` and ``added
-            # ../action_id/default``.  21 of the 25 freed documents therefore carry a
-            # fact no declaration can absorb, and the three that carry NONE are wider
-            # than their documents invisibly, which ``census.stale`` reports as a
-            # declaration nothing earns.  A rung is written when §8 has a form for the
-            # direction it drops in, and that is a decision §8 makes rather than this
-            # arm.
+            # DECLARED.  §2 defines the one declarable kind as "WIDENED -- ... the
+            # document states a fact the model does not", and §8's *approximated*
+            # outcome is the same direction: "the document states the fact, the model
+            # does not".  The facts this row drops are NESTED facts the base's own
+            # declaration states a WIDER value for, so 21 of the 25 freed documents
+            # carry a fact no declaration can absorb, and the three that carry NONE are
+            # wider than their documents invisibly.  A rung is written when a
+            # declaration has a form for the direction it drops in.
             disagreeing = _disagreeing(stating, inherited[key], mod.resolve_node)
             # **The sentence states its own obstruction, which means the DEREFERENCED
             # reading and the two values at the keyword that failed** (``10l.92``).  It
@@ -4278,8 +4265,7 @@ def lower_composition(
             # Measured on this tree: 2 documents and 2 pairs --
             # ``core/tasks-get-response.json`` and
             # ``protocol/get-task-status-response.json``, whose ``task_id`` is optional
-            # on ``core/protocol-envelope.json`` and required at their own root -- and
-            # they were the last 2 ``added`` facts of the symmetric comparison.
+            # on ``core/protocol-envelope.json`` and required at their own root.
             #
             # The INTERSECTION, in BOTH halves (``adcp-client-python-10l.103``).
             #
@@ -4354,9 +4340,8 @@ def lower_composition(
             #   root composing ``core/protocol-envelope.json`` and declaring ``context``
             #   itself as a bare ``$ref`` to ``core/context.json``: the envelope states
             #   the long "Relationship to per-task body-level ``context`` declarations"
-            #   text as a SIBLING of its own ``$ref``, the 15 documents state the
-            #   target's own short text at the pointer the comparison grades, and they
-            #   were 15 of the 43 ``differs``.
+            #   text as a SIBLING of its own ``$ref``, and the 15 documents state the
+            #   target's own short text at that pointer.
             # * **EMPTY** -- the node says nothing about the instance, so it is the
             #   inherited FIELD that stands and only the annotations are this
             #   document's.  A previous reading left this shape inherited entirely, on
@@ -4365,7 +4350,7 @@ def lower_composition(
             #   alone, and the answer is to not lower it alone: the base's decided
             #   field is re-used (:attr:`Shape.decided`, and ``fields``' ``reuse``
             #   says why the node cannot simply be merged and re-decided).  Measured as
-            #   the whole of ``salesagent-j3k2l.22``'s residue: 28 ``differs`` over 7
+            #   the whole of ``salesagent-j3k2l.22``'s residue: 28 annotations over 7
             #   ``formats/canonical/*.json`` at ``experimental``, ``v1_translatable``
             #   and ``slots``, two of them INVERSIONS where the base defaults a boolean
             #   the opposite way from the document's own declaration.
@@ -4381,8 +4366,8 @@ def lower_composition(
             # where the restatement is silent, and the composed document states it:
             # measured on ``formats/canonical/responsive_creative.json``, whose
             # ``slots`` restates a ``default`` and no ``description``, where reading the
-            # restatement's silence as an answer left the base's description reported
-            # ``missing`` instead of zero facts.
+            # restatement's silence as an answer dropped the base's description, which
+            # the composed document states at that pointer.
             # **The INTERSECTION here too, and the arm below is no longer "the node
             # states nothing" but "the intersection is the base's".**  Once silence
             # stopped being a loosening (:func:`_restatement`), a restatement can reach
@@ -4432,7 +4417,7 @@ def lower_composition(
     # Left out, the requiredness went into ``required`` where the inherited field
     # SATISFIED it (``fields``' ``inherited`` argument) and no line was written, so the
     # class kept the base's OPTIONAL field and rendered ``= None`` -- a default the
-    # document does not state, reported as an ``added`` fact at
+    # document does not state at
     # ``/properties/collection_ids/default``, and a class that ACCEPTS A PAYLOAD THE
     # DOCUMENT REFUSES.  That is the same defect the ``key in required and key not in
     # inherited_required`` branch above fixes for a key that IS declared locally; this
@@ -4577,7 +4562,7 @@ def lower_composition(
         # description where it states one, and the base's where it is silent.  The
         # composed document states the base's at this pointer -- ``harness._composed``
         # folds it in -- and pydantic will not supply it, because ``cls.__doc__`` is
-        # ``None`` for a subclass with no docstring.  Measured: 5 ``missing`` facts over
+        # ``None`` for a subclass with no docstring.  Measured: 5 such descriptions over
         # 4 pairs, every one a bare ``/description`` at a composing node whose own
         # declaration has none (``core/collection-selection.json``'s items and
         # ``core/canonical-media-buy-action.json``'s three branches).
@@ -5002,7 +4987,7 @@ def _constraining(node: Mapping[str, Any]) -> dict[str, Any]:
 
 
 #: The annotations a FIELD renders, so the two a restatement can differ about in a way
-#: the comparison sees.  :func:`fields` reads exactly these off the declaration --
+#: a READER sees.  :func:`fields` reads exactly these off the declaration --
 #: ``description`` into ``Field(description=...)`` and ``default`` into the field's
 #: default -- and the rest of the keys whose cell carries nothing (``title``,
 #: ``$comment``,
@@ -5070,7 +5055,7 @@ class Holds(StrEnum):
 #: §8's pairing carries the enclosing statement DOWN by key instead of dropping it at
 #: the first hop that moves to another instance (``adcp.types._base.applied_schema``) so
 #: that the composition can be graded.  Measured: emitted 897 -> 908, 0 documents
-#: stopped, 0 previously-emitted module modified, 0 facts red in any direction.
+#: stopped, 0 previously-emitted module modified, 0 pairs red.
 #:
 #: Not the table's ``descends`` column, which is a wider reading: that column answers
 #: where the subschemas a structural keyword holds SIT (``codegen.keywords.descends_at``,
@@ -5282,17 +5267,17 @@ def _intersection(
     the child's where it states one (a document's own declaration carries the
     description at its own pointer) and the base's where it is silent (clause 3, "silence
     inherits").  That is the gap-fill ``harness._composed`` performs on the DOCUMENT side,
-    so reading it the other way here is the two halves disagreeing: measured on
-    ``core/forecast-rate-range.json``, whose ``low``/``mid``/``high`` narrow
-    ``core/forecast-range.json``'s bounds and state no description, where the child
-    alone reported the base's three descriptions ``missing``.
+    so reading it the other way here is the compiler disagreeing with the document's own
+    composition: measured on ``core/forecast-rate-range.json``, whose
+    ``low``/``mid``/``high`` narrow ``core/forecast-range.json``'s bounds and state no
+    description, where the child alone dropped the base's three descriptions.
 
     **"Silent" means silent AFTER RESOLUTION, and that is the whole of §6's clause 2.**
     A child that is a bare ``$ref`` states no description in the document's TEXT and
-    states its target's at the pointer the comparison grades, because ``bundle.record``
+    states its target's at that very pointer, because ``bundle.record``
     inlines the target there -- so gap-filling the base's over it puts a description the
     document does not carry at a pointer the document declares itself.  Measured at 17
-    ``differs``, every one ``/properties/context/description``: a response root composing
+    pointers, every one ``/properties/context/description``: a response root composing
     ``core/protocol-envelope.json``, whose envelope states the long "Relationship to
     per-task body-level ``context`` declarations" text as a ``$ref`` sibling while the
     document's own node resolves to ``core/context.json``'s own short text.
@@ -5341,8 +5326,8 @@ def _intersection(
         # ``{"type": "string", "const": "submitted"}``, and the ``$ref`` came from
         # ``core/protocol-envelope.json``'s declaration of the same key.  With §5's
         # ``$ref`` row now compiling a constraining sibling to nothing, the same merge
-        # DROPS the ``const`` instead, and the comparison reports the document's own
-        # fact missing at that very pointer -- measured on all 5.
+        # DROPS the ``const`` instead, losing the document's own fact at that very
+        # pointer -- measured on all 5.
         #
         # So the base's ``$ref`` is left out and the field is decided from the child's
         # own declaration.  The model is then LOOSER than the base's conjunct and §2
@@ -5568,21 +5553,21 @@ def _intersection(
     # declaring a key as a bare ``$ref`` states its target's annotations at that
     # pointer, because ``bundle.record`` inlines the target there and
     # ``harness._composed`` folds the conjunct in -- so reading the base's own TEXT
-    # alone reports the composed document's description missing.
+    # alone drops a description the composed document states.
     #
     # Measured on ``media-buy/control-media-buy-response.json`` at
     # ``/oneOf/0/properties/warnings/items/properties/code``: ``core/warning.json``
     # declares ``code`` as ``{"$ref": "enums/warning-code.json"}`` and nothing else, the
     # conjunct restates ``{"const": "inventory_shortfall_forecast"}``, and the
-    # description the comparison grades is ``warning-code.json``'s own root one.  2
-    # pairs, both of them ``/properties/code/description``.
+    # description the composed document states at that pointer is
+    # ``warning-code.json``'s own root one.  2 pairs, both of them
+    # ``/properties/code/description``.
     # Gated on the base's reference having been DROPPED above, and the gate is
     # measured: read unconditionally, the base's target annotations also reach a
     # restatement whose own node resolves to something of its own, which is §6 clause
-    # 2's case and the 17 ``differs`` :func:`_restatement` records -- re-measured here
-    # at 11 extra red pairs over the three checks.  Where the reference was dropped
-    # there is nothing of the base's left for the child to disagree with, so the
-    # annotation is the only thing the base still contributes.
+    # 2's case and the 17 pointers :func:`_restatement` records.  Where the reference
+    # was dropped there is nothing of the base's left for the child to disagree with,
+    # so the annotation is the only thing the base still contributes.
     # **And the base's OWN annotation sibling wins over its target's**, which is §5's
     # ``$ref`` row ("an annotation sibling → the sibling's description wins") and
     # architecture §13 item 2's settled reading, applied one level up.  Measured on
@@ -5622,8 +5607,7 @@ _AXES: tuple[frozenset[str], ...] = (frozenset({"const", "enum"}),)
 #: §5's object and array sections are the two lists and this is a reading of them: every
 #: keyword whose row constrains an object is in the first set and every keyword whose row
 #: constrains an array is in the second, so a declaration stating any of them has said
-#: which container the instance is -- as surely as a ``type`` word does, and §8's own
-#: comparison makes the same derivation on the document side.
+#: which container the instance is -- as surely as a ``type`` word does.
 #:
 #: Read by :func:`_container_kind` and by nothing else.  Not a second copy of
 #: :data:`HOLDS`, which names the two keywords §2's intersection RECURSES into; this names
@@ -5750,7 +5734,7 @@ def _restatement(
     already made is a statement the document does not make at that pointer.  The caller
     refuses.
 
-    **The comparison was keyword-value EQUALITY and section 2's rule is not.**  "The field
+    **This predicate was keyword-value EQUALITY and section 2's rule is not.**  "The field
     carries the intersection -- an enum is the intersection of the members, a bound is
     the tighter one, a ``const`` must agree" admits narrowings an equality test reads as
     a conflict, and they go live the moment the conjunct cases land:
@@ -5763,9 +5747,9 @@ def _restatement(
 
     **KNOWN CEILING: a shared keyword where the CHILD is LOOSER refuses, where section 2 would
     have the field carry the base's.**  "A bound is the tighter one" says the
-    intersection of ``minimum: 1`` over a base's ``minimum: 3`` is 3, and the comparison
-    reads it that way too (``harness._tighter``), so such a pair is gradeable and could
-    be inherited.  It refuses because the arm has no site.
+    intersection of ``minimum: 1`` over a base's ``minimum: 3`` is 3, and the
+    document-side reading reads it that way too (``harness._tighter``), so such a pair
+    is gradeable and could be inherited.  It refuses because the arm has no site.
 
     **RE-MEASURED at ``adcp-client-python-97w``, and the three documents the comment here
     named are gone from it.**  The old sentence read "3 of the 1,054 portable documents
@@ -5799,7 +5783,7 @@ def _restatement(
     # went wrong when it was not.  Comparing a RAW intersection against a DEREFERENCED
     # base made two ``$ref``s to one target read as a narrowing, and the field then
     # carried the base's annotation at a pointer the document declares itself: measured
-    # at 17 ``differs``, every one ``/properties/context/description``, which is §6's
+    # at 17 pointers, every one ``/properties/context/description``, which is §6's
     # description-authority clause 2 and the 15 facts it was written for.
     dc, db = _dereferenced(child, resolve), _dereferenced(base, resolve)
     c, b = _as_enum(_constraining(dc)), _as_enum(_constraining(db))
@@ -5859,8 +5843,7 @@ def _restatement(
         # reference (its ``covered`` arm) and the field is decided from the child alone
         # with every fact behind the reference gone.  Measured before the resolver read
         # the two spellings: emitted, the brand class dropped 6 of the 8 properties
-        # ``payload`` requires and the comparison reported 4 ``missing`` and 2
-        # ``differs``, which is a model wider than its document.
+        # ``payload`` requires, which is a model wider than its document.
         #
         # **The two ``brand`` documents EMIT now, and they left through the clause below
         # rather than through this one** (``adcp-client-python-97w``).  Once the base
@@ -6028,10 +6011,8 @@ def _entailed_type(members: list) -> str | None:
     is a string as surely as ``{"type": "string"}`` does.  Deriving it is what lets a
     ``const`` restatement be read as keeping a base's ``type`` instead of dropping it --
     without it, ``{"const": "unknown"}`` over ``{"enum": [...], "type": "string"}``
-    reads as incompatible for a fact it states by implication.  The same derivation the
-    comparison already makes on the document side (``harness._entails_type``'s ``const``
-    row, 832 typeless const nodes), made here because the two halves have to read one
-    declaration the same way.
+    reads as incompatible for a fact it states by implication.  Measured on the bundle's
+    own documents: 832 typeless ``const`` nodes.
     """
     found = {
         word for member in members for cls, word in _JSON_TYPES if isinstance(member, cls)
@@ -6088,7 +6069,8 @@ def _disagreeing(
     handed to a lane as two keyword headings and is one shape.  The three that still
     refuse here all reported ``$ref``, because ``$`` sorts before every letter and the
     base's whole content is a bare reference that :func:`_dereferenced` RESOLVES before
-    anything is compared -- so the reported keyword was one the comparison never reads.
+    anything is compared -- so the reported keyword was one :func:`_restatement` never
+    reads.
     Their obstructions, measured and now reported: ``required`` for both
     ``brand/verify-brand-claim-response.json`` and
     ``brand/verify-brand-claims-response.json`` (the restatement requires two names where
@@ -6275,10 +6257,9 @@ def local_reference(mod: Module, pointer: str, at: str) -> ir.Decided | Refusal:
     # -10l.26``).  Draft-07 replaces a ``$ref`` node with its target, so the target's
     # ``default`` IS the referring node's, and §5's ``default`` row then gives it to the
     # field; without this the field rendered ``default: None`` where the document says
-    # ``"linear"``, which the comparison reports as *differs* and §8 pins at zero.  §2 is
-    # why it cannot be declared instead: "a default is a value and not a constraint, so it
-    # neither widens nor narrows what the class accepts", so there is no fact about
-    # acceptance to drop and nothing to attribute.
+    # ``"linear"``.  §2 is why it cannot be declared instead: "a default is a value and
+    # not a constraint, so it neither widens nor narrows what the class accepts", so
+    # there is no fact about acceptance to drop and nothing to attribute.
     #
     # Written HERE because this is the one place the local resolution happens, and keyed by
     # the REFERRER so two properties naming one entry each get it.  It is recorded before

@@ -44,14 +44,14 @@ TESTS = pathlib.Path(__file__).resolve().parent
 #: Per file, the number of census equalities at ``salesagent-j3k2l.47``.  It was 230
 #: before that row, measured by the instrument below: test_emit 138, test_enum 28,
 #: test_applied_schema 21, test_emit_product 21, test_fragment_ref 17,
-#: test_dump_exemptions 3, test_harness_halves 2.  What is left is local fixtures
+#: test_harness_halves 2.  What is left is local fixtures
 #: (``examples=7``), facts about
 #: pydantic's own rendering (``maxLength: 2083`` on ``HttpUrl``) and facts a named
 #: document states (``['const'] == 3``) -- none of them a count over a derived set.
 CENSUS_CEILING = {
-    "test_emit.py": 13,
+    "test_emit.py": 7,
     "test_emit_product.py": 5,
-    "test_enum.py": 4,
+    "test_enum.py": 3,
     "test_harness_halves.py": 2,
 }
 
