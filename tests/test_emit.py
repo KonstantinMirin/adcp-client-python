@@ -8382,7 +8382,7 @@ def test_a_format_beside_a_const_rides_on_the_annotation() -> None:
     ``Literal`` of one URI string is narrower than any URL type a ``uri`` could name, so
     substituting one would WIDEN a node whose whole content is one value. So the row
     takes "Otherwise rides as ``json_schema_extra={"format": …}`` on the field", which is
-    ``compiler.Decided.format`` and ``render._field``, exactly as an unselected format on
+    ``ir.Decided.format`` and ``render._field``, exactly as an unselected format on
     a plain scalar does.
 
     **Both halves name it, and that is why this is not an approximation.** A fact the

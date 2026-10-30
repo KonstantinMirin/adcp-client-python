@@ -86,7 +86,7 @@ from typing import Any
 import jsonschema
 
 from codegen import compiler, ir
-from codegen.compiler import Decided, Module
+from codegen.compiler import Module
 from codegen.keywords import Position
 from codegen.refusal import Kind, Refusal
 from codegen.schema import nodes
@@ -167,7 +167,7 @@ _BRANCH_OF = ("oneOf", "anyOf")
 
 def lower(
     node: nodes.Enumeration, mod: Module, *, of_a_root_union: bool = False
-) -> Decided | Refusal:
+) -> ir.Decided | Refusal:
     """§4's enumeration row: a ``StrEnum``/``IntEnum`` where a name reaches the node and
     its members spell one name each, and a ``Literal`` of its members otherwise.
 
@@ -242,7 +242,7 @@ def lower(
     collision = mod.declare(node.pointer, declared)
     if collision is not None:
         return collision
-    return Decided(ir.TypeRef(node.pointer, local=True))
+    return ir.Decided(ir.TypeRef(node.pointer, local=True))
 
 
 def excluded(node: nodes.Enumeration) -> Refusal | None:
@@ -381,7 +381,7 @@ def two_members_spell_one_name(node: nodes.Enumeration) -> bool:
     return len(set(spelled)) < len(spelled)
 
 
-def literal(node: nodes.Enumeration) -> compiler.Decided | Refusal:
+def literal(node: nodes.Enumeration) -> ir.Decided | Refusal:
     """D2's rendering for a value set no name reaches: a ``Literal`` of its members.
 
     **The value set is read by :func:`decide`, not by a second reading of it here.**
@@ -405,7 +405,7 @@ def literal(node: nodes.Enumeration) -> compiler.Decided | Refusal:
     enumerated = decide(node, "")
     if isinstance(enumerated, Refusal):
         return enumerated
-    return compiler.Decided(ir.TypeRef(literals=tuple(m.value for m in enumerated.members)))
+    return ir.Decided(ir.TypeRef(literals=tuple(m.value for m in enumerated.members)))
 
 
 def decide(node: nodes.Enumeration, name: str) -> ir.EnumDecl | Refusal:

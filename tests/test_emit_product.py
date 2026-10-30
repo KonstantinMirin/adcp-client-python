@@ -1290,7 +1290,7 @@ def test_the_accepts_and_liveness_checks_are_green_with_a_denominator(
 # --------------------------------------------------------------------------- #
 def _lower(
     doc: dict, targets: dict | None = None
-) -> str | compiler.Decided | Refusal:
+) -> str | ir.Decided | Refusal:
     """One hand-written composing declaration, lowered as the walk lowers it.
 
     §14 step 5 makes a handler take its node, so the declaration goes through

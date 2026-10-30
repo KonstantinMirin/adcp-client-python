@@ -11,12 +11,12 @@ step changes, and it is a node.
 from __future__ import annotations
 
 from codegen import compiler, ir
-from codegen.compiler import Decided, Module
+from codegen.compiler import Module
 from codegen.refusal import Refusal
 from codegen.schema import nodes
 
 
-def lower(node: nodes.Object, mod: Module) -> Decided | Refusal:
+def lower(node: nodes.Object, mod: Module) -> ir.Decided | Refusal:
     """The class, declared at this node's POINTER, as a local type.
 
     The refusal the class declarer returns comes back out UNCHANGED (§6: "a handler that
@@ -27,4 +27,4 @@ def lower(node: nodes.Object, mod: Module) -> Decided | Refusal:
     declared = compiler.lower_object(node, mod)
     if isinstance(declared, Refusal):
         return declared
-    return Decided(ir.TypeRef(declared, local=True))
+    return ir.Decided(ir.TypeRef(declared, local=True))

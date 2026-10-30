@@ -10,7 +10,7 @@ document that said otherwise -- "``Refusal`` lives in the package every lowering
 so any step can raise one" -- as "the reason holds unchanged; 'raise' becomes 'return'".
 
 What that buys is §9's "a crash is not an outcome", mechanically: a caller that reads a
-:class:`codegen.compiler.Decided` field off a result the walk may have refused is a TYPE
+:class:`codegen.ir.Decided` field off a result the walk may have refused is a TYPE
 ERROR, because a ``Decided`` and a ``Refusal`` are different types and nothing holds
 both.  The partial model §2 of the semantics document forbids -- a document emitting
 some declarations and then refusing -- is unrepresentable for the same reason.
