@@ -1,0 +1,1 @@
+[{"action": "a", "change_id": "0", "origin": {"kind": "adcp"}, "recorded_at": "2000-01-01T00:00:00Z", "repair": {"task": "get_signals"}, "resource": {"account_id": "0", "resource_id": "0", "type": "a"}}]

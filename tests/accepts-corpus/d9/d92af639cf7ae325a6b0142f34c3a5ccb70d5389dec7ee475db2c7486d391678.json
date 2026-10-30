@@ -1,0 +1,1 @@
+[{"methods": [{"pattern": "file_transfer", "transport": "s3", "vendor": {"domain": "0"}}]}]

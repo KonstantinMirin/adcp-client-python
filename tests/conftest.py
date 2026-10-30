@@ -23,13 +23,17 @@ whatever it finds.
 used to write ``pytest.raises(Refusal)`` reads the value a call returned, and this is the
 one spelling of that for the whole suite.
 
-One option, and it exists because the generated half of ``docs/plan/rebuild-plan.md``
-is a TEST artifact (``docs/plan/architecture.md`` §3): the grids of sections 5, 6 and 7
-are generated from ``codegen/keywords.py`` by ``tests/test_keywords.py``, which asserts
-the committed document equals what the table generates.  ``--write-grids`` is the
-affordance for a cell that has deliberately changed -- it writes the marked regions and
-nothing else, so writing a cell change through to the document costs one flag rather
-than a hand edit nobody can verify.
+TWO OPTIONS, and they are the same shape over two different committed derived artifacts:
+a gate asserts the tree equals what the derivation produces, and a flag rewrites the tree
+when the derivation has deliberately moved.  The generated half of
+``docs/plan/rebuild-plan.md`` is a TEST artifact (``docs/plan/architecture.md`` §3) -- the
+grids of sections 5, 6 and 7 are generated from ``codegen/keywords.py`` by
+``tests/test_keywords.py``, which asserts the committed document equals what the table
+generates, and ``--write-grids`` writes the marked regions and nothing else, so a cell
+change costs one flag rather than a hand edit nobody can verify.  The accepts corpus is
+the other (``docs/plan/architecture.md``, "The drawn corpus is COMMITTED", 2026-10-30):
+``--write-corpus`` promotes the shared cache into ``tests/accepts-corpus``, and the
+paragraph on it below says why it promotes rather than draws.
 
 Here rather than in the test module because pytest collects options from a plugin or a
 root ``conftest``, and a test module declaring one is not read in time.
@@ -146,6 +150,35 @@ def pytest_addoption(parser) -> None:
         default=False,
         help="rewrite the generated grids of docs/plan/rebuild-plan.md from "
         "codegen/keywords.py (tests/test_keywords.py owns the regions)",
+    )
+    #: The SECOND affordance of that shape, and the shape is the point: a derived
+    #: artifact in the tree, an equality that grades it, and ONE flag that rewrites it
+    #: when the derivation has deliberately moved.  ``docs/plan/architecture.md`` ("The
+    #: drawn corpus is COMMITTED", 2026-10-30) puts the accepts corpus in the tree; the
+    #: gate is
+    #: ``tests/test_accepts_corpus.py::test_every_graded_pair_has_a_committed_entry_under_the_current_key``
+    #: and it reddens on a bundle bump or a generator bump landing without a redraw.
+    #:
+    #: **IT PROMOTES AND IT DOES NOT DRAW**, which is what keeps the redraw affordable:
+    #: a full cold draw of this population is hours of one process and minutes of ten,
+    #: so the redraw is a normal parallel suite run -- which fills the shared cache --
+    #: and this flag then copies what the cache holds into the committed floor.  The two
+    #: steps, in order:
+    #:
+    #:     ./.venv/bin/python -m pytest tests/test_emit.py -k every_class_passes
+    #:     ./.venv/bin/python -m pytest tests/test_accepts_corpus.py -n 0 --write-corpus \
+    #:         -k every_graded_pair_has_a_committed_entry
+    #:
+    #: ``-n 0`` because this writes, and ten workers each promoting the same keys would
+    #: be ten processes racing on one directory for no gain.  The write is still atomic
+    #: per entry (``corpus.Store.put``), so the race would be safe rather than useful.
+    parser.addoption(
+        "--write-corpus",
+        action="store_true",
+        default=False,
+        help="promote the shared accepts-corpus cache into the committed floor at "
+        "tests/accepts-corpus (tests/test_accepts_corpus.py owns the gate); draws "
+        "nothing -- run the suite first to fill the cache",
     )
 
 

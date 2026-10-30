@@ -1,0 +1,1 @@
+[{"payload": {"agent_url": "https://A.COM", "brand_domain": "0", "exp": 0, "iat": 0, "request_hash": "sha256:0000000000000000000000000000000000000000000", "response": {}, "task": "verify_brand_claim", "typ": "adcp-response-payload+jws"}, "protected": "0", "signature": "0"}]

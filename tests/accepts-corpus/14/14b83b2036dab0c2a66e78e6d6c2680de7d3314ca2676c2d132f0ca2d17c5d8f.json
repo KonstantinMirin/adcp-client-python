@@ -1,0 +1,1 @@
+[{"account_id": "", "change_kind": "assigned", "creative_id": "", "fired_at": "2000-01-01T00:00:00Z", "idempotency_key": "0000000000000000", "media_buy_id": "", "notification_id": "0", "notification_type": "creative.assignment_changed", "observed_at": "2000-01-01T00:00:00Z", "package_id": "", "subscriber_id": "0"}]

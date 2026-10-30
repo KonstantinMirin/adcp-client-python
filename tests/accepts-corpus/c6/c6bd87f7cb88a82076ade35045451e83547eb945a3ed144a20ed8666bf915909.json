@@ -1,0 +1,1 @@
+[{"buyer": {"domain": "0"}, "campaign": {"description": "", "uses": ["name"]}, "idempotency_key": "0000000000000000", "pricing_option_id": "", "revocation_webhook": {"url": "https://A.COM"}, "rights_id": ""}]

@@ -1,0 +1,1 @@
+[{"event_types": ["account.status_changed"], "read_task": "list_accounts", "registration_task": "sync_accounts", "supported": true}]

@@ -1,0 +1,1 @@
+[{"errors": [{"code": "NOT_FOUND", "message": "Reporting status resource is unavailable."}], "failure_kind": "lookup_unavailable", "status": "failed", "view": "periods"}]

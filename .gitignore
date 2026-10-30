@@ -19,8 +19,11 @@ docs/plan/*.html
 # pytest report artifacts: a run is a dated measurement, not source.
 test-results/
 
-# the accepts corpus: drawn instances held between runs, keyed on the bundle document and
-# pointer they were drawn for (tests/corpus.py).  A derived artifact, regenerated on a miss.
+# the accepts corpus CACHE: drawn instances held between runs, keyed on the bundle document
+# and pointer they were drawn for (tests/corpus.py).  The cache is a build artifact; the
+# COMMITTED floor it starts from is tests/accepts-corpus/ and is tracked, because the key is
+# the document's own bytes and no compiler edit moves it (docs/plan/architecture.md, "The
+# drawn corpus is COMMITTED").  Only the cache is ever written by a run.
 .accepts-corpus/
 
 # Derived: tests/emitted.py's cross-process compile cache, keyed on the compiler's own

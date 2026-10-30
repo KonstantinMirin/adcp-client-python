@@ -1,0 +1,1 @@
+[{"declaration_id": "0", "dialect": "unknown", "dialect_semantic": "0", "encoding": {"depth": 0, "kind": "none"}, "location": {"context": "opaque", "field": "content", "occurrence": 0}, "mapping_status": "unresolved", "operation": "preserve", "required": false, "token": "0", "unavailable_behavior": "preserve"}]

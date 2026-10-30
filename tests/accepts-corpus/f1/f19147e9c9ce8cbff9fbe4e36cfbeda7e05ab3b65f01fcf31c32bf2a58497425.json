@@ -1,0 +1,1 @@
+[{"macro_resolution_results": [{"asset_path": "/", "declaration_id": "0", "dialect": "unknown", "dialect_semantic": "0", "mapping_status": "unresolved", "operation": "preserve", "reason": "preserved_unknown", "requested_encoding": {"depth": 0, "kind": "none"}, "required": false, "status": "preserved_for_downstream", "token": "0", "unavailable_behavior": "preserve"}]}]

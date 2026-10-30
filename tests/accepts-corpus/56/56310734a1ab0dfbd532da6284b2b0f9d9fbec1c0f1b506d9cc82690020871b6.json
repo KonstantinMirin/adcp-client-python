@@ -1,0 +1,1 @@
+[{"from_state_id": "a", "input": "tap", "to_state_id": "a", "transition_id": "a", "transition_mode": "instant", "trigger": "user_action"}]
