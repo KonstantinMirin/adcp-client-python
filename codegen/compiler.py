@@ -1746,13 +1746,18 @@ def fields(
         spelled[fname] = key
         is_distinct = key in distinct
         if key in reuse:
-            held = reuse[key]
+            # Bound under its own name and not onto ``held``: ``held`` above is the NAMES
+            # nothing declares (``undeclared``'s reading) and this is a decided
+            # :class:`codegen.ir.Field`.  One name for two types made the checker read
+            # ``.type`` off a ``tuple[str, ...]`` -- three of §14 step 6's six errors --
+            # and the comment at ``undeclared``'s own site still means the outer one.
+            reused = reuse[key]
             # The REUSED field's type ALREADY states its bound and its format (§2, and
             # :attr:`codegen.ir.TypeRef.facts`), so it is taken whole: splitting the
             # three back out and recombining them is what two carriers of one fact
             # invites, and the base decided this type at its own pointer.
-            field_type = held.type
-            is_distinct = held.distinct
+            field_type = reused.type
+            is_distinct = reused.distinct
         else:
             # **§4's nested name rule as a HOP and not as a name** (§7): what this
             # records is the structural fact -- this child hangs off the class at
@@ -3973,7 +3978,12 @@ def lower_composition(
         # schema comparison reported 51 ``missing /…/uniqueItems`` facts over the document
         # and the 5 that reference it -- a model accepting duplicates its document
         # refuses, with no declaration.  That is what the gate reading a conjunct closes.
-        if not a_conjunct_declares_an_array((c.raw for c in node.conjuncts), mod.resolve_node):
+        # ``conjuncts`` and not ``node.conjuncts``: this parameter is a ``nodes.Base`` and
+        # three kinds declare the field, so the ONE reading this function makes of it is
+        # the ``getattr`` above -- the direct access was §14 step 6's sixth error and the
+        # local is also the safer spelling, answering ``()`` where the kind has none
+        # rather than raising an ``AttributeError`` that names no document.
+        if not a_conjunct_declares_an_array((c.raw for c in conjuncts), mod.resolve_node):
             mod.carries_nothing.append(
                 f"{pointer}: uniqueItems: this node's conjuncts put no array at its "
                 "instance, and draft-07 applies uniqueItems to an array and ignores it "
@@ -4961,7 +4971,7 @@ def _reused(
     return held
 
 
-def _constraining(node: dict) -> dict:
+def _constraining(node: Mapping[str, Any]) -> dict[str, Any]:
     """What a declaration says about the INSTANCE.
 
     ``default``, ``description`` and every other key whose CELL carries nothing
@@ -4972,6 +4982,11 @@ def _constraining(node: dict) -> dict:
 
     Read at PROP, which is the position every caller asks it at: a restatement is a
     property's declaration against the base's.
+
+    Typed over ``Mapping`` because :func:`declaring` -- its one delegate, and the only
+    thing it does -- already is: a caller holding a conjunct as a ``Mapping[str, Any]``
+    was §14 step 6's fourth error, and narrowing the CALLER would have been a claim about
+    a value this function never writes to.
     """
     return declaring(node, Position.PROP)
 

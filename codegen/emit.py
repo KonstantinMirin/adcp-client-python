@@ -1501,11 +1501,11 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
         # ``compiler._intersection`` plants that very pointer as a conjunct of a node
         # belonging to THIS document.  Asked LAST, so a URI either the document or a
         # base's absolute text spells keeps the answer it already has.
-        for uri, edge in sorted(based_edges(document).items()):
+        for uri, (edge, _node) in sorted(based_edges(document).items(), key=lambda kv: kv[0]):
             out.setdefault(uri, answer(document, edge))
         return out
 
-    def based_edges(document: str) -> dict[str, bundle.Edge]:
+    def based_edges(document: str) -> dict[str, tuple[bundle.Edge, dict]]:
         """Each ``$ref`` LOCAL TO A BASE'S OWN DOCUMENT, re-based as the FRAGMENT
         reference it is when read from ``document``.
 
@@ -1545,7 +1545,7 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
         the guarantee is the bundle's and not the rule's.
         """
         own = {edge.uri for edge in sites.get(document, ()) if edge.local}
-        out: dict[str, bundle.Edge] = {}
+        out: dict[str, tuple[bundle.Edge, dict]] = {}
         seen: dict[str, dict] = {}
         collided: set[str] = set()
         for base in sorted(composes.get(document, ())):
@@ -1561,8 +1561,10 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
                 if seen.setdefault(edge.uri, node) != node:
                     collided.add(edge.uri)
                     continue
-                out.setdefault(edge.uri, edge._replace(local=False, target=base, into=into))
-        return {uri: edge for uri, edge in out.items() if uri not in collided}
+                out.setdefault(
+                    edge.uri, (edge._replace(local=False, target=base, into=into), node)
+                )
+        return {uri: pair for uri, pair in out.items() if uri not in collided}
 
     def based_nodes(document: str) -> dict[str, dict]:
         """The node each of :func:`based_edges`'s re-based references names, for §2's
@@ -1572,12 +1574,16 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
         every other fragment with -- so a base's local pointer and a composing document's
         absolute reference to the same node are one answer, which is the whole of
         ``adcp-client-python-10l.72``.
+
+        **The node is the one :func:`based_edges` already resolved**, carried beside the
+        edge rather than resolved a second time here.  It was resolved twice, and the
+        second reading indexed ``lowered`` by ``edge.target`` -- a ``str | None``, because
+        :attr:`codegen.bundle.Edge.target` is ``None`` for a LOCAL reference -- which was
+        §14 step 6's fifth error.  The re-based edge's target is a base's document by
+        construction, and carrying the pair says that where a narrowing of the field could
+        only assert it.
         """
-        return {
-            uri: node
-            for uri, edge in based_edges(document).items()
-            if (node := _node_or_none(lowered[edge.target][2], edge.into)) is not None
-        }
+        return {uri: node for uri, (_edge, node) in based_edges(document).items()}
 
     #: document -> the documents its ``allOf`` conjuncts compose, transitively.  Filled
     #: as the order finishes each document, which is early enough by construction: a
