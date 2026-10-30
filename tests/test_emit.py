@@ -1310,6 +1310,14 @@ NO_PAYLOAD_PAIRS: tuple[str, ...] = (
 #: both readers below pass ``corpus=`` for -- and the two passes over this population,
 #: this one and the parametrised test, now fill and read ONE corpus rather than drawing
 #: the same 1,664 instances twice.
+#:
+#: **AND ``widening_corpus`` IS THE SECOND HALF OF THE SAME SENTENCE**
+#: (``adcp-client-python-3be.25``).  With the accepts draws all replayed, the pole moved to
+#: §8's obligation, which draws again from schemas it derives out of the pair's node: 246.7
+#: s on one pair of ``core/async-response-data.json`` and over 600 s on another, measured
+#: with every accepts draw answered by the committed floor.  ``harness._Draws`` carries the
+#: reading; ``corpus.WIDENING_STORE`` is where it lands, and it is a SEPARATE key space so
+#: that the accepts floor's own both-directions gate keeps meaning what it says.
 GRADED_REPORTS_GROUP = "graded_reports"
 
 
@@ -1336,7 +1344,15 @@ def graded_reports() -> list[tuple[Graded, PairReport]]:
     workers.  A fifth reader added here takes the mark too, or it adds a whole pass.
     """
     return [
-        (g, check_pair(pair_of(g), custom_formats=FORMAT_STRATEGIES, corpus=corpus.STORE))
+        (
+            g,
+            check_pair(
+                pair_of(g),
+                custom_formats=FORMAT_STRATEGIES,
+                corpus=corpus.STORE,
+                widening_corpus=corpus.WIDENING_STORE,
+            ),
+        )
         for g in graded()
     ]
 
@@ -1461,7 +1477,12 @@ def test_every_class_passes_all_three_checks(row: Graded) -> None:
     while the three tests reading a population TOTAL are one item each.
     """
     pair = pair_of(row)
-    rep = check_pair(pair, custom_formats=FORMAT_STRATEGIES, corpus=corpus.STORE)
+    rep = check_pair(
+        pair,
+        custom_formats=FORMAT_STRATEGIES,
+        corpus=corpus.STORE,
+        widening_corpus=corpus.WIDENING_STORE,
+    )
     assert rep.missing_formats == []
     assert rep.comparison.outcome == "pass", (rep.comparison.missing, rep.comparison.differs)
     if rep.accepts.outcome != "strategy_error":

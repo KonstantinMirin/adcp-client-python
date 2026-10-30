@@ -368,3 +368,66 @@ CACHE = Store(DIRECTORY)
 #: corpus rather than two.  A module-level object and not a fixture, for
 #: ``test_emit.graded_reports``' own reason: the readers are module functions, not tests.
 STORE = Layered(FLOOR, CACHE)
+
+
+# --------------------------------------------------------------------------- #
+# §8's OBLIGATION draws too, and its draws are a second key space
+# --------------------------------------------------------------------------- #
+#: **THE WIDENING CHECK'S OWN DRAWS, held the same way and in a SEPARATE DIRECTORY**
+#: (``adcp-client-python-3be.25``).
+#:
+#: ``harness.check_accepts`` draws once per pair and everything above holds it.
+#: ``harness.check_widening`` draws several more times per pair -- a value class, an
+#: intermediate node on the way to an instance location, the pair's node conjoined with a
+#: demand -- and held none of them, which the row measured as the pole of a run whose
+#: accepts draws were ALL replayed from :data:`COMMITTED`: 246.7 s on one pair of
+#: ``core/async-response-data.json`` with 242.6 s of it in a single repeated draw, and over
+#: 600 s on another without finishing.  ``harness._Draws`` carries the reading and the key;
+#: this is only where it lands.
+#:
+#: **WHY A SECOND DIRECTORY AND NOT A SECOND KEY IN THE FIRST, which is a decision and not
+#: a tidiness.**  ``harness.corpus_key``'s ``position`` already makes a widening key
+#: unable to collide with an accepts key, so one directory would hold both correctly --
+#: and would break the instrument over the first.
+#: ``test_every_graded_pair_has_a_committed_entry_under_the_current_key`` asserts the
+#: equality in BOTH directions, including ``extra == set()``: the committed floor may hold
+#: no entry the graded population asks for.  That side reads :meth:`Store.keys`, a
+#: ``rglob`` of the DIRECTORY, so widening entries landing there would make a landed gate
+#: read red on nothing being wrong -- and the only repair available would be to teach the
+#: accepts gate the other key space, which is one obligation grading two populations and
+#: the way an assertion stops asserting.  ``--write-corpus``' prune has the same shape from
+#: the other side: it unlinks every floor key the accepts population does not ask for, and
+#: in one directory that is every widening entry, every time.
+#:
+#: So: two directories, two floors, two caches, and each equality over its own population.
+#: ``tests/test_widening_corpus.py::test_a_held_widening_base_lands_in_no_accepts_key_space``
+#: is the reading, and it is the one that would have caught the merge.
+WIDENING_DIRECTORY = CACHE_ROOT / "widening-corpus"
+
+#: The committed floor for that space, beside :data:`COMMITTED` and for its reasons: read
+#: by DEFAULT with no flag and no environment variable, under ``tests/`` because the
+#: population it answers for is the suite's, hyphenated so it is not an importable package
+#: name, and outside ``[tool.setuptools.packages.find]``'s ``where`` so none of it ships.
+#:
+#: **IT HAS NO CURRENCY GATE YET AND THAT IS STATED RATHER THAN IMPLIED.**  The accepts
+#: floor has one because its live key set is readable without drawing anything
+#: (``live_keys()``: an identity, an example count and a format set, per graded pair).
+#: This space's is not: which positions the population asks for depends on which borrowed
+#: base hosted the declaration's location, so deriving the set exactly means running the
+#: obligation -- and on a cold floor that costs the draws the gate would be reporting are
+#: owed.  A gate over a SUPERSET would demand entries for draws that never happen and
+#: could not be filled.  So what this row ships is the store, the layering and
+#: ``--write-corpus``; whether the floor is also graded for currency, and against which
+#: derived population, is an open decision for ``docs/plan/architecture.md``.
+WIDENING_COMMITTED = ROOT / "tests" / "widening-corpus"
+
+WIDENING_FLOOR = Store(WIDENING_COMMITTED)
+
+WIDENING_CACHE = Store(WIDENING_DIRECTORY)
+
+#: The composition, with :class:`Layered`'s two rules unchanged: the floor answers FIRST so
+#: every lane and every fresh checkout grade the same held witness, and only the cache is
+#: ever written so no run can dirty the tree.  Both rules matter here for the same measured
+#: reason they matter above -- the draw is not reproducible, so which store answers decides
+#: which witness is graded.
+WIDENING_STORE = Layered(WIDENING_FLOOR, WIDENING_CACHE)

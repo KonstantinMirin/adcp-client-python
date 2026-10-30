@@ -232,7 +232,11 @@ _DRAW_VERSION = f"hypothesis={hypothesis.__version__} hjs={hypothesis_jsonschema
 
 
 def corpus_key(
-    identity: Any, *, examples: int, custom_formats: Mapping[str, Any] = ()
+    identity: Any,
+    *,
+    examples: int,
+    custom_formats: Mapping[str, Any] = (),
+    position: Any = None,
 ) -> str:
     """The content address of the instances :func:`check_accepts` draws, under ``identity``.
 
@@ -286,21 +290,43 @@ def corpus_key(
     read off :attr:`AcceptsResult.outcome` ``== "corpus_rejected"`` over the population, and
     a non-zero one says the looser key reached a pair whose question really did move.
 
+    **``position`` IS THE SECOND HALF OF THE IDENTITY, and only §8's obligation has one.**
+    The accepts draw is over the whole node a pair names, so the pair's identity names it
+    completely.  :func:`check_widening` draws several times WITHIN one pair, each time from
+    a schema it derived from a different place in that node -- a value class at one declared
+    pointer and keyword (:func:`value_classes`), an intermediate node on the way to an
+    instance location (:func:`_reached`), the node conjoined with a demand
+    (:func:`_demanding`) -- and those draws are different questions about one document.  So
+    the caller names WHICH derivation, and each of the three is a reading of the DECLARED
+    POINTER and of nothing the compiler can move: ``_demanding``'s own docstring says the
+    demand "is a reading of the POINTER and not of the document", and the other two are the
+    document's own subschema reached along a stated pointer.  A position is therefore as
+    static as the identity beside it, which is what makes the pair one key.
+
+    **ABSENT FROM THE MATERIAL WHERE THERE IS NO POSITION, which is not a convenience.**
+    ``check_accepts``' key is the address of 2,693 committed entries
+    (``tests/accepts-corpus``), and a new material field would have moved every one of
+    them -- a key change wearing a refactor, with
+    ``test_every_graded_pair_has_a_committed_entry_under_the_current_key`` red on a bundle
+    nobody bumped.  So the accepts key is unmoved BY CONSTRUCTION and not by inspection:
+    the field appears only when a caller names a position, and
+    ``test_the_accepts_key_does_not_move_when_a_position_is_available`` reads that back.
+
     The serialisation is ``json.dumps(..., sort_keys=True)``, the same canonical spelling
     ``canonicalisation_shared_within_one_call`` keys its within-call memo with, so two
     callers cannot disagree about when two identities are one identity.
     """
-    material = json.dumps(
-        {
-            "identity": identity,
-            "examples": examples,
-            "formats": sorted(custom_formats),
-            "draw": _DRAW_VERSION,
-        },
-        sort_keys=True,
-        default=repr,
-    )
-    return hashlib.sha256(material.encode()).hexdigest()
+    material: dict[str, Any] = {
+        "identity": identity,
+        "examples": examples,
+        "formats": sorted(custom_formats),
+        "draw": _DRAW_VERSION,
+    }
+    if position is not None:
+        material["position"] = position
+    return hashlib.sha256(
+        json.dumps(material, sort_keys=True, default=repr).encode()
+    ).hexdigest()
 
 
 def corpus_defect(
@@ -1184,6 +1210,136 @@ def check_accepts(
 # --------------------------------------------------------------------------- #
 # section 8's accepts OBLIGATION: a widening is PROVED, not believed
 # --------------------------------------------------------------------------- #
+@dataclass
+class _Draws:
+    """**WHERE §8's OBLIGATION HOLDS THE INSTANCES IT DRAWS**, and what it paid for them.
+
+    ``check_accepts`` draws ONCE per pair and :func:`corpus_key` holds it;
+    :func:`check_widening` draws several times per pair, from schemas it derives out of the
+    pair's own node, and held NONE of them.  This is the same relocation
+    ``tests/corpus.py`` describes for the accepts draw, applied to the three sites §8's
+    obligation draws at -- and it is the relocation and not a second instrument: the key is
+    :func:`corpus_key`'s, with the derivation named in its ``position``.
+
+    **MEASURED, AND THE SITE THAT COSTS IS NOT ONLY THE ONE THE ROW WAS FILED ABOUT.**  The
+    population is read first, because every number below is about a small part of it: of
+    2,793 graded pairs, **87 carry a declaration at all, and 53 carry one this check can
+    put to a draw** -- the other 34 declare only UNDERDETERMINED facts, which the loop
+    below subtracts before anything is drawn.  So the obligation's whole cost sits on 53
+    pairs, and over those pairs it sits on draws, not on grading:
+
+    ===================================================  ==========  ==============
+    ``check_widening`` on one pair, nothing held           node MB         seconds
+    ===================================================  ==========  ==============
+    ``compliance/comply-test-controller-request.json#``          8.2  >900, cut off
+    ``core/async-response-data.json#/anyOf/34``                 6.9  >600, cut off
+    ``core/async-response-data.json#/anyOf/27``                14.1  >600, cut off
+    ``core/async-response-data.json#/anyOf/28``                 4.7           246.7
+    ``core/creative-representation.json#``                      4.6            11.9
+    ===================================================  ==========  ==============
+
+    Over the 52 of those 53 pairs one pass completed, **1,606 s of widening wall clock of
+    which 1,605 s is inside the draw** -- 108 draws, with one pair cut off at 600 s and
+    nothing graded costing more than a second.  Where the time goes:
+
+    * ``_reached``, 1,441 s of it over 17 draws, worst 600 s on a 6,832,209-byte node.
+    * the value class, 164 s over 71 draws of multi-megabyte RESTRICTIONS of a node.
+    * ``_bases``' demand, which the completed pass reached for 24 declarations over 14
+      pairs and which is the one site a deadline could not time: ``>900 s`` on an
+      8,145,255-byte conjunction, twice, on two pairs of one document.
+    * :func:`_mapping_key`, 0.16 s over 20 draws of 50-byte key schemas.  Not held: the
+      store's own file read costs more than the draw.
+
+    **WHICH SITE A PAIR PAYS IS DECIDED BY ITS ACCEPTS INSTANCE**, which is why holding one
+    and not the other would have moved the pole rather than removed it.  A pair whose
+    accepts draw produced an instance has a base to place into, so ``_reached`` fills the
+    gaps in it and ``_bases``' last candidate is never asked for -- that is both
+    ``async-response-data`` pairs above, each with its accepts draw already replayed from
+    the committed floor.  A pair whose accepts draw produced NOTHING hands ``_reached`` a
+    ``None`` it returns unchanged, every borrowed candidate fails, and ``_bases`` draws the
+    demand -- over the node CONJOINED with it, which is strictly larger than the document.
+    That is both ``comply-test-controller-request`` pairs.
+
+    **AND A STORE DOES NOT REACH EVERY POSITION, which is stated because the reading says
+    so.**  A draw that never returns is never held, so the positions above that no deadline
+    could time are positions a store cannot answer for until something draws them once.
+    What a store removes is the repetition -- the same position paid again per value class,
+    per pair of a document, and per run -- which is the whole of what was measured twice
+    over on one node.  Whether the whole-node draw should be replaced by a construction
+    from the document is a separate question and a separate decision.
+
+    **THE KEY IS THE PAIR'S IDENTITY AND THE POSITION, and never the derived schema.**
+    :func:`corpus_key` carries the argument -- the schema these draws are handed is
+    ``bundle.record``'s rendering conjoined, restricted or walked by this module, so an
+    address taken from it moves whenever the compiler does.  Each position is a reading of
+    the DECLARED POINTER instead, which the bundle fixes.
+
+    **AND NOTHING HERE DECIDES WHETHER A HELD VALUE MAY BE USED**, which is why this needs
+    no ``corpus_defect`` of its own: every candidate base this holds is placed, and
+    :func:`check_widening` then offers the placed payload TO THE DOCUMENT before the entry
+    point is shown anything (``conforms(schema, attempt)``).  A stale base makes that
+    refuse, the declaration is reported ``unproved`` or refused, and the pair reddens -- the
+    same derived equality ``corpus_defect`` performs for the accepts draw, already in the
+    code that consumes these values.  There is deliberately no fall-through to a fresh draw
+    on a held base the document refuses: that is the silent repair ``corpus.Layered``'s
+    docstring refuses for the same reason.
+
+    **A FAILED DRAW IS HELD TOO, with its reason beside it.**  An undrawable position is
+    reported ``unproved``, and the ``Unsatisfiable`` that says so is itself expensive -- it
+    is the whole generation budget spent on filtered cases.  So :meth:`one` answers
+    ``[value]`` or ``[None, reason]``: the two states :func:`_bases`' ``memo`` already had,
+    plus the sentence, because a replayed run that reported a thinner reason than a drawn
+    one would make the store visible in the verdict.  Only an ``Exception`` is held -- a
+    ``MemoryError`` or an interrupt is a fact about the machine and not about the position.
+
+    **THE TWO STATES ARE TOLD APART BY LENGTH AND NEVER BY THE VALUE**, which fixes
+    something the one-slot memo had wrong: a document can admit ``null``, so ``[None]``
+    meant both "the draw produced JSON null" and "the draw failed".  One element is an
+    answer whatever it is; two is a failure carrying its reason.
+
+    **A STALE HELD FAILURE REDDENS, which is the direction that is safe.**  An entry saying
+    "this position cannot be drawn" keeps the declaration ``unproved``, and ``unproved`` is
+    as much a failure as a narrowing (:class:`WideningResult`) -- so the worst a held
+    failure can do is report work owed, never a pass nobody earned.  A generator bump moves
+    the key (``_DRAW_VERSION``) and the position is redrawn.
+    """
+
+    #: The caller's store, or ``None`` to draw exactly as this check always did.
+    corpus: Any = None
+    #: The pair's STATIC identity, :attr:`Pair.identity`.  Required beside a ``corpus``.
+    identity: Any = None
+    #: How many draws were PAID, and how many a held value answered.  Reported on
+    #: :class:`WideningResult` for ``AcceptsResult.replayed``'s reason: the instances are
+    #: the same instances either way, and a reader of a green pair is entitled to know
+    #: which run paid for its evidence.
+    drawn: int = 0
+    replayed: int = 0
+
+    def one(
+        self, schema: Any, position: Any, custom_formats: Mapping[str, Any]
+    ) -> list[Any]:
+        """``[one instance of schema]``, or ``[None, why not]`` -- held under ``position``."""
+        if self.corpus is None or self.identity is None:
+            return self._draw(schema, custom_formats)
+        key = corpus_key(
+            self.identity, examples=1, custom_formats=custom_formats, position=position
+        )
+        held = self.corpus.get(key)
+        if isinstance(held, list) and held:
+            self.replayed += 1
+            return held
+        answer = self._draw(schema, custom_formats)
+        self.corpus.put(key, answer)
+        return answer
+
+    def _draw(self, schema: Any, custom_formats: Mapping[str, Any]) -> list[Any]:
+        self.drawn += 1
+        try:
+            return [one_instance(schema, custom_formats)]
+        except Exception as e:  # noqa: BLE001 -- an undrawable position is unproved
+            return [None, _why(e)]
+
+
 #: **Every shape the format's own checker admits**, for the three formats section 5's
 #: ``format`` row lets SELECT A PYTHON TYPE -- and those are the three a narrowing can
 #: come from, because a selected type brings its own constraints with it where a format
@@ -1564,7 +1720,11 @@ def _steps(
 
 
 def _reached(
-    schema: Any, pointer: str, instance: Any, custom_formats: Mapping[str, Any]
+    schema: Any,
+    pointer: str,
+    instance: Any,
+    custom_formats: Mapping[str, Any],
+    draws: "_Draws",
 ) -> Any:
     """``instance`` with every node on the way to ``pointer``'s location PRESENT.
 
@@ -1584,6 +1744,21 @@ def _reached(
     ``instance`` unchanged where a step's subschema is unknown, which is the fail-safe
     direction: the placement then either lands or :func:`check_widening` reports it
     unproved, and neither invents a payload the document does not admit.
+
+    **THE DRAW IS HELD AND THIS IS WHERE §8's OBLIGATION SPENDS MOST OF ITS TIME**
+    (``adcp-client-python-3be.25``): 1,441 s of the obligation's 1,606 s over the declaring
+    population, in 17 draws.  ``draws`` is :class:`_Draws` and its docstring carries the
+    rest of the measurement.  The node a step reaches is a subschema of a RESOLVED document,
+    so one of these draws is a whole-document draw -- 117.9 s and then 122.8 s on the SAME
+    4,619,199-byte node of ``core/async-response-data.json#/anyOf/28``, once per value
+    class of one declaration, and 600 s on a 6.8 MB one without finishing -- and the
+    caller's loop asks for it once per value class and once per base candidate.  Held, that
+    pair's two became one.  The position is ``("reached", pointer,
+    step index)``: the step is reached by walking the pair's own node along a POINTER the
+    bundle fixes, so two runs, two pairs of one document and two value classes of one
+    declaration all name the same draw.  The index and not the instance path, because two
+    declarations of one pair can reach one instance segment along different pointers and
+    the node is then not the same node.
     """
     walked = _steps(pointer, schema)
     if walked is None or not walked[0]:
@@ -1591,29 +1766,28 @@ def _reached(
     steps = walked[0]
     out = copy.deepcopy(instance)
     cursor = out
-    for segment, node in steps[:-1]:
+    for index, (segment, node) in enumerate(steps[:-1]):
         if isinstance(segment, int):
             if not isinstance(cursor, list):
                 return out
             if len(cursor) <= segment:
                 if node is None:
                     return out
-                try:
-                    drawn = one_instance(node, custom_formats)
-                except Exception:  # noqa: BLE001 -- an undrawable node is left absent
+                held = draws.one(node, ("reached", pointer, index), custom_formats)
+                if len(held) > 1:  # an undrawable node is left absent
                     return out
                 while len(cursor) <= segment:
-                    cursor.append(copy.deepcopy(drawn))
+                    cursor.append(copy.deepcopy(held[0]))
         else:
             if not isinstance(cursor, dict):
                 return out
             if segment not in cursor:
                 if node is None:
                     return out
-                try:
-                    cursor[segment] = one_instance(node, custom_formats)
-                except Exception:  # noqa: BLE001
+                held = draws.one(node, ("reached", pointer, index), custom_formats)
+                if len(held) > 1:
                     return out
+                cursor[segment] = held[0]
         cursor = cursor[segment]
     return out
 
@@ -1701,6 +1875,7 @@ def _bases(
     instances: Sequence[Any],
     cf: Mapping[str, Any],
     memo: list[Any],
+    draws: "_Draws",
 ) -> Iterator[Any]:
     """The base payloads §8's obligation may place a drawn value into, cheapest first.
 
@@ -1712,18 +1887,31 @@ def _bases(
     ``memo`` is the caller's one-slot store for that draw, held across the value classes
     of ONE declaration: the demand is a function of the pointer alone, so every class of
     a declaration wants the same base and drawing it twice doubles the only expensive
-    thing here.  An empty list means "not drawn yet"; a list holding ``None`` means the
-    draw was tried and failed, which is remembered for the same reason.
+    thing here.  An empty list means "not drawn yet"; a list of TWO means the draw was
+    tried and failed, which is remembered for the same reason -- and the length and not the
+    value is what says so, because a document can admit ``null`` and the old spelling
+    (``memo == [None]`` for a failure) could not tell that from one.
+
+    **``memo`` DOES its documented job, and the measurement says so rather than assuming
+    it** (``adcp-client-python-3be.25``): over the declaring population one completed pass
+    reached this draw for **24 declarations over 14 pairs, and the one slot saved 3 draws**
+    -- the second and later value classes of the declarations that have more than one.  So
+    the slot is not the gap.  What it cannot reach is the repetition ACROSS declarations of
+    a pair, across the PAIRS of a document -- a nested class and every ancestor whose node
+    contains it are separate pairs carrying the same declaration -- and across every RUN,
+    cold or warm.  ``draws`` is :class:`_Draws`, which spans all three; the position is
+    ``("demand", the instance path)``, which is what the demand is a function of.
+
+    The two stay side by side rather than one replacing the other: the memo answers within
+    a declaration without a file read, and a declaration whose store is ``None`` -- every
+    caller in ``tests/test_approximation.py`` -- keeps exactly the behaviour it had.
     """
     yield from instances or (None,)
     if not path:
         return
     if not memo:
-        try:
-            memo.append(one_instance({"allOf": [schema, _demanding(path)]}, cf))
-        except Exception:  # noqa: BLE001 -- an undrawable demand is an unproved widening
-            memo.append(None)
-    if memo[0] is not None:
+        memo.extend(draws.one({"allOf": [schema, _demanding(path)]}, ("demand", list(path)), cf))
+    if len(memo) == 1:
         yield memo[0]
 
 
@@ -1753,6 +1941,16 @@ class WideningResult:
     unproved: list[str] = field(default_factory=list)
     detail: str = ""
 
+    #: How many base instances this check DREW, and how many a held one answered.
+    #: **REPORTED for ``AcceptsResult.replayed``'s reason**: the values are the same values
+    #: either way -- every one of them is placed and offered to the DOCUMENT before the
+    #: entry point sees it -- but a reader of a green pair is entitled to know which run
+    #: paid for its evidence, and a census that cannot tell a drawn pair from a replayed
+    #: one cannot measure a cold run against a warm one.  :class:`_Draws` is where they
+    #: come from and its docstring carries what the draws cost.
+    drawn: int = 0
+    replayed: int = 0
+
     @property
     def outcome(self) -> str:
         if self.detail:
@@ -1774,6 +1972,8 @@ def check_widening(
     at: str = "#",
     instances: Sequence[Any] = (),
     custom_formats: Mapping[str, Any] = (),
+    corpus: Any = None,
+    identity: Any = None,
 ) -> WideningResult:
     """Section 8's accepts OBLIGATION, one declaration at a time.
 
@@ -1809,9 +2009,40 @@ def check_widening(
     point.  A ``ValidationError`` there is the one thing section 2 says must never happen:
     "An annotation tighter than its document refuses a payload the protocol permits, and
     ``strict_validate`` cannot repair it."
+
+    **``corpus`` IS WHERE THIS CHECK'S OWN DRAWS ARE HELD, and it is a second store beside
+    the accepts one and not the same one** (``adcp-client-python-3be.25``).  ``check_pair``
+    used to hand its corpus "straight to the accepts check and to nothing else", and the
+    measurement :class:`_Draws` tabulates is what that cost: the obligation draws from
+    schemas it DERIVES out of the pair's node -- a value class, an intermediate node on the
+    way to an instance location, the node conjoined with a demand -- and every one of those
+    was paid again on every run, for every pair of a document and for every value class of
+    a declaration.  :class:`_Draws` says what the key is over and why these are different
+    questions from the accepts draw rather than more of it.
+
+    **A SEPARATE KEY SPACE, DELIBERATELY.**  ``tests/accepts-corpus``'s gate asserts an
+    equality in BOTH directions -- the committed floor holds no entry the graded population
+    does not ask for -- and a widening entry landing there would make that assertion read
+    false while nothing was wrong, which would retire the gate that has just landed.  So
+    ``tests/corpus.py`` gives this draw its own floor and its own cache, and
+    ``tests/test_widening_corpus.py``'s
+    ``test_a_held_widening_base_lands_in_no_accepts_key_space`` is the reading.
+
+    ``identity`` is REQUIRED beside a ``corpus`` and there is no fallback, for
+    :func:`check_accepts`' reason: the schema handed here is a rendering of a document and
+    keying on it is the defect :func:`corpus_key` exists to close.  With no ``corpus`` this
+    check draws exactly as it always did.
     """
+    if corpus is not None and identity is None:
+        raise ValueError(
+            "a corpus needs the draw's STATIC identity: the schemas this check draws "
+            "from are derived from the one handed here, which is a RENDERING of a "
+            "document, so keying on it moves every entry when the compiler moves "
+            "(harness.corpus_key).  Pass identity=... (Pair.identity) or corpus=None."
+        )
     res = WideningResult()
     cf = dict(custom_formats)
+    draws = _Draws(corpus=corpus, identity=identity)
     validator_cls = validator_for(schema)
     for one in declared:
         res.declarations += 1
@@ -1853,13 +2084,21 @@ def check_widening(
         # is a function of the pointer and every value class of one declaration shares it.
         demanded: list[Any] = []
         for label, restriction in classes:
-            try:
-                value = one_instance(restriction, cf)
-            except Exception as e:  # noqa: BLE001 -- any draw failure is unproved, not a pass
+            # Held like the other two, and for the same reading: a value class is a
+            # RESTRICTION of the pair's node, so for the nodes that cost anything it is a
+            # whole-document draw too -- 2.1 s on a 2,208,067-byte restriction of
+            # ``core/async-response-data.json#/anyOf/28`` -- and the restriction is a
+            # function of the declared pointer, the keyword and the class label
+            # (:func:`value_classes`), which is the position.  A draw failure is unproved
+            # and never a pass, and the REASON travels with the held answer so a replayed
+            # run reports what a drawn one reports.
+            held = draws.one(restriction, ("class", one.pointer, one.keyword, label), cf)
+            if len(held) > 1:  # by LENGTH, never by the value: a document can admit null
                 res.unproved.append(
-                    f"{one.pointer}/{one.keyword}: {label} could not be drawn: {_why(e)}"
+                    f"{one.pointer}/{one.keyword}: {label} could not be drawn: {held[1]}"
                 )
                 continue
+            value = held[0]
             if conforms(node, value, validator_cls=validator_for(node)) is False:
                 res.unproved.append(
                     f"{one.pointer}/{one.keyword}: {label} drew {_dump(value)}, which the "
@@ -1872,8 +2111,8 @@ def check_widening(
             # a placed payload the document refuses.
             payload = None
             refused = False
-            for base in _bases(schema, path, instances, cf, demanded):
-                attempt = _placed(_reached(schema, relative, base, cf), path, value)
+            for base in _bases(schema, path, instances, cf, demanded, draws):
+                attempt = _placed(_reached(schema, relative, base, cf, draws), path, value)
                 if attempt is None:
                     continue
                 if conforms(schema, attempt, validator_cls=validator_cls) is False:
@@ -1908,6 +2147,7 @@ def check_widening(
                 )
                 continue
             res.accepted += 1
+    res.drawn, res.replayed = draws.drawn, draws.replayed
     return res
 
 
@@ -5222,6 +5462,7 @@ def check_pair(
     accepts_examples: int = 1,
     custom_formats: Mapping[str, Any] = (),
     corpus: Any = None,
+    widening_corpus: Any = None,
 ) -> PairReport:
     """ONE CLASS AGAINST ONE SCHEMA: the whole harness, per section 6.
 
@@ -5247,11 +5488,26 @@ def check_pair(
     That is the one place a pair's instance is reused, and the reuse is why there are
     two document validations per pair instead of thousands.
 
-    **``corpus`` is handed straight to the accepts check and to nothing else**, which is
-    the whole of its reach: the liveness payload and §8's obligation both read the
+    **``corpus`` is handed straight to the accepts check, and ``widening_corpus`` to §8's
+    obligation; they are TWO STORES over two key spaces** (``adcp-client-python-3be.25``).
+    What stood here said the first was "handed to the accepts check and to nothing else,
+    which is the whole of its reach: the liveness payload and §8's obligation both read the
     instance the accepts check produced, so a replayed instance reaches them exactly as a
-    drawn one does and neither needs a store of its own.  :func:`check_accepts` says what
-    a hit, a miss and a rejected entry each do.
+    drawn one does and neither needs a store of its own."  The liveness half of that is
+    still true -- :func:`refusing_payload` derives its payload and draws nothing.  The §8
+    half was measured false: the obligation borrows the accepts instance as a BASE and then
+    draws, from schemas it derives out of the pair's node, and :class:`_Draws` tabulates
+    what those cost -- 246.7 s on one pair of ``core/async-response-data.json`` and over
+    600 s on another, with the accepts draw already replayed from the committed floor in
+    both.
+
+    Two stores and not one, because the accepts floor's gate asserts in both directions
+    that it holds no entry the graded population does not ask for, and a widening entry in
+    that key space would read as a violation of an obligation nothing had broken.
+    :func:`check_widening` carries the decision; ``tests/corpus.py`` holds both.
+
+    :func:`check_accepts` says what a hit, a miss and a rejected entry each do, and
+    :class:`WideningResult`'s ``drawn``/``replayed`` report the same thing for the second.
 
     The key the store is read under comes from :attr:`Pair.identity` and never from
     :attr:`Pair.schema`: the schema is a RENDERING of a document and the identity is the
@@ -5343,5 +5599,7 @@ def check_pair(
             at=pair.ref.pointer if pair.ref is not None else "#",
             instances=accepted,
             custom_formats=custom_formats,
+            corpus=widening_corpus,
+            identity=pair.identity,
         )
     return rep
