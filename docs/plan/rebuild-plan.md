@@ -1339,8 +1339,9 @@ document. The section stays, with its membership still a projection of the decla
 a reader looking for "which keywords refuse" has to find the answer, and because the one
 refusal left in the compiler is not a keyword's at all.
 
-Both rows below move to §6. Each was refused for a reason that was never about the document's
-accepted set:
+Both rows move to §6. Each was refused for a reason that was never about the document's
+accepted set, and **the registry keys have moved while `errorMessage` has not**: its cell is the
+last `REFUSE` in the table, so it is also what keeps `Effect.REFUSE` alive.
 
 - **`errorMessage`** has no Pydantic rendering, and never needed one: it customises a validator's
   message and constrains no instance, so an annotation that omits it omits no fact. The drop is
@@ -1384,7 +1385,17 @@ it (§9).
 | `errorMessage` | An `ajv-errors` extension customising a validator's message. It has no Pydantic rendering, and a conjunct carrying one contributes nothing, so the drop is reported rather than silent. |
 <!-- end generated -->
 
-The grid above is generated and still carries both rows; the cells move when §6's do.
+The grid above is generated, so it carries whatever cells still say `REFUSE`; it empties when
+`errorMessage`'s cell moves, and the section's title becomes literally true.
+
+**The drop is reported at every position the keyword occupies, and not only where a conjunct
+encloses it.** `media-buy/sync-catalogs-request.json` is the one portable document carrying
+`errorMessage`, and it carries it twice — at `/allOf/1` and at `/then`. The reader is told about
+the first and not the second, because the channel that builds the note screens `CONJ` while the
+cell refuses at every position. A keyword's effect is a decision about the keyword at a position;
+a report that reaches one position and not another is a defect in the channel, not a second
+decision, and the reading that settles it is the count of reported drops naming the keyword —
+two, where it is one today.
 
 A keyword in none of §5, §6 or §7 is one the bundle does not use. The first document to carry one
 **widens its node to `Any`** — §5's rung TOP — and declares the approximation, so a new keyword
