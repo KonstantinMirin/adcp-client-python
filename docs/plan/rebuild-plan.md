@@ -851,20 +851,44 @@ and `EvaluatorSpec.model_validate` returns `EvaluatorSpecEvaluatorId`. The class
 `strict_validate` and `model_validate` does not route through it, so the type is wider than the
 document for every caller who uses pydantic's own entry point.
 
-So the dropped exclusivity is a WIDENED fact and is declared as one, **beside** the
-UNDERDETERMINED declaration for the branch choice and not instead of it — §2 never sums the
-kinds, and the two losses are different: which branch an overlapping payload lands in, and that
-it is admitted at all. The second is a fact §8's comparison can see; `UNDERDETERMINED` alone
-exempts the site from the comparison by name, which hid it from all three checks. The whole of the
-loss is that an overlapping payload's branch is decided by declaration order, and the document
-does not say which branch it should be. That is the UNDERDETERMINED kind of §2, and it is the
-only instance of it.
+So the dropped exclusivity is a WIDENED fact and is declared as one. **It is ONE declaration and
+not two, which REVERSES the "owes TWO declarations" half of the 2026-10-29 decision on
+2026-10-30.** The reversed reasoning was that "the two losses are different: which branch an
+overlapping payload lands in, and that it is admitted at all". Both losses are real, and they are
+**coextensive**: the branch question arises only for the payloads the widening admits, at the same
+pointer, over the same values. Two declarations therefore say one thing twice, and saying it twice
+costs four changes to §8's instruments — a site key that carries a kind, a pointer in two places
+at once, a split of a shared §5 cell, and an upstream issue that does not exist. Measured by
+implementing it: the two collided on a `(document, pointer, keyword)` site and **which kind
+survived was path-dependent**, 15 sites keeping the WIDENED and 3 the UNDERDETERMINED. That is a
+substitution, which §2 forbids.
 
-The attribution is upstream because a union whose branches are not separable is a defect in the
-union: the bundle already writes the idiom that separates them — each branch forbidding a name
-the other requires — so the fix is a copy from elsewhere in the same bundle, and the issue says
-so. Where nothing overlaps there is no order to depend on and no approximation, which is why the
-third source is a dispatch and not a relaxation.
+**The kind is the fact §8 grades, and the other loss is the REASON carried on it.** An inseparable
+`oneOf` declares WIDENED, because the model admits values the document refuses and a consumer sees
+that through `model_validate`; its reason also states that such a payload's branch is decided by
+declaration order, which the document does not decide. Nothing is dropped — the kind moves to the
+one §8's comparison can see, and `UNDERDETERMINED` alone is what hid the widening from all three
+checks.
+
+**`UNDERDETERMINED` is then exactly the `anyOf` case, which is the honest population for it.**
+`anyOf` admits an instance satisfying at least one branch and so does `A | B`, so the model is not
+wider and nothing is owed but the branch choice — invisible to all three checks, as §2 says. The
+reading to expect is `approximated` unmoved with the kinds re-split: the inseparable `oneOf` sites
+leave the UNDERDETERMINED column for the WIDENED one, deterministically and with no site holding
+two.
+
+**The attribution is OURS until an issue exists (decided 2026-10-30).** A union whose branches are
+not separable is a defect in the union — the bundle already writes the idiom that separates them,
+each branch forbidding a name the other requires, so the fix is a copy from elsewhere in the same
+bundle. That makes it a candidate for an upstream attribution and not an upstream attribution:
+§2 keys one to an entry of `codegen/attribution.py` naming an issue, an entry with no issue is a
+build failure, and §10's fifth clause is that every upstream attribution names a LIVE issue.
+Minting a number for an unfiled gap creates exactly the defect that clause prevents, so §14's rule
+governs — **an unfiled gap IS ours.** Filing the issue reclassifies these sites and changes no
+type, no emission and no count.
+
+Where nothing overlaps there is no order to depend on and no approximation, which is why the third
+source is a dispatch and not a relaxation.
 
 A hand-written map per document is still not a dispatch source: it is complete with respect to
 itself, so a branch added upstream leaves it silently wrong — and unlike declaration order it
@@ -960,6 +984,24 @@ is the one place a keyword decision lives, and a grid is its rendering.
 | `then`, `else` | `ConditionalRequired` / `NegatedConditional` from its `required` and a single-name `not`. Its `properties` → nothing on the model; the schema half narrows the value. |
 | `not` | `not: {required: …}`, and `anyOf` / `allOf` of those → a `ForbiddenGroups` rule. Over a `const` or `enum` → a `NotValue` after-validator on the value's own annotated type. Any other shape → nothing on the model; the schema half answers and the ceiling is named. `not: {}` admits nothing, which the typeless `Any` carries. |
 <!-- end generated -->
+
+**`oneOf` TAKES ITS OWN CELL (decided 2026-10-30).** The row above renders `oneOf, anyOf` as one
+row because `_COMBINATORS["anyOf"]` and `_COMBINATORS["oneOf"]` are the same cell, and the cell's
+text says twice that "the schema half enforces exclusivity" — the claim §4 corrects, since
+`model_validate` does not route through `strict_validate`. **What the table declares is the
+DECISION, and theirs now differ even though their rendering coincides**: an inseparable `anyOf`
+loses nothing a check can see, an inseparable `oneOf` is a WIDENED fact §8's comparison has to
+see, and one cell cannot answer both. Sharing on a coincidence of rendering is what made that
+invisible, so the sharing goes. A keyword decision lives in the cell, so this is the cell's edit
+and not this rendering's.
+
+**And a SEPARABLE `oneOf` must not then report `missing` at every union root.** Flipping the
+shared cell's rendered column alone would do exactly that, because disjoint arms of `A | B` are
+already exactly-one, so the document's `oneOf` is carried and nothing is dropped. The comparison
+therefore folds on the DOCUMENT side, where §8's other entailment folds already live: **a `oneOf`
+whose arms are pairwise disjoint has the same accepted set as `anyOf` over those arms, and is
+compared as one.** The fold calls the SAME separator §4's naming rungs call, so one place decides
+disjointness and a site cannot be separable for naming and inseparable for grading.
 
 ### The widening each row takes
 
