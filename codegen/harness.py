@@ -561,23 +561,35 @@ def violated_keywords(schema: dict, instance: Any, *, validator_cls=None) -> lis
 #: not be walked on either side.
 #:
 #: **Those five were the WHOLE of the drift from the one descent table**, which is the
-#: measurement that says the removal is exactly a removal: with them gone,
-#: ``set(_DESCEND_ONE) | set(_DESCEND_MAP) | set(_DESCEND_LIST)`` equals
-#: ``set(keywords.descends_at(Position.ROOT))`` in both directions.  The three tuples
-#: restating the column is still ``docs/plan/architecture.md`` section 11's repetition and
-#: is not fixed here -- what is fixed is that the two readings no longer DISAGREE.
-_DESCEND_ONE = (
-    "items",
-    "additionalProperties",
-    "contains",
-    "not",
-    "if",
-    "then",
-    "else",
-    "propertyNames",
-)
-_DESCEND_MAP = ("properties", "$defs", "definitions", "patternProperties")
-_DESCEND_LIST = ("oneOf", "anyOf", "allOf")
+#: measurement that says the removal was exactly a removal: with them gone,
+#: ``set(_DESCEND_ONE) | set(_DESCEND_MAP) | set(_DESCEND_LIST)`` equalled
+#: ``set(keywords.descends_at(Position.ROOT))`` in both directions.
+#:
+#: **And the three tuples are gone with them** (``adcp-client-python-3be.8``).  The
+#: comment here used to admit the restatement -- "still §11's repetition and is not fixed
+#: here" -- and hold the agreement by that one-time measurement, which is the shape that
+#: goes stale: the equality was true of the tuples as written and nothing re-asked it.
+#:
+#: There is no seam to cross for the fix.  §9 names ``codegen.bundle`` in the verifier's
+#: import set "for the record and the document set", and its own sentence for this very
+#: walk is that the record is read "by the verifier's own walk ... over the descent column
+#: of the table" -- so descending by the column is what §9 ASKS for, and what it forbids is
+#: reading ``codegen.schema`` / ``codegen.lower``, which this does not.  The SET comes from
+#: the column; the three-way split is draft-07's GRAMMAR of how each keyword spells what it
+#: holds, and ``bundle`` already derives that from the child position with one name written
+#: (:data:`bundle.HELD_BY_NAME`, :data:`bundle.HELD_IN_A_LIST`).  Re-deriving it here would
+#: be a second reading of one grammar and would carry that name twice, which is
+#: ``bundle.constrained_to_object``'s stated ground for deriving rather than restating:
+#: "two spellings of 'which hop keeps the instance' is precisely how that divergence would
+#: arrive, and it would arrive silently."
+#:
+#: ``_DESCEND_ONE`` is the column's REMAINDER and is a reading rather than a list, so a
+#: keyword joining the column with a new spelling lands here and is walked, where before it
+#: had to be written into one of three tuples to be walked at all.
+#: ``tests/test_keywords.py`` holds all three equalities.
+_DESCEND_MAP = bundle.HELD_BY_NAME
+_DESCEND_LIST = bundle.HELD_IN_A_LIST
+_DESCEND_ONE = frozenset(bundle.DESCENDS) - _DESCEND_MAP - _DESCEND_LIST
 
 
 #: ``bundle.escape_key``, not a second copy: a pointer segment is spelled by four
@@ -1194,17 +1206,54 @@ FORMAT_SHAPES: Mapping[str, tuple[tuple[str, Any], ...]] = {
 #: both sides of each bound and the bound itself, and for a ``format`` every shape the
 #: format's own checker admits".  A ``const`` is a one-member ``enum``; a ``pattern``, a
 #: ``type`` and the structural keywords have one class, which is the node as it stands.
+#: **The bound arm reads :data:`keywords.RANGES`** and no longer lists the eight
+#: (``adcp-client-python-3be.8``): each ordering keyword maps to its own range, which is the
+#: pair this arm needs because it pins a draw INSIDE the range -- "both sides of each bound
+#: and the bound itself, less the side the node's OTHER bound forbids".
+#:
+#: The INCLUSIVE ranges only, which is the declaration's ``EXCLUSIVE`` column and the one
+#: place a reader of a bound needs it: an exclusive bound admits no instance AT the bound,
+#: so "the bound exactly" is a value class the document does not have.  ``exclusiveMinimum``
+#: and ``exclusiveMaximum`` take the one-class arm below, with ``pattern`` and
+#: ``multipleOf``, for the reason stated there.
 _BOUNDS: Mapping[str, tuple[str, str]] = {
-    # keyword -> (the keyword that pins the LOW end, the keyword that pins the HIGH end)
-    "minLength": ("minLength", "maxLength"),
-    "maxLength": ("minLength", "maxLength"),
-    "minItems": ("minItems", "maxItems"),
-    "maxItems": ("minItems", "maxItems"),
-    "minProperties": ("minProperties", "maxProperties"),
-    "maxProperties": ("minProperties", "maxProperties"),
-    "minimum": ("minimum", "maximum"),
-    "maximum": ("minimum", "maximum"),
+    keyword: (low, high)
+    for low, high in keywords.RANGES
+    if low not in keywords.EXCLUSIVE
+    for keyword in (low, high)
 }
+
+
+#: **The three structural arms of :func:`value_classes`, read off the DESCENT COLUMN
+#: rather than named** (``adcp-client-python-3be.8``).  What a structural keyword's one
+#: value class has to RESTRICT is decided by where the keyword holds its subschema, which
+#: is exactly the column's answer:
+#:
+#: * a subschema at MAPV or KEY constrains the object's KEYS or its extra values, so the
+#:   class is a one-key object (``minProperties: 1``);
+#: * a subschema at ELEM constrains the array's members, so the class is a one-member
+#:   list (``minItems: 1``);
+#: * a subschema at CONJ, BRANCH or RULE applies to the SAME instance -- a conjunct, a
+#:   branch, a conditional -- so there is nothing to restrict and the class is the node
+#:   as it stands.
+#:
+#: PROP is the fourth answer and it is :func:`value_classes`'s own arm, one class per
+#: declared property, because the names are the node's and not the column's.
+#:
+#: ``$ref`` and ``dependencies`` are the **two written names**, and each is written
+#: because the column gives it no descent to read: ``$ref``'s target is another document's
+#: and §5's row sends it to the TOP rung for exactly that reason, and this bundle's 27
+#: ``dependencies`` all hold a LIST of names rather than a schema (``tests/test_keywords.py``
+#: records the measurement), so neither holds a subschema at a position of its own. Both
+#: constrain the same instance, which is the arm they take.
+_A_KEY = frozenset(
+    k for k, p in bundle.DESCENDS.items() if p in (Position.MAPV, Position.KEY)
+)
+_A_MEMBER = frozenset(k for k, p in bundle.DESCENDS.items() if p is Position.ELEM)
+_SAME_INSTANCE = frozenset(
+    {k for k, p in bundle.DESCENDS.items() if p in (Position.CONJ, Position.BRANCH, Position.RULE)}
+    | {"$ref", "dependencies"}
+)
 
 
 def _restricted(node: Mapping[str, Any], **pins: Any) -> dict:
@@ -1252,7 +1301,9 @@ def value_classes(keyword: str, node: Mapping[str, Any]) -> tuple[tuple[str, dic
     if keyword in _BOUNDS and isinstance(node.get(keyword), (int, float)):
         low, high = _BOUNDS[keyword]
         bound = node[keyword]
-        inside = bound + 1 if keyword.startswith("min") else bound - 1
+        # Which way "one step inside" points is the declaration's bit and not the
+        # keyword's SPELLING: a floor's inside is above it and a ceiling's below.
+        inside = bound + 1 if keywords.pins_a_floor(keyword) else bound - 1
         floor, ceiling = node.get(low), node.get(high)
         out = [(f"{keyword} exactly ({bound})", _restricted(node, **{low: bound, high: bound}))]
         # **Both sides and the bound itself**, less the side the node's OTHER bound
@@ -1280,10 +1331,13 @@ def value_classes(keyword: str, node: Mapping[str, Any]) -> tuple[tuple[str, dic
                 _restricted(node, minItems=least, maxItems=least),
             ),
         )
-    if keyword in ("pattern", "multipleOf", "exclusiveMinimum", "exclusiveMaximum"):
+    if keyword in ("pattern", "multipleOf", *keywords.EXCLUSIVE):
         # One class: the node as it stands, drawn with the keyword in force.  A second
         # class would need a value one step from the bound, and for a ``pattern`` or a
-        # float bound there is no step this module can name.
+        # float bound there is no step this module can name.  The exclusive pair is the
+        # declaration's EXCLUSIVE column (:data:`keywords.EXCLUSIVE`) and not a second
+        # list of the two: an exclusive bound admits no instance AT the bound, so it has
+        # no "exactly" class for the arm above to draw.
         return ((f"a value the {keyword} admits", dict(node)),)
     if keyword == "properties" and isinstance(node.get("properties"), dict):
         return tuple(
@@ -1292,11 +1346,11 @@ def value_classes(keyword: str, node: Mapping[str, Any]) -> tuple[tuple[str, dic
         )
     if keyword == "required" and isinstance(node.get("required"), list):
         return (("every required name present", dict(node)),)
-    if keyword in ("additionalProperties", "patternProperties", "propertyNames"):
+    if keyword in _A_KEY:
         return ((f"a key the {keyword} admits", _restricted(node, minProperties=1)),)
-    if keyword in ("items", "contains"):
+    if keyword in _A_MEMBER:
         return ((f"a list the {keyword} admits", _restricted(node, minItems=1)),)
-    if keyword in ("allOf", "oneOf", "anyOf", "not", "if", "then", "else", "dependencies", "$ref"):
+    if keyword in _SAME_INSTANCE:
         return ((f"a value the {keyword} admits", dict(node)),)
     return ()
 
@@ -1464,9 +1518,13 @@ def _steps(
             node = _settled(_down(node, *segments[i : i + spent]), schema)
             out.append((key, node))
             i += spent
-        elif word in ("allOf", "anyOf", "oneOf") and i + 1 < len(segments):
+        elif word in _DESCEND_LIST and i + 1 < len(segments):
+            # A same-instance hop through a LIST: no instance segment, and two pointer
+            # segments spent (the keyword and the index).  ``_DESCEND_LIST`` is the
+            # descent column's own answer to "which keywords hold their subschemas in a
+            # list", so the three are read here and not restated.
             node = _settled(_down(node, word, segments[i + 1]), schema)
-            i += 2  # a same-instance hop through a list: no segment
+            i += 2
         elif word in ("then", "else"):
             node = _settled(_down(node, word), schema)
             i += 1  # a same-instance hop
@@ -3367,17 +3425,23 @@ _COMPOSE_DEPTH = 16
 #: keyword can hold it -- ``default: null`` is in the bundle.
 _UNDECIDED = object()
 
-#: The ordering keywords of :func:`compared_facts`, and which direction is TIGHTER: ``max`` for a
-#: floor (the higher of two minima binds) and ``min`` for a ceiling.
+#: The ordering keywords of :func:`compared_facts`, and which direction is TIGHTER: ``max``
+#: for a floor (the higher of two minima binds) and ``min`` for a ceiling -- READ OFF the
+#: declaration (:data:`keywords.RANGES`, :func:`keywords.pins_a_floor`) rather than listed.
+#:
+#: **It was eight entries and the walk's own copy was ten** (``adcp-client-python-3be.8``):
+#: ``compiler._narrower`` ordered ``minProperties``/``maxProperties`` and this did not, so a
+#: conjunct narrowing a property count was NARROWER to the walk and ``_UNDECIDED`` to the
+#: grader -- the divergence §9 forbids in its own words, "both halves must read the same
+#: declaration or the grade means nothing".  Closing it changes nothing in this bundle and
+#: that is measured rather than assumed: **0 nodes state ``minProperties`` or
+#: ``maxProperties`` on both a node and one of its ``allOf`` conjuncts**, over all 1,054
+#: portable documents (48 ``minProperties`` sites and 19 ``maxProperties`` sites in total),
+#: so the two entries the fold gains have no pair to decide today and the fold was taking
+#: the node's own by the ``_UNDECIDED`` path anyway.
 _TIGHTER_BOUND = {
-    "minimum": max,
-    "exclusiveMinimum": max,
-    "minLength": max,
-    "minItems": max,
-    "maximum": min,
-    "exclusiveMaximum": min,
-    "maxLength": min,
-    "maxItems": min,
+    keyword: (max if keywords.pins_a_floor(keyword) else min)
+    for keyword in keywords.FLOORS | keywords.CEILINGS
 }
 
 

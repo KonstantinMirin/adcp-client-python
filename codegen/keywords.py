@@ -1684,10 +1684,112 @@ ARM: Mapping[str, frozenset[str]] = {
     "object": frozenset({"properties", "required", "additionalProperties", "propertyNames"}),
 }
 
+#: **The ORDERING keywords, as the five RANGES they pin** -- each pair being
+#: ``(the keyword that pins the floor, the keyword that pins the ceiling)``.
+#:
+#: **DECLARED SEMANTICS, and here for :data:`ARM`'s reason exactly** -- that it is read by
+#: BOTH halves of the pipeline, for two operations that have to agree:
+#:
+#: * the WALK asks which of two restatements is NARROWER (``compiler._narrower``: a
+#:   narrower floor is a LARGER number and a narrower ceiling a smaller one), and §2's
+#:   intersection rule keeps the tighter;
+#: * the VERIFIER asks the same question twice -- folding an ``allOf`` conjunct's bound
+#:   into the node it composes (``harness._tighter``, §2's "a bound is the tighter one"),
+#:   and drawing the value classes a dropped bound distinguishes (``harness.value_classes``,
+#:   which needs both ENDS of the range to pin a draw inside it).
+#:
+#: Three literals held that one fact before ``adcp-client-python-3be.8``, in two modules,
+#: and they had already drifted in both directions: the walk's carried
+#: ``minProperties``/``maxProperties`` and the verifier's fold did not, so a conjunct
+#: narrowing a property count was narrower to the walk and UNDECIDED to the grader. §9 is
+#: the rule that puts the fact here -- "sharing DATA is a different matter from sharing a
+#: READING: the keyword table is the declared semantics, and both halves must read the same
+#: declaration or the grade means nothing."
+#:
+#: The PAIRING is a column of its own because nothing else holds it: a ``minItems`` and a
+#: ``maxItems`` constrain one quantity from opposite sides, which is what makes a draw
+#: "inside the range" possible at all, and :data:`_AXES`' own comment in ``compiler.py``
+#: says why they are not one axis -- "a child stating one says nothing about the other".
+#: Deriving the partner by rewriting ``min`` to ``max`` in the keyword's own text would be
+#: a reading of draft-07's SPELLING rather than of its semantics, and ``exclusiveMinimum``
+#: is where that spelling stops being mechanical.
+RANGES: tuple[tuple[str, str], ...] = (
+    ("minimum", "maximum"),
+    ("exclusiveMinimum", "exclusiveMaximum"),
+    ("minLength", "maxLength"),
+    ("minItems", "maxItems"),
+    ("minProperties", "maxProperties"),
+)
+
+#: The ranges draft-07 spells INCLUSIVELY, which is §5's ``exclusiveMinimum`` row's own
+#: distinction -- "``gt`` / ``lt`` on the type, **never ``ge`` / ``le``**.  The bundle
+#: distinguishes ``minimum: 0`` from ``exclusiveMinimum: 0``, and the two differ on exactly
+#: one instance".  A reader that has to name a value AT a bound needs this column: an
+#: exclusive bound admits no instance at it, so "the bound exactly" is not a value class
+#: the document has (``harness.value_classes``), while a narrowing comparison and a fold
+#: order the two the same way and read :data:`RANGES` alone.
+EXCLUSIVE: frozenset[str] = frozenset({"exclusiveMinimum", "exclusiveMaximum"})
+
 
 # --------------------------------------------------------------------------- #
 # the readings
 # --------------------------------------------------------------------------- #
+#: Every keyword that pins the LOW end of a range, and every keyword that pins the high
+#: one -- a projection of :data:`RANGES` and not a second list.
+FLOORS: frozenset[str] = frozenset(low for low, _ in RANGES)
+CEILINGS: frozenset[str] = frozenset(high for _, high in RANGES)
+
+
+def range_of(keyword: str) -> tuple[str, str] | None:
+    """The range ``keyword`` pins one end of, or ``None`` where it pins neither.
+
+    ``(floor keyword, ceiling keyword)``, so a caller that needs the OTHER end -- to pin a
+    draw inside the range, or to ask whether the node's own opposite bound forbids a value
+    one step in -- reads it off the declaration rather than pairing the two itself.
+    """
+    for pair in RANGES:
+        if keyword in pair:
+            return pair
+    return None
+
+
+def constrains_container(word: str) -> frozenset[str]:
+    """Every keyword whose row constrains an instance of this CONTAINER type.
+
+    A PROJECTION of two columns already declared and not a third list of names
+    (``adcp-client-python-3be.8``): §5's ``objects`` and ``arrays`` sub-grids are the
+    keyword FAMILIES (:func:`grid_of`), and :data:`ARM` names the ones draft-07 cuts onto
+    that type word.  The union is what "this keyword declares the instance to be an
+    ``object``" means, which is the question ``compiler._container_kind`` asks of two
+    declarations before it decides whether they declare ONE container.
+
+    The two columns are needed TOGETHER and neither alone, which is what makes this a
+    reading rather than a rename.  ``properties`` and ``required`` are object-only keywords
+    in the STRUCTURE grid, so the grid misses them; :data:`ARM` deliberately omits
+    ``patternProperties``, ``minProperties``, ``maxProperties`` and ``dependencies``,
+    because a node stating one of those beside a type LIST refuses by name rather than
+    being cut onto an arm, so the arm misses those.
+
+    A word with no :data:`ARM` entry is not a container and gets the empty set, which is
+    the answer ``_container_kind`` reads as "neither".
+    """
+    grid = {"object": OBJECTS, "array": ARRAYS}.get(word)
+    if grid is None:
+        return frozenset()
+    return frozenset({k for k in TABLE if grid_of(k) == grid} | set(ARM.get(word, ())))
+
+
+def pins_a_floor(keyword: str) -> bool:
+    """Does a NARROWER value of this keyword move UP.
+
+    The one question both halves ask of a bound, and the reason :data:`RANGES` is declared
+    rather than held per reader: a floor rises as it narrows and a ceiling falls, so a
+    comparison, a fold and a draw all turn on this one bit and must turn on the same one.
+    """
+    return keyword in FLOORS
+
+
+
 def cell(keyword: str, position: Position) -> Cell | None:
     """This keyword's answer at this position, or ``None`` where it has no row.
 

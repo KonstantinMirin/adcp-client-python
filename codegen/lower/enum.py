@@ -95,8 +95,19 @@ from codegen.schema import nodes
 #: screen's second argument is once the table decides admission.  ``type`` agrees with
 #: the member types at all 1,069 nodes and is therefore read off the members
 #: instead (:data:`BASES`), which is also what lets the 164 typeless enum nodes
-#: through.  ``default`` is carried by the PARENT -- all 66 of the bundle's enum
-#: defaults are inline, so the field the enum annotates is what holds one.
+#: through.
+#:
+#: **``default`` was a third entry and the table already admitted it**
+#: (``adcp-client-python-3be.8``).  Its cell is ANNOTATION everywhere and FIELD at PROP,
+#: so :func:`keywords.lowers` is false at every one of the nine positions and
+#: ``compiler._screen`` passes it over whether or not this set names it -- the entry was
+#: the stale ADMISSION kind §14 step 5 removed from every one of these sets, kept here by
+#: a comment ("``default`` is carried by the PARENT -- all 66 of the bundle's enum
+#: defaults are inline, so the field the enum annotates is what holds one") which states
+#: exactly why it should NOT be claimed.  Removing it changes no outcome, by construction
+#: and then by the three numbers.  What forbids its return is
+#: ``test_no_claim_set_names_a_keyword_the_table_admits_for_free``, which is the gate that
+#: found it.
 #:
 #: ``enumDescriptions`` is carried (into the member docstrings) and is admitted by
 #: the TABLE as the annotation it is, so it is not named here: §6 lists it, with
@@ -109,7 +120,7 @@ from codegen.schema import nodes
 #: surface.  §6's own row is where that decision now lives, once for every position --
 #: which is what reaches the fourth document carrying one
 #: (``core/media-buy-available-action-id.json``, a UNION root, which this set does not).
-CLAIMS = frozenset({"type", "enum", "default"})
+CLAIMS = frozenset({"type", "enum"})
 
 
 #: What a member name takes when the value's own text cannot begin an identifier.

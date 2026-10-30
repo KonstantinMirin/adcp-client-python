@@ -25,6 +25,8 @@ which rewrites the lines between each marker pair and nothing else.
 
 from __future__ import annotations
 
+import ast
+import importlib
 import pathlib
 import re
 
@@ -335,16 +337,292 @@ def test_the_descent_column_is_the_one_the_bundles_walk_descends_by() -> None:
             (c := cell(k, p)) is not None and c.descends is not None for p in Position
         )},
     )
-    assert set(bundle._DESCENDS) == declared, sorted(set(bundle._DESCENDS) ^ declared)
+    assert set(bundle.DESCENDS) == declared, sorted(set(bundle.DESCENDS) ^ declared)
     assert "dependencies" not in declared
     # Every keyword of the column is reached by the walk at a node that states it, so
-    # the shape declaration (:data:`bundle._HELD_BY_NAME`, :data:`_HELD_IN_A_LIST`)
+    # the shape declaration (:data:`bundle.HELD_BY_NAME`, :data:`HELD_IN_A_LIST`)
     # covers the column rather than a part of it.
-    for keyword, position in bundle._DESCENDS.items():
+    for keyword, position in bundle.DESCENDS.items():
         held = {"properties": {"x": {}}, "patternProperties": {"^x$": {}},
                 "definitions": {"x": {}}, "$defs": {"x": {}}}.get(keyword)
         if held is None:
-            held = [{}, {}] if keyword in bundle._HELD_IN_A_LIST else {}
+            held = [{}, {}] if keyword in bundle.HELD_IN_A_LIST else {}
         reached = list(bundle.subschemas({keyword: held}))
         assert reached, keyword
         assert {at for _, _, _, at in reached} == {position}, (keyword, reached)
+
+
+# --------------------------------------------------------------------------- #
+# §3's monopoly: "nothing else in codegen/ names a keyword in a set literal"
+# --------------------------------------------------------------------------- #
+#: **Every site that still names draft-07 keywords in a collection, with the reason it is
+#: not the table's to decide** (``adcp-client-python-3be.8``).  Keyed by module and by the
+#: SORTED keywords, never by line number, so the gate survives an edit above it.
+#:
+#: §3 states the monopoly as "nothing else in ``codegen/`` names a keyword in a set
+#: literal", and that sentence is FALSE at the sites below -- by construction and not by
+#: neglect.  Every one of them is a HANDLER'S COVERAGE: the set it passes
+#: ``compiler.check_keywords`` as ``handled``, which that function's own docstring calls
+#: "the caller's own COVERAGE and no longer an admission list ... the set of cells that
+#: handler writes".  The table cannot hold it, and the test of that is the table's own
+#: shape: it is keyed by keyword × POSITION and carries no column for a node KIND, so
+#: "which handler has code for this LOWERED cell" is not a fact in it.  ``properties`` at
+#: PROP is TYPE for the object row and TYPE for the mapping row, and only one of the two
+#: writes it.
+#:
+#: What the table DOES decide about these sites is held by the two tests below: no entry
+#: may name a keyword the table admits for free, and no site may appear that is not here.
+#: Both directions, because a membership check in one direction is complete with respect
+#: to itself (§3's own reason for generation over diffing).
+#:
+#: **Ten sites left the census on this row and the removals are listed on the bead**: the
+#: verifier's three descent tuples, its combinator arm and its value-class arms now read
+#: the descent column; the ordering keywords are :data:`keywords.RANGES`, read by both
+#: halves; ``compiler._CONTAINER_KEYWORDS`` is
+#: :func:`keywords.constrains_container`; and the root-sibling tuple is written once.
+_SURVIVING_SITES: dict[tuple[str, tuple[str, ...]], str] = {
+    ("codegen.compiler", ("additionalProperties", "properties", "propertyNames", "required", "type")):
+        "lower_object's coverage: the cells an OBJECT node's handler writes.  "
+        "patternProperties, minProperties, maxProperties and dependencies are LOWERED "
+        "cells at the same position that this handler has no code for, which is what "
+        "makes them deferrals -- so the set is the handler's and not the position's.",
+    ("codegen.compiler", ("properties", "required", "type")):
+        "INLINE: what an allOf CONJUNCT may carry and still be an inline object "
+        "declaring fields.  additionalProperties is absent on purpose (D8 derives extra "
+        "from the root's), which is a decision about this reader and not about the "
+        "keyword's cell.",
+    ("codegen.compiler", ("additionalProperties", "allOf", "properties", "required", "type")):
+        "COMPOSING: what the composing node itself may carry beside its conjunct list.  "
+        "D6's rule families are deliberately NOT here and are added per node by "
+        "rules_at, because the admissible set is a function of the node.",
+    ("codegen.lower.const", ("const", "format", "type")):
+        "const.CLAIMS: the cells a Constant node consumes.  format is claimed because "
+        "§5's const row decides it AT THE PIN -- 'a format beside the pin compiles to "
+        "NOTHING' -- and this handler is where that reading lives.",
+    ("codegen.lower.containers", ("allOf", "contains", "items", "type", "uniqueItems")):
+        "_ARRAY_CLAIMS: the cells the ARRAY row writes, plus the bounds it spreads in "
+        "derived.  allOf is claimed because §5's $ref row at CONJ makes a container its "
+        "node's own type, so an array stating an allOf is this row's to read.",
+    ("codegen.lower.containers", ("additionalProperties", "patternProperties", "propertyNames", "type")):
+        "containers.mapping's coverage: the cells a MAPPING node consumes.  properties "
+        "is absent because a node declaring one is an Object and not a Mapping, which "
+        "is the parser's classification and not a cell.",
+    ("codegen.lower.rules", ("properties", "required", "type")):
+        "rules._clauses: the keys an `if` may carry and still reduce to a Match clause "
+        "list.  A SHAPE constraint on one subschema at the RULE position -- an `if` "
+        "stating anything else reduces to nothing rather than to something stronger "
+        "than the document -- so it is a predicate over one node, not a claim set.",
+    ("codegen.lower.union", ("additionalProperties", "allOf", "properties", "required", "type")):
+        "ROOT_CLAIMS: what a ROOT union node may carry, ordered so the keyword each "
+        "refused document is reported on is the one that is the reason.  Its own comment "
+        "measures the misattribution at 55 of 156 documents before the four were "
+        "claimed here.",
+    ("codegen.lower.union", ("additionalProperties", "allOf", "const", "enum", "properties", "required", "type")):
+        "BRANCH_CLAIMS: what a BRANCH may carry and still be a class this module "
+        "declares.  const and enum are claimed to put the explicit refusal below in "
+        "front of the screen's generic one, which is attribution and not admission.",
+    ("codegen.lower.union", ("$ref", "const", "enum")):
+        "_CLASSIFIED_BEFORE_AN_OBJECT: the keywords §5's ARM ORDER classifies a node on "
+        "before it reads properties, so a branch stating one is not an Object node.  "
+        "A fact about the parser's dispatch order (lower/decide.py), which §5 owns and "
+        "the keyword table does not.",
+    ("codegen.schema.nodes", ("additionalProperties", "allOf", "properties", "required")):
+        "ROOT_SIBLINGS: the keywords a root states BESIDE a combinator, which §3 calls a "
+        "CO-OCCURRENCE and not a position -- 'the table is keyed by position and a "
+        "co-occurrence is not one' -- so the four cells carry the SENTENCE and this "
+        "layer carries the shape.  Written once: parse fills Union.siblings from it and "
+        "lower.union.ROOT_CONJUNCTS is it.",
+}
+
+
+def audit_modules() -> dict[str, pathlib.Path]:
+    """Every first-party module under audit, by the AUDIT's own enumeration."""
+    from survey import arch_audit
+
+    return arch_audit.modules()
+
+
+def _census() -> list[tuple[str, int, bool, tuple[str, ...]]]:
+    """The census, from the AUDIT's own derivation and not a second one.
+
+    ``survey/arch_audit.py keywords`` is the instrument §3 is measured by, and a census
+    printed by one reader and gated by another is how seven of this epic's censuses went
+    stale.  So the audit exports the derivation and this test is a reader of it.
+    """
+    from survey import arch_audit
+
+    return arch_audit.keyword_collections()
+
+
+def test_the_keyword_set_literal_census_is_the_sites_named_here() -> None:
+    """§3's monopoly, as the census the architecture audit derives -- in BOTH directions.
+
+    A new set literal of keywords anywhere under ``codegen/`` fails here, and so does a
+    site in :data:`_SURVIVING_SITES` that no longer exists: the entry has to be deleted
+    with the code, or the reason outlives the thing it was about.  Line numbers are not
+    part of the key, so an edit above a site does not redden it.
+    """
+    found: dict[tuple[str, tuple[str, ...]], int] = {}
+    for module, _line, _keys, hits in _census():
+        found[(module, tuple(sorted(hits)))] = found.get((module, tuple(sorted(hits))), 0) + 1
+    sites = claimed("keyword collections outside codegen/keywords.py", found)
+    unnamed = sites - set(_SURVIVING_SITES)
+    assert not unnamed, (
+        "a new site names keywords in a collection outside codegen/keywords.py; §3 says "
+        "the table is the one place a keyword decision lives.  Derive it from a reader of "
+        "codegen.keywords, or add it to _SURVIVING_SITES with the reason the table cannot "
+        f"hold it: {sorted(unnamed)}"
+    )
+    gone = set(_SURVIVING_SITES) - sites
+    assert not gone, (
+        "_SURVIVING_SITES names a site that no longer exists -- delete the entry with the "
+        f"code it was about: {sorted(gone)}"
+    )
+    doubled = {k: n for k, n in found.items() if n > 1}
+    assert not doubled, (
+        "one module names the same keywords in two collections, which is the repetition "
+        f"inside a single reader: {sorted(doubled)}"
+    )
+
+
+#: The two screens ``codegen/compiler.py`` exposes, whose ``handled`` argument IS a
+#: handler's claim set.  Named because the derivation below has to find the CALLS, and
+#: there are exactly two functions §3's lowering reader goes through.
+_SCREENS = {"check_keywords": 1, "check_declaration": 3}
+
+
+def _claimed_at_every_screen() -> dict[tuple[str, int], frozenset[str]]:
+    """Every keyword named in a ``handled`` argument, per call site -- from the SOURCE.
+
+    AST for the call sites and the live module for the names they pass, so a claim set
+    reaches this whether it is spelled inline (``{"type"}``), as a module constant
+    (``ROOT_CLAIMS``), or as both with a derived set spread beside it
+    (``ROOT_CLAIMS | {kw} | stated.screen``).  A derived operand nothing can resolve
+    statically -- ``stated.screen``, ``node.facts`` -- contributes nothing and needs to:
+    it is already a reader of the table (``compiler.rules_at``, ``parse.value_facts``),
+    which is the thing this test is checking FOR.
+
+    Derived and not listed, because a claim set the test does not reach is a claim set
+    with no gate, and a list of call sites is the second place to go stale.
+    """
+    out: dict[tuple[str, int], set[str]] = {}
+    for name, path in sorted(audit_modules().items()):
+        if not name.startswith("codegen"):
+            continue
+        tree = ast.parse(path.read_text())
+        live = None
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            func = node.func
+            spelled = func.attr if isinstance(func, ast.Attribute) else getattr(func, "id", "")
+            at = _SCREENS.get(spelled)
+            if at is None or len(node.args) <= at:
+                continue
+            if live is None:
+                live = importlib.import_module(name)
+            found: set[str] = set()
+            for sub in ast.walk(node.args[at]):
+                if isinstance(sub, ast.Constant) and isinstance(sub.value, str):
+                    found.add(sub.value)
+                    continue
+                held = None
+                if isinstance(sub, ast.Name):
+                    held = getattr(live, sub.id, None)
+                elif isinstance(sub, ast.Attribute) and isinstance(sub.value, ast.Name):
+                    owner = getattr(live, sub.value.id, None)
+                    held = getattr(owner, sub.attr, None) if owner is not None else None
+                if isinstance(held, (set, frozenset, tuple, list)) and all(
+                    isinstance(x, str) for x in held
+                ):
+                    found |= set(held)
+            if found:
+                out.setdefault((name, node.lineno), set()).update(found)
+    return {site: frozenset(kws) for site, kws in out.items()}
+
+
+def test_no_claim_set_names_a_keyword_the_table_admits_for_free() -> None:
+    """Every keyword a handler CLAIMS has a cell the screen could have refused on.
+
+    This is the half of §3 the table CAN hold about a handler's coverage, and it is the
+    bead's "every keyword a module screens is read from the table" in the one direction a
+    claim set can be read in.  ``compiler._screen`` asks ``handled`` FIRST and then the
+    cell, so a claimed keyword whose cell neither LOWERS nor REFUSES at any position is an
+    entry the screen would have passed over anyway: a leftover from when these sets were
+    ADMISSION lists, which §14 step 5 says is "the table's answer now and is gone from all
+    of them".  Such an entry reads as a decision about the keyword, and the table has
+    already made the only one there is.
+
+    **It found one**: ``lower.enum.CLAIMS`` claimed ``default``, whose cell is ANNOTATION
+    everywhere and FIELD at PROP -- never TYPE or RULE -- while the comment beside it said
+    the parent carries it ("all 66 of the bundle's enum defaults are inline").  The entry
+    is gone and this is what forbids its return.
+
+    It ranges over the SCREEN CALLS and not over the census, which is the difference that
+    matters: the census has a floor of three names
+    (:data:`survey.arch_audit.FLOOR`) and ``enum.CLAIMS`` is two names now, so a census
+    reader would have stopped seeing it exactly when the defect was removed.
+    """
+    sites = _claimed_at_every_screen()
+    claimed("screen call sites with a resolvable claim set", sites)
+    free: list[tuple[str, int, str, list[str]]] = []
+    for (module, line), keywords_claimed in sorted(sites.items()):
+        for keyword in sorted(keywords_claimed):
+            answers = [cell(keyword, p) for p in Position]
+            if any(a is not None and (lowers(a) or a.effect is Effect.REFUSE) for a in answers):
+                continue
+            effects = sorted({str(a.effect).split(".")[-1] for a in answers if a is not None})
+            free.append((module, line, keyword, effects or ["NO ROW"]))
+    assert not free, (
+        "a handler claims a keyword the table admits at every position, so claiming it "
+        "decides nothing and compiler._screen passes it over either way; delete the "
+        f"entry: {free}"
+    )
+
+
+def test_the_census_is_blind_to_a_collection_naming_an_unlisted_keyword() -> None:
+    """**The instrument's own reach, asserted so it is read rather than assumed.**
+
+    ``survey/arch_audit.py``'s census counts a collection only where EVERY element is in
+    its ``DRAFT07`` list, so one element outside that list drops the whole site -- and the
+    list is incomplete: it has no ``multipleOf``, ``additionalItems``, ``contentMediaType``
+    or ``contentEncoding``.  Measured on this tree, two sites are invisible for that reason
+    (``codegen.ir:FACTS``, whose own comment already admits §11 wants it derived, and
+    ``harness._PAD_FORBIDS``), and a third was at the base of this row
+    (``compiler._CONTAINER_KEYWORDS``'s array set, which named ``additionalItems``).
+
+    Completing ``DRAFT07`` would move the census number every lane reads off that command,
+    so it is not done here: this test is the blind spot WRITTEN DOWN, and it reddens if the
+    list is completed -- which is the point at which the sites it hides need rows of their
+    own.  ``adcp-client-python-3be.8`` reports it.
+    """
+    from survey import arch_audit
+
+    missing = claimed(
+        "draft-07 keywords the census's own list does not carry",
+        {k for k in keywords.TABLE if k not in arch_audit.DRAFT07}
+        & {"multipleOf", "additionalItems", "contentMediaType", "contentEncoding"},
+    )
+    assert missing == {"multipleOf"}, (
+        "the census's DRAFT07 list changed; re-measure which collections it now sees and "
+        f"name them in _SURVIVING_SITES or derive them: {sorted(missing)}"
+    )
+    hidden = sorted(
+        {
+            module
+            for module, path in arch_audit.modules().items()
+            if module.startswith("codegen") and module != "codegen.keywords"
+            for node in ast.walk(ast.parse(path.read_text()))
+            if (elements := getattr(node, "elts", None) or getattr(node, "keys", None))
+            and (
+                vals := [
+                    e.value
+                    for e in elements
+                    if isinstance(e, ast.Constant) and isinstance(e.value, str)
+                ]
+            )
+            and len([v for v in vals if v in arch_audit.DRAFT07]) >= arch_audit.FLOOR
+            and len([v for v in vals if v in arch_audit.DRAFT07]) != len(vals)
+        }
+    )
+    assert hidden == ["codegen.harness", "codegen.ir"], hidden

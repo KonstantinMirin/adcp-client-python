@@ -322,6 +322,27 @@ class Composition(Base):
     word: Any = None
 
 
+#: **The keywords a ROOT states beside a combinator that compile onto the union's BASE**,
+#: in the order a root carrying them is REPORTED on.  §4 of the semantics document: "every
+#: keyword beside the combinator compiles onto the base, and every branch inherits it."
+#:
+#: Declared here, beside the field it fills (:attr:`Union.siblings`), because it was
+#: written twice -- once in ``schema/parse.py``'s comprehension and once as
+#: ``lower.union.ROOT_CONJUNCTS`` -- and the two had to agree about the ORDER as well as
+#: the membership (``adcp-client-python-3be.8``).  The order is load-bearing and
+#: ``ROOT_CONJUNCTS``' own comment says why: "FIRST in the tuple, so the keyword each of
+#: those documents is reported on does not move: ``allOf`` is the structural fact (the
+#: document composes) where the other three are the root's own inline facts."
+#:
+#: **Not a cell of ``keywords.py``**, and the test of that is §3's own: the table is keyed
+#: by keyword × POSITION, and "beside a union" is a CO-OCCURRENCE rather than a position --
+#: which §3 says "belongs to the sentence of the cell it qualifies", and each of the four
+#: cells at ROOT states its own clause for it.  So the sentence is in the table and the
+#: four names are the SHAPE the parser builds, which is this layer's.
+#: ``tests/test_keywords.py`` holds the four against those cells.
+ROOT_SIBLINGS: tuple[str, ...] = ("allOf", "properties", "required", "additionalProperties")
+
+
 @dataclass(frozen=True, kw_only=True)
 class Union(Base):
     """Selected by ``oneOf``/``anyOf`` whose branches are shapes.
