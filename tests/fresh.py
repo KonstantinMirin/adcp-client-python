@@ -127,13 +127,36 @@ def _prune(keep: str) -> None:
     """
     cutoff = time.time() - KEPT_SECONDS
     for path in STORE.iterdir():
-        if path.name == keep or not path.is_dir() or path.name.startswith("staging."):
+        if path.name.startswith(keep) or path.name.startswith("staging."):
             continue
         try:
-            if path.stat().st_mtime < cutoff:
-                shutil.rmtree(path, ignore_errors=True)
+            if path.stat().st_mtime >= cutoff:
+                continue
         except OSError:
-            pass
+            continue
+        if path.is_dir():
+            shutil.rmtree(path, ignore_errors=True)
+        else:  # a ``.lock`` or a ``.failed`` whose key nothing computes any more
+            path.unlink(missing_ok=True)
+
+
+#: How long a RAISE is remembered, so a compiler that does not run is reported once.
+#:
+#: **Measured, and it is why this exists at all.**  ``tests/compiled.py`` caches a result
+#: and never a raise, so a compile that raises is uncached -- and with the materialisation
+#: serialised by the lock below, the session process and all ten workers each paid the
+#: whole failing compile in turn.  A perturbation that makes ``render.constraints_module``
+#: raise ran past twenty minutes without reporting, for a defect ``./check`` states in one
+#: compile.  So the raise is held under the SAME key as the result, which is a digest over
+#: ``codegen/`` -- a compiler that raises under that key raises under it again, and fixing
+#: the compiler moves the key, so there is nothing to invalidate by hand.
+#:
+#: The TTL is the one thing the key cannot answer for: a failure that is NOT a property of
+#: the source -- an OOM kill, a disk full -- would otherwise be remembered for as long as
+#: the lane did not edit the compiler.  Longer than a full suite run
+#: (``pyproject.toml``'s measurement is 55 minutes) so one run reports one reason, and
+#: short enough to clear itself without anyone being told about a file.
+FAILED_SECONDS = 2 * 60 * 60
 
 
 @functools.cache
@@ -145,22 +168,39 @@ def _materialised() -> Path:
     the whole of the concurrency argument and the rename is the whole of the crash
     argument: a staging directory is written under a name no reader looks at and moved
     into place in one syscall, so the published path is complete or absent.
+
+    A compile that RAISES is recorded beside the tree and re-raised by the siblings
+    waiting on the lock, for :data:`FAILED_SECONDS`' measured reason.
     """
     key = digest(BUNDLE, population())
     held = STORE / key
     types = held / "types"
+    failed = STORE / f"{key}.failed"
     STORE.mkdir(parents=True, exist_ok=True)
     with (STORE / f"{key}.lock").open("w") as handle:
         fcntl.flock(handle, fcntl.LOCK_EX)
         if not types.is_dir():
+            try:
+                if time.time() - failed.stat().st_mtime < FAILED_SECONDS:
+                    raise RuntimeError(f"this compiler already raised:\n{failed.read_text()}")
+            except OSError:
+                pass
             staging = STORE / f"staging.{key}.{os.getpid()}"
             shutil.rmtree(staging, ignore_errors=True)
             shutil.rmtree(held, ignore_errors=True)  # a previous write died before it
-            emit.write(
-                compiled(BUNDLE, population()),
-                staging / "types" / "_schemas",
-                staging / "types",
-            )
+            try:
+                emit.write(
+                    compiled(BUNDLE, population()),
+                    staging / "types" / "_schemas",
+                    staging / "types",
+                )
+            except BaseException:
+                try:
+                    failed.write_text(traceback.format_exc())
+                except OSError:
+                    pass
+                raise
+            failed.unlink(missing_ok=True)
             os.rename(staging, held)
         for rel in GENERATED:
             assert (types / rel).exists(), (
@@ -192,10 +232,24 @@ def _bound() -> Path:
         types = _materialised()
     except BaseException:  # noqa: BLE001 -- the failure is the finding, see FAILURE
         FAILURE = traceback.format_exc()
-        # NOT a fall-through to ``src/``.  A compiler that did not run leaves the suite
-        # with no tree, and no tree is a red test; the committed tree standing in for one
-        # is a GREEN test over an artifact nothing produced.
-        types = STORE / "no-fresh-tree-was-built"
+        # **NOT a fall-through to ``src/``, and this is the one decision here worth
+        # arguing with.**  A compiler that did not run leaves the suite with no tree.
+        # Letting the committed tree answer for it would keep the collection whole and
+        # would make every check that imports a generated class directly -- and there are
+        # a dozen -- pass against an artifact nothing produced, which is the mixture of
+        # two compilers this module exists to end, in the one state where it is certain.
+        #
+        # THE COST, MEASURED, because it is not free either: the four files that import a
+        # generated module at MODULE scope (``test_accepts_corpus``, ``test_dump_exemptions``,
+        # ``test_emit_product``, ``test_envelope_base``) cannot be collected, and pytest
+        # interrupts the run on a collection error, so a whole-suite invocation reports 554
+        # of 3,435 collected instead of a failure count.  That is a stop-the-world state
+        # with ``./check`` as its instrument and no tree for any check to range over -- it
+        # is NOT the failure this row removed, which was ONE unimportable module of 1,054
+        # taking a file's collection down, and which is measured green in
+        # ``perturb_fresh_grading.sh``.  The directory is named for the reader who lands
+        # on the ``ModuleNotFoundError``, because the path appears in it.
+        types = STORE / "no-fresh-tree-the-compiler-raised-see-tests-fresh-FAILURE"
 
     generated = {f"adcp.types.{rel.removesuffix('.py')}" for rel in GENERATED}
     already = sorted(

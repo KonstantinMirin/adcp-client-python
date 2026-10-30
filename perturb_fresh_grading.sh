@@ -65,13 +65,31 @@ if [ -z "${WHOLE:-}" ]; then
 fi
 printf 'unperturbed collection: %s tests\n\n' "$WHOLE"
 
+# The collection verdict, and it has THREE values and not two. ERRORED is the failure this
+# row removed: a module that raised while pytest was building a parametrize list, which
+# takes whole files down and reports nothing about the module. A count BELOW the whole
+# that errored nothing is not that failure and is not a defect -- a tree with one
+# unimportable module carries fewer pairs, and a run with no tree at all carries none, so
+# the parametrised items legitimately go with them. Only ERRORED is the regression, which
+# is why the two are never collapsed into "not WHOLE".
+collection_of() {
+  out=$(py -m pytest tests/ --collect-only -q 2>&1)
+  n=$(echo "$out" | grep -oE '[0-9]+ tests? collected' | grep -oE '^[0-9]+')
+  if echo "$out" | grep -qE '[0-9]+ errors? (during collection|in )'; then
+    echo "ERRORED (${n:-0} of $WHOLE)"
+  elif [ "${n:-0}" = "$WHOLE" ]; then
+    echo "whole ($WHOLE)"
+  else
+    echo "${n:-0} of $WHOLE, no error"
+  fi
+}
+
 run() {  # run <label> <node id or -k expression> <files to restore...>
   label=$1; select=$2; shift 2
-  got=$(py -m pytest tests/ --collect-only -q 2>&1 | grep -oE '[0-9]+ (tests collected|error)' | head -1)
-  if [ "$got" = "$WHOLE tests collected" ]; then collection=WHOLE; else collection="BROKEN ($got)"; fi
+  collection=$(collection_of)
   out=$(py -m pytest $select -q 2>&1 | tail -3)
   if echo "$out" | grep -qE "[0-9]+ (failed|error)"; then verdict=REDDENS; else verdict="STAYED GREEN"; fi
-  printf '%-52s %-12s collection %-22s %s\n' "$label" "$verdict" "$collection" \
+  printf '%-52s %-12s collection %-24s %s\n' "$label" "$verdict" "$collection" \
     "$(echo "$out" | grep -oE '[0-9]+ (passed|failed|error).*' | head -1)"
   git checkout -- "$@"
 }
@@ -92,9 +110,17 @@ run "a COMMITTED module that cannot be imported" \
 
 # And the same perturbation against the checks that read the FRESH tree: they must not
 # notice it at all, which is the other half of "the committed tree is never the subject".
+#
+# Named node ids and not the two FILES, because `test_the_tree_imports.py` carries a
+# failure that pre-exists this row -- `test_no_document_of_the_bundle_reaches_the_
+# duplicate_base_guard` pins seven refusals where the compiler now has none -- and a case
+# whose selection includes a test that was already red cannot tell a perturbation it
+# caught from one it did not.
 edit "import pathlib;p=pathlib.Path('$M');s=p.read_text();a='class A2UIBoundValue(BranchDispatchMixin, AdCPBaseModel):';assert s.count(a)==1;p.write_text(s.replace(a,'class A2UIBoundValue(BranchDispatchMixin, AdCPBaseModel, BranchDispatchMixin):'))"
-run "  the same, against the FRESH-tree checks (must stay green)" \
-    "tests/test_the_tree_imports.py tests/test_emit.py::test_no_module_of_the_graded_tree_failed_to_import" "$M"
+run "  the same, against the FRESH-tree checks (STAYS GREEN)" \
+    "tests/test_the_tree_imports.py::test_the_tree_the_whole_suite_grades_is_one_a_fresh_run_wrote \
+     tests/test_the_tree_imports.py::test_every_module_a_fresh_run_emits_imports_and_every_class_of_it_is_defined \
+     tests/test_emit.py::test_no_module_of_the_graded_tree_failed_to_import" "$M"
 
 # --------------------------------------------------------------------------- #
 # CASE 2. The COMPILER emits a module that cannot be imported. The guard at
@@ -113,9 +139,16 @@ run "the COMPILER emits an unimportable module" \
 
 # --------------------------------------------------------------------------- #
 # CASE 3. No fresh tree at all: the compile RAISES. `tests/fresh.py` is imported from a
-# conftest hook, so a raise there would error the collection of the whole suite -- the
-# defect this row removed, arriving from the other side. It records the reason instead, and
-# one named test reads it.
+# conftest hook, so a raise there would error the collection of the whole suite. It records
+# the reason instead and one named test reads it -- which is what the REDDENS below is.
+#
+# THE COLLECTION IS EXPECTED TO ERROR HERE AND THAT IS NOT THE DEFECT THIS ROW REMOVED.
+# With the compiler not running there is no tree, and the four files that import a
+# generated module at MODULE scope cannot be collected; pytest interrupts on a collection
+# error, so the count collapses. `tests/fresh.py` argues the alternative and why it is
+# worse: letting `src/` answer would keep the collection whole and grade a dozen checks
+# against an artifact nothing produced. The failure this row removed is CASE 2 -- one
+# unimportable module of 1,054 -- and that one errors nothing.
 # --------------------------------------------------------------------------- #
 edit "import pathlib;p=pathlib.Path('$R');s=p.read_text();a='def constraints_module(';assert s.count(a)==1;p.write_text(s.replace(a,'def constraints_module(*_perturbed, **__perturbed):\n    raise RuntimeError(\"perturbed: the compiler does not run\")\n\n\ndef _unreachable_constraints_module('))"
 run "the compile RAISES: no fresh tree exists" \
