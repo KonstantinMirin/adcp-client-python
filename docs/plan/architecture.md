@@ -1171,7 +1171,7 @@ node reaching no outcome — is prevented by banning the only other way out.
 | --- | --- |
 | three descent tables (`bundle.nodes`, `harness._nodes`, the walk's implicit descent) | the table's `descends` column, read by `parse`, `bundle.edges`, `verify/record.py` |
 | keyword screens with a hand-written set at every lowering | admission in `parse`, from the table |
-| the kind read in `_decide`, in the root selectors, in `union.keyword`, in `rules.presence_only` | `parse`'s classification |
+| the kind read in `lower.decide.decide`, in the root selectors, in `union.keyword`, in `rules.presence_only` | `parse`'s classification |
 | the annotation set, the rule-keyword set, the constraint spelling in three modules | rows of the table; `constraints.SPELLING` keeps the alias WORD per keyword, which is a naming fact and not a decision |
 | the applied type (`constrained_to_object`, `object_constrained`, `applied_type`) | `Node.applied`, set by `parse` through `applied_schema`'s rule |
 | node rewrites (key schema, extras store, multi-type members, `uniqueItems` stripped before the array row) | positions and node fields: `Mapping.key` at KEY, `Object.extras`, `MultiType.members`, `Array.distinct` |
@@ -1571,3 +1571,18 @@ complete, so the ordering quantity no longer exists. The new quantity is how man
 facts* a wave's keywords close, which is a different number over a different denominator and
 will not produce the same order. The upstream half is not a wave at all; it is the issue list,
 and it closes when upstream closes.
+
+**NO STEP OF THIS SECTION OWNS THE CONSUMER SURFACE, and that is deliberate rather than an
+omission (decided 2026-10-30).** `src/adcp/types/__init__.py` used to say its public surface was
+"generated from the binding table in step 9". Step 9 has landed, it owns no binding table, and
+**nothing anywhere owns one** — `codegen/emit.py` says so in as many words. The question that
+docstring was answering is a real one and this section is the wrong place for it: §14 is the
+COMPILER's migration path, and every step here is checked against the emitted tree or the report.
+What a domain module exports is not a property of the compiler's internals; it is the artifact a
+consumer imports, so it is graded by census against that artifact and not by a step's *bytes*
+mark. `docs/plan/surface-goal.md` owns that goal, `docs/plan/unimplemented.md` A-2 owns the gap,
+and the row is P4-09.
+
+That boundary is why the compiler reaching `refused 0` did not deliver a usable SDK, and saying it
+here is cheaper than rediscovering it: a reader who looks for the consumer surface among these
+steps will not find it, and the honest answer is that it was never one of them.
