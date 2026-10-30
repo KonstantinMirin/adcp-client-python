@@ -320,6 +320,50 @@ pointer is louder and honest where a refusal is quiet and wrong. The chokepoint 
 `ir.ClassDecl`, because not every base list passes through `compiler.dispatching_bases`; a guard
 there would hold two of the call sites and miss the rest.
 
+**TWO MORE INSTANCES, and the second had never reported once (2026-10-30).** The rule above was
+written about a precondition; both of these are the same rule reached a different way — the check
+dies in its own setup, before the line holding its claim.
+
+* `test_the_emitted_tree_still_declares_every_module_it_imports` built its export table in a first
+  loop that raised at `brand.json`, so the second loop — the one holding the assertion — never
+  ran. Repaired, it reddens immediately on a real defect: nine modules understate their `__all__`
+  against what other modules import from them, 44 names, every one a union-branch module.
+* `test_decision_set.py`'s `test_the_comparison_admits_no_fact_this_file_does_not_name` raises in
+  `_reach` before any perturbation runs — `KeyError: '0'` at
+  `#/anyOf/1/properties/account/allOf/0/anyOf/0`, the synthetic `allOf` pointer, at a reader that
+  row does not list. **So that guard has never reported anything**, and there is an arrival
+  waiting behind it.
+
+A check that dies before its assertion is indistinguishable from a check that has nothing to
+report, and the suite's own failure summary spells them the same way. The two are told apart only
+by reading the traceback for which LINE raised, so a red check is not evidence that its subject
+is what failed.
+
+### A guard over a derived reach reads SITES, never keyword sets (decided 2026-10-30)
+
+`test_decision_set.py`'s `_reach` derives what each admitting mechanism covers by differencing
+KEYWORD SETS, and that makes an unrelated red fact elsewhere able to empty it: any keyword a live
+comparison defect also puts in the live bucket cannot appear in any mechanism's reach. With 1,086
+red facts over 24 `missing` keywords and 7 `added` ones, the derivation reports
+`harness._narrows_nothing` and `harness._states_no_graded_fact` as covering **nothing**, while at
+site granularity they cover **130,387 sites** — `_narrows_nothing` 130,331 in 2,114 pairs, whose
+`default` arm alone is 124,754 facts over 743 documents, and `_states_no_graded_fact` 56 in 51.
+
+So the reading is the SITE — `(pair, pointer, keyword)` — and the keyword-set form is abandoned. A
+guard whose coverage can be driven to zero by a defect it is not about measures something other
+than what it claims, and in this shape it fails silent: empty reach reads as "nothing admitted".
+
+**`ADMITTED` is not re-pinned until the derivation is honest**, and the order is the raise first,
+then the granularity, then the pin. Matching the pin to the masked derivation would write three
+entries BELOW the truth, and a ratchet set below the truth is exempted later rather than fixed —
+which is how a guard stops guarding. One entry has genuinely moved and is waiting for a readable
+instrument to state it: `harness._constrains_nothing` admits `pattern`, `maxLength` and
+`minLength` — 24 facts in 19 pairs over 3 documents — where its entry names only `required` and
+`default`. A mechanism admitting MORE than its entry names is a fact dropped without a
+declaration, which §2 forbids in that direction, so the answer is either that the mechanism
+over-admits or that the entry is incomplete; the measurement that distinguishes them does not
+exist until the two defects above are fixed.
+
 ### An approximation's pointer is the SchemaRef spelling (decided 2026-10-29)
 
 `render.declared_at` attaches a declaration to a class by a prefix test, and its own docstring
