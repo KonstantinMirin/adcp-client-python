@@ -180,6 +180,35 @@ now `ir.py`'s. As the rest follow, the entry is a thin module importing `ir` and
 handlers importing `ir` alone — and §11's table gains the row it is missing, naming that module and
 the one direction its arrow runs.
 
+### The drawn corpus is COMMITTED (decided 2026-10-30)
+
+**The payloads for all 1,054 documents are 3,317 entries and 0.4 MB of content, mean 131 bytes.**
+Drawing them costs 151 to 2,356 seconds per pair. They live in a gitignored directory, so a fresh
+checkout, a new worktree, a CI job and every key-space change redraw all of them — and at the last
+reading **1,740 of 2,793 pairs held no entry at all.**
+
+`tests/corpus.py` recorded the reason not to commit them, and the reason was sound when it was
+written:
+
+> *"a committed corpus is a second derived artifact whose currency has no instrument … the gate for
+> it would have to redden on any in-flight record change, which is correct work."*
+
+**That clause is the load-bearing one and it is now false.** The key was `bundle.record` — our own
+inlining — so any compiler edit invalidated every entry and a committed corpus would have been
+permanently stale with a permanently red gate. The key is now `bundle.source_identities`: the
+document's own raw bytes, the raw bytes of its reference closure, the example count, the format
+strategies and the generator version. **A compiler edit moves nothing. Only a bundle bump does.**
+
+So the obligation the old argument said nothing could grade is now gradeable, and it is the gate
+that comes with the decision: **every graded pair has a committed entry under the current key.** It
+reddens exactly when a bundle bump or a generator bump lands without a redraw — which is a
+deliberate, reviewable event and not an in-flight change — and `harness.corpus_defect` still
+re-offers every held instance to the document on read, so a wrong entry cannot pass quietly.
+
+What this buys: a payload is drawn **once per (document, draw version) in the project's history**,
+not once per checkout per lane per key-space change. What it costs is 0.4 MB in the tree and a
+redraw step on a bundle bump, which is the same discipline the packaged records already carry.
+
 ### The suite's scratch goes on DISK, not in RAM (decided 2026-10-30)
 
 `/tmp` on this machine is a **63 GB tmpfs — it is RAM.** The suite materialises a fresh package per
