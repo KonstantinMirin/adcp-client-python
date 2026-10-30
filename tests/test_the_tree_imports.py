@@ -55,6 +55,7 @@ from codegen import bundle, compiler, emit, ir
 from codegen.refusal import BuildFailure
 
 from compiled import compiled
+import fresh
 from nodeset import claimed, partitions
 
 REPO = Path(__file__).resolve().parents[1]
@@ -98,6 +99,50 @@ def _a_fresh_package(out: emit.Emitted, root: Path) -> Path:
             "the committed one and grade a mix of two trees"
         )
     return root
+
+
+def test_the_tree_the_whole_suite_grades_is_one_a_fresh_run_wrote() -> None:
+    """The precondition of every other check in this suite, reported here and nowhere.
+
+    ``docs/plan/architecture.md`` (2026-10-29) puts the subject of grading at a fresh
+    emission, and ``tests/fresh.py`` is the act: it writes that emission to disk and binds
+    the GENERATED half of ``adcp.types`` in front of ``src/adcp/types``, with
+    ``tests/conftest.py`` importing it so the binding precedes collection.  A compiler
+    that RAISES therefore raises inside a conftest, where a raise errors the whole suite's
+    collection -- the defect this epic's first row removed, arriving from the other side --
+    so ``fresh`` records the reason instead and this test is what reads the record.
+
+    Three clauses, and the middle one is what makes a green mark mean something:
+
+    * a tree was built, and ``fresh.FAILURE`` is empty;
+    * the three GENERATED children of ``adcp.types`` resolve inside it and the two
+      HAND-WRITTEN ones do not, which is §7's split between the compile's inputs and its
+      output read back off the import system.  ``_base.py`` and ``_runtime.py`` are
+      nobody's output -- ``tests/compiled.py``'s key covers them as INPUTS -- so ``src/``
+      is their source of truth and the fall-through to it is deliberate;
+    * and the tree is not ``src/``.  If it were, every census in this suite would again
+      be a reading of whenever the artifact was last regenerated.
+
+    **Here and not in ``tests/test_emit.py``** for that file's own reason: this one's
+    collection reads the bundle and nothing else, so a tree that does not exist reddens a
+    named test rather than disabling 2,400.
+    """
+    import adcp.types._base
+    import adcp.types._runtime
+    import adcp.types._schemas
+    import adcp.types.constraints
+    import adcp.types.envelopes
+
+    assert fresh.FAILURE == "", fresh.FAILURE
+    generated = claimed(
+        "generated children of adcp.types",
+        (adcp.types._schemas, adcp.types.constraints, adcp.types.envelopes),
+    )
+    for module in generated:
+        assert Path(module.__file__).is_relative_to(fresh.PACKAGE), module.__file__
+    for module in (adcp.types._base, adcp.types._runtime):
+        assert Path(module.__file__).is_relative_to(REPO / "src"), module.__file__
+    assert fresh.TREE != REPO / emit.TREE, fresh.TREE
 
 
 def test_every_module_a_fresh_run_emits_imports_and_every_class_of_it_is_defined(

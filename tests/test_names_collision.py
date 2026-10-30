@@ -27,10 +27,17 @@ from codegen import emit
 from codegen.lower import names
 from codegen.refusal import Refusal
 
+import fresh
 from tests.nodeset import claimed, ratchet
 
 REPO = Path(__file__).resolve().parents[1]
-TREE = REPO / emit.TREE
+
+#: The tree a FRESH run emits (``docs/plan/architecture.md``, 2026-10-29).  A collision
+#: is a property of the compiler, so the text read here is the text this compiler wrote:
+#: three of the four import-path collisions on the board when that was decided were
+#: invisible in ``src/`` and visible in a fresh run.  ``tests/fresh.py`` owns the tree and
+#: ``tests/test_emit.py``'s byte-compare is what keeps the committed one equal to it.
+TREE = fresh.TREE
 
 
 def _chains(hops: dict[str, names.Hop]) -> dict[str, tuple[str, ...]]:
