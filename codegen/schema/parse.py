@@ -8,8 +8,14 @@ of a tree whose children are nodes, each carrying its own POINTER, its own POSIT
 the type word an enclosing node applies to the same instance.
 
 **What a node does NOT carry a child for, and why each one is a DECLARATION rather than
-an omission.**  Four kinds of subschema stay as the document wrote them, and
-``nodes.py`` declares all four:
+an omission.**  Four kinds of subschema stay as the document wrote them.  Each is an
+entry of :data:`codegen.schema.nodes.RAW_CARRIERS`, which is where every such carrier is
+declared and where the sentence admitting it lives; what follows is the DESCENT view of
+four of them -- which keywords this function does not descend through, which is the
+parser's own fact -- and not a second census.  Reading it as one is how this list came to
+name ``annotations`` and ``Array.contains`` while ``nodes.py``'s prose named ``declared``
+and ``branch_raw``, two lists kept by hand that had already come apart
+(``adcp-client-python-3be.9``):
 
 * a subschema at RULE -- inside ``not``, ``if``, ``then`` or ``else`` -- is a rule SOURCE
   on the enclosing node (:attr:`nodes.Base.rules`).  §4: "A node at RULE is parsed like
@@ -227,7 +233,7 @@ def parse(
     # keyword beside a ``type`` word is a conjunction with every branch, so reading
     # ``type`` first would lower the type and drop the branches; and a draft-07 ``allOf``
     # applies to the whole instance, so a node that composes is a composition whatever
-    # else it declares.  ``nodes.Union.siblings`` is where ``allOf`` goes when a union
+    # else it declares.  ``nodes.Union.conjuncts`` is where ``allOf`` goes when a union
     # claims the node, which is why the union arm is read before the ``allOf`` arm (§5's
     # ``allOf`` row: "beside a union → the same, onto the base").
     #
@@ -242,7 +248,7 @@ def parse(
     # ``allOf`` is that clause with the type read off the node's own word instead of off a
     # reference: the array IS the type, and the conjuncts constrain it.  So the word claims
     # the node, the conjunct list travels on the kind the word selects
-    # (:attr:`nodes.Array.conjuncts`, :attr:`nodes.Union.siblings`'s own arrangement) and
+    # (:attr:`nodes.Array.conjuncts`, :attr:`nodes.Union.conjuncts`'s own arrangement) and
     # the kind's handler is the one reader of it.
     #
     # Measured over every node of the 1,054 portable documents: **4 composing nodes state
@@ -845,11 +851,6 @@ def _union(
         # other kind that can state one reads it, so ``compiler.lower_composition``
         # takes the node's requiredness off one field name whatever kind it is handed.
         required=tuple(raw["required"]) if isinstance(raw.get("required"), list) else (),
-        siblings={
-            k: raw[k]
-            for k in ("allOf", "properties", "required", "additionalProperties")
-            if k in raw
-        },
         word=word,
         **common,
     )

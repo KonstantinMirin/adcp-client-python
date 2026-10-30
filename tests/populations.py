@@ -133,7 +133,7 @@ def composes_at_the_root(doc: dict) -> bool:
     whatever ELSE it carries, because the root ``allOf`` of a draft-07 document applies
     to the whole instance and therefore to every branch -- which is what §5's ``allOf``
     row states as "beside a union → the same, onto the base", and what
-    ``nodes.Union.siblings`` carries.  ``emit._decide`` reads the union arm BEFORE the
+    ``nodes.Union.conjuncts`` carries.  ``emit._decide`` reads the union arm BEFORE the
     ``allOf`` arm for exactly that reason.
 
     **"A union beside it" IS :func:`union_root`**, which asks the lowering

@@ -1262,7 +1262,10 @@ def lower_union(
     branch of a ROOT union is a class whatever it states (§6) -- and the branch PLAN is
     read off :attr:`nodes.Union.branch_raw`, which §6 keeps at the declaration level
     because §4 "Names" and §4's dispatch derivation are readings of a branch's own
-    declaration.  The root's four conjunct-ish siblings are :attr:`nodes.Union.siblings`.
+    declaration.  The keywords the root states BESIDE the combinator have one field each
+    -- :attr:`nodes.Union.conjuncts`, :attr:`nodes.Base.declared`,
+    :attr:`nodes.Union.required`, :attr:`nodes.Base.extra` -- and no fifth carrier
+    holding the four of them (``adcp-client-python-3be.9``).
 
     The pointer is the node's own and is the ROOT's -- ``""`` -- for every call §5's one
     path makes here through :func:`lower`.  ``enclosing`` is the other caller: this
@@ -1651,9 +1654,9 @@ def lower_union(
         #
         # It sits BEFORE the ``allOf`` arm because §5's ``allOf`` row beside a union is
         # "the same, onto the base": such a node is a :class:`nodes.Union` whose conjunct
-        # list is a SIBLING (:attr:`nodes.Union.siblings`), and ``lower_composition``
-        # reads it from there -- routed to the composition arm instead, the branches
-        # would be dropped.
+        # list is a SIBLING of the combinator (:attr:`nodes.Union.conjuncts`), and
+        # ``lower_composition`` reads it from there -- routed to the composition arm
+        # instead, the branches would be dropped.
         #
         # **Unconditional, where :func:`lower` asks :func:`composes_its_siblings` first,
         # and the reason is §4's and not a preference.**  That selector exists to tell a

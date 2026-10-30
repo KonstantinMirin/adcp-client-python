@@ -3377,7 +3377,8 @@ def lower_composition(
     # and not one per kind that can state one.
     #
     # **The LIST is the parser's, for both kinds** (``adcp-client-python-10l.37``).  It
-    # was rebuilt here out of :attr:`nodes.Union.siblings`, which was a second reading of
+    # was rebuilt here out of the keyword mapping a ``nodes.Union`` used to carry beside
+    # its branches, which was a second reading of
     # ``allOf`` and could only ever yield ``enumerate``'s indices -- and a union whose
     # combinator is borne by one of those very conjuncts composes the OTHERS, at the
     # pointers the document gives them.  :attr:`nodes.Union.conjuncts` is that list, so

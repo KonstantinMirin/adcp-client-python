@@ -600,7 +600,7 @@ def test_a_composing_root_reaches_one_arm_and_nothing_can_claim_it_twice() -> No
     ``allOf`` row decides the order: "ROOT with no union beside → ``$ref`` conjuncts are
     BASES ...; **beside a union → the same, onto the base**".  A union keyword therefore
     selects the KIND and the ``allOf`` is a sibling the union handler consumes
-    (``nodes.Union.siblings``), so the union arm is read FIRST -- which is exactly the
+    (``nodes.Union.conjuncts``), so the union arm is read FIRST -- which is exactly the
     clause ``populations.composes_at_the_root`` carries, now read once by the walk
     instead of twice.
     """
@@ -628,17 +628,23 @@ def test_a_composing_root_reaches_one_arm_and_nothing_can_claim_it_twice() -> No
     #
     # The arm itself is what the ordering decides and the parser is what decides it:
     # ``parse.parse`` reads the union arm BEFORE the ``allOf`` arm and puts the conjunct
-    # list on :attr:`nodes.Union.siblings`, so a root carrying both is a ``nodes.Union``
-    # whose siblings carry its ``allOf``.  Asserting that is asserting the arm, with no
-    # refusal to go stale -- and the ``allOf`` is asserted PRESENT in the siblings, which
-    # is what says the union arm CONSUMES it rather than dropping it.
+    # list on :attr:`nodes.Union.conjuncts`, so a root carrying both is a ``nodes.Union``
+    # carrying its ``allOf``.  Asserting that is asserting the arm, with no refusal to go
+    # stale -- and the conjuncts are asserted to be the document's own list, ENTRY FOR
+    # ENTRY, which is what says the union arm CONSUMES the keyword rather than dropping it.
+    #
+    # Read off the field the handler reads (``adcp-client-python-3be.9``).  It was
+    # ``nodes.Union.siblings``, a keyword mapping holding the ``allOf`` as the document
+    # states it -- and ``compiler.lower_composition`` stopped reading that mapping at
+    # ``adcp-client-python-10l.37``, so the assertion graded a carrier no handler took the
+    # list off.  The mapping is deleted; this is the same clause over ``conjuncts``.
     for d in both:
         raw = bundle.read(BUNDLE, d)
         node = schema_parse.parse(
             raw, pointer="", position=keywords.Position.ROOT, source=schema_parse.Source(document=d)
         )
         assert isinstance(node, nodes.Union), (d, type(node).__name__)
-        assert node.siblings.get("allOf") == raw["allOf"], d
+        assert [c.raw for c in node.conjuncts] == raw["allOf"], d
 
 
 # --------------------------------------------------------------------------- #

@@ -61,7 +61,11 @@ nothing can break is a finding about the rule.
 from __future__ import annotations
 
 import ast
+import dataclasses
+import functools
+from collections.abc import Collection, Mapping
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -666,40 +670,244 @@ MAY_READ_A_DECLARATION = frozenset(
 #: end of it: "during this step a node may carry its originating mapping ... **the step is
 #: not complete until that carrier is deleted**, and its deletion is the step's last
 #: commit: a tree that still has it has not finished step 5, and no later step may read
-#: it."
+#: it."  Kept as the ONE name the old form of this guard looked for, so the control below
+#: can say what being name-blind cost: ``nodes.Union.siblings`` held four of the
+#: document's own subtrees and was invisible to a search for this string.
 CARRIER = "raw"
 
+#: The bundle the census below is taken over -- the pinned tree every other measurement in
+#: these tests is stated over.
+BUNDLE = ROOT / "schemas" / "cache" / "3.2"
 
-def test_no_node_carries_the_mapping_it_was_parsed_from() -> None:
-    """§14 step 5's exit condition, asserted on the kinds rather than reviewed.
+#: **The one node the census cannot reach through a document, stated here instead.**
+#: ``nodes.Composition.contains`` is populated only by the declaration §2's intersection
+#: rule MERGES and hands back to the parser -- ``{**child, "allOf": [..., base]}`` -- and
+#: ``nodes.py`` measures the other way in: "0 nodes state one in the bundle's own text".
+#: A merged declaration is not a position any document states, so a census over the
+#: documents alone is green over a carrier nobody can see, and CORPUS-blind is the same
+#: defect as name-blind.  So the population states one itself, and the equality below
+#: covers the field on the bundle's own terms.
+PROBE_DECLARATION: dict[str, object] = {
+    "allOf": [{"$ref": "core/forecast-point-dimensions.json"}],
+    "contains": {"type": "object", "properties": {"kind": {"const": "signal"}}},
+}
 
-    The carrier was ``nodes.Base.raw`` and the step's own sentence is that no later step
-    may read it.  A field is the only way one could: a handler holding a node cannot
-    reach the document otherwise, because ``parse`` is handed the mapping and returns
-    nodes.  So the assertion is that no kind of §4's table declares one -- which also
-    reddens if a later row reintroduces it under the same name to get a reading done
-    quickly.
 
-    ``nodes.Conjunct`` is the ONE declaration in this module that does carry ``raw``, and
-    it is not a node: §2's intersection rule merges two DECLARATIONS of one property and
-    hands the merged one back to ``parse``, so a conjunct is read as a declaration and
-    the node it becomes is the composed node.  It is asserted PRESENT, so the clause
-    above cannot be satisfied by deleting the sanctioned carrier too.
+def _node_declarations() -> list[type]:
+    """Every frozen dataclass ``nodes.py`` declares: §4's table, plus ``Conjunct``.
+
+    DERIVED from the module and not listed, so a declaration added later is censused
+    without anyone adding it here -- which is the half of this guard a name could hide
+    from.  ``Conjunct`` is in the population though it is not a ``Base``: it is the
+    declaration §2's intersection rule reads, and it is where the one sanctioned ``raw``
+    lives.
     """
-    from dataclasses import fields as dataclass_fields
+    from dataclasses import is_dataclass
 
     from codegen.schema import nodes
 
-    kinds = [
+    return [
         value
         for value in vars(nodes).values()
-        if isinstance(value, type) and issubclass(value, nodes.Base)
+        if isinstance(value, type) and is_dataclass(value) and value.__module__ == nodes.__name__
     ]
+
+
+def _declaring(kind: type, name: str) -> type:
+    """The class that DECLARES ``name``, walking the MRO base-first.
+
+    So a reading shared by every kind is reported once, at ``Base``, rather than twelve
+    times at the kinds that inherit it -- which is how :data:`codegen.schema.nodes.RAW_CARRIERS`
+    is keyed and therefore how the equality below compares.
+    """
+    for cls in reversed(kind.__mro__):
+        if name in getattr(cls, "__annotations__", {}):
+            return cls
+    return kind
+
+
+def _admits_a_raw_value(annotation: str) -> bool:
+    """Could a field annotated this way hold a piece of a document?
+
+    ``Any`` anywhere in the annotation -- bare, inside ``Mapping[str, Any]``, inside
+    ``tuple[Any, ...]``, inside a union with ``None``.  The STATIC half of the guard and
+    an over-approximation on purpose: ``word``, ``value`` and ``facts`` are all typed this
+    way and none of them holds a subtree, which the measured half decides.  Parsed rather
+    than matched as text, because ``nodes.py`` has ``from __future__ import annotations``
+    and a field's ``type`` is the source string.
+    """
+    return any(
+        isinstance(node, ast.Name) and node.id == "Any"
+        for node in ast.walk(ast.parse(annotation, mode="eval"))
+    )
+
+
+def _candidates() -> set[tuple[type, str]]:
+    """Every field of a node declaration whose TYPE admits a piece of a document."""
+    from dataclasses import fields as dataclass_fields
+
+    return {
+        (_declaring(kind, f.name), f.name)
+        for kind in _node_declarations()
+        for f in dataclass_fields(kind)
+        if _admits_a_raw_value(f.type if isinstance(f.type, str) else str(f.type))
+    }
+
+
+def _reachable(root: object) -> list[object]:
+    """Every node declaration reachable from ``root`` through its fields, deduped by id."""
+    from dataclasses import fields as dataclass_fields, is_dataclass
+
+    seen: set[int] = set()
+    out: list[object] = []
+    stack: list[object] = [root]
+    while stack:
+        value = stack.pop()
+        if is_dataclass(value) and not isinstance(value, type):
+            if id(value) in seen:
+                continue
+            seen.add(id(value))
+            out.append(value)
+            stack.extend(getattr(value, f.name) for f in dataclass_fields(value))
+        elif isinstance(value, Mapping):
+            stack.extend(value.values())
+        elif isinstance(value, (list, tuple)) and not isinstance(value, (str, bytes)):
+            stack.extend(value)
+    return out
+
+
+def _holds_a_subtree(value: object, subtrees: Collection[int]) -> bool:
+    """Does ``value`` hold, BY IDENTITY, a mapping the document states at a schema position?
+
+    **The detector, and the whole of why it is name-blind.**  It asks what a field HOLDS
+    and never what it is called: ``siblings``, ``held`` or ``x`` are one answer, and the
+    name the old form of this guard grepped for is not privileged.
+
+    By IDENTITY, because the parser is handed the document's own mapping and shares it --
+    ``raw[k]``, ``raw["allOf"][i]``, ``{**raw}``'s values -- so a carrier holding a piece
+    of the document holds the same object.  And against the SCHEMA POSITIONS rather than
+    against every mapping in the file, so a ``const`` whose value is an object and an
+    ``examples`` holding one are what they are: values, not subschemas.  ``bundle.nodes_at``
+    is that set and it is the one declaration of what a schema position is -- the descent
+    column of the keyword table, which the document censuses and the reference inliner
+    already read, so this guard cannot come to disagree with them about it.
+
+    A node is NOT descended into: a field holding a parsed child holds a node, which is
+    the arrangement the rule asks for.  ``Union.conjuncts`` is therefore clean and
+    ``Conjunct.raw`` is the entry, which is where the sentence is.
+    """
+    from dataclasses import is_dataclass
+
+    stack: list[object] = [value]
+    while stack:
+        held = stack.pop()
+        if is_dataclass(held) and not isinstance(held, type):
+            continue
+        if isinstance(held, Mapping):
+            if id(held) in subtrees:
+                return True
+            stack.extend(held.values())
+        elif isinstance(held, (list, tuple)) and not isinstance(held, (str, bytes)):
+            stack.extend(held)
+    return False
+
+
+def _carriers_of(document: str, doc: Mapping) -> dict[tuple[type, str], str]:
+    """Every ``(declaring class, field)`` of ``doc``'s nodes that holds one, with a site.
+
+    Every SCHEMA POSITION of the document is parsed at the position the descent column
+    gives it, and not only the root: a document whose root composes keeps its properties
+    at the declaration level, so a root-only walk never builds the ``Array`` node under
+    ``formats/canonical/audio_hosted.json#/properties/duration_ms_range`` and would miss
+    ``Array.contains`` entirely.  The positions are ``bundle.nodes_at``'s -- the same one
+    declaration the detector compares against.
+    """
+    from dataclasses import fields as dataclass_fields
+
+    from codegen import bundle
+    from codegen.schema import parse as schema_parse
+
+    subtrees = {id(sub) for _, sub in bundle.nodes(doc)}
+    source = schema_parse.Source(document=document)
+    found: dict[tuple[type, str], str] = {}
+    for pointer, sub, position in bundle.nodes_at(doc):
+        parsed = schema_parse.parse(sub, pointer=pointer, position=position, source=source)
+        for node in _reachable(parsed):
+            for f in dataclass_fields(node):
+                if _holds_a_subtree(getattr(node, f.name), subtrees):
+                    key = (_declaring(type(node), f.name), f.name)
+                    found.setdefault(key, f"{document}#{getattr(node, 'pointer', '?')}")
+    return found
+
+
+@functools.lru_cache(maxsize=1)
+def _census() -> dict[tuple[type, str], str]:
+    """The measured carriers over the whole bundle plus :data:`PROBE_DECLARATION`."""
+    from codegen import bundle
+
+    found: dict[tuple[type, str], str] = {}
+    for document in bundle.portable(BUNDLE):
+        for key, site in _carriers_of(document, bundle.read(BUNDLE, document)).items():
+            found.setdefault(key, site)
+    for key, site in _carriers_of("the guard's own declaration", PROBE_DECLARATION).items():
+        found.setdefault(key, site)
+    return found
+
+
+def test_no_node_carries_the_mapping_it_was_parsed_from() -> None:
+    """§14 step 5's exit condition, MEASURED on what the kinds hold rather than reviewed.
+
+    The carrier was ``nodes.Base.raw`` and the step's own sentence is that no later step
+    may read it.  A field is the only way one could: a handler holding a node cannot reach
+    the document otherwise, because ``parse`` is handed the mapping and returns nodes.
+
+    **This clause used to grep the kinds for the field NAME ``raw``, and that is what
+    ``adcp-client-python-3be.9`` found wrong with it.**  A carrier under any other name
+    was invisible: ``nodes.Union.siblings`` carried ``allOf``, ``properties``,
+    ``required`` and ``additionalProperties`` as the document states them -- four of the
+    document's own subtrees -- and passed this test every time it ran.  It is deleted, not
+    excused: each of its four keys already had a field (``Union.conjuncts``,
+    ``Base.declared``, ``Union.required``, ``Base.extra``) and nothing in ``codegen/``
+    read the mapping, so no reader lost a fact.
+
+    What replaces the grep is a DERIVED EQUALITY and both sides of it are derived:
+
+    * the LEFT is measured -- every field of every node declaration that holds, by
+      identity, a mapping the document states at a schema position (:func:`_holds_a_subtree`,
+      over every portable document and the probe);
+    * the RIGHT is :data:`codegen.schema.nodes.RAW_CARRIERS`, the design's own declaration,
+      each entry carrying the sentence that admits it.
+
+    Equal in BOTH directions, which is what generalises the clause the old form held by
+    hand.  It asserted ``Conjunct.raw`` PRESENT so the test could not go green by deleting
+    the sanctioned carrier along with the others; the equality asserts that of every entry,
+    so a declaration whose field stops carrying is as red as a field that starts.
+
+    And the exception list and this test now share ONE derivation.  They did not: this
+    file's prose named ``Conjunct.raw``, ``Base.rules``, ``Base.declared`` and
+    ``Union.branch_raw``; ``nodes.py``'s module docstring named the same four;
+    ``parse.py``'s named ``Base.rules``, ``Base.annotations``, ``Conjunct`` and
+    ``Array.contains``.  Three lists, two of them distinct, overlapping in two -- six
+    carriers between them, against the nine the parse builds.
+
+    **Perturbed three ways, and each half separately.**  Putting ``Union.siblings`` back
+    reddens the first clause with ``['Union.siblings']`` and a site, where the old
+    name-grep stayed green on the same tree; a field named ``held`` on ``nodes.Object``,
+    fed ``raw.get("properties")``, reddens it with ``['Object.held']``; and making
+    ``nodes.Mapping_.patterned`` always ``None`` reddens the SECOND clause with
+    ``['Mapping_.patterned']``, which is the over-deletion direction.  A rule nothing can
+    break is a finding about the rule.
+    """
+    from codegen.schema import nodes
+
     # §4's table, BY NAME and not by count: the kinds are closed (draft-07 fixes them and
     # the table lists every one), so the population this clause ranges over is a
-    # declaration rather than a census of today's module.
-    assert {k.__name__ for k in kinds} == {
+    # declaration rather than a census of today's module.  ``Conjunct`` is named with
+    # them because it is in the census: §2's intersection rule's declaration is where the
+    # one sanctioned ``raw`` lives.
+    assert {k.__name__ for k in _node_declarations()} == {
         "Base",
+        "Conjunct",
         "Reference",
         "Enumeration",
         "Constant",
@@ -712,21 +920,153 @@ def test_no_node_carries_the_mapping_it_was_parsed_from() -> None:
         "MultiType",
         "Null",
         "Typeless",
-    }, sorted(k.__name__ for k in kinds)
-    carrying = {
-        kind.__name__
-        for kind in kinds
-        if CARRIER in {f.name for f in dataclass_fields(kind)}
+    }, sorted(k.__name__ for k in _node_declarations())
+
+    measured = _census()
+    declared = dict(nodes.RAW_CARRIERS)
+    undeclared = {
+        f"{kind.__name__}.{name}": site for (kind, name), site in measured.items()
+        if (kind, name) not in declared
     }
-    assert carrying == set(), (
-        f"{sorted(carrying)} carry {CARRIER!r}: §14 step 5's migration carrier is deleted "
-        "and no later step may read it -- a handler reads node fields, and a declaration "
-        "a reading genuinely needs gets a carrier nodes.py names (Conjunct.raw, "
-        "Base.rules, Base.declared, Union.branch_raw)"
+    assert undeclared == {}, (
+        f"{sorted(undeclared)} hold a mapping the document states at a schema position and "
+        f"nodes.RAW_CARRIERS does not name them: {undeclared}.  §14 step 5's carrier is "
+        "deleted and no later step may read one -- a handler reads node fields, and a "
+        "declaration-level reading the design genuinely needs gets an entry in RAW_CARRIERS "
+        "with the decision that admits it"
     )
-    assert CARRIER in {f.name for f in dataclass_fields(nodes.Conjunct)}, (
-        "nodes.Conjunct is a DECLARATION and not a node, and §2's intersection rule is "
-        "why it carries one; the clause above must not be green because this went too"
+    stopped = sorted(
+        f"{kind.__name__}.{name}" for kind, name in declared if (kind, name) not in measured
+    )
+    assert stopped == [], (
+        f"{stopped} are declared raw carriers and hold nothing over the bundle or the "
+        "probe; RAW_CARRIERS may shrink and this is how -- drop the entry, and with it the "
+        "field if no reader is left.  Asserted in this direction so the clause above cannot "
+        "go green because the sanctioned carriers were deleted too"
+    )
+    # And the STATIC screen covers the measured set, so the two halves agree about the
+    # population: a field that holds a subtree is a field whose type admits one.  A
+    # measured carrier outside the candidates would mean the annotation says one thing and
+    # the value does another, which is a finding about the type and not about the guard.
+    candidates = _candidates()
+    outside = sorted(
+        f"{kind.__name__}.{name}" for kind, name in measured if (kind, name) not in candidates
+    )
+    assert outside == [], (
+        f"{outside} hold a piece of a document behind an annotation that does not admit "
+        "one; the field's type and its contents disagree"
+    )
+
+
+def test_every_raw_carrier_cites_the_decision_that_admits_it() -> None:
+    """The other half of "a named exception": each entry says what forces it.
+
+    ``nodes.py``'s module docstring is the design's, and the rule it states is absolute --
+    "NO NODE CARRIES THE MAPPING IT WAS PARSED FROM".  An entry in
+    :data:`codegen.schema.nodes.RAW_CARRIERS` is a reading the design keeps at the
+    DECLARATION level instead, so each one cites the section that decides it; an entry
+    with no sentence is an exemption, and the set would then be a list of whatever
+    happened to be convenient.
+
+    Asserted on the sentence rather than reviewed because this is the half a reader checks
+    by eye and therefore the half that rots: the four carriers this guard named before were
+    each cited, and the five it did not name were each cited too -- in their own field
+    docstrings, where no list could see them.
+    """
+    from codegen.schema import nodes
+
+    unsourced = sorted(
+        f"{kind.__name__}.{name}"
+        for (kind, name), sentence in nodes.RAW_CARRIERS.items()
+        if "§" not in sentence and "section" not in sentence
+    )
+    assert unsourced == [], (
+        f"{unsourced} are admitted by RAW_CARRIERS and cite no section; the module "
+        "docstring's rule is absolute and an entry is a DECISION the design states, not an "
+        "exemption"
+    )
+    missing = sorted(
+        f"{kind.__name__}.{name}"
+        for kind, name in nodes.RAW_CARRIERS
+        if name not in {f.name for f in dataclasses.fields(kind)}
+    )
+    assert missing == [], (
+        f"{missing} are declared raw carriers and are not fields of the class they are "
+        "keyed on; the declaration names a field that does not exist"
+    )
+    assert "RAW_CARRIERS" in (nodes.__doc__ or ""), (
+        "nodes.py's module docstring states the rule and must send a reader to the one "
+        "declaration of its carriers; a second list in the prose is what this row deleted"
+    )
+
+
+def test_the_raw_carrier_detector_is_name_blind_and_not_vacuous() -> None:
+    """The control: the detector finds a carrier under a name nobody has written down.
+
+    A structural guard whose detector sees nothing is green for free, and this one had the
+    stronger version of that defect -- it saw exactly one name.  So the detector is asked
+    three questions whose answers are known:
+
+    * a field named nothing in particular, on a kind of §4's table, holding a mapping the
+      document states at a schema position -- FOUND.  This is the perturbation the row was
+      filed for, performed in the test rather than described: under the old clause the name
+      alone decided, and ``held`` is not ``raw``;
+    * a mapping of the same SHAPE that the parser BUILT -- a facts mapping, keyword to
+      value -- NOT found, so the detector is not just "a field whose value is a dict";
+    * the census is non-empty, so the equality in the test above is not satisfied by a
+      resolver that resolved nothing.
+    """
+    from codegen import bundle, keywords
+    from codegen.schema import nodes, parse as schema_parse
+
+    doc = bundle.read(BUNDLE, "core/package.json")
+    subtrees = {id(sub) for _, sub in bundle.nodes(doc)}
+
+    # A kind of §4's table carrying one more field, under a name no list names.
+    carrier = dataclasses.make_dataclass(
+        "Perturbed",
+        [("held", Any)],
+        bases=(nodes.Typeless,),
+        frozen=True,
+        kw_only=True,
+    )
+    perturbed = carrier(
+        document="core/package.json",
+        pointer="",
+        position=keywords.Position.ROOT,
+        held=doc["allOf"],
+    )
+    caught = {
+        f.name
+        for f in dataclasses.fields(perturbed)
+        if _holds_a_subtree(getattr(perturbed, f.name), subtrees)
+    }
+    assert "held" in caught, (
+        f"the detector missed a raw carrier named 'held': {sorted(caught)}.  It is "
+        f"name-blind by construction, and {CARRIER!r} -- the one name the old clause "
+        "grepped for -- is not privileged"
+    )
+    # The other direction, on a mapping of the same shape the parser BUILT: ``facts`` is
+    # keyword to value, its keys are keywords and its values are the document's scalars,
+    # and it is not a subtree.  A detector that answered yes here would need an exception
+    # for every value-carrying kind, which is the list this row is replacing.
+    scalar = schema_parse.parse(
+        {"type": "string", "minLength": 1},
+        pointer="/probe",
+        position=keywords.Position.PROP,
+        source=schema_parse.Source(document="core/package.json"),
+    )
+    assert scalar.facts == {"minLength": 1}, scalar  # type: ignore[union-attr]
+    assert not _holds_a_subtree(scalar.facts, subtrees), (  # type: ignore[union-attr]
+        "the detector reads a keyword-to-value facts mapping as a subtree"
+    )
+
+    # The denominator, for the equality above: one document alone carries several, and the
+    # whole census carries more than a handful.  A measurement nobody counted is green
+    # over however many there turned out to be.
+    assert _carriers_of("core/package.json", doc), sorted(doc)
+    assert len(_census()) > 5, sorted(
+        f"{kind.__name__}.{name}" for kind, name in _census()
     )
 
 

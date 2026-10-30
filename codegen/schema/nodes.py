@@ -37,20 +37,28 @@ appended by hand.
 during the conversion -- "a node may carry its originating mapping ... the step is not
 complete until that carrier is deleted" -- and it is deleted: ``Base.raw`` is gone and
 with it ``emit.content_key``, the JSON serialisation the content dedup was keyed on.
-A handler reads node fields, and the three readings that stay at the DECLARATION level
-are each a decision the design states, each with its own typed carrier:
+A handler reads node fields.
 
-* :attr:`Conjunct.raw` and :attr:`Base.declared` -- §6 keeps ``restatement``,
-  ``intersection`` and ``at_least_as_tight`` as pure functions over DECLARATIONS,
-  because section 2's intersection rule MERGES two declarations of one property and
-  hands the merged declaration back to :func:`codegen.schema.parse.parse`: the result
-  has to be parsed as one node, not composed out of two decided ones;
-* :attr:`Base.rules` -- the raw subschemas at RULE, §4: "a node at RULE is parsed like
-  any other, kept on the enclosing node as a rule source, and is never handed to
-  ``decide``".  ``lower/rules.py`` is its only reader;
-* :attr:`Union.branch_raw` -- §4 "Names"'s three rules and §4's dispatch derivation are
-  readings of a branch's own declaration: its title, its ``const`` pin, its ``required``
-  set.
+What remains is a handful of readings the design keeps at the DECLARATION level, each
+with its own typed carrier and each citing the decision that admits it -- and **the
+carriers are :data:`RAW_CARRIERS`, below, rather than a list in this paragraph.**  One
+place, because the list and the guard holding it have to agree BY DERIVATION: a list
+kept in step by hand is how a census goes stale, and three such lists had already come
+apart.  Measured: this module's prose named four carriers, ``parse.py``'s named four,
+``tests/test_import_rule.py``'s named the same four as this one, and the two distinct
+lists OVERLAP IN TWO -- six between them, against nine the parse actually builds.  So
+the declaration carries the kind, the field and the sentence, and the test reads both
+halves off it.
+
+**The guard finds a carrier by what it HOLDS, not by what it is called.**  It is a
+field holding, by identity, a mapping the document states at a SCHEMA POSITION --
+``bundle.nodes_at``, the one declaration of what a schema position is, which the
+document censuses and the reference inliner already read -- and the test asserts that
+measured set EQUALS :data:`RAW_CARRIERS`'s keys.  Equality in both directions: a carrier
+under ANY name is caught, and a declared carrier that stops carrying is caught too, so
+the clause cannot go green by over-deletion.  The guard used to grep for the field name
+``raw``, and under that reading ``Union.siblings`` -- four of the document's own
+subtrees, for no reader at all -- was invisible to it (``adcp-client-python-3be.9``).
 
 ``tests/test_import_rule.py`` is where "nothing else reads a mapping" is held.
 
@@ -319,9 +327,22 @@ class Union(Base):
     """Selected by ``oneOf``/``anyOf`` whose branches are shapes.
 
     :attr:`branches` are parsed at BRANCH, so a branch's own kind is what the handler
-    dispatches on rather than a second reading of its keys.  :attr:`siblings` is what
-    the root states beside the combinator, which §5's union row compiles onto the
-    base; the handler is the one reader of it.
+    dispatches on rather than a second reading of its keys.
+
+    **The keywords stated BESIDE the combinator have one carrier each, and no carrier for
+    the lot.**  §4 of the semantics document -- "every keyword beside the combinator
+    compiles onto the base, and every branch inherits it" -- used to arrive here as a
+    ``siblings`` mapping holding four of them AS THE DOCUMENT STATES THEM.  Each is a
+    field: :attr:`conjuncts` is the ``allOf`` (§5's ``allOf`` row beside a union, "the
+    same, onto the base"), :attr:`Base.declared` the ``properties``, :attr:`required` the
+    ``required``, :attr:`Base.extra` the ``additionalProperties``.  The mapping was a
+    fifth reading of those four and **nothing in ``codegen/`` read it**:
+    ``compiler.lower_composition`` took the conjunct list off :attr:`conjuncts` the day
+    the parser built it (``adcp-client-python-10l.37``) and the other three were never
+    read out of it at all.  So it carried the document's own subtrees for no reader, and
+    ``adcp-client-python-3be.9`` deleted it on that measurement -- the guard that should
+    have caught it grepped for the field name ``raw``, and is :data:`RAW_CARRIERS`'s
+    derived equality now.
 
     **The union knows its own position and TELLS its branches** (§6, settled
     2026-10-26): a branch of a ROOT union is a class whatever it states, because §4 of
@@ -349,10 +370,11 @@ class Union(Base):
     #: states it at and the parser is the one layer that saw where that was.
     stated_at: str = ""
     #: The ``allOf`` conjuncts that contribute to the COMPOSED class, each at the pointer
-    #: the document gives it.  Built here rather than re-derived from
-    #: :attr:`siblings`, because the conjunct carrying the branch list contributes
-    #: nothing to the composition -- the branches are :attr:`branches` -- and dropping it
-    #: from the list without keeping the indices would re-point every conjunct after it.
+    #: the document gives it.  Built HERE, by the one layer that saw the document, rather
+    #: than re-derived by the handler out of the keyword list: the conjunct carrying the
+    #: branch list contributes nothing to the composition -- the branches are
+    #: :attr:`branches` -- and dropping it from the list without keeping the indices would
+    #: re-point every conjunct after it.
     conjuncts: tuple[Conjunct, ...] = ()
     #: Every branch, parsed at BRANCH, in document order -- including one that is not a
     #: schema, which parses to :class:`Typeless` and whose own declaration below is what
@@ -364,20 +386,15 @@ class Union(Base):
     #: ``const`` pin, its ``required`` set, its title.  §6 keeps those readings at the
     #: declaration level, which is why this is the one carrier beside the parsed nodes.
     branch_raw: tuple[Any, ...] = ()
-    #: The keywords the root states beside the combinator, as the document states
-    #: them: ``allOf``, ``properties``, ``required``, ``additionalProperties``.  §4 of
-    #: the semantics document: "every keyword beside the combinator compiles onto the
-    #: base, and every branch inherits it."
-    siblings: Mapping[str, Any] = field(default_factory=dict)
-    #: The node's own ``required``, in the document's own order.  Beside
-    #: :attr:`siblings` and not read out of it, for the reason :attr:`Base.declared`
-    #: and :attr:`Base.extra` are fields rather than entries there: §5's ``required``
+    #: The node's own ``required``, in the document's own order.  A field of its own and
+    #: never read back out of the keyword mapping ``siblings`` was, for the reason
+    #: :attr:`Base.declared` and :attr:`Base.extra` are fields too: §5's ``required``
     #: row at ROOT beside a union is "required on the base's fields, and the names
     #: recorded in ``_ROOT_REQUIRED``", and the reader of that is
     #: ``compiler.lower_composition``, which takes this field off every kind that can
     #: state one (:attr:`Composition.required`, :attr:`Object.required`).  So one
-    #: spelling serves the three kinds and the union's siblings carry what is left,
-    #: which is the conjunct list.
+    #: spelling serves the three kinds, and :attr:`conjuncts` carries what is left of
+    #: §4's "every keyword beside the combinator".
     required: tuple[str, ...] = ()
     #: The node's own ``type`` word, where it states one.  §4 of the semantics document
     #: makes a root ``type`` an assertion about the same instance every branch sees, so
@@ -482,7 +499,7 @@ class Array(Base):
     #: conjuncts constrain it, which is what ``lower.containers.array`` reads them as:
     #: rules, declared where §2 declares a rule over a value.
     #:
-    #: Carried the way :attr:`Union.siblings` carries the same keyword for the same
+    #: Carried the way :attr:`Union.conjuncts` carries the same keyword for the same
     #: reason -- a kind that claims the node before ``parse``'s ``allOf`` arm has to
     #: carry the conjunct list, and its handler is the one reader of it.  Empty for
     #: every array that states no ``allOf``, which is all but 4 of the bundle's.
@@ -572,3 +589,86 @@ Node = (
     | Null
     | Typeless
 )
+
+
+#: **Every field of a kind above that holds a mapping the document states at a SCHEMA
+#: POSITION, with the decision that admits each one.**  The module docstring's rule is
+#: that no node carries the mapping it was parsed from; this is the whole of what the
+#: design keeps at the DECLARATION level instead, written beside the kinds for the reason
+#: :data:`Node` is -- one declaration, so the rule and the guard that holds it cannot come
+#: apart.  ``tests/test_import_rule.py`` asserts the MEASURED set of such fields equals
+#: these keys, in both directions, and that every sentence here cites a section.
+#:
+#: Keyed by the class that DECLARES the field, so a reading shared by every kind is one
+#: entry: :class:`Base`'s four are on every node of §4's table.  This mapping may shrink
+#: and may not grow without a sentence, and an entry whose field stops carrying is as red
+#: as a field that starts -- the equality is what makes "``Conjunct.raw`` is asserted
+#: PRESENT" true of all nine rather than of the one it was written for.
+RAW_CARRIERS: Mapping[tuple[type, str], str] = {
+    (Base, "annotations"): (
+        "A ``definitions`` / ``$defs`` section rides here raw.  §5: \"Nothing by itself: "
+        "a bag of named subschemas.  Each entry is declared on demand when a ``$ref`` "
+        "names it\" -- so an entry is parsed by a re-entrant call at DEF, and \"an entry "
+        "nothing references is not declared\" means no traversal reaches the rest at all.  "
+        "One carrier for every key the screen admitted and the kind does not consume, so "
+        "a handler asking for a description does not read a mapping."
+    ),
+    (Base, "declared"): (
+        "§6 keeps ``restatement``, ``intersection`` and ``at_least_as_tight`` as pure "
+        "functions over DECLARATIONS, because §2's intersection rule MERGES two "
+        "declarations of one property and hands the merged declaration back to "
+        ":func:`codegen.schema.parse.parse`: the result has to be parsed as one node, not "
+        "composed out of two decided ones.  D6's ``uniqueItems`` claim is the second "
+        "reader, one level down a property's array (``lower.rules._distinct``)."
+    ),
+    (Base, "extra"): (
+        "``additionalProperties`` as the document STATES it, because §2 reads silence as "
+        "``ignore`` and absent and ``true`` are different statements -- the typed schema "
+        "is the one value of the three that is a subschema, and :attr:`Object.extras` is "
+        "the node parsed from it at MAPV.  Both, because the policy and the value type "
+        "are different facts and §5 gives them different answers."
+    ),
+    (Base, "rules"): (
+        "The raw subschemas at RULE.  §4: \"a node at RULE is parsed like any other, kept "
+        "on the enclosing node as a rule source, and is never handed to ``decide``\", and "
+        "§3 of the semantics document says why -- under a conditional a keyword describes "
+        "what a rule TESTS, so no type is lowered from it.  ``lower/rules.py`` is its only "
+        "reader."
+    ),
+    (Conjunct, "raw"): (
+        "A conjunct is a DECLARATION and not a node, by §2's intersection rule, which is "
+        "the same sentence :attr:`Base.declared` carries: the merged declaration goes back "
+        "to the parser.  And the entry is not always a schema -- ``allOf: [3]`` is a "
+        "malformed document the ``allOf`` row refuses by name -- so it travels as the "
+        "document wrote it and the conjunct list stays aligned with the pointers."
+    ),
+    (Union, "branch_raw"): (
+        "§4 \"Names\"'s three rules and §4's dispatch derivation are readings of a "
+        "branch's own DECLARATION: its title, its ``const`` pin, its ``required`` set.  §6 "
+        "keeps those at the declaration level, which is why this is the one carrier beside "
+        "the parsed branches, aligned 1:1 with them."
+    ),
+    (Array, "contains"): (
+        "The ``contains`` predicate, as the document states it.  §5 makes the model state "
+        "the PREDICATE and not a transcription of the subschema, so there is no type "
+        "lowered from it and nothing to descend into -- which is why the parser builds no "
+        "child here and the array's own handler is the one reader."
+    ),
+    (Composition, "contains"): (
+        ":attr:`Array.contains`'s sentence at a composing node, by §5's \"Two ARRAY "
+        "declarations under one ``allOf``\" (decided 2026-10-29): §2's intersection spells "
+        "the composition of a bare ``$ref`` base with an array restatement as "
+        "``{**child, \"allOf\": [..., base]}``, so a restatement whose whole content is a "
+        "``contains`` arrives as a conjunct list with that keyword beside it.  0 nodes "
+        "state one in the bundle's own text, so every node reaching the field is one §2's "
+        "rule composed -- which is why the guard's population states one itself."
+    ),
+    (Mapping_, "patterned"): (
+        "``patternProperties`` AS THE DOCUMENT STATES IT, the way :attr:`Base.extra` "
+        "carries ``additionalProperties``: §5(b)'s widening DECLARES the keyword and §9 "
+        "requires the declared fact to be the document's own spelling -- \"an "
+        "approximation must name something the document states, or the document is blamed "
+        "for the compiler's own rewriting\" -- and :attr:`Mapping_.pattern`, the "
+        "expression alone, is a projection of that value and not the value."
+    ),
+}
