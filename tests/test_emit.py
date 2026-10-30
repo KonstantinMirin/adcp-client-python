@@ -506,6 +506,38 @@ def test_every_format_strategy_is_graded_before_it_is_trusted() -> None:
         assert verdict.counterexample_refused, (fmt, counterexamples[fmt])
 
 
+#: Cached for ``leaves()``'s reason and with its own reading: one call reads every portable
+#: document's raw bytes once and takes the reference closure over ``bundle.edges``, which
+#: is a function of the bundle alone, and every pair of one document wants the same answer.
+@functools.cache
+def source_identities() -> dict[str, str]:
+    """``bundle.source_identities(BUNDLE)``, once per process."""
+    return bundle.source_identities(BUNDLE)
+
+
+def identity_of(ref: SchemaRef) -> dict[str, str]:
+    """**The STATIC identity of the question a pair's accepts draw asks**, for the corpus.
+
+    ``harness.corpus_key``'s argument, and the reason it is spelled here rather than taken
+    from the pair's schema: the schema is ``bundle.record``'s rendering of a document, so an
+    identity read off it moves whenever this package's inliner moves and every held instance
+    is redrawn for a bundle nobody touched.  This is the same node named by facts the
+    compiler cannot move -- the document's own raw bytes and its raw reference closure's
+    (``bundle.source_identities``), and the POINTER, which says which node of that document
+    the pair is.
+
+    The pointer is a pointer into the RECORD and so is a name within our own rendering; what
+    keeps that honest is ``harness.corpus_defect``, which re-offers the held instance to the
+    document on every read.  A rendering that moved a node's accepted set is reported there,
+    as ``accepts:corpus_rejected``, rather than hidden by a key that happened to move too.
+    """
+    return {
+        "document": ref.document,
+        "pointer": ref.pointer,
+        "source": source_identities()[ref.document],
+    }
+
+
 def pair_of(g: Graded) -> Pair:
     """The pair, and the document ROOT beside the node.
 
@@ -529,6 +561,9 @@ def pair_of(g: Graded) -> Pair:
     one ``graded()`` above already draws.  ``harness.declarations_of`` does the reading, so
     §9's "the verifier reads the declaration off the class, as a consumer" stays true of
     the code that grades it and this function only says WHICH object holds it.
+
+    ``identity`` is what the held accepts corpus is keyed on, and :func:`identity_of` says
+    why it is a reading of the BUNDLE rather than of ``schema``.
     """
     holder = g.model if isinstance(g.model, type) else importlib.import_module(g.module)
     return Pair(
@@ -539,6 +574,7 @@ def pair_of(g: Graded) -> Pair:
         document=schema_at(SchemaRef(g.ref.document, "#")),
         ref=g.ref,
         declared=harness.declarations_of(holder),
+        identity=identity_of(g.ref),
     )
 
 

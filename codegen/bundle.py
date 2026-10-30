@@ -14,6 +14,7 @@ denominator in the plan's metric.
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 from collections.abc import Collection, Iterator, Mapping
 from pathlib import Path, PurePosixPath
@@ -828,6 +829,71 @@ class _Where(NamedTuple):
     #: copy being taken.  Empty outside a copy, since a local reference is left alone
     #: there and so is never followed.
     anchors: tuple[tuple[str, str], ...]
+
+
+def source_identities(bundle_dir: Path) -> dict[str, str]:
+    """Per portable document, the digest of the BUNDLE TEXT its record is built from:
+    its own raw bytes and the raw bytes of every document it transitively references.
+
+    **The static half of :func:`record`, and it is here so the two can be told apart.**
+    ``record`` is OUR RENDERING of a document -- it inlines, and what it inlines where
+    is this package's decision, so its bytes move whenever that decision does.  This is
+    the same document's UPSTREAM identity: nothing of the inliner reaches it, so it moves
+    only when the bundle does.  A reader who needs "is this the same document" asks here,
+    and a reader who needs "what does the self-contained form say" asks ``record``.
+
+    **The one caller that needs the distinction is the held accepts corpus.**
+    ``harness.corpus_key`` is the content address of the instances a pair's draw
+    produced, and keyed on the rendering it misses every entry whenever the inliner
+    changes -- for the share of the bundle whose record differs from its raw document at
+    all, which is read by comparing ``record(bundle_dir, d)`` against
+    ``read(bundle_dir, d)`` over :func:`portable` and is most of it.  The schema is
+    static; the rendering is not; the key belongs on the static fact.  What makes that
+    safe rather than looser is ``harness.corpus_defect``, which re-offers every held
+    instance to the document on every read.
+
+    **THE CLOSURE IS IN THE DIGEST, which is what the record's self-containment used to
+    buy.**  Hashing the inlined record covered a dependency BY CONSTRUCTION -- the
+    dependency's text is literally inside the dependent -- and dropping to the raw
+    document alone would lose that: an upstream edit to a referenced document would leave
+    the referrer's own bytes untouched and its key would hit.  So the closure is taken
+    here instead, over :func:`edges` -- the reference graph read off the RAW mappings by
+    the descent column -- and the member documents' bytes are hashed with it.  That is
+    the same answer from the same upstream facts, and it is still not an edge list
+    anybody maintains: the graph is derived from the ``$ref`` strings the documents
+    themselves write.
+
+    A member contributes its bundle-relative NAME, its length and its bytes, so no two
+    different closures can agree by a concatenation accident and no absolute path enters
+    the digest -- which is what keeps a key computed in one checkout equal to the same
+    key computed in another (``tests/corpus.py``'s shared store).
+
+    A reference naming no document of this bundle contributes nothing, exactly as
+    ``emit.closure`` treats one: the site refuses where the pointer that carried it is,
+    and a refusing document has no instances to hold.
+    """
+    documents = sorted(portable(bundle_dir))
+    text = {d: (bundle_dir / d).read_bytes() for d in documents}
+    targets: dict[str, set[str]] = {d: set() for d in documents}
+    for edge in edges(bundle_dir):
+        if edge.target is not None:
+            targets[edge.document].add(edge.target)
+    out: dict[str, str] = {}
+    for document in documents:
+        reached: set[str] = set()
+        unread = [document]
+        while unread:
+            one = unread.pop()
+            if one in reached:
+                continue
+            reached.add(one)
+            unread += [t for t in targets.get(one, ()) if t not in reached]
+        digest = hashlib.sha256()
+        for member in sorted(reached):
+            digest.update(f"{member}\0{len(text[member])}\0".encode())
+            digest.update(text[member])
+        out[document] = digest.hexdigest()
+    return out
 
 
 def record(bundle_dir: Path, document: str) -> dict | Refusal:
