@@ -290,6 +290,13 @@ convenient, because an emitted module imports `adcp.types.constraints` by ABSOLU
 fresh tree imported in the suite's own interpreter resolves its aliases through the committed
 alias module.
 
+**`tests/fresh.py` is where a reader's BUNDLE-DERIVED constants live (decided 2026-10-30)**, beside
+`BUNDLE` and `TREE` which are already there. A reader that needs to ask the emitter where a
+document's module sits needs `bundle.package_roots` — a function of the bundle and never of the
+run, which is what makes it a constant rather than an argument. The alternative, measured when it
+came up, is threading one more parameter through 21 call sites in four files to carry a value none
+of them varies. One place holds it and the readers import it.
+
 ### A check may not be downstream of its own precondition (decided 2026-10-29)
 
 `tests/test_emit.py`'s `test_every_module_of_the_tree_imports_and_every_class_of_it_is_defined`
