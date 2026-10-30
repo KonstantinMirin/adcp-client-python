@@ -320,49 +320,19 @@ pointer is louder and honest where a refusal is quiet and wrong. The chokepoint 
 `ir.ClassDecl`, because not every base list passes through `compiler.dispatching_bases`; a guard
 there would hold two of the call sites and miss the rest.
 
-**TWO MORE INSTANCES, and the second had never reported once (2026-10-30).** The rule above was
-written about a precondition; both of these are the same rule reached a different way — the check
-dies in its own setup, before the line holding its claim.
+**ANOTHER INSTANCE (2026-10-30).** The rule above was written about a precondition; this is the
+same rule reached a different way — the check dies in its own setup, before the line holding its
+claim.
 
 * `test_the_emitted_tree_still_declares_every_module_it_imports` built its export table in a first
   loop that raised at `brand.json`, so the second loop — the one holding the assertion — never
   ran. Repaired, it reddens immediately on a real defect: nine modules understate their `__all__`
   against what other modules import from them, 44 names, every one a union-branch module.
-* `test_decision_set.py`'s `test_the_comparison_admits_no_fact_this_file_does_not_name` raises in
-  `_reach` before any perturbation runs — `KeyError: '0'` at
-  `#/anyOf/1/properties/account/allOf/0/anyOf/0`, the synthetic `allOf` pointer, at a reader that
-  row does not list. **So that guard has never reported anything**, and there is an arrival
-  waiting behind it.
 
 A check that dies before its assertion is indistinguishable from a check that has nothing to
 report, and the suite's own failure summary spells them the same way. The two are told apart only
 by reading the traceback for which LINE raised, so a red check is not evidence that its subject
 is what failed.
-
-### A guard over a derived reach reads SITES, never keyword sets (decided 2026-10-30)
-
-`test_decision_set.py`'s `_reach` derives what each admitting mechanism covers by differencing
-KEYWORD SETS, and that makes an unrelated red fact elsewhere able to empty it: any keyword a live
-comparison defect also puts in the live bucket cannot appear in any mechanism's reach. With 1,086
-red facts over 24 `missing` keywords and 7 `added` ones, the derivation reports
-`harness._narrows_nothing` and `harness._states_no_graded_fact` as covering **nothing**, while at
-site granularity they cover **130,387 sites** — `_narrows_nothing` 130,331 in 2,114 pairs, whose
-`default` arm alone is 124,754 facts over 743 documents, and `_states_no_graded_fact` 56 in 51.
-
-So the reading is the SITE — `(pair, pointer, keyword)` — and the keyword-set form is abandoned. A
-guard whose coverage can be driven to zero by a defect it is not about measures something other
-than what it claims, and in this shape it fails silent: empty reach reads as "nothing admitted".
-
-**`ADMITTED` is not re-pinned until the derivation is honest**, and the order is the raise first,
-then the granularity, then the pin. Matching the pin to the masked derivation would write three
-entries BELOW the truth, and a ratchet set below the truth is exempted later rather than fixed —
-which is how a guard stops guarding. One entry has genuinely moved and is waiting for a readable
-instrument to state it: `harness._constrains_nothing` admits `pattern`, `maxLength` and
-`minLength` — 24 facts in 19 pairs over 3 documents — where its entry names only `required` and
-`default`. A mechanism admitting MORE than its entry names is a fact dropped without a
-declaration, which §2 forbids in that direction, so the answer is either that the mechanism
-over-admits or that the entry is incomplete; the measurement that distinguishes them does not
-exist until the two defects above are fixed.
 
 ### An approximation's pointer is the SchemaRef spelling (decided 2026-10-29)
 
@@ -382,7 +352,7 @@ actually drops the fact.
 declaration uses.** §2 asks a declaration to be a fact §8 can look for in the document and
 find; a pointer that resolves to nothing is not that. This is one producer and one spelling, as
 `attribution.py` already says of the attribution it writes beside it, and it is also both
-directions of §8's UNDERDETERMINED equality: of 118 declared-but-separable sites, 116 pair with
+directions of the declared backlog's reading: of 118 declared-but-separable sites, 116 pair with
 a silent entry once the conjunct is elided — the same union counted twice under two spellings.
 
 ## 3. The declarations: `codegen/keywords.py`, and `codegen/attribution.py` beside it
@@ -543,7 +513,7 @@ unchanged and so is its reason:
   else;
 - a cell whose `widens_to` is `None` cannot be approximated, and a handler that asks for one is
   a `BuildFailure` — the keyword states no fact, so a widening against it would be a declaration
-  with nothing to declare, and §8 would report it as *over-declared* forever;
+  with nothing to declare, and a declaration the draw cannot prove is deleted;
 - a key with no row takes TOP, because an unrowed keyword's reach is unknown and TOP is the one
   rung that is safe without knowing it (the semantics document's §7);
 - the attribution is `Ours` at the cell's own address unless `attribution.py` holds an entry for
@@ -602,7 +572,7 @@ A **local** `$ref` cycle is not in this class: it is never inlined, and it rende
 reference under a string annotation with a `model_rebuild()` after the module's declarations
 (§6). The difference between the two cycles is the record and not the type.
 
-*Why our own.* The record is what `strict_validate` validates against and what the comparison
+*Why our own.* The record is what `strict_validate` validates against and what the draw
 grades against. A resolver that canonicalises while it inlines writes a document the bundle
 does not state, and every reader downstream then needs a fold to undo each rewriting — the
 verifier carries folds of that kind today. An inliner that changes nothing needs none.
@@ -876,12 +846,12 @@ because the union admits exactly what the document admits. A `Union` below the r
 `TypeRef.union` of its branches' types, each branch's bound carried on the branch's own named
 type.
 
-A union whose branches §4 of the semantics document cannot separate lowers the same way it
-would if they were separable, and declares an UNDERDETERMINED `Approximation` at the union's own
-pointer. **That is the one approximation the comparison cannot see**, so it is the one whose
-check is a set equality against a derivation rather than against the document: the unions
-declaring one are exactly the unions the disjointness derivation fails on, in both directions
-(§9).
+A union whose branches §4 of the semantics document cannot separate lowers the same way it would
+if they were separable. Where the combinator is `oneOf` it declares a WIDENED `Approximation` at
+the union's own pointer, because the model then admits a payload the document refuses and the draw
+proves it. Where it is `anyOf` it declares **nothing**: the model admits exactly what the document
+admits, and the only loss — which branch an overlapping payload becomes — is observable by no draw
+and no dump. That is why UNDERDETERMINED and its set equality are retired (2026-10-30).
 
 ---
 
@@ -900,7 +870,7 @@ There is an IR between a decided node and emitted text, and it is complete: noth
 | `RootBinding` | the `SchemaRef` and the symbol a module-level `strict_validate` binds, for a root that is an alias or an enumeration |
 | `RootModelDecl` | pointer, `SchemaRef`, the root `TypeRef`, description, rules, and for a mixed root union the dispatch facts — a root that is an array, a mixed union, or a document stating no schema keyword |
 | `UnionInstall` | the base and its branches, which the renderer writes as the `_branch_models` assignment and the rebuild |
-| `Approximation` | document, pointer, keyword, kind (WIDENED / UNDERDETERMINED), rung, the fact the annotation does not carry in the document's own spelling, and the attribution |
+| `Approximation` | document, pointer, keyword, kind (WIDENED, the only one), rung, the fact the annotation does not carry in the document's own spelling, and the attribution |
 | `Module` | document, root symbol, declarations in declaration order, imports, approximations, the symbol table pointer → name, the adoption table pointer → declaring pointer |
 
 **An approximation is a DECLARATION and not a report, and it is written into the emitted
@@ -918,11 +888,10 @@ grades the run's account of the output instead of the output. A side channel als
 one-document run and a whole-bundle run disagree about what the verifier can see, which the
 semantics document's §9 forbids for names and shapes and which has no better claim here.
 
-*Where it must NOT go.* Not into `Field(json_schema_extra=…)`. That would put the approximation
-into `model_json_schema()`, where §8 of the semantics document would read it as a fact the model
-states and the document does not — *added*, a defect. The declaration is a class attribute
-precisely because it has to be invisible to the comparison's own subject and visible to the
-comparison.
+*Where it must NOT go.* Not into `Field(json_schema_extra=…)`. A declaration is a record of what
+the model DROPPED, so writing it into `model_json_schema()` would put it into the very payload
+contract it is a note about. The declaration is a class attribute: the verifier reads it, and
+nothing a consumer validates against carries it.
 
 **Rules are the runtime's own dataclasses.** A `ClassDecl.rules` tuple holds instances of
 `adcp.types._runtime.RequiredGroups`, `ConditionalRequired`, `Dependencies`, `PropertyCount`,
@@ -1010,7 +979,7 @@ So `class AdCPRootModel(RootModel, RuleBound)` joins `AdCPBaseModel`, and **`str
 `__adcp_schema__` factor out of `AdCPBaseModel` into a mixin both take** — one body, for the
 reason `strict_alias` exists: a second implementation of the schema half is a second answer to
 the one question. Measured on the committed runtime: that MRO resolves, the rule validator fires
-on a root model, and `model_json_schema()` renders the root type's own schema, so the comparison
+on a root model, and `model_json_schema()` renders the root type's own schema, so a reader
 pairs a root model as it pairs a class.
 
 ---
@@ -1049,16 +1018,14 @@ same-title lift. What remains of normalisation is the readings this pipeline's o
 forces — a nested class hoisted to `$defs`, D4's `| None` for an optional property, a type list
 rendered as a union — and each is applied to both sides.
 
-**The approximation's three graders, 2026-10-26.** The semantics document's §8 adds two
-comparison outcomes and two set equalities, and each lands in one module here. Nothing new is
-built: each is an existing check gaining a subject.
+**The approximation's grader, rewritten 2026-10-30.** There was one, not three: the draw. The two
+comparison outcomes and two set equalities that stood here are deleted with the comparison, and
+nothing replaced them, because a declaration either names a value the document admits and the class
+now accepts, or it does not belong in the declared set.
 
 | what is checked | where | how it fails |
 | --- | --- | --- |
-| a compared fact the model does not state is *approximated* where `__adcp_approximations__` carries it and *missing* where it does not | `compare.py` | *missing* is a defect, pinned at 0 |
-| a declaration at a pointer and keyword the model DOES state is *over-declared* | `compare.py` | a defect, pinned at 0; this is the equality's second direction |
 | an approximation's claim that the model is WIDER there | `accepts.py` | the draw takes the classes the dropped keyword distinguishes; a value the document admits and the class refuses is a narrowing wearing a declaration |
-| an UNDERDETERMINED declaration | `compare.py`, against §4's disjointness derivation | the declared set and the inseparable set are equal in both directions; no other check can see one |
 | an upstream attribution's issue | `attribution.py`'s own test | an entry with no issue is a `BuildFailure` |
 
 The two equalities are what keep "approximated" from being an allowlist, and the reason they are
@@ -1135,19 +1102,18 @@ document's §2:
 - **`emitted N / refused M (deferred …, verdict …)`, with `accounted`** — kept, for the reason
   above. `population` is not printed beside it: `emitted` and `refused` already carry it, and a
   third number next to them invites exactly the sum the protocol forbids.
-- **the defect counts** — *missing*, *differs*, *added* from the comparison, *over-declared* from
-  §8's declaration coverage — printed whether or not they are zero, so a reader sees the pin
-  being met rather than inferring it from silence. **Neither half of that holds today, and both
-  are rows rather than decisions.** The run prints none of the four: `codegen/__main__.py` names
-  them in a comment and nowhere else, so the reader infers the pin from the silence this bullet
-  forbids. And the pin is not zero. `./check --compare` reads the comparison's three over the
-  whole population in 33 s: **paired 2,793 (compared 2,789, document unreadable 4); red 155 pairs
-  in 75 documents carrying 1,086 facts — missing 718, differs 43, added 325**, whose outcomes are
-  147 pairs where the model is wider than its document and 8 where it adds a fact. That is the
-  honest floor recorded with its shapes, and it belongs beside `emitted` in the run rather than
-  behind a flag.
-- **`approximated K facts in D documents`**, split by kind (WIDENED / UNDERDETERMINED) and by
-  attribution (ours / upstream), with the upstream half listing its issues. `K` and `D` are
+- **the round-trip failures, per pair and by name** — a pair where the class refuses a value the
+  document admits, or where the dump is a value the document refuses. Printed whether or not the
+  count is zero, so a reader sees the pin being met rather than inferring it from silence. **The
+  four text-diff defect counts that stood here are deleted with the comparison (2026-10-30)**,
+  along with the 1,086 facts over 155 pairs they were reporting: not one of them was a value any
+  payload had demonstrated, and they were read as the SDK's correctness for weeks. What replaces
+  them is not a count. It is **one row per graded pair, written to a FILE by the run** — document,
+  pointer, and each check's verdict — because a figure that exists only in a terminal cannot be
+  reviewed, and because a check that computed nothing shows up there as a blank column instead of
+  as a pass.
+- **`approximated K facts in D documents`**, split by attribution (ours / upstream), with the
+  upstream half listing its issues. There is one kind now, WIDENED. `K` and `D` are
   different counts over different denominators and the report never adds them. Neither is
   pinned: both rise when a document starts emitting, and the semantics document's §9 forbids
   pinning a figure that moves with emission. The **ours** half is the one that ratchets down,
@@ -1267,7 +1233,7 @@ raise site is answered by deriving it from the cell (§3).
 evidence.** The refusal as the outcome of a keyword nobody has compiled is replaced by the
 widening and the approximation declaration (§2, §3, §6, §7). The sum type at the lowering seam
 collapses to one inhabitant and the guarantee it carried moves to an import-rule test (§2, §11).
-`Effect.REFUSE` and `Kind.DEFERRED` retire (§3). The verifier gains two comparison outcomes and
+`Effect.REFUSE` and `Kind.DEFERRED` retire (§3). The verifier gains
 two set equalities, and reads a declaration off the emitted class rather than off the walk (§7,
 §9). The report's `emitted / refused` pair becomes three figures over three denominators (§10).
 None of this is answering a review finding; it is answering a decision, and the reviews' own
@@ -1311,7 +1277,7 @@ decides instead. The owner of the semantics document decides each.
    conflict, because an annotation states nothing about acceptance and so cannot disagree with
    the draft. What makes this expressible without a second copy of the rule is the cell: the
    keyword's row says NOTHING and `rendered=False` at a `$ref` co-occurrence, so the record
-   carries the key, the comparison does not grade it, and no handler holds a set of
+   carries the key, no check grades it, and no handler holds a set of
    "keywords that are inert beside a `$ref`".
 
 3. **§8, "a branch class is paired with its branch node read under the root's siblings", and
@@ -1392,7 +1358,7 @@ a document emitted before, and the fix wins. A gate that forbade it would be pin
 to 7, which are relocations the directive does not touch, and step 7 stays next because every
 step after it needs the module pass and the dependency order. It **splits step 8 into three**,
 and the split is forced rather than tidy: *the instrument has to exist before the first cell
-widens.* A cell that widens while the comparison still reads every unexpressed fact as *missing*
+widens.* A cell that widens while no draw yet reaches the values the keyword distinguishes
 produces a flood the pin cannot survive, and the project then either abandons the pin or stops
 believing the grader — which is the semantics document's §8 failure mode, reached on the first
 commit. So step 8 becomes the approximation end to end with **no cell widened**, step 9 is the
@@ -1417,10 +1383,10 @@ condition, below.
    written once.
 
 3. **`bundle.record`.** Replace the delegated resolver with this package's inliner (§4) for the
-   packaged documents and for the verifier's comparison; keep the delegated resolver inside
+   packaged documents and for the verifier; keep the delegated resolver inside
    `verify/accepts.py` for drawing. Delete the inverse folds in the verifier. Regenerate the
    packaged documents. *Report changes:* every packaged `.json` changes where a target was
-   canonicalised; a new comparison failure is a real finding and not a fold's absence.
+   canonicalised; a new round-trip failure is a real finding and not a fold's absence.
    *Modules unchanged.* Unblocks the verifier being a reader of the document and nothing else.
 
 4. **`codegen/ir.py` and `codegen/render.py`.** Move `Type`, `Property`, `Class`,
@@ -1512,8 +1478,8 @@ condition, below.
    Add `Rung` and `widens_to` to the cell and retire `Effect.REFUSE`; add `Approximation` and
    `RootModelDecl` to the IR and `approximations` to `Lowering` and `Module`; add
    `codegen/attribution.py` and its no-issue-is-a-`BuildFailure` test; make `render.py` write
-   `__adcp_approximations__`; add the comparison's *approximated* and *over-declared* outcomes, the
-   accepts obligation over a dropped keyword's classes, the UNDERDETERMINED set equality, and the
+   `__adcp_approximations__`; add the
+   accepts obligation over a dropped keyword's classes and the
    report's three figures. Add the fourth import-rule test (§11). *Exit condition: every count
    unchanged — the same documents emit, the same documents refuse — with `APPROXIMATED` 0 and
    `OVER_DECLARED` 0.* The tree changes by one line per module (`__adcp_approximations__ = ()`),
@@ -1553,7 +1519,7 @@ condition, below.
 
 10. **The widened rows.** What is left, each with the rung and attribution the semantics
     document's §5 states: an `allOf` restatement whose intersection is not computable; an empty
-    intersection; a union whose branches cannot be separated (UNDERDETERMINED); a `contains`
+    intersection; a union whose branches cannot be separated; a `contains`
     predicate no `AtLeastOne` carries; a keyword with no row; a list-valued `items`; a root
     stating no schema keyword.
 

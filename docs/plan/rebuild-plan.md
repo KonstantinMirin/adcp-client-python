@@ -370,7 +370,7 @@ The refusal argument survives in exactly two places, and the design keeps both.
   composed bound and the pair reports `added` — while a decision's edit is silent everywhere.
   `tests/test_decision_set.py` holds the guard, with both sides of every pin derived.
 
-  **A per-pair comparison cannot see one of these edits, which is why the guard measures REACH.**
+  **A per-pair reading cannot see one of these edits, which is why the guard measures REACH.**
   Measured: remove `maxLength` from `URL_IMPLIED` and `added` over all 1,571 graded pairs is
   unchanged — every pair grades exactly as it did. That silence is the signature of the
   incident this rule exists for, so the guard switches each admission mechanism off in turn and
@@ -427,15 +427,17 @@ an **attribution**. Nothing is approximated by silence: an undeclared widening i
 
 #### Two kinds of approximation, and they are never summed
 
-- **WIDENED** — the annotation admits a value the document refuses. The schema half refuses it,
-  so acceptance is unharmed; what is lost is what the type says. §8's comparison sees every one
-  of these, because the document states a fact the model does not.
-- **UNDERDETERMINED** — the annotation admits exactly what the document admits, and the VALUE it
-  constructs is not determined by the document. The only instance is a union whose branches
-  §4's dispatch cannot separate: `A | B` accepts the union of the branches either way, and
-  which branch an overlapping payload becomes is then a property of declaration order. No
-  comparison, draw or dump can see one, which is precisely why it is declared and why its
-  instrument is different (§8).
+**ONE kind, after 2026-10-30: WIDENED.** The annotation admits a value the document refuses. The
+schema half refuses it, so acceptance is unharmed; what is lost is what the type says, and §8's
+DRAW proves each one by handing the class a value the document admits.
+
+*UNDERDETERMINED is retired with the text diff that was its only grader.* It said the annotation
+admits exactly what the document admits and the VALUE constructed is not determined — a union whose
+branches §4's dispatch cannot separate, where `A | B` accepts the union either way and which
+branch an overlapping payload becomes is a property of declaration order. **No draw and no dump can
+observe that**, which was offered as the reason it needed a different instrument and is in fact the
+reason it is not a fact about the artifact. An inseparable `oneOf` is unaffected and stays WIDENED:
+there the model admits a payload the document REFUSES, and the draw shows it.
 
 #### Attribution: ours, or upstream's, and the issue is a reference
 
@@ -463,11 +465,12 @@ Three figures, three denominators, never summed (§8 states the grading side of 
 - **Emitted, over the population.** Every portable document of the bundle emits, and its
   complement is the one irreducible class above — no document of record. This is a partition and
   it is the directive's exit condition: *refused* is zero.
-- **Defects, over the facts compared.** *Missing*, *differs*, *added* and *over-declared* are
-  each pinned at zero.
-- **Approximations, over the facts compared**, split by kind and by attribution. This count
-  moves with emission, so §9 forbids pinning it; it is reported, and its `Ours` half ratchets
-  down.
+- **Round-trip failures, over the graded pairs.** A pair where the class refuses a value the
+  document admits, or where the dump is a value the document refuses. Pinned at zero, because
+  either one is the defect that matters.
+- **Approximations, over the declared set**, split by attribution. This count moves with
+  emission, so §9 forbids pinning it; it is reported, and its `Ours` half ratchets down. The
+  four text-diff defect counts that stood here are deleted with the comparison (2026-10-30).
 
 The approximation count is **not** a partition of the population the way *emitted / refused*
 was: one document carries many and most carry none. The number of documents carrying at least
@@ -507,7 +510,7 @@ there is nothing for the walk to read and nothing for `strict_validate` to valid
 
 ### The document of record
 
-What the walk reads, what `strict_validate` validates against, and what §8 compares against is
+What the walk reads, what `strict_validate` validates against, and what §8 grades against is
 one document: the bundle's document with every cross-document `$ref` replaced by a copy of its
 target, and **nothing else changed**. Resolution inlines; it does not rewrite. No keyword is
 dropped, derived, reordered or restated in another spelling, on the referring node or on the
@@ -833,7 +836,7 @@ sources, in order:
    lands, and it goes either way.**
 
 A union matching none of the three emits a plain `A | B` over its branches and **declares an
-UNDERDETERMINED approximation at the union's pointer, attributed upstream.**
+WIDENED approximation at the union's pointer where the combinator is `oneOf`, and nothing at all where it is `anyOf`.**
 
 *This replaces a refusal on OVERLAP, 2026-10-26.* The old sentence said a branch is never chosen
 by trying each and keeping the first that validates, because overlapping branches make that
@@ -867,10 +870,9 @@ substitution, which §2 forbids.
 `oneOf` declares WIDENED, because the model admits values the document refuses and a consumer sees
 that through `model_validate`; its reason also states that such a payload's branch is decided by
 declaration order, which the document does not decide. Nothing is dropped — the kind moves to the
-one §8's comparison can see, and `UNDERDETERMINED` alone is what hid the widening from all three
-checks.
+one §8's DRAW can prove, by handing the class a value the document refuses.
 
-**`UNDERDETERMINED` is then exactly the `anyOf` case, which is the honest population for it.**
+**And the `anyOf` case then declares NOTHING, which is what retiring UNDERDETERMINED means.**
 `anyOf` admits an instance satisfying at least one branch and so does `A | B`, so the model is not
 wider and nothing is owed but the branch choice — invisible to all three checks, as §2 says. The
 reading to expect is `approximated` unmoved with the kinds re-split: the inseparable `oneOf` sites
@@ -926,7 +928,7 @@ is the one place a keyword decision lives, and a grid is its rendering.
 | keyword | compiles to |
 | --- | --- |
 | `const` | `Literal[value]`; the type word is not restated, since Pydantic renders it. A `format` beside the pin compiles to NOTHING and the pin alone is rendered, because a fixed value either satisfies the format or the node admits nothing: the pin is checked against the format, and where it satisfies it the `Literal` is already strictly tighter than any type the format would select, while where it does not the node is §5's empty intersection and refuses upstream. So no fact is dropped and §8 grades the `format` as not rendered at this co-occurrence (`adcp-client-python-10l.70`, decided 2026-10-29). A `str`, `bool` or `int` value; an object, array, `null` or float refuses. On a branch's property → also the second of the branch-naming choices. AT a branch node, pinning the whole branch → the branch is a scalar: a `Literal` member of the union. Where EVERY branch of a root union is a scalar there are no branch classes to declare, so the root emits as an alias over the union of their types — `Literal['asap'] | AwareDatetime` — and not as a base with branches. A root union with a scalar branch beside a class branch → refused by name: the root symbol is a class or an alias, no shape in §4 carries both, and the first document to state one decides it rather than taking a rendering nothing has exercised. RULE: under `if` → a `Match` clause's value; under `then` / `else` / `not` → nothing. |
-| `enum` | A named node → `StrEnum` / `IntEnum`, base read off the members; `enumDescriptions` → member docstrings. An untitled BRANCH of a root union → a `Literal` of the members. Mixed member types, an empty list, or a duplicate member → refused. Two members whose spellings yield one Python name → a `Literal` of the members and NOT an enum class (decided 2026-10-29). The collision exists only because an enum mints a Python IDENTIFIER per member; a `Literal` needs none, so both values are carried exactly as the document spells them and nothing is dropped. This is the same answer the row already gives an untitled branch of a root union, reached by a second route. Refusing instead cost **21 of the 95 refusals** for one node — `formats/canonical/html5.json`'s `clicktag_macro`, whose `clickTag` and `clickTAG` both spell `CLICKTAG` — including `core/product.json`. The cost is that one node gives a string-literal union rather than an enum class, which is a DX difference and not a correctness one; dropping a member, which the old clause rightly refused to do, remains forbidden. ROOT → the enum with a module-level `strict_validate`. PROP → a nested enum. KEY → a `Literal` of the members as the mapping's KEY type, which pydantic renders back as `propertyNames: {enum: […]}` — the document's own keyword, rendered and gradable; where the key node carries a `title` the `StrEnum` is the key type and renders the same way. CONJ beside a `$ref` whose target is an enumeration → §2's intersection of the two vocabularies, rendered as a `Literal` over the TARGET's MEMBERS and not over their raw values. The two dump identically — `{"enum": [the members], "type": "string"}` — so §8 compares the same fact either way, and the member form keeps the imported symbol a caller can name: where §8 cannot tell two renderings apart, DX decides. A vocabulary the target does not contain is the empty intersection and refuses, by the same rule that refuses a member the node's own constraints exclude. RULE: under `if` → `Match` values; else nothing. |
+| `enum` | A named node → `StrEnum` / `IntEnum`, base read off the members; `enumDescriptions` → member docstrings. An untitled BRANCH of a root union → a `Literal` of the members. Mixed member types, an empty list, or a duplicate member → refused. Two members whose spellings yield one Python name → a `Literal` of the members and NOT an enum class (decided 2026-10-29). The collision exists only because an enum mints a Python IDENTIFIER per member; a `Literal` needs none, so both values are carried exactly as the document spells them and nothing is dropped. This is the same answer the row already gives an untitled branch of a root union, reached by a second route. Refusing instead cost **21 of the 95 refusals** for one node — `formats/canonical/html5.json`'s `clicktag_macro`, whose `clickTag` and `clickTAG` both spell `CLICKTAG` — including `core/product.json`. The cost is that one node gives a string-literal union rather than an enum class, which is a DX difference and not a correctness one; dropping a member, which the old clause rightly refused to do, remains forbidden. ROOT → the enum with a module-level `strict_validate`. PROP → a nested enum. KEY → a `Literal` of the members as the mapping's KEY type, which pydantic renders back as `propertyNames: {enum: […]}` — the document's own keyword, rendered and gradable; where the key node carries a `title` the `StrEnum` is the key type and renders the same way. CONJ beside a `$ref` whose target is an enumeration → §2's intersection of the two vocabularies, rendered as a `Literal` over the TARGET's MEMBERS and not over their raw values. The two dump identically — `{"enum": [the members], "type": "string"}` — so §8 grades the same value either way, and the member form keeps the imported symbol a caller can name: where §8 cannot tell two renderings apart, DX decides. A vocabulary the target does not contain is the empty intersection and refuses, by the same rule that refuses a member the node's own constraints exclude. RULE: under `if` → `Match` values; else nothing. |
 | `default` | On a REQUIRED property → dropped and reported, because no rendering makes a field both required and defaulted. On a node that becomes an alias → no slot. PROP → the field's default; `None` is a default, absence is not. |
 <!-- end generated -->
 
@@ -985,23 +987,23 @@ is the one place a keyword decision lives, and a grid is its rendering.
 | `not` | `not: {required: …}`, and `anyOf` / `allOf` of those → a `ForbiddenGroups` rule. Over a `const` or `enum` → a `NotValue` after-validator on the value's own annotated type. Any other shape → nothing on the model; the schema half answers and the ceiling is named. `not: {}` admits nothing, which the typeless `Any` carries. |
 <!-- end generated -->
 
-**`oneOf` TAKES ITS OWN CELL (decided 2026-10-30).** The row above renders `oneOf, anyOf` as one
-row because `_COMBINATORS["anyOf"]` and `_COMBINATORS["oneOf"]` are the same cell, and the cell's
-text says twice that "the schema half enforces exclusivity" — the claim §4 corrects, since
-`model_validate` does not route through `strict_validate`. **What the table declares is the
-DECISION, and theirs now differ even though their rendering coincides**: an inseparable `anyOf`
-loses nothing a check can see, an inseparable `oneOf` is a WIDENED fact §8's comparison has to
-see, and one cell cannot answer both. Sharing on a coincidence of rendering is what made that
-invisible, so the sharing goes. A keyword decision lives in the cell, so this is the cell's edit
-and not this rendering's.
+**`oneOf`'s CELL SPLIT IS WITHDRAWN (2026-10-30, same day it was decided).** It was decided
+hours earlier for one reason — that an inseparable `oneOf` is a WIDENED fact §8's COMPARISON had
+to see, and one shared cell could not answer both combinators. The comparison is deleted, so the
+reason is gone with it: `oneOf` and `anyOf` keep the one cell, because what differed between them
+was never the lowering, only what a text diff could notice about it.
 
-**And a SEPARABLE `oneOf` must not then report `missing` at every union root.** Flipping the
-shared cell's rendered column alone would do exactly that, because disjoint arms of `A | B` are
-already exactly-one, so the document's `oneOf` is carried and nothing is dropped. The comparison
-therefore folds on the DOCUMENT side, where §8's other entailment folds already live: **a `oneOf`
-whose arms are pairwise disjoint has the same accepted set as `anyOf` over those arms, and is
-compared as one.** The fold calls the SAME separator §4's naming rungs call, so one place decides
-disjointness and a site cannot be separable for naming and inseparable for grading.
+The document-side disjointness fold decided beside it is withdrawn for the same reason. It existed
+to stop a SEPARABLE `oneOf` reporting `missing` at every union root, and nothing reports `missing`
+any more.
+
+**What survives is the fact itself, and the draw proves it.** An inseparable `oneOf` admits a
+payload the document refuses — measured on `core/evaluator-spec.json#/oneOf`, where
+`{"evaluator_id": "e1", "agent_url": "https://x.example/a"}` satisfies two of three branches,
+`Draft7Validator` refuses it and `model_validate` returns `EvaluatorSpecEvaluatorId`. That is a
+WIDENED declaration and §8's draw hands the class exactly such a value. The cell's own text still
+says "the schema half enforces exclusivity", which is true only of a caller who invokes
+`strict_validate`; correcting that sentence is a cell edit and not this rendering's.
 
 ### The widening each row takes
 
@@ -1137,14 +1139,13 @@ attribution.
   — the key is not silently ignored, it costs a declared approximation at the top rung and a loud
   report line — and the node losing its whole type is exactly as visible as a refusal was.
   Attribution ours.
-- **A union whose branches §4's dispatch cannot separate.** The one UNDERDETERMINED row; §4 states
-  it.
+- **A union whose branches §4's dispatch cannot separate.** Declares a WIDENED fact where the
+  combinator is `oneOf` and nothing where it is `anyOf`; §4 states it.
 - ~~**A root stating no schema keyword.**~~ **Moved to (a) on 2026-10-26: it is faithful and
   carries no declaration.** This row sat here and its own sentence called the answer "faithful to
   a document that admits everything", which is group (a)'s definition and not this group's. A
   permissive root model over a document that constrains nothing DROPS nothing, so there is no
-  fact to declare — and §8's *over-declared* outcome would have reported the declaration this
-  group asked for, which is the mechanism catching the row rather than a reader having to.
+  fact to declare, and a declaration the draw cannot prove is deleted rather than carried.
   Measured on `core/asset-group-vocabulary.json`, which declares draft-07 and whose keys
   (`version`, `lastUpdated`, `vocabulary`) are not schema keywords: `Draft7Validator` accepts
   `42`, `"x"`, `null`, an object and an array, so the permissive model is exactly as wide as the
@@ -1463,7 +1464,11 @@ which is what the old sentence was buying.
 
 ## 8. How we know the output is right
 
-Three checks, run once per emitted class against the schema document it names.
+**TWO checks and one declared set**, run once per emitted class against the schema document it
+names. Both checks are payload checks: a value is drawn, and the class and the document are asked
+about the same value. Nothing here reads one schema against another, and nothing here grades a
+rendering. **Anything that is not one of these two checks or the widening set they prove does not
+belong in this section** — that rule is what the 2026-10-30 deletion below enforces.
 
 - **Accepts.** Draw payloads the document accepts and construct the class from each. A refusal
   here means the model is tighter than its document, which is the defect that matters.
@@ -1499,109 +1504,50 @@ Three checks, run once per emitted class against the schema document it names.
     nothing references. **It needs no new reading, because the rule that a declaration travels
     with the fact already re-points it to the referring pointer**, which is a `properties`
     segment the draw already places. The two settlements compose: one gives the declaration a
-    pointer the comparison reads, and that same pointer is one the draw can reach.
+    pointer the declaration names, and that same pointer is one the draw can reach.
 - **Dump.** Serialize the instance and validate the dump against the document. A failure means we
   emit something our own schema refuses.
-- **Compare.** Compare the class's `model_json_schema()` against the document of record (§3),
-  fact by fact. Outcomes are distinguished: a fact both state identically (*matched*), a fact the
-  document states and the model does not (*missing*), a fact both state differently (*differs*),
-  and a fact the model states and the document does not (*added*). The comparison is symmetric by
-  construction, so neither direction can be silently unexamined. It reads the document, never the
-  payload generator's canonicalisation of it: a canonicalised view states facts the document does
-  not, and a comparison reading it has to undo each of them, fact by fact, to report what the
-  document says.
+**THERE IS NO THIRD CHECK (decided 2026-10-30).** A comparison of the class's
+`model_json_schema()` against the document stood here and is **deleted** — code, tests, pins,
+prose, as if it had never existed. It was not a check on the artifact; it diffed schema TEXT, and
+it existed as a proxy for coverage the draw had stopped providing. The draw runs at ONE example
+per pair against `check_accepts`'s own default of 25, while this section demands the draw COVER
+the admissible space rather than sample it — so the method was throttled and a second instrument
+was built beside it to compensate. It produced 1,086 "facts" over 155 pairs that no payload had
+ever demonstrated, and they were reported as the SDK's correctness for weeks.
 
-  **A fifth and a sixth outcome, added 2026-10-26 with §2's widening rule.** Under §2 every
-  unexpressed keyword widens instead of refusing, so the *missing* bucket would fill with facts
-  the design decided to drop, and a grader that cannot tell a decided widening from a defect
-  grades nothing. The split is the approximation declaration, read off the emitted class:
+**A fact no payload can demonstrate is not a fact about the artifact.** A consumer meets these
+classes through validation and construction, so a disagreement a drawn value cannot expose is a
+disagreement in rendering, and §2's "nothing rewrites emitted output" already says rendering is
+not ours to grade. Where the draw provably cannot reach a keyword, the honest answer is to NAME
+that residue and raise the example count until the pile stops shrinking — not to diff text and
+count the difference as a defect.
 
-  - ***approximated*** — the document states the fact, the model does not, and an approximation at
-    that pointer and keyword declares it, names its rung and carries an attribution. Not a
-    defect. Counted, listed, and proved wide by the accepts draw above.
-  - ***over-declared*** — an approximation is declared at a pointer and keyword where the model
-    DOES state the fact. A defect, and the mirror of *missing*. Without it the declarations rot:
-    a cell gets written, the widening stops happening, the declaration stays, and it then hides
-    the next real gap at the same pointer behind a stale excuse.
+**THE WIDENING SET, which is the one thing beside the two checks.** §2 makes every keyword the
+model cannot express a WIDENING rather than a refusal, so the artifact is deliberately looser than
+its document in a declared, enumerated set of places. That set needs proving, and the proof is
+the draw and nothing else: for every fact an approximation drops, the draw takes the values that
+keyword distinguishes and **the class must accept every one of them.** An approximation that
+still refuses a value the document admits is a NARROWING wearing a declaration, and it fails
+here, by value and by pointer. That is what keeps the declared set from being an allowlist, and
+it is why the widening set belongs to the round trip rather than beside it.
 
-  *missing* keeps its old meaning exactly — the document states a compared fact, the model does
-  not, and nothing declares it — and it is **the only one of the six that the directive leaves
-  as a defect in the undeclared direction.** So the directive does not loosen this check; it
-  moves its subject from "is the fact there" to "is its absence declared, attributed and proved
-  wide".
+**An approximation nothing can demonstrate does not belong in the set.** With the text diff gone,
+a declaration earns its place by a value: either a payload exists that the document admits and
+the class now admits, or the declaration is describing a difference no consumer can reach and it
+is deleted rather than counted. This retires the UNDERDETERMINED kind and the disjointness
+equality that graded it — nothing widens at an UNDERDETERMINED site, the annotation admits exactly
+what the document admits, and the only loss is which branch an overlapping payload becomes, which
+no draw and no dump can observe. §4's inseparable `oneOf` is unaffected: it is a WIDENED fact,
+because the model admits a payload the document refuses, and the draw shows it.
 
-  **An UNDERDETERMINED approximation (§2) is invisible to all three checks**, and that is why it
-  needs an instrument of its own. The comparison matches, the draw accepts and the dump
-  validates, because the annotation admits exactly what the document admits; the only thing
-  wrong is that the document does not decide which branch an overlapping payload becomes. Its
-  check is §4's disjointness derivation: **the set of unions declaring one equals the set the
-  derivation cannot separate**, in both directions, so a union that becomes separable loses its
-  declaration and a union that stops being separable gains one.
-
-**The comparison is GENERIC, and its keyword set is DERIVED from one declaration.** One
-declaration in the compiler holds every keyword's decision — what it compiles to, and whether the
-model renders it as a fact, descends it as structure, enforces it as a rule, or carries nothing.
-§5, §6 and §7's tables are GENERATED from that declaration. A test that merely diffs them
-against it can compare only what it can parse back out of a table, so a cell deciding one thing
-where the text beside it says another passes: generation removes the second copy instead of
-checking it. The reasoning in those sections is written by hand and is the part that cannot be
-generated; the grids are output. The comparison derives its compared set from the same
-declaration: every keyword it renders as a fact. A hand-written list beside the comparison is
-the one way this check can be complete with respect to itself and blind to everything beyond
-it: a keyword missing from it is unexamined in *both* directions, so the grader cannot tell
-whether we rendered it, dropped it, or invented it — and it reports a pass either way.
-
-A keyword the declaration compiles to a rule renders nothing in the model's schema, so the
-comparison grades it against the class's rule tuple, which is the fact the emitter wrote for it:
-a rule keyword the document states and the tuple does not carry is *missing*, and a clause the
-document does not state is *added*.
-
-So two checks stand above the three, and each is an **equality between two sets neither of which
-is hand-written**. Nothing else in this section means anything until both hold, because every
-other check inherits their reach.
-
-1. **The comparison's keyword set equals the set the declaration renders.** A keyword the
-   declaration renders and the comparison does not carry is a defect in the comparison.
-2. **The approximated set equals the declared set.** Every *approximated* fact has a declaration
-   (or it is *missing*), and every declaration has an *approximated* fact (or it is
-   *over-declared*). Both directions, for the reason the first equality has them: a set checked
-   in one direction is complete with respect to itself, and what it omits passes.
-
-**A declaration travels with the fact it is about (decided 2026-10-27).** The second equality
-compares two sets of (pointer, keyword) pairs, so it holds only while both sides agree on the
-pointer — and they do not, by default. A declaration is minted at the NODE's pointer; the
-comparison reports a fact at the pointer it WALKED. Four things sit between the two: a local
-`$ref` the normalisation folds, a remote `$ref` the record inlines as a deep copy, a combinator
-branch the comparison does not descend, and an `allOf` conjunct the composition reading folds.
-
-That divergence is not an edge. **A row widens exactly where no class, no field and no instance
-location holds the fact, so the positions a widening lands at are systematically those four.**
-Measured over the 102 primary refusal sites: 43 are `properties` and `items` segments only, 46
-sit inside a combinator, and 13 have no instance location at all.
-
-So the rule is that **a reference carries its target's declarations to the referring pointer,
-re-pointed by the same resolution that carried the facts.** The record already inlines a deep
-copy of a target's facts at the referring node; a declaration about those facts is re-pointed by
-that same operation, because a fact and the record of what could not be rendered for it must
-move together or the two sides cannot agree about where either is. `emit` is where it happens:
-§10's dependency order finishes every target before a referrer is parsed, so the re-pointing
-reads a finished `Module` rather than re-deriving a resolution.
-
-A declaration that no pair reaches after re-pointing is then genuinely unearned — it describes
-a fact no pair reads — and *over-declared* reports it, which is the outcome's whole purpose.
-
-*The two answers this replaces.* Having the comparison follow the same resolution when it looks
-UP a declaration covers the local `$ref` and the `allOf` fold and cannot cover the remote one,
-because the record left no `$ref` to follow. Having the staleness check tolerate a declaration
-no pair reaches is rejected by that check's own reason: it exists to catch a declaration nothing
-earns, and tolerating one is the allowlist behaviour the registry replaced.
-
-*Why the second is not a weaker version of an allowlist.* An allowlist is a set a human writes
-and a check consults. These are two sets a machine derives — one from the document against the
-model, one from the emitter's own record of what it could not render — and the check is that
-they agree. Nobody can add an entry to make a failure go away without the model actually
-widening at that pointer, because the accepts draw then has to accept the values the keyword
-distinguishes. A declaration is a claim with two instruments pointed at it.
+**AND THE TWO DERIVED EQUALITIES THAT GRADED IT GO WITH IT (2026-10-30).** A generic keyword set
+derived from the declaration, the equality between it and what the declaration renders, the
+equality between the declared set and the approximated set, and the pointer-translation rule that
+made the second comparable — all of that existed to keep the text diff honest. With the diff gone
+there is nothing for them to be honest about. What replaces them is the draw: a declaration is
+proved by a value the document admits and the class accepts, at the pointer the declaration
+names, and a declaration no value can prove is deleted rather than graded.
 
 **The VERDICT count is not pinned either, and a ceiling on it was the wrong instrument
 (2026-10-27).** It is not monotone under progress, measured in both directions within one day:
@@ -1614,12 +1560,12 @@ named by document, so a verdict arriving is attributable and a verdict arriving 
 reddens. The figure to drive to zero is `refused`, and the verdict column is a reading of it.
 
 **What else is pinned, and what is only reported.** §9's rule that a pin with no denominator is
-not a ratchet decides this. *Missing*, *differs*, *added* and *over-declared* are pinned at zero:
+not a ratchet decides this. A round-trip failure in either direction is pinned at zero:
 none of them moves with emission, because each is a disagreement between a model and its document
 and a correct emitter produces none however many documents it emits. The approximation count is
 **not pinned** — it rises when a document starts emitting, which would oblige every later change
 to loosen the pin, the opposite of a ratchet — and is instead reported with its denominator (the
-facts compared) and split by attribution, with the *ours* half ratcheting down as §5's cells
+the declared set) and split by attribution, with the *ours* half ratcheting down as §5's cells
 land.
 
 *The worked example, which is why the split is necessary rather than tidy.* One keyword's gap —
@@ -1644,7 +1590,7 @@ A branch class of a union is paired with its branch node read
 under the union's siblings: draft-07 applies every keyword beside the combinator to the same
 instance the branch describes, so a field the branch inherits from the base is a fact its node
 states and not one it added. A pair the payload generator cannot draw for still has to pass the
-comparison, and names the shape that blocked the draw.
+draw, and names the shape that blocked it.
 
 **At a union in ANY position, not only a root one.** The reason above is draft-07's evaluation
 rule, which does not care where the union sits.
@@ -1667,7 +1613,7 @@ is the measured case: `/properties/quartile_data` states `type: ["object", "null
 renders `QuartileData | None`, and the ROOT pair passes because `_normalize`
 folds the model's `anyOf: [{$ref}, {"type": "null"}]` back into the document's own list. The
 nested class is then paired with the same node and reports `differs /type` — `object` against
-`["object", "null"]` — for a fact the parent already carries and the comparison already graded.
+`["object", "null"]` — for a fact the parent already carries.
 The model is faithful at both pointers; only the pairing was wrong.
 
 **A `properties` entry whose subschema is the EMPTY SCHEMA is not a fact these checks grade
@@ -1687,7 +1633,7 @@ was red. Two of this compiler's own decisions disagreeing, with no document at f
 **The field half is the right one and it is EXACT.** `required: ["x"]` with no declaration for `x`
 admits an object carrying `x` with any value, which is precisely a required field of type `Any` —
 `Any` being what §5's `type` row already gives an absent type word. Nothing is widened, nothing is
-dropped, and no declaration is owed. With the fold above, both halves of the comparison agree.
+dropped, and no declaration is owed.
 
 So a `null` member of a type list is the FIELD's fact, graded where the field is, and a member
 class is graded against the shape it actually describes. Row `.20` found this by emitting new
@@ -1701,9 +1647,9 @@ intersection of every conjunct of that `allOf`, taken with the keywords stated b
 
 Draft-07's `allOf` holds every conjunct against the same instance, so a fact a sibling conjunct
 states is a fact this node's instance must satisfy, not one this class added. Pairing against the
-conjunct's own text instead reports every such fact as `added`, which is the comparison's word
-for a model NARROWER than its document — so the instrument would report the faithful model as the
-defect it exists to catch. `added` is therefore never declarable.
+conjunct's own text instead reads every such fact as one this class ADDED, i.e. as a model
+NARROWER than its document — so a reader pairing that way reports the faithful model as the defect.
+A fact a sibling conjunct states is therefore never declarable.
 
 This rule is what makes §5's `properties` row at CONJ gradable.
 
@@ -1717,10 +1663,9 @@ written at the other spelling therefore attaches to the wrong class or to none.
 **This is one rule and it settles three separate readings**, which is why it is stated here rather
 than per site. Measured on `adagents.json`: `#/oneOf/1/anyOf` is declared and separable while
 `#/oneOf/1/allOf/0/anyOf` is inseparable and declared by nothing — one union, two spellings,
-counted twice, and the same pair appears five times over. So the stale half of §8's
-UNDERDETERMINED equality, the over-count in the declared backlog, and the approximation instances
-no strict walk can resolve are not three defects. They are one spelling question asked in three
-places.
+counted twice, and the same pair appears five times over. So the over-count in the declared
+backlog and the approximation instances no strict walk can resolve are not two defects. They are
+one spelling question asked twice.
 
 The reading that follows: §2 asks a declaration to be a fact §8 can look for in the document and
 find. A pointer that resolves to nothing is not that, whatever it is counted against.
@@ -1757,12 +1702,12 @@ Each is one sentence and its reason.
 - **An approximation that narrows is not an approximation.** It is a model tighter than its
   document wearing a declaration, and §8's accepts draw is pointed at exactly that. Widen by
   another rung — to `Any` if nothing else carries it — rather than declaring the narrowing.
-- **A declared approximation the model does not make is a stale excuse.** §8 reports it as
-  *over-declared* and it is a defect, because a declaration that outlives its widening hides the
-  next real gap at the same pointer.
+- **A declared approximation the model does not make is a stale excuse.** The draw cannot prove
+  it — no value the document admits is newly accepted at that pointer — so it is deleted, because
+  a declaration that outlives its widening hides the next real gap at the same pointer.
 - **Do not pin the approximation count.** It rises whenever the emitted set grows, which is the
-  next rule in this list. Pin the four disagreement counts, which do not, and ratchet the *ours*
-  split down.
+  next rule in this list. Pin the round-trip failures, which do not, and ratchet the *ours* split
+  down.
 - **Do not hand-write the set a generic check ranges over.** Derive it from the declaration the
   tables are read against (§8). A hand-written set is complete with respect to itself, so what it
   omits passes in both directions and nothing says so.
