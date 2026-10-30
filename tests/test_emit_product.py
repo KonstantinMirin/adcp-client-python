@@ -961,20 +961,23 @@ def test_a_restatement_contradicting_the_base_still_refuses_rather_than_merging(
         # sentence that says what the field would take rather than inferring a schedule.
         assert "section 5(b)" in caught.detail, caught.detail
 
-    # **AND THE CELL IS WHERE THE KIND COMES FROM, proved by moving the cell.**  A
+    # **AND THE TABLE IS WHERE THE KIND COMES FROM, proved by moving the table.**  A
     # constant ``Kind.DEFERRED`` is green on both rows above, so the derivation is graded
-    # by perturbation: ``minimum``'s cell is swapped for a REFUSE one and the SAME
+    # by perturbation: ``minimum``'s ROW is taken out of the table and the SAME
     # restatement reports a VERDICT, with every other assertion unchanged.  That is the
-    # one arm whose obstruction really would be the document's, and it is unreachable
-    # through a bundle document -- a keyword the table gives no row answers VERDICT
-    # through this same lookup, but ``check_keywords`` screens it off before this arm is
-    # reached (measured: a ``frobnicate`` beside the restatement refuses on the screen's
-    # own sentence), so the cell is what can be moved and the screen is not.
-    row = keywords.TABLE["minimum"]
-    refuse = keywords.Cell(keywords.Effect.REFUSE, row.default.rendered, None, "", None)
-    with mock.patch.dict(
-        keywords.TABLE, {"minimum": row._replace(default=refuse, at={})}
-    ):
+    # one arm whose obstruction really is the document's -- a keyword in none of §5, §6
+    # and §7 is one the bundle did not use.
+    #
+    # **The perturbation was a REFUSE cell and is the row's ABSENCE now** (§14 step 8,
+    # 2026-10-30): §7 is empty, so ``Effect.REFUSE`` is retired and a cell has no way to
+    # say "verdict" any more.  What the old comment said was unreachable through this arm
+    # -- "``check_keywords`` screens an unrowed key off before this arm is reached" -- is
+    # true of a key NO HANDLER CLAIMS, and ``minimum`` is claimed at PROP by the field
+    # builder, so the screen passes over it and the restatement arm is what answers.
+    # Measured: the detail is the same sentence and only the kind moves.
+    without_the_row = {k: v for k, v in keywords.TABLE.items() if k != "minimum"}
+    with mock.patch.dict(keywords.TABLE, without_the_row, clear=True):
+        assert keywords.cell("minimum", keywords.Position.PROP) is None
         assert compiler.kind_for("minimum", keywords.Position.PROP) is Kind.VERDICT
         moved = refusing({"type": "integer", "minimum": 1})
         assert moved.keyword == "minimum", moved.keyword

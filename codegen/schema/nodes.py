@@ -109,7 +109,7 @@ class Base:
     rules: Mapping[str, Any] = field(default_factory=dict)
     #: Every key this node STATES about an instance, sorted: ``keywords.declares`` at
     #: this node's own position, which is precisely the set §3's admission reader can
-    #: refuse on -- a key with no row, a REFUSE cell, or a lowering cell the kind's
+    #: refuse on -- a key with no row, or a lowering cell the kind's
     #: handler does not claim.  Names only and no values, because that is all the screen
     #: reads; a key that annotates without constraining is in :attr:`annotations`
     #: instead.  ``compiler.check_keywords`` and ``compiler.declaring``'s callers read

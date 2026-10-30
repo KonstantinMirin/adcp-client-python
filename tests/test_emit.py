@@ -10290,22 +10290,31 @@ def test_every_conjunct_contributes_every_part_of_itself() -> None:
                 keys = set(compiler.declaring(conjunct, keywords.Position.CONJ))
                 # Clause 5.  The name is dropped, the drop is on the record at this
                 # conjunct's own pointer, and nothing on the class answers to it.  A
-                # dropped name is one §7 REFUSES: the cell is what says it contributes
-                # nothing, where this read draft-07's meta-schema before.
-                refused = {
+                # dropped name is one whose CELL says the drop is REPORTED -- §7's row,
+                # which said REFUSE until the effect retired and says NOTHING with
+                # ``reported`` set now.
+                #
+                # Read off the RAW conjunct and not off ``keys``: such a key states
+                # nothing about an instance, so ``keywords.declares`` answers no and
+                # ``declaring`` leaves it out.  There is nothing to subtract from ``keys``
+                # for that reason, and it is also why the note is a function of the
+                # DOCUMENT (``bundle.reported_drops``) rather than of this worklist --
+                # the same document states the keyword at ``/then``, where no conjunct
+                # encloses it and a reader of conjuncts alone was told nothing.
+                reported = {
                     k
-                    for k in keys
+                    for k in conjunct
                     if (c := keywords.cell(k, keywords.Position.CONJ)) is not None
-                    and c.effect is keywords.Effect.REFUSE
+                    and c.reported
                 }
-                for name in sorted(refused):
+                for name in sorted(reported):
                     foreign_names += 1
                     assert any(
                         line.startswith(f"{where}: {name}:")
                         for line in out.carries_nothing.get(document, [])
                     ), (document, where, name, out.carries_nothing.get(document))
                     assert names.field_name(name, render.RESERVED) not in cls.model_fields, (document, where)
-                keys -= refused
+                    assert name not in keys, (document, where, name)
                 if keys == {"$ref"}:
                     # Clause 1.
                     parts["base"].add(f"{document} {where}")
@@ -10410,8 +10419,11 @@ def test_every_conjunct_contributes_every_part_of_itself() -> None:
         sum(len(v) for v in out.carries_nothing.values()),
         at_least=1,
         because=(
-            "the conjunct reader is the only writer of that channel, and a name it "
-            "admits and renders nothing for is reported rather than dropped in silence"
+            "a name the run admits and renders nothing for is reported rather than "
+            "dropped in silence, and the channel has three writers -- a constraining "
+            "sibling of $ref, a prefixed key with no row, and a cell whose drop is "
+            "reported -- so a writer that stops writing lowers this without reddening "
+            "any clause above"
         ),
     )
 

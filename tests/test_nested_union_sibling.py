@@ -844,8 +844,11 @@ def test_the_cell_the_four_readers_read_states_the_composition_answer() -> None:
     assert "oneOf" not in keywords.rendered_at(at)
     # descent: where the walk takes the branches, which is the position they are parsed at.
     assert keywords.descends_at(at)["oneOf"] is keywords.Position.BRANCH
-    # the prose reaches no reader: ``_screen`` quotes ``compiles`` on a REFUSE cell alone.
-    assert answer.effect is not keywords.Effect.REFUSE
+    # the prose reaches no reader through the screen: ``_screen`` quoted ``compiles`` on a
+    # REFUSE cell and on nothing else, and §14 step 8 retired the effect -- so the
+    # sentence is the GRID's alone now, which is what the round-trip in
+    # ``tests/test_keywords.py`` grades it as.
+    assert "REFUSE" not in keywords.Effect.__members__
 
 
 def test_the_measured_case_emits_the_shape_section_8_names() -> None:

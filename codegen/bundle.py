@@ -763,6 +763,40 @@ def constrained_to_object(doc: dict) -> frozenset[str]:
     )
 
 
+def reported_drops(doc: object) -> tuple[tuple[str, str], ...]:
+    """Every ``(pointer, keyword)`` this document states a REPORTED drop at.
+
+    ``docs/plan/rebuild-plan.md`` §7's position rule: "**the drop is reported at every
+    position the keyword occupies, and not only where a conjunct encloses it** [...] a
+    keyword's effect is a decision about the keyword at a position; a report that reaches
+    one position and not another is a defect in the CHANNEL, not a second decision."
+
+    **This is that channel, and it cannot screen a position.**  The defect it replaces
+    was ``compiler.lower_composition``'s conjunct worklist, which saw CONJ and nothing
+    else: ``media-buy/sync-catalogs-request.json`` states ``errorMessage`` twice, at
+    ``/allOf/1`` under a ``not`` and at ``/then`` beside a ``required``, and the reader
+    was told about the first alone -- the second reached no reader at all, because
+    ``lower.rules`` reads a ``then``'s ``required`` and its ``not`` and never asks the
+    table about the rest of it.
+
+    A function of the DOCUMENT alone, like every other derived fact in this module, over
+    :func:`nodes_at` -- the one walk, which CARRIES the position the descent column
+    assigned rather than recovering it from a pointer segment.  So the keyword is asked
+    about at its own position and the answer is :attr:`keywords.Cell.reported`; what
+    makes the report reach every position is that no arm here chooses one.
+
+    The ROOT's pointer is ``""`` and the caller spells it ``"/"``, which is the line
+    shape :attr:`compiler.Module.carries_nothing` states; the pointer is left as the walk
+    produced it so that this stays a census and the prose stays the compiler's.
+    """
+    return tuple(
+        (pointer, key)
+        for pointer, node, position in nodes_at(doc)
+        for key in sorted(node)
+        if (answer := keywords.cell(key, position)) is not None and answer.reported
+    )
+
+
 def is_an_annotation(key: str, position: keywords.Position) -> bool:
     """Does this sibling of a ``$ref`` state nothing about ACCEPTANCE?
 
@@ -774,11 +808,16 @@ def is_an_annotation(key: str, position: keywords.Position) -> bool:
     IS.  A key in the ``x-`` namespace with no row of its own is one too -- §6 admits
     it by prefix -- and a key with no row and no prefix is not: the screen refuses the
     document on it, and until then the target's value is the one the draft holds.
+
+    **The second clause went with ``Effect.REFUSE``** (§14 step 8): a REFUSE cell was
+    excluded here because the document was about to be refused on it, so "whose value
+    wins" was a question with no reader.  No cell can refuse, so the predicate is the
+    effect column alone -- which is the sentence above, with nothing beside it.
     """
     answer = keywords.cell(key, position)
     if answer is None:
         return keywords.admitted_by_prefix(key)
-    return answer.effect not in keywords.COMPILES and answer.effect is not keywords.Effect.REFUSE
+    return answer.effect not in keywords.COMPILES
 
 
 def _beside(placed: dict, referring: Mapping, position: keywords.Position) -> dict:
