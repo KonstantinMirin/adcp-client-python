@@ -1,0 +1,1 @@
+[{"accounts": [{"account": {"account_id": ""}, "governance_agents": [{"authentication": {"credentials": "00000000000000000000000000000000", "schemes": ["Bearer"]}, "url": "https://A.COM"}]}], "idempotency_key": "0000000000000000"}]

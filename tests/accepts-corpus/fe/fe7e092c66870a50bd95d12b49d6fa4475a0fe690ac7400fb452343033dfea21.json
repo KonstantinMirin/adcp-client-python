@@ -1,0 +1,1 @@
+[{"dialect": "vendor", "dialect_namespace": "https://wQ.frw7Jx5EL.hoLdiNgs", "dialect_revision": "%", "dialect_semantic": "V\u008a\udb1c\udfe2", "mapping_status": "dialect_defined", "operation": "resolve_value", "performed_by": "buyer", "supported_contexts": ["url_path_segment", "url_query_value"], "supported_encodings": [{"depth": 2611489453788572, "kind": "rfc3986"}]}]

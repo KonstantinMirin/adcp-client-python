@@ -67,6 +67,32 @@ the count against the obligation before one of them is allowed to count, and a d
 red twice over.  That is ``codegen.dump_exemptions``' shape: a derived equality over the
 packaged tree, not a stored list.  This module's whole contract is "answer with exactly
 what was stored under this key, or ``None``".
+
+**AND IT IS NOW TWO STORES, BECAUSE THE DRAWN CORPUS IS COMMITTED** (decided 2026-10-30,
+``docs/plan/architecture.md`` "The drawn corpus is COMMITTED").  :data:`COMMITTED` is a
+tracked directory in this tree and :data:`DIRECTORY` is the cross-worktree cache beside
+the checkouts; :class:`Layered` composes them, and the composition is one sentence in
+each direction -- **the floor is read FIRST and only the cache is ever written.**  Which
+half each obligation belongs to:
+
+* **The floor answers before the cache**, so every lane, every fresh checkout and CI
+  grade the SAME held instance.  Read the cache first and a lane with a warm cache would
+  be grading a witness nothing in the tree carries, which is the drift the commit
+  exists to remove.
+* **No run writes the floor.**  A draw's result goes to the cache, so a run cannot
+  dirty the working tree and a lane cannot promote an entry by accident.  Promotion is
+  ``--write-corpus`` (``tests/conftest.py``), the same affordance
+  ``docs/plan/rebuild-plan.md``'s generated grids already have for the same reason: a
+  derived artifact in the tree, an equality that grades it, and one flag that rewrites
+  it when the derivation has deliberately moved.
+* **The cache is therefore what it always was** -- the place a key the tree does not
+  carry yet gets answered from, which is the lane that makes a document emit for the
+  first time and every lane that merges it.
+
+``tests/test_accepts_corpus.py``'s
+``test_every_graded_pair_has_a_committed_entry_under_the_current_key`` is the gate the
+paragraph the commit replaced said could not exist, and it reads the FLOOR ALONE for the
+first reason above.
 """
 
 from __future__ import annotations
@@ -80,22 +106,35 @@ from typing import Any
 #: The repository root, reached the way ``tests/test_import_rule.py`` reaches it.
 ROOT = Path(__file__).resolve().parents[1]
 
-#: **A BUILD ARTIFACT and not a committed one, and the SIZE is not what decides that.**
-#: Measured over the whole graded population at ``accepts_examples=1``: **160,977 bytes --
-#: 0.16 MB -- over 1,661 entries**, the largest single one 6,211 bytes
-#: (``core/attestation-capabilities.json#``).  A drawn instance is nothing like the record
-#: it came from: ``media-buy/get-media-buy-delivery-response.json#`` is 5.19 MB of record
-#: and its instance is 882 bytes, because the record's size is 308 inlined COPIES of the
-#: same subtrees and an instance needs one value per position, not one per copy.  So the
-#: corpus is small enough to commit, and that option stands open.
+#: **THE CROSS-WORKTREE CACHE.  It is a build artifact; :data:`COMMITTED` is the floor it
+#: starts from, and that split is this row's whole change** (``adcp-client-python-3be.22``).
 #:
-#: What keeps it out of the tree is the OTHER half: a committed corpus is a second derived
-#: artifact whose currency has no instrument.  A stale entry here is silently correct --
-#: its key stops matching, the pair draws, and nothing reddens -- so "the committed corpus
-#: is up to date" would be an obligation nothing grades, and the gate for it would have to
-#: redden on any in-flight record change, which is correct work.  Regenerated on a miss it
-#: cannot go stale at all.  **The cost of that choice is stated rather than hidden: a fresh
-#: checkout's first run is a full cold run.**
+#: What stood here was the argument AGAINST committing the corpus, and it was sound when it
+#: was written: *"a committed corpus is a second derived artifact whose currency has no
+#: instrument.  A stale entry here is silently correct -- its key stops matching, the pair
+#: draws, and nothing reddens -- so 'the committed corpus is up to date' would be an
+#: obligation nothing grades, and the gate for it would have to redden on any in-flight
+#: record change, which is correct work."*
+#:
+#: **The last clause is the load-bearing one and it is now false.**  The key hashed
+#: ``bundle.record`` -- this package's own inlining -- so any compiler edit invalidated
+#: every entry: a committed corpus would have been permanently stale behind a permanently
+#: red gate, and the gate would have been reddening on in-flight work rather than on a
+#: changed question.  ``harness.corpus_key``'s argument is now ``bundle.source_identities``
+#: -- the document's own raw bytes, the raw bytes of its reference closure, the example
+#: count, the format strategies and the generator version.  **A compiler edit moves no
+#: key.  Only a bundle bump or a generator bump does**, and each of those is a deliberate,
+#: reviewable event with a redraw attached.  So the obligation that had no instrument has
+#: one: ``test_every_graded_pair_has_a_committed_entry_under_the_current_key``.
+#:
+#: And the size was never the obstacle.  Re-measured 2026-10-30 over the whole graded
+#: population at ``accepts_examples=1``: the reading is ``Store.bytes_held`` over
+#: ``Store.entries``, and it is **0.4 MB of content at a mean of 131 bytes an entry** -- a
+#: ``du -sh`` of the same directory reads 15 MB, which is block overhead on thousands of
+#: tiny files and not content.  A drawn instance is nothing like the record it came from:
+#: ``media-buy/get-media-buy-delivery-response.json#`` is 5.19 MB of record and its
+#: instance is 882 bytes, because the record's size is 308 inlined COPIES of the same
+#: subtrees and an instance needs one value per position, not one per copy.
 #:
 #: **SHARED ACROSS WORKTREES, because the key is a content address and a worktree is not
 #: one of its inputs** (measured 2026-10-29).  ``harness.corpus_key`` hashes the caller's
@@ -123,6 +162,29 @@ ROOT = Path(__file__).resolve().parents[1]
 CACHE_ROOT = Path(os.environ.get("ADCP_CACHE") or ROOT.parent / ".adcp-cache")
 
 DIRECTORY = CACHE_ROOT / "accepts-corpus"
+
+#: **THE COMMITTED FLOOR: the drawn corpus, in the tree, under the current key.**
+#:
+#: ``docs/plan/architecture.md`` ("The drawn corpus is COMMITTED", 2026-10-30) decides it
+#: and :data:`CACHE_ROOT`'s comment carries the reasoning.  What this constant has to get
+#: right is the PATH, and it has two requirements that come from different places:
+#:
+#: * **The suite reads it by DEFAULT**, with no environment variable and no flag -- a fresh
+#:   checkout is the case the commit exists for, so a floor reached only by opting in would
+#:   be a floor a fresh checkout does not have.  So it is derived from :data:`ROOT` and has
+#:   no ``ADCP_`` override; ``ADCP_CACHE`` still moves the CACHE, which is the half that is
+#:   allowed to be somewhere else.
+#: * **No lane can invalidate it by editing the compiler**, which is a property of the KEY
+#:   and not of the path -- and it is the property that makes a path inside the tree
+#:   admissible at all.  ``harness.corpus_key`` hashes ``bundle.source_identities``, so
+#:   what moves these file names is a bundle bump or a generator bump.
+#:
+#: Under ``tests/`` because the population it answers for is the suite's
+#: (``test_emit.graded()``) and the gate over it lives next to it; HYPHENATED so it is not
+#: an importable package name sitting among the test modules.  It is not in
+#: ``[tool.setuptools.packages.find]``'s ``where``, so none of it reaches the wheel: the
+#: shipped artifact is the packaged records, and a drawn instance is evidence about them.
+COMMITTED = ROOT / "tests" / "accepts-corpus"
 
 
 class Store:
@@ -202,6 +264,18 @@ class Store:
             except OSError:
                 pass
 
+    def files(self) -> list[Path]:
+        return sorted(self.directory.rglob("*.json"))
+
+    def keys(self) -> set[str]:
+        """Every key this store holds a file for, which is the gate's left-hand side.
+
+        A reading of the DIRECTORY and not a list anybody maintains, so the equality
+        ``test_every_graded_pair_has_a_committed_entry_under_the_current_key`` asserts is
+        derived on both sides -- ``codegen.dump_exemptions``' shape again.
+        """
+        return {path.stem for path in self.directory.rglob("*.json")}
+
     def entries(self) -> int:
         return sum(1 for _ in self.directory.rglob("*.json"))
 
@@ -209,8 +283,88 @@ class Store:
         return sum(p.stat().st_size for p in self.directory.rglob("*.json"))
 
 
+class Layered:
+    """The COMMITTED floor, then the shared cache; and only the cache is ever WRITTEN.
+
+    Two stores and one rule in each direction, because the two halves answer different
+    questions and swapping either rule gives the drift the commit was made to remove.
+
+    **READ: the floor first.**  Both stores are content-addressed under one key, so for a
+    key they both hold they hold an answer to the same question -- but not necessarily the
+    same BYTES, because the draw itself is not reproducible (``corpus_key``'s own docstring
+    measures it: a small share of pairs draw a different instance on a second pass).  So
+    which store answers decides which witness the suite grades, and the point of
+    committing the corpus is that every lane, every fresh checkout and CI grade the same
+    one.  Read the cache first and a lane with a warm cache grades a witness the tree does
+    not carry; the gate would be green locally on an entry nobody can review.
+
+    **WRITE: the cache only.**  A run that wrote the floor would make the committed corpus
+    a thing the suite edits -- it would dirty the working tree, it would promote whatever
+    a lane's own key space happened to need, and
+    ``test_no_run_writes_a_corpus_entry_inside_the_checkout`` is what reads that.  Promotion
+    is deliberate: ``--write-corpus``.
+
+    **A miss on both is exactly what it was** -- a key no store has been given, so the
+    pair draws, the cache holds the result, and the gate reports that the floor is short
+    of the population.  The gate is the thing that says the floor needs refilling; this
+    class never decides it.
+
+    **And a floor entry the DOCUMENT refuses is still a defect and not a miss.**  Nothing
+    here re-validates -- ``harness.corpus_defect`` does, on every read, which is why a
+    committed entry cannot pass quietly when it is wrong: the floor answers, the document
+    refuses the answer, and the pair reports ``accepts:corpus_rejected``.  Falling through
+    to the cache on a rejected floor entry would be precisely the silent repair that
+    hides a stale commit, so ``get`` does not look at the value it returns.
+    """
+
+    def __init__(self, floor: Store, cache: Store) -> None:
+        self.floor = floor
+        self.cache = cache
+
+    def get(self, key: str) -> list[Any] | None:
+        held = self.floor.get(key)
+        return self.cache.get(key) if held is None else held
+
+    def put(self, key: str, instances: list[Any]) -> None:
+        self.cache.put(key, instances)
+
+    def promote(self, keys: set[str]) -> tuple[int, list[str]]:
+        """Copy the cache's answer for each of ``keys`` into the floor.
+
+        ``--write-corpus``' one action, and the only code in this project that writes the
+        floor.  It copies and never draws: the draw is a parallel suite run, and a
+        promotion that drew would be the 2,000-second serial pass this row exists to
+        remove.  Returns what it wrote and the keys the cache could not answer, which the
+        caller reports -- a key neither store holds means the draw has not been run.
+
+        Idempotent, and it writes through :meth:`Store.put`, so the floor gets the same
+        round-trip check the cache does: an entry that does not survive JSON is declined
+        in both places rather than committed in one.
+        """
+        wrote, absent = 0, []
+        for key in sorted(keys):
+            if self.floor.get(key) is not None:
+                continue
+            held = self.cache.get(key)
+            if held is None:
+                absent.append(key)
+                continue
+            self.floor.put(key, held)
+            wrote += 1
+        return wrote, absent
+
+
+#: The COMMITTED floor as a store of its own, so the gate can read it ALONE.  That is not
+#: a convenience: the obligation is "every graded pair has a COMMITTED entry", and a gate
+#: reading :data:`STORE` would be satisfied by a warm cache on the machine it ran on and
+#: red on every other -- which is an instrument that reports where it was run.
+FLOOR = Store(COMMITTED)
+
+#: The cross-worktree cache as a store of its own.
+CACHE = Store(DIRECTORY)
+
 #: The one store the suite's population tests share, so the two passes over the graded
 #: population -- ``graded_reports`` and the parametrised per-pair test -- fill and read one
 #: corpus rather than two.  A module-level object and not a fixture, for
 #: ``test_emit.graded_reports``' own reason: the readers are module functions, not tests.
-STORE = Store()
+STORE = Layered(FLOOR, CACHE)

@@ -1,0 +1,1 @@
+[{"exclude": [{"signal_id": {"agent_url": "https://A.COM", "id": "0", "source": "agent"}, "type": "signal", "value": false, "value_type": "binary"}]}]

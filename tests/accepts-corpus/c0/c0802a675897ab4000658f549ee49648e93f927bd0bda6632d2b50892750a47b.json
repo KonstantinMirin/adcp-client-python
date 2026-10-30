@@ -1,0 +1,1 @@
+[{"from_state_id": "a", "media_event": "video_start", "to_state_id": "a", "transition_id": "a", "transition_mode": "instant", "trigger": "media_event"}]

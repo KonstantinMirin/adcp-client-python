@@ -1,0 +1,1 @@
+[{"account_id": "0", "change_kind": "revision_published", "finality": "official", "fired_at": "2000-01-01T00:00:00Z", "idempotency_key": "0000000000000000", "notification_id": "0", "notification_type": "reporting.ledger_changed", "reporting_revision_id": "0", "subscriber_id": "0"}]

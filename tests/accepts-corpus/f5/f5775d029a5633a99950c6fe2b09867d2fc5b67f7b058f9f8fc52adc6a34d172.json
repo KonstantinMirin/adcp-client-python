@@ -1,0 +1,1 @@
+[{"asset_type": "daast_tracker", "daast_event": "progress", "daast_versions": ["1.1", "1.0"], "execution_actor": "request_executor", "firing_paths": ["server", "client"], "offset": "100%", "selector_id": "\n!\u00cb", "target": "linear"}]

@@ -1,0 +1,1 @@
+[{"destination": {"destination_ref": "0", "mode": "existing"}, "orchestration": "consumer_managed", "pattern": "warehouse_materialization", "transport": "a"}]

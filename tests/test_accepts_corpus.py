@@ -23,6 +23,12 @@ instances is admissible only under conditions, and every one of them is graded h
    as "the obligation passed".
 4. **The corpus moves no verdict.**  A pair graded from a hit and the same pair graded
    from a draw report the same outcome, the same instance count and the same comparison.
+5. **THE CORPUS IS IN THE TREE, AND ITS CURRENCY IS GRADED.**  ``docs/plan/architecture.md``
+   ("The drawn corpus is COMMITTED", 2026-10-30).  Every graded PAIR has a committed entry
+   under the current key, less the pairs no draw can reach; the floor answers before the
+   shared cache and no run writes the floor; and a committed entry the document refuses
+   reddens rather than being repaired by the cache behind it.  The gate is shown red by
+   the event it exists to catch -- a generator bump -- and not only green.
 
 **AND THE DRAW IT REPLACES IS NOT REPRODUCIBLE, which is the measurement that decided the
 shape rather than a caveat on it.**  Two full passes over the same 1,664 pairs at the same
@@ -49,11 +55,14 @@ not an exception to it.
 
 from __future__ import annotations
 
+import inspect
 import json
 import os
 import re
 import subprocess
 import sys
+import tempfile
+from collections.abc import Iterable
 from importlib import resources
 from pathlib import Path
 from typing import Any
@@ -673,25 +682,40 @@ def test_an_unreadable_entry_is_a_miss_and_a_parsed_one_is_the_harnesss_business
     assert store.get(key) == [{"wrong": True}], "the store filtered what the harness grades"
 
 
-def test_the_store_is_a_build_artifact_and_not_a_committed_one() -> None:
-    """Regenerable on a miss, so no run can commit one -- and the SIZE is not the reason.
+def test_no_run_writes_a_corpus_entry_inside_the_checkout() -> None:
+    """**The CACHE is still a build artifact, and no run may write the committed floor.**
 
-    ``corpus.DIRECTORY``'s comment carries both halves: the store is small enough to commit
-    -- the reading is ``Store.bytes_held`` over ``Store.entries`` -- and what keeps it out
-    is that a committed corpus is a second derived artifact whose currency nothing grades.
-    Stated here as a property of the tree rather than as a sentence, so a corpus cannot be
-    committed by accident: a run that regenerates cannot leave the working tree dirty.
+    What stood here was ``test_the_store_is_a_build_artifact_and_not_a_committed_one``, and
+    its claim is withdrawn rather than weakened: ``docs/plan/architecture.md`` ("The drawn
+    corpus is COMMITTED", 2026-10-30) puts the drawn instances in the tree, because the
+    clause the old argument rested on -- "the gate for it would have to redden on any
+    in-flight record change" -- stopped being true when ``harness.corpus_key``'s argument
+    became ``bundle.source_identities`` instead of ``bundle.record``.
+    ``corpus.CACHE_ROOT``'s comment carries that reasoning and
+    :func:`test_every_graded_pair_has_a_committed_entry_under_the_current_key` is the gate
+    the old argument said could not exist.
 
-    **Two defences, because the default location moved OUT of the checkout.**  The store is
-    shared across worktrees (``corpus.CACHE_ROOT``), so the primary claim is now that no
-    run writes inside this repository at all.  The ``.gitignore`` half is still graded
-    because ``ADCP_CACHE`` can point a store back inside a checkout, and the name is what
-    would then keep it out of a commit.
+    What survives is the half that is still true and is the reason the floor can be
+    trusted: **a RUN writes only the cache.**  ``corpus.Layered.put`` goes to the cache, the
+    cache is outside the checkout, and promotion into the floor is ``--write-corpus`` and
+    nothing else -- so no suite run leaves the working tree dirty and no lane promotes an
+    entry by accident.  Three readings, in the order a reader needs them:
+
+    1. the cache the suite WRITES is not inside this repository at all;
+    2. ``.gitignore`` still carries the cache's directory NAME, because ``ADCP_CACHE`` can
+       point a cache back inside a checkout and the name is what would then keep it out of
+       a commit;
+    3. every file the FLOOR holds is TRACKED, which is the committed-ness claim stated as
+       a property of the tree: an untracked entry there is a run that wrote the floor, or
+       a ``--write-corpus`` nobody committed.
     """
     assert not corpus_module.DIRECTORY.is_relative_to(REPO), (
-        f"the shared store writes inside the checkout: {corpus_module.DIRECTORY}"
+        f"the shared cache writes inside the checkout: {corpus_module.DIRECTORY}"
     )
-    #: What ``ADCP_CACHE`` names, which is the directory a store pointed back inside a
+    assert corpus_module.STORE.cache.directory == corpus_module.DIRECTORY, (
+        "the shared store's writes no longer go to the cache"
+    )
+    #: What ``ADCP_CACHE`` names, which is the directory a cache pointed back inside a
     #: checkout would be rooted at -- so that is the name ``.gitignore`` has to carry.
     name = corpus_module.CACHE_ROOT.name
     ignored = {line.strip().rstrip("/") for line in (REPO / ".gitignore").read_text().splitlines()}
@@ -699,4 +723,332 @@ def test_the_store_is_a_build_artifact_and_not_a_committed_one() -> None:
     done = subprocess.run(
         ["git", "check-ignore", "-q", f"{name}/x"], cwd=REPO, capture_output=True
     )
-    assert done.returncode == 0, "git does not ignore a corpus directory inside the checkout"
+    assert done.returncode == 0, "git does not ignore a cache directory inside the checkout"
+
+    #: And the floor: every entry in it is a file git knows about.  ``git ls-files`` and
+    #: not ``git status``, so the claim is about THESE files and is not disturbed by an
+    #: unrelated edit elsewhere in the tree.
+    floor = corpus_module.FLOOR.directory.relative_to(REPO)
+    listed = subprocess.run(
+        ["git", "ls-files", "--", str(floor)], cwd=REPO, capture_output=True, text=True
+    )
+    assert listed.returncode == 0, listed.stderr
+    tracked = claimed("tracked committed corpus entries", listed.stdout.split())
+    present = {str(p.relative_to(REPO)) for p in corpus_module.FLOOR.files()}
+    assert present - tracked == set(), (
+        f"untracked entries in the committed corpus -- a run wrote the floor, or a "
+        f"--write-corpus was not committed: {sorted(present - tracked)[:5]}"
+    )
+
+
+# --------------------------------------------------------------------------- #
+# 5. the committed floor, and the gate the old argument said could not exist
+# --------------------------------------------------------------------------- #
+#: The example count the POPULATION is graded at, read off the signature that decides it
+#: rather than written here.  It is in the key (:func:`corpus_key`), so a default that
+#: moved would move every key in the population -- and the gate below would then report
+#: the floor short of it, which is the correct reading of a redraw that is owed.  A literal
+#: ``1`` here would instead make the gate assert the floor is current under a count nothing
+#: grades at.
+ACCEPTS_EXAMPLES = inspect.signature(check_pair).parameters["accepts_examples"].default
+
+
+def live_keys() -> dict[str, str]:
+    """Every graded pair's CURRENT corpus key, by the pair's own name.
+
+    The key ``check_pair`` would compute for that pair: ``test_emit.identity_of``'s
+    identity, the population's example count and ``test_emit.FORMAT_STRATEGIES``.  Spelled
+    from those three rather than by grading the pair, because the gate below has to read
+    the floor's currency **without drawing anything** -- a gate that cost a cold run to
+    report that a cold run is owed would be unrunnable exactly when it matters.
+    """
+    import test_emit
+
+    return {
+        f"{g.ref.document}{g.ref.pointer}": corpus_key(
+            test_emit.identity_of(g.ref),
+            examples=ACCEPTS_EXAMPLES,
+            custom_formats=test_emit.FORMAT_STRATEGIES,
+        )
+        for g in test_emit.graded()
+    }
+
+
+def grades_to_an_entry(name: str, into: Path) -> tuple[bool, str]:
+    """Does grading this pair against an EMPTY store leave an entry in it.
+
+    **THE ONE EXEMPTION, and it is derived from the code that writes the floor rather than
+    restated beside it.**  Not every graded pair CAN hold an entry: ``check_accepts`` holds
+    one only where the draw covered the whole obligation and did not error
+    (:func:`test_a_draw_that_produced_nothing_is_not_held`), and ``corpus.Store.put``
+    declines a value JSON cannot carry back
+    (:func:`test_the_store_declines_a_value_it_cannot_hold_faithfully`).  So "every graded
+    pair has a committed entry" is false as stated, and the true claim is the one below:
+    every pair the suite's own write path WOULD hold an entry for, holds one.
+
+    Two restatements were tried and both are wrong, which is why this one grades instead of
+    reading:
+
+    * ``harness.undrawable_formats``, the instrument that admits a ``no_instrument`` pair.
+      It does not cover the pairs whose draw fails for its own stated KNOWN CEILING -- a
+      node undrawable only IN CONTEXT.  Measured:
+      ``core/package-format-snapshot.json#/allOf/0/oneOf/13`` states three
+      ``uri``-beside-``^https://`` positions that each draw alone, and the pair's draw
+      still reports ``Unsatisfiable`` with 453 of 459 cases filtered.  A gate resting on
+      that function would call such a pair unexplained.
+    * a declared list of the pairs that hold nothing, which is the second copy the design
+      forbids and the thing that goes stale.
+
+    ``into`` is a store of its own, so this neither reads nor warms the shared cache: what
+    is being measured is what a draw produces, and a cache hit would answer a different
+    question.
+    """
+    import test_emit
+
+    g = next(x for x in test_emit.graded() if f"{x.ref.document}{x.ref.pointer}" == name)
+    probe = corpus_module.Store(into)
+    rep = check_pair(
+        test_emit.pair_of(g), custom_formats=test_emit.FORMAT_STRATEGIES, corpus=probe
+    )
+    return bool(probe.keys()), (
+        f"{rep.outcome} / accepts {rep.accepts.outcome} at {rep.accepts.examples} of "
+        f"{ACCEPTS_EXAMPLES} instances, store held {probe.held} declined {probe.declined}"
+    )
+
+
+def document_bytes(name: str) -> int:
+    """The pair's own document's raw size, which is the order the gate explains misses in.
+
+    A cost proxy and nothing else: the draw's cost tracks the size of the node a strategy
+    is built over, and this is the cheapest reading correlated with it -- a ``stat`` on the
+    bundle, with no record built and no resolution.  Why the ORDER matters is in the gate.
+    """
+    return (BUNDLE / name.split("#")[0]).stat().st_size
+
+
+def committed_misses(
+    names: Iterable[str], keys: dict[str, str]
+) -> tuple[dict[str, str], dict[str, str]]:
+    """Of ``names``, the pairs the FLOOR does not answer, and those with no excuse.
+
+    The gate's whole reading, as a function, so the test below asserts on it and
+    :func:`test_a_generator_bump_reddens_the_committed_gate` can run the same reading over
+    the keys a bumped generator computes and watch it come back red.  A gate whose red
+    state is reachable only by a reviewer's imagination is not shown to gate anything.
+
+    ``keys`` is handed in rather than read here for exactly that reason: the two callers
+    differ in nothing but which key space they are asking about.
+
+    The FLOOR alone and never ``corpus.STORE``: the obligation is that the entry is
+    COMMITTED, and a reading that accepted a cache hit would be green on the machine whose
+    cache happened to be warm and red everywhere else.
+
+    **THE SECOND HALF IS LAZY AND CHEAPEST-FIRST, which is what keeps the gate runnable in
+    the state it exists to report.**  Explaining a miss costs that pair's own draw
+    (:func:`grades_to_an_entry`), and after a bundle bump EVERY pair is a miss -- so an
+    eager explanation would cost a full cold run to say that a full cold run is owed.  The
+    assertion is "no missing pair would have produced an entry", and ONE counterexample
+    settles that, so the misses are explained in ascending document size and the walk stops
+    at the first pair that produces one.  Red in seconds; exhaustive only when green, where
+    the set left to explain is the pairs that genuinely hold nothing.
+    """
+    held = corpus_module.FLOOR.keys()
+    missing = {name: keys[name] for name in names if keys[name] not in held}
+    unexplained: dict[str, str] = {}
+    with tempfile.TemporaryDirectory() as tmp:
+        for n, name in enumerate(sorted(missing, key=lambda name: (document_bytes(name), name))):
+            produced, why = grades_to_an_entry(name, Path(tmp) / str(n))
+            if produced:
+                unexplained[name] = why
+                break
+    return missing, unexplained
+
+
+def test_every_graded_pair_has_a_committed_entry_under_the_current_key(pytestconfig) -> None:
+    """**THE GATE THE OLD ARGUMENT SAID COULD NOT EXIST.**
+
+    ``tests/corpus.py`` recorded that "the committed corpus is up to date" would be an
+    obligation nothing grades, and that any gate for it "would have to redden on any
+    in-flight record change, which is correct work".  That was true of the key it was
+    written about -- ``bundle.record``, this package's own inlining, so every compiler edit
+    invalidated every entry.  ``harness.corpus_key``'s argument is now
+    ``bundle.source_identities``: the document's own raw bytes, its reference closure's raw
+    bytes, the example count, the format strategies and the generator version.  **A
+    compiler edit moves nothing here.  A bundle bump or a generator bump moves everything**,
+    and both are deliberate events with a redraw attached.  So this is now gradeable, and
+    this is the grade.
+
+    **ONE EQUALITY, BOTH SIDES DERIVED**, which is ``codegen.dump_exemptions``' shape: the
+    keys the committed corpus holds are exactly the keys the graded population asks for,
+    less the pairs the suite's own write path produces no entry for
+    (:func:`grades_to_an_entry`).  Three ways it reddens, and each is a thing that genuinely
+    happened:
+
+    * a bundle or generator bump landed and the corpus was not redrawn -- every pair of
+      every moved document is missing;
+    * a document that did not emit before now emits, so the population grew and nothing
+      drew the new pairs;
+    * the floor holds an entry nothing asks for any more, which is the residue a bump
+      leaves behind and is why the equality is asserted in both directions rather than
+      just "every pair is covered".
+
+    **PER PAIR AND NEVER PER DOCUMENT.**  ``graded()`` is pairs, not documents -- the
+    reading is in the message this test prints, and at the time it was written it was 2,793
+    pairs over 1,054 documents.  A gate keyed on documents would read green with a third of
+    the pairs missing, which is the state the floor was in before this row.
+
+    **THE KEY READING COSTS NO DRAW**, for :func:`live_keys`' reason, and the explanation of
+    a miss is lazy and cheapest-first (:func:`committed_misses`) -- so the gate reddens in
+    seconds on the bump it exists to catch, and pays a draw only for the pairs that are
+    genuinely left holding nothing when it is green.  ``--write-corpus`` is the redraw's
+    second step and this is where it acts, for the reason ``tests/test_keywords.py``'s grids
+    flag acts inside the test that grades them: the thing that knows what the tree should
+    contain is the thing that writes it.
+    """
+    keys = live_keys()
+    names = claimed("graded pairs", keys)
+    if pytestconfig.getoption("--write-corpus"):
+        wrote, absent = corpus_module.STORE.promote(set(keys.values()))
+        stale = corpus_module.FLOOR.keys() - set(keys.values())
+        for key in sorted(stale):
+            corpus_module.FLOOR._path(key).unlink(missing_ok=True)  # noqa: SLF001
+        print(
+            f"--write-corpus: promoted {wrote}, pruned {len(stale)}, "
+            f"{len(absent)} of {len(names)} pair keys answered by neither store"
+        )
+        return
+
+    missing, unexplained = committed_misses(names, keys)
+    extra = corpus_module.FLOOR.keys() - set(keys.values())
+    assert unexplained == {}, (
+        f"{len(missing)} of {len(names)} graded pairs have no committed entry under their "
+        f"current key, and this one WOULD have produced an entry -- so the committed corpus "
+        f"is short of the population rather than bounded by it.  Run the suite to fill the "
+        f"shared cache, then pytest -n 0 --write-corpus.  {unexplained}"
+    )
+    assert extra == set(), (
+        f"the committed corpus holds {len(extra)} entries the graded population does not "
+        f"ask for -- the residue of a bundle or generator bump; pytest --write-corpus "
+        f"prunes them"
+    )
+    print(
+        f"committed corpus: {corpus_module.FLOOR.entries()} entries, "
+        f"{corpus_module.FLOOR.bytes_held()} bytes of content, over {len(names)} graded "
+        f"pairs; {len(missing)} pairs hold nothing, and grading each of those against an "
+        f"empty store leaves it empty"
+    )
+
+
+def test_a_generator_bump_reddens_the_committed_gate() -> None:
+    """**THE GATE SHOWN RED, by the event it exists to catch.**
+
+    A gate that passes when nothing happens is not a gate, so the bump is actually made
+    here: ``harness._DRAW_VERSION`` is the hypothesis and hypothesis-jsonschema versions
+    and it is one of ``corpus_key``'s four inputs, so moving it moves every key in the
+    population -- which is exactly what a dependency bump does to this corpus, and why the
+    pin in ``pyproject.toml`` is exact.
+
+    Two readings, and the second is the one that makes it a demonstration rather than an
+    argument:
+
+    1. over the WHOLE population, a bumped generator's keys intersect the committed floor
+       in nothing -- so there is no partial-hit story in which the gate stays green;
+    2. over :data:`BOTH_WAYS`, the gate's own reading (:func:`committed_misses`) returns
+       EMPTY at the live version and returns a MISS FOR EVERY ONE of those pairs under the
+       bump, with an unexplained one among them.  That second return value is the thing the
+       gate asserts is empty, so this is the gate's assertion failing and not a proxy for
+       it.
+
+    The unexplained half is ONE pair rather than all of them, and that is the reading
+    :func:`committed_misses` is built to give: it stops at the first counterexample,
+    because one pair that would have produced an entry already settles the claim and
+    explaining the rest after a bump is the cold run the gate exists to report rather than
+    to perform.
+
+    A sample for the second, and it says so: :data:`BOTH_WAYS`' own comment states what it
+    covers and why a count is not what is wanted.  The first reading is over the whole
+    population, because keys are cheap.
+    """
+    live = live_keys()
+    floor = corpus_module.FLOOR.keys()
+    held = claimed(
+        "graded pairs the committed floor answers", {n for n, k in live.items() if k in floor}
+    )
+    #: :data:`BOTH_WAYS` INTERSECTED with what the floor answers, and the member that
+    #: drops out says why the intersection is taken rather than asserted away:
+    #: ``core/reference-renderer.json#`` is the bundle's one genuinely undrawable position
+    #: (``harness.undrawable_formats``' literal-host reading), so the floor holds nothing
+    #: for it and nothing CAN be shown red about it.  Named here, so the sample this test
+    #: ranges over is a set with members rather than whatever is left.
+    sample = claimed("sampled pairs the committed floor answers", set(BOTH_WAYS) & held)
+    assert committed_misses(sample, live) == ({}, {}), "the sample is not green to begin with"
+
+    with mock.patch.object(harness, "_DRAW_VERSION", harness._DRAW_VERSION + " +bumped"):
+        bumped = live_keys()
+    assert set(bumped) == set(live), "the bump moved the population, not the keys"
+    assert set(bumped.values()) & floor == set(), (
+        "a bumped generator still hits the committed floor: the version is not in the key"
+    )
+    missing, unexplained = committed_misses(sample, bumped)
+
+    assert set(missing) == sample, sorted(sample - set(missing))
+    assert unexplained, "the gate's assertion would still pass under a generator bump"
+    assert set(unexplained) <= sample, sorted(set(unexplained) - sample)
+
+
+def test_the_floor_answers_before_the_cache_and_only_the_cache_is_written(
+    tmp_path: Path,
+) -> None:
+    """``corpus.Layered``'s two rules, each one shown to be the rule it claims to be.
+
+    **Read order is not a performance detail here.**  The two stores are addressed by one
+    key, so a key they both hold is a question they both answer -- but the draw is not
+    reproducible (``corpus_key``'s docstring measures it), so the two answers can be
+    different instances of the same question.  Which store answers therefore decides which
+    witness the suite grades, and committing the corpus is only worth anything if that is
+    the committed one.  So the floor is given the entry a reader of the tree would see and
+    the cache a different one, and the floor's is what comes back.
+
+    **And the write goes to the cache**, which is what keeps a suite run from dirtying the
+    tree: the floor is byte-identical afterwards and the new key is in the cache alone.
+    """
+    floor, cache = corpus_module.Store(tmp_path / "floor"), corpus_module.Store(tmp_path / "cache")
+    store = corpus_module.Layered(floor, cache)
+    key = "f" * 64
+    floor.put(key, [{"committed": True}])
+    cache.put(key, [{"committed": False}])
+    assert store.get(key) == [{"committed": True}], "the cache answered over the floor"
+
+    store.put("e" * 64, [{"drawn": True}])
+    assert floor.keys() == {key}, "a run wrote the committed floor"
+    assert cache.keys() == {key, "e" * 64}
+    # And a key only the cache holds is still answered: that is what the cache is for.
+    assert store.get("e" * 64) == [{"drawn": True}]
+
+
+def test_a_committed_entry_the_document_refuses_is_not_repaired_by_the_cache() -> None:
+    """**Why a committed entry cannot pass quietly when it is wrong.**
+
+    The key says "this is the same question"; ``harness.corpus_defect`` says "the document
+    still accepts this", and neither replaces the other -- which is the clause that makes a
+    corpus in the tree safe rather than merely cheap.  The composition is new with the
+    floor and so is graded here: the floor answers, the DOCUMENT refuses the answer, and
+    the pair is ``corpus_rejected`` -- with a correct entry sitting in the cache the whole
+    time.
+
+    A fall-through to the cache on a refused floor entry is the one repair that would make
+    a stale commit invisible, so it is asserted absent rather than assumed: the verdict is
+    the rejection, not the cache's instance.
+    """
+    key = corpus_key(DOC, examples=1, custom_formats={})
+    floor, cache = Held({key: [{"a": "x"}]}), Held({key: [{"a": "x", "b": 1}]})
+    res = check_accepts(
+        DOC,
+        accept_of(Faithful),
+        examples=1,
+        corpus=corpus_module.Layered(floor, cache),  # type: ignore[arg-type]
+        identity=DOC,
+    )
+    assert res.outcome == "corpus_rejected", res.outcome
+    assert res.examples == 0
+    assert "refuses held instance 0 on required" in res.detail, res.detail
