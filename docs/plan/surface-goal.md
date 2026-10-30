@@ -39,6 +39,24 @@ table over its internals; it would be a number nobody can defend.
 **Compare the PUBLIC surface**, which is enumerable: what the package exports and what an
 application imports. That is the set a migration has to satisfy.
 
+**A MISSING COUNTERPART IS A QUESTION, NEVER AN INSTRUCTION TO ADD A CLASS (decided 2026-10-30).**
+This is the rule the whole cross-check hangs on, and getting it wrong turns the exercise into
+copying a thing we rewrote because it was wrong. Upstream is not the specification. The schema is.
+So an upstream name with no class of ours is **unresolved until it carries one of two verdicts**:
+
+- **WE MISSED SOMETHING.** A schema node exists that we do not represent, or represent as part of
+  another class. This is the only verdict that produces compiler work, and it is a real defect:
+  name the document and the pointer, and the fix is in the walk.
+- **THEY EMIT A CLASS THAT SHOULD NOT EXIST.** Three shapes, and the verdict must say which: two
+  of their classes carry the same schema node (a duplicate); the class is not schema-derived at
+  all but belongs to one of their hand-written ergonomic, eager, forward-compat, partial, legacy
+  or POC-alias layers; or it comes from a bundle version that is not 3.2. None of these is work
+  for us — the first two are findings against them, and the third is outside the population.
+
+Neither verdict may be reached by reading the two class definitions side by side. **Name the
+schema node, or say there isn't one.** A count of unmatched names with no verdicts attached is not
+a result, and "upstream has it so we should too" is the specific mistake this rule exists to stop.
+
 And parity is **one-directional**. Every name upstream exposes needs a counterpart in ours.
 The reverse is not required: upstream duplicates classes and is believed wrong about unions, so a
 smaller count on our side is expected and a surplus on theirs is a candidate finding against them.
