@@ -155,8 +155,8 @@ def _suffixed(chain: tuple[str, ...], suffix: str) -> tuple[str, ...]:
 
     §4 names three positions off their container -- ``<Property>Item`` for an element,
     ``<Property>Value`` for a mapping value, ``<Base><Const>`` for a pinned branch -- and
-    each of the three is ONE segment, because ``Item``, ``Value`` and ``True`` name no
-    position on their own: a collision between two elements has to lengthen past the
+    each of the three is ONE segment, because ``Item``, ``Value`` and a pinned value name
+    no position on their own: a collision between two elements has to lengthen past the
     container to say anything at all.
 
     An empty chain is the position under a mapping's KEY, which derives no name
@@ -240,9 +240,11 @@ def spelling(chain: tuple[str, ...], depth: int) -> str:
     an import and none can lengthen past the grammar -- a ROOT and a titled BRANCH are
     chains of one.  So the spelling moves by the one character ``field_name`` moves it
     by, and it moves HERE rather than in :func:`class_name` because the question is
-    about the whole name: two of this tree's symbols end in a ``True`` segment and
-    neither is a keyword.  Two positions that collide after the suffix collide for
-    :func:`spell` to see, because this is the function it compares.
+    about the whole name: a segment is not a name, and whether the JOIN of a chain is a
+    keyword cannot be answered one segment at a time -- ``None`` arrives as a branch's
+    own ``title`` and as nothing else in this bundle, but a chain whose last segment is
+    innocuous can still spell one.  Two positions that collide after the suffix collide
+    for :func:`spell` to see, because this is the function it compares.
 
     Nothing is lost, because a class's identity is its ``__adcp_schema__`` pointer and
     not its symbol -- the difference from a FIELD, where the wire name is kept as an
@@ -308,7 +310,26 @@ class Value:
 
 @dataclass(frozen=True)
 class Entry:
-    """A ``definitions``/``$defs`` entry: ``<Root><Key>``, the root being the parent."""
+    """A ``definitions``/``$defs`` entry: ``<Key>``, with the ROOT as its one ancestor.
+
+    **The ``<Root>`` prefix was dropped on 2026-10-28** (§4 "Names"), for the sentence
+    the nested rule already states: the module path carries the document, so a nested
+    name does not repeat it.  ``core/verification-token-claims.json`` declares
+    ``VerificationTokenGradingProfile`` and the old rule spelled it
+    ``AgenticAdvertisingOrgVerificationTokenClaimsVerificationTokenGradingProfile`` --
+    75 characters in a module already named ``core/verification_token_claims.py``.
+
+    **A chain of TWO and not one, which is the whole of where the prefix went.**  The
+    root is still a segment, so §4's collision rule can SPEND it where two entries of
+    one module need it (:func:`spell`) -- "the prefix is what the collision rule spends
+    ..., not what every entry pays up front".  Written as one joined segment the prefix
+    would be unspendable and an entry colliding with the root would have nothing to
+    lengthen by.
+
+    This is a function of the ONE document and carries no dependency on a sibling set,
+    so it is insertion-stable -- unlike the branch rule tried and reverted at
+    ``64d0f897``.
+    """
 
     key: str
 
@@ -356,6 +377,12 @@ class Branch:
     #: heavily identified branches of the bundle to their index.  A tuple and not a scalar
     #: because the rung reads them all: one field, meaning "the pins this branch states",
     #: where a scalar beside a count would be two readings of one keyword.
+    #:
+    #: **Every pin the branch states, booleans included**, and which of them IDENTIFY it
+    #: is :func:`identifying_pins`' reading at the rung.  A ``bool`` filtered out here
+    #: would make the field mean "the pins that name something", which is a derivation
+    #: wearing a walk's record -- and §4's clause is about what the RUNG does with a pin,
+    #: not about which pins the document states.
     pins: tuple[Any, ...] = ()
     #: Its ``required`` set, as the document lists it.
     required: tuple[str, ...] = ()
@@ -404,6 +431,42 @@ Hop = Root | Property | Item | Value | Entry | Branch | Unnamed
 # --------------------------------------------------------------------------- #
 # §4's branch rules
 # --------------------------------------------------------------------------- #
+#: §4's boolean-pin clause, in the section's own terms.  QUOTED by the check that grades
+#: it (``tests/test_names_collision.py``), so the sentence the code states and the
+#: sentence a check reports against are one string.
+A_BOOLEAN_PIN_NAMES_NOTHING = (
+    "a boolean pin contributes no segment, because true names nothing: a pin identifies "
+    "a branch by its VALUE, and a boolean's two values are the same two for every "
+    "property in the bundle.  It is not a carve-out from the key-order rule -- it is the "
+    "same sentence the section states for a branch, that true on both branches names "
+    "neither, applied per PIN instead of per branch; so it subsumes the collision case, "
+    "and a branch whose pins are all boolean answers nothing at rung 2 and falls "
+    "through (section 4, decided 2026-10-29)"
+)
+
+
+def identifying_pins(pins: tuple[Any, ...]) -> tuple[Any, ...]:
+    """The pins of ``pins`` that IDENTIFY a branch: every one that is not a boolean.
+
+    :data:`A_BOOLEAN_PIN_NAMES_NOTHING` is the rule.  Measured over bundle 3.2: eight
+    branches pin a ``true``, and reading every pin appended a segment identifying
+    nothing -- four of them pin something identifying beside it
+    (``PackageSignalTargetingBinary`` became ``PackageSignalTargetingBinaryTrue``) and
+    four pin nothing else, so rung 2 answered ``…True`` where rung 3's ``required`` set
+    names the property whose PRESENCE is what identifies them.
+
+    ``bool`` is tested before any other type would be, which matters because
+    ``isinstance(True, int)`` is true in Python: the JSON value ``true`` parses to
+    ``True`` and nothing else in a document's ``const`` is a ``bool``, so this is a test
+    on the document's own two values and not on a numeric coincidence.
+
+    A tuple and not a filter on the caller's side, so the reading that "a boolean names
+    nothing" is one function with one name: :func:`branch_rungs` asks for the pins that
+    identify and never spells the test.
+    """
+    return tuple(p for p in pins if not isinstance(p, bool))
+
+
 def branch_identity(hop: Branch, parent: tuple[str, ...]) -> tuple[str, ...] | None:
     """§4 "Names"'s four branch rules, in order, as the branch's own SEGMENTS, or
     ``None`` where none of them applies.
@@ -458,12 +521,18 @@ def branch_rungs(hop: Branch, parent: tuple[str, ...]) -> tuple[tuple[str, ...],
     with nothing to lengthen by -- so it is a second axis and :func:`spell_the_rungs`
     walks it.
 
-    **Rung 2 is EVERY pin, in the document's own key order** (:attr:`Branch.pins`).  A
-    branch pinning ``country: FR`` and ``system: code_postal`` is ``FRCodePostal``; one
-    pinning ``country: US`` alone is ``US``, because one pin in key order is that one pin.
-    The order is the DOCUMENT's and never sorted: sorting would make a public symbol a
-    function of spelling, which is the reading ``_const_pin`` declined for and the reason
-    it answered nothing at all for such a branch.
+    **Rung 2 is EVERY pin that IDENTIFIES, in the document's own key order**
+    (:attr:`Branch.pins`, :func:`identifying_pins`).  A branch pinning ``country: FR``
+    and ``system: code_postal`` is ``FRCodePostal``; one pinning ``country: US`` alone is
+    ``US``, because one pin in key order is that one pin.  The order is the DOCUMENT's and
+    never sorted: sorting would make a public symbol a function of spelling, which is the
+    reading ``_const_pin`` declined for and the reason it answered nothing at all for
+    such a branch.
+
+    **A BOOLEAN pin contributes no segment** (:data:`A_BOOLEAN_PIN_NAMES_NOTHING`), so a
+    branch whose pins are all boolean answers nothing here and falls to rung 3 -- which
+    is what ``trusted-match/provider-registration.json``'s two branches need, reached now
+    by one rule rather than by the collision clause below.
 
     **Which rungs a ROOT has: exactly one.**  A root is not a branch and never reaches
     here -- :func:`segments` answers it from :class:`Root` -- so its ladder is the single
@@ -474,8 +543,9 @@ def branch_rungs(hop: Branch, parent: tuple[str, ...]) -> tuple[tuple[str, ...],
     out: list[tuple[str, ...]] = []
     if hop.title:
         out.append((class_name(hop.title),))
-    if hop.pins:
-        out.append(_suffixed(parent, "".join(class_name(str(p)) for p in hop.pins)))
+    identifying = identifying_pins(hop.pins)
+    if identifying:
+        out.append(_suffixed(parent, "".join(class_name(str(p)) for p in identifying)))
     if hop.required:
         out.append(
             _suffixed(parent, "".join(class_name(str(k)) for k in sorted(hop.required)))
@@ -765,10 +835,10 @@ def segments(
 
     Three positions are a segment rather than a name of their own, and :func:`_suffixed`
     is where: an element, a mapping value and a pinned branch are each spelled onto the
-    segment their container is spelled with.  A ``definitions`` entry is one segment too,
-    because §4 names it ``<Root><Key>`` -- the root is part of the name the section
-    states, exactly as the property is part of ``<Property>Item``.  A branch TITLE names
-    itself, so it starts a chain and its ancestors are no part of it.
+    segment their container is spelled with.  A ``definitions`` entry is NOT one of them
+    (2026-10-28): §4 names it ``<Key>`` and the root is its ANCESTOR segment, so the
+    prefix is there for the collision rule to spend and is not paid up front.  A branch
+    TITLE names itself, so it starts a chain and its ancestors are no part of it.
 
     **An INDEX is a fact of the node's own position and so it is a fact of its path**, and
     that is why §4's fourth branch rung does not cost this function its first paragraph: a
@@ -793,7 +863,7 @@ def segments(
         root = segments("", hops, seen | {pointer})
         if isinstance(root, Refusal):
             return root
-        return ("".join(root) + class_name(hop.key),)
+        return (*root, class_name(hop.key))
     parent = segments(hop.parent, hops, seen | {pointer})
     if isinstance(parent, Refusal):
         return parent
