@@ -33,12 +33,21 @@ the moment `Refusal` leaves the seam, which is how the collapse finds them all.
 
 ## B. Step 8's residue
 
-*"add `Rung` and `widens_to` to the cell and **retire `Effect.REFUSE`**"* — `keywords.py` still
-carries 21 references to it. Step 8's own correction explains why it survived: of 141 primary
-refusals exactly 1 sat on an `Effect.REFUSE` cell, so retiring it early would have crashed the run
-on 140 documents. That constraint is gone — `refused` is 0.
+*"add `Rung` and `widens_to` to the cell and **retire `Effect.REFUSE`**"*. Step 8's own correction
+explains why it survived: of 141 primary refusals exactly 1 sat on an `Effect.REFUSE` cell, so
+retiring it early would have crashed the run on 140 documents. That constraint is gone — `refused`
+is 0.
 
-**Relocation.**
+Re-measured 2026-10-30, because the 21 references this row used to claim were a grep over prose:
+**9 reads by AST across 4 modules** — 1 of them the enum member's own definition at
+`keywords.py:136`, 4 more in `keywords.py`, and 4 outside it (`bundle.py` 1, `compiler.py` 3). And
+**1 row of 98 in the table carries a REFUSE cell**: `errorMessage`, at every position. So the live
+population of the member is one `ajv-errors` extension, which `rebuild-plan.md` §7 decided on
+2026-10-26 becomes §6's — half of that decision landed and this is the other half.
+
+**Relocation**, and the gate is a reported-drop reading rather than a reference count: the one
+portable document carrying the keyword carries it twice, at `/allOf/1` and at `/then`, and only the
+first is reported today.
 
 ## C. The waves — not started
 
@@ -84,10 +93,22 @@ Observable in the artifact, which is what makes these checkable without assertin
 
 ## E. §10's report
 
-§14 step 8 lists *"the report's three figures"* and §10 retires the `emitted/refused (deferred,
-verdict)` pair. `./check` and `__main__` still print the pair; the four defect counts are not
-printed by the run and live in the verifier and tests. `__main__.py:135-148` argues for keeping
-the pair — **code and document disagree, and neither was changed.** A decision for the owner.
+§14 step 8 lists *"the report's three figures"* and §10 retired the `emitted/refused (deferred,
+verdict)` pair, while `./check` and `__main__` kept printing it — code and document disagreeing,
+with neither changed.
+
+**Decided 2026-10-30: §10's retirement is reversed and the pair stays.** `__main__.py` had the
+better argument and made it first. The pair is not a partition and never was; it is the kind
+split, and the kind is what names who owns a refusal. `emitted N / population N` moves one number
+when a document stops emitting and never says which kind moved — the confusion that let
+`emitted + refused == 1054` read green over 385 documents waiting on unwritten rows.
+
+What remains here is a row, not a decision: **the run prints none of the four defect counts**, so
+a reader infers the pin from a silence §10 forbids, and **the pin is not zero.** `./check
+--compare` reads the comparison's three over the whole population in 33 s: paired 2,793 (compared
+2,789, document unreadable 4); red 155 pairs in 75 documents carrying 1,086 facts — missing 718,
+differs 43, added 325; 147 pairs where the model is wider than its document, 8 where it adds a
+fact. Those belong beside `emitted` in the run rather than behind a flag.
 
 ## F. The instruments
 

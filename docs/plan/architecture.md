@@ -1035,16 +1035,36 @@ This makes one `__init__.py` carry content where the others are markers. That is
 it is a smaller one than an unimportable module: `emit.relative_module`'s hop arithmetic has to
 agree with it, which is a check a test can hold.
 
-**What the report prints, 2026-10-26.** It printed `emitted N / refused M (deferred …, verdict
-…)`, and the directive retires that pair: `M` goes to zero over this bundle and the pair stops
-partitioning anything. Three figures replace it, each over its own denominator and never summed,
-by the semantics document's §2:
+**What the report prints, 2026-10-26, with the pair's retirement REVERSED 2026-10-30.** It
+printed `emitted N / refused M (deferred …, verdict …)`, and the 2026-10-26 reading retired that
+pair on the ground that "`M` goes to zero over this bundle and the pair stops partitioning
+anything". `M` did go to zero. **The ground was wrong anyway, and `codegen/__main__.py` said so
+before this section did: the pair is not a partition and was never doing that work — it is the
+KIND split, and the kind is what names who owns a refusal.** `emitted N / population N` moves
+one number when a document stops emitting and says nothing about which kind moved, so a reader
+cannot tell a document the bundle broke from a row nobody has written — which is the confusion
+that let `emitted + refused == 1054` read green over 385 documents waiting on unwritten rows. The
+delivery report reads `emitted`, `refused` with its deferred/verdict split, `accounted`, and
+primary/chained off `Refusal.kind`, never off a sentence and never summed; the replacement drops
+the split, and dropping it narrows the report.
 
-- **`emitted N / population N`** — a partition. Its complement is §4's one refusal, printed with
-  its documents when it has any.
-- **the defect counts** — *missing*, *differs*, *added*, *over-declared* — each pinned at zero,
-  printed whether or not they are zero so a reader sees the pin being met rather than inferring
-  it from silence.
+So the figures are these, each over its own denominator and never summed, by the semantics
+document's §2:
+
+- **`emitted N / refused M (deferred …, verdict …)`, with `accounted`** — kept, for the reason
+  above. `population` is not printed beside it: `emitted` and `refused` already carry it, and a
+  third number next to them invites exactly the sum the protocol forbids.
+- **the defect counts** — *missing*, *differs*, *added* from the comparison, *over-declared* from
+  §8's declaration coverage — printed whether or not they are zero, so a reader sees the pin
+  being met rather than inferring it from silence. **Neither half of that holds today, and both
+  are rows rather than decisions.** The run prints none of the four: `codegen/__main__.py` names
+  them in a comment and nowhere else, so the reader infers the pin from the silence this bullet
+  forbids. And the pin is not zero. `./check --compare` reads the comparison's three over the
+  whole population in 33 s: **paired 2,793 (compared 2,789, document unreadable 4); red 155 pairs
+  in 75 documents carrying 1,086 facts — missing 718, differs 43, added 325**, whose outcomes are
+  147 pairs where the model is wider than its document and 8 where it adds a fact. That is the
+  honest floor recorded with its shapes, and it belongs beside `emitted` in the run rather than
+  behind a flag.
 - **`approximated K facts in D documents`**, split by kind (WIDENED / UNDERDETERMINED) and by
   attribution (ours / upstream), with the upstream half listing its issues. `K` and `D` are
   different counts over different denominators and the report never adds them. Neither is
