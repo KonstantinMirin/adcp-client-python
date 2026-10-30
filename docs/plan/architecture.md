@@ -148,6 +148,28 @@ nobody can audit against the table that was supposed to hold it.
 
 ---
 
+### The suite's scratch goes on DISK, not in RAM (decided 2026-10-30)
+
+`/tmp` on this machine is a **63 GB tmpfs — it is RAM.** The suite materialises a fresh package per
+`tmp_path`, the tree is 841 MB of which 836 MB is the resolved JSON read through
+`importlib.resources`, and at ten workers that lands in memory. Measured during a full run:
+available RAM reached **3.1 GB of 125**, and the two earlier attempts at the same measurement died
+of worker OOM rather than of anything in the code.
+
+**So `TMPDIR` and pytest's `--basetemp` point at disk.** The scratch is large, write-once and read
+back by a child process; none of that wants a memory-backed filesystem, and the one property RAM
+buys — speed — is irrelevant beside a run that cannot finish.
+
+Two readings go with it, and both were measured rather than assumed:
+
+* **`pyproject.toml`'s memory paragraph is stale by an order of magnitude.** It records a `-n 24`
+  peak of 10.35 GB across 25 processes with a 1,211 MB worst worker. At `-n 10` over the
+  2,793-pair tree the same measurement is **73.4 GB summed, worst worker 13.7 GB.**
+* **A finished lane's scratch is not free.** Four orphaned directories from merged, torn-down lanes
+  held 5 GB of tmpfs with zero open handles. Scratch under a memory-backed path is a resource the
+  orchestrator owns, and the discipline that applies to a worktree applies to it: check that
+  nothing holds it, then remove it.
+
 ### The subject of grading is a FRESH EMIT, never the committed tree (decided 2026-10-29)
 
 The schema is pinned and the drawn instances are content-addressed, so what a class is graded
