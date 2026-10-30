@@ -500,6 +500,11 @@ def test_the_accepts_key_does_not_move_when_a_position_is_available() -> None:
     files ``tests/accepts-corpus`` holds are what the accepts half replays from, so a
     sample of graded pairs is asked for its key and the floor is asked whether it holds it.
     A literal would pin this test's own arithmetic instead.
+
+    The set is ``claimed`` because it is derived from the graded population: a derivation
+    that selected nothing would answer no pair, and "no pair is stranded" would then read
+    green on an empty population -- §8's rule, and the reason the sample below is drawn
+    from the named set rather than from whatever the derivation happened to yield first.
     """
     import test_emit
 
@@ -509,14 +514,15 @@ def test_the_accepts_key_does_not_move_when_a_position_is_available() -> None:
         )
         for g in test_emit.graded()
     }
-    answered = {name for name, key in keyed.items() if key in corpus_module.FLOOR.keys()}
+    pairs = claimed("graded pairs asked for an accepts key", set(keyed))
+    answered = {name for name in pairs if keyed[name] in corpus_module.FLOOR.keys()}
     assert len(answered) > 2000, (
-        f"only {len(answered)} of {len(keyed)} graded pairs are answered by the committed "
+        f"only {len(answered)} of {len(pairs)} graded pairs are answered by the committed "
         "accepts floor; the key moved and every entry is stranded"
     )
     # And a position really does move it, so the clause above is not green because the
     # argument is ignored.
-    sample = next(iter(keyed))
+    sample = min(pairs)
     identity = {"document": sample.split("#")[0], "pointer": "#"}
     assert corpus_key(identity, examples=1) != corpus_key(
         identity, examples=1, position=("demand", [])
