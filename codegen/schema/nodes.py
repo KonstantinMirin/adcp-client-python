@@ -57,8 +57,10 @@ document censuses and the reference inliner already read -- and the test asserts
 measured set EQUALS :data:`RAW_CARRIERS`'s keys.  Equality in both directions: a carrier
 under ANY name is caught, and a declared carrier that stops carrying is caught too, so
 the clause cannot go green by over-deletion.  The guard used to grep for the field name
-``raw``, and under that reading ``Union.siblings`` -- four of the document's own
-subtrees, for no reader at all -- was invisible to it (``adcp-client-python-3be.9``).
+``raw``, and under that reading a ``Union`` field holding four of the document's own
+subtrees for no reader at all was invisible to it -- that field is deleted, not excepted,
+because nothing read it and every one of its four keys has a typed carrier
+(``adcp-client-python-3be.9``).
 
 ``tests/test_import_rule.py`` is where "nothing else reads a mapping" is held.
 
@@ -326,8 +328,8 @@ class Composition(Base):
 #: in the order a root carrying them is REPORTED on.  §4 of the semantics document: "every
 #: keyword beside the combinator compiles onto the base, and every branch inherits it."
 #:
-#: Declared here, beside the field it fills (:attr:`Union.siblings`), because it was
-#: written twice -- once in ``schema/parse.py``'s comprehension and once as
+#: Declared here, beside the kind whose root states them, because it was
+#: written twice -- once in ``schema/parse.py`` and once as
 #: ``lower.union.ROOT_CONJUNCTS`` -- and the two had to agree about the ORDER as well as
 #: the membership (``adcp-client-python-3be.8``).  The order is load-bearing and
 #: ``ROOT_CONJUNCTS``' own comment says why: "FIRST in the tuple, so the keyword each of

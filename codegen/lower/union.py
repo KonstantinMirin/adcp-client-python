@@ -228,8 +228,8 @@ ROOT_CLAIMS = frozenset({"type", "properties", "required", "additionalProperties
 #: ``missing``, so a red gate rather than a named refusal.
 #:
 #: **The four names are :data:`nodes.ROOT_SIBLINGS` and are read, not restated**
-#: (``adcp-client-python-3be.8``): ``schema/parse.py`` collects exactly these four into
-#: :attr:`nodes.Union.siblings`, in exactly this order, so a second tuple here was one
+#: (``adcp-client-python-3be.8``): the parser and this module read exactly these four, in
+#: exactly this order, so a second tuple here was one
 #: shape written twice -- and the ORDER is the half a membership check would not have
 #: caught, since it is what decides the keyword each of these documents is reported on.
 ROOT_CONJUNCTS = nodes.ROOT_SIBLINGS
