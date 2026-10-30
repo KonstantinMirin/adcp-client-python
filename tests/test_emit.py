@@ -1038,9 +1038,8 @@ def test_no_instrument_is_admitted_only_where_a_measured_position_explains_it() 
 #: it counted hypothesis draws across 27,791 step sites and seven readings of it on
 #: indistinguishable trees spread over 0.4%.  There is one draw per pair now, so every
 #: figure here is a function of (bundle, emitted tree) and reproduces exactly.
-#: 1055 -> 1085 at ``salesagent-j3k2l.28``: the three refusals section 6's "every fold
-#: applies to both sides" names are gone, so 14 more documents emit and bring their own
-#: nested pairs.  Re-measured, not derived from the document count: a document carries
+#: 1055 -> 1085 at ``salesagent-j3k2l.28``: three refusals are gone, so 14 more
+#: documents emit and bring their own nested pairs.  Re-measured, not derived from the document count: a document carries
 #: between one and a dozen pairs.
 #: 1085 -> 1079 at ``salesagent-j3k2l.38``: D3's content dedup collapses 10 nodes, and
 #: the 6 of them that are CLASSES are 6 pairs that no longer exist.  The other 4 are

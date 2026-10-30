@@ -689,9 +689,9 @@ def test_no_document_in_the_bundle_reaches_the_refusal_any_more() -> None:
     # 686 -> 691 at ``salesagent-j3k2l.40``: a union BRANCH that composes is lowered
     # by ``compiler.lower_composition`` now, so 3 of the 10 documents waiting on the
     # shared conjunct reader emit and 2 chained onto them follow.
-    # 691 -> 705 at ``salesagent-j3k2l.28``: the three refusals section 6's "every
-    # fold applies to both sides" names are gone -- two whose stated reason was a
-    # claim about a harness ``.32``/``.33`` had already changed, and one whose
+    # 691 -> 705 at ``salesagent-j3k2l.28``: three refusals are gone -- two whose
+    # stated reason was a claim about a harness ``.32``/``.33`` had already changed,
+    # and one whose
     # hazard no emitter produces -- so the 9 + 8 + 3 documents they held emit, less
     # the 6 that refuse on a second keyword once the first refusal is lifted.
     # 705 -> 716 at ``salesagent-j3k2l.21``, in two steps of one row: a union root whose
