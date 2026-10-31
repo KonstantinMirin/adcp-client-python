@@ -13,7 +13,7 @@ from .geo_place_system import GeographicPlaceIdentifierSystem
 from .geo_place_type import GeographicPlaceType
 
 
-class GeographicPlaceRequirementCatalogRequirement(AdCPBaseModel):
+class CatalogRequirement(AdCPBaseModel):
     """
     Required country/type pairs and optional exact catalog versions for one identifier system. Country keys prevent a false Cartesian product between countries and place types.
     """
@@ -36,7 +36,7 @@ class GeographicPlaceRequirement(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/geo-place-requirement.json', pointer='#')
-    systems: Annotated[dict[GeographicPlaceIdentifierSystem, GeographicPlaceRequirementCatalogRequirement], Field(min_length=1)]
+    systems: Annotated[dict[GeographicPlaceIdentifierSystem, CatalogRequirement], Field(min_length=1)]
 
 
-__all__ = ["GeographicPlaceRequirement", "GeographicPlaceRequirementCatalogRequirement"]
+__all__ = ["GeographicPlaceRequirement", "CatalogRequirement"]

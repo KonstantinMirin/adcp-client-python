@@ -38,7 +38,7 @@ class Source(AdCPBaseModel):
     query_semantics: Annotated[dict[str, Any], Field(description='Canonical JSON object containing every source option that can change the numbers, including attribution settings, action-report-time, filters, and mapping version.')]
 
 
-class ReportingReportDefinitionReportCalendarTimezoneBasis(StrEnum):
+class ReportCalendarTimezoneBasis(StrEnum):
     """
     Calendar used by source query semantics. schedule_timezone means the installed reporting schedule supplies the resolved IANA timezone; configured_timezone pins one IANA timezone directly in this definition.
     """
@@ -57,7 +57,7 @@ class Calendar(AdCPBaseModel):
         ConditionalRequired((Match('timezone_basis', True, ('configured_timezone',)),), require=('timezone',), forbid=()),
         NegatedConditional((Match('timezone_basis', True, ('configured_timezone',)),), require=(), forbid=('timezone',)),
     )
-    timezone_basis: ReportingReportDefinitionReportCalendarTimezoneBasis
+    timezone_basis: ReportCalendarTimezoneBasis
     timezone: StrMinLen1MaxLen255 | None = None
 
 
@@ -148,4 +148,4 @@ class ReportingReportDefinition(AdCPBaseModel):
     finality_policies: Annotated[list[FinalityPoliciesItemSourceFinal | FinalityPoliciesItemContractualCutoff | FinalityPoliciesItemStabilized], Field(min_length=1)]
 
 
-__all__ = ["ReportingReportDefinition", "ReportingReportDefinitionReportCalendarTimezoneBasis"]
+__all__ = ["ReportingReportDefinition", "ReportCalendarTimezoneBasis"]

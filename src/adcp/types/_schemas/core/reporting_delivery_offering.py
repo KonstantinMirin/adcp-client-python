@@ -11,15 +11,15 @@ from adcp.types._runtime import ConditionalRequired, Dependencies, Match, Rule, 
 from adcp.types.constraints import HttpUrl, StrMatching32F5291C, StrMatching5E987613, StrMinLen1MaxLen128, StrMinLen1MaxLen128MatchingB577C746, StrMinLen1MaxLen255Matching67860854, StrMinLen1MaxLen512, StrMinLen1MaxLen64, StrMinLen1MaxLen64Matching5CDAE669
 
 from ..enums.reporting_finality import ReportingFinality
-from .reporting_canonicalization_contract import ReportingCanonicalizationContractReportingPrimaryKey
-from .reporting_dataset_share_destination import ReportingDatasetShareDestinationReportingCloud
-from .reporting_delivery_method import ReportingDeliveryMethodReportingOrchestration
+from .reporting_canonicalization_contract import ReportingPrimaryKey
+from .reporting_dataset_share_destination import ReportingCloud
+from .reporting_delivery_method import ReportingOrchestration
 from .reporting_reconciliation_mode import ReportingReconciliationMode
-from .reporting_resource import ReportingResourceReportingReaderCompatibilityItem
+from .reporting_resource import ReportingReaderCompatibilityItem
 from .reporting_schedule_offering import ReportingScheduleOffering
 
 
-class ReportingDeliveryOfferingReportingFeedPurpose(StrEnum):
+class ReportingFeedPurpose(StrEnum):
     """
     Operational use of an independently scheduled and reconciled feed. pacing is the fast snapshot path; billing requires official revisions and consumer reconciliation. Event-level exposure is intentionally deferred until a privacy and authorization contract exists.
     """
@@ -46,7 +46,7 @@ class ReportingProfile(AdCPBaseModel):
     schema_dialect: Annotated[Literal['https://json-schema.org/draft/2020-12/schema'], Field(description="Closed SDK-bundled dialect. The SDK never resolves a metaschema over the network, and the fetched document's $schema MUST equal this value.")]
     schema_ref_policy: Annotated[Literal['local_fragment_only'], Field(description='The fetched schema is a self-contained bundle. Every $ref is a local # fragment; remote and relative-document dependencies are forbidden.')]
     grain: Annotated[StrMinLen1MaxLen128, Field(description='Stable description of what one logical row represents.')]
-    primary_keys: Annotated[list[ReportingCanonicalizationContractReportingPrimaryKey], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
+    primary_keys: Annotated[list[ReportingPrimaryKey], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
     canonicalization_id: Annotated[StrMinLen1MaxLen128 | None, Field(description='Rules for stable logical row ordering, value encoding, nulls, and schema used by canonical_content_digest.')] = None
     canonicalization_contract_version: Literal['1.0'] | None = None
     canonicalization_media_type: Literal['application/vnd.adcp.reporting-canonicalization+json'] | None = None
@@ -54,7 +54,7 @@ class ReportingProfile(AdCPBaseModel):
     canonicalization_sha256: Annotated[StrMatching5E987613 | None, Field(description='Digest of the exact canonicalization contract identified by canonicalization_id.')] = None
 
 
-class ReportingDeliveryOfferingReportingDeliveryPattern(StrEnum):
+class ReportingDeliveryPattern(StrEnum):
     FILE_TRANSFER = 'file_transfer'
     DATASET_SHARE = 'dataset_share'
     WAREHOUSE_MATERIALIZATION = 'warehouse_materialization'
@@ -98,7 +98,7 @@ class ProducerIdentity(AdCPBaseModel):
     )
     provider: ProducerIdentityProvider
     identity: StrMinLen1MaxLen512
-    cloud: ReportingDatasetShareDestinationReportingCloud | None = None
+    cloud: ReportingCloud | None = None
     region: StrMinLen1MaxLen128 | None = None
 
 
@@ -117,15 +117,15 @@ class Method(AdCPBaseModel):
         ConditionalRequired((Match('pattern', True, ('file_transfer',)),), require=('format',), forbid=()),
         ConditionalRequired((Match('pattern', True, ('dataset_share',)),), require=('access_mode',), forbid=()),
     )
-    pattern: ReportingDeliveryOfferingReportingDeliveryPattern
+    pattern: ReportingDeliveryPattern
     transport: StrMinLen1MaxLen64Matching5CDAE669
-    orchestration: ReportingDeliveryMethodReportingOrchestration
+    orchestration: ReportingOrchestration
     destination_modes: Annotated[list[DestinationModesItem], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
     provider: MethodProvider | None = None
     format: Format | None = None
     access_mode: StrMinLen1MaxLen64Matching5CDAE669 | None = None
     producer_identity: Annotated[ProducerIdentity | None, Field(description='Seller principal a buyer grants access to for this exact buyer-hosted destination offering.')] = None
-    reader_compatibility: Annotated[list[ReportingResourceReportingReaderCompatibilityItem] | None, Field(json_schema_extra={'uniqueItems': True})] = None
+    reader_compatibility: Annotated[list[ReportingReaderCompatibilityItem] | None, Field(json_schema_extra={'uniqueItems': True})] = None
 
 
 class ReportingDeliveryOffering(AdCPBaseModel):
@@ -141,7 +141,7 @@ class ReportingDeliveryOffering(AdCPBaseModel):
         ConditionalRequired((Match('reconciliation_mode', True, ('consumer_receipt',)),), require=('method',), forbid=()),
     )
     offering_id: StrMinLen1MaxLen128MatchingB577C746
-    feed_purpose: ReportingDeliveryOfferingReportingFeedPurpose
+    feed_purpose: ReportingFeedPurpose
     report_definition_id: Annotated[StrMinLen1MaxLen255Matching67860854, Field(description='Immutable semantic definition for metric, grain, attribution, action-report-time, timezone/calendar, source/API mapping, and restatement/finality policy. Configurations and revisions MUST echo this exact value.')]
     report_definition_uri: Annotated[HttpUrl, Field(description='Retrievable immutable reporting-report-definition.json document on the authenticated seller/provider or AdCP-registry origin.')]
     report_definition_sha256: Annotated[StrMatching5E987613, Field(description='Digest of the exact report-definition bytes. SDKs verify this before parsing and cache by digest.')]
@@ -152,4 +152,4 @@ class ReportingDeliveryOffering(AdCPBaseModel):
     method: Annotated[Method | None, Field(description='Managed delivery method for this offering. Omit for a Core (API-delivered) offering: rows flow through existing get_media_buy_delivery and reporting_webhook transports and no destination is involved. Present only when the seller advertises managed_delivery.')] = None
 
 
-__all__ = ["ReportingDeliveryOffering", "ReportingDeliveryOfferingReportingDeliveryPattern", "ReportingDeliveryOfferingReportingFeedPurpose"]
+__all__ = ["ReportingDeliveryOffering", "ReportingDeliveryPattern", "ReportingFeedPurpose"]

@@ -15,7 +15,7 @@ from ..core.context import ContextObject
 from ..core.error import Error
 from ..core.ext import ExtensionObject
 from ..core.protocol_envelope import ProtocolEnvelope
-from ..core.response_payload_jws_envelope import ResponsePayloadJWSEnvelope, ResponsePayloadJWSEnvelopeResponsePayload
+from ..core.response_payload_jws_envelope import ResponsePayload, ResponsePayloadJWSEnvelope
 from ..core.version_envelope import AdCPVersionEnvelope
 from .verification_status import VerificationStatus
 
@@ -74,10 +74,10 @@ class VerifyBrandClaimsResultError(AdCPBaseModel):
     error: Error
 
 
-VerifyBrandClaimsResponseBulkResultEntry = Annotated[VerifyBrandClaimsResultSuccess | VerifyBrandClaimsResultError, Field(description='One entry in `results[]`. Either a per-claim success (claim_type + status + optional details/context_note) or a per-claim error (error field only). Mirrors the single-target `verify_brand_claim` response success arm shape.')]
+ResultEntry = Annotated[VerifyBrandClaimsResultSuccess | VerifyBrandClaimsResultError, Field(description='One entry in `results[]`. Either a per-claim success (claim_type + status + optional details/context_note) or a per-claim error (error field only). Mirrors the single-target `verify_brand_claim` response success arm shape.')]
 
 
-class VerifyBrandClaimsResponseBulkSignedSuccessPayload(AdCPBaseModel):
+class SignedSuccessPayload(AdCPBaseModel):
     """
     Canonical bulk task-body success payload signed inside signed_response.payload.response. Excludes protocol/version envelope fields and signed_response itself.
     """
@@ -88,12 +88,12 @@ class VerifyBrandClaimsResponseBulkSignedSuccessPayload(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('errors',), ('signed_response',))),
     )
-    results: Annotated[list[VerifyBrandClaimsResponseBulkResultEntry], Field(min_length=1)]
+    results: Annotated[list[ResultEntry], Field(min_length=1)]
     context: ContextObject | None = None
     ext: ExtensionObject | None = None
 
 
-class Payload(ResponsePayloadJWSEnvelopeResponsePayload):
+class Payload(ResponsePayload):
     """
     Decoded signed payload. Signers compute the JWS payload bytes from the RFC 8785/JCS canonicalization of this object.
     """
@@ -102,10 +102,10 @@ class Payload(ResponsePayloadJWSEnvelopeResponsePayload):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/verify-brand-claims-response.json', pointer='#/definitions/signed_response/allOf/1/properties/payload')
     task: Annotated[Literal['verify_brand_claims'], Field(description='Designated task whose response payload is signed.')]
-    response: Annotated[VerifyBrandClaimsResponseBulkSignedSuccessPayload, Field(description='Canonical task-body success response payload being attested. Any unsigned task-body fields on the outer response, excluding signed_response and protocol/version envelope fields, MUST match this object.')]
+    response: Annotated[SignedSuccessPayload, Field(description='Canonical task-body success response payload being attested. Any unsigned task-body fields on the outer response, excluding signed_response and protocol/version envelope fields, MUST match this object.')]
 
 
-class VerifyBrandClaimsResponseBulkSignedResponse(ResponsePayloadJWSEnvelope):
+class SignedResponse(ResponsePayloadJWSEnvelope):
     """
     Decoded-payload JWS envelope for the closed designated-task response-signing profile. The protected member is the base64url-encoded JWS protected header; payload is the decoded signed payload that verifiers canonicalize with RFC 8785/JCS and base64url-encode before checking the ordinary JWS signature.
     """
@@ -124,9 +124,9 @@ class VerifyBrandClaimsSuccess(VerifyBrandClaimsResponseBulk):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('errors',),)),
     )
-    results: Annotated[list[VerifyBrandClaimsResponseBulkResultEntry], Field(description="Per-claim results, positionally aligned with the request's `claims[]`. Each entry is either a per-claim success (claim_type + status + optional details/context_note) or a per-claim error (error field only).", min_length=1)]
+    results: Annotated[list[ResultEntry], Field(description="Per-claim results, positionally aligned with the request's `claims[]`. Each entry is either a per-claim success (claim_type + status + optional details/context_note) or a per-claim error (error field only).", min_length=1)]
     context: ContextObject | None = None
-    signed_response: Annotated[VerifyBrandClaimsResponseBulkSignedResponse, Field(description='Payload-envelope JWS attesting the canonical bulk success response for verify_brand_claims. The signed payload response MUST match the unsigned task-body fields on this response, excluding signed_response and protocol/version envelope fields.')]
+    signed_response: Annotated[SignedResponse, Field(description='Payload-envelope JWS attesting the canonical bulk success response for verify_brand_claims. The signed payload response MUST match the unsigned task-body fields on this response, excluding signed_response and protocol/version envelope fields.')]
     ext: ExtensionObject | None = None
 
 
@@ -150,4 +150,4 @@ VerifyBrandClaimsResponseBulk._branch_models = (VerifyBrandClaimsSuccess, Verify
 VerifyBrandClaimsResponseBulk.model_rebuild(force=True)
 
 
-__all__ = ["VerifyBrandClaimsResponseBulk", "VerifyBrandClaimsResponseBulkResultEntry", "VerifyBrandClaimsResponseBulkSignedResponse", "VerifyBrandClaimsResponseBulkSignedSuccessPayload"]
+__all__ = ["VerifyBrandClaimsResponseBulk", "ResultEntry", "SignedResponse", "SignedSuccessPayload"]

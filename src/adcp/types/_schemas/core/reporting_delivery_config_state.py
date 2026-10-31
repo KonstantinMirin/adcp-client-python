@@ -14,7 +14,7 @@ from .reporting_delivery_config import ReportingDeliveryConfiguration
 from .reporting_status_issue import ReportingStatusIssue
 
 
-class ReportingDeliveryConfigurationStateReportingDeliveryConfigLifecycleState(StrEnum):
+class ReportingDeliveryConfigLifecycleState(StrEnum):
     PENDING_VALIDATION = 'pending_validation'
     PENDING_SETUP = 'pending_setup'
     READY = 'ready'
@@ -52,7 +52,7 @@ class ReportingDeliveryConfigurationState(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-delivery-config-state.json', pointer='#')
     configuration: ReportingDeliveryConfiguration
-    state: ReportingDeliveryConfigurationStateReportingDeliveryConfigLifecycleState
+    state: ReportingDeliveryConfigLifecycleState
     destination_ref: Annotated[StrMinLen1MaxLen255 | None, Field(description='Seller-issued immutable destination-generation reference. It is caller-scoped and reusable across separately authorized account configurations; it is not itself account authority or a bearer grant. Present when and only when the configuration selects a managed-delivery offering; a Core (API-delivered) configuration becomes ready with no destination at all.')] = None
     validated_at: AwareDatetime | None = None
     activated_at: AwareDatetime | None = None
@@ -64,4 +64,4 @@ class ReportingDeliveryConfigurationState(AdCPBaseModel):
     issues: Annotated[list[ReportingStatusIssue] | None, Field(min_length=1)] = None
 
 
-__all__ = ["ReportingDeliveryConfigurationState", "ReportingDeliveryConfigurationStateReportingDeliveryConfigLifecycleState"]
+__all__ = ["ReportingDeliveryConfigurationState", "ReportingDeliveryConfigLifecycleState"]

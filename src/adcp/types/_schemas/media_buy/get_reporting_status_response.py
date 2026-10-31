@@ -18,8 +18,8 @@ from ..core.protocol_envelope import ProtocolEnvelope
 from ..core.reporting_adjustment import ReportingAdjustment
 from ..core.reporting_adjustment_receipt import ReportingAdjustmentReceipt
 from ..core.reporting_consumer_status import ReportingConsumerStatus
-from ..core.reporting_coverage import ReportingCoverage, ReportingCoverageReportingMediaBuyId
-from ..core.reporting_delivery_offering import ReportingDeliveryOfferingReportingFeedPurpose
+from ..core.reporting_coverage import ReportingCoverage, ReportingMediaBuyId
+from ..core.reporting_delivery_offering import ReportingFeedPurpose
 from ..core.reporting_materialization import ReportingMaterialization
 from ..core.reporting_obligation import ReportingObligation
 from ..core.reporting_receipt import ReportingReceipt
@@ -28,7 +28,7 @@ from ..core.reporting_status_issue import ReportingStatusIssue
 from ..core.version_envelope import AdCPVersionEnvelope
 from ..enums.reporting_finality import ReportingFinality
 from ..enums.reporting_health import ReportingHealth
-from .get_reporting_status_request import GetReportingStatusRequestReportingStatusView
+from .get_reporting_status_request import ReportingStatusView
 
 
 class DeliveryConfigGenerationsItem(AdCPBaseModel):
@@ -38,7 +38,7 @@ class DeliveryConfigGenerationsItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-reporting-status-response.json', pointer='#/properties/scope/properties/delivery_config_generations/items')
     delivery_config_id: StrMinLen1MaxLen64
     delivery_config_version: IntMin1
-    feed_purpose: ReportingDeliveryOfferingReportingFeedPurpose
+    feed_purpose: ReportingFeedPurpose
 
 
 class Scope(AdCPBaseModel):
@@ -59,10 +59,10 @@ class Scope(AdCPBaseModel):
     period_start: AwareDatetime
     period_end: AwareDatetime
     scope_closed: Annotated[bool, Field(description='True only when no new obligation can enter this evaluated scope.')]
-    media_buy_ids: Annotated[list[ReportingCoverageReportingMediaBuyId] | None, Field(json_schema_extra={'uniqueItems': True})] = None
+    media_buy_ids: Annotated[list[ReportingMediaBuyId] | None, Field(json_schema_extra={'uniqueItems': True})] = None
     all_accessible_media_buys: Annotated[bool, Field(description='True when media_buy_ids was omitted and the scope covers all caller-accessible account buys.')]
     delivery_config_generations: Annotated[list[DeliveryConfigGenerationsItem], Field(description='Exact independently reconciled configuration generations in the denominator.', json_schema_extra={'uniqueItems': True})]
-    feed_purposes: Annotated[list[ReportingDeliveryOfferingReportingFeedPurpose], Field(json_schema_extra={'uniqueItems': True})]
+    feed_purposes: Annotated[list[ReportingFeedPurpose], Field(json_schema_extra={'uniqueItems': True})]
     finality: Annotated[list[ReportingFinality], Field(json_schema_extra={'uniqueItems': True})]
     ledger_retained_from: Annotated[AwareDatetime, Field(description='Earliest period boundary for which anti-entropy metadata is retained for every selected configuration generation.')]
     coverage_complete: Annotated[bool, Field(description='Whether the requested horizon is fully inside retained ledger coverage. False means health cannot prove completeness for the whole requested horizon.')]
@@ -101,7 +101,7 @@ class GetReportingStatusResponse(BranchDispatchMixin, AdCPVersionEnvelope, Proto
         ConditionalRequired((Match('health', True, ('delayed',)),), require=('issues',), forbid=()),
         ConditionalRequired((Match('health', True, ('healthy', 'waiting', 'complete')),), require=('issues',), forbid=()),
     )
-    view: GetReportingStatusRequestReportingStatusView | None = None
+    view: ReportingStatusView | None = None
     ledger_snapshot_id: Annotated[StrMinLen1MaxLen255 | None, Field(description="Opaque identity of the seller's consistent reporting-ledger snapshot. Every page reached from one periods cursor MUST return the same value.")] = None
     ledger_as_of: Annotated[AwareDatetime | None, Field(description='Exclusive observation boundary for ledger_snapshot_id. Revisions committed later appear only in a later reconciliation.')] = None
     changes_checkpoint: Annotated[StrMinLen1MaxLen2048 | None, Field(description='Opaque durable incremental-repair checkpoint for this periods snapshot. Consumers persist it only after consuming every page, then send it as changes_after. It is bound to authenticated caller, account, and filters and MUST order every committed obligation, revision, adjustment, materialization, consumer status statement, revision receipt, and adjustment receipt without gaps.')] = None

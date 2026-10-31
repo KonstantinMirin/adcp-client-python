@@ -31,7 +31,7 @@ class LocaleFallbacksItem(AdCPBaseModel):
     locale_variant_id: StrMinLen1MaxLen255
 
 
-CreativeLocalizationReadbackResolvedAssets = Annotated[dict[StrMatchingE02C3DE8, LocalizedCreativeAsset | NonEmptyList[LocalizedCreativeAsset]], Field(description='Complete resolved assets for this locale, keyed by creative slot.', min_length=1)]
+ResolvedAssets = Annotated[dict[StrMatchingE02C3DE8, LocalizedCreativeAsset | NonEmptyList[LocalizedCreativeAsset]], Field(description='Complete resolved assets for this locale, keyed by creative slot.', min_length=1)]
 
 
 class SourceLocalizationReadback(AdCPBaseModel):
@@ -45,7 +45,7 @@ class SourceLocalizationReadback(AdCPBaseModel):
     locale_variant_id: Annotated[StrMinLen1MaxLen255, Field(description='Buyer-assigned stable locale-variant identity from the request.')]
     locale: LanguageTag
     role: Literal['source']
-    assets: CreativeLocalizationReadbackResolvedAssets
+    assets: ResolvedAssets
 
 
 class TargetLocalizationReadback(AdCPBaseModel):
@@ -59,7 +59,7 @@ class TargetLocalizationReadback(AdCPBaseModel):
     locale_variant_id: Annotated[StrMinLen1MaxLen255, Field(description='Buyer-assigned stable locale-variant identity from the request.')]
     locale: LanguageTag
     role: Literal['target']
-    assets: CreativeLocalizationReadbackResolvedAssets
+    assets: ResolvedAssets
 
 
 class CreativeLocalizationReadback(AdCPBaseModel):
@@ -81,4 +81,4 @@ class CreativeLocalizationReadback(AdCPBaseModel):
     variants: Annotated[list[SourceLocalizationReadback | TargetLocalizationReadback], Field(description='The source variant followed by every target variant, or only the source for monolingual topology. Assets are fully resolved after source inheritance. The enclosing creative status applies to the set as a whole.', json_schema_extra={'uniqueItems': True}, max_length=51, min_length=1)]
 
 
-__all__ = ["CreativeLocalizationReadback", "CreativeLocalizationReadbackResolvedAssets"]
+__all__ = ["CreativeLocalizationReadback", "ResolvedAssets"]

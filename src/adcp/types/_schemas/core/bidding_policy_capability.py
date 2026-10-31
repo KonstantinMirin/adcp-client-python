@@ -18,20 +18,20 @@ class ModesItem(StrEnum):
     ROAS = 'roas'
 
 
-class BiddingPolicyCapabilityPolicyProfileCostPerStrengthsItem(StrEnum):
+class PolicyProfileCostPerStrengthsItem(StrEnum):
     CAP = 'cap'
     TARGET = 'target'
 
 
-class BiddingPolicyCapabilityPolicyProfileRoasStrengthsItem(StrEnum):
+class PolicyProfileRoasStrengthsItem(StrEnum):
     FLOOR = 'floor'
     TARGET = 'target'
 
 
-BiddingPolicyCapabilityMaxBidWithCostPerCostPerStrengthsItem = BiddingPolicyCapabilityPolicyProfileCostPerStrengthsItem
+MaxBidWithCostPerCostPerStrengthsItem = PolicyProfileCostPerStrengthsItem
 
 
-class BiddingPolicyCapabilityMaxBidWithCostPer(AdCPBaseModel):
+class MaxBidWithCostPer(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -40,13 +40,13 @@ class BiddingPolicyCapabilityMaxBidWithCostPer(AdCPBaseModel):
         UniqueItems('cost_per_strengths'),
     )
     kind: Literal['max_bid_with_cost_per']
-    cost_per_strengths: Annotated[list[BiddingPolicyCapabilityMaxBidWithCostPerCostPerStrengthsItem], Field(description='cost_per strengths supported when combined with max_bid.', json_schema_extra={'uniqueItems': True}, min_length=1)]
+    cost_per_strengths: Annotated[list[MaxBidWithCostPerCostPerStrengthsItem], Field(description='cost_per strengths supported when combined with max_bid.', json_schema_extra={'uniqueItems': True}, min_length=1)]
 
 
-BiddingPolicyCapabilityMaxBidWithRoasRoasStrengthsItem = BiddingPolicyCapabilityPolicyProfileRoasStrengthsItem
+MaxBidWithRoasRoasStrengthsItem = PolicyProfileRoasStrengthsItem
 
 
-class BiddingPolicyCapabilityMaxBidWithRoas(AdCPBaseModel):
+class MaxBidWithRoas(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -55,10 +55,10 @@ class BiddingPolicyCapabilityMaxBidWithRoas(AdCPBaseModel):
         UniqueItems('roas_strengths'),
     )
     kind: Literal['max_bid_with_roas']
-    roas_strengths: Annotated[list[BiddingPolicyCapabilityMaxBidWithRoasRoasStrengthsItem], Field(description='roas strengths supported when combined with max_bid.', json_schema_extra={'uniqueItems': True}, min_length=1)]
+    roas_strengths: Annotated[list[MaxBidWithRoasRoasStrengthsItem], Field(description='roas strengths supported when combined with max_bid.', json_schema_extra={'uniqueItems': True}, min_length=1)]
 
 
-class BiddingPolicyCapabilityPolicyProfile(AdCPBaseModel):
+class PolicyProfile(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -70,12 +70,12 @@ class BiddingPolicyCapabilityPolicyProfile(AdCPBaseModel):
         UniqueItems('roas_strengths'),
     )
     modes: Annotated[list[ModesItem] | None, Field(description='Standalone policy modes accepted in this exact scope and allocation context. Combination-only components belong only in supported_combinations and need not appear here. `automatic` means the seller accepts and preserves an explicit `{automatic:true}` authored block; omission only invokes inheritance/default behavior.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    cost_per_strengths: Annotated[list[BiddingPolicyCapabilityPolicyProfileCostPerStrengthsItem] | None, Field(description='Supported standalone cost_per strengths in this profile. Required exactly when modes includes cost_per.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    roas_strengths: Annotated[list[BiddingPolicyCapabilityPolicyProfileRoasStrengthsItem] | None, Field(description='Supported standalone roas strengths in this profile. Required exactly when modes includes roas.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    supported_combinations: Annotated[list[BiddingPolicyCapabilityMaxBidWithCostPer | BiddingPolicyCapabilityMaxBidWithRoas] | None, Field(description='Multi-field policies supported in this exact scope and allocation context. Each entry independently qualifies the strengths supported in that combination; standalone strength support does not imply combination support. Absence means no multi-field combination is claimed.', min_length=1)] = None
+    cost_per_strengths: Annotated[list[PolicyProfileCostPerStrengthsItem] | None, Field(description='Supported standalone cost_per strengths in this profile. Required exactly when modes includes cost_per.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    roas_strengths: Annotated[list[PolicyProfileRoasStrengthsItem] | None, Field(description='Supported standalone roas strengths in this profile. Required exactly when modes includes roas.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    supported_combinations: Annotated[list[MaxBidWithCostPer | MaxBidWithRoas] | None, Field(description='Multi-field policies supported in this exact scope and allocation context. Each entry independently qualifies the strengths supported in that combination; standalone strength support does not imply combination support. Absence means no multi-field combination is claimed.', min_length=1)] = None
 
 
-class BiddingPolicyCapabilityScopeCapability(AdCPBaseModel):
+class ScopeCapability(AdCPBaseModel):
     """
     Support at one authored scope, partitioned by the media buy's resulting allocation mode. Omitted contexts are unsupported; claims in one context make no claim about the other.
     """
@@ -86,8 +86,8 @@ class BiddingPolicyCapabilityScopeCapability(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         PropertyCount(minimum=1, maximum=None),
     )
-    fixed: Annotated[BiddingPolicyCapabilityPolicyProfile | None, Field(description='Policies supported when budget allocation is fixed or omitted.')] = None
-    seller_optimized: Annotated[BiddingPolicyCapabilityPolicyProfile | None, Field(description='Policies supported when budget_allocation.mode is seller_optimized.')] = None
+    fixed: Annotated[PolicyProfile | None, Field(description='Policies supported when budget allocation is fixed or omitted.')] = None
+    seller_optimized: Annotated[PolicyProfile | None, Field(description='Policies supported when budget_allocation.mode is seller_optimized.')] = None
 
 
 class BiddingPolicyCapability(AdCPBaseModel):
@@ -101,8 +101,8 @@ class BiddingPolicyCapability(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         PropertyCount(minimum=1, maximum=None),
     )
-    media_buy: Annotated[BiddingPolicyCapabilityScopeCapability | None, Field(description='Policies accepted at media-buy scope and inherited by packages that omit a package override.')] = None
-    package: Annotated[BiddingPolicyCapabilityScopeCapability | None, Field(description='Policies accepted as package-authored policies, including explicit automatic overrides.')] = None
+    media_buy: Annotated[ScopeCapability | None, Field(description='Policies accepted at media-buy scope and inherited by packages that omit a package override.')] = None
+    package: Annotated[ScopeCapability | None, Field(description='Policies accepted as package-authored policies, including explicit automatic overrides.')] = None
 
 
-__all__ = ["BiddingPolicyCapability", "BiddingPolicyCapabilityMaxBidWithCostPer", "BiddingPolicyCapabilityMaxBidWithRoas", "BiddingPolicyCapabilityPolicyProfile", "BiddingPolicyCapabilityScopeCapability"]
+__all__ = ["BiddingPolicyCapability", "MaxBidWithCostPer", "MaxBidWithRoas", "PolicyProfile", "ScopeCapability"]

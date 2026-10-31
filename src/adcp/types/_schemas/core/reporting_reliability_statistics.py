@@ -11,7 +11,7 @@ from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, 
 from adcp.types.constraints import HttpUrl, IntMin1, StrMatching564F6F3C, StrMatching5E987613, StrMinLen1MaxLen128, StrMinLen1MaxLen128MatchingB577C746, StrMinLen1MaxLen32
 
 
-class ReportingReliabilityStatisticsReportingReliabilityMeasurementPeriod(AdCPBaseModel):
+class ReportingReliabilityMeasurementPeriod(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -20,7 +20,7 @@ class ReportingReliabilityStatisticsReportingReliabilityMeasurementPeriod(AdCPBa
     end: AwareDatetime
 
 
-class ReportingReliabilityStatisticsLatencyPercentiles(AdCPBaseModel):
+class LatencyPercentiles(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -73,15 +73,15 @@ class ReportingReliabilityStatistics(AdCPBaseModel):
         UniqueItems('adjustment_magnitude'),
     )
     offering_id: StrMinLen1MaxLen128MatchingB577C746
-    measurement_period: ReportingReliabilityStatisticsReportingReliabilityMeasurementPeriod
+    measurement_period: ReportingReliabilityMeasurementPeriod
     obligations_due: Annotated[IntMin1, Field(description='Denominator for on-time performance.')]
     obligations_on_time: Annotated[NonNegativeInt, Field(description='Obligations whose required revision was published by expected_at. Divide by obligations_due for the on-time rate.')]
     official_revisions_published: Annotated[NonNegativeInt, Field(description='Denominator for the official-adjustment rate.')]
     official_revisions_adjusted: Annotated[NonNegativeInt, Field(description='Distinct official revisions receiving at least one adjustment. Divide by official_revisions_published for the adjustment rate.')]
-    publication_latency_seconds: Annotated[ReportingReliabilityStatisticsLatencyPercentiles, Field(description='Observed seconds from period.end to publication of the required revision.')]
-    adjustment_latency_seconds: Annotated[ReportingReliabilityStatisticsLatencyPercentiles | None, Field(description='Observed seconds from official finalized_at to the first adjustment, required when official_revisions_adjusted is nonzero.')] = None
+    publication_latency_seconds: Annotated[LatencyPercentiles, Field(description='Observed seconds from period.end to publication of the required revision.')]
+    adjustment_latency_seconds: Annotated[LatencyPercentiles | None, Field(description='Observed seconds from official finalized_at to the first adjustment, required when official_revisions_adjusted is nonzero.')] = None
     adjustment_magnitude: Annotated[list[AdjustmentMagnitudeItem] | None, Field(description='Optional absolute adjustment-magnitude percentiles for comparable control totals such as spend.', json_schema_extra={'uniqueItems': True})] = None
     evidence: Evidence
 
 
-__all__ = ["ReportingReliabilityStatistics", "ReportingReliabilityStatisticsLatencyPercentiles", "ReportingReliabilityStatisticsReportingReliabilityMeasurementPeriod"]
+__all__ = ["ReportingReliabilityStatistics", "LatencyPercentiles", "ReportingReliabilityMeasurementPeriod"]

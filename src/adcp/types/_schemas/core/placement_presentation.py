@@ -45,12 +45,12 @@ class CreativeSlot(AdCPBaseModel):
     clip: Annotated[Literal[True], Field(description='Slot overflow is always clipped so composition is deterministic.')]
 
 
-class PlacementPresentationDocumentLayer(StrEnum):
+class Layer(StrEnum):
     BEHIND_CREATIVE = 'behind_creative'
     IN_FRONT_OF_CREATIVE = 'in_front_of_creative'
 
 
-class PlacementPresentationDocumentRectangle(AdCPBaseModel):
+class Rectangle(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -61,30 +61,30 @@ class PlacementPresentationDocumentRectangle(AdCPBaseModel):
     height: IntMin1Max8192
 
 
-PlacementPresentationDocumentColor = StrMatchingF01B4765
+Color = StrMatchingF01B4765
 
 
-class PlacementPresentationDocumentBoxDecoration(AdCPBaseModel):
+class BoxDecoration(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/placement-presentation.json', pointer='#/definitions/box_decoration')
     kind: Literal['box']
-    layer: PlacementPresentationDocumentLayer
-    bounds: PlacementPresentationDocumentRectangle
-    fill_color: PlacementPresentationDocumentColor
+    layer: Layer
+    bounds: Rectangle
+    fill_color: Color
 
 
-class PlacementPresentationDocumentTextDecoration(AdCPBaseModel):
+class TextDecoration(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/placement-presentation.json', pointer='#/definitions/text_decoration')
     kind: Literal['text']
-    layer: PlacementPresentationDocumentLayer
-    bounds: PlacementPresentationDocumentRectangle
+    layer: Layer
+    bounds: Rectangle
     text: StrMaxLen4096
-    text_color: PlacementPresentationDocumentColor
+    text_color: Color
     font_size: IntMin6Max256
 
 
@@ -97,22 +97,22 @@ class ImageRef(AdCPBaseModel):
     digest: Annotated[StrMatching3CBDBB74, Field(description='SHA-256 digest of the exact image bytes. Consumers MUST fail closed on mismatch.')]
 
 
-class PlacementPresentationDocumentImageDecorationFit(StrEnum):
+class ImageDecorationFit(StrEnum):
     CONTAIN = 'contain'
     COVER = 'cover'
     STRETCH = 'stretch'
 
 
-class PlacementPresentationDocumentImageDecoration(AdCPBaseModel):
+class ImageDecoration(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/placement-presentation.json', pointer='#/definitions/image_decoration')
     kind: Literal['image']
-    layer: PlacementPresentationDocumentLayer
-    bounds: PlacementPresentationDocumentRectangle
+    layer: Layer
+    bounds: Rectangle
     image_ref: ImageRef
-    fit: PlacementPresentationDocumentImageDecorationFit
+    fit: ImageDecorationFit
 
 
 class PlacementPresentationDocument(AdCPBaseModel):
@@ -126,7 +126,7 @@ class PlacementPresentationDocument(AdCPBaseModel):
     schema_version: Literal['1.0']
     canvas: Canvas
     creative_slot: Annotated[CreativeSlot, Field(description='Rectangle into which the selected creative render is fitted and clipped without changing its manifest or renderer.')]
-    decorations: Annotated[list[PlacementPresentationDocumentBoxDecoration | PlacementPresentationDocumentTextDecoration | PlacementPresentationDocumentImageDecoration] | None, Field(max_length=100)] = None
+    decorations: Annotated[list[BoxDecoration | TextDecoration | ImageDecoration] | None, Field(max_length=100)] = None
 
 
-__all__ = ["PlacementPresentationDocument", "PlacementPresentationDocumentBoxDecoration", "PlacementPresentationDocumentColor", "PlacementPresentationDocumentImageDecoration", "PlacementPresentationDocumentLayer", "PlacementPresentationDocumentRectangle", "PlacementPresentationDocumentTextDecoration"]
+__all__ = ["PlacementPresentationDocument", "BoxDecoration", "Color", "ImageDecoration", "Layer", "Rectangle", "TextDecoration"]

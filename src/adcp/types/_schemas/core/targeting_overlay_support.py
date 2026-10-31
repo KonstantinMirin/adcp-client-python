@@ -23,10 +23,10 @@ from .iana_timezone import IANATimezoneIdentifier
 from .positive_postal_area_support import PositivePostalAreaSupport
 
 
-TargetingOverlaySupportSupported = Literal[True]
+Supported = Literal[True]
 
 
-class TargetingOverlaySupportCountrySupportMaxValuesPerPackage(AdCPBaseModel):
+class CountrySupportMaxValuesPerPackage(AdCPBaseModel):
     """
     Binding support for protocol-valid ISO 3166-1 alpha-2 country values, subject to the declared per-package cardinality limit. This object does not enumerate or restrict individual country codes.
     """
@@ -38,10 +38,10 @@ class TargetingOverlaySupportCountrySupportMaxValuesPerPackage(AdCPBaseModel):
     ext: ExtensionObject | None = None
 
 
-TargetingOverlaySupportCountrySupport = TargetingOverlaySupportSupported | TargetingOverlaySupportCountrySupportMaxValuesPerPackage
+CountrySupport = Supported | CountrySupportMaxValuesPerPackage
 
 
-class TargetingOverlaySupportMetroSupportSystems(AdCPBaseModel):
+class MetroSupportSystems(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -55,10 +55,10 @@ class TargetingOverlaySupportMetroSupportSystems(AdCPBaseModel):
     ext: ExtensionObject | None = None
 
 
-TargetingOverlaySupportMetroSupport = TargetingOverlaySupportSupported | TargetingOverlaySupportMetroSupportSystems
+MetroSupport = Supported | MetroSupportSystems
 
 
-class TargetingOverlaySupportPlaceCatalogSupport(AdCPBaseModel):
+class PlaceCatalogSupport(AdCPBaseModel):
     """
     Selectable country/type pairs and catalog versions for one identifier system.
     """
@@ -75,7 +75,7 @@ class TargetingOverlaySupportPlaceCatalogSupport(AdCPBaseModel):
     ext: ExtensionObject | None = None
 
 
-class TargetingOverlaySupportPlaceSupport(AdCPBaseModel):
+class PlaceSupport(AdCPBaseModel):
     """
     Binding permission to select named-place values later, keyed first by identifier system and then by country to avoid namespace and place-type collisions.
     """
@@ -83,7 +83,7 @@ class TargetingOverlaySupportPlaceSupport(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/targeting-overlay-support.json', pointer='#/definitions/placeSupport')
-    systems: Annotated[dict[GeographicPlaceIdentifierSystem, TargetingOverlaySupportPlaceCatalogSupport], Field(min_length=1)]
+    systems: Annotated[dict[GeographicPlaceIdentifierSystem, PlaceCatalogSupport], Field(min_length=1)]
     max_values_per_package: IntMin1 | None = None
     max_packages: Annotated[IntMin1 | None, Field(description='Optional maximum number of independently place-targeted packages the seller will create from this configured product.')] = None
     ext: ExtensionObject | None = None
@@ -98,18 +98,18 @@ class GeoProximity(AdCPBaseModel):
         RequiredGroups((('radius',), ('travel_time',), ('geometry',), ('transport_modes',)), 'anyOf'),
         UniqueItems('transport_modes'),
     )
-    radius: TargetingOverlaySupportSupported | None = None
-    travel_time: TargetingOverlaySupportSupported | None = None
-    geometry: TargetingOverlaySupportSupported | None = None
+    radius: Supported | None = None
+    travel_time: Supported | None = None
+    geometry: Supported | None = None
     transport_modes: Annotated[list[TransportMode] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     max_values_per_package: Annotated[IntMin1 | None, Field(description='Maximum number of proximity entries accepted on one package.')] = None
     ext: ExtensionObject | None = None
 
 
-IanaTimezones = TargetingOverlaySupportSupported
+IanaTimezones = Supported
 
 
-class TargetingOverlaySupportDaypartSupportTimezoneModes(AdCPBaseModel):
+class DaypartSupportTimezoneModes(AdCPBaseModel):
     """
     Binding timezone modes this product can apply to package-level daypart targeting. 'inventory_local' covers the default seller-assigned local clock for each inventory unit. 'iana' opts the product into concrete IANA timezone execution and requires iana_timezones to declare whether every valid identifier or an exact subset is supported.
     """
@@ -125,7 +125,7 @@ class TargetingOverlaySupportDaypartSupportTimezoneModes(AdCPBaseModel):
     ext: ExtensionObject | None = None
 
 
-TargetingOverlaySupportDaypartSupport = Literal[True] | TargetingOverlaySupportDaypartSupportTimezoneModes
+DaypartSupport = Literal[True] | DaypartSupportTimezoneModes
 
 
 class DemographicsAge(AdCPBaseModel):
@@ -133,7 +133,7 @@ class DemographicsAge(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/targeting-overlay-support.json', pointer='#/properties/demographics/anyOf/1')
-    age: TargetingOverlaySupportSupported
+    age: Supported
     ext: ExtensionObject | None = None
 
 
@@ -160,7 +160,7 @@ class PlacementSelection(AdCPBaseModel):
     ext: ExtensionObject | None = None
 
 
-class TargetingOverlaySupportBrowserSupportFamilies(AdCPBaseModel):
+class BrowserSupportFamilies(AdCPBaseModel):
     """
     Canonical browser families that may be selected on packages later. This is executable targeting capability, not a guarantee of inventory for every family.
     """
@@ -175,10 +175,10 @@ class TargetingOverlaySupportBrowserSupportFamilies(AdCPBaseModel):
     ext: ExtensionObject | None = None
 
 
-TargetingOverlaySupportBrowserSupport = TargetingOverlaySupportSupported | TargetingOverlaySupportBrowserSupportFamilies
+BrowserSupport = Supported | BrowserSupportFamilies
 
 
-class TargetingOverlaySupportKeywordSupportSupportedMatchTypes(AdCPBaseModel):
+class KeywordSupportSupportedMatchTypes(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -190,7 +190,7 @@ class TargetingOverlaySupportKeywordSupportSupportedMatchTypes(AdCPBaseModel):
     ext: ExtensionObject | None = None
 
 
-TargetingOverlaySupportKeywordSupport = TargetingOverlaySupportSupported | TargetingOverlaySupportKeywordSupportSupportedMatchTypes
+KeywordSupport = Supported | KeywordSupportSupportedMatchTypes
 
 
 class TargetingOverlaySupport(AdCPBaseModel):
@@ -205,41 +205,41 @@ class TargetingOverlaySupport(AdCPBaseModel):
         PropertyCount(minimum=1, maximum=None),
         ForbiddenGroups((('frequency_cap', 'frequency_cap_support'),)),
     )
-    geo_countries: TargetingOverlaySupportCountrySupport | None = None
-    geo_countries_exclude: TargetingOverlaySupportCountrySupport | None = None
-    geo_regions: TargetingOverlaySupportSupported | GeographicRegionSupport | None = None
-    geo_regions_exclude: TargetingOverlaySupportSupported | GeographicRegionSupport | None = None
-    geo_metros: TargetingOverlaySupportMetroSupport | None = None
-    geo_metros_exclude: TargetingOverlaySupportMetroSupport | None = None
-    geo_places: TargetingOverlaySupportPlaceSupport | None = None
-    geo_places_exclude: TargetingOverlaySupportPlaceSupport | None = None
-    geo_postal_areas: TargetingOverlaySupportSupported | PositivePostalAreaSupport | None = None
-    geo_postal_areas_exclude: TargetingOverlaySupportSupported | PositivePostalAreaSupport | None = None
-    geo_proximity: TargetingOverlaySupportSupported | GeoProximity | None = None
-    daypart_targets: TargetingOverlaySupportDaypartSupport | None = None
-    audience_include: TargetingOverlaySupportSupported | None = None
-    audience_exclude: TargetingOverlaySupportSupported | None = None
-    signal_targeting_groups: TargetingOverlaySupportSupported | None = None
-    demographics: TargetingOverlaySupportSupported | DemographicsAge | None = None
-    frequency_cap: TargetingOverlaySupportSupported | None = None
+    geo_countries: CountrySupport | None = None
+    geo_countries_exclude: CountrySupport | None = None
+    geo_regions: Supported | GeographicRegionSupport | None = None
+    geo_regions_exclude: Supported | GeographicRegionSupport | None = None
+    geo_metros: MetroSupport | None = None
+    geo_metros_exclude: MetroSupport | None = None
+    geo_places: PlaceSupport | None = None
+    geo_places_exclude: PlaceSupport | None = None
+    geo_postal_areas: Supported | PositivePostalAreaSupport | None = None
+    geo_postal_areas_exclude: Supported | PositivePostalAreaSupport | None = None
+    geo_proximity: Supported | GeoProximity | None = None
+    daypart_targets: DaypartSupport | None = None
+    audience_include: Supported | None = None
+    audience_exclude: Supported | None = None
+    signal_targeting_groups: Supported | None = None
+    demographics: Supported | DemographicsAge | None = None
+    frequency_cap: Supported | None = None
     frequency_cap_support: Annotated[FrequencyCapSupport | None, Field(description='Independently positive constrained package-cap support. Mutually exclusive with legacy frequency_cap: a product declares one form or the other.')] = None
-    property_list: TargetingOverlaySupportSupported | None = None
-    property_list_exclude: TargetingOverlaySupportSupported | None = None
-    collection_list: TargetingOverlaySupportSupported | None = None
-    collection_list_exclude: TargetingOverlaySupportSupported | None = None
-    placement_selection: TargetingOverlaySupportSupported | PlacementSelection | None = None
-    age_restriction: TargetingOverlaySupportSupported | None = None
-    device_platform: TargetingOverlaySupportSupported | None = None
-    device_platform_exclude: TargetingOverlaySupportSupported | None = None
-    device_type: TargetingOverlaySupportSupported | None = None
-    device_type_exclude: TargetingOverlaySupportSupported | None = None
-    browser: TargetingOverlaySupportBrowserSupport | None = None
-    browser_exclude: TargetingOverlaySupportBrowserSupport | None = None
-    store_catchments: TargetingOverlaySupportSupported | None = None
-    language: TargetingOverlaySupportSupported | None = None
-    keyword_targets: TargetingOverlaySupportKeywordSupport | None = None
-    negative_keywords: TargetingOverlaySupportKeywordSupport | None = None
+    property_list: Supported | None = None
+    property_list_exclude: Supported | None = None
+    collection_list: Supported | None = None
+    collection_list_exclude: Supported | None = None
+    placement_selection: Supported | PlacementSelection | None = None
+    age_restriction: Supported | None = None
+    device_platform: Supported | None = None
+    device_platform_exclude: Supported | None = None
+    device_type: Supported | None = None
+    device_type_exclude: Supported | None = None
+    browser: BrowserSupport | None = None
+    browser_exclude: BrowserSupport | None = None
+    store_catchments: Supported | None = None
+    language: Supported | None = None
+    keyword_targets: KeywordSupport | None = None
+    negative_keywords: KeywordSupport | None = None
     ext: ExtensionObject | None = None
 
 
-__all__ = ["TargetingOverlaySupport", "TargetingOverlaySupportBrowserSupport", "TargetingOverlaySupportCountrySupport", "TargetingOverlaySupportDaypartSupport", "TargetingOverlaySupportKeywordSupport", "TargetingOverlaySupportMetroSupport", "TargetingOverlaySupportPlaceCatalogSupport", "TargetingOverlaySupportPlaceSupport", "TargetingOverlaySupportSupported"]
+__all__ = ["TargetingOverlaySupport", "BrowserSupport", "CountrySupport", "DaypartSupport", "KeywordSupport", "MetroSupport", "PlaceCatalogSupport", "PlaceSupport", "Supported"]

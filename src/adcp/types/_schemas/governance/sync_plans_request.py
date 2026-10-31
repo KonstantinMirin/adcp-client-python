@@ -73,7 +73,7 @@ class BudgetReallocationThreshold(Budget):
     reallocation_threshold: Annotated[NonNegativeFloat, Field(description='Amount above which budget reallocations require human escalation. The orchestrator can reallocate spend across sellers, channels, or purchase types up to this threshold per change without asking a human. Set equal to `total` for effectively unlimited reallocation; set to 0 to require approval for every reallocation. Separate from `plan.human_review_required`, which governs decisions affecting data subjects (targeting, creative, delivery) under GDPR Art 22 / EU AI Act Annex III. Denominated in `budget.currency`.')]
 
 
-class BudgetTrue(Budget):
+class BudgetReallocationUnlimited(Budget):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -84,7 +84,7 @@ class BudgetTrue(Budget):
     reallocation_unlimited: Annotated[Literal[True], Field(description='Set to true to allow the orchestrator to reallocate without any limit up to `total`. Mutually exclusive with `reallocation_threshold`. Use this for deliberate full-autonomy declarations rather than setting `reallocation_threshold: total` (which silently tightens when `total` changes).')]
 
 
-Budget._branch_models = (BudgetReallocationThreshold, BudgetTrue,)
+Budget._branch_models = (BudgetReallocationThreshold, BudgetReallocationUnlimited,)
 Budget.model_rebuild(force=True)
 
 

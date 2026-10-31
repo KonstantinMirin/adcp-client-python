@@ -39,7 +39,7 @@ class IdentifiersItem(AdCPBaseModel):
     value: str
 
 
-class CanonicalProductPlacementCanonicalDoohScreenResolution(AdCPBaseModel):
+class CanonicalDoohScreenResolution(AdCPBaseModel):
     """
     Physical screen resolution in pixels. Canonical format dimensions remain authoritative for creative acceptance.
     """
@@ -51,7 +51,7 @@ class CanonicalProductPlacementCanonicalDoohScreenResolution(AdCPBaseModel):
     height: IntMin1
 
 
-class CanonicalProductPlacementCanonicalDoohPlacementAttributes(AdCPBaseModel):
+class CanonicalDoohPlacementAttributes(AdCPBaseModel):
     """
     DOOH installed-surface and scheduled-loop facts. These fields do not define creative acceptance, which is governed exclusively by effective canonical format_options. Visual placements may declare screen_resolution and motion; audio-only placements omit those screen-specific fields. For publisher_ref placements, product slot and loop values override publisher defaults while repeated screen_resolution and motion values must equal the publisher facts.
     """
@@ -61,7 +61,7 @@ class CanonicalProductPlacementCanonicalDoohPlacementAttributes(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/canonical-placement.json', pointer='#/definitions/CanonicalDoohPlacementAttributes')
     slot_duration_seconds: Annotated[IntMin1 | None, Field(description='Scheduled duration of one ad slot in seconds; not the creative-duration contract.')] = None
     loop_duration_seconds: Annotated[IntMin1 | None, Field(description='Duration of the full ad loop rotation in seconds and the canonical source for loop duration.')] = None
-    screen_resolution: CanonicalProductPlacementCanonicalDoohScreenResolution | None = None
+    screen_resolution: CanonicalDoohScreenResolution | None = None
     motion: Annotated[DOOHMotionType | None, Field(description='Physical motion capability of a visual DOOH screen, not an accepted-format declaration. Omit for audio-only placements.')] = None
 
 
@@ -101,7 +101,7 @@ class CanonicalProductPlacement(BranchDispatchMixin, AdCPBaseModel):
     sponsored_placement_types: Annotated[list[SponsoredPlacementType] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     social_placement_surfaces: Annotated[list[SocialPlacementSurface] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     identifiers: Annotated[list[IdentifiersItem] | None, Field(description='Optional external inventory identifiers for this placement. Externally governed values should be authority-prefixed; seller-local values are scoped by the surrounding publisher namespace. For publisher_ref placements, the effective set is the union of publisher and product declarations, de-duplicated by exact (type, value).', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    dooh_placement_attributes: CanonicalProductPlacementCanonicalDoohPlacementAttributes | None = None
+    dooh_placement_attributes: CanonicalDoohPlacementAttributes | None = None
 
 
 class CanonicalProductPlacementPublisherRef(CanonicalProductPlacement):
@@ -129,4 +129,4 @@ CanonicalProductPlacement._branch_models = (CanonicalProductPlacementPublisherRe
 CanonicalProductPlacement.model_rebuild(force=True)
 
 
-__all__ = ["CanonicalProductPlacement", "CanonicalProductPlacementCanonicalDoohPlacementAttributes", "CanonicalProductPlacementCanonicalDoohScreenResolution"]
+__all__ = ["CanonicalProductPlacement", "CanonicalDoohPlacementAttributes", "CanonicalDoohScreenResolution"]

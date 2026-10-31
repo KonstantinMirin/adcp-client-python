@@ -11,9 +11,9 @@ from adcp.types._runtime import ConditionalRequired, Match, PropertyCount, Rule,
 from adcp.types.constraints import IntMin1, StrMinLen1MaxLen128MatchingB577C746, StrMinLen1MaxLen255Matching67860854, StrMinLen1MaxLen64MatchingD373B860
 
 from ..enums.reporting_finality import ReportingFinality
-from .reporting_coverage import ReportingCoverageReportingMediaBuyId
+from .reporting_coverage import ReportingMediaBuyId
 from .reporting_delivery_method import ReportingDeliveryMethod
-from .reporting_delivery_offering import ReportingDeliveryOfferingReportingFeedPurpose
+from .reporting_delivery_offering import ReportingFeedPurpose
 from .reporting_reconciliation_mode import ReportingReconciliationMode
 from .reporting_schedule import ReportingSchedule
 
@@ -31,7 +31,7 @@ class Scope(AdCPBaseModel):
         UniqueItems('media_buy_ids'),
     )
     all_media_buys: Literal[True] | None = None
-    media_buy_ids: Annotated[list[ReportingCoverageReportingMediaBuyId] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    media_buy_ids: Annotated[list[ReportingMediaBuyId] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
 
 
 class CoverageRequirement(StrEnum):
@@ -65,7 +65,7 @@ class ReportingDeliveryConfiguration(AdCPBaseModel):
     delivery_config_version: Annotated[IntMin1, Field(description='Caller-selected immutable semantic generation. Increment when feed/profile/scope/finality/schedule/method/destination changes; lifecycle fields may change in place.')]
     offering_id: Annotated[StrMinLen1MaxLen128MatchingB577C746, Field(description='Atomic reporting offering advertised by the seller that binds feed, profile, schedule, finality, and delivery support.')]
     active: Annotated[bool, Field(description='Whether new reporting obligations should use this configuration. Inactive configurations remain visible for historical resolution.')]
-    feed_purpose: ReportingDeliveryOfferingReportingFeedPurpose
+    feed_purpose: ReportingFeedPurpose
     report_definition_id: Annotated[StrMinLen1MaxLen255Matching67860854, Field(description='Exact immutable semantic definition selected from the offering. This makes the expected obligation identity independently derivable and prevents attribution, timezone, source-mapping, or restatement-policy drift behind a profile label.')]
     reporting_profile: Annotated[StrMinLen1MaxLen128MatchingB577C746, Field(description='Versioned semantic profile for the aggregate report, such as media_buy_delivery_v1. It MUST match the selected offering.')]
     scope: Annotated[Scope, Field(description='Media buys covered by this configuration.')]

@@ -46,7 +46,7 @@ class IdentifiersItem(AdCPBaseModel):
     value: Annotated[str, Field(description='Identifier value, optionally authority-prefixed for externally governed IDs (e.g., space:1234931339).')]
 
 
-class PlacementProductDoohScreenResolution(AdCPBaseModel):
+class ProductDoohScreenResolution(AdCPBaseModel):
     """
     Physical screen resolution in pixels. Canonical format dimensions remain authoritative for creative acceptance and may describe a smaller content region within the physical screen.
     """
@@ -58,7 +58,7 @@ class PlacementProductDoohScreenResolution(AdCPBaseModel):
     height: Annotated[IntMin1, Field(description='Screen height in pixels.')]
 
 
-class PlacementProductDoohPlacementAttributes(AdCPBaseModel):
+class ProductDoohPlacementAttributes(AdCPBaseModel):
     """
     DOOH inventory facts describing an installed surface and its scheduled loop, not creative acceptance. For kind: publisher_ref, product-level slot_duration_seconds and loop_duration_seconds override publisher defaults; omitted values inherit. Visual placements may declare screen_resolution and motion; audio-only placements omit those screen-specific fields. Repeated screen_resolution and motion values MUST equal publisher facts.
     """
@@ -68,7 +68,7 @@ class PlacementProductDoohPlacementAttributes(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/placement.json', pointer='#/definitions/ProductDoohPlacementAttributes')
     slot_duration_seconds: Annotated[IntMin1 | None, Field(description='Scheduled duration of one ad slot in seconds. This is an inventory fact used for loop and share calculations, not the creative-duration contract.')] = None
     loop_duration_seconds: Annotated[IntMin1 | None, Field(description='Duration of the full ad loop rotation in seconds and the canonical source for loop duration.')] = None
-    screen_resolution: PlacementProductDoohScreenResolution | None = None
+    screen_resolution: ProductDoohScreenResolution | None = None
     motion: Annotated[DOOHMotionType | None, Field(description='Physical motion capability of a visual DOOH screen, not an accepted-format declaration. Omit for audio-only placements.')] = None
 
 
@@ -107,7 +107,7 @@ class Placement(AdCPBaseModel):
     sponsored_placement_types: Annotated[list[SponsoredPlacementType] | None, Field(description='Declared sponsored-placement types for this product placement, distinguishing where the catalog-driven retail-media placement renders on the retailer surface. Most concrete placements SHOULD declare a single value; aggregate placements MAY declare multiple values. This is seller-declared discovery metadata, not independent verification of inventory quality or delivery context.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     social_placement_surfaces: Annotated[list[SocialPlacementSurface] | None, Field(description='Declared social-placement surfaces for this product placement, distinguishing the in-app surface where the social placement renders. Most concrete placements SHOULD declare a single value; aggregate placements MAY declare multiple values. This is seller-declared discovery metadata, not independent verification of inventory quality or delivery context.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     identifiers: Annotated[list[IdentifiersItem] | None, Field(description='Optional external inventory identifiers for this placement, using the same {type, value} shape as property identifiers. Externally governed IDs should be authority-prefixed (e.g., space:1234931339, geopath:30961, fcc:73953). Seller-local IDs are opaque values scoped by the surrounding publisher namespace. Useful for DOOH venue and installed-endpoint IDs, broadcast facility IDs, and any channel where placements map to externally registered inventory. For kind: publisher_ref, the effective identifier set is the union of the resolved publisher declaration and this product declaration, de-duplicated by exact (type, value); a product cannot suppress a publisher-declared identifier by omission.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    dooh_placement_attributes: PlacementProductDoohPlacementAttributes | None = None
+    dooh_placement_attributes: ProductDoohPlacementAttributes | None = None
 
 
-__all__ = ["Placement", "PlacementProductDoohPlacementAttributes", "PlacementProductDoohScreenResolution"]
+__all__ = ["Placement", "ProductDoohPlacementAttributes", "ProductDoohScreenResolution"]

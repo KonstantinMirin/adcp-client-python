@@ -14,14 +14,14 @@ from ..core.canonical_account_ref import CanonicalAccountReference
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
 from ..core.pagination_request import PaginationRequest
-from ..core.reporting_coverage import ReportingCoverageReportingMediaBuyId
-from ..core.reporting_delivery_offering import ReportingDeliveryOfferingReportingFeedPurpose
+from ..core.reporting_coverage import ReportingMediaBuyId
+from ..core.reporting_delivery_offering import ReportingFeedPurpose
 from ..core.version_envelope import AdCPVersionEnvelope
 from ..enums.reporting_finality import ReportingFinality
 from ..enums.reporting_health import ReportingHealth
 
 
-class GetReportingStatusRequestReportingStatusView(StrEnum):
+class ReportingStatusView(StrEnum):
     """
     Stable response-shape discriminator. SDK convenience methods may default this to summary, but the wire request is explicit.
     """
@@ -58,10 +58,10 @@ class GetReportingStatusRequest(AdCPVersionEnvelope):
         ConditionalRequired((Match('view', True, ('revision',)),), require=('reporting_revision_id',), forbid=('media_buy_ids', 'delivery_config_ids', 'feed_purposes', 'period', 'health', 'finality', 'changes_after')),
     )
     account: Annotated[CanonicalAccountReference, Field(description='Account whose caller-owned reporting status is queried.')]
-    view: GetReportingStatusRequestReportingStatusView
-    media_buy_ids: Annotated[list[ReportingCoverageReportingMediaBuyId] | None, Field(description='Optional summary/periods scope. Omit for every accessible media buy in the account.', json_schema_extra={'uniqueItems': True}, max_length=100, min_length=1)] = None
+    view: ReportingStatusView
+    media_buy_ids: Annotated[list[ReportingMediaBuyId] | None, Field(description='Optional summary/periods scope. Omit for every accessible media buy in the account.', json_schema_extra={'uniqueItems': True}, max_length=100, min_length=1)] = None
     delivery_config_ids: Annotated[list[StrMinLen1MaxLen64MatchingD373B860] | None, Field(description='Optional summary/periods scope. Use to reconcile billing, analytics, and pacing independently. Omit for every active caller-owned configuration.', json_schema_extra={'uniqueItems': True}, max_length=16, min_length=1)] = None
-    feed_purposes: Annotated[list[ReportingDeliveryOfferingReportingFeedPurpose] | None, Field(description='Optional summary/periods feed filter. The response echoes exact resolved configuration generations so this never creates an opaque aggregate.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    feed_purposes: Annotated[list[ReportingFeedPurpose] | None, Field(description='Optional summary/periods feed filter. The response echoes exact resolved configuration generations so this never creates an opaque aggregate.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     period: Annotated[Period | None, Field(description="Half-open summary/periods horizon. Omit for the seller's documented operational default horizon; the response always echoes the evaluated scope.")] = None
     health: Annotated[list[ReportingHealth] | None, Field(description='Periods-view result filter only; it never changes summary health.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     finality: Annotated[list[ReportingFinality] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
@@ -72,4 +72,4 @@ class GetReportingStatusRequest(AdCPVersionEnvelope):
     ext: ExtensionObject | None = None
 
 
-__all__ = ["GetReportingStatusRequest", "GetReportingStatusRequestReportingStatusView"]
+__all__ = ["GetReportingStatusRequest", "ReportingStatusView"]

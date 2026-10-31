@@ -9,7 +9,7 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 
 from ...enums.daast_version import DAASTVersion
-from ..daast_tracker_constraints import DAASTTrackerConstraintsDaastVersions
+from ..daast_tracker_constraints import DaastVersions
 
 
 class DAASTAssetRequirements(AdCPBaseModel):
@@ -24,7 +24,7 @@ class DAASTAssetRequirements(AdCPBaseModel):
         ForbiddenGroups((('daast_version', 'daast_versions'),)),
     )
     daast_version: Annotated[DAASTVersion | None, Field(description='Deprecated one-element alias for `daast_versions`. Producers use either the singular legacy alias or the plural 3.2 field, never both.')] = None
-    daast_versions: Annotated[DAASTTrackerConstraintsDaastVersions | None, Field(description='Accepted DAAST version set for this asset requirement.')] = None
+    daast_versions: Annotated[DaastVersions | None, Field(description='Accepted DAAST version set for this asset requirement.')] = None
 
 
 __all__ = ["DAASTAssetRequirements"]

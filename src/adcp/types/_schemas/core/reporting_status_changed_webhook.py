@@ -11,7 +11,7 @@ from adcp.types.constraints import IntMin1, StrMinLen1, StrMinLen16MaxLen255Matc
 
 from ..enums.reporting_health import ReportingHealth
 from .ext import ExtensionObject
-from .reporting_delivery_offering import ReportingDeliveryOfferingReportingFeedPurpose
+from .reporting_delivery_offering import ReportingFeedPurpose
 
 
 class ReportingStatusChangedWebhook(AdCPBaseModel):
@@ -34,7 +34,7 @@ class ReportingStatusChangedWebhook(AdCPBaseModel):
     account_id: StrMinLen1
     delivery_config_id: StrMinLen1MaxLen64MatchingD373B860
     delivery_config_version: IntMin1
-    feed_purpose: ReportingDeliveryOfferingReportingFeedPurpose
+    feed_purpose: ReportingFeedPurpose
     reporting_obligation_id: Annotated[StrMinLen1MaxLen255Matching67860854 | None, Field(description='Present when the transition is obligation-scoped; absent for configuration-level transitions.')] = None
     health: Annotated[ReportingHealth, Field(description='The health state after this transition.')]
     previous_health: ReportingHealth | None = None

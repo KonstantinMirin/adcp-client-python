@@ -12,8 +12,8 @@ from adcp.types.constraints import IntMin1, StrMinLen1, StrMinLen16MaxLen255Matc
 
 from ..enums.reporting_finality import ReportingFinality
 from ..enums.reporting_health import ReportingHealth
-from .reporting_coverage import ReportingCoverage, ReportingCoverageReportingMediaBuyId
-from .reporting_delivery_offering import ReportingDeliveryOfferingReportingFeedPurpose
+from .reporting_coverage import ReportingCoverage, ReportingMediaBuyId
+from .reporting_delivery_offering import ReportingFeedPurpose
 from .reporting_reconciliation_mode import ReportingReconciliationMode
 from .reporting_schedule import ReportingSchedule
 from .reporting_status_issue import ReportingStatusIssue
@@ -66,10 +66,10 @@ class ReportingObligation(AdCPBaseModel):
     delivery_config_id: StrMinLen1MaxLen64MatchingD373B860
     delivery_config_version: IntMin1
     report_definition_id: StrMinLen1MaxLen255Matching67860854
-    feed_purpose: ReportingDeliveryOfferingReportingFeedPurpose
+    feed_purpose: ReportingFeedPurpose
     reporting_profile: StrMinLen1MaxLen128
     account_id: StrMinLen1
-    media_buy_ids: Annotated[list[ReportingCoverageReportingMediaBuyId], Field(description='Exact frozen media-buy denominator resolved for this period, including buys with zero rows. An empty array is the definitive zero-buy set; omission is never used to mean all, empty, or unknown.', json_schema_extra={'uniqueItems': True})]
+    media_buy_ids: Annotated[list[ReportingMediaBuyId], Field(description='Exact frozen media-buy denominator resolved for this period, including buys with zero rows. An empty array is the definitive zero-buy set; omission is never used to mean all, empty, or unknown.', json_schema_extra={'uniqueItems': True})]
     scope_resolved_at: Annotated[AwareDatetime, Field(description='Instant at which the configured scope was resolved and frozen for this obligation. For all_media_buys, include every caller-authorized account media buy whose effective flight overlaps the half-open period and was known by this cutoff. Later-created or backdated buys do not rewrite this obligation.')]
     coverage: Annotated[ReportingCoverage, Field(description='Immutable effective coverage of the exact selected offering at this period boundary. Delivery health is evaluated separately over the covered denominator.')]
     period: Period

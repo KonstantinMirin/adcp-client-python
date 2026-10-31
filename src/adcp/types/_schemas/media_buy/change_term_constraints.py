@@ -25,7 +25,7 @@ class MediaBuyChangeTermConstraints(BranchDispatchMixin, AdCPBaseModel):
         return "oneOf"
 
 
-class MediaBuyChangeTermConstraintsMoney(AdCPBaseModel):
+class Money(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -43,10 +43,10 @@ class BudgetChangeConstraints(MediaBuyChangeTermConstraints):
         RequiredGroups((('max_delta_amount',), ('max_delta_percent',), ('min_result_amount',), ('max_result_amount',)), 'anyOf'),
     )
     kind: Literal['budget']
-    max_delta_amount: Annotated[MediaBuyChangeTermConstraintsMoney | None, Field(description='Maximum absolute amount by which the affected budget may change in the direction named by the action.')] = None
+    max_delta_amount: Annotated[Money | None, Field(description='Maximum absolute amount by which the affected budget may change in the direction named by the action.')] = None
     max_delta_percent: Annotated[NonNegativeFloat | None, Field(description='Maximum percentage change relative to the current committed value. Values above 100 are valid for increases greater than the current value.')] = None
-    min_result_amount: Annotated[MediaBuyChangeTermConstraintsMoney | None, Field(description='Minimum resulting committed value after the change.')] = None
-    max_result_amount: Annotated[MediaBuyChangeTermConstraintsMoney | None, Field(description='Maximum resulting committed value after the change.')] = None
+    min_result_amount: Annotated[Money | None, Field(description='Minimum resulting committed value after the change.')] = None
+    max_result_amount: Annotated[Money | None, Field(description='Maximum resulting committed value after the change.')] = None
 
 
 class FlightChangeConstraints(MediaBuyChangeTermConstraints):
@@ -96,4 +96,4 @@ MediaBuyChangeTermConstraints._branch_models = (BudgetChangeConstraints, FlightC
 MediaBuyChangeTermConstraints.model_rebuild(force=True)
 
 
-__all__ = ["MediaBuyChangeTermConstraints", "MediaBuyChangeTermConstraintsMoney"]
+__all__ = ["MediaBuyChangeTermConstraints", "Money"]

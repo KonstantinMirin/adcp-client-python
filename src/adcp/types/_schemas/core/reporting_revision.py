@@ -13,7 +13,7 @@ from adcp.types.constraints import HttpUrl, StrMatching5E987613, StrMinLen1, Str
 from ..enums.reporting_finality import ReportingFinality
 from .reporting_canonical_content_digest import ReportingCanonicalContentDigest
 from .reporting_control_total import ReportingControlTotal
-from .reporting_coverage import ReportingCoverage, ReportingCoverageReportingMediaBuyId
+from .reporting_coverage import ReportingCoverage, ReportingMediaBuyId
 
 
 class Period(AdCPBaseModel):
@@ -70,7 +70,7 @@ class ReportingRevision(AdCPBaseModel):
     schema_dialect: Annotated[Literal['https://json-schema.org/draft/2020-12/schema'], Field(description='Closed SDK-bundled dialect; the metaschema is never network-fetched.')]
     schema_ref_policy: Annotated[Literal['local_fragment_only'], Field(description='The fetched schema is self-contained and every $ref is a local # fragment.')]
     account_id: StrMinLen1
-    media_buy_ids: Annotated[list[ReportingCoverageReportingMediaBuyId], Field(description='Exact frozen media-buy denominator inherited from the obligation, including buys with zero rows. An empty array proves a zero-buy period rather than an unknown denominator.', json_schema_extra={'uniqueItems': True})]
+    media_buy_ids: Annotated[list[ReportingMediaBuyId], Field(description='Exact frozen media-buy denominator inherited from the obligation, including buys with zero rows. An empty array proves a zero-buy period rather than an unknown denominator.', json_schema_extra={'uniqueItems': True})]
     coverage: Annotated[ReportingCoverage, Field(description='Frozen product/package denominator represented by this logical content. The same coverage follows the revision to every destination.')]
     period: Annotated[Period, Field(description='Half-open reporting interval with its source calendar boundary.')]
     finality: ReportingFinality

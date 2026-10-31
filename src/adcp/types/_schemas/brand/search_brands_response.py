@@ -125,7 +125,7 @@ class Rights(AdCPBaseModel):
     excluded_countries: Annotated[list[StrMatchingEFC12812] | None, Field(description='Countries excluded from availability (ISO 3166-1 alpha-2)')] = None
 
 
-class SearchBrandsResponseSearchBrandResult(AdCPBaseModel):
+class SearchBrandResult(AdCPBaseModel):
     """
     Lightweight brand stub returned by search_brands. Contains the public identity tier sufficient for discovery. Follow up with get_brand_identity for authorized fields.
     """
@@ -154,7 +154,7 @@ class SearchBrandsSuccess(SearchBrandsResponse):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('errors',),)),
     )
-    brands: Annotated[list[SearchBrandsResponseSearchBrandResult], Field(description='Brand stubs matching the query, ranked by relevance')]
+    brands: Annotated[list[SearchBrandResult], Field(description='Brand stubs matching the query, ranked by relevance')]
     pagination: Annotated[PaginationResponse | None, Field(description='Pagination metadata. Present when has_more is true or total_count is known.')] = None
     context: ContextObject | None = None
     ext: ExtensionObject | None = None
@@ -177,4 +177,4 @@ SearchBrandsResponse._branch_models = (SearchBrandsSuccess, SearchBrandsError,)
 SearchBrandsResponse.model_rebuild(force=True)
 
 
-__all__ = ["SearchBrandsResponse", "SearchBrandsResponseSearchBrandResult"]
+__all__ = ["SearchBrandsResponse", "SearchBrandResult"]

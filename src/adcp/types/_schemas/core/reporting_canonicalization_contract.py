@@ -10,7 +10,7 @@ from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import StrMatching5E987613, StrMinLen1, StrMinLen1MaxLen128, StrMinLen1MaxLen128MatchingB577C746
 
 
-ReportingCanonicalizationContractReportingPrimaryKey = StrMinLen1MaxLen128
+ReportingPrimaryKey = StrMinLen1MaxLen128
 
 
 class EmptyReport(AdCPBaseModel):
@@ -77,8 +77,8 @@ class ReportingCanonicalizationContract(AdCPBaseModel):
     media_type: Literal['application/vnd.adcp.reporting-canonicalization+json']
     algorithm: Literal['adcp_jcs_rows_v1']
     schema_sha256: Annotated[StrMatching5E987613, Field(description='Digest of the exact row schema to which this contract applies.')]
-    primary_keys: Annotated[list[ReportingCanonicalizationContractReportingPrimaryKey], Field(description="Ordered scalar fields used to sort rows and reject duplicate logical rows. This MUST equal the offering's primary_keys.", json_schema_extra={'uniqueItems': True}, min_length=1)]
+    primary_keys: Annotated[list[ReportingPrimaryKey], Field(description="Ordered scalar fields used to sort rows and reject duplicate logical rows. This MUST equal the offering's primary_keys.", json_schema_extra={'uniqueItems': True}, min_length=1)]
     golden_vectors: Annotated[GoldenVectors, Field(description='Named cross-language conformance cases: exactly one empty_report vector, exactly one ordering_encoding vector, and an optional list of additional vectors.')]
 
 
-__all__ = ["ReportingCanonicalizationContract", "ReportingCanonicalizationContractReportingPrimaryKey"]
+__all__ = ["ReportingCanonicalizationContract", "ReportingPrimaryKey"]

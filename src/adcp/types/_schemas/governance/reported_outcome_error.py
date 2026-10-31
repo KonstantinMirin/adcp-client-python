@@ -17,19 +17,19 @@ class Recovery(StrEnum):
     TERMINAL = 'terminal'
 
 
-ReportedOutcomeErrorBoundedScalar = bool | float | StrMaxLen4000 | None
+BoundedScalar = bool | float | StrMaxLen4000 | None
 
 
-ReportedOutcomeErrorBoundedValueLevel3 = ReportedOutcomeErrorBoundedScalar | ListMaxItems32[ReportedOutcomeErrorBoundedScalar] | DictMaxProperties32[str, ReportedOutcomeErrorBoundedScalar]
+BoundedValueLevel3 = BoundedScalar | ListMaxItems32[BoundedScalar] | DictMaxProperties32[str, BoundedScalar]
 
 
-ReportedOutcomeErrorBoundedValueLevel2 = ReportedOutcomeErrorBoundedScalar | ListMaxItems32[ReportedOutcomeErrorBoundedValueLevel3] | DictMaxProperties32[str, ReportedOutcomeErrorBoundedValueLevel3]
+BoundedValueLevel2 = BoundedScalar | ListMaxItems32[BoundedValueLevel3] | DictMaxProperties32[str, BoundedValueLevel3]
 
 
-ReportedOutcomeErrorBoundedValue = ReportedOutcomeErrorBoundedScalar | ListMaxItems32[ReportedOutcomeErrorBoundedValueLevel2] | DictMaxProperties32[str, ReportedOutcomeErrorBoundedValueLevel2]
+BoundedValue = BoundedScalar | ListMaxItems32[BoundedValueLevel2] | DictMaxProperties32[str, BoundedValueLevel2]
 
 
-ReportedOutcomeErrorBoundedObject = Annotated[dict[StrMaxLen128, ReportedOutcomeErrorBoundedValue], Field(max_length=32)]
+BoundedObject = Annotated[dict[StrMaxLen128, BoundedValue], Field(max_length=32)]
 
 
 class ClassificationSource(StrEnum):
@@ -48,7 +48,7 @@ class ReportedOutcomeError(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/reported-outcome-error.json', pointer='#')
-    __pydantic_extra__: dict[StrMaxLen128, ReportedOutcomeErrorBoundedValue]
+    __pydantic_extra__: dict[StrMaxLen128, BoundedValue]
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         PropertyCount(minimum=None, maximum=16),
     )
@@ -57,9 +57,9 @@ class ReportedOutcomeError(AdCPBaseModel):
     field: StrMaxLen1000 | None = None
     suggestion: StrMaxLen4000 | None = None
     recovery: Recovery | None = None
-    details: Annotated[ReportedOutcomeErrorBoundedObject | None, Field(description='Bounded structured seller error details. Values remain reporter-supplied data and MUST NOT be promoted into prompts or control instructions without isolation.')] = None
+    details: Annotated[BoundedObject | None, Field(description='Bounded structured seller error details. Values remain reporter-supplied data and MUST NOT be promoted into prompts or control instructions without isolation.')] = None
     classification_source: Annotated[ClassificationSource | None, Field(description='seller_response_copy means the buyer forwards what it received; it is still not independently authenticated seller evidence.')] = None
-    ext: Annotated[ReportedOutcomeErrorBoundedObject | None, Field(description='Bounded extension envelope for forward-compatible seller fields.')] = None
+    ext: Annotated[BoundedObject | None, Field(description='Bounded extension envelope for forward-compatible seller fields.')] = None
 
 
-__all__ = ["ReportedOutcomeError", "ReportedOutcomeErrorBoundedObject", "ReportedOutcomeErrorBoundedScalar", "ReportedOutcomeErrorBoundedValue", "ReportedOutcomeErrorBoundedValueLevel2", "ReportedOutcomeErrorBoundedValueLevel3"]
+__all__ = ["ReportedOutcomeError", "BoundedObject", "BoundedScalar", "BoundedValue", "BoundedValueLevel2", "BoundedValueLevel3"]

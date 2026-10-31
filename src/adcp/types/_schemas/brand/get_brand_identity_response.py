@@ -138,7 +138,7 @@ class FilesItem(AdCPBaseModel):
     style: Annotated[Style | None, Field(description='CSS font-style')] = None
 
 
-class GetBrandIdentityResponseFontRoleFamily(AdCPBaseModel):
+class FontRoleFamily(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -149,7 +149,7 @@ class GetBrandIdentityResponseFontRoleFamily(AdCPBaseModel):
     fallbacks: Annotated[list[StrMaxLen100] | None, Field(description='Ordered fallback font-family names for script coverage', max_length=10)] = None
 
 
-GetBrandIdentityResponseFontRole = str | GetBrandIdentityResponseFontRoleFamily
+FontRole = str | FontRoleFamily
 
 
 class Fonts(AdCPBaseModel):
@@ -160,12 +160,12 @@ class Fonts(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/get-brand-identity-response.json', pointer='#/oneOf/0/properties/fonts')
-    __pydantic_extra__: dict[str, GetBrandIdentityResponseFontRole]
+    __pydantic_extra__: dict[str, FontRole]
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         PropertyCount(minimum=None, maximum=20),
     )
-    primary: Annotated[GetBrandIdentityResponseFontRole | None, Field(description='Primary font family')] = None
-    secondary: Annotated[GetBrandIdentityResponseFontRole | None, Field(description='Secondary font family')] = None
+    primary: Annotated[FontRole | None, Field(description='Primary font family')] = None
+    secondary: Annotated[FontRole | None, Field(description='Secondary font family')] = None
 
 
 class Tone(AdCPBaseModel):
@@ -289,4 +289,4 @@ GetBrandIdentityResponse._branch_models = (GetBrandIdentitySuccess, GetBrandIden
 GetBrandIdentityResponse.model_rebuild(force=True)
 
 
-__all__ = ["GetBrandIdentityResponse", "GetBrandIdentityResponseFontRole"]
+__all__ = ["GetBrandIdentityResponse", "FontRole"]

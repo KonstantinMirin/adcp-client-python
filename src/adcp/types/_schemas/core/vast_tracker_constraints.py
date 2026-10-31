@@ -13,7 +13,7 @@ from adcp.types.constraints import StrMatching38E7F7CC
 from ..enums.vast_version import VASTVersion
 
 
-class VASTTrackerConstraintsVastEvent(StrEnum):
+class VastEvent(StrEnum):
     CREATIVEVIEW = 'creativeView'
     LOADED = 'loaded'
     START = 'start'
@@ -43,16 +43,16 @@ class VASTTrackerConstraintsVastEvent(StrEnum):
     CLOSELINEAR = 'closeLinear'
 
 
-class VASTTrackerConstraintsVastTarget(StrEnum):
+class VastTarget(StrEnum):
     LINEAR = 'linear'
     NON_LINEAR = 'non_linear'
     COMPANION = 'companion'
 
 
-VASTTrackerConstraintsVastOffset = StrMatching38E7F7CC
+VastOffset = StrMatching38E7F7CC
 
 
-VASTTrackerConstraintsVastVersions = Annotated[Annotated[list[VASTVersion], Field(json_schema_extra={'uniqueItems': True}), AfterValidator(Distinct())], Field(min_length=1)]
+VastVersions = Annotated[Annotated[list[VASTVersion], Field(json_schema_extra={'uniqueItems': True}), AfterValidator(Distinct())], Field(min_length=1)]
 
 
 class VASTTrackerConstraints(AdCPBaseModel):
@@ -64,10 +64,10 @@ class VASTTrackerConstraints(AdCPBaseModel):
         ConditionalRequired((Match('vast_event', True, ('progress',)),), require=('offset',), forbid=()),
         NegatedConditional((Match('vast_event', True, ('progress',)),), require=(), forbid=('offset',)),
     )
-    vast_event: VASTTrackerConstraintsVastEvent | None = None
-    target: VASTTrackerConstraintsVastTarget | None = 'linear'
-    offset: VASTTrackerConstraintsVastOffset | None = None
-    vast_versions: VASTTrackerConstraintsVastVersions | None = None
+    vast_event: VastEvent | None = None
+    target: VastTarget | None = 'linear'
+    offset: VastOffset | None = None
+    vast_versions: VastVersions | None = None
 
 
-__all__ = ["VASTTrackerConstraints", "VASTTrackerConstraintsVastEvent", "VASTTrackerConstraintsVastOffset", "VASTTrackerConstraintsVastTarget", "VASTTrackerConstraintsVastVersions"]
+__all__ = ["VASTTrackerConstraints", "VastEvent", "VastOffset", "VastTarget", "VastVersions"]
