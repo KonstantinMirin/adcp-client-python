@@ -183,7 +183,7 @@ def grade(tree: Path, package: Path | None, bundle_dir: Path) -> tuple[str, int]
         #: (``test_every_graded_pair_has_a_committed_entry_under_the_current_key``).  What
         #: this adds is the shortfall PER PAIR, in the artifact, as ``absent`` -- which is
         #: strictly more than a hang and strictly more than a count.
-        key = harness.corpus_key(pair.identity, examples=1, custom_formats=formats)
+        key = harness.corpus_key(pair.identity, custom_formats=formats)
         if held.STORE.get(key) is None:
             rows.append(
                 harness.verdict_row(

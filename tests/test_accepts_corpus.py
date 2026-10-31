@@ -184,19 +184,17 @@ def test_a_pair_with_no_store_draws_exactly_as_it_always_did() -> None:
 # 2. the key is the content address of the draw's own STATIC input
 # --------------------------------------------------------------------------- #
 def test_every_input_to_the_draw_is_in_the_key_and_nothing_else_is() -> None:
-    """Four inputs, each moved on its own, and the key moves with each.
+    """Each input moved on its own, and the key moves with each.
 
-    The seed is deliberately absent, and NOT because the draw is a pure function of the
-    four: ``_SETTINGS`` fixes ``derandomize``, so there is no seed for a caller to vary,
-    and the residual nondeterminism the next test records is process state no key can
-    name.  What the key has to do is say when the QUESTION moved, and the document says
-    the rest.
+    The seed is deliberately absent, and NOT because the draw is a pure function of these:
+    ``_SETTINGS`` fixes ``derandomize``, so there is no seed for a caller to vary, and the
+    residual nondeterminism the next test records is process state no key can name.  What
+    the key has to do is say when the QUESTION moved, and the document says the rest.
     """
-    base = corpus_key(DOC, examples=1, custom_formats={})
+    base = corpus_key(DOC, custom_formats={})
     moved = {
-        "the identity": corpus_key({**DOC, "maxProperties": 2}, examples=1, custom_formats={}),
-        "the example count": corpus_key(DOC, examples=2, custom_formats={}),
-        "a format strategy": corpus_key(DOC, examples=1, custom_formats={"uuid": object()}),
+        "the identity": corpus_key({**DOC, "maxProperties": 2}, custom_formats={}),
+        "a format strategy": corpus_key(DOC, custom_formats={"uuid": object()}),
     }
     for what, key in moved.items():
         assert key != base, f"{what} moved and the key did not"
@@ -204,7 +202,79 @@ def test_every_input_to_the_draw_is_in_the_key_and_nothing_else_is() -> None:
     # Stable within the process, which is what makes a hit possible at all: the key is
     # computed from the identity's canonical spelling, so key order cannot move it.
     reordered = {k: DOC[k] for k in reversed(list(DOC))}
-    assert corpus_key(reordered, examples=1, custom_formats={}) == base
+    assert corpus_key(reordered, custom_formats={}) == base
+
+
+def test_the_example_count_is_not_in_the_key_and_an_entry_answers_every_lower_count() -> None:
+    """**The count is not a property of the question, and this is the whole of why.**
+
+    ``adcp-client-python-82m.3``: the count was in the key, so the one input a lane raises
+    DELIBERATELY invalidated all 2,693 committed entries and paid a full cold draw -- and
+    walking it up through 1, 5 and 25 paid it three times, for an artifact committed
+    precisely so that nobody would redraw it.  Measured before it was stopped: 2,635
+    entries at ``examples=1`` and 2,407 at ``examples=5``, 8.5 MB, every one of them a
+    question the floor already held the beginning of.
+
+    Two halves, and the second is the one that makes the first safe.
+
+    1. the key does not move with the count;
+    2. an entry of N instances ANSWERS a request for any n <= N, from the first n -- the
+       same witness in the same order a draw of n would have been offered, re-checked
+       against the document by ``corpus_defect`` as n and not as N.
+
+    Read through ``check_accepts`` and not off the key, because what has to hold is that
+    the pair is GRADED on the first n: the instances below are distinguishable, so the
+    count of round trips and the entry's own order are both observable from the result.
+    """
+    key = corpus_key(DOC, custom_formats={})
+    assert key == corpus_key(DOC, custom_formats={}), "a key is not stable"
+
+    five = [{"a": "v", "b": 1}, {"a": "w", "b": 2}, {"a": "x", "b": 3},
+            {"a": "y", "b": 4}, {"a": "z", "b": 5}]
+    for n in (1, 2, 5):
+        seen: list = []
+        res = check_accepts(
+            DOC, accept_of(Faithful), examples=n, corpus=Held({key: five}),
+            identity=DOC, seen=seen,
+        )
+        assert res.outcome == "pass", (n, res.outcome, res.detail)
+        assert res.corpus_key == key, (n, res.corpus_key)
+        # Served from the FIRST n, in the entry's own order.
+        assert seen == five[:n], (n, seen)
+        assert res.replayed == n and res.round_tripped == n, (n, res.replayed)
+
+    # And a request BEYOND the entry is a miss that redraws and holds the longer list,
+    # not a defect: the entry is not wrong, it does not reach that far.
+    store = Held({key: list(five)})
+    over = check_accepts(
+        DOC, accept_of(Faithful), examples=6, corpus=store, identity=DOC
+    )
+    assert over.outcome == "pass", (over.outcome, over.detail)
+    assert over.replayed == 0 and over.examples == 6, (over.replayed, over.examples)
+    assert len(store.entries[key]) == over.examples, len(store.entries[key])
+    # ...and the longer entry then answers the lower counts, which is the whole saving.
+    again = check_accepts(DOC, accept_of(Faithful), examples=5, corpus=store, identity=DOC)
+    assert again.outcome == "pass" and again.replayed == 5, (again.outcome, again.replayed)
+
+
+def test_a_run_at_a_low_count_does_not_shrink_an_entry_drawn_at_a_high_one() -> None:
+    """The write side of the same rule, and without it the fill is paid again every run.
+
+    One entry answers every setting, so a run at a LOW count must not replace a long
+    entry with a short one: the floor's reach would become a function of whichever
+    setting ran last, and the next run at the high count would draw the whole population
+    again.  The store is asked what it holds and the longer list wins; a tie writes
+    nothing, so a run that adds no instance adds no file either.
+    """
+    key = corpus_key(DOC, custom_formats={})
+    long_entry = [{"a": c, "b": i} for i, c in enumerate("vwxyz")]
+    store = Held({key: list(long_entry)})
+    res = check_accepts(
+        DOC, accept_of(Faithful), examples=1, corpus=store, identity=DOC
+    )
+    assert res.outcome == "pass" and res.replayed == 1, (res.outcome, res.replayed)
+    assert store.entries[key] == long_entry, "a run at 1 shortened an entry drawn at 5"
+    assert store.puts == [], "a run that added no instance still wrote the entry"
 
 
 def test_a_store_with_no_identity_beside_it_raises_rather_than_keying_on_the_schema() -> None:
@@ -258,7 +328,7 @@ def test_the_key_is_the_same_in_another_process() -> None:
         "import test_accepts_corpus as t;"
         "seen=[];"
         "r=check_accepts(t.DOC, t.accept_of(t.Faithful), examples=1, seen=seen);"
-        "print(json.dumps([corpus_key(t.DOC, examples=1, custom_formats={}), seen, r.outcome]))"
+        "print(json.dumps([corpus_key(t.DOC, custom_formats={}), seen, r.outcome]))"
     )
     runs = []
     for seed in ("0", "1", "12345"):
@@ -270,7 +340,7 @@ def test_the_key_is_the_same_in_another_process() -> None:
         runs.append(json.loads(done.stdout.strip().splitlines()[-1]))
     keys = claimed("keys computed in another interpreter", {run[0] for run in runs})
     assert len(keys) == 1, "the key is not a function of the identity alone"
-    assert keys == {corpus_key(DOC, examples=1, custom_formats={})}, "and not this one's"
+    assert keys == {corpus_key(DOC, custom_formats={})}, "and not this one's"
     assert {run[2] for run in runs} == {"pass"}
 
 
@@ -412,7 +482,7 @@ def test_our_own_inlining_moves_the_record_and_moves_no_key() -> None:
         return {**unperturbed(placed, referring, position), "$comment": "spelled otherwise"}
 
     def keys(records: dict[str, Any]) -> dict[str, str]:
-        return {d: corpus_key(r, examples=1, custom_formats={}) for d, r in records.items()}
+        return {d: corpus_key(r, custom_formats={}) for d, r in records.items()}
 
     before = {d: bundle.record(BUNDLE, d) for d in sample}
     live = {d: test_emit.identity_of(SchemaRef(d, "#")) for d in sample}
@@ -462,7 +532,7 @@ def test_an_empty_entry_is_not_the_obligation_passing() -> None:
     zero, so ``PairReport.outcome`` reddens it twice: once on the accepts outcome and
     once on the denominator.
     """
-    key = corpus_key(DOC, examples=1, custom_formats={})
+    key = corpus_key(DOC, custom_formats={})
     res = check_accepts(
         DOC, accept_of(Faithful), examples=1, corpus=Held({key: []}), identity=DOC
     )
@@ -471,22 +541,34 @@ def test_an_empty_entry_is_not_the_obligation_passing() -> None:
     assert "0 instances" in res.detail and "the obligation is 1" in res.detail, res.detail
 
 
-def test_an_entry_that_cannot_cover_the_obligation_reddens() -> None:
-    """Short of the example count, which is the same defect as empty one step along."""
-    key = corpus_key(DOC, examples=3, custom_formats={})
+def test_an_entry_short_of_the_obligation_is_a_miss_and_not_a_defect() -> None:
+    """**This test used to assert the opposite, and the inversion is the row**
+    (``adcp-client-python-82m.3``).
+
+    It read "short of the example count is the same defect as empty one step along", which
+    was right while the count was in the KEY: a short entry could then only mean a store
+    answering for a key it was not asked about.  With the count out of the key one entry
+    answers every count, so SHORT means "nobody has asked this question this deeply yet"
+    -- and reporting it as a defect would make raising the example count turn every pair
+    of the population ``corpus_rejected`` at once, which is a red suite standing in for a
+    fill that is owed.
+
+    So it draws, and the entry it leaves answers the lower counts too.  EMPTY is still a
+    defect and :func:`test_an_empty_entry_is_not_the_obligation_passing` holds that half:
+    a store answering with an empty list rather than with ``None`` is broken, and a pair
+    that graded no instance has not passed.
+    """
+    key = corpus_key(DOC, custom_formats={})
     held = Held({key: [{"a": "x", "b": 1}, {"a": "y", "b": 2}]})
     res = check_accepts(DOC, accept_of(Faithful), examples=3, corpus=held, identity=DOC)
-    assert res.outcome == "corpus_rejected", res.outcome
-    assert res.examples == 0
-    # And an entry at the obligation's own count is accepted, so the clause above is
-    # judging the COUNT and not the hit.
+    assert res.outcome == "pass", (res.outcome, res.detail)
+    assert res.replayed == 0 and res.examples == 3, (res.replayed, res.examples)
+    assert len(held.entries[key]) == res.examples, held.entries[key]
+    # An entry at the obligation's own count is replayed and not redrawn, so the clause
+    # above is judging REACH and not the hit.
     whole = Held({key: [{"a": "x", "b": 1}, {"a": "y", "b": 2}, {"a": "z", "b": 3}]})
-    assert (
-        check_accepts(
-            DOC, accept_of(Faithful), examples=3, corpus=whole, identity=DOC
-        ).outcome
-        == "pass"
-    )
+    hit = check_accepts(DOC, accept_of(Faithful), examples=3, corpus=whole, identity=DOC)
+    assert hit.outcome == "pass" and hit.replayed == 3, (hit.outcome, hit.replayed)
 
 
 def test_a_held_instance_the_document_refuses_reddens_rather_than_being_redrawn() -> None:
@@ -497,7 +579,7 @@ def test_a_held_instance_the_document_refuses_reddens_rather_than_being_redrawn(
     against the wrong document.  Not a silent re-draw -- a store that can do this is
     broken, and a fallback would hide it for as long as it kept happening.
     """
-    key = corpus_key(DOC, examples=1, custom_formats={})
+    key = corpus_key(DOC, custom_formats={})
     res = check_accepts(
         DOC, accept_of(Faithful), examples=1, corpus=Held({key: [{"a": "x"}]}), identity=DOC
     )
@@ -532,7 +614,7 @@ def test_a_rejected_entry_is_a_verdict_on_the_pair() -> None:
     pair = Pair(
         name="held", schema=DOC, model=Faithful, accept=accept_of(Faithful), identity=DOC
     )
-    key = corpus_key(DOC, examples=1, custom_formats={})
+    key = corpus_key(DOC, custom_formats={})
     rep = check_pair(pair, corpus=Held({key: []}))
     assert rep.accepts.outcome == "corpus_rejected"
     assert rep.graded_instances == 0
@@ -743,11 +825,15 @@ def test_no_run_writes_a_corpus_entry_inside_the_checkout() -> None:
 # 5. the committed floor, and the gate the old argument said could not exist
 # --------------------------------------------------------------------------- #
 #: The example count the POPULATION is graded at, read off the signature that decides it
-#: rather than written here.  It is in the key (:func:`corpus_key`), so a default that
-#: moved would move every key in the population -- and the gate below would then report
-#: the floor short of it, which is the correct reading of a redraw that is owed.  A literal
-#: ``1`` here would instead make the gate assert the floor is current under a count nothing
-#: grades at.
+#: rather than written here.
+#:
+#: **It is NO LONGER IN THE KEY** (``adcp-client-python-82m.3``), so moving it no longer
+#: moves a single key and the gate below no longer reports a redraw owed for a count change
+#: -- which is the whole point of taking it out: the count is the one input a lane raises
+#: deliberately, and every raise used to invalidate all 2,693 committed entries.  What the
+#: count still decides is how many instances an entry must be able to SERVE, so it is read
+#: here for :func:`grades_to_an_entry`'s message and for the obligation that reading
+#: reports, and not for the address.
 ACCEPTS_EXAMPLES = inspect.signature(check_pair).parameters["accepts_examples"].default
 
 
@@ -755,8 +841,8 @@ def live_keys() -> dict[str, str]:
     """Every graded pair's CURRENT corpus key, by the pair's own name.
 
     The key ``check_pair`` would compute for that pair: ``test_emit.identity_of``'s
-    identity, the population's example count and ``test_emit.FORMAT_STRATEGIES``.  Spelled
-    from those three rather than by grading the pair, because the gate below has to read
+    identity and ``test_emit.FORMAT_STRATEGIES``.  Spelled from those rather than by
+    grading the pair, because the gate below has to read
     the floor's currency **without drawing anything** -- a gate that cost a cold run to
     report that a cold run is owed would be unrunnable exactly when it matters.
     """
@@ -765,7 +851,6 @@ def live_keys() -> dict[str, str]:
     return {
         f"{g.ref.document}{g.ref.pointer}": corpus_key(
             test_emit.identity_of(g.ref),
-            examples=ACCEPTS_EXAMPLES,
             custom_formats=test_emit.FORMAT_STRATEGIES,
         )
         for g in test_emit.graded()
@@ -1038,7 +1123,7 @@ def test_a_committed_entry_the_document_refuses_is_not_repaired_by_the_cache() -
     a stale commit invisible, so it is asserted absent rather than assumed: the verdict is
     the rejection, not the cache's instance.
     """
-    key = corpus_key(DOC, examples=1, custom_formats={})
+    key = corpus_key(DOC, custom_formats={})
     floor, cache = Held({key: [{"a": "x"}]}), Held({key: [{"a": "x", "b": 1}]})
     res = check_accepts(
         DOC,

@@ -240,12 +240,11 @@ def test_the_positions_the_three_sites_name_are_three_different_keys() -> None:
         ("reached", "/properties/box/properties/tags", 0),
         ("demand", ["box", "tags"]),
     ]
-    keys = [corpus_key(DOC, examples=1, position=p) for p in spelled]
+    keys = [corpus_key(DOC, position=p) for p in spelled]
     assert len(set(keys)) == len(spelled), keys
-    assert keys[0] == corpus_key(DOC, examples=1, position=spelled[0]), "a key is not stable"
+    assert keys[0] == corpus_key(DOC, position=spelled[0]), "a key is not stable"
     # A different pair of the same document asks a different question at the same position.
-    other = corpus_key({"document": DOC, "pointer": "#/properties/box"}, examples=1,
-                       position=spelled[0])
+    other = corpus_key({"document": DOC, "pointer": "#/properties/box"}, position=spelled[0])
     assert other not in keys, "the position answered without the pair's identity"
 
 
@@ -299,7 +298,7 @@ def test_the_floor_answers_before_the_cache_so_every_lane_grades_one_witness() -
     one, and the payload that reaches ``accept`` carries the floor's.
     """
     position = ("reached", "/properties/box/properties/tags", 0)
-    key = corpus_key(DOC, examples=1, position=position)
+    key = corpus_key(DOC, position=position)
     floor = Held({key: [{"tags": ["committed"]}]})
     cache = Held({key: [{"tags": ["cached"]}]})
     offered: list[Any] = []
@@ -351,8 +350,8 @@ def test_a_held_base_the_document_refuses_never_reaches_the_entry_point() -> Non
 
     poison = [{"tags": ["a"], "smuggled": True}]
     step = ("reached", "/properties/box/properties/tags", 0)
-    reached = corpus_key(DOC, examples=1, position=step)
-    demand = corpus_key(DOC, examples=1, position=("demand", ["box", "tags"]))
+    reached = corpus_key(DOC, position=step)
+    demand = corpus_key(DOC, position=("demand", ["box", "tags"]))
     offered: list[Any] = []
 
     def watching(payload: Any) -> Any:
@@ -443,7 +442,7 @@ def test_a_drawn_null_is_an_answer_and_not_a_failure() -> None:
         "additionalProperties": False,
     }
     position = ("reached", "/properties/box/properties/tags", 0)
-    key = corpus_key(DOC, examples=1, position=position)
+    key = corpus_key(DOC, position=position)
     store.entries[key] = [None]
     assert harness._Draws(corpus=store, identity=DOC).one(nullable, position, {}) == [None]
     assert store.puts == [], "an answer of null was redrawn as though it were a failure"
@@ -510,7 +509,7 @@ def test_the_accepts_key_does_not_move_when_a_position_is_available() -> None:
 
     keyed = {
         f"{g.ref.document}{g.ref.pointer}": corpus_key(
-            test_emit.identity_of(g.ref), examples=1, custom_formats=test_emit.FORMAT_STRATEGIES
+            test_emit.identity_of(g.ref), custom_formats=test_emit.FORMAT_STRATEGIES
         )
         for g in test_emit.graded()
     }
@@ -524,8 +523,8 @@ def test_the_accepts_key_does_not_move_when_a_position_is_available() -> None:
     # argument is ignored.
     sample = min(pairs)
     identity = {"document": sample.split("#")[0], "pointer": "#"}
-    assert corpus_key(identity, examples=1) != corpus_key(
-        identity, examples=1, position=("demand", [])
+    assert corpus_key(identity) != corpus_key(
+        identity, position=("demand", [])
     )
 
 

@@ -257,16 +257,40 @@ _DRAW_VERSION = f"hypothesis={hypothesis.__version__} hjs={hypothesis_jsonschema
 def corpus_key(
     identity: Any,
     *,
-    examples: int,
     custom_formats: Mapping[str, Any] = (),
     position: Any = None,
 ) -> str:
     """The content address of the instances :func:`check_accepts` draws, under ``identity``.
 
     **``identity`` is what the CALLER says makes two draws the same question, and this
-    function hashes it beside the three facts it owns**: the example count, the format
-    strategies and the generator.  It is never derived from the schema the draw is handed,
-    and the reason is the defect this signature exists to close.
+    function hashes it beside the two facts it owns**: the format strategies and the
+    generator.  It is never derived from the schema the draw is handed, and the reason is
+    the defect this signature exists to close.
+
+    **THE EXAMPLE COUNT IS NOT IN THE KEY, AND REMOVING IT IS THIS FUNCTION'S WHOLE
+    CURRENT CHANGE** (``adcp-client-python-82m.3``).  It was, and the consequence was
+    measured: the count is the one input a lane raises deliberately, so every raise
+    invalidated all 2,693 committed entries and paid a full cold draw of the population --
+    and walking the count up through 1, 5 and 25 paid it three times over, for an artifact
+    that was committed precisely so that nobody would ever redraw it.  Measured on this
+    row before it was stopped: 2,635 entries drawn at ``examples=1`` and 2,407 at
+    ``examples=5``, 8.5 MB of them, all of it answering questions the floor already held
+    the beginning of.
+
+    **An entry for N examples CONTAINS the answer for every n <= N**, which is why the
+    count was never a property of the question.  ``check_accepts`` offers the instances in
+    order, so the first n of a held list are exactly the list a draw of n would have been
+    asked for -- the SAME witness, not a comparable one -- and
+    :func:`corpus_defect` re-offers the n it serves to the document before any of them
+    counts.  So one fill at the highest count anyone wants makes every lower setting free,
+    and the committed floor stops being a single-count artifact.
+
+    What the key must still move on is unchanged and is the property
+    ``adcp-client-python-3be.22`` established: the DOCUMENT (through ``identity``), the
+    format strategies, and the generator version.  A compiler edit moves nothing; a bundle
+    bump or a generator bump moves everything.  Removing the count moves every key ONCE,
+    which is the last time a count can move one, and the entries are RE-KEYED rather than
+    redrawn -- the content is the instances and the instances did not change.
 
     **THE SCHEMA IS NOT A STATIC FACT ABOUT THE DOCUMENT, BECAUSE THE RESOLVER IS OURS.**
     The schema ``check_accepts`` draws from is ``bundle.record``'s output -- this package's
@@ -341,7 +365,6 @@ def corpus_key(
     """
     material: dict[str, Any] = {
         "identity": identity,
-        "examples": examples,
         "formats": sorted(custom_formats),
         "draw": _DRAW_VERSION,
     }
@@ -366,9 +389,30 @@ def corpus_defect(
     * **fewer instances than ``examples``** -- including none at all, which is the one
       failure mode a cache of this shape can have.  §8's accepts draw is what PROVES a
       widening rather than believing it, so an empty or short entry that read as "the
-      obligation passed" would be the cache grading something else.  It is a defect here,
-      not a fallback, because a store that can hand back the wrong count is broken and a
-      silent re-draw would hide it for as long as it kept happening.
+      obligation passed" would be the cache grading something else.
+
+      **EMPTY and no longer "short", which is the change that took the count out of the
+      key** (:func:`corpus_key`).  Two readings moved and they moved in opposite
+      directions:
+
+      * an entry holding MORE than the obligation asks for was never a defect and is no
+        longer treated as one.  The instances are offered in order, so the first
+        ``examples`` of them are the list a draw of ``examples`` would have produced, and
+        those are the ones this function checks and the ones ``check_accepts`` replays: a
+        25-instance entry served as 5 is checked as 5.
+      * an entry holding FEWER -- but at least one -- is not a wrong answer either.  It is
+        a question nobody has yet asked at this depth, so ``check_accepts`` treats it as a
+        MISS: it redraws to ``examples`` and holds the longer list.  Reporting it here
+        instead would make raising the example count turn every pair of the population
+        ``corpus_rejected`` at once, which is a red suite standing in for a fill that is
+        owed.  **A redraw and not "draw the difference"**, because the draw is one
+        ``hypothesis`` run over one strategy and there is no affordance for resuming it at
+        instance n; the entry it produces then covers every lower count for ever, so the
+        redraw is paid once.
+
+      ZERO instances stays a defect, and that is the clause this one keeps: a store
+      answering with an empty LIST rather than with ``None`` is broken, and a pair that
+      graded no instance has not passed.
     * **an instance the document REFUSES**.  The key already makes this unreachable --
       it hashes the schema the instance was drawn from -- so reaching it means the store
       answered for a key it was not asked about, and that is the one way a stale entry
@@ -382,14 +426,14 @@ def corpus_defect(
     pair, with the instance count at zero, so the pair reddens twice over rather than
     passing on evidence it does not have.
     """
-    if not isinstance(held, list) or len(held) != examples:
+    if not isinstance(held, list) or not held:
         n = len(held) if isinstance(held, list) else "a non-list"
         return (
             f"the held corpus carries {n} instances where the obligation is {examples}; "
             "an entry that cannot cover the draw is not evidence"
         )
     cls = validator_cls or validator_for(schema)
-    for i, instance in enumerate(held):
+    for i, instance in enumerate(held[:examples]):
         if conforms(schema, instance, validator_cls=cls) is False:
             broke = violated_keywords(schema, instance, validator_cls=cls)
             return (
@@ -1165,7 +1209,7 @@ def check_accepts(
     #: produces.
     held = None
     if corpus is not None:
-        res.corpus_key = corpus_key(identity, examples=examples, custom_formats=cf)
+        res.corpus_key = corpus_key(identity, custom_formats=cf)
         held = corpus.get(res.corpus_key)
     if held is not None:
         defect = corpus_defect(schema, held, examples, validator_cls=validator_cls)
@@ -1173,6 +1217,13 @@ def check_accepts(
             res.outcome = "corpus_rejected"
             res.detail = f"{defect} (key {res.corpus_key[:16]})"[:400]
             return res
+    #: **An entry SHORT of the obligation is a miss and not a hit**, which is the other
+    #: half of taking the count out of the key (:func:`corpus_defect`).  The entry is not
+    #: wrong -- its instances are this document's and are checked above -- it simply does
+    #: not reach this far, so the draw runs and the write below replaces it with the longer
+    #: list.  Paid once: the new entry answers every count at or below it for ever.
+    if isinstance(held, list) and len(held) < examples:
+        held = None
 
     try:
         if held is None:
@@ -1185,7 +1236,11 @@ def check_accepts(
                 )(run)
                 run()
         else:
-            for instance in held:
+            #: The FIRST ``examples`` of the held list and not all of it, which is the n <=
+            #: N reading :func:`corpus_key` argues for: the instances are offered in order,
+            #: so these are the ones a draw of ``examples`` would have produced, and
+            #: :func:`corpus_defect` has already re-offered exactly these to the document.
+            for instance in held[:examples]:
                 res.replayed += 1
                 body(instance)
         res.outcome = "pass"
@@ -1222,8 +1277,24 @@ def check_accepts(
     #: is the CALLER's list and a caller may hand one that already holds something: what
     #: this call drew is what ``body`` counted.
     if corpus is not None and held is None and res.outcome != "strategy_error":
-        if res.examples == examples:
-            corpus.put(res.corpus_key, seen[-examples:])
+        #: **The whole draw and never a truncation, and NEVER SHORTER THAN WHAT IS ALREADY
+        #: HELD.**  With the count out of the key one entry answers every setting, so a run
+        #: at a LOW count must not overwrite a long entry with a short one -- that would
+        #: make the floor's reach a function of whichever setting ran last, and the next run
+        #: at the high count would draw again.  The store is asked what it holds and the
+        #: longer list wins; a tie keeps what is held, so a run that adds nothing writes
+        #: nothing.
+        #:
+        #: ``res.examples`` and not ``examples``: a draw SATURATES where the node's
+        #: admissible set is smaller than the count -- an eight-member enum yields 8
+        #: instances however many are asked for -- and the old equality held no entry at
+        #: all for such a node, so every run redrew it.  What the draw produced is what
+        #: there is to hold, and :func:`corpus_defect` reports it short only against a
+        #: request it cannot cover.
+        standing = corpus.get(res.corpus_key)
+        drawn = seen[-res.examples:] if res.examples else []
+        if drawn and len(drawn) > len(standing or []):
+            corpus.put(res.corpus_key, drawn)
     return res
 
 
@@ -1341,9 +1412,7 @@ class _Draws:
         """``[one instance of schema]``, or ``[None, why not]`` -- held under ``position``."""
         if self.corpus is None or self.identity is None:
             return self._draw(schema, custom_formats)
-        key = corpus_key(
-            self.identity, examples=1, custom_formats=custom_formats, position=position
-        )
+        key = corpus_key(self.identity, custom_formats=custom_formats, position=position)
         held = self.corpus.get(key)
         if isinstance(held, list) and held:
             self.replayed += 1
@@ -4484,6 +4553,28 @@ COLUMNS: tuple[str, ...] = (
 )
 
 
+def _pair_verdict(report: PairReport | None, error: str) -> str:
+    """:attr:`PairReport.outcome`, in the three-state spelling the cells beside it use.
+
+    ``absent`` for a pair that reached no check -- an error building it, no held instance,
+    a budget spent -- and for the two outcomes that say the GENERATOR produced nothing
+    (``no_instrument``, ``accepts:strategy_error``) or that nothing was graded
+    (``no_accepts_check_evidence``).  ``fail`` for every outcome that is a verdict about
+    the class.  ``pass`` only for a pass.
+
+    Stated as a function rather than inline, because the mapping has to agree with the
+    per-check cells and an inline conditional in a row builder is where the two drift.
+    """
+    if error or report is None:
+        return f"{ABSENT}:{error or 'not_graded'}"
+    outcome = report.outcome
+    if outcome == "pass":
+        return PASS
+    if outcome in ("no_instrument", "accepts:strategy_error", "no_accepts_check_evidence"):
+        return f"{ABSENT}:{outcome}"
+    return f"{FAIL}:{outcome}"
+
+
 def verdict_row(
     ref: SchemaRef | None,
     report: PairReport | None,
@@ -4539,7 +4630,11 @@ def verdict_row(
             document,
             pointer,
             model or (report.model_repr if report is not None else ""),
-            f"verdict={error or (report.outcome if report is not None else 'not_graded')}",
+            #: The PAIR's one verdict, in the same three-state spelling as the cells
+            #: beside it, so "every row that is not a pass" is one grep whichever column
+            #: a reader reaches for.  A pair that reached no check at all reads
+            #: ``absent`` and never ``fail``: the distinction is the whole artifact.
+            f"verdict={_pair_verdict(report, error)}",
             *(f"{check}={v[check]}" for check in CHECKS),
             f"examples={a.examples if a is not None else 0}",
             f"evidence={evidence_of(report)}",
