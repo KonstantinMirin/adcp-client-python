@@ -13,8 +13,7 @@ Section 3 states the four readings this function makes, and it makes no fifth:
   nothing else";
 * "a cell whose ``widens_to`` is ``None`` cannot be approximated, and a handler that asks
   for one is a ``BuildFailure`` -- the keyword states no fact, so a widening against it
-  would be a declaration with nothing to declare, and section 8 would report it as
-  *over-declared* forever";
+  would be a declaration with nothing to declare";
 * "a key with no row takes TOP, because an unrowed keyword's reach is unknown and TOP is
   the one rung that is safe without knowing it";
 * "the attribution is ``Ours`` at the cell's own address unless ``attribution.py`` holds
@@ -28,11 +27,13 @@ table is where the decision that the keyword compiles was made."
 
 **The FACT is the document's own, and section 9 is why**: "Never approximate on a keyword
 the walk itself inserted.  An approximation must name something the document states, or
-the document is blamed for the compiler's own rewriting -- and the declaration then cannot
-be checked, because section 8 looks for the fact in the document and does not find it."
-So ``fact`` is a parameter and the caller passes what the DOCUMENT states, never a value
-the walk derived; :func:`approximate` cannot check that for the caller, which is what
-section 8's two set equalities are pointed at from the other side.
+the document is blamed for the compiler's own rewriting" -- and the declaration then
+cannot be checked, because ``harness.check_widening`` walks the declaration's own pointer
+into the document, reads what the document states there, and finds nothing for the
+keyword.  So ``fact`` is a parameter and the caller passes what the DOCUMENT states, never
+a value the walk derived; :func:`approximate` cannot check that for the caller, which is
+what that check is pointed at from the other side: a declaration naming a keyword the
+document does not state at its pointer has no fact to put to a draw.
 
 **Step 10 WAS the first caller and the handlers call :func:`declare` today.**  The step
 before it had no production call site at all -- "the approximation, end to end, with no
@@ -67,8 +68,9 @@ def rung_for(keyword: str, position: Position) -> Rung:
     A cell whose ``widens_to`` is ``None`` raises, and the exception is a
     :class:`codegen.refusal.BuildFailure` rather than a refusal because it is a defect in
     the COMPILER: the cell says the keyword states no fact about an instance, so a handler
-    asking to widen against it has asked for a declaration with nothing to declare, and
-    section 8 would report that as *over-declared* for as long as it stood.
+    asking to widen against it has asked for a declaration with nothing to declare -- an
+    obligation ``harness.check_widening`` could never discharge, because there is no fact
+    at that pointer for it to draw against.
     """
     answer = keywords.cell(keyword, position)
     if answer is None:

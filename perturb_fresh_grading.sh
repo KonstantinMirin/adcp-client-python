@@ -38,10 +38,10 @@
 # recompiled and the tree rewritten. A cheap version of this case would be one that did
 # not go through the compiler, and it would not be this case.
 #
-# A COLLECTION ERROR IS NOT A GREEN RUN -- `perturb_dump_exemptions.sh`'s header records
-# the day that hole scored a perturbation that never ran as a guard that cannot redden.
-# The verdict here matches "failed|error" for the same reason, and the collection count is
-# asserted separately so an errored collection cannot read as a whole one.
+# A COLLECTION ERROR IS NOT A GREEN RUN: a perturbation that never ran prints no
+# "failed", and that hole once scored one as a guard that cannot redden. The verdict here
+# matches "failed|error" for that reason, and the collection count is asserted separately
+# so an errored collection cannot read as a whole one.
 set -u
 cd "$(dirname "$0")" || exit 1
 

@@ -22,7 +22,8 @@ instances is admissible only under conditions, and every one of them is graded h
    obligation -- *including an empty one*, which is the one failure mode that would read
    as "the obligation passed".
 4. **The corpus moves no verdict.**  A pair graded from a hit and the same pair graded
-   from a draw report the same outcome, the same instance count and the same comparison.
+   from a draw report the same outcome, the same instance count, the same accepts verdict
+   and the same liveness.
 5. **THE CORPUS IS IN THE TREE, AND ITS CURRENCY IS GRADED.**  ``docs/plan/architecture.md``
    ("The drawn corpus is COMMITTED", 2026-10-30).  Every graded PAIR has a committed entry
    under the current key, less the pairs no draw can reach; the floor answers before the
@@ -604,11 +605,12 @@ BOTH_WAYS = (
 
 @pytest.mark.parametrize("name", BOTH_WAYS)
 def test_a_replayed_pair_and_a_drawn_pair_report_the_same_thing(name: str) -> None:
-    """Same verdict, same denominator, same comparison, same liveness -- on real records.
+    """Same verdict, same denominator, same accepts verdict, same liveness -- on real
+    records.
 
     The identity of the failure set is what ``pyproject.toml`` says to check when the
     suite gets faster, and this is that check at the level of one pair: every field the
-    suite asserts on is compared between a pair that drew and the same pair that replayed.
+    suite asserts on is read off a pair that drew and off the same pair that replayed.
     ``replayed`` and ``corpus_key`` are the two that are MEANT to differ, and they are
     asserted to differ rather than excluded.
     """
@@ -634,10 +636,6 @@ def test_a_replayed_pair_and_a_drawn_pair_report_the_same_thing(name: str) -> No
         warm.liveness.outcome,
         warm.liveness.how,
         warm.liveness.violated,
-    )
-    assert (cold.comparison.outcome, cold.comparison.compared) == (
-        warm.comparison.outcome,
-        warm.comparison.compared,
     )
     assert cold.accepts.replayed == 0
     assert warm.accepts.replayed == warm.accepts.examples

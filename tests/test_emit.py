@@ -77,7 +77,6 @@ from pydantic import BaseModel, ConfigDict, Field, RootModel, TypeAdapter, Valid
 from pydantic_core import PydanticCustomError
 
 from adcp.types._base import (
-    UNDERDETERMINED,
     WIDENED,
     AdCPBaseModel,
     AdCPRootModel,
@@ -102,13 +101,11 @@ from codegen.harness import (
     AcceptsResult,
     check_accepts,
     check_liveness,
-    ComparisonResult,
     LivenessResult,
     Pair,
     PairReport,
     _composed,  # noqa: PLC2701 -- the harness's own folding of an allOf conjunct's facts
     check_pair,
-    compare_schema,
     conforms,
     refusing_payload,
     violated_keywords,
@@ -423,9 +420,10 @@ def graded() -> list[Graded]:
     SHARED: read it, do not mutate it.
 
     **THE WALK ITSELF IS ``tests/compared.py``'s AND THIS IS A WRAPPER**
-    (``adcp-client-python-3be.23``).  §8's comparison moved into the fast loop and needs
-    the same pairing this file parametrises over -- and a second walk of its own would be
-    a census over however many pairs that walk turned out to find, which is the
+    (``adcp-client-python-3be.23``).  The pairing is what the round trip needs -- which
+    emitted class answers which document and pointer -- so it is stated ONCE, where any
+    reader of the fresh tree takes the same rows: a reader walking the tree for itself
+    would range over however many pairs that second walk turned out to find, which is the
     two-populations defect ``tests/compiled.py``'s key exists to prevent one layer down.
     So there is ONE pairing of the fresh tree: ``compared.pairs()`` performs it, carries
     every decision the paragraphs above record, and fills the same
@@ -886,18 +884,15 @@ def test_pagination_request_passes_all_three_checks() -> None:
     # payload is a whole-instance replacement and the document bites on ``type``.
     assert rep.liveness.how == "replaces the instance with None", rep.liveness.how
     assert rep.liveness.violated == ("type",), rep.liveness.violated
-    assert rep.comparison.outcome == "pass", (rep.comparison.missing, rep.comparison.differs)
-    assert rep.comparison.compared == 10, rep.comparison.compared
     assert rep.outcome == "pass"
 
 
 def test_the_compiler_carries_what_the_document_says_and_a_text_emitter_dropped() -> None:
     """By introspection, not by reading the emitted text.
 
-    These are the facts the schema comparison exists to grade, named here one at
-    a time so a failure says WHICH one moved.  All four were dropped by the
-    hand-rolled renderer this step replaces, and all four come out of the
-    compiler for free.
+    The four facts a document can state about a value and a hand-rolled renderer
+    silently dropped, named here one at a time so a failure says WHICH one moved.
+    All four come out of the compiler for free.
     """
     model = pagination().model
     schema = schema_at(SchemaRef(PAGINATION, "#"))
@@ -914,65 +909,6 @@ def test_the_compiler_carries_what_the_document_says_and_a_text_emitter_dropped(
     )
     assert model.model_config["extra"] == "forbid"  # D7, from additionalProperties: false
     assert model.__adcp_schema__ == SchemaRef(PAGINATION, "#")
-
-
-def test_the_schema_comparison_grades_the_generated_code_and_the_other_two_do_not() -> None:
-    """The measurement that forces the schema comparison, as a test not a note.
-
-    A model with ``Any`` on every field is wider than its document in every way
-    an annotation can be.  Graded through the PRODUCTION entry point -- which
-    validates against the document and only then constructs, and is therefore the
-    only entry point grading acceptance says anything about -- it is
-    indistinguishable from a faithful model on every check but one: the accepts
-    check passes over the SAME 25 instances, each one dumps back out to something
-    the document still admits, and the refused payload is refused by both.
-
-    **The refused payload is refused by the WIDE model too, and section 6 says that
-    is the whole point of keeping exactly one.**  Pydantic is DELIBERATELY less
-    strict than the schema -- D4 gives the schema the acceptance decision -- so a
-    payload the schema refuses measures nothing about the class on either route:
-    ``model_validate`` may accept it by design, and ``strict_validate`` refuses it
-    because the document answered.  What the one refusal proves is LIVENESS, that
-    this class's schema half is connected and its ref resolves to its document, and
-    it proves that for the wide class exactly as for the faithful one.  The 27,791
-    per-keyword sites this replaced were proving the same thing 27,791 times.
-
-    Falsifiable here: delete the comparison and a wide model passes this file.
-    """
-    schema = schema_at(SchemaRef(PAGINATION, "#"))
-
-    class Wide(AdCPBaseModel):
-        __adcp_schema__ = SchemaRef(PAGINATION, "#")
-        model_config = {"extra": "forbid"}
-        max_results: Any = None
-        cursor: Any = None
-
-    wide = check_pair(
-        Pair(name="wide", schema=schema, model=Wide, accept=Wide.strict_validate),
-        accepts_examples=25,
-    )
-    # Both at the same explicit depth: the point of this test is that the two
-    # denominators are IDENTICAL, so neither may depend on check_pair's default.
-    faithful = check_pair(pair_of(pagination()), accepts_examples=25)
-
-    assert wide.accepts.outcome == faithful.accepts.outcome == "pass"
-    assert wide.liveness.outcome == faithful.liveness.outcome == "pass"
-    assert wide.liveness.how == faithful.liveness.how
-    assert wide.graded_instances == faithful.graded_instances == 25
-
-    assert faithful.comparison.outcome == "pass"
-    assert wide.comparison.outcome == "model_drops_a_fact"
-    missing = {m.split(":")[0] for m in wide.comparison.missing}
-    assert {
-        "/properties/max_results/type",
-        "/properties/max_results/minimum",
-        "/properties/max_results/maximum",
-    } <= missing
-    # ``Any = None`` STATES a default, it just states the wrong one, so it is a
-    # difference and not an omission -- and the comparison has to tell those apart,
-    # because "the model says nothing" and "the model says something else" point
-    # at different defects in the walk.
-    assert "/properties/max_results/default: the document says 50, the model None" in wide.comparison.differs
 
 
 def test_a_zero_denominator_is_not_reportable_as_a_pass() -> None:
@@ -1033,14 +969,12 @@ def test_a_zero_denominator_verdict_is_never_pass() -> None:
     Asserted to be something other than ``pass``, so deleting the branch fails this
     test rather than silently turning a pair nothing reached into a green mark.
     """
-    fine = ComparisonResult(compared=7)
     refused = LivenessResult(how="replaces the instance with None", outcome="pass")
 
     nothing_round_tripped = PairReport(
         name="n",
         accepts=AcceptsResult(examples=25, outcome="pass", round_tripped=0),
         liveness=refused,
-        comparison=fine,
     )
     assert nothing_round_tripped.graded_instances == 0
     assert nothing_round_tripped.outcome == "no_accepts_check_evidence"
@@ -1051,7 +985,6 @@ def test_a_zero_denominator_verdict_is_never_pass() -> None:
         name="r",
         accepts=AcceptsResult(examples=25, outcome="pass", round_tripped=1),
         liveness=refused,
-        comparison=fine,
     )
     assert reached.graded_instances == 1
     assert reached.outcome == "pass"
@@ -1071,7 +1004,6 @@ def test_no_instrument_is_admitted_only_where_a_measured_position_explains_it() 
     and no document in this population produces the refusing cell.  The population
     side is ``test_no_instrument_is_the_designed_outcome_for_a_measured_shape``.
     """
-    fine = ComparisonResult(compared=7)
     refused = LivenessResult(how="replaces the instance with None", outcome="pass")
     errored = AcceptsResult(examples=1, outcome="strategy_error", detail="Unsatisfiable: 9 of 9")
 
@@ -1081,7 +1013,6 @@ def test_no_instrument_is_admitted_only_where_a_measured_position_explains_it() 
         name="e",
         accepts=errored,
         liveness=refused,
-        comparison=fine,
         accepts_undrawable=("/p: format 'uri' beside pattern '^https://x/' [Unsatisfiable: 9]",),
     )
     assert explained.outcome == "no_instrument"
@@ -1092,7 +1023,7 @@ def test_no_instrument_is_admitted_only_where_a_measured_position_explains_it() 
 
     # ... and the same generator failure with NOTHING explaining it is a verdict on
     # the pair.  Deleting either half of the rule fails here.
-    unexplained = PairReport(name="u", accepts=errored, liveness=refused, comparison=fine)
+    unexplained = PairReport(name="u", accepts=errored, liveness=refused)
     assert unexplained.no_instrument == ()
     assert unexplained.outcome == "accepts:strategy_error"
 
@@ -1105,12 +1036,10 @@ def test_no_instrument_is_admitted_only_where_a_measured_position_explains_it() 
 #:
 #: Each is an EQUALITY.  The old refuses-check instance total was a floor, because
 #: it counted hypothesis draws across 27,791 step sites and seven readings of it on
-#: indistinguishable trees spread over 0.4%.  There is one draw per pair now and the
-#: schema comparison walks a document, so every figure here is a function of
-#: (bundle, emitted tree) and reproduces exactly.
-#: 1055 -> 1085 at ``salesagent-j3k2l.28``: the three refusals section 6's "every fold
-#: applies to both sides" names are gone, so 14 more documents emit and bring their own
-#: nested pairs.  Re-measured, not derived from the document count: a document carries
+#: indistinguishable trees spread over 0.4%.  There is one draw per pair now, so every
+#: figure here is a function of (bundle, emitted tree) and reproduces exactly.
+#: 1055 -> 1085 at ``salesagent-j3k2l.28``: three refusals are gone, so 14 more
+#: documents emit and bring their own nested pairs.  Re-measured, not derived from the document count: a document carries
 #: between one and a dozen pairs.
 #: 1085 -> 1079 at ``salesagent-j3k2l.38``: D3's content dedup collapses 10 nodes, and
 #: the 6 of them that are CLASSES are 6 pairs that no longer exist.  The other 4 are
@@ -1134,69 +1063,18 @@ PAIRS_FLOOR = 1095
 #: **Every pair that is not ``pass``, BY NAME, and written once.**  Two tests read it:
 #: the totals test derives its ``pass`` figure as the complement, and
 #: ``test_the_non_pass_pairs_are_named_and_attributed`` asserts the membership and
-#: attributes each one.  A count of five told the next reader nothing about which five
-#: or why; a name says which, and two readings of one named set cannot drift apart the
+#: attributes each one.  A count told the next reader nothing about WHICH pairs or why;
+#: a name says which, and two readings of one named set cannot drift apart the
 #: way ``PAIRS_PIN`` and ``OUTCOME_PINS`` could.
 #:
-#: Two groups were GONE rather than smaller.  ``comparison:model_drops_a_fact`` was one
-#: ``description`` each at an ``additionalProperties`` node, closed in the EMITTER by
-#: ``salesagent-j3k2l.28``; ``accepts:model_dropped_a_fact``'s three pairs are EXEMPT
-#: and the exemption is reported (``codegen.dump_exemptions``, and the ``exempt`` census
-#: in the test named above).
-#:
-#: **TWO COMPARISON GROUPS ARRIVED AT ``adcp-client-python-10l.3``, AND THIS CENSUS IS
-#: WHERE THEY ARE NAMED RATHER THAN WHERE THEY ARE EXCUSED.**
-#: ``test_every_class_passes_all_three_checks`` is RED on every one of them and stays
-#: red: architecture §14 step 3 says a comparison failure that appears when
-#: ``bundle.record`` becomes this package's own inliner is a REAL FINDING and not a
-#: fold's absence, so nothing was added to the verifier to quiet one.
-#:
-#: **A THIRD GROUP APPEARED AND WAS CLEARED IN THE SAME ROW, WHICH IS WHY IT IS NOT
-#: HERE.**  23 pairs reported ``additionalProperties: true`` where their document states
-#: ``{"type": "object"}``: §4's mapping row renders ``dict[str, Any]`` and pydantic has
-#: no spelling of that which omits the keyword, and ``true`` and silence admit the same
-#: instances -- so the two sides were writing one acceptance fact two ways.  That is a
-#: reading this pipeline's own output forces, which §9 KEEPS and applies to both sides,
-#: so ``harness._silent_about_extras`` is where it now lives, scoped to a node that
-#: declares no ``properties``.  It replaces a blanket model-only arm whose one-site
-#: measurement had been absorbing all 23 (``harness._narrows_nothing``).
-#:
-#: **NEITHER OF THE TWO REMAINS, AND NO COMPARISON GROUP IS LEFT.**  Both were measured
-#: and both were filed as their own row, and each was cleared by writing the rule the
-#: semantics document states rather than by admitting the fact:
-#:
-#: 1. **An ``items`` overlay's ``description``, 2 pairs**
-#:    (``adcp-client-python-10l.18``).  ``harness._composed`` folds a conjunct by
-#:    gap-fill and the NODE's own declaration wins, which its docstring names as a KNOWN
-#:    CEILING; at ``core/media-buy-frequency-cap-requirement.json``'s
-#:    ``/properties/supported_control_modes/items`` the node is the BASE's declaration
-#:    and the narrowing conjunct's is the one the model carries, so the two descriptions
-#:    differ.  ``harness._described_by_the_conjunct`` is §6's rule read where §2's
-#:    intersection puts it, and the ``comparison:model_drops_a_fact`` group went with it.
-#: 2. **``core/requirements/catalog-field-binding.json``, 3 pairs and now 0**
-#:    (``adcp-client-python-10l.19``).  At the root the model stated ``type: object`` and
-#:    the document nothing, because ``harness._entails_type``'s union derivation asks
-#:    each branch for a ``type`` word and two of the three branches state theirs through
-#:    a LOCAL ``$ref``.  The DOCUMENT states the fact, so the comparison was the half
-#:    that was wrong: ``harness._normalize`` took the local-``$ref`` reading at a NODE
-#:    and not at the branches inside a combinator, and ``harness._branch_target`` takes
-#:    it at a branch -- by the one function, so both sides get it, and ONE HOP gated on a
-#:    BARE branch, which is every one of the bundle's 33 such branches.  The
-#:    ``comparison:model_adds_a_fact`` group goes with it.
-#:
-#:    **The two BRANCH pairs went earlier, by §14 step 5** -- ``#/oneOf/0`` and
-#:    ``#/oneOf/1`` reported the entry's ``description`` ``missing``, because a branch
-#:    class named off a local reference carried none from its target.  §6 clause 3,
-#:    "silence inherits", is the rule and ``lower_union`` now reads it where
-#:    ``lower_composition`` already did: a branch with two bases IS a composition of the
-#:    union base and the target, so a branch whose own node states no description states
-#:    the one its base does.  One module changed and nothing else in the tree did.
+#: One group was GONE rather than smaller: ``accepts:model_dropped_a_fact``'s three pairs
+#: are EXEMPT and the exemption is reported (``codegen.dump_exemptions``, and the
+#: ``exempt`` census in the test named above).
 #: Of :data:`NON_PASS_PAIRS`'s groups, the ones whose pairs round-trip NO instance.  A
 #: pair the generator could not draw for grades 0 instances, and so does one whose dump
-#: the document refused; a COMPARISON failure grades its instance like any other pair,
-#: because the comparison needs no generator and runs after the round trip.  Named so the
-#: complement in ``test_the_harness_result_is_counted_over_the_whole_population`` is a
-#: derivation from the mechanism rather than a second count.
+#: the document refused.  Named so the complement in
+#: ``test_the_harness_result_is_counted_over_the_whole_population`` is a derivation from
+#: the mechanism rather than a second count.
 ROUND_TRIPS_NOTHING = ("no_instrument",)
 
 NON_PASS_PAIRS: dict[str, list[str]] = {
@@ -1204,44 +1082,10 @@ NON_PASS_PAIRS: dict[str, list[str]] = {
         "core/reference-renderer.json#",
         "core/reference-renderer.json#/properties/provenance",
     ],
-    # **``comparison:model_adds_a_fact`` IS GONE, and the group with it**
-    # (``adcp-client-python-10l.19``).  It held
-    # ``core/requirements/catalog-field-binding.json#``, whose root union states no
-    # ``type`` of its own and whose three branches each state ``object`` -- two of them
-    # through ``#/definitions/ScalarBinding`` and ``#/definitions/AssetPoolBinding``.
-    # ``_entails_type``'s union derivation asks each branch for its own ``type`` word, so
-    # the reference answered nothing and §4's union base, a pydantic model rendering
-    # ``type: object``, read as NARROWER than a document that states the word three
-    # times.  ``harness._branch_target`` takes ``_normalize``'s local-``$ref`` reading at
-    # a union BRANCH as well as at a node, and the group empties.  **NO COMPARISON GROUP
-    # IS LEFT**: every pair here is now a ``no_instrument``, which is the generator's
-    # reach and not the comparison's verdict.
-    #
-    # **``comparison:model_drops_a_fact`` IS GONE, and the group with it**
-    # (``adcp-client-python-10l.18``).  It held
-    # ``core/media-buy-frequency-cap-requirement.json#`` and
-    # ``core/media-buy-support-requirements.json#``, each reporting one ``differs`` on
-    # ``/properties/supported_control_modes/items/description``: ``_composed``
-    # gap-filled the description at a pointer whose node is a composed BASE's and whose
-    # stash is the document's own narrowing conjunct, so the comparison graded the
-    # WIDER of two descriptions against a class faithful to the narrower.
-    # ``harness._described_by_the_conjunct`` is §6's "a composed base's loses to the
-    # document's own" read where §2's intersection puts it, and the group empties.  A
-    # group with no pair is removed rather than left as an empty list, because
+    # A group with no pair is removed rather than left as an empty list, because
     # ``set(by_outcome) == {"pass"} | set(NON_PASS_PAIRS)`` would then demand an
     # outcome no pair has.
 }
-#: **THE TWO ZEROS ARE GONE, REPLACED BY THE COMPARISON CENSUS, and that is row .3's
-#: doing rather than a pin being loosened.**  They were pinned at 0 beside an ``added``
-#: zero -- the specification's symmetric comparison, "a fact the model adds reddens and a
-#: fact it drops reddens" -- and all three were green.  Row .3's 30 red facts make a
-#: zero unreachable, and three integers beside each other cannot say WHICH facts they
-#: count, so the set names every one by pair, pointer and DIRECTION.  That is as strong
-#: as the zeros at detecting one more fact and stronger at attributing the ones there
-#: are: a fact arriving, leaving or changing direction reddens with the pair named.  The
-#: set is ``tests/test_the_comparison_census.py``'s ``COMPARISON_FACTS`` as of
-#: ``adcp-client-python-3be.23``, where it holds the live 155 pairs and is read in 53 s
-#: rather than behind this file's 2,793 pair reports.
 #: The pairs whose LIVENESS check has no payload, by name.  Written once and read by the
 #: two tests that need it, so ``pass`` is the complement of a named set rather than an
 #: arithmetic over two pins.  These are the same two pairs ``NON_PASS_PAIRS`` names and
@@ -1438,7 +1282,7 @@ def test_a_refused_payload_is_derived_for_every_pair_an_instance_was_drawn_for()
         assert refusing_payload(schema, {}) == (None, "replaces the instance with None")
         rep = check_pair(pair_of(g))
         assert rep.outcome == "pass" and rep.liveness.outcome == "pass"
-        assert rep.graded_instances > 0 and rep.comparison.compared > 0
+        assert rep.graded_instances > 0
 
 
 def _grades_a_cause(cause: str, where: str = "") -> None:
@@ -1472,11 +1316,6 @@ def test_every_class_passes_all_three_checks(row: Graded) -> None:
     and not the model -- asserted by requiring each cause to name a shape (a format
     beside a pattern) and not merely to exist.
 
-    **The schema comparison is asserted for EVERY pair, including an undrawable
-    one**, and that is what keeps the exit from being a hole: the comparison needs
-    no generator, it runs on both of them, and it is the only check that separates a
-    faithful model from a wide one.
-
     **Parametrised, and that is load-bearing for the suite's wall clock.** xdist
     distributes by TEST, so this is 1,055 work items that spread across the workers
     while the three tests reading a population TOTAL are one item each.
@@ -1489,7 +1328,6 @@ def test_every_class_passes_all_three_checks(row: Graded) -> None:
         widening_corpus=corpus.WIDENING_STORE,
     )
     assert rep.missing_formats == []
-    assert rep.comparison.outcome == "pass", (rep.comparison.missing, rep.comparison.differs)
     if rep.accepts.outcome != "strategy_error":
         assert rep.accepts.outcome == "pass", (rep.accepts.detail, rep.accepts.counterexample)
         assert rep.graded_instances > 0, "nothing was constructed and dumped back out"
@@ -1500,396 +1338,6 @@ def test_every_class_passes_all_three_checks(row: Graded) -> None:
             _grades_a_cause(cause)
     else:
         assert rep.outcome == "pass", rep.outcome
-
-
-def test_the_schema_comparison_sees_a_fact_the_model_adds_as_well() -> None:
-    """Both directions, because one of them was a hole of the other's shape.
-
-    The comparison was built to catch a model WIDER than its document, which the
-    accepts and refuses checks cannot see once the entry point validates the
-    schema first.  One-directional, it could not see the mirror image -- a model
-    NARROWER than its document -- and produced a report byte-identical to a
-    faithful model's for one that states four constraints its document does not.
-
-    Three cells, and the third is the one that matters:
-
-    * a model stating MORE is reported, with each added fact named;
-    * the accepts check also catches it, for a CONSTRAINT, by drawing an
-      instance the document admits and watching the annotation refuse it;
-    * a narrowing that states NO fact is invisible to both.  ``AwareDatetime``
-      renders a schema identical to ``{"type": "string", "format": "date-time"}``
-      and yet refuses a value that document admits, because ``jsonschema``
-      asserts nothing for a draft-07 ``format`` without a checker.  That cell is
-      asserted so the hole is measured rather than merely absent: a fact
-      comparison cannot close it, and neither can the accepts check, whose
-      generator honours the format.
-    """
-    from pydantic import AwareDatetime
-
-    doc = {
-        "type": "object",
-        "additionalProperties": False,
-        "properties": {"u": {"type": "string"}, "n": {"type": "integer"}},
-    }
-
-    class Faithful(AdCPBaseModel):
-        model_config = {"extra": "forbid"}
-        u: str | None = None
-        n: int | None = None
-
-    class Narrower(AdCPBaseModel):
-        model_config = {"extra": "forbid"}
-        u: Annotated[str, Field(min_length=1, pattern="^x")] | None = None
-        n: Annotated[int, Field(ge=5, le=9)] | None = None
-
-    faithful, narrower = compare_schema(doc, Faithful), compare_schema(doc, Narrower)
-    assert faithful.outcome == "pass"
-    assert narrower.outcome == "model_adds_a_fact"
-    assert faithful.compared == narrower.compared, "the two differ only in what they ADD"
-    assert {a.split(": ")[0] for a in narrower.added} == {
-        "/properties/n/minimum",
-        "/properties/n/maximum",
-        "/properties/u/minLength",
-        "/properties/u/pattern",
-    }
-
-    def accept(payload: Any) -> Any:
-        jsonschema.Draft7Validator(doc).validate(payload)
-        return Narrower.model_validate(payload)
-
-    assert check_accepts(doc, accept, examples=50).outcome == "model_refused_valid"
-
-    # The third cell: a narrowing with no fact behind it -- and the two answers
-    # that close it.  ``AwareDatetime``'s rendered schema IS
-    # ``{"type": "string", "format": "date-time"}``, so a fact comparison can
-    # never separate it from a plain annotated string, and the accepts check
-    # cannot either because the generator honours the format.  What decides it is
-    # whether the DOCUMENT asserts the format, and that is a property of the
-    # validator the schema half builds, not of the model.
-    stamp = {"type": "string", "format": "date-time"}
-    assert compare_schema(stamp, AwareDatetime).outcome == "pass"
-    naive = "2020-01-01T00:00:00"
-    with pytest.raises(ValidationError):
-        TypeAdapter(AwareDatetime).validate_python(naive)  # the type refuses it
-
-    # The control: a validator with NO checker admits it, which is the state the
-    # whole narrowing argument rested on and the reason `_refuse` passes one.
-    jsonschema.Draft7Validator(stamp).validate(naive)
-    # And the closure: with the draft's own checker -- what `_refuse` and the
-    # harness both now build -- the document refuses it too, so the type states
-    # the document's own rule rather than a stricter one.
-    with pytest.raises(jsonschema.ValidationError) as refused:
-        jsonschema.Draft7Validator(
-            stamp, format_checker=jsonschema.Draft7Validator.FORMAT_CHECKER
-        ).validate(naive)
-    assert refused.value.validator == "format"
-
-
-def test_the_url_type_row_is_its_own_category_and_each_half_is_gated() -> None:
-    """D5's URL-type rows, broken on purpose at every gate they have.
-
-    The category admits THREE facts and nothing else, each in its own row and each
-    gated, and it counts them in a field of its own
-    (``ComparisonResult.url_typed``) rather than in ``missing`` or in ``added`` --
-    because it is the one admission here that excuses a fact the model does not
-    state at all, and folding it into the implied-fact rows would make a genuine
-    omission look like a derivation.
-
-    Ten cells. The first two are what the rows are for on the ``AdCPUrl`` arm; 3-5
-    are the perturbations that must still redden, and each of them passed before the
-    gates were written as they are; 6 says the counting is separate; and 7-10 are
-    the ``HttpUrl`` arm D5's amendment added, including the one that keeps the
-    second row from becoming "any bound on a URL type is admitted".
-    """
-    from pydantic import AnyUrl, HttpUrl, UrlConstraints
-
-    AdCPUrl = Annotated[AnyUrl, UrlConstraints(allowed_schemes=["https"])]
-    bare = {"type": "string", "format": "uri"}
-    patterned = {**bare, "pattern": "^https://"}
-
-    # 1. the model-only ``minLength: 1`` any URL type renders, over a document
-    #    that states only the type and the format.
-    one = compare_schema(bare, AdCPUrl)
-    assert one.outcome == "pass", (one.added, one.missing, one.differs)
-    assert one.url_typed == ["/minLength: the model says 1, which any URL type renders"]
-    assert one.added == [] and one.missing == []
-
-    # 2. the document's own ``pattern``, which the annotation cannot carry at all
-    #    -- ``Annotated[AnyUrl, Field(pattern=...)]`` raises when pydantic builds
-    #    the schema -- and which the schema half enforces instead.
-    two = compare_schema(patterned, AdCPUrl)
-    assert two.outcome == "pass", (two.added, two.missing, two.differs)
-    assert len(two.url_typed) == 2, two.url_typed
-    assert any("the schema half enforces it" in line for line in two.url_typed)
-    assert two.missing == [] and two.added == []
-    # The fact was still COUNTED as looked for: the row stops it landing in
-    # ``missing``, it does not stop it being graded.
-    assert two.compared == one.compared + 1
-
-    # 3. BROKEN ON PURPOSE -- a plain ``str`` cannot wear the row.  It renders the
-    #    type and the format and no ``minLength``, so it is not a URL type and the
-    #    dropped ``pattern`` is reported.
-    plain = compare_schema(patterned, Annotated[str, Field(json_schema_extra={"format": "uri"})])
-    assert plain.outcome == "model_drops_a_fact"
-    assert plain.url_typed == []
-    assert any("/pattern" in m for m in plain.missing), plain.missing
-
-    # 4. BROKEN ON PURPOSE -- any OTHER keyword the document states is still
-    #    reported, because the row names ``pattern`` and nothing else.  This is
-    #    the gate that keeps ``compiler.lower_node``'s refusal honest: a
-    #    ``format: uri`` node stating a ``maxLength`` refuses at emission rather
-    #    than going missing here.
-    capped = compare_schema({**bare, "maxLength": 20}, AdCPUrl)
-    assert capped.outcome == "model_drops_a_fact"
-    assert any("/maxLength" in m for m in capped.missing), capped.missing
-
-    # 5. BROKEN ON PURPOSE -- ``_url_typed``'s signature requires ``minLength: 1``
-    #    exactly, so a model stating a DIFFERENT ``minLength`` at a ``uri`` node is
-    #    not a URL type and none of the three rows reaches it.  That is the gate
-    #    that keeps the category off an ordinary annotated ``str`` carrying a bound.
-    floored = compare_schema(
-        bare, Annotated[str, Field(min_length=2, json_schema_extra={"format": "uri"})]
-    )
-    assert floored.outcome == "model_adds_a_fact", floored.url_typed
-    assert floored.url_typed == []
-    assert any("/minLength" in a for a in floored.added), floored.added
-
-    # 6. and a document that states the ``minLength`` ITSELF is compared, not
-    #    excused: the row is about a fact the document does not state.
-    stated = compare_schema({**bare, "minLength": 1}, AdCPUrl)
-    assert stated.outcome == "pass"
-    assert stated.url_typed == [], stated.url_typed
-    assert stated.compared == one.compared + 1
-
-    # ---- the HttpUrl arm, which D5's amendment selects at every uri position whose
-    # ---- document does not restrict the scheme to https ----------------------
-    assert TypeAdapter(HttpUrl).json_schema() == {
-        "type": "string",
-        "format": "uri",
-        "minLength": 1,
-        "maxLength": 2083,
-    }, "the two facts the second row exists for"
-
-    # 7. BOTH added facts are admitted, each by its own row, and `added` stays empty.
-    http = compare_schema(bare, HttpUrl)
-    assert http.outcome == "pass", (http.added, http.missing, http.differs)
-    assert sorted(line.split(": ")[0] for line in http.url_typed) == [
-        "/maxLength",
-        "/minLength",
-    ], http.url_typed
-    assert any("HttpUrl renders" in line for line in http.url_typed)
-    assert http.added == [] and http.missing == []
-
-    # 8. BROKEN ON PURPOSE -- the second row is NOT "a bound on a URL type is
-    #    admitted".  A URL type carrying any OTHER maxLength is a fact the model
-    #    adds, and this is the cell that would pass under a widened row.
-    other = compare_schema(bare, Annotated[AnyUrl, UrlConstraints(max_length=1024)])
-    assert other.outcome == "model_adds_a_fact", other.url_typed
-    assert any("/maxLength" in a for a in other.added), other.added
-
-    # 9. BROKEN ON PURPOSE -- a document that states the maxLength ITSELF is
-    #    compared, and a document stating a DIFFERENT one differs rather than being
-    #    excused.  That second case is what `compiler.lower_node` refuses by name: the
-    #    bundle has 4 such positions, all `maxLength: 2048`.
-    agrees = compare_schema({**bare, "maxLength": 2083}, HttpUrl)
-    assert agrees.outcome == "pass"
-    assert [line for line in agrees.url_typed if "/maxLength" in line] == []
-    disagrees = compare_schema({**bare, "maxLength": 2048}, HttpUrl)
-    assert disagrees.outcome == "model_drops_a_fact"
-    assert any("/maxLength" in d for d in disagrees.differs), disagrees.differs
-
-    # 10. and the pattern row serves this branch too, which is what lets a document
-    #     with a non-https pattern take HttpUrl at all.
-    host_only = compare_schema({**bare, "pattern": "^https://[^/?#@]+$"}, HttpUrl)
-    assert host_only.outcome == "pass", (host_only.missing, host_only.added)
-    assert len(host_only.url_typed) == 3, host_only.url_typed
-
-
-def test_the_comparison_reads_a_root_allof_the_way_the_schema_half_reads_it() -> None:
-    """A conjunct's facts are the document's, and the check still refuses.
-
-    ``allOf`` conjoins: draft-07 applies every conjunct to the whole instance, and
-    a composing class flattens every inherited field into its own ``properties``
-    and its own ``required``.  So a comparison that walks only the document's own
-    root reads a FAITHFUL composing class as both dropping and adding facts, and
-    reads the facts a conjunct DOES state against nothing.
-
-    **Measured on the document below, against the code before ``_composed``: 0 of
-    these four cases were graded right**, including case 3, whose verdict looked
-    right.  Case 1 reported ``model_drops_a_fact`` with its real row buried among
-    three false ones; case 2's omission appeared nowhere at all, in no list and in
-    no ``compared`` count; case 3 reported the right outcome off the false
-    ``/required`` row while its own ``maximum`` was never compared; case 4, the
-    faithful class, failed.  After: four outcomes, each with exactly the row its
-    axis names, and ``compared`` 3 -> 7.
-
-    The reason all four are here and not just the faithful one: widening a check
-    until the composing class passes is how the check stops returning the other
-    answer, and the three failing cases are what forbids that.  Each model differs
-    from the faithful one in exactly ONE axis -- no docstring, which would become a
-    ``description`` the document does not state, and no second deviation -- so a
-    row names the axis it was built to name.
-    """
-    doc = {
-        "type": "object",
-        "required": ["label"],
-        "allOf": [
-            {"type": "object", "properties": {"kind": {"type": "string"}}, "required": ["kind"]},
-            {
-                "type": "object",
-                "properties": {
-                    "adcp_major_version": {"type": "integer", "minimum": 1, "maximum": 99}
-                },
-            },
-        ],
-        "properties": {"label": {"type": "string"}},
-    }
-
-    class Base(AdCPBaseModel):
-        kind: str
-
-    class Faithful(Base):
-        adcp_major_version: int | None = Field(default=None, ge=1, le=99)
-        label: str
-
-    class StatesWhatNobodyStates(Base):
-        adcp_major_version: int | None = Field(default=None, ge=1, le=99)
-        label: str = Field(min_length=3)  # no view of the document states this
-
-    class OmitsAConjunctFact(AdCPBaseModel):
-        adcp_major_version: int | None = Field(default=None, ge=1, le=99)
-        label: str  # the conjunct's `kind` is gone
-
-    class DisagreesWithTheConjunct(Base):
-        adcp_major_version: int | None = Field(default=None, ge=1, le=100)  # conjunct says 99
-        label: str
-
-    faithful = compare_schema(doc, Faithful)
-    assert faithful.outcome == "pass", (faithful.missing, faithful.differs, faithful.added)
-    assert faithful.compared == 7, faithful.compared  # the conjuncts' facts are COUNTED
-
-    adds = compare_schema(doc, StatesWhatNobodyStates)
-    assert adds.outcome == "model_adds_a_fact"
-    assert [a.split(": ")[0] for a in adds.added] == ["/properties/label/minLength"]
-
-    omits = compare_schema(doc, OmitsAConjunctFact)
-    assert omits.outcome == "model_drops_a_fact"
-    assert omits.missing == ["/properties/kind: the model declares no such property"]
-    assert [d.split(": ")[0] for d in omits.differs] == ["/required"]
-
-    differs = compare_schema(doc, DisagreesWithTheConjunct)
-    assert differs.outcome == "model_drops_a_fact"
-    assert differs.differs == [
-        "/properties/adcp_major_version/maximum: the document says 99, the model 100"
-    ]
-
-    # A branch is NOT a conjunct, and the same document read as a union must not
-    # fold: `anyOf` is satisfied by SOME branch, so a branch's properties are not
-    # unconditionally the document's.  "Left alone" is asserted as what it is --
-    # both branch properties still read as model-only -- rather than as an
-    # outcome, because the faithful class fails a union document on the
-    # `/required` axis too and that would pass for the wrong reason.
-    as_union = {("anyOf" if k == "allOf" else k): v for k, v in doc.items()}
-    branches = compare_schema(as_union, Faithful)
-    assert {a.split(":")[0] for a in branches.added} == {
-        "/properties/kind",
-        "/properties/adcp_major_version",
-    }
-
-
-def test_the_three_allof_decisions_that_no_case_above_grades() -> None:
-    """The scope decisions ``_composed`` makes, each one perturbed and found green.
-
-    Breaking the fix on purpose reddened the four cases above for the ``required``
-    union, the ``properties`` merge and the ``anyOf`` exclusion, and reddened
-    NOTHING for three others.  A perturbation that reddens nothing is a finding
-    about the test set, so each of those three is graded here:
-
-    * **a conditional conjunct contributes nothing.**  Folding an ``if``/``then``
-      conjunct's ``then`` as if it applied unconditionally changed no outcome
-      anywhere, and it is the dominant conjunct shape in the bundle -- 352
-      ``if``/``then`` conjuncts against 21 that state ``properties``.
-    * **the view applies at every node, not only at the root.**  Restricting it to
-      the root changed no outcome, because every case above composes at the root.
-    * **a conjunct fills a gap and never overrides.**  Letting it override changed
-      no outcome, because no case above and no measured document collides on a
-      bound.  That is the ceiling ``_composed`` names, pinned here so replacing
-      the gap-fill with a per-keyword intersection has to move this line.
-    """
-
-    # A conditional conjunct: `then` applies only to an instance the `if` selects,
-    # so a class that declares nothing for `flagged` is faithful.
-    conditional = {
-        "type": "object",
-        "required": ["kind"],
-        "allOf": [
-            {
-                "if": {"properties": {"kind": {"const": "x"}}},
-                "then": {"properties": {"flagged": {"type": "boolean"}}, "required": ["flagged"]},
-            }
-        ],
-        "properties": {"kind": {"type": "string"}},
-    }
-
-    class NoConditionalField(AdCPBaseModel):
-        kind: str
-
-    assert compare_schema(conditional, NoConditionalField).outcome == "pass"
-
-    # A PROPERTY's own node composes, and pydantic flattens the nested class the
-    # same way, so the view has to apply there too.
-    nested = {
-        "type": "object",
-        "required": ["inner"],
-        "properties": {
-            "inner": {
-                "type": "object",
-                "required": ["a"],
-                "allOf": [{"type": "object", "properties": {"b": {"type": "integer"}}}],
-                "properties": {"a": {"type": "string"}},
-            }
-        },
-    }
-
-    class InnerBase(AdCPBaseModel):
-        b: int | None = None
-
-    class Inner(InnerBase):
-        a: str
-
-    class Outer(AdCPBaseModel):
-        inner: Inner
-
-    assert compare_schema(nested, Outer).outcome == "pass"
-
-    # **The ceiling this line pinned IS CLOSED, and the pin's own words are what moved
-    # it**: "pinned here so replacing the gap-fill with a per-keyword intersection has to
-    # move this line".  ``salesagent-j3k2l.43`` replaced it -- ``harness._tighter`` reads
-    # a keyword both views state as the intersection, "a bound is the tighter one"
-    # (section 2) -- so the document side of this node now says 99, the model says 99,
-    # and there is nothing to differ about.  Before, the node's own bound won over the
-    # conjunct's and a class stating the tighter EFFECTIVE bound was reported as
-    # differing: a false failure in the safe direction, measured at 0 documents, and now
-    # at 0 synthetic nodes as well.
-    collides = {
-        "type": "object",
-        "allOf": [{"type": "object", "properties": {"n": {"maximum": 99}}}],
-        "properties": {"n": {"type": "integer", "maximum": 100}},
-    }
-
-    class StatesTheTighter(AdCPBaseModel):
-        n: int | None = Field(default=None, le=99)
-
-    ceiling = compare_schema(collides, StatesTheTighter)
-    assert ceiling.differs == [], ceiling.differs
-    # And it closed in the direction that matters rather than by going quiet: the
-    # document side states the intersection, so the comparison has a fact to compare and
-    # agrees on it.  A fold that simply dropped the keyword would also report no
-    # `differs`, and this is what tells the two apart.
-    assert ceiling.outcome == "pass", (ceiling.added, ceiling.missing, ceiling.differs)
-    assert compare_schema(collides, AdCPBaseModel).differs or compare_schema(
-        collides, AdCPBaseModel
-    ).missing, "the node states a bound the comparison can see; otherwise the line above is vacuous"
 
 
 #: The three pointer segments a conditional is spelled with.  A node under one is a
@@ -1923,7 +1371,8 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
       a model wider than its document and silently so.
 
     And in both cases the format reaches the model's OWN schema, asserted site by
-    site against the document, which is where the schema comparison grades it.
+    site against the document, so the keyword is stated at the pointer the document
+    states it at and neither channel can drop it silently.
 
     ``lower.scalars.FORMAT_TYPES`` is read rather than restated, so a row added or removed
     moves this test's expectation with it; what is pinned is the population
@@ -2130,8 +1579,7 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
     }, arms
 
     # Either way the fact is on the model's own schema, at the site the document
-    # states it, which is what `compare_schema` reads.  Counted, so this cannot
-    # pass by looking at nothing.
+    # states it.  Counted, so this cannot pass by looking at nothing.
     #
     # Over EVERY class the tree carries, not only the root-pointer ones.  Restricted to
     # roots it graded 14 of the 18 census sites above, and the 4 it missed are the ones
@@ -2166,9 +1614,8 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
 def _model_schema(model: Any) -> dict:
     """One model's own JSON schema, whichever kind of model it is.
 
-    The same predicate ``harness.compare_schema`` uses, and it has to be the same
-    one: ``isinstance(model, type)`` alone is not it, because D2's enumeration row
-    emits a CLASS that is not a pydantic model and has no ``model_json_schema``.
+``isinstance(model, type)`` alone is not the predicate, because D2's enumeration
+    row emits a CLASS that is not a pydantic model and has no ``model_json_schema``.
     """
     if isinstance(model, type) and hasattr(model, "model_json_schema"):
         return model.model_json_schema()
@@ -2210,8 +1657,8 @@ def _unwrap(node: dict, defs: dict) -> dict:
     The same two folds ``harness._normalize`` does and for the same reasons -- an
     optional property renders as a two-branch ``anyOf`` and a referenced type is
     hoisted into ``$defs``.  Written here rather than imported because the
-    harness's is private to the comparison; both are three lines and neither is a
-    decision.
+    harness's is private to its own reading of the document; both are three lines and
+    neither is a decision.
     """
     if "$ref" in node:
         outer = {k: v for k, v in node.items() if k != "$ref"}
@@ -2283,7 +1730,6 @@ def test_a_date_time_with_no_offset_is_refused_by_the_schema_half() -> None:
     rep = check_pair(pair_of(g))
     assert rep.missing_formats == []
     assert rep.accepts.outcome == "pass", (rep.accepts.detail, rep.accepts.counterexample)
-    assert rep.comparison.outcome == "pass", (rep.comparison.missing, rep.comparison.added)
 
 
 def test_the_harness_and_the_runtime_decide_a_format_the_same_way() -> None:
@@ -2340,9 +1786,8 @@ def test_the_regex_engine_is_the_documents_and_the_two_engines_do_not_agree() ->
     is validated by ``jsonschema``, which compiles with Python ``re``, so for
     every ``$``-anchored pattern the document admits a value ending in ``\\n``
     that a Rust-engine model refuses -- a model NARROWER than its own document,
-    and invisible to all three checks: ``compare_schema`` sees the same
-    ``pattern`` fact on both sides, and the accepts check has to draw the
-    trailing newline to see it.
+    and invisible to every check the harness has: the accepts check has to draw the
+    trailing newline to see it, and the dump of anything else round-trips.
 
     So ``python-re`` stays on the base, because it is the engine whose accepted
     set is the document's, and this test is what will redden if the split is
@@ -2512,7 +1957,7 @@ def _matching(pattern: str, examples: int = 2) -> list[str]:
 
     Written candidates for 11 patterns would be 11 guesses about what each one
     means, and a wrong guess shows up as a pattern graded only on misses -- which
-    is why the comparison above requires both verdicts to appear.
+    is why the two-engine check above requires both verdicts to appear.
     """
     out: list[str] = []
 
@@ -2575,95 +2020,28 @@ def test_the_harness_result_is_counted_over_the_whole_population() -> None:
     # complement of the groups that round-trip NOTHING -- a pair whose generator could
     # not draw and a pair whose dump the document refused.
     #
-    # **DERIVED FROM :data:`ROUND_TRIPS_NOTHING` AND NOT FROM THE WHOLE NON-PASS SET,
-    # which is what row .3 forced.**  A COMPARISON failure round-trips its instance like
-    # any other pair: the comparison needs no generator and runs after the round trip,
-    # which is the same fact ``test_every_class_passes_all_three_checks``'s docstring
-    # states about an undrawable pair read the other way round.  Summing over every
-    # non-pass group was green only while the one group was ``no_instrument``.
+    # **DERIVED FROM :data:`ROUND_TRIPS_NOTHING` AND NOT FROM THE WHOLE NON-PASS SET.**
+    # A pair's verdict and its round trip are different questions: only the groups that
+    # round-trip NOTHING come out of the total, and summing over every non-pass group
+    # was green only while the one group was ``no_instrument``.
     assert sum(r.graded_instances for r in reports) == len(reports) - sum(
         len(NON_PASS_PAIRS[k]) for k in ROUND_TRIPS_NOTHING
     )
 
-    # THE COMPARISON, graded by its own denominator PER PAIR rather than by a total.
-    # The three zeros below are the specification's symmetric comparison and they are
-    # free for any pair that compared nothing, so what has to be asserted is that no
-    # pair compared nothing -- which is stronger than any sum of ``compared``, and does
-    # not move when a row adds a document.
-    assert [name for name, r in pairs.items() if r.comparison.compared == 0] == []
-    # ``added`` is the other direction and its denominator is the MODEL's own facts,
-    # which not every pair has -- an enumeration and an alias state none -- so this is
-    # the named set of the pairs that do, asserted non-empty rather than summed.
-    claimed(
-        "pairs whose model states a fact of its own",
-        {name for name, r in pairs.items() if r.comparison.model_facts},
-        inside=set(pairs),
-    )
-    # **THE THREE TOTALS ARE THE POLE'S OWN READING AGAINST THE FAST CENSUS'S, and that
-    # is what ``adcp-client-python-3be.23`` made of them.**  They were three pinned
-    # zeros, then row ``.3`` derived them from ``COMPARISON_FACTS`` -- which moved to
-    # ``tests/test_the_comparison_census.py``, where it is read in 53 s instead of behind
-    # these 2,793 pair reports and where it holds the 155 pairs it actually has.
-    #
-    # What is asserted here is the one thing that file cannot assert: that THIS pass and
-    # that one are reading the same comparison.  ``check_pair`` reaches the comparison
-    # with five arguments and ``tests/compared.py`` passes the same five; if either side
-    # ever changes one, these two direction counts diverge and this reddens with both
-    # readings printed.  Nothing about the FACTS is pinned here -- that is the census
-    # file's -- so this cannot go stale against a bundle version.
-    #
-    # It costs this worker ONE comparison pass (~45 s, measured) beside the 3,300 s of
-    # pair reports it already owns, because ``compared.census()`` is cached per process
-    # and the census file's own tests run in their own ``xdist_group``.
-    live = collections.Counter()
-    for r in reports:
-        live["added"] += len(r.comparison.added)
-        live["missing"] += len(r.comparison.missing)
-        live["differs"] += len(r.comparison.differs)
-    fast = compared.by_direction(compared.census().red)
-    assert +live == +fast, {"this pass": dict(live), "./check --compare": dict(fast)}
-    # **§8's TWO SET EQUALITIES, over the whole emitted tree.**  "Two checks stand above
-    # the three, and each is an equality between two sets neither of which is
-    # hand-written.  Nothing else in this section means anything until both hold, because
-    # every other check inherits their reach."
-    #
-    # The first is held by ``tests/test_every_check_names_its_set.py`` over
-    # ``keywords.rendered_at``, which is where an equality between two DERIVATIONS of a
-    # keyword set belongs.  The second is this: the approximated set equals the declared
-    # set, in both directions, over every pair of the run.
-    #
-    # Both directions have to move TOGETHER, which is why the clause was written while
-    # both sets were still empty: a check added with the first widening could not say
-    # whether it was ever able to fail.  ``tests/test_approximation.py`` is where each
-    # direction is perturbed.
-    census = harness.census([(pair_of(g), r) for g, r in graded_reports()])
-    assert census.over_declared == [], census.over_declared
-    assert census.undeclared_widenings == [], census.undeclared_widenings
-    assert census.unattributed == [], census.unattributed
-    assert census.outcome == "pass", census
-    # And the approximated half is the declared half MINUS the one kind §8 exempts from
-    # the comparison by name -- an equality and not a third number, because
-    # ``census.stale`` already holds one direction and ``over_declared`` the other, so
-    # anything else here would be a count restating two checks that passed above.
-    assert census.approximated == {
-        site for site, one in census.declared.items() if one.kind != UNDERDETERMINED
-    }, sorted(census.approximated)
+    # **EVERY DECLARATION'S ATTRIBUTION, over the whole emitted tree.**  Section 2's
+    # attribution "is a choice of two and not a free-text note", and this is where that
+    # bites on the run rather than on an example: every declaration any artifact of the
+    # tree carries, read off the artifact by ``harness.declarations_of``, against
+    # ``codegen.attribution``'s registry and section 2's own ladder.
+    # ``tests/test_approximation.py`` is where each direction of the rule is perturbed.
+    declared = [one for g, _ in graded_reports() for one in pair_of(g).declared]
+    assert harness.unattributed(declared) == [], harness.unattributed(declared)
     # §8's UNDERDETERMINED equality is NOT here, and that is
     # ``adcp-client-python-10l.109``'s move: it needs neither a pair nor a draw -- only the
     # declarations and the documents of record -- so it is graded in seconds by
     # ``tests/test_the_declared_backlog.py`` instead of behind this test's 2,347 pair
     # reports.  The *ours* backlog and the artifact-versus-run gap moved with it, for the
     # same reason and with the same measurement.
-    # D5's URL-type rows, the one category that excuses a fact the model does not state.
-    # The claim is WHICH facts it excuses, so that is what is asserted: a URL type
-    # renders ``minLength: 1`` and ``HttpUrl`` renders ``maxLength: 2083``, and the
-    # bundle states one ``pattern`` on a ``format: uri`` node.  A total of them says
-    # nothing about which keyword was excused, and it grows with every added document.
-    excused = claimed(
-        "facts excused as a URL type's own rendering",
-        {line.split(": ", 1)[0].rsplit("/", 1)[1] for r in reports for line in r.comparison.url_typed},
-    )
-    assert excused == {"minLength", "maxLength", "pattern"}, sorted(excused)
     # The one refused payload per pair, partitioned BY NAME on the fact it broke.  A
     # partition and not three totals, because which perturbation bites is a property of
     # the DOCUMENT's own root shape: a pair moving between these groups is a fact worth
@@ -2705,19 +2083,12 @@ def test_the_non_pass_pairs_are_named_and_attributed() -> None:
     """Every pair that is not ``pass``, by name, with what it is.
 
     **A census and not a tolerance.**  Nothing here excuses anything:
-    ``test_every_class_passes_all_three_checks`` still reddens on all five of the
-    first two groups, and this test exists so the failures are NAMED rather than
-    counted -- a count of five tells the next reader nothing about which five or
-    why, and the section-6 rebuild is the first thing to measure them.
+    ``test_every_class_passes_all_three_checks`` still reddens on every pair whose own
+    verdict is a verdict about the model, and this test exists so the pairs that are not
+    ``pass`` are NAMED rather than counted -- a count tells the next reader nothing about
+    which pairs or why.
 
-    TWO groups now, and the attribution of each was measured rather than assumed.  The
-    third was ``comparison:model_drops_a_fact`` -- one ``description`` each at an
-    ``additionalProperties`` node, ``a2ui/component.json`` and ``a2ui/surface.json``,
-    pre-existing at the base and proven so by ``compare_schema`` being byte-identical
-    to ``7ffad8134``'s.  ``salesagent-j3k2l.28`` closed it in the EMITTER, which is
-    what §6 says happens where the comparison reports a ``description``: an annotation
-    on a container's CONTENTS had no carrier, and ``containers._contents`` now names
-    such a node.  The group is gone rather than smaller.
+    ONE group now, and its attribution was measured rather than assumed.
 
     ``accepts:model_dropped_a_fact`` is gone too, and NOT because the dump half stopped
     reading what a class did with a value.  Its three pairs are EXEMPT and the
@@ -2744,13 +2115,14 @@ def test_the_non_pass_pairs_are_named_and_attributed() -> None:
     ``outcome``.**  A group that leaves this list because it was exempted has to arrive
     somewhere else, or the census would have nothing to say about three pairs that pass
     conditionally -- and "passes with a keyword struck" is exactly the fact a reader of
-    a green pair needs. ``tests/test_dump_exemptions.py`` grades the set and the
-    strike; what this adds is the POPULATION: no fourth pair acquired one.
+    a green pair needs. ``codegen.dump_exemptions`` states the set and the strike in
+    ONE place; what this adds is the POPULATION: no fourth pair acquired one.
 
     * ``no_instrument`` -- the ``format``-beside-``pattern`` shape
       ``hypothesis_jsonschema``'s ``string_schema`` filters and cannot satisfy, which
-      is an admitted exit rather than a failure (salesagent-j3k2l.10), and the
-      schema comparison still grades both pairs.
+      is an admitted exit rather than a failure (salesagent-j3k2l.10): the GENERATOR
+      produced nothing, which is not a verdict on the model, so each of the two pairs
+      is admitted only with the measured position that explains its draw.
     """
     reports = graded_reports()
     by_outcome: dict[str, list[str]] = {}
@@ -2805,9 +2177,6 @@ def test_the_non_pass_pairs_are_named_and_attributed() -> None:
     for g, r in admitted:
         for cause in r.no_instrument:
             _grades_a_cause(cause, r.name)
-        # The comparison needs no generator and still grades an undrawable pair,
-        # which is what keeps this exit from being a hole.
-        assert r.comparison.outcome == "pass" and r.comparison.compared > 0
         # ATTRIBUTED to the one position the bundle census measures as undrawable
         # (``test_no_instrument_is_the_designed_outcome_for_a_measured_shape``), and
         # not merely coincident with a document that happens to state the two
@@ -2826,14 +2195,15 @@ def test_no_instrument_is_the_designed_outcome_for_a_measured_shape() -> None:
     """``salesagent-j3k2l.10``: the one admitted non-pass outcome, over its POPULATION.
 
     **The decision.** ``no_instrument`` is the designed outcome for a position whose
-    ``format`` strategy cannot satisfy the ``pattern`` beside it, and section 6 is what
-    grounds it: *"The conformance claim is carried entirely by the comparison.
-    ``model_json_schema()`` equal to the document is the statement that every
-    constraint reaching the model is the document's own and no other -- which is the
-    only sense in which a generated class can be faithful, given that the model is not
-    the validator."*  The comparison needs no generator, so a pair the generator cannot
-    reach loses no conformance evidence -- and both of them are compared, asserted in
-    ``test_the_non_pass_pairs_are_named_and_attributed`` and again below.
+    ``format`` strategy cannot satisfy the ``pattern`` beside it, and what grounds it is
+    the difference between an INSTRUMENT failure and a verdict: the draw produced no
+    instance, so nothing of this pair's evidence is a statement about the class, and
+    reporting it as a model defect would be the generator's reach wearing the model's
+    name.  So the exit is ATTRIBUTED rather than tolerated -- a ``strategy_error`` no
+    measured position of the document explains falls through to
+    ``accepts:strategy_error`` and is a verdict like any other -- and both admitted
+    pairs are named in ``test_the_non_pass_pairs_are_named_and_attributed`` and again
+    below.
 
     **The alternative was excluded by measurement, not preference.**
     ``hypothesis_jsonschema``'s ``string_schema`` takes the FORMAT's strategy and
@@ -2980,8 +2350,8 @@ def test_extra_follows_the_schema_and_a_silent_document_takes_the_base_default()
             continue  # an alias and an enumeration have no model config
         # **What the DOCUMENT APPLIES at this node, not what the node says alone.**
         # ``allOf`` conjoins, so a conjunct's ``additionalProperties`` IS the node's --
-        # and ``_composed`` is the harness's own folding, the one ``compare_schema``
-        # reads the document through, so there is no second reading of what a conjunct
+        # and ``_composed`` is the harness's own folding of the document, so there is
+        # no second reading of what a conjunct
         # contributes.  ``_closed`` stood here, folding the delegated resolver's
         # ``{"not": {}}`` back to the ``false`` it is; it is deleted with that resolver
         # (architecture §9) and ``bundle.record`` copies the document's own ``false``,
@@ -2995,16 +2365,16 @@ def test_extra_follows_the_schema_and_a_silent_document_takes_the_base_default()
         # said nothing and this read it as the document permitting what it forbids.
         name = f"{row.ref.document}{row.ref.pointer}"
         classes.add(name)
-        # **THROUGH ``_normalize`` AS WELL, which is how ``compare_schema`` reads the
-        # document side and is what row .3 made load-bearing here.**  Architecture §4
+        # **THROUGH ``_normalize`` AS WELL, which is the harness's own reading of the
+        # document and is what row .3 made load-bearing here.**  Architecture §4
         # leaves a LOCAL ``$ref`` in the record as written, so a union BRANCH can be
         # ``{"$ref": "#/definitions/ScalarBinding"}`` -- a node that states nothing about
         # additional properties while the entry it names states ``true``.  Read without
         # resolving it, the two branches of
         # ``core/requirements/catalog-field-binding.json`` came back SILENT against a
         # class that correctly carries ``allow``, and the inherited-value arm below then
-        # asked the union ROOT's own document for a key no union root states.  One
-        # reading of the document for the comparison and for this check, which is the
+        # asked the union ROOT's own document for a key no union root states.  ONE
+        # reading of the document -- the harness's own, and this check's -- which is the
         # same argument ``_composed`` is read here for.
         root = schema_at(SchemaRef(row.ref.document, "#"))
         declared = _composed(
@@ -3114,7 +2484,6 @@ def test_a_class_pointed_at_another_document_grades_red() -> None:
 
     with pytest.raises(ValidationError):
         Misaimed.strict_validate({"max_results": 50})
-    assert compare_schema(schema_at(SchemaRef(other, "#")), Misaimed).outcome == "model_drops_a_fact"
 
 
 def test_a_pointer_names_one_node_of_a_document() -> None:
@@ -4548,131 +3917,6 @@ def test_an_object_node_with_properties_and_no_type_refuses_because_it_admits_a_
             assert not jsonschema.Draft7Validator(doc).is_valid(admitted), (document, admitted)
 
 
-def test_a_model_only_type_is_excused_only_where_the_document_forces_it() -> None:
-    """``harness._entails_type``, in both directions, and why it is not a tolerance.
-
-    §4's base is a pydantic model, so it renders ``type: object``; 34 of this bundle's
-    union roots state their branches' type and not their own -- 33 with the branches
-    read as written, and the 34th only once a branch's own local reference is
-    (``adcp-client-python-10l.19``); a ``const`` property
-    renders ``{"const": ..., "type": ...}`` where the document states only the ``const``;
-    and §4's enumeration row renders a ``StrEnum``, so ``{"enum": [...], "type":
-    "string"}`` where 164 nodes of the raw bundle state the ``enum`` alone.  All three
-    are facts the model states and the document does not, which the symmetric
-    comparison reports as a narrowing -- correctly, as a rule, and wrongly for these,
-    because the document's own node already admits only instances of that type.
-
-    **The enum derivation arrived with row .3** and is not a fold added: it was
-    ``_narrows_nothing``'s enum row, whose other two clauses undid the delegated
-    resolver's annotation drop and are deleted (architecture §9), while this clause has
-    a source in the document's own text and belongs to the question this function asks.
-
-    So the predicate is asked of the DOCUMENT and this grades it three ways:
-
-    * every site the rule excuses in the committed tree really does have a document that
-      refuses an instance of every other type -- asserted against ``jsonschema``, not
-      asserted of the rule;
-    * a typeless node with nothing forcing a type is still reported;
-    * the three derivations are each reached, so none is dead.
-    """
-    from codegen.harness import _entails_type, _normalize
-
-    # Direction 1: every site the rule excuses in the committed tree, with the DOCUMENT
-    # asked whether it really refuses an instance of every other type.  The sites are
-    # enumerated off the tree rather than listed, so a new one is graded by itself.
-    #
-    # **Read through ``_normalize`` and against the document ROOT, which is how
-    # ``compare_schema`` reads it (``adcp-client-python-10l.19``).**  The node was taken
-    # raw here, and the rule's union derivation asks each BRANCH for its ``type`` word:
-    # a branch that is a bare local ``$ref`` states none until the reference is read, so
-    # the site the comparison excuses at
-    # ``core/requirements/catalog-field-binding.json#`` was invisible to this loop and
-    # went ungraded.  One reading on both -- and ``jsonschema`` is then asked of the node
-    # the rule actually answered about.
-    excused: list[tuple[SchemaRef, str, str]] = []
-    for g in graded():
-        if not isinstance(g.model, type):
-            continue
-        root = schema_at(SchemaRef(g.ref.document, "#"))
-        doc = _normalize(schema_at(g.ref), root, declared_null=True)
-        nodes = [
-            ("", doc),
-            *sorted(
-                (key, _normalize(value, root, declared_null=True))
-                for key, value in (doc.get("properties") or {}).items()
-            ),
-        ]
-        for where, node in nodes:
-            if not isinstance(node, dict) or "type" in node:
-                continue
-            for kind in sorted(_NOT_OF_TYPE):
-                if not _entails_type(node, kind):
-                    continue
-                excused.append((g.ref, where, kind))
-                for other in _NOT_OF_TYPE[kind]:
-                    assert not jsonschema.Draft7Validator(node).is_valid(other), (
-                        g.ref,
-                        where,
-                        kind,
-                        other,
-                    )
-    kinds = {k for _, _, k in excused}
-    # One per union base whose root states no ``type`` of its own, plus the
-    # const-pinned branch properties whose node states only the ``const``.  THE TWO
-    # KINDS are the rule's shape and are asserted exactly; the two POSITIONS -- the
-    # root and a property -- partition the excused sites and both are non-empty, so
-    # neither position is graded by an empty loop.  The three counts this replaces
-    # (45 / 19 / 26) were a reading of one emitted tree and all three moved together
-    # at every row that added a document, while the shape moved at none of them.
-    assert kinds == {"object", "string"}, kinds
-    sites = claimed("sites the model-only type rule excuses", excused)
-    partitions(
-        sites,
-        at_the_root={e for e in sites if e[1] == ""},
-        at_a_property={e for e in sites if e[1] != ""},
-    )
-    claimed("excused sites at a root", {e for e in sites if e[1] == ""}, inside=sites)
-    claimed("excused sites at a property", {e for e in sites if e[1] != ""}, inside=sites)
-
-    # direction 2: nothing forcing a type is still reported
-    assert _entails_type({"properties": {"a": {"type": "string"}}}, "object") is False
-    assert _entails_type({}, "string") is False
-    assert _entails_type({"minLength": 1}, "string") is False
-    # a combinator whose branches disagree, or which leaves one typeless, forces nothing
-    assert _entails_type({"oneOf": [{"type": "object"}, {"type": "string"}]}, "object") is False
-    assert _entails_type({"oneOf": [{"type": "object"}, {}]}, "object") is False
-    # ... and the comparison still reddens for a model that invents one
-    narrower = compare_schema(
-        {"properties": {"a": {}}},
-        TypeAdapter(Annotated[str, Field(min_length=1)]),
-    )
-    assert narrower.outcome != "pass", narrower
-
-    # direction 3: all three derivations are reached
-    assert _entails_type({"const": "platform"}, "string") is True
-    assert _entails_type({"const": 3}, "integer") is True
-    assert _entails_type({"const": True}, "boolean") is True  # and not "integer"
-    assert _entails_type({"const": True}, "integer") is False
-    assert _entails_type({"enum": ["a", "b"]}, "string") is True
-    assert _entails_type({"enum": [1, 2]}, "integer") is True
-    assert _entails_type({"enum": ["a", 1]}, "string") is False  # a mixed vocabulary forces none
-    assert _entails_type({"enum": [True]}, "integer") is False  # exact type: bool is not int
-    assert _entails_type({"oneOf": [{"type": "object"}, {"type": "object"}]}, "object") is True
-    assert _entails_type({"anyOf": [{"type": "object"}, {"type": "object"}]}, "object") is True
-
-
-#: A value of every type other than the keyed one, for the refusal check above.
-_NOT_OF_TYPE = {
-    "string": [1, True, {}, [], None],
-    "object": ["s", 1, True, [], None],
-    "integer": ["s", {}, [], None, 1.5],
-    "number": ["s", {}, [], None],
-    "boolean": ["s", {}, [], None],
-    "array": ["s", 1, True, {}, None],
-    "null": ["s", 1, True, {}, []],
-}
-
-
 def test_a_root_is_exactly_one_kind_so_the_populations_do_not_overlap() -> None:
     """**``emit.ROWS`` is deleted, so a collision is unrepresentable rather than caught.**
 
@@ -4838,8 +4082,8 @@ def _constructed(doc: dict, *, binds: dict[str, Any] | None = None) -> tuple[Any
 
     A constructed document is not in the shipped package, so ``_document`` cannot
     read it and ``strict_validate`` has no schema -- which is why a constructed pair
-    is graded by ``compare_schema`` and by an ``accept`` the test builds from the same
-    document, exactly as the narrowing fixture above is.  Everything else is the real
+    is graded by an ``accept`` the test builds from the same document, exactly as the
+    narrowing fixture above is.  Everything else is the real
     pipeline: the walk decides, the compiler renders, and the text is executed rather
     than inspected, so a test cannot pass on a rendering that does not run.
 
@@ -5055,11 +4299,12 @@ def test_an_arrays_bound_is_the_lists_and_not_its_elements() -> None:
                 assert item.get(keyword) == declared.get(keyword), (row.ref, key, keyword, item)
     # The denominator is TOP-LEVEL array properties of an emitted root, not every
     # array node: an array nested inside another array's ``items`` has no property
-    # node of its own to compare at and is graded by the schema comparison instead.
+    # node of its own to read a bound at, so this loop cannot reach one and the bound
+    # it carries rides on the inner array's own annotated type.
     # Stated so the set is not read as "every array".  Both halves non-empty rather
     # than counted: the per-keyword assertion inside the loop is the obligation and it
     # needs an array to have been reached, and the bounded half needs a bound to have
-    # been compared.  The two counts this replaces moved together at every row that
+    # been read.  The two counts this replaces moved together at every row that
     # added an emitted root.
     claimed("top-level array properties of an emitted root", arrays)
     claimed("array bounds compared", bounded)
@@ -5075,10 +4320,12 @@ def test_unique_items_is_a_rule_on_the_holder_because_no_constraint_renders_it()
     therefore be a model wider than its document, silently.
 
     So the keyword takes two channels, never ``constraints=``: a RULE narrows the
-    constructor (D6), and ``json_schema_extra`` states the fact where the comparison
-    reads it, which is the same channel ``Property.format`` takes for the same reason --
-    the schema comparison reads ``uniqueItems`` off the model's rendered schema
-    (``harness.FACTS``), so a fact only a validator enforces would read as ``missing``.
+    constructor (D6), and ``json_schema_extra`` states the FACT on the model's own
+    rendered schema, which is the same channel ``Property.format`` takes for the same
+    reason -- ``uniqueItems`` is the one rule keyword a faithful model states as a fact
+    at a pointer (``codegen.keywords``, ``rendered=True``), and with only the validator
+    enforcing it the model's schema would state nothing where the document states the
+    keyword.
 
     **Both channels exist at BOTH of §2's places a rule hangs**, which is the half this
     test asserted the opposite of until ``adcp-client-python-10l.29``: on the nearest
@@ -5152,7 +4399,7 @@ def test_unique_items_is_a_rule_on_the_holder_because_no_constraint_renders_it()
     # a rule written there would be about the dict and not about each array in it.
     assert "dict[str, Annotated[list[str]," in on_the_value, on_the_value
     assert "AfterValidator(Distinct())" in on_the_value, on_the_value
-    # And the FACT beside it, so §8 grades the keyword at the array's own pointer: this
+    # And the FACT beside it, so the keyword is stated at the array's own pointer: this
     # is the same ``json_schema_extra`` channel the class-level half takes above, for the
     # same measured reason -- pydantic v2 removed ``unique_items``.
     assert "json_schema_extra={'uniqueItems': True}" in on_the_value, on_the_value
@@ -5232,8 +4479,9 @@ def test_a_root_array_is_a_root_model_carrying_its_bound_and_its_uniqueItems_rul
       does");
     * ``uniqueItems`` is RENDERED in ``model_json_schema()``, through the
       ``json_schema_extra`` channel ``ir.Field.distinct`` names -- pydantic v2 removed
-      ``unique_items``, so nothing else reaches the model's schema and §8 of the
-      semantics document would read the document's own keyword as *missing*;
+      ``unique_items``, so nothing else reaches the model's schema and the one rule
+      keyword §8 of the semantics document has a faithful model state as a FACT would be
+      stated nowhere;
     * the rule FIRES: a duplicate is refused by the one validator ``RuleBound``
       installs, which is what makes "the keyword is enforced, not dropped" true rather
       than claimed.
@@ -5307,7 +4555,7 @@ def test_a_root_array_is_a_root_model_carrying_its_bound_and_its_uniqueItems_rul
                 isinstance(rule, UniqueItems) for rule in bound_rules(model)
             ), (document, bound_rules(model))
             continue
-        # The fact, rendered where §8 of the semantics document reads it.
+        # The fact, rendered as §8 of the semantics document has a faithful model state it.
         assert rendered.get("uniqueItems") is True, (document, rendered)
         # The rule, keyed on the root model's one field and FIRING.
         assert UniqueItems(ir.ROOT_FIELD) in bound_rules(model), (document, model)
@@ -5935,8 +5183,8 @@ def test_a_key_schema_at_a_rule_position_states_nothing_and_does_not_refuse() ->
     # and the second and third are what "faithful" means:
     #
     # * the KEY TYPE is the `Literal`, read off the rendered text;
-    # * the model's own schema states the document's own keyword back, so §8 compares
-    #   the fact rather than excusing it;
+    # * the model's own schema states the document's own keyword back, so the fact is
+    #   RENDERED rather than dropped and excused by a declaration;
     # * the key set is ENFORCED -- an undeclared key is refused -- so nothing widened.
     #
     # One keyword, two positions, two answers, and the position is still what decides:
@@ -6115,8 +5363,8 @@ def test_a_typed_additional_properties_is_a_typed_pydantic_extra() -> None:
         # **ONE MORE at ``adcp-client-python-10l.45``**, and it is the MAPPING path
         # rather than a store, so the store list below is unchanged by it.  The document
         # is reached only through a ``$ref`` onto ``core/attestation-reference.json``,
-        # whose one obstruction was a type list with a constrained arm; the comparison
-        # folds that now (``harness._type_list``), so both emit.  Its typed
+        # whose one obstruction was a type list with a constrained arm; the walk lifts
+        # each arm's own keywords now (``harness._type_list``), so both emit.  Its typed
         # ``additionalProperties`` are the record's inlined copies of
         # ``governance/reported-outcome-error.json``'s ``bounded_object``, which is
         # already in this list on its own account.
@@ -6323,8 +5571,8 @@ def test_a_multi_type_property_applies_each_keyword_to_its_own_branch() -> None:
         # object.**  §4's table makes "an object with ``properties``" a model class
         # whatever else its node says, so a ``type`` LIST naming ``object`` beside a
         # property map renders one arm as the nested class pydantic hoists into
-        # ``$defs`` -- the "nested class hoisted to ``$defs``" reading ``harness._normalize``
-        # already takes on both sides.  Read as a branch with no ``type`` this raised
+        # ``$defs`` -- the "nested class hoisted to ``$defs``" reading
+        # ``harness._normalize`` already takes.  Read as a branch with no ``type`` this raised
         # ``KeyError``, which names no document and is §9's "a crash is not an outcome".
         # Measured at ``adcp-client-python-10l.20``: one site, and it arrived with
         # ``core/delivery-metrics.json`` --
@@ -6333,32 +5581,12 @@ def test_a_multi_type_property_applies_each_keyword_to_its_own_branch() -> None:
         if "null" not in declared:
             branches = [b for b in branches if b != "null"]
         assert sorted(branches) == sorted(declared), (ref, key, node)
-        # ... and the harness's own normalization folds it to the document's spelling,
-        # which is what makes the schema comparison pass on these two.
-        assert compare_schema(doc, model).outcome == "pass", compare_schema(doc, model).missing
-
-    # **THE FOLD IS NOT A SILENCER**, and this is the assertion of it rather than the
-    # argument.  A normalization that makes a red pair green is only correct if it
-    # still reports the two ways a model can be wrong about a type list, so both are
-    # measured against the same document: a model offering a type the document does
-    # not is reported, and one offering fewer is reported too.  Without this a fold
-    # that simply dropped the ``type`` comparison would pass every test above.
-    listed = {"type": "object", "properties": {"v": {"type": ["number", "string"]}}}
-
-    class Wider(AdCPBaseModel):
-        v: float | str | bool | None = None
-
-    class Narrower(AdCPBaseModel):
-        v: float | None = None
-
-    assert compare_schema(listed, Wider).outcome == "model_drops_a_fact"
-    assert compare_schema(listed, Narrower).outcome == "model_drops_a_fact"
     # **A branch carrying its own CONSTRAINT folds too, and it folds to the type list
     # PLUS the per-arm fact.**  This read the other way round -- the fold required every
     # branch to be bare and this asserted that a constrained one was left alone -- and
     # that reading is what refused ``core/attestation-reference.json`` and the 43
     # documents referencing it.  The new reading is not weaker: the keyword arrives at
-    # the node the document states it on, so it is COMPARED where it was previously
+    # the node the document states it on, so it is READ where it was previously
     # unreadable, and the four ways a model can be wrong about it are each asserted
     # below.  ``harness._type_list`` is the lift and ``keywords.ARM`` is what says which
     # arm a key belongs to.
@@ -6369,8 +5597,7 @@ def test_a_multi_type_property_applies_each_keyword_to_its_own_branch() -> None:
     # The model's own shape for the bundle's one such node: pydantic has no spelling of
     # ``dict[str, Any]`` that omits ``additionalProperties: true``, so the ``object`` arm
     # carries a key the document is silent about -- and the lift reads the branch the way
-    # ``_silent_about_extras`` reads the node, which is why the pair below reports no
-    # ``added`` and why the arm counts as BARE here.
+    # ``_silent_about_extras`` reads the node, which is why the arm counts as BARE here.
     assert normalize(
         {"anyOf": [{"additionalProperties": True, "type": "object"}, {"minLength": 1, "type": "string"}]},
         {},
@@ -6403,7 +5630,6 @@ def test_a_multi_type_property_applies_each_keyword_to_its_own_branch() -> None:
     assert "v: float | str" in text, text
     accept = _accept_of(doc, model)
     assert check_accepts(doc, accept, examples=50).outcome == "pass"
-    assert compare_schema(doc, model).outcome == "pass", compare_schema(doc, model).missing
 
     # **A CONSTRAINED arm is NAMED, and this is the rendering that forces it to be.**
     # The split needs the bound on the ARM; the compiler's ``DataType`` carries no
@@ -6423,19 +5649,14 @@ def test_a_multi_type_property_applies_each_keyword_to_its_own_branch() -> None:
     )
     assert "Annotated[str | int, Field(min_length=4)]" in escaped.text, escaped.text
 
-    # **D5's alias module removed that obstacle and the GRADER now reads the shape, so
-    # the node EMITS.**  Both halves are asserted -- the arm carries its own bound, and
-    # the comparison reads it -- because a cell that only stopped asserting the refusal
-    # would pass for a row that silently dropped the bound onto the field again.
-    armed = {
-        "title": "MS",
-        "type": "object",
-        "required": ["v"],
-        "properties": {"v": {"type": ["string", "integer"], "minLength": 4}},
-    }
+    # **D5's alias module removed that obstacle, so the node EMITS.**  The arm is
+    # asserted to carry its own bound, because a cell that only stopped asserting the
+    # refusal would pass for a row that silently dropped the bound onto the field
+    # again.  That the document's own ``anyOf`` of arms lifts back to the type list it
+    # spells is asserted on ``harness._normalize`` above.
     named = constraints_module.symbol("string", {"minLength": 4})
 
-    # Half one: the arm IS nameable, and that model's accepted set is the document's --
+    # The arm IS nameable, and that model's accepted set is the document's --
     # the integer arm takes no string bound.  Built from the alias the emitter uses,
     # which the walk's own rendering is asserted against below.
     arm_alias = {"StrMinLen4": None}
@@ -6448,36 +5669,6 @@ def test_a_multi_type_property_applies_each_keyword_to_its_own_branch() -> None:
     assert Armed.model_validate({"v": "abcd"}).v == "abcd"
     with pytest.raises(ValidationError):
         Armed.model_validate({"v": "abc"})  # the string arm keeps its own bound
-
-    # Half two: the comparison READS that shape.  It used to fold a model's ``anyOf``
-    # into a document's type LIST only where every branch was bare, so it reported this
-    # FAITHFUL model as dropping ``/type`` and ``/minLength`` both, and the row refused
-    # the document rather than emit a node no check could grade.  The fold lifts each
-    # arm's own keywords now, so the pair is silent -- and the reading is STRONGER than
-    # the refusal it replaces, which is asserted by the three ways a model can be wrong
-    # about it below rather than by the pass alone.
-    assert compare_schema(armed, Armed).outcome == "pass", compare_schema(armed, Armed)
-
-    class Dropped(AdCPBaseModel):
-        v: str | int  # the arm's bound is gone
-
-    class Tightened(AdCPBaseModel):
-        v: Annotated[str, Field(min_length=8)] | int  # the arm's bound, narrowed
-
-    class Lost(AdCPBaseModel):
-        v: arm_alias[named] | int | bool  # an arm the document does not name
-
-    dropped = compare_schema(armed, Dropped)
-    assert dropped.outcome == "model_drops_a_fact", dropped
-    assert {m.split(": ")[0] for m in dropped.missing} == {"/properties/v/minLength"}, dropped.missing
-    tightened = compare_schema(armed, Tightened)
-    assert tightened.outcome == "model_drops_a_fact", tightened
-    assert {d.split(": ")[0] for d in tightened.differs} == {
-        "/properties/v/minLength"
-    }, tightened.differs
-    lost = compare_schema(armed, Lost)
-    assert lost.outcome == "model_drops_a_fact", lost
-    assert {d.split(": ")[0] for d in lost.differs} == {"/properties/v/type"}, lost.differs
 
     # **And the node now EMITS, over the bundle's own population.**  This asserted the
     # empty list -- "0 multi-type node in an EMITTED document states a constraint with
@@ -6503,10 +5694,10 @@ def test_a_multi_type_property_applies_each_keyword_to_its_own_branch() -> None:
         )
     ]
 
-    # **A null arm no longer refuses: it is an ARM.** The refusal stood on the
-    # grader, and the grader reads it now -- so the cell asserts the EMISSION and the
-    # annotation, because a cell that only stopped asserting the refusal would pass
-    # for a row that silently dropped the arm.
+    # **A null arm no longer refuses: it is an ARM.** The refusal stood on what the
+    # document-side reading could not lift, and that reading takes a null arm now -- so
+    # the cell asserts the EMISSION and the annotation, because a cell that only stopped
+    # asserting the refusal would pass for a row that silently dropped the arm.
     mod, symbol = emit.lower_document(
         "mn.json",
         {"title": "MN", "type": "object", "properties": {"v": {"type": ["string", "null"]}}},
@@ -6528,101 +5719,6 @@ def test_a_multi_type_property_applies_each_keyword_to_its_own_branch() -> None:
     assert caught.keyword in ("minLength", "type"), caught.keyword
 
 
-def test_a_declared_null_is_never_read_as_absence() -> None:
-    """``["string", "null"]`` and an OPTIONAL ``{"type": "string"}`` are different
-    documents, and D4 renders BOTH as ``str | None``.
-
-    So the model's own schema does not say which document it came from, and the
-    comparison used to decide by unwrapping any single ``null`` branch as absence
-    -- which erased the declared fact and made the two cases one cell. A faithful
-    model was reported as dropping its ``type``, and a model that DROPPED the
-    declared null was reported identically, so neither could be graded.
-    ``lower.containers.multi_type`` refused a ``null`` arm by name for exactly
-    that reason.
-
-    **This is the test that reddens if a declared null is ever read as absence
-    again**, and it is written as the pairs the two readings disagree about rather
-    than as an assertion about ``_normalize``'s internals: the fix has to keep the
-    unwrap that D4 needs AND report a dropped declaration, and only a test holding
-    both at once can tell a correct fold from a silencer.
-    """
-    declared = {
-        "title": "D",
-        "type": "object",
-        "required": ["v"],
-        "properties": {"v": {"type": ["string", "null"]}},
-    }
-    optional = {"title": "O", "type": "object", "properties": {"v": {"type": "string"}}}
-    optional_nullable = {
-        "title": "ON",
-        "type": "object",
-        "properties": {"v": {"type": ["string", "null"]}},
-    }
-    four = {
-        "title": "F",
-        "type": "object",
-        "required": ["v"],
-        "properties": {"v": {"type": ["string", "number", "boolean", "null"]}},
-    }
-
-    class ReqNullable(AdCPBaseModel):
-        v: str | None
-
-    class OptNullable(AdCPBaseModel):
-        v: str | None = None
-
-    class NullDropped(AdCPBaseModel):
-        v: str
-
-    class Four(AdCPBaseModel):
-        v: str | float | bool | None
-
-    class FourNullDropped(AdCPBaseModel):
-        v: str | float | bool
-
-    # The two documents that render the same annotation both pass, which is the
-    # whole point: the comparison now tells them apart instead of conflating them.
-    assert compare_schema(declared, ReqNullable).outcome == "pass"
-    assert compare_schema(optional, OptNullable).outcome == "pass"
-    assert compare_schema(optional_nullable, OptNullable).outcome == "pass"
-    assert compare_schema(four, Four).outcome == "pass"
-
-    # **AND THE FOLD IS NOT A SILENCER.** A model that drops the document's own
-    # declared ``null`` is reported, in both shapes of the fold -- one live branch
-    # beside the null, and three.
-    for doc, model in ((declared, NullDropped), (optional_nullable, NullDropped),
-                       (four, FourNullDropped)):
-        res = compare_schema(doc, model)
-        assert res.outcome == "model_drops_a_fact", (doc["title"], res)
-        assert [d.split(": ")[0] for d in res.differs] == ["/properties/v/type"], res.differs
-
-    # The SECOND half, and the one the bead does not name: the ``default`` D4
-    # renders for an optional property. ``_narrows_nothing`` read the node's
-    # declared null as a proxy for the REQUIRED axis, and the proxy is wrong in
-    # both directions -- so it reads ``required`` now. Four cells of one rule.
-    for kind in (["string", "null"], "string"):
-        assert harness._narrows_nothing(  # noqa: SLF001 -- the rule under test
-            "default", None, {"type": kind}, required=False
-        ), kind
-        assert not harness._narrows_nothing(  # noqa: SLF001 -- the rule under test
-            "default", None, {"type": kind}, required=True
-        ), kind
-    # An invented value is still an added claim whatever the presence axis says.
-    assert not harness._narrows_nothing(  # noqa: SLF001 -- the rule under test
-        "default", "x", {"type": "string"}, required=False
-    )
-
-    # And the axis reaches the rule from the comparison rather than sitting there
-    # inert: a model stating ``default: null`` at a key the document DEMANDS is
-    # reported. ``json_schema_extra`` is how a required field renders one at all --
-    # a pydantic field with a real default is not required, which is the same
-    # reason ``compiler.fields`` refuses a document default on a required property.
-    class ReqDefaulted(AdCPBaseModel):
-        v: str | None = Field(..., json_schema_extra={"default": None})
-
-    res = compare_schema(declared, ReqDefaulted)
-    assert res.outcome == "model_adds_a_fact", res
-    assert [a.split(": ")[0] for a in res.added] == ["/properties/v/default"], res.added
 
 
 #: The documents this test asserted as REFUSED in an earlier revision and that now
@@ -7357,7 +6453,7 @@ def test_a_reference_cycle_refuses_rather_than_recurring(tmp_path) -> None:
 # **The four tests that stood here are deleted with the machinery they graded.**
 # They asserted that ``steps()`` found a site for each of D6's six families, that a
 # stepped whole-instance keyword bit the document that states it, that an
-# unsatisfiable step reported no_evidence rather than a harness error, and that
+# unsatisfiable step reported an outcome rather than a harness error, and that
 # ``force_path`` held a sibling ``if`` through ``then``/``else``.  Every one of them
 # graded the step machinery, and section 6 removed it: "a step site asserts that
 # ``jsonschema`` rejects a payload violating the schema it was handed. The generated
@@ -7410,14 +6506,13 @@ def test_a_rule_narrows_the_constructor_and_both_halves_name_one_keyword() -> No
 
 
 def test_only_the_model_validate_path_observes_a_rule() -> None:
-    """A rule is INVISIBLE to the three checks, measured by removing it.
+    """A rule is INVISIBLE to every check the harness has, measured by removing it.
 
     Every pair is offered its instance through ``strict_validate``, whose schema
     half validates against the document -- so the refusal is implied by the
-    control whatever the rules say, and ``compare_schema`` reads
-    ``model_json_schema()``, which a ``ClassVar`` does not reach.  With the
-    after-validator returning before it evaluates anything, each payload above is
-    ACCEPTED by the constructor and every rule-carrying pair still grades green.
+    control whatever the rules say.  With the after-validator returning before it
+    evaluates anything, each payload above is ACCEPTED by the constructor and every
+    rule-carrying pair still grades green.
 
     That is the whole justification for a rule being class data rather than a
     schema fragment, and it is the reason the tests above are the only instrument
@@ -8157,8 +7252,7 @@ def test_a_const_node_is_a_literal_over_the_value_it_pins() -> None:
 
     The value's own JSON type is what the node admits, so the three shapes the bundle
     writes are all here -- a ``const`` with the document's ``type`` word beside it,
-    one without, and a boolean -- and the pair is graded by ``compare_schema``, which
-    is the check that says the model neither drops nor adds a fact.
+    one without, and a boolean.
     """
     doc = {
         "title": "Pinned",
@@ -8178,12 +7272,6 @@ def test_a_const_node_is_a_literal_over_the_value_it_pins() -> None:
     assert "typed: Literal['collection_list_changed']" in text, text
     assert "typeless: Literal['asap']" in text, text
     assert "flag: Literal[True]" in text, text
-
-    comparison = compare_schema(doc, model)
-    assert comparison.outcome == "pass", comparison
-    assert comparison.added == [], comparison.added
-    assert comparison.missing == [], comparison.missing
-    assert comparison.differs == [], comparison.differs
 
     # and the Literal is the accepted set, not an annotation: the pinned value in,
     # anything else out.
@@ -8397,11 +7485,9 @@ def test_a_format_beside_a_const_rides_on_the_annotation() -> None:
     a plain scalar does.
 
     **Both halves name it, and that is why this is not an approximation.** A fact the
-    model drops is the thing §2's ladder is for, and the module's own ceiling note says
-    what a dropped keyword costs here: §8 reads the document's keyword as *missing*.  A
-    ridden format is RENDERED, so the comparison has the keyword on both sides and
-    passes -- which the ``compare_schema`` clause asserts rather than assumes, in both
-    directions, at the position the bundle reaches the shape at.
+    model drops is the thing §2's ladder is for; a ridden format is RENDERED, so the
+    model carries the document's own keyword at the position the bundle reaches the
+    shape at, which the rendering assertion below reads off the class itself.
 
     The shape is §2's intersection rule again and the population is **2**, measured over
     the nodes the walk decides: ``core/attestation-reference.json``'s ``claim_type`` is
@@ -8430,14 +7516,6 @@ def test_a_format_beside_a_const_rides_on_the_annotation() -> None:
     assert rendered["const"] == "https://adcontextprotocol.org/claims/rights/grant", rendered
     assert rendered["format"] == "uri", rendered
     assert "AnyUrl" not in text and "HttpUrl" not in text, text
-
-    # Graded at the DOCUMENT, which is where §8's pair sits: the format rides on the
-    # FIELD, so the annotation alone does not carry it and a comparison handed the
-    # annotation would report the document's own keyword as missing -- the exact reading
-    # a dropped format would give, and therefore no grade of the ride at all.
-    graded = compare_schema(doc, model)
-    assert graded.outcome == "pass", graded
-    assert "format" not in str(graded.missing + graded.differs + graded.added), graded
 
     out = compiled(BUNDLE, sorted(bundle.portable(BUNDLE)))
     on_format = {
@@ -9051,8 +8129,8 @@ VERDICTS = frozenset(
         #
         # **SIX JOINED AT ``adcp-client-python-10l.45``, and all six are documents
         # GETTING FURTHER into an obstruction this set already owns.**  Nothing new is
-        # claimed and nothing is absorbed by a number: the comparison folds a type list
-        # whose arm carries a constraint (``harness._type_list``), so
+        # claimed and nothing is absorbed by a number: the document-side walk lifts a
+        # type list whose arm carries a constraint (``harness._type_list``), so
         # ``core/attestation-reference.json`` emits, and the chain that stood on it
         # re-roots onto what each document's own text runs into next.
         #
@@ -9359,7 +8437,7 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     # the measured value read from below, so it records each fall rather than predicting
     # one; two lanes lowered it from 94 in the same hour and the merge takes the lower.
     #
-    # ``adcp-client-python-10l.45`` took it to 90: the comparison folds a type list whose
+    # ``adcp-client-python-10l.45`` took it to 90: the walk lifts a type list whose
     # arm carries a constraint (``harness._type_list``), so
     # ``core/attestation-reference.json`` emits -- it was the PRIMARY deferral, not a
     # chain -- and with it ``governance/get-plan-audit-logs-response.json``, reached only
@@ -9437,14 +8515,14 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     #
     # **1053 -> 967 and 1 -> 87, moved by `salesagent-j3k2l.37`, and the number
     # FALLING is the instrument working.**  Nothing about what emits changed -- 686
-    # before and after, `comparison.added` 0 before and after -- and 86 documents
-    # moved out of `verdict` because their producers say in their own text that the
-    # lowering for the position has not been written.  47 directly and 39 through a
-    # chain.  The rule applied to every one of the 29 live producers, and the table
-    # of which producer got which kind, is `docs/plan/j3k2l37-prediction.md`; the
-    # three biggest movers are `product.py`'s "a later D2 row lowers this one" (12),
-    # `union.py`'s "a branch composes once that reader is shared" (10) and
-    # `compiler.py`'s default-on-a-required-property (1 directly, 5 through chains).
+    # before and after -- and 86 documents moved out of `verdict` because their
+    # producers say in their own text that the lowering for the position has not
+    # been written.  47 directly and 39 through a chain.  The rule applied to every
+    # one of the 29 live producers, and the table of which producer got which kind,
+    # is `docs/plan/j3k2l37-prediction.md`; the three biggest movers are
+    # `product.py`'s "a later D2 row lowers this one" (12), `union.py`'s "a branch
+    # composes once that reader is shared" (10) and `compiler.py`'s
+    # default-on-a-required-property (1 directly, 5 through chains).
     #
     # **967 -> 988 and 87 -> 66, moved by `salesagent-j3k2l.40`**, which shared the
     # conjunct reader: a union BRANCH that composes is lowered by
@@ -9452,8 +8530,7 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     # documents waiting on "a branch composes once that reader is shared" cleared
     # that row -- 3 emitted, 6 accounted as verdicts, and 1 (`adagents.json`) moved
     # on to the NEXT gap, which is why the product row's deferral reads 13 here and
-    # 12 before.  12 chained refusals released with them.  `comparison.added` is 0
-    # on both trees, measured over every pair of the regenerated tree.
+    # 12 before.  12 chained refusals released with them.
     # `docs/plan/j3k2l40-prediction.md` carries the prediction and its grade.
     #
     # Each pin is the value MEASURED on this tree and each was fire-probed one step
@@ -9478,7 +8555,7 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     # **IT WAS LOUD, AND THE DOCUMENT ARRIVED ONE ROW LATER -- 0 -> 1 at
     # ``salesagent-j3k2l.67``, MEASURED ON THE MERGED TREE AND NOT ON EITHER BRANCH.**
     # That row admits ``discriminator`` beside a nested union (§6's row: it constrains
-    # nothing, and ``harness.FACTS`` does not look for it), so
+    # nothing, so its cell compiles to NOTHING and no fact is dropped), so
     # ``core/requirements/catalog-field-binding.json`` gets one pointer further than its
     # old ``discriminator`` VERDICT and reaches
     # ``#/definitions/ScalarBinding/properties/ext``, whose target ``core/ext.json`` is
@@ -9829,7 +8906,8 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
 
 
 def test_the_document_type_word_is_not_restated_beside_the_literal() -> None:
-    """Measured on the pinned compiler, because the comparison is SYMMETRIC.
+    """Measured on the pinned compiler, because a fact the model ADDS is the
+    renderer's and never the document's.
 
     A one-member ``Literal`` renders ``const`` AND the type word of its own accord --
     not a one-member ``enum``, and not the ``const`` alone -- so there is nothing for
@@ -9837,14 +8915,11 @@ def test_the_document_type_word_is_not_restated_beside_the_literal() -> None:
     pydantic here rather than assumed, because which of the three it renders is a
     function of the version and the whole admission below rests on it.
 
-    The TYPELESS const nodes are then the only place the model states a fact the
-    document does not, and ``harness._entails_type`` already derives that one from the
-    document's own ``const``.  Both halves are asserted: the derivation fires at every
-    one of them, and it is gated on the VALUE rather than on the keyword -- a model
-    claiming the wrong type over a ``const`` still reddens.
+    The TYPELESS const nodes are then the only place the model states a type word the
+    document does not, and a ``const``'s own value is what the node already admits: the
+    population is named here so a row that starts restating the word has a denominator
+    to redden against.
     """
-    from codegen.harness import _entails_type
-
     assert TypeAdapter(Literal["x"]).json_schema() == {"const": "x", "type": "string"}
     assert TypeAdapter(Literal[3]).json_schema() == {"const": 3, "type": "integer"}
     assert TypeAdapter(Literal[True]).json_schema() == {"const": True, "type": "boolean"}
@@ -9855,20 +8930,19 @@ def test_the_document_type_word_is_not_restated_beside_the_literal() -> None:
     # bundle version's count of them.
     claimed("typeless const nodes", {(d, p) for d, p, _ in typeless})
 
-    # the derivation fires for every one of them, read off the DOCUMENT
+    # The pin's own value is what the node admits, read off the DOCUMENT: a ``Literal``
+    # over it renders the type word the value's JSON type already forces, so the model
+    # restates nothing the document has not already fixed.
     for document, pointer, node in typeless:
         rendered = TypeAdapter(Literal[node["const"]]).json_schema()["type"]
-        assert _entails_type(node, rendered) is True, (document, pointer, rendered)
-
-    # and it is the VALUE gate doing the work: with the gate dropped the rule would
-    # admit a model claiming any type at all, which is what this asserts it does not.
-    assert _entails_type({"const": "x"}, "integer") is False
-    assert _entails_type({"const": True}, "integer") is False
-    narrower = compare_schema(
-        {"type": "object", "properties": {"k": {"const": "x"}}, "required": ["k"]},
-        TypeAdapter(Annotated[int, Field(ge=0)]),
-    )
-    assert narrower.outcome != "pass", narrower
+        assert jsonschema.Draft7Validator(node).is_valid(node["const"]), (document, pointer)
+        for other in ("s" if rendered != "string" else 1, [], {}, None):
+            assert not jsonschema.Draft7Validator(node).is_valid(other), (
+                document,
+                pointer,
+                rendered,
+                other,
+            )
 
     # The record leaves a const node whole, and does so wherever it reaches one --
     # ``test_a_const_node_inlined_through_a_ref_keeps_its_annotations`` below is the
@@ -9881,28 +8955,18 @@ def test_the_document_type_word_is_not_restated_beside_the_literal() -> None:
 
 
 def test_a_const_node_inlined_through_a_ref_keeps_its_annotations() -> None:
-    """The one hand-written comparison row this step added, DELETED by row .3.
+    """A const node reached through a ``$ref`` is the whole node, annotations and all.
 
     ``canonicalish`` reduces a node whose value set is FINITE to that set alone and
     drops every annotation at it -- but only when the node is INLINED through a
-    ``$ref``, which is why the test above saw a whole node and this one did not.  The
-    row admitted a model-only ``description`` at such a node, and it was one of the six
-    folds ``docs/plan/architecture.md`` §9 deletes once ``bundle.record`` is this
-    package's own inliner.
+    ``$ref``, which is why the test above saw a whole node and an earlier inliner did
+    not.  ``bundle.record`` is this package's own inliner and performs no such
+    reduction, so the two copies are the SAME node.
 
-    Measured both ways round on the live pair that forced the row:
+    Measured on the live pair that forced the earlier row:
     ``core/agent-encryption-key.json``'s ``kty`` and the copy
-    ``core/authorized-agent-base.json`` inlines.  They are now the SAME node, key for
-    key, which is what makes the row unnecessary rather than merely unused -- and the
-    ``description`` is compared in both directions instead of excused in one.
-
-    The ``type`` half is unchanged and is still ``_entails_type``'s, a derivation from
-    the document's own value: 832 nodes of the raw bundle state a ``const`` with no
-    ``type``, so pydantic's ``Literal`` renders one the document does not state wherever
-    it reaches one of them.
+    ``core/authorized-agent-base.json`` inlines, key for key.
     """
-    from codegen.harness import _narrows_nothing
-
     own = bundle.record(BUNDLE, "core/agent-encryption-key.json")["properties"]["kty"]
     assert own["const"] == "OKP"
     assert own["type"] == "string"
@@ -9910,76 +8974,6 @@ def test_a_const_node_inlined_through_a_ref_keeps_its_annotations() -> None:
     through = bundle.record(BUNDLE, "core/authorized-agent-base.json")
     inlined = through["properties"]["encryption_keys"]["items"]["properties"]["kty"]
     assert inlined == own, (inlined, own)
-
-    # The row is gone: a model-only ``description`` is reported at a ``const`` node
-    # like anywhere else, because the document's own is there to compare against.
-    assert _narrows_nothing("description", "any text", {"const": "OKP"}) is False
-    assert _narrows_nothing("description", "any text", {"type": "string"}) is False
-    # and the type half is still the derivation's
-    assert _narrows_nothing("type", "string", {"const": "OKP"}) is True
-    assert _narrows_nothing("type", "integer", {"const": "OKP"}) is False
-    # nothing else at the same node was ever excused and nothing is now
-    assert _narrows_nothing("default", "OKP", {"const": "OKP"}) is False
-    assert _narrows_nothing("minLength", 1, {"const": "OKP"}) is False
-
-    # Both directions at the node: the description is LOOKED FOR whether the model
-    # drops the document's own or invents one the document does not state -- which is
-    # what the deleted row changed, since the row excused the keyword and so stopped it
-    # being looked for at all.
-    #
-    # **It asserted the two REPORTS -- ``model_drops_a_fact`` with the fact in
-    # ``missing``, and the fact in ``added`` -- and §8's annotation clause (added
-    # 2026-10-27) moved that half** (``adcp-client-python-10l.21``'s seventh
-    # instalment): "``added``, ``missing`` or ``differs`` on an annotation reports a
-    # difference that cannot change what a payload is accepted as."  So what is asserted
-    # is the COUNT, in both directions and each against the same pair with the
-    # description taken away -- which says the fact is in the compared set at this
-    # pointer and reaches the reading, and is the half the row's deletion was about.
-    # The row itself is graded on ``_narrows_nothing`` three lines above, unchanged.
-    doc = {
-        "type": "object",
-        "properties": {"k": {"const": "OKP", "description": "d"}},
-        "required": ["k"],
-        "additionalProperties": False,
-    }
-    silent_model = _constructed(
-        {
-            "title": "NoDoc",
-            "type": "object",
-            "additionalProperties": False,
-            "properties": {"k": {"type": "string", "const": "OKP"}},
-            "required": ["k"],
-        }
-    )[0]
-    undescribed = {**doc, "properties": {"k": {"const": "OKP"}}}
-    dropped = compare_schema(doc, silent_model)
-    # The DOCUMENT's description is one more compared fact than the same document
-    # without it, so it is looked for at ``/properties/k`` and not excused away.
-    assert dropped.compared == compare_schema(undescribed, silent_model).compared + 1, (
-        dropped.compared,
-        compare_schema(undescribed, silent_model).compared,
-    )
-    # §8's clause: no difference about it is reported in any direction.
-    assert (dropped.added, dropped.missing, dropped.differs) == ([], [], []), dropped
-    assert not harness.grades_a_difference("description", keywords.Position.PROP)
-
-    described_model = _constructed(
-        {
-            "title": "HasDoc",
-            "type": "object",
-            "additionalProperties": False,
-            "properties": {"k": {"type": "string", "const": "OKP", "description": "d"}},
-            "required": ["k"],
-        }
-    )[0]
-    invented = compare_schema(undescribed, described_model)
-    # The MODEL's description is one more model fact than the same model without it, so
-    # the other direction looks for it too -- which is what the deleted row stopped.
-    assert invented.model_facts == compare_schema(undescribed, silent_model).model_facts + 1, (
-        invented.model_facts,
-        compare_schema(undescribed, silent_model).model_facts,
-    )
-    assert (invented.added, invented.missing, invented.differs) == ([], [], []), invented
 
 
 def test_the_const_row_has_exactly_one_lowering() -> None:
@@ -10040,7 +9034,7 @@ def test_the_const_row_has_exactly_one_lowering() -> None:
 
 
 # --------------------------------------------------------------------------- #
-# a conjunct contributes every part of itself, and the composition the comparison reads
+# a conjunct contributes every part of itself, and the composition the document-side fold reads
 # --------------------------------------------------------------------------- #
 #: The population every clause of :func:`test_every_conjunct_contributes_every_part_of_itself`
 #: runs over, stated rather than read back off the structure it grades (D14).  All of it is
@@ -10262,7 +9256,7 @@ def test_every_conjunct_contributes_every_part_of_itself() -> None:
     # Keyed by the decision's own cases and holding the SITES, so a part is a set this
     # check can partition rather than an integer it can only compare.  Seeded with every
     # case, so a part with no member today is named and asserted empty rather than
-    # absent from the comparison (D14).
+    # absent from the partition (D14).
     parts: dict[str, set[str]] = {name: set() for name in CONJUNCT_PARTS}
     for document in sorted(out.emitted):
         doc = bundle.read(BUNDLE, document)
@@ -10461,183 +9455,3 @@ def test_every_conjunct_contributes_every_part_of_itself() -> None:
         ),
     )
 
-
-#: How often each of the three folds that read a COMPOSED document by intersection
-#: changes the reading, over the whole graded population.  Every one is non-zero on
-#: purpose: a fold whose population is 0 passes for free, which is what the local-``$ref``
-#: fold's pin was doing before ``salesagent-j3k2l.28`` measured it.
-#:
-#: ``vocabulary`` is the ``const``/``enum`` axis collapse, ``tighter`` the keyword
-#: intersection (both sites ``enum``), and ``description`` the annotation following the
-#: view that states the composed value set.  A fourth, ``agreed`` -- the delegated
-#: resolver's conditional rewrite read as the facts its branches agree on -- went with
-#: that resolver (architecture §9).  They are counted where the fold CHANGES something,
-#: not where it is called, so a gate that stopped matching reddens.
-#: The fold names, and a FLOOR on each one's sites rather than an equality: the obligation
-#: is that none of the three has a population of zero, because a fold with no site is
-#: green for free -- which is what the local-``$ref`` fold's pin was doing before
-#: ``salesagent-j3k2l.28`` measured it.  An equality here is one bundle version's reading
-#: of a quantity every emitting row moves, and `tests/test_every_check_names_its_set.py`
-#: refuses it for that reason.  The KEY SET is still asserted exactly, which is what
-#: catches a fourth fold starting to fire or one of the three stopping.
-# **:data:`COMPARISON_FACTS` IS NOT HERE ANY MORE: it is
-# ``tests/test_the_comparison_census.py``'s, with the 155 pairs and 1,086 facts it
-# actually holds** (``adcp-client-python-3be.23``).
-#
-# It stood here as an EMPTY dict, and the comment defending the empty is the whole of why
-# it moved: "empty is the strongest state it has: every direction is examined and every
-# one is zero, and a fact arriving reddens with its pair, pointer and direction named."
-# That was true of the tree it was written on.  Both of its readers are below and both sit
-# behind ``graded()``/``graded_reports()`` -- the pole, 6-7 hours and twice killed by the
-# kernel -- so the set grew to 155 pairs over 75 documents while nothing could read it,
-# which is the same rot ``tests/test_the_declared_backlog.py`` records for the declared
-# backlog and the ninth stale census of this epic.
-#
-# The comparison needs no pair report, no draw and no dump: ``tests/compared.py`` calls
-# ``harness.compare_schema`` with the five arguments ``harness.check_pair`` calls it with,
-# so the reading is the same one and is 53 s instead of hours.  What stays HERE is what
-# genuinely needs the pole -- the fold counters below, which monkeypatch the harness and
-# count where each fold CHANGES a reading, and the census test's cross-check that the
-# POLE's own ``comparison`` reports agree, direction for direction, with that fast census.
-
-#: **Re-MEASURED at row .3's tip, and ``agreed`` is gone rather than lowered.**  The
-#: same-title lift is deleted with the delegated resolver (architecture §9): it fired
-#: where every branch of a combinator carried one ``title``, which was the signature of
-#: ``canonicalish`` rewriting a root ``if``/``then`` into an ``anyOf`` of the two cases,
-#: and ``bundle.record`` performs no such rewrite.  A floor for a fold that no longer
-#: exists would be a floor nothing can meet, so the entry is removed and the
-#: ``set(hits) == set(...)`` assertion below is what keeps a third fold from appearing
-#: unnoticed.  The two that remain are each a reading of the document's OWN ``allOf``.
-#:
-#: **BOTH RE-MEASURED AT THIS TIP, AND ONE FLOOR FELL: ``vocabulary`` 6 -> 5 while
-#: ``tighter:enum`` ROSE 2 -> 6.**  The work moved between the two axes and the cause is
-#: the one-member respelling's deletion.  ``_one_member_enum`` used to write a
-#: one-member ``enum`` as the ``const`` it is, on the node and on the conjunct alike, so
-#: a base's vocabulary met a branch's one-member set as ``const``-against-``enum`` and
-#: ``_one_vocabulary`` was what collapsed it.  Without the respelling both views state an
-#: ``enum`` and ``_tighter``'s member intersection answers instead.  Measured by name on
-#: this tree: ``vocabulary`` fires at ``core/canonical-media-buy-action.json``'s three
-#: branches and at ``core/product-execution-requirement.json#/oneOf/2`` and its
-#: ``connection`` property; ``tighter:enum`` at
-#: ``core/audience-evidence-requirements.json`` and
-#: ``core/product-audience-evidence-requirements.json`` (each twice, root and
-#: ``maximum_age``) and at ``core/media-buy-frequency-cap-requirement.json`` and
-#: ``core/media-buy-support-requirements.json``.  Neither is a number carried from
-#: anywhere: 5 and 6 are what this tree measures.
-#:
-#: **A THIRD READING JOINS THEM: ``description``, floored at 2**
-#: (``adcp-client-python-10l.18``).  ``_described_by_the_conjunct`` gives a
-#: ``description`` two views state to the view that states the composed VALUE SET, which
-#: is §6's "a composed base's loses to the document's own" read where §2's intersection
-#: puts it.  Its 2 sites are ``core/media-buy-frequency-cap-requirement.json`` and
-#: ``core/media-buy-support-requirements.json``, which are exactly the two pairs that left
-#: the comparison census (``tests/test_the_comparison_census.py`` as of
-#: ``adcp-client-python-3be.23``) -- so the floor and the facts are one measurement read
-#: from two ends, and a reading that stopped firing would redden here as well as there.
-COMPOSED_FOLD_FLOORS = {"vocabulary": 5, "tighter:enum": 6, "description": 2}
-
-
-def test_the_comparison_reads_a_composed_document_by_intersection(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """D7's intersection rule on the COMPARISON's side, and the population it reaches.
-
-    The document side flattens an ``allOf`` the way a composing class does
-    (``harness._composed``), and it did that by GAP-FILL: the first view of a keyword two
-    views state won and the rest were dropped. That is the "KNOWN CEILING" its own
-    docstring named and measured as a population of zero, and the population is no longer
-    zero -- a composing class faithful to the INTERSECTION read as adding a ``const``,
-    dropping an ``enum``, and stating a four-member vocabulary where its document stated
-    five.
-
-    THREE readings answer it, each counted here where it CHANGES the reading, and each a
-    reading of the document's own ``allOf`` rather than of any view of it:
-
-    * ``_one_vocabulary`` -- a ``const`` and the ``enum`` it pins are one axis, so the
-      merged node carries the pin and not both.
-    * ``_tighter`` -- a keyword both views state composes to the INTERSECTION: an enum to
-      the common members, a bound to the tighter value.
-    * ``_described_by_the_conjunct`` -- a ``description`` two views state goes with the
-      view that states the composed VALUE SET, which is §6's "a composed base's loses to
-      the document's own" at the pointer where §2's intersection decides which view that
-      is.  ``adcp-client-python-10l.18``, and the last of ``_composed``'s named ceilings.
-
-    A fourth, ``_agreed``, was counted here and is DELETED with the delegated resolver
-    (architecture §9): it lifted the facts an ``anyOf``'s identically-titled branches
-    agreed on, and the one title was the signature of that resolver's conditional
-    rewrite.  ``bundle.record`` performs no rewrite, so there are no such branches.
-
-    **The counts are the point and so is their being non-zero.**  A fold with no site is
-    green for free; this run states how many sites each one has and reddens if a gate
-    stops matching, if a document leaves the population, or if a fourth fold starts
-    firing.
-
-    **THE COMPARISON'S OWN RED FACTS ARE NO LONGER ASSERTED HERE**
-    (``adcp-client-python-3be.23``).  They were -- ``assert red == COMPARISON_FACTS``,
-    against a set this file carried -- and that assertion ran only as part of a 6-7 hour
-    pass, which is how the set came to hold 0 entries against a live 155 pairs with
-    nothing red.  ``tests/test_the_comparison_census.py`` holds them now, over the same
-    pairing and through the same ``compare_schema`` call, in 53 s; this test keeps the
-    loop because the three folds are monkeypatched and the population is what drives
-    them.  ``test_every_class_passes_all_three_checks`` stays RED on every pair behind
-    those facts -- architecture §14 step 3 makes a comparison failure appearing here a
-    real finding, so nothing was added to the verifier to quiet one.
-    """
-    hits: collections.Counter[str] = collections.Counter()
-    tighter, vocabulary = harness._tighter, harness._one_vocabulary
-    described = harness._described_by_the_conjunct
-
-    def counted_tighter(keyword: str, node: Any, conjunct: Any) -> Any:
-        answer = tighter(keyword, node, conjunct)
-        if answer is not harness._UNDECIDED and answer != node:
-            hits[f"tighter:{keyword}"] += 1
-        return answer
-
-    def counted_vocabulary(node: dict, conjunct: dict) -> tuple[dict, dict]:
-        left, right = vocabulary(node, conjunct)
-        if left is not node or right is not conjunct:
-            hits["vocabulary"] += 1
-        return left, right
-
-    def counted_described(node: dict, conjunct: dict) -> dict:
-        answer = described(node, conjunct)
-        if answer is not node:
-            hits["description"] += 1
-        return answer
-
-    monkeypatch.setattr(harness, "_tighter", counted_tighter)
-    monkeypatch.setattr(harness, "_one_vocabulary", counted_vocabulary)
-    monkeypatch.setattr(harness, "_described_by_the_conjunct", counted_described)
-
-    pairs = graded()
-    assert pairs, "no graded pair: every count below would be 0 and would say nothing"
-    for one in pairs:
-        pair = pair_of(one)
-        # **``declared=`` and ``at=``, exactly as ``harness.check_pair`` passes them**
-        # (``adcp-client-python-10l.21``).  Without the declaration the comparison has
-        # nothing to read a widening against, so every fact §5(b)'s two rows now declare
-        # read as *missing* here while the pair itself passes -- two readings of one
-        # comparison, which is the disagreement §8's second equality exists to forbid.
-        #
-        # **THE RESULT IS NOT READ FOR ITS FACTS HERE** and the pin it used to be
-        # asserted against is ``tests/test_the_comparison_census.py``'s
-        # (``adcp-client-python-3be.23``): the call is made because the three folds are
-        # monkeypatched above and this is what drives them over the whole population.
-        harness.compare_schema(
-            pair.schema,
-            pair.model,
-            document=pair.document,
-            declared=pair.declared,
-            at=pair.ref.pointer if pair.ref is not None else "#",
-        )
-    assert set(hits) == set(COMPOSED_FOLD_FLOORS), dict(hits)
-    for fold, floor in sorted(COMPOSED_FOLD_FLOORS.items()):
-        ratchet(
-            f"sites where the {fold} fold changes the reading",
-            hits[fold],
-            at_least=floor,
-            because=(
-                "a fold with no site is green for free, and an emitting row only adds "
-                "graded pairs for a fold to reach"
-            ),
-        )

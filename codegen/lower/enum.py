@@ -75,8 +75,8 @@ not reach either:
   containing ``\"\"\"`` would emit a module that does not parse.  Measured: 0 of
   the bundle's 1,151 entries contain one.  A root enum's own ``default`` is
   likewise dropped (an enumeration has no field to carry one), and that one needs
-  no guard at all -- ``harness.FACTS`` compares ``default``, so the schema
-  comparison reddens it; measured 0 of 214.
+  no guard at all -- its cell is ANNOTATION at ROOT, so it states no fact about an
+  instance and there is nothing a draw could put to it; measured 0 of 214.
 """
 
 from __future__ import annotations
@@ -252,9 +252,9 @@ def excluded(node: nodes.Enumeration) -> Refusal | None:
     and the two then disagree about what the node admits: the document's set is
     ``{members} ∩ {the constraint}``, so a member outside the constraint is a value the
     enumeration offers and the document refuses.  Dropping it would be this compiler
-    rewriting the document's own ``enum`` -- §8 compares that keyword for equality, so the
-    rewrite would report as *differs* -- and keeping it is a model wider than its schema,
-    which is the defect P3 exists to remove.  So the node is refused, on the KEYWORD that
+    rewriting the document's own ``enum`` -- a member the document enumerates would become
+    unnameable, with nothing in the emitted class recording that it was ever there -- and
+    keeping it is a model wider than its schema, which is the defect P3 exists to remove.  So the node is refused, on the KEYWORD that
     excludes the member, and the upstream fix is the document stating the set it means.
 
     Asked of the document's own validator rather than of a table of this module's, for
@@ -413,8 +413,9 @@ def decide(node: nodes.Enumeration, name: str) -> ir.EnumDecl | Refusal:
 
     ``name`` is an input (D3).  The base comes from the members' own type and not
     from ``type``, which is what admits the 164 typeless enum nodes and which the
-    schema comparison grades either way -- it compares ``type`` as a fact the
-    document states, so a base disagreeing with a declared ``type`` reddens
+    accepts draw grades either way: ``harness.check_accepts`` draws against the
+    document's ``enum`` and ``type`` together and offers each instance to the class,
+    so a base that cannot take a member the document admits refuses it by value
     rather than passing quietly.  (Measured: they agree at 1,069 of 1,069, so this
     is the faithful reading and not a workaround.)
     """

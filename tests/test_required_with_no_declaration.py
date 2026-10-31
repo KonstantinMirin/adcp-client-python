@@ -1,13 +1,10 @@
-"""``required`` naming a property NO declaration declares: the field, and the fold.
+"""``required`` naming a property NO declaration declares: the field.
 
-§5's ``required`` row and §8's empty-schema clause, graded together, because neither
-half is correct on its own and that is the whole history of this row: the row called
-such a name "a presence rule with no field", a rule renders no ``required`` into a
-model's JSON schema while the keyword's own cell is ``rendered=True``, so the rule half
-reported ``differs`` at the node's ``/required`` -- and the field half reported the
-model-only ``properties`` entry as ``added``, which §8 had no fold for.  Both halves
-were red, so the handler refused and **27 of the 95 refusals, 5 of them primary**, stood
-on a conflict between two of this compiler's own decisions with no document at fault.
+§5's ``required`` row, on the one shape that gave the row its history: the row called
+such a name "a presence rule with no field", and a rule renders no ``required`` into a
+model's JSON schema at all while the keyword's own cell is ``rendered=True``.  The
+handler refused instead, and **27 of the 95 refusals, 5 of them primary**, stood on this
+one shape with no document at fault.
 
 **The claim is about an ACCEPTED SET, so every test here states it with
 ``jsonschema``.**  "``required: ['x']`` with no declaration for ``x`` admits an object
@@ -37,7 +34,7 @@ import pytest
 from pydantic import ValidationError
 
 from adcp.types._base import SchemaRef, schema_at
-from codegen import bundle, compiler, emit, harness
+from codegen import bundle, compiler, emit
 from tests.nodeset import claimed
 
 DRAFT = "http://json-schema.org/draft-07/schema#"
@@ -155,8 +152,8 @@ def test_a_required_name_no_declaration_declares_is_a_required_any_field(tmp_pat
     rendered = model.model_json_schema()
     assert sorted(rendered["required"]) == ["known", "undeclared"], rendered["required"]
     # The field states NOTHING: the entry pydantic renders for it is the empty schema
-    # plus a title, which is what ``harness._states_no_graded_fact`` folds and what makes
-    # the answer exact rather than a widening with a declaration.
+    # plus a title, which is what makes the answer exact rather than a widening with a
+    # declaration.
     assert set(rendered["properties"]["undeclared"]) <= {"title"}, rendered["properties"]
     assert out.approximations == {}, "an exact answer owes no declaration"
 
@@ -210,61 +207,6 @@ def test_a_required_name_colliding_with_a_declared_one_is_a_verdict(tmp_path) ->
     assert refusal["keyword"] == "required", refusal
     assert str(refusal["resolved"]).endswith("verdict"), refusal
     assert "both spell the field" in refusal["detail"], refusal["detail"]
-
-
-# --------------------------------------------------------------------------- #
-# the fold, through the instrument that would have reported the field as a defect
-# --------------------------------------------------------------------------- #
-def test_the_pair_passes_and_the_vacuous_entry_is_reported_rather_than_folded_away(
-    tmp_path,
-) -> None:
-    """§8's three checks over the shape, and the fold REPORTS rather than disappears.
-
-    The second half is the point.  ``url_typed`` and ``constrains_nothing`` are counted
-    apart from ``missing`` because "a fold that disappears into a green bucket is
-    invisible and permanent", and this is the first such list on the ``added`` side --
-    the half that can make a faithful SDK refuse valid traffic.  So the pair passes AND
-    the line is there to be read, naming the key and the subschema it folded.
-    """
-    document = _probe()
-    out = emit.emit(_write(tmp_path, {"core/probe.json": document}), ["core/probe.json"])
-    model = _model("core/probe.json", out, "pair")
-    result = harness.compare_schema(document, model, document=document, at="#")
-
-    assert result.outcome == "pass", (result.missing, result.differs, result.added)
-    assert result.added == [], result.added
-    assert result.missing == [] and result.differs == []
-    assert len(result.vacuous_entry) == 1, result.vacuous_entry
-    assert "'undeclared'" in result.vacuous_entry[0], result.vacuous_entry
-    assert "the empty schema" in result.vacuous_entry[0], result.vacuous_entry
-
-
-def test_without_the_fold_the_very_same_pair_reports_added(tmp_path) -> None:
-    """The fold's NECESSITY, derived by switching it off rather than asserted.
-
-    This is the half of the row's history a reader cannot otherwise check: the claim is
-    that the field answer was unreachable until §8 gained the fold, and the way to show
-    it is to take the fold away and watch the faithful model be reported as a defect at
-    ``added`` -- "the comparison's word for a model NARROWER than its document", which
-    this model is not.
-
-    ``tests/test_decision_set.py`` takes the same perturbation over the whole graded
-    population and pins the KEYWORD it admits; this one takes it over one node and reads
-    the sentence, so the two cover the mechanism's reach and its message.
-    """
-    from unittest import mock
-
-    document = _probe()
-    out = emit.emit(_write(tmp_path, {"core/probe.json": document}), ["core/probe.json"])
-    model = _model("core/probe.json", out, "nofold")
-    with mock.patch.object(harness, "_states_no_graded_fact", lambda *a, **k: False):
-        result = harness.compare_schema(document, model, document=document, at="#")
-
-    assert result.outcome == "model_adds_a_fact", result.outcome
-    assert len(result.added) == 1, result.added
-    assert result.added[0].startswith("/properties:"), result.added[0]
-    assert "'undeclared'" in result.added[0], result.added[0]
-    assert result.vacuous_entry == [], result.vacuous_entry
 
 
 # --------------------------------------------------------------------------- #

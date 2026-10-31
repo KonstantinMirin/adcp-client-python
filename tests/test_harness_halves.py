@@ -22,8 +22,8 @@ originally lost a field the document declared OPTIONAL, so a dump without it was
 the dump half correctly passed, and the test read as the check being blind.  The
 document has to DEMAND the dropped key for the fixture to judge anything.
 
-Hand-written documents and not bundle ones, because the bundle has no faithful/widened
-pair to compare: these are three classes over one document, differing in one axis each.
+Hand-written documents and not bundle ones, because the bundle holds no faithful/widened
+pair of classes over one document: these are three, differing in one axis each.
 """
 
 from __future__ import annotations
@@ -204,8 +204,8 @@ def test_the_dump_half_catches_a_class_that_loses_a_key_the_document_demands() -
     """The defect no acceptance test can see, and the control beside it.
 
     ``DropsB`` accepts every instance ``Faithful`` accepts -- it IS ``Faithful`` plus a
-    renderer -- so the accepts half, the liveness check and the schema comparison all
-    pass it.  The dump is what separates them.
+    renderer -- so the acceptance half of the draw and the liveness check both pass it.
+    The dump is what separates them.
     """
     assert harness.check_accepts(DOC, accept_of(Faithful), examples=10).outcome == "pass"
     lossy = harness.check_accepts(DOC, accept_of(DropsB), examples=10)

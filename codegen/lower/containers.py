@@ -47,12 +47,12 @@ KEY ARE ONE TYPE.**  ``propertyNames: {"pattern": P}`` beside
 matches ``V``", and ``dict[Annotated[str, StringConstraints(pattern=P)], V]`` is
 that -- so :func:`_key` owns the key rule for both and :func:`mapping` only decides
 where in the document the expression sits.  Both arms REFUSED as verdicts on the
-ground that pydantic renders the key back as ``patternProperties`` and the schema
-comparison could not grade it.  The ``patternProperties`` arm's premise was simply
-wrong: ``patternProperties`` is the keyword that document states.  The
-``propertyNames`` arm's obstruction was real and was an unwritten comparison row,
-which §2 counts as a DEFERRAL and not a verdict -- and it is now written
-(``harness._patterned_key``) rather than named, so neither arm refuses.
+ground that pydantic renders the key back as ``patternProperties`` rather than as the
+keyword the document spelled.  The ``patternProperties`` arm's premise was simply
+wrong: ``patternProperties`` is the keyword that document states.  And the rendering
+settles nothing either way: what the two spellings have to agree about is the KEYS the
+mapping admits, which the accepts draw places and the dump hands back for the
+document's own validator to re-read.  So neither arm refuses.
 
 Measured over the 1,054 portable documents of the 3.2 bundle: **40 key sites in 28
 documents** -- 26 ``propertyNames`` in 21 documents and 14 ``patternProperties`` in
@@ -123,9 +123,9 @@ BOUNDS = ("minItems", "maxItems")
 #: ceiling.**  §5's row states the PREDICATE and never the subschema, so a ``contains``
 #: whose predicate is a bound, a pattern, a nested ``contains`` or a ``$ref`` reaches
 #: ``contains_predicate`` and comes back ``None`` -- and then it is CARRIED exactly as
-#: every one of them was: ``strict_validate`` enforces the keyword from the document, it
-#: is not in ``harness.FACTS`` so there is no fact for the comparison to find missing,
-#: and the constructor is wider.  ``X.model_validate(["a"])`` builds for such a document
+#: every one of them was: ``strict_validate`` enforces the keyword from the document and
+#: the constructor is wider, which is the direction D4 permits and the one the accepts
+#: draw cannot fault.  ``X.model_validate(["a"])`` builds for such a document
 #: while ``X.strict_validate`` of the same payload refuses -- the identical pair
 #: ``lower/rules.py`` records for ``core/canvas-constraint.json``.
 #:
@@ -152,7 +152,7 @@ _ARRAY_CLAIMS = frozenset({"type", "items", "uniqueItems", "contains", "allOf", 
 #: ``minProperties`` field at all and silently sets nothing for one, while its length
 #: channel renders ``Field(min_length=..., max_length=...)``, which pydantic renders
 #: back as ``minProperties``/``maxProperties`` on a ``dict`` -- the document's own
-#: spelling, so the comparison needs no row.  Measured on pydantic 2.13.5:
+#: spelling, and the bound binds the CONSTRUCTOR with it.  Measured on pydantic 2.13.5:
 #: ``Annotated[dict[str, int], Field(min_length=1, max_length=4)]`` renders
 #: ``{"type": "object", "minProperties": 1, "maxProperties": 4}`` and refuses ``{}``
 #: and a five-key object while accepting a one-key one.
@@ -172,10 +172,10 @@ KEY_BOUNDS = ("minProperties", "maxProperties")
 #: narrowing half of the same defect.
 #: **It is ``codegen/keywords.py``'s now**, reached through ``codegen/schema/parse.py``,
 #: and the move is one step further than §2's: the parser makes the CUT once, and the
-#: verifier's fold from a model ``anyOf`` back to a document type list is that cut's
-#: INVERSE, so the two must read one declaration or they disagree silently about which
-#: arm owns a keyword.  §9 forbids the verifier the walk and permits it the keyword
-#: table, so the table is in the table.  Re-bound here so this module's own screen keeps
+#: document-side fold that lifts a union's arms back onto a type list
+#: (``harness._type_list``) is that cut's INVERSE, so the two must read one declaration
+#: or they disagree silently about which arm owns a keyword.  §9 forbids the verifier the
+#: walk and permits it the keyword table, so the table is in the table.  Re-bound here so this module's own screen keeps
 #: one spelling of it, and ``parse.value_facts`` reads the same rows to derive what
 #: ``ir.FACTS`` was.
 ARM = nodes_parse.ARM
@@ -204,14 +204,14 @@ def _contents(node: nodes.Node, what: str, mod: Module) -> ir.TypeRef | Refusal:
     not that question and do not come here -- an arm is the node RE-CUT to one type,
     so its annotations are the node's own and the field holding the union already
     carries them, and a ``propertyNames`` node is a statement about a key rather than
-    a value at a pointer the comparison reads.
+    a value at a pointer of its own.
 
     **An ANNOTATION on an inner node had nowhere to go either, and unlike a constraint
     it was dropped in SILENCE.**  :func:`_inner` refuses a constraint and a ``format``
     by name because dropping one would widen the model; a ``description`` narrows
     nothing, so it was dropped with no refusal and no rendering -- and §6 says a
-    ``description`` is never folded and that where the comparison reports one the
-    EMITTER is what changes.  Measured: ``comparison.missing`` was **4 facts over 4
+    ``description`` is never folded, so a dropped one is the EMITTER's to fix.
+    Measured over the bundle: **4 such dropped descriptions over 4
     pairs**, every one of them ``.../additionalProperties/description`` and every one
     of them ``'Component properties'`` -- ``a2ui/component.json``,
     ``a2ui/surface.json`` and the two ``sponsored-intelligence`` responses that compose
@@ -237,8 +237,8 @@ def _contents(node: nodes.Node, what: str, mod: Module) -> ir.TypeRef | Refusal:
     than a silent overwrite.
 
     What this still drops is every annotation ``names.alias_for`` does not carry -- a
-    ``default`` on an inner node has no slot on an alias and would still read as
-    ``missing``, which is the safe direction and is visible.  0 inner nodes of the
+    ``default`` on an inner node has no slot on an alias, and the drop narrows nothing a
+    consumer can be refused for, which is the safe direction.  0 inner nodes of the
     bundle state one.
     """
     pointer = node.pointer
@@ -304,7 +304,7 @@ def _the_conjuncts_constrain_the_array(node: nodes.Array) -> tuple[Any, ...] | R
       schema half answers**" -- this ``if`` states a ``contains`` -- and §5's ``then`` row
       gives its ``properties`` "nothing on the model; the schema half narrows the value",
       which its ``items`` takes for the same reason.  Both cells are ``rendered=False``,
-      so §8 compares no fact at the pointer and there is no widening to declare: this is
+      so there is no fact at the pointer to carry and no widening to declare: this is
       the ceiling ``lower/rules.py`` already states once for the whole module ("nothing
       here refuses a document ... ``CanvasConstraint.model_validate`` builds while
       ``strict_validate`` refuses"), not a fact the annotation drops where a cell says it
@@ -415,7 +415,8 @@ def array(node: nodes.Array, mod: Module) -> ir.Decided | Refusal:
     # well; the three kinds simply had not been written, so "we cannot express it" was
     # standing in for "nobody wrote it".  The keyword is enforced now, not dropped, and
     # ``render._bound_to_the_type`` writes the ``json_schema_extra={"uniqueItems": true}``
-    # beside it from the rule itself, so §8 grades the fact at the array's own pointer.
+    # beside it from the rule itself, so the fact the rule enforces is stated in the
+    # model's own schema beside it rather than only enforced.
     #
     # ``contains`` is passed at EVERY position and is not gated, because there is no
     # class-level kind for it: §5's row puts an ``AtLeastOne`` on the array's own
@@ -471,8 +472,8 @@ def array(node: nodes.Array, mod: Module) -> ir.Decided | Refusal:
         # own RULE TUPLE**, which is §2's two halves at a position with no field: a
         # ``minItems``/``maxItems`` is a constraint of the list and rides in
         # :attr:`codegen.ir.TypeRef.facts` exactly as it does on a property's type, and
-        # ``uniqueItems`` is a RULE, which a root model carries because §8 gives it one
-        # tuple ("a rule tuple exactly as a class does").  The rule is keyed on
+        # ``uniqueItems`` is a RULE, which a root model carries like any class ("a root
+        # model carries a rule tuple exactly as a class does", §5's own row).  The rule is keyed on
         # ``"root"`` -- a root model's one pydantic field, which is where
         # ``_runtime.supplied`` finds the value -- and ``render.root_model`` derives the
         # ``json_schema_extra`` half from that same rule rather than from a second flag,
@@ -581,7 +582,8 @@ def mapping(node: nodes.Mapping_, mod: Module) -> ir.Decided | Refusal:
             if isinstance(stated_extra, Mapping) and stated_extra:
                 # A TYPED ``additionalProperties`` beside the pattern types the keys the
                 # pattern does NOT match, so ``dict[str, Any]`` drops that value typing
-                # too and §8 grades a declaration for each keyword separately.  Population
+                # too, and ``harness.check_widening`` puts each declaration to a draw of
+                # its own.  Population
                 # 0 over this bundle -- every patterned node states ``true``, ``false`` or
                 # nothing -- and declared rather than refused because the rung is the same
                 # one: the mapping is already ``dict[str, Any]``.
@@ -621,9 +623,10 @@ def mapping(node: nodes.Mapping_, mod: Module) -> ir.Decided | Refusal:
         # "patternProperties": {"^x_": {"type": "integer"}}}``.  The
         # ``additionalProperties: false`` the document states beside it (5 of the
         # bundle's 14 sites) is what makes the two equivalent -- it closes the keys to
-        # the ones the pattern matches, which is what a typed key already says -- and
-        # ``harness`` reads both sides into that one shape so the value schema and the
-        # key expression are each GRADED rather than excused.
+        # the ones the pattern matches, which is what a typed key already says -- and what
+        # a draw places at such a node is a key the pattern matches holding a value of the
+        # stated type, so the value schema and the key expression are each GRADED rather
+        # than excused.
         expr = node.pattern
         if expr is None:
             # **A crash is not an outcome** (§9), and this is the one place the row met
@@ -729,7 +732,8 @@ def _key(node: nodes.Node | None, mod: Module) -> ir.TypeRef | Refusal:
     constraint the document does not state.
 
     **A key's LENGTH and a key's PATTERN both lower, and the split that used to be
-    here was a statement about the GRADER rather than about the key.**  Both go
+    here was a statement about how pydantic RENDERS a key rather than about the key.**
+    Both go
     through the walk, so D5's rung 3 names the shape and no spelling is invented
     here.  What differs is only what pydantic renders the resulting ``dict`` as,
     measured on 2.13.5:
@@ -744,15 +748,13 @@ def _key(node: nodes.Node | None, mod: Module) -> ir.TypeRef | Refusal:
       ``propertyNames`` plus ``additionalProperties``.
 
     The pattern arm REFUSED, as a verdict, on the second of those: the rendering is
-    not the document's spelling, so the symmetric comparison reported a rewrite.  Two
-    things were wrong with that.  The kind, first -- a class the comparison cannot
-    grade is an unwritten comparison row and so a DEFERRAL, never a verdict, which
-    names a document's own property.  And then the premise: the two spellings state
-    the same thing, so there is one shape to read and the comparison reads it
-    (``harness._patterned_key``), which is what §8 means by grading the pair rather
-    than excusing it.  The bound ENFORCES either way (``{"AB": 1}`` accepted,
-    ``{"abc": 1}`` refused for ``^[A-Z]{2}$``), so what moved is the instrument and
-    not the model.
+    not the document's spelling.  Two things were wrong with that.  The kind, first --
+    a rendering this project had not yet read is a reading we owe and so a DEFERRAL,
+    never a verdict, which names a document's own property.  And then the premise: the
+    two spellings state the same thing, so there is one shape and the keys it admits
+    are the same keys.  The bound ENFORCES either way (``{"AB": 1}`` accepted,
+    ``{"abc": 1}`` refused for ``^[A-Z]{2}$``), which is what the accepts draw places
+    and the dump hands back, so nothing about the model ever needed the refusal.
     """
     if node is None:
         return ir.TypeRef("str")
@@ -834,32 +836,34 @@ def multi_type(node: nodes.MultiType, mod: Module) -> ir.Decided | Refusal:
     reached the FIELD and bounded the whole union, ``Annotated[str | int,
     Field(min_length=4)]``, applying the string's bound to the integer arm.  The alias
     module removed that: ``StrMinLen4 | int`` is what it lowers to, and that model's
-    accepted set IS the document's.  The refusal then stood on the GRADER -- the schema
-    comparison folded a model's ``anyOf`` back into the document's ``type`` list only
-    where every branch was a bare type, so it read a faithful model as dropping both
-    the type list and the constraint -- and that was an instrument defect in the same
-    place as the ``null`` arm's below, fixed the same way: ``harness._type_list`` lifts
-    each arm's own keywords back onto the list it folds to, reading ``keywords.ARM``,
-    which is the CUT this row makes.  So the node is graded and the refusal is retired
-    rather than restated with a new reason.
+    accepted set IS the document's -- which the accepts draw says, since the document
+    admits a four-character string and an integer and the annotation takes both.  The
+    refusal then stood on the READING instead: the fold that lifts a union's arms back
+    onto a ``type`` list fired only where every branch was a bare type, so a node whose
+    arm carried a constraint had no composed node to read the ``minLength`` at -- an
+    instrument defect in the same place as the ``null`` arm's below, fixed the same way:
+    ``harness._type_list`` lifts each arm's own keywords back onto the list it folds to,
+    reading ``keywords.ARM``, which is the CUT this row makes.  So the document's fact is
+    read where it belongs and the refusal is retired rather than restated with a new
+    reason.
 
     It was worth 1 primary refusal -- ``core/attestation-reference.json`` at
     ``/properties/embedded_credential/properties/value``, ``["object", "string"]``
     with ``minLength`` -- and 43 documents transitively, which was the largest cascade
     per primary refusal in the report.
 
-    **A ``null`` arm is an ARM, and it used to refuse on the grader.**  ``None``
+    **A ``null`` arm is an ARM, and it used to refuse on the instrument.**  ``None``
     was always a perfectly good arm and the compiler always folded it with D4's own
     ``| None`` on an optional property, so ``str | None`` came out either way; what
-    had no answer was GRADING it.  The schema comparison read a model's ``anyOf``
-    with one ``null`` branch as D4's rendering of ABSENCE and unwrapped it, so a
-    document declaring ``["string", "null"]`` and a document with a merely optional
-    ``{"type": "string"}`` compared identically -- and a model that dropped the
-    declared null compared identically too.  That is the instrument defect
-    ``salesagent-j3k2l.21`` names, and it is fixed where it lived: the comparison
-    reads the DOCUMENT at the normalization (``harness._declares_null``) and folds
-    the branch into the type list where the document declares one.  So the node is
-    graded and the refusal is retired rather than restated with a new reason.
+    had no answer was READING the document at such a node.  The fold read a ``null``
+    branch as D4's rendering of ABSENCE and unwrapped it, so a document declaring
+    ``["string", "null"]`` and a document with a merely optional ``{"type": "string"}``
+    came back as one node, with the declared ``null`` gone from the reading of both.
+    That is the instrument defect ``salesagent-j3k2l.21`` names, and it is fixed where
+    it lived: ``harness._normalize`` takes ``declared_null`` from its caller, so a
+    reading of the DOCUMENT folds the branch into the type list where the document
+    declares one and a declaration at that node's ``type`` meets the fact the document
+    states.  So the refusal is retired rather than restated with a new reason.
 
     It was worth 3 documents -- ``core/delivery-metrics.json``,
     ``core/error.json`` and ``core/webhook-activity-record.json`` -- and
@@ -886,21 +890,22 @@ def multi_type(node: nodes.MultiType, mod: Module) -> ir.Decided | Refusal:
     # carries and more than one arm was live, and its reason was never the rendering --
     # D5's alias module puts the bound on the arm's own type, so ``StrMinLen1 | dict[str,
     # Any]`` is what this lowers to and the string's keyword never reaches the field to
-    # bound the object arm.  Its reason was the GRADER: ``harness._normalize`` folded a
-    # model's ``anyOf`` back into the document's ``type`` LIST only where every branch
-    # was a bare ``{"type": X}``, so it read a faithful model as stating neither the
-    # type list nor the constraint and reported two facts missing.
+    # bound the object arm.  Its reason was the READING: ``harness._normalize`` lifted a
+    # union's branches back onto a ``type`` LIST only where every branch was a bare
+    # ``{"type": X}``, so a node whose arm carried a constraint came back stating neither
+    # the type list nor the keyword.
     #
     # That is an instrument defect in the same place as the ``null`` arm's, and it is
     # fixed in the same place: ``harness._type_list`` lifts each arm's own keywords back
     # onto the type list it folds to, reading ``keywords.ARM`` -- the very table this row
-    # cuts by -- so the fold is the cut's inverse and the node is graded at its own
-    # pointer, with the ``type`` list and the ``minLength`` each compared.
+    # cuts by -- so the fold is the cut's inverse and the document's ``type`` list and
+    # ``minLength`` are both read at the node they belong to.
     #
     # Nothing is admitted in exchange.  A fold the gates do not admit leaves the node a
-    # combinator, which states no fact in ``compared_facts``, so such a pair REDDENS
-    # rather than passing blind -- the fail-safe direction, and the reason this row does
-    # not need to re-derive the fold's conditions to know it is safe to emit.  Measured
+    # combinator, which states no fact in ``harness.FOLDED_FACTS``, so a declaration at
+    # it is reported UNPROVED rather than passing blind -- the fail-safe direction, and
+    # the reason this row does not need to re-derive the fold's conditions to know it is
+    # safe to emit.  Measured
     # over all 1,054 portable documents: 1 multi-type node states a keyword with two
     # live arms, 0 repeat a type word, and 0 state a keyword two live arms carry.
     #

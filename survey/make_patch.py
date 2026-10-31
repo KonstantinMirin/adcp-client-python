@@ -292,8 +292,7 @@ E_ADD = """- **D15 — an annotation is admitted BY NAME, and the names are meas
   conformance tooling should reject repeated `kind` values." A D6 rule enforcing one therefore
   makes the class refuse a
   payload `strict_validate`'s schema half accepts: `check_accepts` draws from the document and
-  reports `model_refused_valid`, while the schema comparison sees nothing at all, a rule
-  having no rendering in `model_json_schema()`. That is the model-narrower-than-its-document
+  reports `model_refused_valid`. That is the model-narrower-than-its-document
   direction, which §6 names as the only one that makes a correct SDK refuse valid traffic.
   D6's "a rule narrows the constructor; acceptance stays with the schema" holds for its seven
   families because every one of them is a keyword the DOCUMENT states, so rule and schema
@@ -328,11 +327,11 @@ E_ADD = """- **D15 — an annotation is admitted BY NAME, and the names are meas
 
   - **Whether `deprecated` RENDERS.** 179 sites in 95 documents, 178 `true` and 1 `false`, 16
     of them at a root. pydantic renders it from `Field(deprecated=True)` and the emitted tree
-    declares it nowhere, so the schema comparison's `missing` is 0 only because no graded
-    document carries one yet; the first that does reports it. Admitting the name here settles
-    that it constrains nothing and settles nothing about the rendering. What decides it is a
-    graded pair: the first document carrying a `deprecated` that emits, which makes both
-    answers measurable against the comparison instead of arguable.
+    declares it nowhere, and no document the emitter reaches today carries one. Admitting the
+    name here settles that it constrains nothing and settles nothing about the rendering. What
+    decides it is a graded pair: the first document carrying a `deprecated` that emits, whose
+    round trip puts a dump to the document and makes the rendering's cost measurable instead
+    of arguable.
   - **Whether any `x-` fact belongs ON the class** as a `ClassVar` — `x-status`,
     `x-mutates-state`, `x-entity`, `x-operation-family`. This decision says they contribute
     nothing to what the class accepts or states about itself, which is the honest reading of

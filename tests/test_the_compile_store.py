@@ -103,8 +103,8 @@ def test_one_bundle_is_held_under_one_key_however_a_caller_spells_its_path() -> 
 
     ``./check``'s spelling is RELATIVE, so this reads it with the checkout as the working
     directory -- what ``./check`` itself requires of a caller, and what the suite already
-    requires of one (``tests/test_dump_exemptions.py``'s ``SOURCE`` and
-    ``tests/test_decision_set.py``'s are the same relative literal).  The precondition
+    requires of one (``tests/test_required_with_no_declaration.py``'s ``SOURCE`` is the
+    same relative literal).  The precondition
     above is what reports a working directory that is not the checkout, rather than letting
     it arrive as a difference between keys.
     """

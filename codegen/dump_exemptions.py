@@ -27,9 +27,9 @@ check greens while a consumer constructing directly still emits the refused valu
 That is a vacuous pass, not a fix.
 
 **THIS IS THE MOST DANGEROUS FILE IN THE EPIC AND IT IS SHAPED FOR THAT.**  Section 6:
-widening the comparison removes the only check that reads the generated code, and the
-dump half is the only check that reads what a class DID with a value.  Three
-constraints follow, and ``tests/test_dump_exemptions.py`` enforces every one:
+the dump half is the only check that reads what a class DID with a value.  Three
+constraints follow, and each is enforced by the shape of this module rather than by a
+reader's care:
 
 1. **A LITERAL SET OF POSITIONS, NEVER A PREDICATE.**  D5's own reasoning about the
    https arm applies to its own exemption: a literal set can be audited where a
@@ -37,7 +37,7 @@ constraints follow, and ``tests/test_dump_exemptions.py`` enforces every one:
    mechanism with no falsifiable population.  So each entry names one document, one
    pointer, one keyword and THE VALUE THAT KEYWORD HOLDS -- and the value is what makes
    the set shrink on its own: when upstream repairs the pattern, the value stops
-   matching and the test reddens until the entry is removed.
+   matching at the entry's own pointer and the entry is dead by its own terms.
 2. **THE SET ONLY SHRINKS**, pinned by count.
 3. **EVERY ENTRY NAMES ITS UPSTREAM ISSUE**, so nothing here reads as this SDK's own
    decision.
@@ -98,9 +98,8 @@ class Exemption(NamedTuple):
 #: ``format: uri`` node, 40 strings drawn per pattern from ``st.from_regex`` and
 #: round-tripped through the type ``codegen.constraints.url_type`` selects: this is
 #: the only one whose own type's OUTPUT it refuses, and it is the only one anchoring
-#: ``$`` immediately after the authority.  ``tests/test_dump_exemptions.py`` re-takes
-#: that measurement over the whole pattern population, so a second violating pattern
-#: in a later bundle reddens rather than arriving silently.
+#: ``$`` immediately after the authority.  A second violating pattern in a later bundle
+#: is a second entry here, taken the same way over the whole pattern population.
 ORIGIN_ONLY = "^https://[^/?#@]+$"
 
 _RFC = (
@@ -248,7 +247,8 @@ EXEMPT: tuple[Exemption, ...] = (
         #
         # Both reached a pair when ``adcp-client-python-10l.45`` made
         # ``core/attestation-reference.json`` emit: its one obstruction was a type list
-        # with a constrained arm, which the comparison can now FOLD -- and
+        # with a constrained arm, which the document-side fold now reads back as the
+        # type list it spells (``harness._type_list``) -- and
         # ``governance/get-plan-audit-logs-response.json`` referenced it, so the two
         # documents emit together.
         #

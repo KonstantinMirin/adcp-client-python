@@ -8,7 +8,8 @@ annotation sibling is dropped, so the pattern is uniform by intent.  ``errors`` 
 and ``items`` a bare ``$ref`` to ``core/error.json`` at 25 with one composing it.
 
 **So the 26 do not share an accepted set, and the divergence is real on a real
-instance.**  Measured against the branch node as §8's pairing reads it:
+instance.**  Measured against the branch node the pairing grades a branch class at
+(``harness.Pair``, through ``applied_schema``):
 ``brand/creative-approval-response.json#/oneOf/3`` REFUSES
 ``{"errors": [], "status": "completed"}`` and
 ``content-standards/calibrate-content-response.json#/oneOf/1`` ACCEPTS it.  A base
@@ -16,7 +17,7 @@ claiming to be the authority for all 26 would therefore be wrong about 21 of the
 direction or 5 in the other, whichever way it spelled the bound.
 
 What this module declares is a base that claims nothing about acceptance: it carries
-``context``, ``errors`` and ``ext`` and **no** ``__adcp_schema__``, so §8's pairing --
+``context``, ``errors`` and ``ext`` and **no** ``__adcp_schema__``, so the pairing --
 ``issubclass(value, SchemaBound) and "__adcp_schema__" in value.__dict__``, over the
 modules of ``adcp.types._schemas`` -- never reaches it, on any of three counts: it
 declares no ``__adcp_schema__``, it is not a ``SchemaBound`` at all (:data:`MODEL`), and
@@ -24,7 +25,7 @@ it is not in that package.  It is not graded, it is not a conformance claim, and
 ``strict_validate`` does not resolve on it.
 The 26 concrete classes keep their own ``__adcp_schema__``, their own ``strict_validate``
 and their own ``minItems`` -- 21 tight, 5 loose, each faithful to its own document -- and
-those are the things §8 grades.  **A consumer gets ergonomics; the concrete class still
+those are the things a pair grades.  **A consumer gets ergonomics; the concrete class still
 decides acceptance.**
 
 *Why not normalise the bundle instead.*  Giving the five the ``minItems: 1`` the other 21
@@ -114,7 +115,7 @@ MODULE = f"{ir.BASE_MODULE.rsplit('.', 1)[0]}.envelopes"
 #: a ``DataType`` is").
 #:
 #: ``AdCPBaseModel`` IS the schema binding -- it carries ``__adcp_schema__``,
-#: ``strict_validate`` and the rule tuple, and §8's pairing predicate is
+#: ``strict_validate`` and the rule tuple, and the pairing's predicate is
 #: ``issubclass(value, SchemaBound)`` -- so a base that must never be a pair must not be
 #: one.  Three consequences and every one of them is wanted: the base is outside the
 #: pairing by TYPE and not only by a missing attribute; ``strict_validate`` does not
@@ -125,8 +126,8 @@ MODULE = f"{ir.BASE_MODULE.rsplit('.', 1)[0]}.envelopes"
 #: Pydantic merges a model's bases' configs in order and the last one wins, and
 #: ``AdCPBaseModel`` states §2's ``extra: ignore`` explicitly -- so an ``AdCPBaseModel``
 #: appended to a branch's bases imposes ``ignore`` on every member whose own node states
-#: no ``additionalProperties``, and the three emitted members of the loose group lost
-#: ``additionalProperties: true`` and reported *missing* against their own documents.
+#: no ``additionalProperties``, and the three emitted members of the loose group lost the
+#: ``additionalProperties: true`` their own documents state.
 #: A base that states a policy no document of the family states is §2's
 #: "no generated class carries a policy that is not in its document", and an empty config
 #: is what not stating one means.
@@ -174,7 +175,7 @@ def base(
 
     ``ref`` is ``None``, which is the whole of the row: a declaration with no
     ``SchemaRef`` names no document, so ``render.klass`` writes no ``__adcp_schema__``
-    line and §8 has nothing to pair.
+    line and the pairing has nothing to reach.
     """
     fields: list[ir.Field] = []
     imports: set[tuple[str, str]] = {(MODEL_MODULE, MODEL)}

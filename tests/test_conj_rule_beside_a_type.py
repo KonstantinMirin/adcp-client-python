@@ -247,7 +247,8 @@ def test_the_three_shapes_of_not_beside_a_conjoined_type_partition_the_populatio
     nothing on the model; the schema half narrows the value."  That ``then`` states
     ``properties`` and nothing else, so it is the ``nothing_on_the_model`` part below,
     beside the one ``not`` that was already there, and the cell's ``rendered=False`` is
-    why §8 compares no fact at the pointer.
+    why the document-side fold carries no fact of it from that pointer
+    (``harness.FOLDED_FACTS``).
 
     **AND AT ``adcp-client-python-10l.63``: 40 calls, 36 with one target and no fields --
     25 with no rule and 11 with one, and the inner split moves 9 / 0 / 2.**  §2's clause

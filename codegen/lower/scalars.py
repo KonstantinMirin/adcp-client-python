@@ -38,7 +38,8 @@ from codegen.schema import nodes
 #: ``harness._validating``): a draft-07 ``format`` that nothing checks asserts
 #: nothing, and a type derived from one would be narrower than its document as
 #: graded -- which is the state a previous lane correctly backed these types out
-#: of, and the apparent disagreement was the grader rather than the types.
+#: of, and the apparent disagreement was in the validator the schema half ran
+#: rather than in the types.
 #: Measured both ways on the same checker: of six RFC 3339 edge values --
 #: offsetless, lowercase ``t``/``z``, a leap second, a ``+05:30`` offset,
 #: nanosecond precision -- ``AwareDatetime`` and ``rfc3339-validator`` agree on
@@ -71,18 +72,18 @@ from codegen.schema import nodes
 #: the document admits ``{"url": "http://x.example/p"}``, and
 #: ``PlacementEvidence.strict_validate`` raised ``URL scheme should be 'https'``.
 #:
-#: **No check saw it**, which is why it stood: ``allowed_schemes`` has no rendering in
-#: pydantic's schema output, so the comparison has no keyword to compare; ``format``
-#: is not a step keyword, so ``steps()`` returns ``[]``; and
+#: **No check saw it**, which is why it stood: the accepts draw is the instrument that
+#: names a class narrower than its document, and it only ever offered the one scheme --
 #: ``hypothesis_jsonschema``'s ``uri`` strategy drew ``https`` in 200 of 200
-#: derandomized examples. That instrument gap is ``salesagent-j3k2l.10``'s, not this
-#: module's.
+#: derandomized examples, so the three schemes ``AdCPUrl`` refuses never reached a
+#: constructor; and ``format`` is not a step keyword, so ``steps()`` returns ``[]``.
+#: That instrument gap is ``salesagent-j3k2l.10``'s, not this module's.
 #:
 #: **``HttpUrl``'s two ceilings are accepted deliberately and named at D5**: it still
 #: refuses ``urn:`` and ``file:``, so 227 of 300 positions stay narrower than their
-#: document, and it renders ``maxLength: 2083`` and ``minLength: 1`` that no document
-#: states -- which ``harness.compare_schema`` admits with one hand-written row per
-#: fact, each naming itself.
+#: document, and it carries a ``maxLength: 2083`` and a ``minLength: 1`` no document
+#: states -- bounds the constructor enforces, so a document admitting a URI outside
+#: them is a narrowing the accepts draw names by value.
 #:
 #: What follows is the reasoning for the type being ours rather than pydantic's at
 #: the https branch, which the amendment did not change.  D5 admits
@@ -92,10 +93,9 @@ from codegen.schema import nodes
 #: states, ``HttpUrl`` adds a ``maxLength: 2083`` as well, and all three admit
 #: ``http://``.  So the type is one we emit --
 #: ``Annotated[AnyUrl, UrlConstraints(allowed_schemes=["https"])]``, declared once
-#: in ``codegen.constraints`` -- and the ``minLength: 1`` it renders is admitted
-#: by a comparison row of its own kind (``harness.compare_schema``) rather than
-#: hidden with a ``WithJsonSchema``, which would make the model's rendered schema
-#: a claim nobody graded.
+#: in ``codegen.constraints`` -- and the ``minLength: 1`` it renders is left where a
+#: reader can see it rather than hidden with a ``WithJsonSchema``, which would make
+#: the model's rendered schema disagree with what the annotation enforces.
 #:
 #: The document's own ``pattern`` stays with the SCHEMA half: the bundle states
 #: eight distinct patterns across 73 of its 300 ``uri`` uses and
@@ -237,9 +237,9 @@ def lower(node: nodes.Scalar, mod: Module) -> ir.Decided | Refusal:
     # every position.  :class:`adcp.types._runtime.ForbiddenGroups` is the keyword's other
     # shape and reads ``not`` over ``required``.
     #
-    # Nothing is RENDERED for it: ``not``'s cell is ``rendered=False``, so §8 compares no
-    # fact here and the validator narrows the CONSTRUCTOR alone, which is the direction D4
-    # permits.  ``strict_validate`` enforced it from the document all along.
+    # Nothing is RENDERED for it: ``not``'s cell is ``rendered=False``, and the validator
+    # narrows the CONSTRUCTOR alone, which is the direction D4 permits.
+    # ``strict_validate`` enforced it from the document all along.
     from codegen.lower import rules as lower_rules
 
     refused = check_keywords(
@@ -254,8 +254,8 @@ def lower(node: nodes.Scalar, mod: Module) -> ir.Decided | Refusal:
     # decide it (D5, and the comment above FORMAT_TYPES).  The type then states the format
     # in its own rendered schema, so ``format`` is left unset here and the compiler adds no
     # annotation -- which is what keeps the fact in exactly one place.  Where no type is
-    # selected the format rides as an annotation on the node's own scalar type, and the
-    # schema comparison grades it there.
+    # selected the format rides as an annotation on the node's own scalar type, so the
+    # document's keyword is carried either way.
     # **A ``uri`` beside another string constraint KEEPS BOTH HALVES, and the row's own
     # fallback is what keeps them** (§14 step 9, and §5's group (a)): "The ``format`` row
     # refuses a ``uri`` beside a string constraint because a URL type carries none.  The
@@ -267,10 +267,11 @@ def lower(node: nodes.Scalar, mod: Module) -> ir.Decided | Refusal:
     # So the URL type is not SELECTED here and the two lines below -- the row's second
     # and third choices, which every other unselected format already takes -- answer: a
     # named alias in ``adcp.types.constraints`` for the bound, with ``format`` set, which
-    # ``render._field`` puts in ``json_schema_extra`` where §8 grades it.  The refusal
-    # this replaced said the keyword "would go missing or differ ungraded", and that was
-    # true of the URL type it was about: pydantic refuses to apply a string constraint to
-    # one, so the bound had nowhere to go.  It has somewhere to go on a ``str``.
+    # ``render._field`` puts in ``json_schema_extra`` -- so both of the document's facts
+    # are carried.  The refusal this replaced said the keyword would be dropped with
+    # nothing left to record it, and that was true of the URL type it was about: pydantic
+    # refuses to apply a string constraint to one, so the bound had nowhere to go.  It has
+    # somewhere to go on a ``str``.
     #
     # ``pattern`` is NOT in this set and the URL type still wins over it, which is §5's
     # ``pattern`` row: "On ``format: uri`` -> selects the type instead, and the pattern
@@ -403,8 +404,9 @@ def typeless(node: nodes.Typeless, mod: Module) -> ir.Decided | Refusal:
         # so ``root: Any`` is exactly as wide as the document.  §5(b)'s row for this was
         # MOVED to group (a) on 2026-10-26 for that reason, and it therefore carries NO
         # approximation -- "a permissive root model over a document that constrains
-        # nothing DROPS nothing, so there is no fact to declare", and §8's
-        # *over-declared* outcome would report one.
+        # nothing DROPS nothing, so there is no fact to declare": a declaration here
+        # would be an obligation with no fact at the pointer for
+        # ``harness.check_widening`` to draw against.
         #
         # **And a root stating only ``if``/``then`` is the same shape with a RULE.**
         # §5's group (a): "The conditional is a rule, and §2 hangs a rule with no class

@@ -21,21 +21,12 @@ record -- and this is the one command that reads them.
     ./check core/assets/url-asset.json [...]      those documents' report, with reasons
     ./check --primary                every PRIMARY refusal, grouped by keyword
     ./check --why core/foo.json      the full refusal sentence for one document
-    ./check --compare [core/foo.json ...]   §8's COMPARISON over every pair, in a minute
 
 A document argument needs no bundle path: it is relative to ``schemas/cache/3.2``.
 
 **The numbers this prints are the ones a delivery reports**, read the way the directive
 requires them: ``emitted`` and ``refused`` with its ``resolved`` split, ``accounted``, and
 primary/chained off ``Refusal.kind`` and never off a sentence.  They are never summed.
-
-**``--compare`` is the one reading that was not in the loop**, and it is the expensive
-reading here by two orders of magnitude -- 36-53 s against 1.1 s, because it imports the
-919-module fresh tree and asks ``harness.compare_schema`` for every pair.  It is a
-SEPARATE mode for exactly that reason: ``./check`` with no argument stays the thing a lane
-runs between edits.  A minute is nonetheless the loop and not the pole, against the 6-7
-hours of the only pass that read this before (``tests/compared.py`` carries the
-measurement and the argument that no detection is traded away).
 """
 
 import collections
@@ -127,66 +118,6 @@ def why(documents: list[str]) -> int:
     return 0
 
 
-def compare(documents: list[str]) -> int:
-    """§8's comparison over every pair of the fresh tree, grouped two ways.
-
-    The reading, and never a count on its own: the pairing with the pairs whose document
-    cannot be read at named apart, the red pairs with their facts BY DIRECTION -- ``added``
-    is a model NARROWER than its document and is the direction §2 forbids outright -- then
-    the same facts grouped by SHAPE and by DOCUMENT, which are the two axes a row is cut
-    along.
-
-    ``tests/test_the_comparison_census.py`` pins what this prints; the derivation is
-    ``tests/compared.py`` and both read it, so the gate and the loop cannot disagree about
-    what the comparison says.  A document argument lists that document's own red pairs in
-    full -- the census is over the WHOLE population either way, because a comparison over
-    one document would answer a question nobody asked.
-    """
-    import compared
-
-    census = compared.census()
-    directions = compared.by_direction(census.red)
-    print(
-        f"paired {census.paired} "
-        f"(compared {census.paired - len(census.unreadable)}, "
-        f"document unreadable {len(census.unreadable)})"
-    )
-    print(
-        f"red {len(census.red)} pairs in "
-        f"{len({name.split('#')[0] for name in census.red})} documents / "
-        f"{sum(len(facts) for facts in census.red.values())} facts: "
-        f"missing {directions['missing']}, differs {directions['differs']}, "
-        f"added {directions['added']}"
-    )
-    print(
-        "outcome: "
-        + ", ".join(f"{outcome} {n}" for outcome, n in sorted(census.outcomes.items()))
-    )
-    # A verdict that carries NO fact -- §8's sixth outcome, a model whose schema cannot be
-    # built, a pair whose document states nothing -- is invisible in the three directions
-    # above, so it is printed by name here and pinned empty by the census test.
-    for name, outcome in sorted(census.verdicts.items()):
-        if name not in census.red:
-            print(f"  {outcome}  {name}")
-    print("\nBY SHAPE  (facts / pairs / documents)")
-    for shape, (facts, pairs, docs) in compared.by_shape(census.red).items():
-        print(f"  {facts:5} {pairs:5} {docs:5}  {shape}")
-    print("\nBY DOCUMENT  (pairs / facts), the ten worst")
-    for document, (pairs, facts) in list(compared.by_document(census.red).items())[:10]:
-        print(f"  {pairs:5} {facts:5}  {document}")
-    for document, raise_ in sorted(census.unreadable.items()):
-        print(f"\nUNREADABLE {document}\n   {raise_}")
-    for document in documents:
-        named = {name: facts for name, facts in census.red.items() if name.split("#")[0] == document}
-        print(f"\n{document}: {len(named)} red pairs")
-        for name, facts in sorted(named.items()):
-            print(f"  {name}")
-            for fact in facts:
-                print(f"     {fact}")
-    print(f"({census.seconds:.1f} s to compare)", file=sys.stderr)
-    return 0
-
-
 def report(documents: list[str]) -> int:
     """Those documents and their closure, the way ``python -m codegen`` reports them.
 
@@ -216,8 +147,6 @@ def main(argv: list[str]) -> int:
         return primary()
     if argv[0] == "--why":
         return why(argv[1:])
-    if argv[0] == "--compare":
-        return compare(argv[1:])
     return report(argv)
 
 

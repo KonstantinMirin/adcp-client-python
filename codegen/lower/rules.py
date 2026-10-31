@@ -154,8 +154,9 @@ class Lowered:
     #: The property keys whose array this node states is DISTINCT, in document order.
     #: Names only, because the keyword's two consequences belong to the compiler: it
     #: is stripped off the declaration before the array row sees it, and it is
-    #: rendered onto the field so the schema comparison grades it
-    #: (``compiler.fields``, ``ir.Field.distinct``).  A declaration re-cut
+    #: rendered onto the field as the ``json_schema_extra`` half of the fact the
+    #: ``UniqueItems`` rule enforces (``compiler.fields``, ``ir.Field.distinct``).
+    #: A declaration re-cut
     #: here instead would put the walk's input in two modules.
     distinct: tuple[str, ...] = ()
 

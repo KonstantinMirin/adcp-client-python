@@ -256,29 +256,28 @@ def test_a_keyword_with_no_row_is_the_only_answer_that_refuses_by_name() -> None
     assert "REFUSE" not in Effect.__members__
 
 
-def test_the_compared_set_is_the_rendered_column_and_names_no_keyword_twice() -> None:
-    """Section 8's one check above the three: the comparison's keyword set EQUALS the
-    set the declaration renders.
+def test_the_folded_set_is_the_rendered_column_and_names_no_keyword_twice() -> None:
+    """The set the document-side FOLD ranges over EQUALS the set the declaration renders.
 
     Asserted against the verifier's own reading rather than against a list here, so
-    the two cannot be the same literal written twice.
+    the two cannot be the same literal written twice.  ``harness.FOLDED_FACTS`` is the
+    set at ROOT, which is the position every fold is entered at.
     """
     from codegen import harness
 
-    for position in Position:
-        assert set(harness.compared_facts(position)) == keywords.rendered_at(position), position
-        # Ordered by the DECLARATION, so a report's line order is the table's.
-        assert list(harness.compared_facts(position)) == [
-            k for k in keywords.TABLE if k in keywords.rendered_at(position)
-        ], position
+    assert set(harness.FOLDED_FACTS) == keywords.rendered_at(Position.ROOT)
+    # Ordered by the DECLARATION, so a fold's reading order is the table's.
+    assert list(harness.FOLDED_FACTS) == [
+        k for k in keywords.TABLE if k in keywords.rendered_at(Position.ROOT)
+    ]
     at_prop = claimed("keywords a faithful model renders at a property", keywords.rendered_at(Position.PROP))
-    # A keyword the model RENDERS is never one it only holds: structure is graded by
+    # A keyword the model RENDERS is never one it only holds: structure is read by
     # descending it, which is the descent column's job.
     for keyword in at_prop:
         answer = cell(keyword, Position.PROP)
         assert answer.effect is not Effect.NOTHING or keyword == "x-", keyword
     # A cell whose DROP IS REPORTED renders nothing: the keyword constrains no instance,
-    # so there is no fact for the comparison to grade and a note is the whole answer.
+    # so there is no fact for a fold to carry and a note is the whole answer.
     # (It read "a REFUSE cell renders nothing, because no model exists for the document
     # to grade" until §7's set emptied; the population is the same one cell and the
     # reason it renders nothing is now the cell's own rather than the document's loss.)

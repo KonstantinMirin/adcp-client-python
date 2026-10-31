@@ -251,9 +251,9 @@ def _bound() -> Path:
         # a dozen -- pass against an artifact nothing produced, which is the mixture of
         # two compilers this module exists to end, in the one state where it is certain.
         #
-        # THE COST, MEASURED, because it is not free either: the four files that import a
-        # generated module at MODULE scope (``test_accepts_corpus``, ``test_dump_exemptions``,
-        # ``test_emit_product``, ``test_envelope_base``) cannot be collected, and pytest
+        # THE COST, MEASURED, because it is not free either: the files that import a
+        # generated module at MODULE scope (``test_accepts_corpus``, ``test_emit_product``,
+        # ``test_envelope_base``) cannot be collected, and pytest
         # interrupts the run on a collection error, so a whole-suite invocation reports 554
         # of 3,435 collected instead of a failure count.  That is a stop-the-world state
         # with ``./check`` as its instrument and no tree for any check to range over -- it

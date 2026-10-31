@@ -293,9 +293,9 @@ def test_a_local_reference_is_left_in_the_record_exactly_as_the_document_writes_
 
     Now all 13 keep every local reference they state, and that is the stronger claim,
     because it is a property of the inliner rather than of what the library could
-    manage.  The comparison reads a local ``$ref`` on BOTH sides against a per-side
-    root (``harness._normalize``), which is the reading architecture §9 keeps for
-    exactly this; and ``bundle.undecidable_references`` counts none of them, because a
+    manage.  ``harness._normalize`` resolves a local ``$ref`` against the whole
+    resolved DOCUMENT, which is the reading architecture §9 keeps for exactly
+    this; and ``bundle.undecidable_references`` counts none of them, because a
     local reference is decidable at every position.
 
     Asserted in both directions over every document whose references are all local: the
@@ -1509,9 +1509,9 @@ def test_the_bundles_own_sections_are_walked_and_the_closure_follows() -> None:
     #
     # That surviving refusal was not that row's: its detail was
     # ``salesagent-j3k2l.64``'s ground verbatim -- a constrained-str key pydantic
-    # renders back as ``patternProperties``, so the symmetric comparison reported one
-    # added and two missing facts -- and section 5's ``propertyNames`` row decides
-    # that position: ``pattern`` -> an annotated ``str`` key.
+    # renders back as ``patternProperties``, which that row had no reading for -- and
+    # section 5's ``propertyNames`` row decides that position: ``pattern`` -> an
+    # annotated ``str`` key.
     #
     # **``.64`` emitted that key and the document stayed, which is the walk getting
     # FURTHER a fourth time rather than the count holding still.**  It was predicted

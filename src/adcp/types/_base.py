@@ -126,9 +126,9 @@ ModelT = TypeVar("ModelT", bound="SchemaBound")
 #: document's for **5 of 110** distinct patterns, not 102.
 #:
 #: Scoping it per class therefore buys 5 patterns and costs a narrowing at 105,
-#: and no rewrite of the pattern is available either: the schema comparison
-#: grades ``pattern`` as a fact the document states, so translating ``$`` would
-#: redden it.
+#: and no rewrite of the pattern is available either: ``pattern`` is a constraint
+#: the document states, so translating ``$`` would change which payloads the class
+#: accepts.
 REGEX_ENGINE: Literal["python-re"] = "python-re"
 
 
@@ -186,10 +186,10 @@ class Approximation(NamedTuple):
     every declared rung is one of its members.
 
     **It is NOT a ``Field(json_schema_extra=...)``**, and section 7 says why: that would
-    put the approximation into ``model_json_schema()``, "where section 8 of the semantics
-    document would read it as a fact the model states and the document does not --
-    *added*, a defect.  The declaration is a class attribute precisely because it has to
-    be invisible to the comparison's own subject and visible to the comparison."
+    put the approximation into ``model_json_schema()``.  A declaration is a record of
+    what the model DROPPED, so writing it there would put it into the very payload
+    contract it is a note about.  It is a class attribute: the verifier reads it, and
+    nothing a consumer validates against carries it.
     """
 
     #: The bundle-relative document the widened node belongs to.
@@ -280,8 +280,8 @@ SAME_INSTANCE_ONE = ("then", "else")
 #: A rule keyword (``not``, ``dependencies``, ``minProperties``, ``if``/``then``) is
 #: NOT here, and the reason is the one ``if`` and ``not`` are excluded from
 #: :data:`SAME_INSTANCE_LIST` for: §5 compiles it to a RULE, which renders nothing in a
-#: model's JSON schema, so there is no fact for §8's comparison to find at the branch's
-#: pointer and conjoining it would state one the model cannot carry.  The rule itself
+#: model's JSON schema, so there is nothing at the branch's pointer for a reader to
+#: find, and conjoining it would state a fact the model cannot carry.  The rule itself
 #: reaches every branch the way the fields do -- it is written on the base and
 #: inherited -- which is class inheritance and needs no reading here.
 SAME_INSTANCE_FACTS = ("properties", "required", "additionalProperties")
@@ -293,7 +293,7 @@ SAME_INSTANCE_FACTS = ("properties", "required", "additionalProperties")
 #: IT**, and the enclosing node is that pointer: a root composing
 #: ``core/version-envelope.json`` states its own ``description`` beside the conjunct,
 #: so the root's wins at the root -- which is what both halves already do, the
-#: comparison by starting from the node and the emitter by
+#: verifier by starting from the node and the emitter by
 #: ``compiler.lower_composition``'s ``inherited_description``.  Spliced into a BRANCH
 #: with its annotations intact, the conjunct's description arrives at a pointer the
 #: root has already answered it at, and a branch class that is silent -- as a subclass
@@ -349,8 +349,8 @@ def entails_type(node: Mapping[str, Any], value: Any) -> bool:
     """Does this node's COMBINATOR force exactly ``value`` on its own instance?
 
     :func:`entailed_types` asked of one candidate, for the reader that holds a ``type``
-    value and not a word: ``codegen.harness``'s comparison is handed whatever the MODEL
-    renders, which draft-07 lets be a list, and a list is no set member.  So the one
+    value and not a word: ``codegen.harness`` is handed whatever the MODEL renders,
+    which draft-07 lets be a list, and a list is no set member.  So the one
     normalisation is applied to both sides here rather than at the call, which is what
     keeps the two readers of the derivation from disagreeing about the list form.
     """
@@ -394,7 +394,7 @@ def entailed_types(node: Mapping[str, Any]) -> frozenset[Any]:
     **Declared in the package, beside :data:`SAME_INSTANCE_LIST`, for that data's own
     reason**: the emitter decides whether a node can become a class from this answer,
     the runtime decides what that class's schema is from :func:`applied_schema`, and
-    the comparison decides whether a model's ``type`` word is one its document states.
+    the verifier decides whether a model's ``type`` word is one its document states.
     Three readers, one derivation.  A second spelling in any of them is a model
     narrower than the schema it names, or the same disagreement showing up as the
     verifier reporting a fact the emitter read off the document.
@@ -427,7 +427,7 @@ def _conjunction(node: dict, through: str) -> list:
     ``additionalProperties`` means) and every one of those rules would be a second copy
     of §2's intersection, living in the runtime where no cell can reach it.  As a
     conjunct the statement is exact: ``jsonschema`` applies it as draft-07 does, and
-    §8's comparison already folds a document's conjuncts into the node
+    §8's reading already folds a document's conjuncts into the node
     (``codegen.harness._composed``), which is the same reading the model's own
     inheritance makes.
 
@@ -491,7 +491,7 @@ def _cut_to_its_own_word(node: dict) -> dict:
     ``DeliveryMetricsQuartileData | None``, the ROOT pair passes because
     ``harness._normalize`` folds the model's ``anyOf`` back into the document's own
     list, and the nested class reported ``differs /type`` -- ``object`` against
-    ``["object", "null"]`` -- for a fact the parent already carries and the comparison
+    ``["object", "null"]`` -- for a fact the parent already carries and the verifier
     already graded.  The model is faithful at both pointers; only the pairing was wrong.
 
     It subtracts WORDS and nothing else.  A keyword only another word can carry is that
@@ -612,7 +612,7 @@ def applied_schema(root: dict, pointer: str) -> dict:
             # every non-object vacuously admits no non-object, so the instance below
             # the hop IS an object and the document said so.  Read here, where "what
             # encloses this instance" is already decided, rather than at the one row
-            # that needs it, because the walk below and the comparison both reach this
+            # that needs it, because the walk below and the verifier both reach this
             # answer through this function and a second derivation is the divergence
             # this function exists to prevent.
             #
@@ -656,13 +656,13 @@ def applied_schema(root: dict, pointer: str) -> dict:
             # exactly as the ``not same_instance`` arm below already follows it through a
             # KEY hop -- and without it the composition §2 writes into a branch class is
             # graded against the branch's bare text, so every fact a ``$ref`` conjunct
-            # contributes reads as ``added``: the comparison's word for a model NARROWER
+            # contributes reads as a fact this class ADDED, i.e. a model NARROWER
             # than its document, which §8 says is never declarable.
             #
             # Measured over the committed tree: **8 pairs**, the four branches each of
             # ``formats/canonical/display_tag.json`` and ``image.json`` at
             # ``#/allOf/1/oneOf/<i>``, whose base is ``formats/canonical/_base.json``
-            # through the sibling conjunct ``#/allOf/0``.  No other pair's comparison
+            # through the sibling conjunct ``#/allOf/0``.  No other pair's reading
             # moves by one fact.
             if part == "allOf":
                 siblings = []
@@ -694,7 +694,7 @@ def applied_schema(root: dict, pointer: str) -> dict:
             # root's declaration of that property applies to.  Dropped at the first such
             # hop, the composition §2's intersection rule writes is graded against the
             # branch's bare overlay alone, and every fact the root contributes reads as
-            # ``added`` -- the comparison's word for a model NARROWER than its document,
+            # a fact this class ADDED, i.e. a model NARROWER than its document,
             # which is the one defect §2 forbids outright.  Measured on
             # ``core/assets/vast-asset.json`` and ``core/assets/daast-asset.json``: 4
             # element pairs reported 46 ``added`` facts, every one stated by the root two
@@ -1070,7 +1070,7 @@ class BranchDispatchMixin:
     validator that dispatches to the union, rather than the union itself.  Both validate
     identically; the difference is what the class RENDERS.  A core schema that IS the union
     renders ``{"anyOf": [...]}`` and so states none of the root's own facts -- no ``type``,
-    no ``description``, no ``additionalProperties`` -- and the schema comparison reads those
+    no ``description``, no ``additionalProperties`` -- and the verifier reads those
     off ``model_json_schema()``.  Measured: the union-as-top-schema form reports
     ``missing`` for ``/type`` and ``/description`` on every union root in the bundle, which
     is a model that drops a fact its document states.  A function-wrap takes its JSON

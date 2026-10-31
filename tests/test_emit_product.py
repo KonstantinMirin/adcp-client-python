@@ -43,7 +43,7 @@ import pytest
 from adcp.types import _base, constraints
 from codegen import bundle, compiler, emit, ir, keywords, refusal, render
 from codegen import constraints as constraints_module
-from codegen.harness import Pair, check_pair, compare_schema
+from codegen.harness import Pair, check_pair, violated_keywords
 from codegen.lower import names, union
 from codegen.refusal import Kind, Refusal
 from codegen.schema import nodes, parse as schema_parse
@@ -709,13 +709,12 @@ def _probe(
             {
                 "$schema": "http://json-schema.org/draft-07/schema#",
                 "title": "Probe Composing",
-                # Stated only with ``shared``, where the probe is graded by the schema
-                # COMPARISON and so has to be in the state the population is in: the
-                # resolver merges a conjunct's ROOT description into the root, so a
-                # composing document stating none reads as dropping its base's.  All
-                # 301 of the bundle's composing documents state one, which is why the
-                # comparison reports no such fact and a probe without one would grade
-                # a state no document has.  Opt-in so no other test's bytes move.
+                # Stated only with ``shared``, which is what puts the probe in the
+                # state the population is in: the resolver merges a conjunct's ROOT
+                # description into the root, so a composing document stating none
+                # reads as dropping its base's.  All 301 of the bundle's composing
+                # documents state one, so a probe without one would be a state no
+                # document is in.  Opt-in so no other test's bytes move.
                 **({"description": "the composing probe"} if shared else {}),
                 "type": "object",
                 "allOf": [
@@ -985,16 +984,25 @@ def test_a_restatement_contradicting_the_base_still_refuses_rather_than_merging(
         assert moved.kind is Kind.VERDICT, moved.kind
 
 
-def test_a_lost_inherited_fact_is_reported_as_missing(tmp_path, monkeypatch) -> None:
-    """The re-use BROKEN ON PURPOSE, because a merge that cannot produce a
-    ``missing`` is silencing the disagreement rather than resolving it.
+def test_a_lost_inherited_fact_lets_the_model_accept_what_the_document_refuses(
+    tmp_path, monkeypatch
+) -> None:
+    """The re-use BROKEN ON PURPOSE, because a merge whose loss nothing can catch is
+    silencing the disagreement rather than resolving it.
 
     ``_reused`` forced to hand back an untyped field is exactly the emitter this
     arm replaces: the subclass declares ``adcp_major_version`` from a restatement
     that states nothing about the instance, so the field states none of the three
-    facts ``core/version-envelope.json`` states about it.  The same probe bundle,
-    the same comparison, two emitters -- and the comparison names each lost fact
-    at its own pointer.
+    facts ``core/version-envelope.json`` states about it.
+
+    **Read as an ACCEPTED SET, one value per lost fact**, which is what a lost fact
+    COSTS: the document refuses the value on its own keyword
+    (:func:`harness.violated_keywords`, asked against the document of record) and the
+    broken class takes it anyway.  Three values and not one -- a wrong type, a value
+    under the ``minimum``, a value over the ``maximum`` -- because the facts are three
+    and one value would say only that something was lost.  Each is read as the
+    DIFFERENCE from a payload carrying an admitted value, so the keyword that bit is
+    the one the lost fact names and not whatever else the probe's document demands.
     """
     monkeypatch.setattr(
         compiler,
@@ -1003,10 +1011,10 @@ def test_a_lost_inherited_fact_is_reported_as_missing(tmp_path, monkeypatch) -> 
             name=key, wire=key, type=ir.TypeRef("typing.Any"), required=False
         ),
     )
-    # ``shared`` because this probe is graded by the COMPARISON, and only then does
-    # the fixture state the root description a composing document in the population
-    # has -- ``_probe`` says why.  The shared key is inherited and not restated, so
-    # it takes no part in the dimension this judges.
+    # ``shared`` keeps the probe in the state the population is in -- it states the
+    # root description every composing document states, and ``_probe`` says why.  The
+    # shared key is inherited and not restated, so it takes no part in the dimension
+    # this judges.
     cls, text, schema = _emit_probe(
         tmp_path,
         monkeypatch,
@@ -1016,17 +1024,14 @@ def test_a_lost_inherited_fact_is_reported_as_missing(tmp_path, monkeypatch) -> 
     )
     assert "adcp_major_version: Annotated[Any | None" in text, "the patch did not reach"
 
-    comparison = compare_schema(schema, cls)
-    assert comparison.added == [], comparison.added
-    reported = {str(m).split(":", 1)[0] for m in comparison.missing}
-    assert reported == {
-        "/properties/adcp_major_version/type",
-        "/properties/adcp_major_version/minimum",
-        "/properties/adcp_major_version/maximum",
-    }, sorted(reported)
-    # And the model really does accept what the document refuses, which is the
-    # defect the report stands for.
-    assert cls.model_validate({"adcp_major_version": 1000, "label": "xy", "kind": "ab"})
+    admitted = {"adcp_major_version": 7, "label": "xy", "kind": "ab"}
+    already = set(violated_keywords(schema, admitted))
+    for value, keyword in (("x", "type"), (0, "minimum"), (1000, "maximum")):
+        payload = {**admitted, "adcp_major_version": value}
+        bit = set(violated_keywords(schema, payload)) - already
+        assert bit == {keyword}, (value, bit)
+        # And the model really does accept it, which is what the lost fact costs.
+        assert cls.model_validate(payload) is not None, payload
 
 
 #: The two shapes of the OTHER restatement: it says exactly what the base says about
@@ -1054,9 +1059,9 @@ def test_a_documents_own_declaration_carries_the_description_at_its_own_pointer(
     The restatement says the same thing about the instance as the base's -- the same
     ``$ref``, so ``_restatement`` reads it as adding nothing -- and a different thing
     to the reader.  Left inherited, the class states at ``/properties/ctx`` a
-    description its own document does not, which is 15 of the 43 ``differs`` the
-    symmetric comparison reported (every response root composing
-    ``core/protocol-envelope.json`` and declaring ``context`` itself).
+    description its own document does not, which was the state of every response root
+    composing ``core/protocol-envelope.json`` and declaring ``context`` itself -- 15
+    of them.
 
     **The type is still the BASE's and there is no shadow**, which is what the
     non-empty gate buys: the restated declaration's constraining content EQUALS the
@@ -1078,10 +1083,10 @@ def test_a_documents_own_declaration_carries_the_description_at_its_own_pointer(
     # the same object, so ``is`` here reads a faithful field as a shadow.
     assert cls.model_fields["ctx"].annotation == cls.__bases__[0].model_fields["ctx"].annotation
 
-    # What a reader of the model sees at each pointer, which is what the comparison
-    # grades: the node's own sibling where it states one, the TARGET's where it does
-    # not.  ``echo`` carries no field description at all and reads the target's
-    # through the branch its ``$ref`` becomes.
+    # What a reader of the model sees at each pointer: the node's own sibling where it
+    # states one, the TARGET's where it does not.  ``echo`` carries no field
+    # description at all and reads the target's through the branch its ``$ref``
+    # becomes.
     rendered = cls.model_json_schema()["properties"]
     assert rendered["ctx"]["description"] == "THE DOCUMENT SAYS THIS", rendered["ctx"]
     assert "description" not in rendered["echo"], rendered["echo"]
@@ -1089,18 +1094,17 @@ def test_a_documents_own_declaration_carries_the_description_at_its_own_pointer(
         arm["description"] for arm in rendered["echo"]["anyOf"] if "description" in arm
     ] == ["THE TARGET SAYS THIS"], rendered["echo"]
 
-    # And the comparison agrees, at those pointers and everywhere else.
-    comparison = compare_schema(schema, cls)
-    assert (comparison.added, comparison.missing, comparison.differs) == ([], [], [])
+    # And the DOCUMENT says the same two things at the same two pointers, which is
+    # what makes the two readings above an agreement rather than a coincidence.
     assert schema["properties"]["ctx"]["description"] == "THE DOCUMENT SAYS THIS"
     assert schema["properties"]["echo"]["description"] == "THE TARGET SAYS THIS"
 
 
-def test_the_wrong_text_at_that_pointer_is_reported_as_a_differs(
+def test_the_wrong_text_at_that_pointer_shows_on_both_sides(
     tmp_path, monkeypatch
 ) -> None:
-    """The rule BROKEN ON PURPOSE, because a description rule that cannot produce a
-    ``differs`` is not a rule.
+    """The rule BROKEN ON PURPOSE, because a description rule whose breach cannot be
+    read off the two sides is not a rule.
 
     ``_annotates_differently`` forced to ``False`` is exactly the emitter before
     this branch existed: the restatement adds nothing constraining, so the field is
@@ -1108,20 +1112,11 @@ def test_the_wrong_text_at_that_pointer_is_reported_as_a_differs(
     declares. The same probe bundle, two emitters -- and the two sides separate them by
     pointer and by both texts.
 
-    **The instrument is the TWO SIDES and no longer the comparison's ``differs``, and
-    §8's annotation clause (added 2026-10-27) is why** (``adcp-client-python-10l.21``'s
-    seventh instalment).  "There is no pointer at which an annotation is graded, because
-    it is not among the facts being compared" -- ``harness.grades_a_difference``, off
-    ``bundle.is_an_annotation`` -- so the comparison reports nothing here and a test
-    asserting a ``differs`` would be asserting that an acceptance check grades an
-    annotation.
-
-    It is not weaker: what the ``differs`` line printed was the document's text and the
-    model's, and those are exactly the two values asserted below, by pointer, in both
-    directions -- the document says one thing and the model says the other.  What is
-    LOST is the reach: the comparison said this over the whole population and these two
-    assertions say it over this probe.  §8 assigns the population-wide claim to the
-    annotation COVERAGE obligation, which is not built.
+    **The instrument is the TWO SIDES**: the document's own text at each pointer and
+    the text the model renders there, in both directions -- the document says one thing
+    and the model says the other.  An annotation is graded nowhere else in this tree,
+    so the reach is this probe's: ``docs/plan/rebuild-plan.md`` §8 assigns the
+    population-wide claim to the annotation COVERAGE obligation, which is not built.
     """
     monkeypatch.setattr(compiler, "_annotates_differently", lambda child, base: False)
     cls, text, schema = _emit_probe(
@@ -1142,18 +1137,13 @@ def test_the_wrong_text_at_that_pointer_is_reported_as_a_differs(
     assert _described(rendered["ctx"]) == "THE BASE SAYS THIS", rendered["ctx"]
     assert _described(rendered["echo"]) == "THE BASE SAYS THAT", rendered["echo"]
 
-    # And the comparison is silent in every direction, which is §8's clause itself: an
-    # annotation cannot change what a payload is accepted as.
-    comparison = compare_schema(schema, cls)
-    assert (comparison.added, comparison.missing, comparison.differs) == ([], [], []), comparison
-
 
 def _described(rendered: dict) -> str | None:
     """The ``description`` a rendered field states, through D4's ``T | None`` spelling.
 
     An optional field renders as an ``anyOf`` of the live arm and ``{"type": "null"}``,
     and the annotation sits on the live arm -- the same arm ``harness._normalize``
-    unwraps, so this reads what the comparison read.
+    unwraps, so this reads the live arm the way the document-side reading does.
     """
     if "description" in rendered:
         return rendered["description"]
@@ -1282,10 +1272,6 @@ def test_the_accepts_and_liveness_checks_are_green_with_a_denominator(
     assert rep.liveness.outcome == "pass", (rep.liveness.how, rep.liveness.detail)
     assert rep.liveness.how.startswith("drops the required key"), rep.liveness.how
     assert "required" in rep.liveness.violated, rep.liveness.violated
-    # The schema comparison is NOT this test's subject and is deliberately not
-    # asserted: the probe's document is a hand-built shadow of a composition, and
-    # what the comparison says about it is the subject of the restatement tests
-    # above.  Asserting ``rep.outcome`` here would make this test fail on theirs.
 
 
 # --------------------------------------------------------------------------- #
@@ -1793,26 +1779,26 @@ ANNOTATED_VALUE = {
 
 
 def test_an_annotation_on_a_containers_contents_reaches_the_wire(tmp_path, monkeypatch) -> None:
-    """``docs/plan/rebuild-plan.md`` §6: a ``description`` is never folded, and where
-    the comparison reports one the EMITTER is what changes (``salesagent-j3k2l.28``).
+    """``docs/plan/rebuild-plan.md`` §6: a ``description`` is never folded, so where a
+    document states one at a pointer the EMITTER is what has to put it there
+    (``salesagent-j3k2l.28``).
 
     An annotation on a node INSIDE a container had nowhere to go, and unlike a
     constraint it was dropped in SILENCE: ``containers._inner`` refuses a constraint
     and a ``format`` by name because dropping one would widen the model, while a
     ``description`` narrows nothing and so was dropped with no refusal and no
-    rendering.  It was the whole of ``comparison.missing`` -- 4 facts over 4 pairs,
-    every one ``.../additionalProperties/description`` and every one
-    ``'Component properties'``.
+    rendering.  It was 4 facts over 4 pairs, every one
+    ``.../additionalProperties/description`` and every one ``'Component properties'``.
 
     ``containers._contents`` now NAMES such a node, through the same
     ``names.name_the_node`` a fragment-referenced node already goes through, so the
-    annotation has one spelling.  Both inner positions the comparison reads are probed
-    -- a mapping's value and an array's element -- and the real emitter and the real
-    comparison are what grade it.
+    annotation has one spelling.  Both inner positions are probed -- a mapping's value
+    and an array's element -- through the real emitter, and the fact is read off the
+    schema the class renders.
     """
-    # ``shared`` because this probe is graded by the COMPARISON, and only then does
-    # the fixture state the root description a composing document in the population
-    # has -- ``_probe`` says why.  It takes no part in the dimension this judges.
+    # ``shared`` keeps the probe in the state the population is in -- it states the
+    # root description every composing document states, and ``_probe`` says why.  It
+    # takes no part in the dimension this judges.
     cls, text, schema = _emit_probe(
         tmp_path,
         monkeypatch,
@@ -1832,14 +1818,18 @@ def test_an_annotation_on_a_containers_contents_reaches_the_wire(tmp_path, monke
     assert "TagsItem = Annotated[dict[str, Any], Field(description='one tag')]" in text, text
     assert "tags: Annotated[list[TagsItem] | None" in text, text
 
-    comparison = compare_schema(schema, cls)
-    assert (comparison.added, comparison.missing, comparison.differs) == ([], [], []), comparison
-    # and the fact really is on the wire.  The field is optional, so D4 renders it
+    # And the fact really is on the wire.  The field is optional, so D4 renders it
     # ``T | None`` and pydantic states the mapping in the live arm of an ``anyOf`` --
     # which is the arm ``harness._normalize`` unwraps and the arm the assertion reads.
     rendered = cls.model_json_schema()["properties"]["component"]
     (live,) = [a for a in rendered["anyOf"] if a.get("type") != "null"]
     assert live["additionalProperties"]["description"] == "Component properties", rendered
+    # The DOCUMENT's own text at the same pointer, so the two sides are read against
+    # each other rather than the rendering alone.
+    assert schema["properties"]["component"]["additionalProperties"]["description"] == (
+        "Component properties"
+    )
+    assert schema["properties"]["tags"]["items"]["description"] == "one tag"
 
 
 def test_breaking_the_inner_annotation_carrier_drops_the_fact_at_both_positions(
@@ -1853,14 +1843,12 @@ def test_breaking_the_inner_annotation_carrier_drops_the_fact_at_both_positions(
     Each lost annotation is named at its own pointer, and nothing else moves -- which is
     what says the two positions are the whole of the defect.
 
-    **The instrument is the MODEL's own rendered schema and no longer the comparison's
-    ``missing``, and §8's annotation clause is why** (``adcp-client-python-10l.21``'s
-    seventh instalment): "there is no pointer at which an annotation is graded".  It
-    read ``comparison.missing == {two pointers}``, and what a ``missing`` line said was
-    "the document states this and the model nothing" -- which is the two assertions
-    below, one per position, each in both directions.  The reach is what is lost: the
-    comparison said it over the whole population, these say it over this probe, and §8
-    assigns the population-wide claim to the annotation COVERAGE obligation.
+    **The instrument is the TWO SIDES: the DOCUMENT's own text at each pointer and the
+    MODEL's own rendered schema there.**  That is the whole of what a lost annotation
+    is -- the document states this and the model nothing -- and it is asserted once per
+    position, in both directions.  An annotation is graded nowhere else in this tree,
+    so the reach is this probe's: ``docs/plan/rebuild-plan.md`` §8 assigns the
+    population-wide claim to the annotation COVERAGE obligation.
     """
     from codegen.lower import containers  # noqa: PLC0415
 
@@ -1893,9 +1881,3 @@ def test_breaking_the_inner_annotation_carrier_drops_the_fact_at_both_positions(
     assert schema["properties"]["tags"]["items"]["description"] == "one tag"
     (items,) = [a for a in rendered["tags"]["anyOf"] if a.get("type") != "null"]
     assert "description" not in items["items"], items
-
-    # And nothing else moves: the comparison is silent in every direction, which is §8's
-    # clause -- an annotation cannot change what a payload is accepted as, so the only
-    # facts it could have reported here are the two above.
-    comparison = compare_schema(schema, cls)
-    assert (comparison.added, comparison.missing, comparison.differs) == ([], [], []), comparison
