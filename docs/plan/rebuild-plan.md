@@ -684,6 +684,21 @@ this document derive one class name" is a fact about `lower/names.py`.
 The verdict goes with the rule (`adcp-client-python-10l.78`). No document of bundle 3.2 refuses
 for a derivable name again: rung 4 always answers, because a branch always has an index.
 
+**AND AN IMPORTED SYMBOL IS THE SAME CASE, stated because a lane had to reach it by analogy
+(2026-10-30).** A module that imports a name and then declares a class under it leaves the name
+meaning the subclass, so a consumer importing it from the two modules gets two classes with
+different `__adcp_schema__` pointers. The reasoning above transfers exactly and is stronger: a
+root keeps the name because D5 fixes its symbol, and an imported symbol is fixed more firmly
+still — it is ANOTHER document's name, which this module has no standing to move. **So the
+colliding branch falls, and the import keeps the name.**
+
+The rule reaches both of §4's axes, and that is the half that was missing rather than the rule
+itself. A position whose name is occupied is colliding when deciding whether to LENGTHEN *and*
+when deciding whether to FALL; honouring it on the first axis alone reads "cannot lengthen" as
+"resolved", which is exactly what a bare-`$ref` branch at rung 1 hits — it is a chain of one with
+no ancestor to prepend, and it had three rungs still underneath. Measured at 56 names over 4
+modules, every one of them that shape.
+
 **Collision, which this section never stated and the emitter therefore avoided by never
 colliding (added 2026-10-28).** The nested rule above is the LAST path segment, so two positions
 of one module can derive one name — `brand.properties.context` and
