@@ -71,7 +71,7 @@ from adcp.types._runtime import (
     ValueRule,
 )
 from compiled import compiled
-from codegen import bundle, compiler, emit, ir, render
+from codegen import bundle, compiler, emit, ir, render, store
 from codegen.keywords import Position
 from codegen.lower import rules as lower_rules
 from codegen.refusal import Refusal
@@ -204,7 +204,12 @@ def _reaching() -> tuple[Site, ...]:
         # changed between the runs.  Both this lane and the orchestrator reached this
         # same line independently; enforced now by
         # ``tests/test_no_cached_compile_under_a_perturbation.py``.
-        emit.emit(BUNDLE, sorted(bundle.portable(BUNDLE)))
+        #
+        # ``store.perturbed()`` is the same sentence one layer down: ``emit.emit`` holds
+        # §1's census on disk under the same kind of source digest (``codegen/store.py``),
+        # so PASS ONE would be unpickled and the spy would see the final walk alone.
+        with store.perturbed():
+            emit.emit(BUNDLE, sorted(bundle.portable(BUNDLE)))
     finally:
         compiler._the_conjuncts_own_type = original  # noqa: SLF001
     return tuple(seen)

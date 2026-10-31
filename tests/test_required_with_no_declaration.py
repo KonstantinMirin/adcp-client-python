@@ -34,7 +34,7 @@ import pytest
 from pydantic import ValidationError
 
 from adcp.types._base import SchemaRef, schema_at
-from codegen import bundle, compiler, emit
+from codegen import bundle, compiler, emit, store
 from tests.nodeset import claimed
 
 DRAFT = "http://json-schema.org/draft-07/schema#"
@@ -238,7 +238,10 @@ def test_the_bundle_population_is_the_one_this_row_claims() -> None:
 
     from unittest import mock
 
-    with mock.patch.object(compiler, "fields", spy):
+    # ``store.perturbed()``: ``emit.emit`` holds §1's census on disk under a digest of
+    # ``codegen/``'s source (``codegen/store.py``), which this patch does not move, so pass
+    # one would be unpickled and the spy would see the final walk alone.
+    with mock.patch.object(compiler, "fields", spy), store.perturbed():
         emit.emit(SOURCE, sorted(bundle.portable(SOURCE)))
 
     claimed("nodes whose required names a key no declaration declares", seen)

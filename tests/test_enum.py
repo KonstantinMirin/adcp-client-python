@@ -32,7 +32,7 @@ import pytest
 from pydantic import TypeAdapter, ValidationError
 
 from adcp.types._base import SchemaRef, schema_at
-from codegen import bundle, compiler, emit, ir, keywords, render
+from codegen import bundle, compiler, emit, ir, keywords, render, store
 from codegen.keywords import Position
 from codegen.lower import enum as lower_enum
 from codegen.lower import names
@@ -985,7 +985,14 @@ def test_enum_metadata_is_an_annotation_of_the_bundle_and_the_cost_is_named() ->
         # against the UNMODIFIED table, so the four documents below would be measured
         # against themselves.  Enforced by
         # ``tests/test_no_cached_compile_under_a_perturbation.py``.
-        refusing = emit.emit(BUNDLE, population())
+        #
+        # ``store.perturbed()`` is that sentence one layer down: ``emit.emit`` holds §1's
+        # census on disk under the same kind of source digest (``codegen/store.py``), and a
+        # reassignment of the TABLE does not move that digest either -- so a miss here
+        # would write a census derived without the row under the key every honest run asks
+        # for, and a hit would price the row against the census the row is still in.
+        with store.perturbed():
+            refusing = emit.emit(BUNDLE, population())
     finally:
         keywords.TABLE = original
     # **THE PRICE IS FOUR DOCUMENTS NOW, NOT THREE, AND THAT IS

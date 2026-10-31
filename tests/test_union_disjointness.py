@@ -36,7 +36,7 @@ from jsonschema import Draft7Validator
 
 from adcp.types._base import UNDERDETERMINED
 from compiled import compiled
-from codegen import bundle, compiler, emit, harness, keywords
+from codegen import bundle, compiler, emit, harness, keywords, store
 from codegen.keywords import Rung
 from codegen.lower import union as lower_union
 from codegen.refusal import Kind
@@ -1765,7 +1765,13 @@ def test_a_union_of_shapes_reaching_the_composing_row_without_a_caller_refuses()
     compiler.lower_composition = traced  # type: ignore[assignment]
     lower_union.compiler.lower_composition = traced  # type: ignore[assignment]
     try:
-        emit.emit(BUNDLE, sorted(bundle.portable(BUNDLE)))
+        # ``store.perturbed()``: ``emit.emit`` holds §1's census on disk under a digest of
+        # ``codegen/``'s source (``codegen/store.py``), which this reassignment does not
+        # move, so pass one would be unpickled and the tracer would see the final walk
+        # alone -- and this check's whole claim is that NO document of the bundle reaches
+        # the site, over every walk the run makes.
+        with store.perturbed():
+            emit.emit(BUNDLE, sorted(bundle.portable(BUNDLE)))
     finally:
         compiler.lower_composition = real  # type: ignore[assignment]
         lower_union.compiler.lower_composition = real  # type: ignore[assignment]

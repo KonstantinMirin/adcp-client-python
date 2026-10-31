@@ -31,9 +31,11 @@ test-results/
 # a reader could edit into a result no compiler produced.
 .emit-cache/
 
-# Both of the above once ADCP_CACHE points them inside a checkout: the default is beside
-# the checkouts instead, so neither is normally here at all.  Ignored by NAME because the
-# two stores are keyed on content and share one root across worktrees.
+# Both of the above once ADCP_CACHE points them inside a checkout, and with them every other
+# store under that root -- tests/fresh.py's materialised tree and codegen/store.py's export
+# census.  The default is beside the checkouts instead, so none of them is normally here at
+# all.  Ignored by NAME because every store under it is keyed on content and they share one
+# root across worktrees.
 .adcp-cache/
 
 # The suite's scratch: pytest's basetemp and every tempfile.mkdtemp, which tests/conftest.py
