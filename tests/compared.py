@@ -28,28 +28,18 @@ Cached, because the walk imports the whole emitted tree and a union root's
 from __future__ import annotations
 
 import functools
-import importlib
-import pkgutil
-import traceback
-from typing import Any, NamedTuple
 
-from adcp.types._base import SchemaBound, SchemaRef
+from codegen import harness
+from codegen.harness import Paired
 
 import fresh
 
-
-class Paired(NamedTuple):
-    """One pair of the fresh tree, as the walk finds it.
-
-    The four fields ``tests/test_emit.py``'s ``Graded`` carries, in its order, because
-    that file wraps these rows in it: the ``SchemaRef`` the holder declares, the model,
-    the entry point an instance is offered through, and the DEFINING module's name.
-    """
-
-    ref: SchemaRef
-    model: Any
-    accept: Any
-    module: str
+#: The four fields ``tests/test_emit.py``'s ``Graded`` carries, in its order, because that
+#: file wraps these rows in it.  **``codegen.harness``'s and not this module's**, because
+#: the WALK is the verifier's (``harness.pairs``) and a row type stated twice would be two
+#: types one reader has to tell apart.  Re-exported under this name so every reader that
+#: already says ``compared.Paired`` still reads the one it always did.
+__all__ = ["Paired", "UNIMPORTABLE", "pairs"]
 
 
 #: Modules of the fresh tree that did not import, as ``name -> the tail of the traceback``.
@@ -110,31 +100,19 @@ def pairs() -> list[Paired]:
     Cached because it imports the whole emitted tree and a union root's
     ``model_rebuild(force=True)`` is not cheap.  The returned list is SHARED: read it, do
     not mutate it.
-    """
-    pkg = fresh.schemas()
-    if pkg is None:
-        return []
 
-    out: list[Paired] = []
-    for info in sorted(pkgutil.walk_packages(pkg.__path__, pkg.__name__ + "."), key=lambda i: i.name):
-        try:
-            module = importlib.import_module(info.name)
-        except Exception:  # noqa: BLE001 -- see UNIMPORTABLE: a raise errors a collection
-            UNIMPORTABLE[info.name] = traceback.format_exc(limit=3)[-600:]
-            continue
-        taken: set[int] = set()  # by IDENTITY: one class, one pair, whatever it is called
-        for value in vars(module).values():
-            if (
-                isinstance(value, type)
-                and issubclass(value, SchemaBound)
-                and "__adcp_schema__" in value.__dict__
-                and value.__module__ == info.name
-                and id(value) not in taken
-            ):
-                taken.add(id(value))
-                out.append(Paired(value.__adcp_schema__, value, value.strict_validate, info.name))
-        ref = vars(module).get("__adcp_schema__")
-        if isinstance(ref, SchemaRef) and callable(vars(module).get("strict_validate")):
-            (symbol,) = module.__all__
-            out.append(Paired(ref, getattr(module, symbol), module.strict_validate, info.name))
-    return out
+    **THE WALK ITSELF IS ``codegen.harness.pairs`` AND THIS FUNCTION IS WHICH TREE.**  The
+    pairing is a reading of an emitted tree, which is the verifier's own business (§9), and
+    there are now TWO readers of it: this one, over the fresh tree, and
+    ``codegen/__main__.py``, over the tree the run just wrote.  The paragraphs above are
+    this module's half of that -- which tree, bound how, and what a caller may do with the
+    result -- and they are the half a second walk would have had no opinion about.  Stated
+    twice the two walks would disagree the moment either moved, which is the defect the
+    first paragraph of this docstring already names.
+    """
+    found, unimportable = harness.pairs(fresh.schemas())
+    #: Updated in place and never rebound, because this dict IS
+    #: ``test_emit.UNIMPORTABLE``: that module takes an alias at import time, and a
+    #: rebinding here would leave it holding the empty dict for ever.
+    UNIMPORTABLE.update(unimportable)
+    return found

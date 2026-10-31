@@ -75,12 +75,15 @@ from __future__ import annotations
 
 import copy
 import hashlib
+import importlib
 import json
+import pkgutil
+import traceback
 from contextlib import contextmanager
 from collections import Counter
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, NamedTuple
 
 import hypothesis
 import jsonschema
@@ -100,6 +103,7 @@ from adcp.types._base import (
     KINDS,
     UNDERDETERMINED,
     Approximation,
+    SchemaBound,
     SchemaRef,
 )
 from codegen import attribution, bundle, dump_exemptions, keywords
@@ -119,6 +123,27 @@ try:  # the name is private, so degrade rather than break on an upgrade
     BUILTIN_FORMATS = frozenset(_BF)
 except ImportError:  # pragma: no cover
     BUILTIN_FORMATS = frozenset()
+
+
+#: **The ``format`` strategies the LIBRARY does not ship**, for a caller to hand back as
+#: ``custom_formats``.
+#:
+#: Declared here and not by each caller, because there are two of them and a drift between
+#: them is silent in the direction that matters: the suite grading with a strategy the RUN
+#: does not have makes the run's verdict table report ``missing_formats`` on pairs the suite
+#: passes, and a reader comparing the two would be comparing two instruments.  It is a fact
+#: about :data:`BUILTIN_FORMATS` -- which formats this library ships a strategy for -- and
+#: that is a fact this module already reads.
+#:
+#: The bundle uses three formats at a schema position in the graded tree: ``uri`` (35
+#: sites), ``date-time`` (27) and ``uuid`` (1).  The library ships the first two.
+#:
+#: **Each entry is GRADED before it is trusted**, by ``check_format_strategy``: a strategy
+#: emitting values the format itself refuses makes every site using it pass vacuously, and
+#: a vacuous pass is reported by nothing.
+#: ``tests/test_emit.py::test_every_format_strategy_is_graded_before_it_is_trusted`` is the
+#: reading, and it asserts over this dict rather than over a copy of it.
+FORMAT_STRATEGIES: dict[str, st.SearchStrategy] = {"uuid": st.uuids().map(str)}
 
 
 def format_occurrences(schema: Any) -> Counter[str]:
@@ -232,16 +257,40 @@ _DRAW_VERSION = f"hypothesis={hypothesis.__version__} hjs={hypothesis_jsonschema
 def corpus_key(
     identity: Any,
     *,
-    examples: int,
     custom_formats: Mapping[str, Any] = (),
     position: Any = None,
 ) -> str:
     """The content address of the instances :func:`check_accepts` draws, under ``identity``.
 
     **``identity`` is what the CALLER says makes two draws the same question, and this
-    function hashes it beside the three facts it owns**: the example count, the format
-    strategies and the generator.  It is never derived from the schema the draw is handed,
-    and the reason is the defect this signature exists to close.
+    function hashes it beside the two facts it owns**: the format strategies and the
+    generator.  It is never derived from the schema the draw is handed, and the reason is
+    the defect this signature exists to close.
+
+    **THE EXAMPLE COUNT IS NOT IN THE KEY, AND REMOVING IT IS THIS FUNCTION'S WHOLE
+    CURRENT CHANGE** (``adcp-client-python-82m.3``).  It was, and the consequence was
+    measured: the count is the one input a lane raises deliberately, so every raise
+    invalidated all 2,693 committed entries and paid a full cold draw of the population --
+    and walking the count up through 1, 5 and 25 paid it three times over, for an artifact
+    that was committed precisely so that nobody would ever redraw it.  Measured on this
+    row before it was stopped: 2,635 entries drawn at ``examples=1`` and 2,407 at
+    ``examples=5``, 8.5 MB of them, all of it answering questions the floor already held
+    the beginning of.
+
+    **An entry for N examples CONTAINS the answer for every n <= N**, which is why the
+    count was never a property of the question.  ``check_accepts`` offers the instances in
+    order, so the first n of a held list are exactly the list a draw of n would have been
+    asked for -- the SAME witness, not a comparable one -- and
+    :func:`corpus_defect` re-offers the n it serves to the document before any of them
+    counts.  So one fill at the highest count anyone wants makes every lower setting free,
+    and the committed floor stops being a single-count artifact.
+
+    What the key must still move on is unchanged and is the property
+    ``adcp-client-python-3be.22`` established: the DOCUMENT (through ``identity``), the
+    format strategies, and the generator version.  A compiler edit moves nothing; a bundle
+    bump or a generator bump moves everything.  Removing the count moves every key ONCE,
+    which is the last time a count can move one, and the entries are RE-KEYED rather than
+    redrawn -- the content is the instances and the instances did not change.
 
     **THE SCHEMA IS NOT A STATIC FACT ABOUT THE DOCUMENT, BECAUSE THE RESOLVER IS OURS.**
     The schema ``check_accepts`` draws from is ``bundle.record``'s output -- this package's
@@ -316,7 +365,6 @@ def corpus_key(
     """
     material: dict[str, Any] = {
         "identity": identity,
-        "examples": examples,
         "formats": sorted(custom_formats),
         "draw": _DRAW_VERSION,
     }
@@ -341,9 +389,30 @@ def corpus_defect(
     * **fewer instances than ``examples``** -- including none at all, which is the one
       failure mode a cache of this shape can have.  §8's accepts draw is what PROVES a
       widening rather than believing it, so an empty or short entry that read as "the
-      obligation passed" would be the cache grading something else.  It is a defect here,
-      not a fallback, because a store that can hand back the wrong count is broken and a
-      silent re-draw would hide it for as long as it kept happening.
+      obligation passed" would be the cache grading something else.
+
+      **EMPTY and no longer "short", which is the change that took the count out of the
+      key** (:func:`corpus_key`).  Two readings moved and they moved in opposite
+      directions:
+
+      * an entry holding MORE than the obligation asks for was never a defect and is no
+        longer treated as one.  The instances are offered in order, so the first
+        ``examples`` of them are the list a draw of ``examples`` would have produced, and
+        those are the ones this function checks and the ones ``check_accepts`` replays: a
+        25-instance entry served as 5 is checked as 5.
+      * an entry holding FEWER -- but at least one -- is not a wrong answer either.  It is
+        a question nobody has yet asked at this depth, so ``check_accepts`` treats it as a
+        MISS: it redraws to ``examples`` and holds the longer list.  Reporting it here
+        instead would make raising the example count turn every pair of the population
+        ``corpus_rejected`` at once, which is a red suite standing in for a fill that is
+        owed.  **A redraw and not "draw the difference"**, because the draw is one
+        ``hypothesis`` run over one strategy and there is no affordance for resuming it at
+        instance n; the entry it produces then covers every lower count for ever, so the
+        redraw is paid once.
+
+      ZERO instances stays a defect, and that is the clause this one keeps: a store
+      answering with an empty LIST rather than with ``None`` is broken, and a pair that
+      graded no instance has not passed.
     * **an instance the document REFUSES**.  The key already makes this unreachable --
       it hashes the schema the instance was drawn from -- so reaching it means the store
       answered for a key it was not asked about, and that is the one way a stale entry
@@ -357,14 +426,14 @@ def corpus_defect(
     pair, with the instance count at zero, so the pair reddens twice over rather than
     passing on evidence it does not have.
     """
-    if not isinstance(held, list) or len(held) != examples:
+    if not isinstance(held, list) or not held:
         n = len(held) if isinstance(held, list) else "a non-list"
         return (
             f"the held corpus carries {n} instances where the obligation is {examples}; "
             "an entry that cannot cover the draw is not evidence"
         )
     cls = validator_cls or validator_for(schema)
-    for i, instance in enumerate(held):
+    for i, instance in enumerate(held[:examples]):
         if conforms(schema, instance, validator_cls=cls) is False:
             broke = violated_keywords(schema, instance, validator_cls=cls)
             return (
@@ -1140,7 +1209,7 @@ def check_accepts(
     #: produces.
     held = None
     if corpus is not None:
-        res.corpus_key = corpus_key(identity, examples=examples, custom_formats=cf)
+        res.corpus_key = corpus_key(identity, custom_formats=cf)
         held = corpus.get(res.corpus_key)
     if held is not None:
         defect = corpus_defect(schema, held, examples, validator_cls=validator_cls)
@@ -1148,6 +1217,13 @@ def check_accepts(
             res.outcome = "corpus_rejected"
             res.detail = f"{defect} (key {res.corpus_key[:16]})"[:400]
             return res
+    #: **An entry SHORT of the obligation is a miss and not a hit**, which is the other
+    #: half of taking the count out of the key (:func:`corpus_defect`).  The entry is not
+    #: wrong -- its instances are this document's and are checked above -- it simply does
+    #: not reach this far, so the draw runs and the write below replaces it with the longer
+    #: list.  Paid once: the new entry answers every count at or below it for ever.
+    if isinstance(held, list) and len(held) < examples:
+        held = None
 
     try:
         if held is None:
@@ -1160,7 +1236,11 @@ def check_accepts(
                 )(run)
                 run()
         else:
-            for instance in held:
+            #: The FIRST ``examples`` of the held list and not all of it, which is the n <=
+            #: N reading :func:`corpus_key` argues for: the instances are offered in order,
+            #: so these are the ones a draw of ``examples`` would have produced, and
+            #: :func:`corpus_defect` has already re-offered exactly these to the document.
+            for instance in held[:examples]:
                 res.replayed += 1
                 body(instance)
         res.outcome = "pass"
@@ -1197,8 +1277,24 @@ def check_accepts(
     #: is the CALLER's list and a caller may hand one that already holds something: what
     #: this call drew is what ``body`` counted.
     if corpus is not None and held is None and res.outcome != "strategy_error":
-        if res.examples == examples:
-            corpus.put(res.corpus_key, seen[-examples:])
+        #: **The whole draw and never a truncation, and NEVER SHORTER THAN WHAT IS ALREADY
+        #: HELD.**  With the count out of the key one entry answers every setting, so a run
+        #: at a LOW count must not overwrite a long entry with a short one -- that would
+        #: make the floor's reach a function of whichever setting ran last, and the next run
+        #: at the high count would draw again.  The store is asked what it holds and the
+        #: longer list wins; a tie keeps what is held, so a run that adds nothing writes
+        #: nothing.
+        #:
+        #: ``res.examples`` and not ``examples``: a draw SATURATES where the node's
+        #: admissible set is smaller than the count -- an eight-member enum yields 8
+        #: instances however many are asked for -- and the old equality held no entry at
+        #: all for such a node, so every run redrew it.  What the draw produced is what
+        #: there is to hold, and :func:`corpus_defect` reports it short only against a
+        #: request it cannot cover.
+        standing = corpus.get(res.corpus_key)
+        drawn = seen[-res.examples:] if res.examples else []
+        if drawn and len(drawn) > len(standing or []):
+            corpus.put(res.corpus_key, drawn)
     return res
 
 
@@ -1316,9 +1412,7 @@ class _Draws:
         """``[one instance of schema]``, or ``[None, why not]`` -- held under ``position``."""
         if self.corpus is None or self.identity is None:
             return self._draw(schema, custom_formats)
-        key = corpus_key(
-            self.identity, examples=1, custom_formats=custom_formats, position=position
-        )
+        key = corpus_key(self.identity, custom_formats=custom_formats, position=position)
         held = self.corpus.get(key)
         if isinstance(held, list) and held:
             self.replayed += 1
@@ -4233,3 +4327,531 @@ def check_pair(
             identity=pair.identity,
         )
     return rep
+
+
+# --------------------------------------------------------------------------- #
+# §10's per-pair verdict TABLE: the run's artifact
+# --------------------------------------------------------------------------- #
+#: The three states a check's verdict can take, and **the third is why this exists**.
+#:
+#: ``docs/plan/architecture.md`` §10: "one row per graded pair, written to a FILE by the
+#: run -- document, pointer, and each check's verdict -- because a figure that exists only
+#: in a terminal cannot be reviewed, and because a check that computed nothing shows up
+#: there as a blank column instead of as a pass."
+#:
+#: The consequence that forces :data:`ABSENT` to be a VALUE rather than an empty cell has
+#: already happened twice on this epic: two checks were counted as passing while having
+#: never run at all -- one died at ``brand.json`` in a first loop before the loop holding
+#: its assertion, and one raised in its own setup so it never computed anything.  In a
+#: pass/fail summary a check that computed nothing is indistinguishable from success.  So
+#: there is no empty cell anywhere in this table: every check of every pair reads
+#: ``pass``, ``fail:<cause>`` or ``absent:<cause>``, and the two non-pass states each carry
+#: the cause that produced them.
+#:
+#: **``absent`` is NOT ranked between the other two and is not a softer ``fail``.**  It
+#: says the obligation was not put to the pair at all, which is a fact about the
+#: INSTRUMENT; ``fail`` says the pair was asked and answered wrongly, which is a fact about
+#: the class.  A reader who wants one or the other greps for the word; a reader who wants
+#: "everything that is not a pass" greps for the absence of ``=pass``.
+PASS = "pass"
+FAIL = "fail"
+ABSENT = "absent"
+
+#: The four checks a row carries, in the order the table's columns are written, and the
+#: order is the order a defect is read in: the class took the value, the class refused what
+#: the document refuses, what the class BUILT came back out, and every declaration it makes
+#: was earned.  ``refuses`` is this module's ``check_liveness`` under the name §10 and
+#: ``adcp-client-python-82m.4`` give it; ``dump`` is the half of ``check_accepts`` that
+#: reads what the class DID with the value, reported as its own column because it is its
+#: own obligation and because ``AcceptsResult`` merges the two outcomes into one field.
+CHECKS: tuple[str, ...] = ("accepts", "refuses", "dump", "widening")
+
+
+@dataclass(frozen=True)
+class Verdict:
+    """One check's answer about one pair: a state and the cause that produced it.
+
+    Rendered ``pass``, ``fail:<cause>`` or ``absent:<cause>``.  A ``pass`` carries no
+    cause, and that asymmetry is deliberate: the two states a reader acts on are the two
+    that say WHY, and a pass that carried a cause would invite a grep for the cause rather
+    than for the state.
+    """
+
+    state: str
+    cause: str = ""
+
+    def __str__(self) -> str:
+        return self.state if not self.cause else f"{self.state}:{self.cause}"
+
+
+def _accepts_verdict(a: AcceptsResult | None) -> Verdict:
+    """Did the class admit every drawn payload the document admits.
+
+    ``pass`` demands that the check COVERED its obligation, which is why the instance
+    counts are read and not only ``outcome``: the draw is asked for ``examples``
+    instances, each is offered to the entry point, and the first one the class refuses
+    ends the run -- so an ``outcome`` of anything but ``pass`` means the later instances
+    were never offered.
+
+    ``model_dropped_a_fact`` is ABSENT here and FAIL under ``dump``, and that is the one
+    split in this function that is not obvious.  ``check_accepts`` runs both halves per
+    instance and reports one outcome, so a dump the document refuses stops the accepts
+    half too -- and reporting that as an accepts failure would name the wrong check,
+    while reporting it as an accepts pass would claim an obligation the run abandoned.
+    ``absent:stopped_at_the_dump`` says exactly what happened and points at the column
+    that carries the verdict.
+
+    ``strategy_error`` is ABSENT for the reason :attr:`PairReport.no_instrument` already
+    gives: the generator produced nothing, so the class was never asked anything.  An
+    unknown outcome is FAIL and never a pass, so an outcome added to ``check_accepts``
+    later cannot enter this table as a green cell.
+    """
+    if a is None:
+        return Verdict(ABSENT, "unrun")
+    if a.outcome == "pass":
+        if not a.examples:
+            return Verdict(ABSENT, "no_instance_was_drawn")
+        return Verdict(PASS)
+    if a.outcome == "model_dropped_a_fact":
+        return Verdict(ABSENT, "stopped_at_the_dump")
+    if a.outcome in ("strategy_error", "unrun"):
+        return Verdict(ABSENT, a.outcome)
+    return Verdict(FAIL, a.outcome)
+
+
+def _dump_verdict(a: AcceptsResult | None) -> Verdict:
+    """Did the instance the class BUILT validate against the document it names.
+
+    Its own column because it is its own obligation -- "a class that takes an instance
+    and loses a key, or renames one, or coerces it to a shape the document refuses,
+    accepts every instance there is" -- and because ``AcceptsResult`` carries both
+    answers in one ``outcome`` field, so a reader of that field alone cannot tell which
+    half spoke.
+
+    ``pass`` is every drawn instance round-tripped and not merely one: ``round_tripped``
+    counts the instances the document admitted the dump of, so the equality with
+    ``examples`` is what makes this a statement about the draw rather than about its
+    first value.  A dump that needed a ``codegen.dump_exemptions`` strike is still a
+    pass here and the strike is reported in the row's note, which is
+    :attr:`AcceptsResult.dump_exempt`'s own rule: a non-empty list beside a pass is a
+    CONDITIONAL pass and a reader of a green pair is entitled to see it.
+    """
+    if a is None:
+        return Verdict(ABSENT, "unrun")
+    if a.outcome == "model_dropped_a_fact":
+        return Verdict(FAIL, "model_dropped_a_fact")
+    if not a.round_tripped:
+        return Verdict(ABSENT, "no_instance_reached_the_dump")
+    if a.round_tripped != a.examples:
+        return Verdict(ABSENT, f"stopped_after_{a.round_tripped}_of_{a.examples}")
+    return Verdict(PASS)
+
+
+def _refuses_verdict(live: LivenessResult | None) -> Verdict:
+    """Did the class refuse a payload the document refuses.
+
+    ``no_payload`` is ABSENT and not a pass: it says the derivation found no payload to
+    offer -- either because the draw produced no instance to perturb or because the
+    document refuses nothing -- so the entry point was never asked.  Both causes are
+    facts about the document and the draw, and neither is evidence about the class.
+    """
+    if live is None:
+        return Verdict(ABSENT, "unrun")
+    if live.outcome == "pass":
+        return Verdict(PASS)
+    if live.outcome in ("no_payload", "unrun"):
+        return Verdict(ABSENT, live.outcome)
+    return Verdict(FAIL, live.outcome)
+
+
+def _widening_verdict(w: WideningResult | None) -> Verdict:
+    """For each declaration at this pair, was it proved by a value.
+
+    ``None`` and ``no_declarations`` are the same fact -- the pair claims nothing, so
+    nothing is owed -- and both read ABSENT rather than ``pass``: a pair that was never
+    asked has earned no verdict, and a table where "claims nothing" and "proved every
+    claim" share a cell cannot be used to count either.
+    """
+    if w is None:
+        return Verdict(ABSENT, "no_declarations")
+    if w.outcome == "pass":
+        return Verdict(PASS)
+    if w.outcome == "no_declarations":
+        return Verdict(ABSENT, "no_declarations")
+    return Verdict(FAIL, w.outcome)
+
+
+def verdicts(report: PairReport | None, *, error: str = "") -> dict[str, Verdict]:
+    """This pair's four verdicts, or four ABSENT ones with the cause.
+
+    ``error`` is the row for a pair that never reached a check at all -- the pairing
+    raised building it, or a check raised out through this module.  It is the case
+    ``adcp-client-python-82m.4`` is about: "one raised in its own setup so it never
+    computed anything", and in a per-pair table that has to be four blank columns with a
+    cause, not four missing rows.  A pair with no report and no error named is still
+    ABSENT in every column, because there is nothing else it could honestly be.
+    """
+    if error or report is None:
+        cause = error or "not_graded"
+        return {check: Verdict(ABSENT, cause) for check in CHECKS}
+    return {
+        "accepts": _accepts_verdict(report.accepts),
+        "refuses": _refuses_verdict(report.liveness),
+        "dump": _dump_verdict(report.accepts),
+        "widening": _widening_verdict(report.widening),
+    }
+
+
+def evidence_of(report: PairReport | None) -> str:
+    """Whether this pair's instances were DRAWN by this run or replayed from a store.
+
+    §10's row has to say which run paid for the evidence, which is
+    :attr:`AcceptsResult.replayed`'s own argument one level up: "the instances are the
+    same instances either way -- re-offered to the document before they count -- but a
+    reader of a green pair is entitled to know which run paid for its evidence, and a
+    census that cannot tell the two apart cannot measure a cold run against a warm one."
+
+    ``none`` where no instance exists, which is not the same as ``drawn`` with a count of
+    zero: a pair whose generator produced nothing paid a draw and holds no instance, and
+    the count beside this says so.
+    """
+    if report is None or report.accepts is None or not report.accepts.examples:
+        return "none"
+    a = report.accepts
+    if a.replayed == a.examples:
+        return "replayed"
+    if not a.replayed:
+        return "drawn"
+    return "mixed"
+
+
+def _cell(text: Any) -> str:
+    """One field of one row, with every character that would break a column removed.
+
+    A tab inside a field would make the column count differ between rows, and a newline
+    would make one pair two rows -- so both are replaced rather than quoted.  Quoting is
+    what CSV does and it is what makes a CSV ungreppable: a reader's ``grep`` and ``awk``
+    would each need the quoting rule.  A field is therefore guaranteed free of the two
+    characters that carry structure, and the format needs no escape at all.
+    """
+    return (
+        str(text).replace("\t", " ").replace("\r", " ").replace("\n", " ").strip() or "-"
+    )
+
+
+#: The table's column names, in order.  ``class`` is the model's own name, which is what a
+#: reader looking for a pair in the emitted tree greps for.
+COLUMNS: tuple[str, ...] = (
+    "document",
+    "pointer",
+    "class",
+    "verdict",
+    *CHECKS,
+    "examples",
+    "evidence",
+    "note",
+)
+
+
+def _pair_verdict(report: PairReport | None, error: str) -> str:
+    """:attr:`PairReport.outcome`, in the three-state spelling the cells beside it use.
+
+    ``absent`` for a pair that reached no check -- an error building it, no held instance,
+    a budget spent -- and for the two outcomes that say the GENERATOR produced nothing
+    (``no_instrument``, ``accepts:strategy_error``) or that nothing was graded
+    (``no_accepts_check_evidence``).  ``fail`` for every outcome that is a verdict about
+    the class.  ``pass`` only for a pass.
+
+    Stated as a function rather than inline, because the mapping has to agree with the
+    per-check cells and an inline conditional in a row builder is where the two drift.
+    """
+    if error or report is None:
+        return f"{ABSENT}:{error or 'not_graded'}"
+    outcome = report.outcome
+    if outcome == "pass":
+        return PASS
+    if outcome in ("no_instrument", "accepts:strategy_error", "no_accepts_check_evidence"):
+        return f"{ABSENT}:{outcome}"
+    return f"{FAIL}:{outcome}"
+
+
+def verdict_row(
+    ref: SchemaRef | None,
+    report: PairReport | None,
+    *,
+    name: str = "",
+    model: str = "",
+    error: str = "",
+) -> str:
+    """One pair's row: its document, its pointer, its class and its four verdicts.
+
+    **Each check's cell is written ``<check>=<verdict>`` and not bare**, which is the one
+    redundancy in this format and the reason the format is usable.  ``docs/plan`` asks for
+    an artifact that is greppable AND diffable, and a reviewer's two questions are "show me
+    every pair that fails dump" and "what changed since the last run".  Bare cells answer
+    the second (one line per pair, stable order, so a diff is a diff of verdicts) and
+    answer the first only through the column number, which a reader has to count and which
+    moves whenever a check is added.  Named cells answer it with ``grep dump=fail``, and
+    the columns are still there for ``awk``.
+
+    ``name`` stands in where there is no ``ref`` -- a pair the pairing could not build --
+    so that a row exists for it: a pair missing from the table is the blank column this
+    artifact exists to remove, one level up.
+    """
+    document, pointer = (ref.document, ref.pointer) if ref is not None else (name, "")
+    if ref is None and "#" in name:
+        document, _, rest = name.partition("#")
+        pointer = "#" + rest
+    v = verdicts(report, error=error)
+    a = report.accepts if report is not None else None
+    notes: list[str] = []
+    if error:
+        notes.append(error)
+    if a is not None:
+        if a.detail:
+            notes.append(a.detail)
+        if a.counterexample:
+            notes.append(f"counterexample {a.counterexample}")
+        if a.dump_exempt:
+            notes.append(f"dump exempt at {', '.join(a.dump_exempt)}")
+    if report is not None and report.missing_formats:
+        notes.append(f"no strategy for format {', '.join(report.missing_formats)}")
+    if report is not None and report.liveness is not None and report.liveness.detail:
+        notes.append(report.liveness.detail)
+    if report is not None and report.widening is not None:
+        w = report.widening
+        notes.extend(w.narrowings[:2])
+        notes.extend(w.unproved[:2])
+        if w.detail:
+            notes.append(w.detail)
+    return "\t".join(
+        _cell(x)
+        for x in (
+            document,
+            pointer,
+            model or (report.model_repr if report is not None else ""),
+            #: The PAIR's one verdict, in the same three-state spelling as the cells
+            #: beside it, so "every row that is not a pass" is one grep whichever column
+            #: a reader reaches for.  A pair that reached no check at all reads
+            #: ``absent`` and never ``fail``: the distinction is the whole artifact.
+            f"verdict={_pair_verdict(report, error)}",
+            *(f"{check}={v[check]}" for check in CHECKS),
+            f"examples={a.examples if a is not None else 0}",
+            f"evidence={evidence_of(report)}",
+            "; ".join(notes)[:400],
+        )
+    )
+
+
+def verdict_table(rows: Sequence[str]) -> str:
+    """The whole artifact: a preamble of counts, the column names, then the sorted rows.
+
+    **Sorted by the row text, which begins with the document and the pointer**, so the
+    order is a function of the population and not of the order a run happened to grade in.
+    That is what makes ``diff`` between two runs a diff of VERDICTS: an xdist run hands
+    pairs out in whatever order its workers finish, and an unsorted table would differ from
+    itself on every run.
+
+    **The preamble carries counts and NOTHING THAT MOVES ON ITS OWN** -- no timestamp, no
+    duration, no path, no worker count.  A run's wall clock belongs on stdout, where it is
+    read once; in the file it would make every diff report a change when nothing about the
+    SDK had changed, which is the one way a diffable artifact stops being diffed.
+
+    The preamble is ``#``-prefixed, so ``grep -v '^#'`` is the whole of "give me the rows"
+    and every reader's ``awk`` sees a rectangle.
+    """
+    body = sorted(rows)
+    per_check: dict[str, Counter[str]] = {check: Counter() for check in CHECKS}
+    pair_states: Counter[str] = Counter()
+    for row in body:
+        #: Read by COLUMN POSITION and not by splitting on ``=``: the note field is free
+        #: text and can carry an ``=`` of its own -- a counterexample is a dumped JSON
+        #: instance -- so a name-based reading would let a note name a column.  The
+        #: positions come from :data:`COLUMNS`, which is the same declaration the row was
+        #: written from.
+        cells = row.split("\t")
+        by_name = {
+            name: cells[i].split("=", 1)[1] if "=" in cells[i] else cells[i]
+            for i, name in enumerate(COLUMNS)
+            if i < len(cells)
+        }
+        for check in CHECKS:
+            per_check[check][str(by_name.get(check, ABSENT)).split(":")[0]] += 1
+        pair_states["pass" if by_name.get("verdict") == "pass" else "not_pass"] += 1
+    head = [
+        f"# verdicts over {len(body)} graded pairs: "
+        f"{pair_states['pass']} pass, {pair_states['not_pass']} not pass",
+        "# "
+        + "  ".join(
+            f"{check} {per_check[check][PASS]}/{per_check[check][FAIL]}/"
+            f"{per_check[check][ABSENT]}"
+            for check in CHECKS
+        )
+        + "   (pass/fail/absent)",
+        "# a cell is pass, fail:<cause> or absent:<cause>; absent is NOT a pass -- it is "
+        "the check that was never put to this pair",
+        "\t".join(COLUMNS),
+    ]
+    return "\n".join([*head, *body]) + "\n"
+
+
+# --------------------------------------------------------------------------- #
+# THE PAIRING: which emitted class answers which document and pointer
+# --------------------------------------------------------------------------- #
+class Paired(NamedTuple):
+    """One pair of an emitted tree, as :func:`pairs` finds it.
+
+    The ``SchemaRef`` the holder declares, the model, the entry point an instance is
+    offered through, and the DEFINING module's name.
+    """
+
+    ref: SchemaRef
+    model: Any
+    accept: Any
+    module: str
+
+
+def pairs(package: Any, path: Sequence[str] | None = None) -> tuple[list[Paired], dict[str, str]]:
+    """Every class and alias ``package`` carries, with the schema each one names.
+
+    ``path`` is WHICH DIRECTORIES the walk enumerates, defaulting to the package's own
+    ``__path__``.  A caller passes one when the package resolves from more than one
+    directory and only one of them is the subject: ``codegen/__main__.py`` prepends the
+    tree the run just WROTE to ``adcp.types._schemas.__path__`` so that the absolute
+    imports an emitted module writes reach this run's output, and then grades the written
+    tree ALONE -- a module the run did not write resolves from the committed tree behind
+    it, and grading it would put a pair in the table that this run says nothing about.
+    The modules are still IMPORTED under the full package name, because an emitted module
+    says ``from adcp.types.constraints import ...`` and cannot be loaded from a path.
+
+    **HERE because the pairing is a READING OF THE EMITTED TREE, which is what §9 says
+    this module does** -- "the verifier reads the document of record and the emitted
+    package, and never the walk that produced them" -- and because there must be exactly
+    ONE pairing.  ``tests/compared.py`` carries the argument for the second half and it
+    applies to any second reader, this one included: "a reader with a pairing of its own
+    would range over however many pairs that second walk turned out to find, and the two
+    would disagree silently the moment either moved."  The run writes the table and the
+    suite grades the population, so both need the pairing; stated twice it is the
+    two-populations defect, and the suite's module is not importable from the run.  So the
+    walk is here, ``tests/compared.py`` performs it against the FRESH tree and keeps every
+    decision about WHICH tree, and ``codegen/__main__.py`` performs it against the tree the
+    run just wrote.
+
+    A class is taken from the module that DEFINES it (``__module__``) and ONCE per module
+    whatever names it is bound under (by ``id``), because D3's content dedup gives one
+    class a name at every position its node occupies -- keyed on names the pair count read
+    1,085 where 1,079 pairs existed.
+
+    **:class:`SchemaBound` and not the base model is the predicate**, because §8 requires a
+    ROOT MODEL to be paired exactly as a class is: "each must carry ``__adcp_schema__``,
+    ``strict_validate`` and a rule tuple exactly as a class does, or a root model and a
+    class disagree about what their document accepts."  ``SchemaBound`` is the mixin that
+    carries those two, so it is the predicate that says "this object is a pair".
+
+    An ALIAS is D2's root-scalar row -- not a class, so its MODULE carries
+    ``__adcp_schema__`` and ``strict_validate``, and the model is the one name the module
+    exports.
+
+    **A module that does not import is RECORDED and never raised**, and the second return
+    value is that record.  A raise here takes down whatever is reading: in the suite it
+    errors a COLLECTION, which was measured as one unimportable module collecting ZERO
+    tests -- every pair, every census and the import obligation itself, gone, with the
+    reader left holding a traceback instead of a named failure.  In the run it would take
+    down the verdict table, which is the artifact that exists to REPORT such a module.
+    ``docs/plan/architecture.md``'s rule for it is "a tree that does not build fails one
+    named test instead of disabling the file".
+    """
+    out: list[Paired] = []
+    unimportable: dict[str, str] = {}
+    if package is None:
+        return out, unimportable
+    walked = pkgutil.walk_packages(
+        list(package.__path__ if path is None else path), package.__name__ + "."
+    )
+    for info in sorted(walked, key=lambda i: i.name):
+        try:
+            module = importlib.import_module(info.name)
+        except Exception:  # noqa: BLE001 -- recorded, never raised; see the docstring
+            unimportable[info.name] = traceback.format_exc(limit=3)[-600:]
+            continue
+        taken: set[int] = set()  # by IDENTITY: one class, one pair, whatever it is called
+        for value in vars(module).values():
+            if (
+                isinstance(value, type)
+                and issubclass(value, SchemaBound)
+                and "__adcp_schema__" in value.__dict__
+                and value.__module__ == info.name
+                and id(value) not in taken
+            ):
+                taken.add(id(value))
+                out.append(
+                    Paired(value.__adcp_schema__, value, value.strict_validate, info.name)
+                )
+        ref = vars(module).get("__adcp_schema__")
+        if isinstance(ref, SchemaRef) and callable(vars(module).get("strict_validate")):
+            (symbol,) = module.__all__
+            out.append(Paired(ref, getattr(module, symbol), module.strict_validate, info.name))
+    return out, unimportable
+
+
+#: Seconds between retries of :func:`within`'s timer once the budget has been spent.  Not a
+#: second budget: it is how long a SWALLOWED signal costs, and the docstring below measures
+#: why a swallowed signal is reachable at all.  Short enough that the bound still bounds,
+#: long enough that a block already unwinding is not re-interrupted on every bytecode.
+_BUDGET_RETRY = 2.0
+
+
+class OverBudget(Exception):
+    """One pair's grade spent the budget a caller gave it; see :func:`within`."""
+
+
+@contextmanager
+def within(seconds: int) -> Iterator[None]:
+    """Give the enclosed grade ``seconds`` of wall clock, then raise :class:`OverBudget`.
+
+    **A budget belongs to GRADING and so it is here**, which is the division
+    ``_DumpRefused`` already stands in: an exception raised inside a check and caught BY
+    NAME one frame out, carrying a verdict about one pair rather than a refusal of any
+    document.  §2's "nothing raises one and nothing catches one" is about
+    :class:`codegen.refusal.Refusal`, and this is not one -- a pair the harness cannot
+    grade inside a budget is a statement about the INSTRUMENT, which is exactly what
+    ``PairReport.no_instrument`` and the verdict table's ``absent`` already report.
+
+    **What forces a budget at all.**  §8's obligation derives its draws from the declared
+    pointer, so which positions a pair asks for is known only by running it and no caller
+    can pre-check a store for them; and a draw over a multi-megabyte node has no bound of
+    its own -- measured at 2 h 57 m and 32 GB of RSS on one 44 MB node without finishing
+    (``adcp-client-python-3be.26``).  A reader of the verdict table needs the table more
+    than it needs that pair's verdict, and an unobtainable artifact is the terminal figure
+    §10 replaced.
+
+    ``SIGALRM`` and not a thread, because the harness is pure Python on the calling thread
+    and a timer that cannot interrupt it is not a bound.  **Main thread only** -- the
+    signal module raises ``ValueError`` elsewhere, which is the honest failure: a caller
+    that cannot be bounded finds out rather than believing it is.
+
+    **REPEATING, and that is measured rather than tidy.**  A one-shot ``signal.alarm``
+    does not bound anything, because the signal can land in a context where Python
+    DISCARDS the exception it raises -- a garbage-collection callback or a ``__del__`` --
+    and ``hypothesis`` installs one (``junkdrawer.gc_callback``).  Measured: a one-shot
+    alarm fired twice inside that callback, was ignored both times with "Exception ignored
+    in", and the pair then ran 13 minutes against a 45 s budget with no alarm left to
+    fire.  So the timer repeats until the block exits and a swallowed signal costs the
+    interval and not the bound.
+
+    The previous handler is restored on the way out, and the timer is cleared BEFORE the
+    restore, so a signal that fires during teardown cannot reach a handler that is no
+    longer the one this block installed.
+    """
+    import signal
+
+    def over(signum: int, frame: Any) -> None:
+        raise OverBudget(f"the grade did not finish inside {seconds} s")
+
+    previous = signal.signal(signal.SIGALRM, over)
+    signal.setitimer(signal.ITIMER_REAL, seconds, _BUDGET_RETRY)
+    try:
+        yield
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous)

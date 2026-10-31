@@ -452,7 +452,16 @@ def graded() -> list[Graded]:
 #: ``test_every_format_strategy_is_graded_before_it_is_trusted`` through
 #: ``harness.check_format_strategy``: a strategy emitting values the format refuses makes
 #: every site using it pass vacuously, and a vacuous pass is reported by nothing.
-FORMAT_STRATEGIES: dict[str, Any] = {"uuid": st.uuids().map(str)}
+#:
+#: **THE DECLARATION IS ``harness.FORMAT_STRATEGIES`` AND THIS IS AN ALIAS TO IT**
+#: (``adcp-client-python-82m.4``).  There are two graders of the population now -- this
+#: suite and the RUN, which writes §10's per-pair verdict table -- and a strategy declared
+#: in one of them drifts silently in the direction that matters: the suite would pass pairs
+#: the run reports ``missing_formats`` on, and a reviewer comparing the two would be
+#: comparing two instruments.  So the entries are stated once beside the check that reads
+#: them, the test below grades THAT dict, and this name is what every reader in this file
+#: already says.
+FORMAT_STRATEGIES: dict[str, Any] = harness.FORMAT_STRATEGIES
 
 
 def test_every_format_strategy_is_graded_before_it_is_trusted() -> None:
