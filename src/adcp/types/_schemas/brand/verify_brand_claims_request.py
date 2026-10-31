@@ -128,7 +128,7 @@ class VerifyTrademarkClaim(AdCPBaseModel):
     claim: VerifyTrademarkClaimClaim
 
 
-VerifyBrandClaimsRequestBulkClaimEntry = Annotated[VerifySubsidiaryClaim | VerifyParentClaim | VerifyPropertyClaim | VerifyTrademarkClaim, Field(description='One verification claim. Shape mirrors the single-target `verify_brand_claim` request body (minus the version envelope, which lives on the batch).')]
+ClaimEntry = Annotated[VerifySubsidiaryClaim | VerifyParentClaim | VerifyPropertyClaim | VerifyTrademarkClaim, Field(description='One verification claim. Shape mirrors the single-target `verify_brand_claim` request body (minus the version envelope, which lives on the batch).')]
 
 
 class VerifyBrandClaimsRequestBulk(AdCPVersionEnvelope):
@@ -139,7 +139,7 @@ class VerifyBrandClaimsRequestBulk(AdCPVersionEnvelope):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/verify-brand-claims-request.json', pointer='#')
-    claims: Annotated[list[VerifyBrandClaimsRequestBulkClaimEntry], Field(description='Ordered list of verification claims. The agent MUST return `results[]` in the same order (positional zip-by-index). Maximum batch size is 100 per call; agents MAY enforce a lower limit and SHOULD advertise it via `get_adcp_capabilities` (see the task page).', max_length=100, min_length=1)]
+    claims: Annotated[list[ClaimEntry], Field(description='Ordered list of verification claims. The agent MUST return `results[]` in the same order (positional zip-by-index). Maximum batch size is 100 per call; agents MAY enforce a lower limit and SHOULD advertise it via `get_adcp_capabilities` (see the task page).', max_length=100, min_length=1)]
 
 
-__all__ = ["VerifyBrandClaimsRequestBulk", "VerifyBrandClaimsRequestBulkClaimEntry"]
+__all__ = ["VerifyBrandClaimsRequestBulk", "ClaimEntry"]

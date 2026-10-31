@@ -13,7 +13,7 @@ from adcp.types.constraints import IntMin1, StrMatchingCE72C7C2, StrMatchingEFC1
 from .ext import ExtensionObject
 
 
-class CountriesValueTrue(AdCPBaseModel):
+class CountriesValueAllValues(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -40,7 +40,7 @@ class GeographicRegionSupport(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/geo-region-support.json', pointer='#')
-    countries: Annotated[dict[StrMatchingEFC12812, CountriesValueTrue | CountriesValueValues], Field(description='Selectable ISO subdivision values keyed by ISO 3166-1 alpha-2 country.', min_length=1)]
+    countries: Annotated[dict[StrMatchingEFC12812, CountriesValueAllValues | CountriesValueValues], Field(description='Selectable ISO subdivision values keyed by ISO 3166-1 alpha-2 country.', min_length=1)]
     catalog_version: Annotated[StrMinLen1 | None, Field(description='Optional opaque ISO subdivision catalog or seller-mapping version that identifies the support snapshot. It is provenance, not part of subdivision identity.')] = None
     as_of: Annotated[date | None, Field(description='Optional date on which the seller last validated this support declaration.')] = None
     max_values_per_package: Annotated[IntMin1 | None, Field(description='Optional maximum number of region values selectable on one package.')] = None

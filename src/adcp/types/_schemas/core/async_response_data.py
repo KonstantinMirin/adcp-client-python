@@ -78,7 +78,7 @@ class AdCPAsyncResponseData(BranchDispatchMixin, AdCPBaseModel):
     )
 
 
-class GetProductsResponse(AdCPAsyncResponseData, GetProductsResponse):
+class AdCPAsyncResponseDataGetProductsResponse(AdCPAsyncResponseData, GetProductsResponse):
     """
     Response for completed or failed get_products
     """
@@ -91,7 +91,7 @@ class GetProductsResponse(AdCPAsyncResponseData, GetProductsResponse):
     )
 
 
-class GetProductsRejected(AdCPAsyncResponseData, GetProductsRejected):
+class AdCPAsyncResponseDataRejected(AdCPAsyncResponseData, GetProductsRejected):
     """
     Terminal business rejection for a well-formed get_products brief or refinement
     """
@@ -131,7 +131,7 @@ class GetProductsAsyncSubmitted(AdCPAsyncResponseData, GetProductsSubmitted):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/async-response-data.json', pointer='#/anyOf/4')
 
 
-class RequestProposalsResponse(AdCPAsyncResponseData, RequestProposalsResponse):
+class AdCPAsyncResponseDataRequestProposalsResponse(AdCPAsyncResponseData, RequestProposalsResponse):
     """
     Terminal response for request_proposals
     """
@@ -151,7 +151,7 @@ class RequestProposalsAsyncSubmitted(AdCPAsyncResponseData, RequestProposalsSubm
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/async-response-data.json', pointer='#/anyOf/6')
 
 
-class RefineProposalsResponse(AdCPAsyncResponseData, RefineProposalsResponse):
+class AdCPAsyncResponseDataRefineProposalsResponse(AdCPAsyncResponseData, RefineProposalsResponse):
     """
     Terminal response for refine_proposals
     """
@@ -171,7 +171,7 @@ class RefineProposalsAsyncSubmitted(AdCPAsyncResponseData, RefineProposalsSubmit
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/async-response-data.json', pointer='#/anyOf/8')
 
 
-class DeclineProposalsResponse(AdCPAsyncResponseData, DeclineProposalsResponse):
+class AdCPAsyncResponseDataDeclineProposalsResponse(AdCPAsyncResponseData, DeclineProposalsResponse):
     """
     Terminal response for decline_proposals
     """
@@ -181,21 +181,21 @@ class DeclineProposalsResponse(AdCPAsyncResponseData, DeclineProposalsResponse):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/async-response-data.json', pointer='#/anyOf/9')
 
 
-class MediaBuyCommitmentResponse(AdCPAsyncResponseData, MediaBuyCommitmentResponse):
+class AdCPAsyncResponseDataMediaBuyCommitmentResponse(AdCPAsyncResponseData, MediaBuyCommitmentResponse):
     """
     Shared terminal response for buy_products and accept_proposal; originating task identity is carried by the task envelope and manifest resolver.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/async-response-data.json', pointer='#/anyOf/10')
 
 
-class ControlMediaBuyResponse(AdCPAsyncResponseData, ControlMediaBuyResponse):
+class AdCPAsyncResponseDataControlMediaBuyResponse(AdCPAsyncResponseData, ControlMediaBuyResponse):
     """
     Terminal response for control_media_buy
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/async-response-data.json', pointer='#/anyOf/11')
 
 
-class CompactTaskSubmitted(AdCPAsyncResponseData, CompactTaskSubmitted):
+class AdCPAsyncResponseDataCompactTaskSubmitted(AdCPAsyncResponseData, CompactTaskSubmitted):
     """
     Submitted envelope for any compact lifecycle task; the originating tool is resolved from the task envelope.
     """
@@ -205,7 +205,7 @@ class CompactTaskSubmitted(AdCPAsyncResponseData, CompactTaskSubmitted):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/async-response-data.json', pointer='#/anyOf/12')
 
 
-class CompactTaskWorking(AdCPAsyncResponseData, CompactTaskWorking):
+class AdCPAsyncResponseDataCompactTaskWorking(AdCPAsyncResponseData, CompactTaskWorking):
     """
     Working progress for any compact lifecycle task.
     """
@@ -215,7 +215,7 @@ class CompactTaskWorking(AdCPAsyncResponseData, CompactTaskWorking):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/async-response-data.json', pointer='#/anyOf/13')
 
 
-class CompactTaskInputRequired(AdCPAsyncResponseData, CompactTaskInputRequired):
+class AdCPAsyncResponseDataCompactTaskInputRequired(AdCPAsyncResponseData, CompactTaskInputRequired):
     """
     Input-required payload for any compact lifecycle task.
     """
@@ -225,7 +225,7 @@ class CompactTaskInputRequired(AdCPAsyncResponseData, CompactTaskInputRequired):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/async-response-data.json', pointer='#/anyOf/14')
 
 
-class GetSignalsResponse(AdCPAsyncResponseData, GetSignalsResponse):
+class AdCPAsyncResponseDataGetSignalsResponse(AdCPAsyncResponseData, GetSignalsResponse):
     """
     Response for completed or failed get_signals
     """
@@ -255,7 +255,7 @@ class GetSignalsAsyncSubmitted(AdCPAsyncResponseData, GetSignalsSubmitted):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/async-response-data.json', pointer='#/anyOf/17')
 
 
-class CreateMediaBuyResponse(AdCPAsyncResponseData, CreateMediaBuyResponse):
+class AdCPAsyncResponseDataCreateMediaBuyResponse(AdCPAsyncResponseData, CreateMediaBuyResponse):
     """
     Response for completed or failed create_media_buy
     """
@@ -295,7 +295,7 @@ class CreateMediaBuyAsyncSubmitted(AdCPAsyncResponseData, CreateMediaBuySubmitte
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/async-response-data.json', pointer='#/anyOf/21')
 
 
-class UpdateMediaBuyResponse(AdCPAsyncResponseData, UpdateMediaBuyResponse):
+class AdCPAsyncResponseDataUpdateMediaBuyResponse(AdCPAsyncResponseData, UpdateMediaBuyResponse):
     """
     Response for completed or failed update_media_buy
     """
@@ -335,7 +335,7 @@ class UpdateMediaBuyAsyncSubmitted(AdCPAsyncResponseData, UpdateMediaBuySubmitte
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/async-response-data.json', pointer='#/anyOf/25')
 
 
-class MediaBuyDeliveryWebhookResult(AdCPAsyncResponseData, MediaBuyDeliveryWebhookResult):
+class AdCPAsyncResponseDataMediaBuyDeliveryWebhookResult(AdCPAsyncResponseData, MediaBuyDeliveryWebhookResult):
     """
     Delivery-report payload for media_buy_delivery webhook notifications. This is the inner result object carried by mcp-webhook-payload.json, not the full top-level get_media_buy_delivery task response envelope.
     """
@@ -345,7 +345,7 @@ class MediaBuyDeliveryWebhookResult(AdCPAsyncResponseData, MediaBuyDeliveryWebho
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/async-response-data.json', pointer='#/anyOf/26')
 
 
-class BuildCreativeResponse(AdCPAsyncResponseData, BuildCreativeResponse):
+class AdCPAsyncResponseDataBuildCreativeResponse(AdCPAsyncResponseData, BuildCreativeResponse):
     """
     Response for completed or failed build_creative
     """
@@ -364,7 +364,7 @@ class BuildCreativeResponse(AdCPAsyncResponseData, BuildCreativeResponse):
     )
 
 
-class PreviewCreativeResponse(AdCPAsyncResponseData, PreviewCreativeResponse):
+class AdCPAsyncResponseDataPreviewCreativeResponse(AdCPAsyncResponseData, PreviewCreativeResponse):
     """
     Terminal response for completed preview_creative
     """
@@ -408,7 +408,7 @@ class BuildCreativeAsyncSubmitted(AdCPAsyncResponseData, BuildCreativeSubmitted)
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/async-response-data.json', pointer='#/anyOf/31')
 
 
-class GetCreativeFeaturesResponse(AdCPAsyncResponseData, GetCreativeFeaturesResponse):
+class AdCPAsyncResponseDataGetCreativeFeaturesResponse(AdCPAsyncResponseData, GetCreativeFeaturesResponse):
     """
     Terminal response for completed or failed get_creative_features
     """
@@ -428,7 +428,7 @@ class GetCreativeFeaturesAsyncSubmitted(AdCPAsyncResponseData, GetCreativeFeatur
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/async-response-data.json', pointer='#/anyOf/33')
 
 
-class SyncCreativesResponse(AdCPAsyncResponseData, SyncCreativesResponse):
+class AdCPAsyncResponseDataSyncCreativesResponse(AdCPAsyncResponseData, SyncCreativesResponse):
     """
     Response for completed or failed sync_creatives
     """
@@ -471,7 +471,7 @@ class SyncCreativesAsyncSubmitted(AdCPAsyncResponseData, SyncCreativesSubmitted)
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/async-response-data.json', pointer='#/anyOf/37')
 
 
-class SyncCatalogsResponse(AdCPAsyncResponseData, SyncCatalogsResponse):
+class AdCPAsyncResponseDataSyncCatalogsResponse(AdCPAsyncResponseData, SyncCatalogsResponse):
     """
     Response for completed or failed sync_catalogs
     """
@@ -511,7 +511,7 @@ class SyncCatalogsAsyncSubmitted(AdCPAsyncResponseData, SyncCatalogsSubmitted):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/async-response-data.json', pointer='#/anyOf/41')
 
 
-AdCPAsyncResponseData._branch_models = (GetProductsResponse, GetProductsRejected, GetProductsAsyncWorking, GetProductsAsyncInputRequired, GetProductsAsyncSubmitted, RequestProposalsResponse, RequestProposalsAsyncSubmitted, RefineProposalsResponse, RefineProposalsAsyncSubmitted, DeclineProposalsResponse, MediaBuyCommitmentResponse, ControlMediaBuyResponse, CompactTaskSubmitted, CompactTaskWorking, CompactTaskInputRequired, GetSignalsResponse, GetSignalsAsyncWorking, GetSignalsAsyncSubmitted, CreateMediaBuyResponse, CreateMediaBuyAsyncWorking, CreateMediaBuyAsyncInputRequired, CreateMediaBuyAsyncSubmitted, UpdateMediaBuyResponse, UpdateMediaBuyAsyncWorking, UpdateMediaBuyAsyncInputRequired, UpdateMediaBuyAsyncSubmitted, MediaBuyDeliveryWebhookResult, BuildCreativeResponse, PreviewCreativeResponse, BuildCreativeAsyncWorking, BuildCreativeAsyncInputRequired, BuildCreativeAsyncSubmitted, GetCreativeFeaturesResponse, GetCreativeFeaturesAsyncSubmitted, SyncCreativesResponse, SyncCreativesAsyncWorking, SyncCreativesAsyncInputRequired, SyncCreativesAsyncSubmitted, SyncCatalogsResponse, SyncCatalogsAsyncWorking, SyncCatalogsAsyncInputRequired, SyncCatalogsAsyncSubmitted,)
+AdCPAsyncResponseData._branch_models = (AdCPAsyncResponseDataGetProductsResponse, AdCPAsyncResponseDataRejected, GetProductsAsyncWorking, GetProductsAsyncInputRequired, GetProductsAsyncSubmitted, AdCPAsyncResponseDataRequestProposalsResponse, RequestProposalsAsyncSubmitted, AdCPAsyncResponseDataRefineProposalsResponse, RefineProposalsAsyncSubmitted, AdCPAsyncResponseDataDeclineProposalsResponse, AdCPAsyncResponseDataMediaBuyCommitmentResponse, AdCPAsyncResponseDataControlMediaBuyResponse, AdCPAsyncResponseDataCompactTaskSubmitted, AdCPAsyncResponseDataCompactTaskWorking, AdCPAsyncResponseDataCompactTaskInputRequired, AdCPAsyncResponseDataGetSignalsResponse, GetSignalsAsyncWorking, GetSignalsAsyncSubmitted, AdCPAsyncResponseDataCreateMediaBuyResponse, CreateMediaBuyAsyncWorking, CreateMediaBuyAsyncInputRequired, CreateMediaBuyAsyncSubmitted, AdCPAsyncResponseDataUpdateMediaBuyResponse, UpdateMediaBuyAsyncWorking, UpdateMediaBuyAsyncInputRequired, UpdateMediaBuyAsyncSubmitted, AdCPAsyncResponseDataMediaBuyDeliveryWebhookResult, AdCPAsyncResponseDataBuildCreativeResponse, AdCPAsyncResponseDataPreviewCreativeResponse, BuildCreativeAsyncWorking, BuildCreativeAsyncInputRequired, BuildCreativeAsyncSubmitted, AdCPAsyncResponseDataGetCreativeFeaturesResponse, GetCreativeFeaturesAsyncSubmitted, AdCPAsyncResponseDataSyncCreativesResponse, SyncCreativesAsyncWorking, SyncCreativesAsyncInputRequired, SyncCreativesAsyncSubmitted, AdCPAsyncResponseDataSyncCatalogsResponse, SyncCatalogsAsyncWorking, SyncCatalogsAsyncInputRequired, SyncCatalogsAsyncSubmitted,)
 AdCPAsyncResponseData.model_rebuild(force=True)
 
 

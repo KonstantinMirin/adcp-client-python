@@ -83,7 +83,7 @@ class RendersItemDimensions(RendersItem):
     dimensions: Annotated[Dimensions, Field(description='Dimensions for this rendered piece. Defaults to pixels when unit is absent.')]
 
 
-class RendersItemTrue(RendersItem):
+class RendersItemParametersFromFormatId(RendersItem):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/renders/items/oneOf/1')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('dimensions',),)),
@@ -91,7 +91,7 @@ class RendersItemTrue(RendersItem):
     parameters_from_format_id: Annotated[Literal[True], Field(description='When true, parameters for this render (dimensions and/or duration) are specified in the format_id. Used for template formats that accept parameters. Mutually exclusive with specifying dimensions object explicitly.')]
 
 
-RendersItem._branch_models = (RendersItemDimensions, RendersItemTrue,)
+RendersItem._branch_models = (RendersItemDimensions, RendersItemParametersFromFormatId,)
 RendersItem.model_rebuild(force=True)
 
 
@@ -112,7 +112,7 @@ class AssetsItemIndividual(BranchDispatchMixin, AdCPBaseModel):
     item_type: Literal['individual']
 
 
-class FormatBaseIndividualAsset(AdCPBaseModel):
+class BaseIndividualAsset(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/$defs/baseIndividualAsset')
     item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset')]
     asset_id: Annotated[str, Field(description='Unique identifier for this asset. Creative manifests MUST use this exact value as the key in the assets object.')]
@@ -123,7 +123,7 @@ class FormatBaseIndividualAsset(AdCPBaseModel):
     asset_type: Any
 
 
-class IndividualImageAsset(AssetsItemIndividual, FormatBaseIndividualAsset):
+class IndividualImageAsset(AssetsItemIndividual, BaseIndividualAsset):
     """
     Image asset
     """
@@ -133,7 +133,7 @@ class IndividualImageAsset(AssetsItemIndividual, FormatBaseIndividualAsset):
     requirements: ImageAssetRequirements | None = None
 
 
-class IndividualVideoAsset(AssetsItemIndividual, FormatBaseIndividualAsset):
+class IndividualVideoAsset(AssetsItemIndividual, BaseIndividualAsset):
     """
     Video asset
     """
@@ -143,7 +143,7 @@ class IndividualVideoAsset(AssetsItemIndividual, FormatBaseIndividualAsset):
     requirements: VideoAssetRequirements | None = None
 
 
-class IndividualAudioAsset(AssetsItemIndividual, FormatBaseIndividualAsset):
+class IndividualAudioAsset(AssetsItemIndividual, BaseIndividualAsset):
     """
     Audio asset
     """
@@ -153,7 +153,7 @@ class IndividualAudioAsset(AssetsItemIndividual, FormatBaseIndividualAsset):
     requirements: AudioAssetRequirements | None = None
 
 
-class IndividualTextAsset(AssetsItemIndividual, FormatBaseIndividualAsset):
+class IndividualTextAsset(AssetsItemIndividual, BaseIndividualAsset):
     """
     Text asset
     """
@@ -163,7 +163,7 @@ class IndividualTextAsset(AssetsItemIndividual, FormatBaseIndividualAsset):
     requirements: TextAssetRequirements | None = None
 
 
-class IndividualMarkdownAsset(AssetsItemIndividual, FormatBaseIndividualAsset):
+class IndividualMarkdownAsset(AssetsItemIndividual, BaseIndividualAsset):
     """
     Markdown asset
     """
@@ -173,7 +173,7 @@ class IndividualMarkdownAsset(AssetsItemIndividual, FormatBaseIndividualAsset):
     requirements: MarkdownAssetRequirements | None = None
 
 
-class IndividualHtmlAsset(AssetsItemIndividual, FormatBaseIndividualAsset):
+class IndividualHtmlAsset(AssetsItemIndividual, BaseIndividualAsset):
     """
     HTML asset
     """
@@ -183,7 +183,7 @@ class IndividualHtmlAsset(AssetsItemIndividual, FormatBaseIndividualAsset):
     requirements: HTMLAssetRequirements | None = None
 
 
-class IndividualCssAsset(AssetsItemIndividual, FormatBaseIndividualAsset):
+class IndividualCssAsset(AssetsItemIndividual, BaseIndividualAsset):
     """
     CSS asset
     """
@@ -193,7 +193,7 @@ class IndividualCssAsset(AssetsItemIndividual, FormatBaseIndividualAsset):
     requirements: CSSAssetRequirements | None = None
 
 
-class IndividualJavaScriptAsset(AssetsItemIndividual, FormatBaseIndividualAsset):
+class IndividualJavaScriptAsset(AssetsItemIndividual, BaseIndividualAsset):
     """
     JavaScript asset
     """
@@ -203,7 +203,7 @@ class IndividualJavaScriptAsset(AssetsItemIndividual, FormatBaseIndividualAsset)
     requirements: JavaScriptAssetRequirements | None = None
 
 
-class IndividualZipAsset(AssetsItemIndividual, FormatBaseIndividualAsset):
+class IndividualZipAsset(AssetsItemIndividual, BaseIndividualAsset):
     """
     Zip-bundled asset (HTML5 banner bundles, etc.)
     """
@@ -212,7 +212,7 @@ class IndividualZipAsset(AssetsItemIndividual, FormatBaseIndividualAsset):
     asset_type: Literal['zip']
 
 
-class IndividualVastAsset(AssetsItemIndividual, FormatBaseIndividualAsset):
+class IndividualVastAsset(AssetsItemIndividual, BaseIndividualAsset):
     """
     VAST asset
     """
@@ -222,7 +222,7 @@ class IndividualVastAsset(AssetsItemIndividual, FormatBaseIndividualAsset):
     requirements: VASTAssetRequirements | None = None
 
 
-class IndividualDaastAsset(AssetsItemIndividual, FormatBaseIndividualAsset):
+class IndividualDaastAsset(AssetsItemIndividual, BaseIndividualAsset):
     """
     DAAST asset
     """
@@ -232,7 +232,7 @@ class IndividualDaastAsset(AssetsItemIndividual, FormatBaseIndividualAsset):
     requirements: DAASTAssetRequirements | None = None
 
 
-class IndividualUrlAsset(AssetsItemIndividual, FormatBaseIndividualAsset):
+class IndividualUrlAsset(AssetsItemIndividual, BaseIndividualAsset):
     """
     URL asset
     """
@@ -242,7 +242,7 @@ class IndividualUrlAsset(AssetsItemIndividual, FormatBaseIndividualAsset):
     requirements: URLAssetRequirements | None = None
 
 
-class IndividualWebhookAsset(AssetsItemIndividual, FormatBaseIndividualAsset):
+class IndividualWebhookAsset(AssetsItemIndividual, BaseIndividualAsset):
     """
     Webhook asset
     """
@@ -252,7 +252,7 @@ class IndividualWebhookAsset(AssetsItemIndividual, FormatBaseIndividualAsset):
     requirements: WebhookAssetRequirements | None = None
 
 
-class IndividualBriefAsset(AssetsItemIndividual, FormatBaseIndividualAsset):
+class IndividualBriefAsset(AssetsItemIndividual, BaseIndividualAsset):
     """
     Brief asset
     """
@@ -261,7 +261,7 @@ class IndividualBriefAsset(AssetsItemIndividual, FormatBaseIndividualAsset):
     asset_type: Literal['brief']
 
 
-class IndividualCatalogAsset(AssetsItemIndividual, FormatBaseIndividualAsset):
+class IndividualCatalogAsset(AssetsItemIndividual, BaseIndividualAsset):
     """
     Catalog asset
     """
@@ -274,7 +274,7 @@ class IndividualCatalogAsset(AssetsItemIndividual, FormatBaseIndividualAsset):
     requirements: CatalogRequirements | None = None
 
 
-class IndividualDisplayTagAsset(AssetsItemIndividual, FormatBaseIndividualAsset):
+class IndividualDisplayTagAsset(AssetsItemIndividual, BaseIndividualAsset):
     """
     Third-party display tag asset
     """
@@ -283,7 +283,7 @@ class IndividualDisplayTagAsset(AssetsItemIndividual, FormatBaseIndividualAsset)
     asset_type: Literal['display_tag']
 
 
-class IndividualPublishedPostAsset(AssetsItemIndividual, FormatBaseIndividualAsset):
+class IndividualPublishedPostAsset(AssetsItemIndividual, BaseIndividualAsset):
     """
     Published post asset
     """
@@ -292,7 +292,7 @@ class IndividualPublishedPostAsset(AssetsItemIndividual, FormatBaseIndividualAss
     asset_type: Literal['published_post']
 
 
-class IndividualCardAsset(AssetsItemIndividual, FormatBaseIndividualAsset):
+class IndividualCardAsset(AssetsItemIndividual, BaseIndividualAsset):
     """
     Card asset
     """
@@ -301,7 +301,7 @@ class IndividualCardAsset(AssetsItemIndividual, FormatBaseIndividualAsset):
     asset_type: Literal['card']
 
 
-class IndividualPixelTrackerAsset(AssetsItemIndividual, FormatBaseIndividualAsset):
+class IndividualPixelTrackerAsset(AssetsItemIndividual, BaseIndividualAsset):
     """
     Pixel tracker asset
     """
@@ -310,7 +310,7 @@ class IndividualPixelTrackerAsset(AssetsItemIndividual, FormatBaseIndividualAsse
     asset_type: Literal['pixel_tracker']
 
 
-class IndividualVastTrackerAsset(AssetsItemIndividual, FormatBaseIndividualAsset):
+class IndividualVastTrackerAsset(AssetsItemIndividual, BaseIndividualAsset):
     """
     VAST tracker asset
     """
@@ -319,7 +319,7 @@ class IndividualVastTrackerAsset(AssetsItemIndividual, FormatBaseIndividualAsset
     asset_type: Literal['vast_tracker']
 
 
-class IndividualDaastTrackerAsset(AssetsItemIndividual, FormatBaseIndividualAsset):
+class IndividualDaastTrackerAsset(AssetsItemIndividual, BaseIndividualAsset):
     """
     DAAST tracker asset
     """
@@ -340,7 +340,7 @@ class SelectionMode(StrEnum):
     OPTIMIZE = 'optimize'
 
 
-class FormatBaseGroupAsset(AdCPBaseModel):
+class BaseGroupAsset(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/$defs/baseGroupAsset')
     asset_id: Annotated[str, Field(description='Identifier for this asset within the group')]
     asset_role: Annotated[str | None, Field(description="Descriptive label for this asset's purpose. For documentation and UI display only — manifests key assets by asset_id, not asset_role.")] = None
@@ -350,7 +350,7 @@ class FormatBaseGroupAsset(AdCPBaseModel):
     asset_type: Any
 
 
-class GroupImageAsset(FormatBaseGroupAsset):
+class GroupImageAsset(BaseGroupAsset):
     """
     Image asset in group
     """
@@ -359,7 +359,7 @@ class GroupImageAsset(FormatBaseGroupAsset):
     requirements: ImageAssetRequirements | None = None
 
 
-class GroupVideoAsset(FormatBaseGroupAsset):
+class GroupVideoAsset(BaseGroupAsset):
     """
     Video asset in group
     """
@@ -368,7 +368,7 @@ class GroupVideoAsset(FormatBaseGroupAsset):
     requirements: VideoAssetRequirements | None = None
 
 
-class GroupAudioAsset(FormatBaseGroupAsset):
+class GroupAudioAsset(BaseGroupAsset):
     """
     Audio asset in group
     """
@@ -377,7 +377,7 @@ class GroupAudioAsset(FormatBaseGroupAsset):
     requirements: AudioAssetRequirements | None = None
 
 
-class GroupTextAsset(FormatBaseGroupAsset):
+class GroupTextAsset(BaseGroupAsset):
     """
     Text asset in group
     """
@@ -386,7 +386,7 @@ class GroupTextAsset(FormatBaseGroupAsset):
     requirements: TextAssetRequirements | None = None
 
 
-class GroupMarkdownAsset(FormatBaseGroupAsset):
+class GroupMarkdownAsset(BaseGroupAsset):
     """
     Markdown asset in group
     """
@@ -395,7 +395,7 @@ class GroupMarkdownAsset(FormatBaseGroupAsset):
     requirements: MarkdownAssetRequirements | None = None
 
 
-class GroupHtmlAsset(FormatBaseGroupAsset):
+class GroupHtmlAsset(BaseGroupAsset):
     """
     HTML asset in group
     """
@@ -404,7 +404,7 @@ class GroupHtmlAsset(FormatBaseGroupAsset):
     requirements: HTMLAssetRequirements | None = None
 
 
-class GroupCssAsset(FormatBaseGroupAsset):
+class GroupCssAsset(BaseGroupAsset):
     """
     CSS asset in group
     """
@@ -413,7 +413,7 @@ class GroupCssAsset(FormatBaseGroupAsset):
     requirements: CSSAssetRequirements | None = None
 
 
-class GroupJavaScriptAsset(FormatBaseGroupAsset):
+class GroupJavaScriptAsset(BaseGroupAsset):
     """
     JavaScript asset in group
     """
@@ -422,7 +422,7 @@ class GroupJavaScriptAsset(FormatBaseGroupAsset):
     requirements: JavaScriptAssetRequirements | None = None
 
 
-class GroupZipAsset(FormatBaseGroupAsset):
+class GroupZipAsset(BaseGroupAsset):
     """
     Zip-bundled asset in group (HTML5 banner bundles, etc.)
     """
@@ -430,7 +430,7 @@ class GroupZipAsset(FormatBaseGroupAsset):
     asset_type: Literal['zip']
 
 
-class GroupVastAsset(FormatBaseGroupAsset):
+class GroupVastAsset(BaseGroupAsset):
     """
     VAST asset in group
     """
@@ -439,7 +439,7 @@ class GroupVastAsset(FormatBaseGroupAsset):
     requirements: VASTAssetRequirements | None = None
 
 
-class GroupDaastAsset(FormatBaseGroupAsset):
+class GroupDaastAsset(BaseGroupAsset):
     """
     DAAST asset in group
     """
@@ -448,7 +448,7 @@ class GroupDaastAsset(FormatBaseGroupAsset):
     requirements: DAASTAssetRequirements | None = None
 
 
-class GroupUrlAsset(FormatBaseGroupAsset):
+class GroupUrlAsset(BaseGroupAsset):
     """
     URL asset in group
     """
@@ -457,7 +457,7 @@ class GroupUrlAsset(FormatBaseGroupAsset):
     requirements: URLAssetRequirements | None = None
 
 
-class GroupWebhookAsset(FormatBaseGroupAsset):
+class GroupWebhookAsset(BaseGroupAsset):
     """
     Webhook asset in group
     """
@@ -466,7 +466,7 @@ class GroupWebhookAsset(FormatBaseGroupAsset):
     requirements: WebhookAssetRequirements | None = None
 
 
-class GroupBriefAsset(FormatBaseGroupAsset):
+class GroupBriefAsset(BaseGroupAsset):
     """
     Brief asset in group
     """
@@ -474,7 +474,7 @@ class GroupBriefAsset(FormatBaseGroupAsset):
     asset_type: Literal['brief']
 
 
-class GroupCatalogAsset(FormatBaseGroupAsset):
+class GroupCatalogAsset(BaseGroupAsset):
     """
     Catalog asset in group
     """
@@ -486,7 +486,7 @@ class GroupCatalogAsset(FormatBaseGroupAsset):
     requirements: CatalogRequirements | None = None
 
 
-class GroupDisplayTagAsset(FormatBaseGroupAsset):
+class GroupDisplayTagAsset(BaseGroupAsset):
     """
     Third-party display tag asset in group
     """
@@ -494,7 +494,7 @@ class GroupDisplayTagAsset(FormatBaseGroupAsset):
     asset_type: Literal['display_tag']
 
 
-class GroupPublishedPostAsset(FormatBaseGroupAsset):
+class GroupPublishedPostAsset(BaseGroupAsset):
     """
     Published post asset in group
     """
@@ -502,7 +502,7 @@ class GroupPublishedPostAsset(FormatBaseGroupAsset):
     asset_type: Literal['published_post']
 
 
-class GroupCardAsset(FormatBaseGroupAsset):
+class GroupCardAsset(BaseGroupAsset):
     """
     Card asset in group
     """
@@ -510,7 +510,7 @@ class GroupCardAsset(FormatBaseGroupAsset):
     asset_type: Literal['card']
 
 
-class GroupPixelTrackerAsset(FormatBaseGroupAsset):
+class GroupPixelTrackerAsset(BaseGroupAsset):
     """
     Pixel tracker asset in group
     """
@@ -518,7 +518,7 @@ class GroupPixelTrackerAsset(FormatBaseGroupAsset):
     asset_type: Literal['pixel_tracker']
 
 
-class GroupVastTrackerAsset(FormatBaseGroupAsset):
+class GroupVastTrackerAsset(BaseGroupAsset):
     """
     VAST tracker asset in group
     """
@@ -526,7 +526,7 @@ class GroupVastTrackerAsset(FormatBaseGroupAsset):
     asset_type: Literal['vast_tracker']
 
 
-class GroupDaastTrackerAsset(FormatBaseGroupAsset):
+class GroupDaastTrackerAsset(BaseGroupAsset):
     """
     DAAST tracker asset in group
     """
@@ -636,4 +636,4 @@ class Format(AdCPBaseModel):
     canonical_parameters: Annotated[Annotated[ProductFormatDeclaration, AfterValidator(ForbiddenGroups((('tracker_execution_contract',), ('tracker_execution_contract_digest',))))] | None, Field(description="**DEPRECATED in 3.1. Removed at 4.0.** Use `v1_format_ref` on the v2 `ProductFormatDeclaration` instead — the seller authors a v2 declaration (in `Product.format_options` or `creative.supported_formats`) and links it back to this v1 format via `v1_format_ref: { agent_url, id }`. The directional link from v2 → v1 is the same fact as `canonical_parameters` without the parallel-shape drift surface (v1 file and `canonical_parameters` were two declarations of the same thing; hand-authored, drifting silently).\n\nMigration: every seller currently authoring `canonical_parameters` SHOULD migrate to authoring a v2 declaration on the corresponding product (or capability) with `v1_format_ref` pointing back at this v1 format. v1 files become pure v1 again — no v2-shape mirroring.\n\n*Legacy behavior, retained for 3.1–3.x backward compatibility:* When `canonical` is set, this field carries the full ProductFormatDeclaration that the SDK projects this v1 format into. The `format_kind` MUST equal the `canonical` field value (validators enforce). When set, this is the authoritative source for SDK v1→v2 projection — the registry's structural-match parameter inference is bypassed. SDKs reading 3.1 catalogs MUST continue to honor `canonical_parameters` when present; 4.0+ SDKs MAY reject the field. New code SHOULD NOT emit this field. Seller execution authority is never projected through this deprecated field, so tracker_execution_contract and tracker_execution_contract_digest are forbidden.\n\n**Drift contract (still normative while supported).** Hand-authored `canonical_parameters` MUST satisfy the *narrows* relation against this v1 format's `requirements` and `assets[*]` shape (see canonical-formats.mdx 'Narrows — formal definition'). SDKs that read this v1 file SHOULD lint-time check the equivalence at build/load and emit `FORMAT_PROJECTION_FAILED` if the two disagree.")] = None
 
 
-__all__ = ["Format", "FormatBaseGroupAsset", "FormatBaseIndividualAsset"]
+__all__ = ["Format", "BaseGroupAsset", "BaseIndividualAsset"]

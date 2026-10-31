@@ -38,7 +38,7 @@ class Issuer(AdCPBaseModel):
     name: StrMinLen1 | None = None
 
 
-class PolicyEntryExemplar(AdCPBaseModel):
+class Exemplar(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -55,8 +55,8 @@ class Exemplars(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/policy-entry.json', pointer='#/properties/exemplars')
-    pass_: Annotated[list[PolicyEntryExemplar] | None, Field(alias='pass', description='Scenarios that comply with this policy.')] = None
-    fail: Annotated[list[PolicyEntryExemplar] | None, Field(description='Scenarios that violate this policy.')] = None
+    pass_: Annotated[list[Exemplar] | None, Field(alias='pass', description='Scenarios that comply with this policy.')] = None
+    fail: Annotated[list[Exemplar] | None, Field(description='Scenarios that violate this policy.')] = None
 
 
 class PolicyEntry(AdCPBaseModel):
@@ -92,4 +92,4 @@ class PolicyEntry(AdCPBaseModel):
     ext: ExtensionObject | None = None
 
 
-__all__ = ["PolicyEntry", "PolicyEntryExemplar"]
+__all__ = ["PolicyEntry", "Exemplar"]

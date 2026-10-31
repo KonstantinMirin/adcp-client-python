@@ -67,7 +67,7 @@ class WholesaleFeedEvent(BranchDispatchMixin, AdCPBaseModel):
     payload: Annotated[dict[str, Any], Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
 
 
-class WholesaleFeedEventAppliesToPublic(AdCPBaseModel):
+class AppliesToPublic(AdCPBaseModel):
     """
     Public layer — invalidate the public-layer cache for the entity; all account overlays referencing that public version are also stale.
     """
@@ -78,7 +78,7 @@ class WholesaleFeedEventAppliesToPublic(AdCPBaseModel):
     scope: Literal['public']
 
 
-class WholesaleFeedEventAppliesToAccount(AdCPBaseModel):
+class AppliesToAccount(AdCPBaseModel):
     """
     Account overlay — invalidate the named account overlays only; public layer unaffected. The seller MAY omit account_ids when the affected set is competitively sensitive, but MUST ensure account-scoped webhook fan-out only delivers changes to subscribers authorized for the affected account overlays.
     """
@@ -90,7 +90,7 @@ class WholesaleFeedEventAppliesToAccount(AdCPBaseModel):
     account_ids: Annotated[list[str] | None, Field(description="Optional. When present, names the accounts whose overlays are affected. When omitted, subscribers infer that their own principal's overlay is affected (they received the event because the per-subscriber scope filter routed it to them).", min_length=1)] = None
 
 
-WholesaleFeedEventAppliesTo = Annotated[WholesaleFeedEventAppliesToPublic | WholesaleFeedEventAppliesToAccount, Field(description='Declares which cache layer this event invalidates. See specs/wholesale-feed-webhooks.md §Cache layering and event scoping.')]
+AppliesTo = Annotated[AppliesToPublic | AppliesToAccount, Field(description='Declares which cache layer this event invalidates. See specs/wholesale-feed-webhooks.md §Cache layering and event scoping.')]
 
 
 class WholesaleFeedEventProductCreatedProductPayload(AdCPBaseModel):
@@ -108,7 +108,7 @@ class WholesaleFeedEventProductCreatedProductPayload(AdCPBaseModel):
     product_id: str
     product: Annotated[Product | None, Field(description='Legacy 3.x post-change Product. Subscribers using get_products consume this form.')] = None
     canonical_product: Annotated[CanonicalProduct | None, Field(description='Canonical post-change Product for subscribers that negotiated lifecycle_tools.list_products. Consumers replace the matching canonical mirror entry directly.')] = None
-    applies_to: Annotated[WholesaleFeedEventAppliesTo, Field(description="REQUIRED. Sellers MUST declare the cache layer explicitly on every *.created event. When introducing an entity that exists only in an account overlay (e.g., a custom product for a single account), the seller MUST emit { scope: 'account', account_ids: [...] } to prevent the entity from leaking into every consumer's public-layer cache. For public-layer additions, declare { scope: 'public' } explicitly rather than relying on a default — schema-required declaration prevents the quiet-failure path where a forgotten applies_to leaks an account-only entity to all consumers.")]
+    applies_to: Annotated[AppliesTo, Field(description="REQUIRED. Sellers MUST declare the cache layer explicitly on every *.created event. When introducing an entity that exists only in an account overlay (e.g., a custom product for a single account), the seller MUST emit { scope: 'account', account_ids: [...] } to prevent the entity from leaking into every consumer's public-layer cache. For public-layer additions, declare { scope: 'public' } explicitly rather than relying on a default — schema-required declaration prevents the quiet-failure path where a forgotten applies_to leaks an account-only entity to all consumers.")]
 
 
 class WholesaleFeedEventProductCreatedProduct(WholesaleFeedEvent):
@@ -137,7 +137,7 @@ class WholesaleFeedEventProductUpdatedProductPayload(AdCPBaseModel):
     product: Annotated[Product | None, Field(description='Legacy 3.x post-change Product for get_products mirrors.')] = None
     canonical_product: Annotated[CanonicalProduct | None, Field(description='Canonical post-change Product for list_products mirrors.')] = None
     changed_fields: Annotated[list[str] | None, Field(description="Advisory list of changed top-level field names (e.g., ['format_ids', 'performance_standards']). Consumers MAY use for fine-grained re-render, but the product object is the source of truth for this webhook payload.")] = None
-    applies_to: WholesaleFeedEventAppliesTo
+    applies_to: AppliesTo
 
 
 class WholesaleFeedEventProductUpdatedProduct(WholesaleFeedEvent):
@@ -168,7 +168,7 @@ class WholesaleFeedEventProductPricedProductPayload(AdCPBaseModel):
     previous_pricing_option_ids: Annotated[list[str] | None, Field(description='Optional. Lets consumers detect which pricing_option_ids were retired.')] = None
     effective_at: Annotated[AwareDatetime | None, Field(description='When the price change takes effect. A value in the future is a pre-announcement: consumers MAY warm caches but MUST NOT bind decisions until the effective time has passed. See specs/wholesale-feed-webhooks.md §`effective_at` and pre-announce.')] = None
     retracts_event_id: Annotated[str | None, Field(description="Optional. When this event retracts a prior pre-announced *.priced (per the §`effective_at` and pre-announce rules), set this to the event_id of the announcement being retracted. Lets consumers detect retraction deterministically by event_id lookup rather than maintaining per-entity 'latest-event' state. When present, the retraction MUST carry effective_at <= the retracted event's effective_at.", json_schema_extra={'format': 'uuid'})] = None
-    applies_to: WholesaleFeedEventAppliesTo
+    applies_to: AppliesTo
 
 
 class WholesaleFeedEventProductPricedProduct(WholesaleFeedEvent):
@@ -181,7 +181,7 @@ class WholesaleFeedEventProductPricedProduct(WholesaleFeedEvent):
     payload: Annotated[WholesaleFeedEventProductPricedProductPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
 
 
-class WholesaleFeedEventRemovalReason(StrEnum):
+class RemovalReason(StrEnum):
     """
     Why the entity was removed. 'withdrawn': seller-initiated, no resubmit path. 'cancellation': resource cancelled, may return. 'expired': time-bounded availability ended (flight ended, seasonal product retired). 'depublication': underlying property depublished (see publisher.adagents_changed in the registry feed). 'policy_takedown': governance-driven removal (AdCP governance agent OR external regulator/legal takedown). In-flight buys honor existing cancellation policy regardless of reason; storefront UX differs.
     """
@@ -201,8 +201,8 @@ class WholesaleFeedEventProductRemovedProductPayload(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/wholesale-feed-event.json', pointer='#/oneOf/3/properties/payload')
     product_id: str
-    removal_reason: WholesaleFeedEventRemovalReason | None = None
-    applies_to: WholesaleFeedEventAppliesTo
+    removal_reason: RemovalReason | None = None
+    applies_to: AppliesTo
 
 
 class WholesaleFeedEventProductRemovedProduct(WholesaleFeedEvent):
@@ -227,7 +227,7 @@ class Range(AdCPBaseModel):
     max: Annotated[float, Field(description='Maximum value, inclusive.')]
 
 
-class WholesaleFeedEventSignal(SignalListing):
+class Signal(SignalListing):
     """
     One signal entry using the same wire shape as an item in get_signals.signals[].
     """
@@ -264,8 +264,8 @@ class WholesaleFeedEventSignalCreatedSignalPayload(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/wholesale-feed-event.json', pointer='#/oneOf/4/properties/payload')
     signal_agent_segment_id: str
     signal_ref: SignalRef | None = None
-    applies_to: Annotated[WholesaleFeedEventAppliesTo, Field(description="REQUIRED. Agents MUST declare the cache layer explicitly on every *.created event. When introducing a signal that exists only in an account overlay (e.g., a custom segment for a single account), the agent MUST emit { scope: 'account', account_ids: [...] } to prevent leak into every consumer's public-layer cache. For public-layer additions, declare { scope: 'public' } explicitly rather than relying on a default — schema-required declaration prevents the quiet-failure path.")]
-    signal: Annotated[WholesaleFeedEventSignal, Field(description='Full post-change signal object.')]
+    applies_to: Annotated[AppliesTo, Field(description="REQUIRED. Agents MUST declare the cache layer explicitly on every *.created event. When introducing a signal that exists only in an account overlay (e.g., a custom segment for a single account), the agent MUST emit { scope: 'account', account_ids: [...] } to prevent leak into every consumer's public-layer cache. For public-layer additions, declare { scope: 'public' } explicitly rather than relying on a default — schema-required declaration prevents the quiet-failure path.")]
+    signal: Annotated[Signal, Field(description='Full post-change signal object.')]
 
 
 class WholesaleFeedEventSignalCreatedSignal(WholesaleFeedEvent):
@@ -289,8 +289,8 @@ class WholesaleFeedEventSignalUpdatedSignalPayload(AdCPBaseModel):
     signal_agent_segment_id: str
     signal_ref: SignalRef | None = None
     changed_fields: Annotated[list[str] | None, Field(description='Advisory list of changed top-level field names. Consumers MAY use for fine-grained re-render, but the signal object is the source of truth for this webhook payload.')] = None
-    applies_to: WholesaleFeedEventAppliesTo
-    signal: Annotated[WholesaleFeedEventSignal, Field(description='Full post-change signal object. Consumers replace the prior signal mirror entry with this object.')]
+    applies_to: AppliesTo
+    signal: Annotated[Signal, Field(description='Full post-change signal object. Consumers replace the prior signal mirror entry with this object.')]
 
 
 class WholesaleFeedEventSignalUpdatedSignal(WholesaleFeedEvent):
@@ -317,7 +317,7 @@ class WholesaleFeedEventSignalPricedSignalPayload(AdCPBaseModel):
     previous_pricing_option_ids: list[str] | None = None
     effective_at: Annotated[AwareDatetime | None, Field(description='When the price change takes effect. A value in the future is a pre-announcement: consumers MAY warm caches but MUST NOT bind decisions until the effective time has passed. See specs/wholesale-feed-webhooks.md §`effective_at` and pre-announce.')] = None
     retracts_event_id: Annotated[str | None, Field(description='Optional. When this event retracts a prior pre-announced *.priced, set this to the event_id of the announcement being retracted. See product.priced for the full retraction contract.', json_schema_extra={'format': 'uuid'})] = None
-    applies_to: WholesaleFeedEventAppliesTo
+    applies_to: AppliesTo
 
 
 class WholesaleFeedEventSignalPricedSignal(WholesaleFeedEvent):
@@ -340,8 +340,8 @@ class WholesaleFeedEventSignalRemovedSignalPayload(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/wholesale-feed-event.json', pointer='#/oneOf/7/properties/payload')
     signal_agent_segment_id: str
     signal_ref: SignalRef | None = None
-    removal_reason: WholesaleFeedEventRemovalReason | None = None
-    applies_to: WholesaleFeedEventAppliesTo
+    removal_reason: RemovalReason | None = None
+    applies_to: AppliesTo
 
 
 class WholesaleFeedEventSignalRemovedSignal(WholesaleFeedEvent):
@@ -380,7 +380,7 @@ class WholesaleFeedEventWholesaleFeedBulkChangeFeedPayload(AdCPBaseModel):
     summary: Annotated[str, Field(description="Human-readable description of the bulk operation (e.g., 'Q3 2026 rate card refresh').")]
     affected_count: Annotated[IntMin1, Field(description='Approximate count of affected entities.')]
     recommendation: Annotated[Recommendation | None, Field(description='Advisory recommendation. Consumers SHOULD repair by re-reading the affected feed named by affected_entity_type; the recommendation is not a synchronized trigger. Modeled as a single-value enum (not a boolean) so future minor versions can extend the recommendation vocabulary without a breaking shape change. Consumers MUST be prepared to ignore unknown recommendation values.')] = None
-    applies_to: WholesaleFeedEventAppliesTo
+    applies_to: AppliesTo
     affected_entity_type: Annotated[AffectedEntityType, Field(description='Which wholesale feed this bulk operation touched. A bulk operation that changes both products and signals MUST emit one webhook per feed so each envelope carries the correct post-change wholesale_feed_version.')]
 
 
@@ -398,4 +398,4 @@ WholesaleFeedEvent._branch_models = (WholesaleFeedEventProductCreatedProduct, Wh
 WholesaleFeedEvent.model_rebuild(force=True)
 
 
-__all__ = ["WholesaleFeedEvent", "WholesaleFeedEventAppliesTo", "WholesaleFeedEventRemovalReason", "WholesaleFeedEventSignal"]
+__all__ = ["WholesaleFeedEvent", "AppliesTo", "RemovalReason", "Signal"]

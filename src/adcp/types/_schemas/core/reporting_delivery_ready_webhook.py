@@ -10,7 +10,7 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types.constraints import IntMin1, StrMinLen1, StrMinLen16MaxLen255Matching1E5CF9EB, StrMinLen1MaxLen255Matching67860854, StrMinLen1MaxLen64MatchingD373B860
 
 from ..enums.reporting_finality import ReportingFinality
-from .reporting_delivery_offering import ReportingDeliveryOfferingReportingFeedPurpose
+from .reporting_delivery_offering import ReportingFeedPurpose
 
 
 class Readiness(StrEnum):
@@ -39,7 +39,7 @@ class ReportingDeliveryReadyWebhook(AdCPBaseModel):
     readiness: Readiness
     finality: ReportingFinality
     data_through: AwareDatetime | None
-    feed_purpose: ReportingDeliveryOfferingReportingFeedPurpose
+    feed_purpose: ReportingFeedPurpose
 
 
 __all__ = ["ReportingDeliveryReadyWebhook"]

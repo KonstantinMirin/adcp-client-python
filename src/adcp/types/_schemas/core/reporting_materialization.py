@@ -10,7 +10,7 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import IntMin1, StrMinLen1MaxLen128MatchingE43B025C, StrMinLen1MaxLen255, StrMinLen1MaxLen255Matching67860854, StrMinLen1MaxLen64Matching5CDAE669, StrMinLen1MaxLen64MatchingD373B860
 
-from .reporting_delivery_offering import ReportingDeliveryOfferingReportingFeedPurpose
+from .reporting_delivery_offering import ReportingFeedPurpose
 from .reporting_resource import ReportingResource
 from .reporting_verification import ReportingVerification
 
@@ -49,7 +49,7 @@ class ReportingMaterialization(AdCPBaseModel):
     delivery_config_id: Annotated[StrMinLen1MaxLen64MatchingD373B860, Field(description='Durable configuration that requested this materialization.')]
     delivery_config_version: IntMin1
     destination_ref: Annotated[StrMinLen1MaxLen255, Field(description='Immutable caller-owned destination generation selected by the account-authorized obligation. It may be reused by the same caller across other independently authorized accounts.')]
-    feed_purpose: ReportingDeliveryOfferingReportingFeedPurpose
+    feed_purpose: ReportingFeedPurpose
     method: Method
     transport: StrMinLen1MaxLen64Matching5CDAE669 | None = None
     attempt: IntMin1

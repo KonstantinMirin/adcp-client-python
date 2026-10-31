@@ -14,7 +14,7 @@ from ..core.version_envelope import AdCPVersionEnvelope
 from .offer import Offer
 
 
-class ContextMatchResponseProviderRouterTargetingKvsItem(AdCPBaseModel):
+class TargetingKvsItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -23,7 +23,7 @@ class ContextMatchResponseProviderRouterTargetingKvsItem(AdCPBaseModel):
     value: Annotated[str, Field(description='Targeting value that the router preserves unchanged.')]
 
 
-ContextMatchResponseProviderRouterTargetingKvs = Annotated[list[ContextMatchResponseProviderRouterTargetingKvsItem], Field(description="Provider-local key-value pairs for ad-server targeting. The router preserves each pair unchanged under the emitting provider's registered provider_id.")]
+TargetingKvs = Annotated[list[TargetingKvsItem], Field(description="Provider-local key-value pairs for ad-server targeting. The router preserves each pair unchanged under the emitting provider's registered provider_id.")]
 
 
 class Signals(AdCPBaseModel):
@@ -35,7 +35,7 @@ class Signals(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='trusted-match/provider-context-match-response.json', pointer='#/properties/signals')
     segments: Annotated[list[str] | None, Field(description='Contextual segment identifiers.')] = None
-    targeting_kvs: ContextMatchResponseProviderRouterTargetingKvs | None = None
+    targeting_kvs: TargetingKvs | None = None
 
 
 class ContextMatchResponseProviderRouter(AdCPVersionEnvelope, ProtocolEnvelope):
@@ -60,4 +60,4 @@ class ContextMatchResponseProviderRouter(AdCPVersionEnvelope, ProtocolEnvelope):
     signals: Annotated[Signals | None, Field(description="Provider-origin response-level signals. Targeting pairs use the provider's local key vocabulary; the router preserves and attributes them rather than passing them through as flattened publisher targeting.")] = None
 
 
-__all__ = ["ContextMatchResponseProviderRouter", "ContextMatchResponseProviderRouterTargetingKvs"]
+__all__ = ["ContextMatchResponseProviderRouter", "TargetingKvs"]

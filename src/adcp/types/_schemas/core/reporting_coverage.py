@@ -18,10 +18,10 @@ class Status(StrEnum):
     UNKNOWN = 'unknown'
 
 
-ReportingCoverageReportingMediaBuyId = StrMinLen1
+ReportingMediaBuyId = StrMinLen1
 
 
-ReportingCoverageReportingPackageId = StrMinLen1
+ReportingPackageId = StrMinLen1
 
 
 class Reason(StrEnum):
@@ -41,8 +41,8 @@ class LimitationsItem(AdCPBaseModel):
         UniqueItems('package_ids'),
     )
     reason: Reason
-    media_buy_id: ReportingCoverageReportingMediaBuyId
-    package_ids: Annotated[list[ReportingCoverageReportingPackageId] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    media_buy_id: ReportingMediaBuyId
+    package_ids: Annotated[list[ReportingPackageId] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
 
 
 class ReportingCoverage(AdCPBaseModel):
@@ -66,16 +66,16 @@ class ReportingCoverage(AdCPBaseModel):
     )
     status: Status
     evaluated_at: AwareDatetime
-    media_buy_ids: Annotated[list[ReportingCoverageReportingMediaBuyId], Field(description='Exact media-buy denominator, including unsupported and unknown buys. An empty array is an explicitly evaluated zero-buy scope.', json_schema_extra={'uniqueItems': True})]
-    fully_covered_media_buy_ids: Annotated[list[ReportingCoverageReportingMediaBuyId], Field(json_schema_extra={'uniqueItems': True})]
-    partially_covered_media_buy_ids: Annotated[list[ReportingCoverageReportingMediaBuyId], Field(json_schema_extra={'uniqueItems': True})]
-    unsupported_media_buy_ids: Annotated[list[ReportingCoverageReportingMediaBuyId], Field(json_schema_extra={'uniqueItems': True})]
-    unknown_media_buy_ids: Annotated[list[ReportingCoverageReportingMediaBuyId], Field(json_schema_extra={'uniqueItems': True})]
-    package_ids: Annotated[list[ReportingCoverageReportingPackageId], Field(description='Exact package denominator for the evaluated media buys.', json_schema_extra={'uniqueItems': True})]
-    covered_package_ids: Annotated[list[ReportingCoverageReportingPackageId], Field(json_schema_extra={'uniqueItems': True})]
-    unsupported_package_ids: Annotated[list[ReportingCoverageReportingPackageId], Field(json_schema_extra={'uniqueItems': True})]
-    unknown_package_ids: Annotated[list[ReportingCoverageReportingPackageId], Field(json_schema_extra={'uniqueItems': True})]
+    media_buy_ids: Annotated[list[ReportingMediaBuyId], Field(description='Exact media-buy denominator, including unsupported and unknown buys. An empty array is an explicitly evaluated zero-buy scope.', json_schema_extra={'uniqueItems': True})]
+    fully_covered_media_buy_ids: Annotated[list[ReportingMediaBuyId], Field(json_schema_extra={'uniqueItems': True})]
+    partially_covered_media_buy_ids: Annotated[list[ReportingMediaBuyId], Field(json_schema_extra={'uniqueItems': True})]
+    unsupported_media_buy_ids: Annotated[list[ReportingMediaBuyId], Field(json_schema_extra={'uniqueItems': True})]
+    unknown_media_buy_ids: Annotated[list[ReportingMediaBuyId], Field(json_schema_extra={'uniqueItems': True})]
+    package_ids: Annotated[list[ReportingPackageId], Field(description='Exact package denominator for the evaluated media buys.', json_schema_extra={'uniqueItems': True})]
+    covered_package_ids: Annotated[list[ReportingPackageId], Field(json_schema_extra={'uniqueItems': True})]
+    unsupported_package_ids: Annotated[list[ReportingPackageId], Field(json_schema_extra={'uniqueItems': True})]
+    unknown_package_ids: Annotated[list[ReportingPackageId], Field(json_schema_extra={'uniqueItems': True})]
     limitations: Annotated[list[LimitationsItem], Field(description='Stable reasons that some requested scope is not covered by the exact selected offering. These are capability facts, not delivery failures.')]
 
 
-__all__ = ["ReportingCoverage", "ReportingCoverageReportingMediaBuyId", "ReportingCoverageReportingPackageId"]
+__all__ = ["ReportingCoverage", "ReportingMediaBuyId", "ReportingPackageId"]

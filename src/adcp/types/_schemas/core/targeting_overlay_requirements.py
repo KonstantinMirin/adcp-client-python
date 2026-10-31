@@ -24,7 +24,7 @@ from .positive_postal_area_support import PositivePostalAreaSupport
 TargetingOverlayRequirementsRequired = Literal[True]
 
 
-class TargetingOverlayRequirementsMetroRequirementSystems(AdCPBaseModel):
+class MetroRequirementSystems(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -35,7 +35,7 @@ class TargetingOverlayRequirementsMetroRequirementSystems(AdCPBaseModel):
     systems: Annotated[list[MetroAreaSystem], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
 
 
-TargetingOverlayRequirementsMetroRequirement = TargetingOverlayRequirementsRequired | TargetingOverlayRequirementsMetroRequirementSystems
+MetroRequirement = TargetingOverlayRequirementsRequired | MetroRequirementSystems
 
 
 class GeoProximity(AdCPBaseModel):
@@ -53,7 +53,7 @@ class GeoProximity(AdCPBaseModel):
     transport_modes: Annotated[list[TransportMode] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
 
 
-class TargetingOverlayRequirementsDaypartRequirementTimezoneModes(AdCPBaseModel):
+class DaypartRequirementTimezoneModes(AdCPBaseModel):
     """
     Require later package-level daypart selection using each listed timezone mode. Structured product support must contain every requested mode. For backward compatibility, daypart_targets support true satisfies inventory_local requirements only and does not satisfy requirements for iana.
     """
@@ -69,7 +69,7 @@ class TargetingOverlayRequirementsDaypartRequirementTimezoneModes(AdCPBaseModel)
     iana_timezones: Annotated[list[IANATimezoneIdentifier] | None, Field(description='Exact concrete IANA timezone identifiers that must remain selectable after discovery. Valid only when timezone_modes includes iana.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
 
 
-TargetingOverlayRequirementsDaypartRequirement = TargetingOverlayRequirementsRequired | TargetingOverlayRequirementsDaypartRequirementTimezoneModes
+DaypartRequirement = TargetingOverlayRequirementsRequired | DaypartRequirementTimezoneModes
 
 
 class DemographicsAge(AdCPBaseModel):
@@ -80,7 +80,7 @@ class DemographicsAge(AdCPBaseModel):
     age: TargetingOverlayRequirementsRequired
 
 
-class TargetingOverlayRequirementsBrowserRequirementFamilies(AdCPBaseModel):
+class BrowserRequirementFamilies(AdCPBaseModel):
     """
     Require later package-level selection for the listed canonical browser families. The requirement matches unrestricted true support or structured support containing every requested family.
     """
@@ -94,10 +94,10 @@ class TargetingOverlayRequirementsBrowserRequirementFamilies(AdCPBaseModel):
     families: Annotated[list[BrowserFamily], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
 
 
-TargetingOverlayRequirementsBrowserRequirement = TargetingOverlayRequirementsRequired | TargetingOverlayRequirementsBrowserRequirementFamilies
+BrowserRequirement = TargetingOverlayRequirementsRequired | BrowserRequirementFamilies
 
 
-class TargetingOverlayRequirementsKeywordRequirementSupportedMatchTypes(AdCPBaseModel):
+class KeywordRequirementSupportedMatchTypes(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -108,7 +108,7 @@ class TargetingOverlayRequirementsKeywordRequirementSupportedMatchTypes(AdCPBase
     supported_match_types: Annotated[list[MatchType], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
 
 
-TargetingOverlayRequirementsKeywordRequirement = TargetingOverlayRequirementsRequired | TargetingOverlayRequirementsKeywordRequirementSupportedMatchTypes
+KeywordRequirement = TargetingOverlayRequirementsRequired | KeywordRequirementSupportedMatchTypes
 
 
 class TargetingOverlayRequirements(AdCPBaseModel):
@@ -127,14 +127,14 @@ class TargetingOverlayRequirements(AdCPBaseModel):
     geo_countries_exclude: TargetingOverlayRequirementsRequired | None = None
     geo_regions: TargetingOverlayRequirementsRequired | GeographicRegionRequirement | None = None
     geo_regions_exclude: TargetingOverlayRequirementsRequired | GeographicRegionRequirement | None = None
-    geo_metros: TargetingOverlayRequirementsMetroRequirement | None = None
-    geo_metros_exclude: TargetingOverlayRequirementsMetroRequirement | None = None
+    geo_metros: MetroRequirement | None = None
+    geo_metros_exclude: MetroRequirement | None = None
     geo_places: GeographicPlaceRequirement | None = None
     geo_places_exclude: GeographicPlaceRequirement | None = None
     geo_postal_areas: TargetingOverlayRequirementsRequired | PositivePostalAreaSupport | None = None
     geo_postal_areas_exclude: TargetingOverlayRequirementsRequired | PositivePostalAreaSupport | None = None
     geo_proximity: TargetingOverlayRequirementsRequired | GeoProximity | None = None
-    daypart_targets: TargetingOverlayRequirementsDaypartRequirement | None = None
+    daypart_targets: DaypartRequirement | None = None
     audience_include: TargetingOverlayRequirementsRequired | None = None
     audience_exclude: TargetingOverlayRequirementsRequired | None = None
     signal_targeting_groups: TargetingOverlayRequirementsRequired | None = None
@@ -151,13 +151,13 @@ class TargetingOverlayRequirements(AdCPBaseModel):
     device_platform_exclude: TargetingOverlayRequirementsRequired | None = None
     device_type: TargetingOverlayRequirementsRequired | None = None
     device_type_exclude: TargetingOverlayRequirementsRequired | None = None
-    browser: TargetingOverlayRequirementsBrowserRequirement | None = None
-    browser_exclude: TargetingOverlayRequirementsBrowserRequirement | None = None
+    browser: BrowserRequirement | None = None
+    browser_exclude: BrowserRequirement | None = None
     store_catchments: TargetingOverlayRequirementsRequired | None = None
     language: TargetingOverlayRequirementsRequired | None = None
-    keyword_targets: TargetingOverlayRequirementsKeywordRequirement | None = None
-    negative_keywords: TargetingOverlayRequirementsKeywordRequirement | None = None
+    keyword_targets: KeywordRequirement | None = None
+    negative_keywords: KeywordRequirement | None = None
     ext: ExtensionObject | None = None
 
 
-__all__ = ["TargetingOverlayRequirements", "TargetingOverlayRequirementsBrowserRequirement", "TargetingOverlayRequirementsDaypartRequirement", "TargetingOverlayRequirementsKeywordRequirement", "TargetingOverlayRequirementsMetroRequirement", "TargetingOverlayRequirementsRequired"]
+__all__ = ["TargetingOverlayRequirements", "BrowserRequirement", "DaypartRequirement", "KeywordRequirement", "MetroRequirement", "TargetingOverlayRequirementsRequired"]

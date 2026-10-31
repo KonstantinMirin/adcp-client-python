@@ -26,7 +26,7 @@ class ReportingDeliveryMethod(BranchDispatchMixin, AdCPBaseModel):
         return "oneOf"
 
 
-class ReportingDeliveryMethodReportingOrchestration(StrEnum):
+class ReportingOrchestration(StrEnum):
     """
     Party responsible for starting, configuring, and monitoring the delivery operation. Independent of destination ownership and the service that moves the data.
     """
@@ -52,7 +52,7 @@ class FileTransfer(ReportingDeliveryMethod):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-delivery-method.json', pointer='#/oneOf/0')
     pattern: Annotated[Literal['file_transfer'], Field(description='Immutable file/object publication with a manifest-last commit boundary.')]
     transport: Annotated[StrMinLen1MaxLen64Matching5CDAE669, Field(description='Storage transport such as s3, gcs, azure_blob, or sftp.')]
-    orchestration: ReportingDeliveryMethodReportingOrchestration
+    orchestration: ReportingOrchestration
     destination: ReportingWriteDestination
     format: Annotated[Format, Field(description='Physical file format.')]
 
@@ -64,7 +64,7 @@ class DatasetShare(ReportingDeliveryMethod):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-delivery-method.json', pointer='#/oneOf/1')
     pattern: Annotated[Literal['dataset_share'], Field(description="Producer-hosted relation or share read through the intended recipient's access path.")]
     transport: Annotated[StrMinLen1MaxLen64Matching5CDAE669, Field(description='Sharing transport such as delta_sharing, snowflake_secure_sharing, or bigquery_authorized_view.')]
-    orchestration: ReportingDeliveryMethodReportingOrchestration
+    orchestration: ReportingOrchestration
     destination: ReportingDatasetShareDestination
 
 
@@ -75,7 +75,7 @@ class WarehouseMaterialization(ReportingDeliveryMethod):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-delivery-method.json', pointer='#/oneOf/2')
     pattern: Annotated[Literal['warehouse_materialization'], Field(description='Exact-revision publication into a warehouse relation or partition.')]
     transport: Annotated[StrMinLen1MaxLen64Matching5CDAE669, Field(description='Warehouse or transfer transport such as bigquery, snowflake, databricks_sql, or gam_bigquery_transfer.')]
-    orchestration: ReportingDeliveryMethodReportingOrchestration
+    orchestration: ReportingOrchestration
     destination: ReportingWriteDestination
 
 
@@ -83,4 +83,4 @@ ReportingDeliveryMethod._branch_models = (FileTransfer, DatasetShare, WarehouseM
 ReportingDeliveryMethod.model_rebuild(force=True)
 
 
-__all__ = ["ReportingDeliveryMethod", "ReportingDeliveryMethodReportingOrchestration"]
+__all__ = ["ReportingDeliveryMethod", "ReportingOrchestration"]

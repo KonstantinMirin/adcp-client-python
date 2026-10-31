@@ -12,8 +12,8 @@ from adcp.types.constraints import StrMinLen1
 from ..enums.pixel_tracking_event import PixelTrackingEvent
 from ..enums.tracker_execution_actor import TrackerExecutionActor
 from ..enums.tracker_firing_path import TrackerFiringPath
-from .daast_tracker_constraints import DAASTTrackerConstraints, DAASTTrackerConstraintsDaastEvent, DAASTTrackerConstraintsDaastTarget, DAASTTrackerConstraintsDaastVersions
-from .vast_tracker_constraints import VASTTrackerConstraints, VASTTrackerConstraintsVastEvent, VASTTrackerConstraintsVastTarget, VASTTrackerConstraintsVastVersions
+from .daast_tracker_constraints import DAASTTrackerConstraints, DaastEvent, DaastTarget, DaastVersions
+from .vast_tracker_constraints import VASTTrackerConstraints, VastEvent, VastTarget, VastVersions
 
 
 class TrackerExecutionSelector(BranchDispatchMixin, AdCPBaseModel):
@@ -61,9 +61,9 @@ class TrackerExecutionSelectorVastTracker(TrackerExecutionSelector, VASTTrackerC
     )
     selector_id: Annotated[StrMinLen1, Field(description='Stable identifier unique within the materialized execution contract.')]
     asset_type: Literal['vast_tracker']
-    vast_versions: VASTTrackerConstraintsVastVersions
-    vast_event: VASTTrackerConstraintsVastEvent
-    target: VASTTrackerConstraintsVastTarget
+    vast_versions: VastVersions
+    vast_event: VastEvent
+    target: VastTarget
     execution_actor: TrackerExecutionActor
     firing_paths: Annotated[list[TrackerFiringPath], Field(description='Complete set of permitted initiation environments. Exactly one path is selected for each logical event occurrence.', json_schema_extra={'uniqueItems': True}, min_length=1)]
 
@@ -81,9 +81,9 @@ class TrackerExecutionSelectorDaastTracker(TrackerExecutionSelector, DAASTTracke
     )
     selector_id: Annotated[StrMinLen1, Field(description='Stable identifier unique within the materialized execution contract.')]
     asset_type: Literal['daast_tracker']
-    daast_versions: DAASTTrackerConstraintsDaastVersions
-    daast_event: DAASTTrackerConstraintsDaastEvent
-    target: DAASTTrackerConstraintsDaastTarget
+    daast_versions: DaastVersions
+    daast_event: DaastEvent
+    target: DaastTarget
     execution_actor: TrackerExecutionActor
     firing_paths: Annotated[list[TrackerFiringPath], Field(description='Complete set of permitted initiation environments. Exactly one path is selected for each logical event occurrence.', json_schema_extra={'uniqueItems': True}, min_length=1)]
 

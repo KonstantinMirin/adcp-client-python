@@ -15,7 +15,7 @@ from ..core.context import ContextObject
 from ..core.error import Error
 from ..core.ext import ExtensionObject
 from ..core.protocol_envelope import ProtocolEnvelope
-from ..core.response_payload_jws_envelope import ResponsePayloadJWSEnvelope, ResponsePayloadJWSEnvelopeResponsePayload
+from ..core.response_payload_jws_envelope import ResponsePayload, ResponsePayloadJWSEnvelope
 from ..core.version_envelope import AdCPVersionEnvelope
 from .verification_status import VerificationStatus
 
@@ -46,14 +46,14 @@ class VerifyBrandClaimSuccessClaimType(StrEnum):
     TRADEMARK = 'trademark'
 
 
-class VerifyBrandClaimResponseSignedSuccessPayloadClaimType(StrEnum):
+class SignedSuccessPayloadClaimType(StrEnum):
     SUBSIDIARY = 'subsidiary'
     PARENT = 'parent'
     PROPERTY = 'property'
     TRADEMARK = 'trademark'
 
 
-class VerifyBrandClaimResponseSignedSuccessPayload(AdCPBaseModel):
+class SignedSuccessPayload(AdCPBaseModel):
     """
     Canonical task-body success payload signed inside signed_response.payload.response. Excludes protocol/version envelope fields and signed_response itself.
     """
@@ -64,7 +64,7 @@ class VerifyBrandClaimResponseSignedSuccessPayload(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('errors',), ('signed_response',))),
     )
-    claim_type: VerifyBrandClaimResponseSignedSuccessPayloadClaimType
+    claim_type: SignedSuccessPayloadClaimType
     verification_status: VerificationStatus
     details: dict[str, Any] | None = None
     context_note: StrMaxLen500 | None = None
@@ -72,7 +72,7 @@ class VerifyBrandClaimResponseSignedSuccessPayload(AdCPBaseModel):
     ext: ExtensionObject | None = None
 
 
-class Payload(ResponsePayloadJWSEnvelopeResponsePayload):
+class Payload(ResponsePayload):
     """
     Decoded signed payload. Signers compute the JWS payload bytes from the RFC 8785/JCS canonicalization of this object.
     """
@@ -81,10 +81,10 @@ class Payload(ResponsePayloadJWSEnvelopeResponsePayload):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/verify-brand-claim-response.json', pointer='#/definitions/signed_response/allOf/1/properties/payload')
     task: Annotated[Literal['verify_brand_claim'], Field(description='Designated task whose response payload is signed.')]
-    response: Annotated[VerifyBrandClaimResponseSignedSuccessPayload, Field(description='Canonical task-body success response payload being attested. Any unsigned task-body fields on the outer response, excluding signed_response and protocol/version envelope fields, MUST match this object.')]
+    response: Annotated[SignedSuccessPayload, Field(description='Canonical task-body success response payload being attested. Any unsigned task-body fields on the outer response, excluding signed_response and protocol/version envelope fields, MUST match this object.')]
 
 
-class VerifyBrandClaimResponseSignedResponse(ResponsePayloadJWSEnvelope):
+class SignedResponse(ResponsePayloadJWSEnvelope):
     """
     Decoded-payload JWS envelope for the closed designated-task response-signing profile. The protected member is the base64url-encoded JWS protected header; payload is the decoded signed payload that verifiers canonicalize with RFC 8785/JCS and base64url-encode before checking the ordinary JWS signature.
     """
@@ -108,7 +108,7 @@ class VerifyBrandClaimSuccess(VerifyBrandClaimResponse):
     details: Annotated[dict[str, Any] | None, Field(description="Per-claim-type response fields. Shape varies — see the task page for each claim_type's expected fields. Examples: subsidiary returns brand_id + first_observed_by_house_at + expected_resolution_window_days; parent returns house_domain; property returns relationship + regions + use_case_authorization; trademark returns matched_registration + licensor_domain + countries + nice_classes + use_case_authorization.")] = None
     context_note: Annotated[StrMaxLen500 | None, Field(description='Public — free-text context the brand chooses to surface. For disputed/transferring, typically carries the rationale or transition details.')] = None
     context: ContextObject | None = None
-    signed_response: Annotated[VerifyBrandClaimResponseSignedResponse, Field(description='Payload-envelope JWS attesting the canonical success response for verify_brand_claim. The signed payload response MUST match the unsigned task-body fields on this response, excluding signed_response and protocol/version envelope fields.')]
+    signed_response: Annotated[SignedResponse, Field(description='Payload-envelope JWS attesting the canonical success response for verify_brand_claim. The signed payload response MUST match the unsigned task-body fields on this response, excluding signed_response and protocol/version envelope fields.')]
     ext: ExtensionObject | None = None
 
 
@@ -129,4 +129,4 @@ VerifyBrandClaimResponse._branch_models = (VerifyBrandClaimSuccess, VerifyBrandC
 VerifyBrandClaimResponse.model_rebuild(force=True)
 
 
-__all__ = ["VerifyBrandClaimResponse", "VerifyBrandClaimResponseSignedResponse", "VerifyBrandClaimResponseSignedSuccessPayload"]
+__all__ = ["VerifyBrandClaimResponse", "SignedResponse", "SignedSuccessPayload"]

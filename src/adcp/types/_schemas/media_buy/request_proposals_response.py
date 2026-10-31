@@ -87,7 +87,7 @@ class LossesItem(StrEnum):
     MUTATION_IDEMPOTENCY_NOT_GUARANTEED = 'mutation_idempotency_not_guaranteed'
 
 
-class PurchaseContinuationLegacyCreateTrue(AdCPBaseModel):
+class PurchaseContinuationLegacyCreate(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -134,7 +134,7 @@ class RequestProposalsResponse(BranchDispatchMixin, AdCPBaseModel):
     proposals: Annotated[list[ProposalsItem] | None, Field(min_length=1)] = None
     products: Annotated[list[CanonicalProduct] | None, Field(min_length=1)] = None
     incomplete: Annotated[list[IncompleteItem] | None, Field(description='Usable partial discovery result retained from the established get_products response. Absence means the source response did not declare an incomplete scope; it does not authorize an adapter to infer missing proposal terms.', min_length=1)] = None
-    purchase_continuation: Annotated[PurchaseContinuationListedPurchaseAccount | PurchaseContinuationLegacyCreateTrue | None, Field(description='Deprecated AdCP 3.x projection instruction for purchasing products returned without a proposal. This is coordinator state, not a claim that the established seller implements a compact task. A native 3.2 seller MUST NOT emit it.')] = None
+    purchase_continuation: Annotated[PurchaseContinuationListedPurchaseAccount | PurchaseContinuationLegacyCreate | None, Field(description='Deprecated AdCP 3.x projection instruction for purchasing products returned without a proposal. This is coordinator state, not a claim that the established seller implements a compact task. A native 3.2 seller MUST NOT emit it.')] = None
     targeting_resolution: Annotated[ProductDiscoveryTargetingResolution | None, Field(description='Response-level confirmation of structured targeting interpreted from explicit hard requirements in the brief. Sellers MUST emit this when that interpretation materially affects eligibility, pricing, or forecasting; otherwise it remains a best practice. Product-specific changes to explicit criteria.targeting_overlay values remain on Product.targeting_resolution.')] = None
     status: Status | None = None
     task_id: StrMinLen1 | None = None
@@ -170,7 +170,7 @@ class RequestProposalsResponseProductsAvailableCompleted(RequestProposalsRespons
     outcome: Literal['products_available']
     status: Literal['completed'] | None = None
     products: Annotated[list[CanonicalProduct], Field(min_length=1)]
-    purchase_continuation: Annotated[PurchaseContinuationListedPurchaseAccount | PurchaseContinuationLegacyCreateTrue, Field(description='Deprecated AdCP 3.x projection instruction for purchasing products returned without a proposal. This is coordinator state, not a claim that the established seller implements a compact task. A native 3.2 seller MUST NOT emit it.')]
+    purchase_continuation: Annotated[PurchaseContinuationListedPurchaseAccount | PurchaseContinuationLegacyCreate, Field(description='Deprecated AdCP 3.x projection instruction for purchasing products returned without a proposal. This is coordinator state, not a claim that the established seller implements a compact task. A native 3.2 seller MUST NOT emit it.')]
 
 
 class RequestProposalsResponseRejectedCompleted(RequestProposalsResponse):

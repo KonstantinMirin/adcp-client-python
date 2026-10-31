@@ -67,7 +67,7 @@ class AuthoritativeLocationRedirect(BrandDiscovery):
     last_updated: AwareDatetime | None = None
 
 
-BrandDiscoveryDomain = Annotated[StrMatching32F5291C, Field(description='A valid domain name')]
+Domain = Annotated[StrMatching32F5291C, Field(description='A valid domain name')]
 
 
 HouseRedirectRedirectReason = AuthoritativeLocationRedirectRedirectReason
@@ -82,7 +82,7 @@ class HouseRedirect(BrandDiscovery):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/oneOf/1')
     schema_: Annotated[str | None, Field(alias='$schema')] = None
-    house: Annotated[BrandDiscoveryDomain, Field(description='House domain to fetch brand portfolio from')]
+    house: Annotated[Domain, Field(description='House domain to fetch brand portfolio from')]
     region: Annotated[StrMatchingEFC12812 | None, Field(description='ISO 3166-1 alpha-2 country code if this is a regional domain')] = None
     redirect_reason: Annotated[HouseRedirectRedirectReason | None, Field(description="Optional structured signal indicating why this redirect was put in place. Consumers SHOULD use this to inform cache TTL decisions: 'acquisition' / 'divestiture' / 'rebrand' / 'consolidation' suggest the resolved target is in transition and consumers SHOULD shorten cache TTL until stable. 'regional' / 'legacy' suggest a stable redirect with no special cache handling needed. Free-text rationale belongs in 'note'.")] = None
     redirect_effective_at: Annotated[AwareDatetime | None, Field(description='Optional timestamp when this redirect became effective. Caches MUST treat any entry cached before this timestamp as stale and re-fetch through the redirect.')] = None
@@ -90,7 +90,7 @@ class HouseRedirect(BrandDiscovery):
     last_updated: AwareDatetime | None = None
 
 
-class BrandDiscoveryBrandAgentEntry(AdCPBaseModel):
+class BrandAgentEntry(AdCPBaseModel):
     """
     An agent declared by a brand or house. Each entry identifies one agent endpoint and its functional role in the advertising ecosystem.
     """
@@ -108,7 +108,7 @@ class BrandDiscoveryBrandAgentEntry(AdCPBaseModel):
     countries: Annotated[list[StrMatchingEFC12812] | None, Field(description='ISO 3166-1 alpha-2 country codes where this agent operates. Omit for global scope.')] = None
 
 
-BrandDiscoveryAgents = Annotated[list[BrandDiscoveryBrandAgentEntry], Field(description='Agents declared by this brand or house. Multiple entries with the same type are permitted when they have distinct url values, such as one endpoint URL per tenant or property scope. Agent url values MUST be unique within this array; duplicate urls are invalid because signature verifiers resolve a signing key by matching one agent url to one agents[] entry and reject ambiguous matches.')]
+Agents = Annotated[list[BrandAgentEntry], Field(description='Agents declared by this brand or house. Multiple entries with the same type are permitted when they have distinct url values, such as one endpoint URL per tenant or property scope. Agent url values MUST be unique within this array; duplicate urls are invalid because signature verifiers resolve a signing key by matching one agent url to one agents[] entry and reject ambiguous matches.')]
 
 
 class BrandDiscoveryBrandAgent(AdCPBaseModel):
@@ -133,10 +133,10 @@ class BrandDiscoveryContact(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/contact')
     name: StrMinLen1MaxLen255
     email: Annotated[StrMaxLen255 | None, Field(json_schema_extra={'format': 'email'})] = None
-    domain: BrandDiscoveryDomain | None = None
+    domain: Domain | None = None
 
 
-class BrandDiscoveryDataSubjectContestation(AdCPBaseModel):
+class DataSubjectContestation(AdCPBaseModel):
     """
     Contact point where a data subject can request human intervention, express their view, or contest an automated decision — satisfying GDPR Article 22(3) and EU AI Act Article 26(11) transparency obligations. This is a contact reference (URL, email, or both), not a machine-callable API. AdCP surfaces the pointer; the deployer runs the contestation workflow.
     """
@@ -165,14 +165,14 @@ class BrandAgent(BrandDiscovery):
     )
     schema_: Annotated[str | None, Field(alias='$schema')] = None
     version: str | None = None
-    agents: BrandDiscoveryAgents | None = None
+    agents: Agents | None = None
     brand_agent: BrandDiscoveryBrandAgent | None = None
     contact: BrandDiscoveryContact | None = None
-    data_subject_contestation: BrandDiscoveryDataSubjectContestation | None = None
+    data_subject_contestation: DataSubjectContestation | None = None
     last_updated: AwareDatetime | None = None
 
 
-BrandDiscoveryLocalizedName = Annotated[dict[str, StrMinLen1], Field(description="A localized name using the legacy underscore-separated language/region key convention (for example 'en_US', 'fr_CA', or 'zh_CN') and a name value. Bare language codes such as 'en' are also accepted for backwards compatibility. These keys are not AdCP locale-tag values: a bridge to /schemas/core/locale-tag.json replaces '_' with '-', applies the AdCP canonical wire profile, and validates the result rather than passing the key through unchanged.", max_length=1, min_length=1)]
+LocalizedName = Annotated[dict[str, StrMinLen1], Field(description="A localized name using the legacy underscore-separated language/region key convention (for example 'en_US', 'fr_CA', or 'zh_CN') and a name value. Bare language codes such as 'en' are also accepted for backwards compatibility. These keys are not AdCP locale-tag values: a bridge to /schemas/core/locale-tag.json replaces '_' with '-', applies the AdCP canonical wire profile, and validates the result rather than passing the key through unchanged.", max_length=1, min_length=1)]
 
 
 class Architecture(StrEnum):
@@ -192,7 +192,7 @@ class Scope(StrEnum):
     PROPERTY = 'property'
 
 
-class BrandDiscoveryIdentityRelyingParty(AdCPBaseModel):
+class IdentityRelyingParty(AdCPBaseModel):
     """
     A verified-identity relying party an entity or brand operates. Used for attestation provenance in TMP Identity Match (the buyer checks a forwarded attestation's relying_party_id against the owner's published list). Issuer-agnostic; World ID is the first issuer.
     """
@@ -206,7 +206,7 @@ class BrandDiscoveryIdentityRelyingParty(AdCPBaseModel):
     scope: Annotated[Scope | None, Field(description="Whether this relying_party_id is shared across the entity's properties (entity → a within-entity unique-human graph) or scoped to a single property (property → per-property pseudonyms, unlinkable across the entity).")] = None
 
 
-class BrandDiscoveryHouse(AdCPBaseModel):
+class House(AdCPBaseModel):
     """
     Corporate or organizational entity that owns brands
     """
@@ -214,19 +214,19 @@ class BrandDiscoveryHouse(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/house')
-    domain: Annotated[BrandDiscoveryDomain, Field(description="The house's domain where brand.json is hosted")]
+    domain: Annotated[Domain, Field(description="The house's domain where brand.json is hosted")]
     name: Annotated[StrMinLen1, Field(description='Primary display name of the house')]
-    names: Annotated[list[BrandDiscoveryLocalizedName] | None, Field(description='Localized house names including legal name, stock symbol, etc.')] = None
+    names: Annotated[list[LocalizedName] | None, Field(description='Localized house names including legal name, stock symbol, etc.')] = None
     architecture: Annotated[Architecture | None, Field(description='Brand architecture model: branded_house (Google), house_of_brands (P&G), hybrid (Nike)')] = None
-    agents: Annotated[BrandDiscoveryAgents | None, Field(description='House-level agents that apply to all brands unless overridden at the brand level')] = None
-    data_subject_contestation: Annotated[BrandDiscoveryDataSubjectContestation | None, Field(description='House-level fallback contestation contact. Governance agents resolve in order: brand.data_subject_contestation → house.data_subject_contestation → missing (critical finding when human review required).')] = None
-    identity_relying_parties: Annotated[list[BrandDiscoveryIdentityRelyingParty] | None, Field(description="Verified-identity relying parties this house/entity operates, so a buyer can verify that a forwarded TMP identity attestation's relying_party_id genuinely belongs to this entity (provenance) rather than being replayed under another owner. For network-as-RP, the network publishes its own relying_party_id here. See specs/tmp-verified-identity-attestation.md.")] = None
+    agents: Annotated[Agents | None, Field(description='House-level agents that apply to all brands unless overridden at the brand level')] = None
+    data_subject_contestation: Annotated[DataSubjectContestation | None, Field(description='House-level fallback contestation contact. Governance agents resolve in order: brand.data_subject_contestation → house.data_subject_contestation → missing (critical finding when human review required).')] = None
+    identity_relying_parties: Annotated[list[IdentityRelyingParty] | None, Field(description="Verified-identity relying parties this house/entity operates, so a buyer can verify that a forwarded TMP identity attestation's relying_party_id genuinely belongs to this entity (provenance) rather than being replayed under another owner. For network-as-RP, the network publishes its own relying_party_id here. See specs/tmp-verified-identity-attestation.md.")] = None
 
 
-BrandDiscoveryBrandId = Annotated[StrMatchingE02C3DE8, Field(description='Brand identifier within the house portfolio. Lowercase alphanumeric with underscores. House chooses this ID.')]
+BrandId = Annotated[StrMatchingE02C3DE8, Field(description='Brand identifier within the house portfolio. Lowercase alphanumeric with underscores. House chooses this ID.')]
 
 
-class BrandDiscoveryKellerType(StrEnum):
+class KellerType(StrEnum):
     """
     Brand architecture type from Keller's theory. master: primary brand of house. sub_brand: carries parent name (Nike SB). endorsed: independent identity backed by parent (Air Jordan 'by Nike'). independent: operates separately (Converse under Nike, Inc.)
     """
@@ -236,10 +236,10 @@ class BrandDiscoveryKellerType(StrEnum):
     INDEPENDENT = 'independent'
 
 
-BrandDiscoveryLogoId = Annotated[StrMatching068A244C, Field(description='Stable identifier for a logo entry within this brand.json document. Use lowercase words separated by underscores or hyphens; do not key integrations on mutable asset URLs.')]
+LogoId = Annotated[StrMatching068A244C, Field(description='Stable identifier for a logo entry within this brand.json document. Use lowercase words separated by underscores or hyphens; do not key integrations on mutable asset URLs.')]
 
 
-class BrandDiscoveryLogoOrientation(StrEnum):
+class LogoOrientation(StrEnum):
     """
     Logo aspect ratio orientation. square: ~1:1, horizontal: wide, vertical: tall, stacked: vertically arranged elements
     """
@@ -269,7 +269,7 @@ class Variant(StrEnum):
     FULL_LOCKUP = 'full-lockup'
 
 
-class BrandDiscoveryLogo(AdCPBaseModel):
+class Logo(AdCPBaseModel):
     """
     Brand logo asset with structured fields for orientation, background compatibility, and variant type
     """
@@ -280,9 +280,9 @@ class BrandDiscoveryLogo(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('slots'),
     )
-    id: Annotated[BrandDiscoveryLogoId | None, Field(description='Stable identifier for this logo entry. Recommended when logo usage rules or mark lockups need to bind to a specific logo asset.')] = None
+    id: Annotated[LogoId | None, Field(description='Stable identifier for this logo entry. Recommended when logo usage rules or mark lockups need to bind to a specific logo asset.')] = None
     url: Annotated[HttpUrl, Field(description='URL to the logo asset')]
-    orientation: Annotated[BrandDiscoveryLogoOrientation | None, Field(description='Logo aspect ratio orientation. square: ~1:1, horizontal: wide, vertical: tall, stacked: vertically arranged elements')] = None
+    orientation: Annotated[LogoOrientation | None, Field(description='Logo aspect ratio orientation. square: ~1:1, horizontal: wide, vertical: tall, stacked: vertically arranged elements')] = None
     background: Annotated[Background | None, Field(description='Background compatibility. dark-bg: use on dark backgrounds, light-bg: use on light backgrounds, transparent-bg: has transparent background')] = None
     variant: Annotated[Variant | None, Field(description='Logo variant type. primary: main logo, secondary: alternative, icon: symbol only, wordmark: text only, full-lockup: complete logo')] = None
     tags: Annotated[list[str] | None, Field(description='Additional semantic tags for custom categorization beyond the standard orientation, background, and variant fields')] = None
@@ -292,10 +292,10 @@ class BrandDiscoveryLogo(AdCPBaseModel):
     height: Annotated[int | None, Field(description='Height in pixels')] = None
 
 
-BrandDiscoveryColorValue = StrMatchingF01B4765 | NonEmptyList[StrMatchingF01B4765]
+ColorValue = StrMatchingF01B4765 | NonEmptyList[StrMatchingF01B4765]
 
 
-class BrandDiscoveryColors(AdCPBaseModel):
+class Colors(AdCPBaseModel):
     """
     Brand color palette. Each role accepts a single hex color or an array of hex colors for brands with multiple values per role. Beyond the core five roles, brands can provide additional color roles for finer granularity — heading, body, label, border, divider, surface_1, surface_2, etc.
     """
@@ -303,22 +303,22 @@ class BrandDiscoveryColors(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/colors')
-    __pydantic_extra__: dict[str, BrandDiscoveryColorValue]
-    primary: BrandDiscoveryColorValue | None = None
-    secondary: BrandDiscoveryColorValue | None = None
-    accent: BrandDiscoveryColorValue | None = None
-    background: BrandDiscoveryColorValue | None = None
-    text: BrandDiscoveryColorValue | None = None
-    heading: BrandDiscoveryColorValue | None = None
-    body: BrandDiscoveryColorValue | None = None
-    label: BrandDiscoveryColorValue | None = None
-    border: BrandDiscoveryColorValue | None = None
-    divider: BrandDiscoveryColorValue | None = None
-    surface_1: BrandDiscoveryColorValue | None = None
-    surface_2: BrandDiscoveryColorValue | None = None
+    __pydantic_extra__: dict[str, ColorValue]
+    primary: ColorValue | None = None
+    secondary: ColorValue | None = None
+    accent: ColorValue | None = None
+    background: ColorValue | None = None
+    text: ColorValue | None = None
+    heading: ColorValue | None = None
+    body: ColorValue | None = None
+    label: ColorValue | None = None
+    border: ColorValue | None = None
+    divider: ColorValue | None = None
+    surface_1: ColorValue | None = None
+    surface_2: ColorValue | None = None
 
 
-class BrandDiscoveryFontFileStyle(StrEnum):
+class FontFileStyle(StrEnum):
     """
     CSS font-style
     """
@@ -327,7 +327,7 @@ class BrandDiscoveryFontFileStyle(StrEnum):
     OBLIQUE = 'oblique'
 
 
-class BrandDiscoveryFontFile(AdCPBaseModel):
+class FontFile(AdCPBaseModel):
     """
     A font file with weight, style, and variable font metadata
     """
@@ -338,10 +338,10 @@ class BrandDiscoveryFontFile(AdCPBaseModel):
     url: Annotated[AdCPUrl, Field(description='HTTPS URL to the font file (WOFF2, TTF, or OTF)')]
     weight: Annotated[IntMin100Max900 | None, Field(description='CSS numeric font-weight for static fonts (100-900)')] = None
     weight_range: Annotated[list[IntMin100Max900] | None, Field(description='Variable font weight axis range as [min, max] (e.g., [100, 900]). Use instead of weight for variable fonts.', max_length=2, min_length=2)] = None
-    style: Annotated[BrandDiscoveryFontFileStyle | None, Field(description='CSS font-style')] = None
+    style: Annotated[FontFileStyle | None, Field(description='CSS font-style')] = None
 
 
-class BrandDiscoveryFontRoleFamily(AdCPBaseModel):
+class FontRoleFamily(AdCPBaseModel):
     """
     Structured font with family name, downloadable font files, and typographic metadata
     """
@@ -350,15 +350,15 @@ class BrandDiscoveryFontRoleFamily(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/font_role/oneOf/1')
     family: Annotated[str, Field(description="CSS font-family name (e.g., 'Brand Sans')")]
-    files: Annotated[list[BrandDiscoveryFontFile] | None, Field(description='Font files for different weights and styles', max_length=36)] = None
+    files: Annotated[list[FontFile] | None, Field(description='Font files for different weights and styles', max_length=36)] = None
     opentype_features: Annotated[list[StrMatching83577F62] | None, Field(description="OpenType feature tags to enable (e.g., ['ss01', 'tnum', 'cv01']). These are four-character tags per the OpenType spec.", max_length=20)] = None
     fallbacks: Annotated[list[StrMaxLen100] | None, Field(description="Ordered fallback font-family names for when the primary font is unavailable or does not support the required script (e.g., ['Noto Sans Arabic', 'Noto Sans SC', 'sans-serif'])", max_length=10)] = None
 
 
-BrandDiscoveryFontRole = Annotated[str | BrandDiscoveryFontRoleFamily, Field(description='A font role entry. Either a CSS font-family string (simple) or a structured object with family name and font files (rich).')]
+FontRole = Annotated[str | FontRoleFamily, Field(description='A font role entry. Either a CSS font-family string (simple) or a structured object with family name and font files (rich).')]
 
 
-class BrandDiscoveryFonts(AdCPBaseModel):
+class Fonts(AdCPBaseModel):
     """
     Brand typography. Each key is a role name (e.g., 'primary', 'secondary') referenced by type_scale entries. Values are either a CSS font-family string or a structured object with font files for reliable resolution.
     """
@@ -366,21 +366,21 @@ class BrandDiscoveryFonts(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/fonts')
-    __pydantic_extra__: dict[str, BrandDiscoveryFontRole]
+    __pydantic_extra__: dict[str, FontRole]
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         PropertyCount(minimum=None, maximum=20),
     )
-    primary: Annotated[BrandDiscoveryFontRole | None, Field(description='Primary font family')] = None
-    secondary: Annotated[BrandDiscoveryFontRole | None, Field(description='Secondary font family')] = None
+    primary: Annotated[FontRole | None, Field(description='Primary font family')] = None
+    secondary: Annotated[FontRole | None, Field(description='Secondary font family')] = None
 
 
-BrandDiscoveryLocalizedScalar = Annotated[str | NonEmptyList[BrandDiscoveryLocalizedName], Field(description="A legacy plain string or an ordered set of one-locale string maps. Producers MUST NOT repeat a locale after replacing '_' with '-' and applying the AdCP locale-tag canonicalization profile. Readers resolve the requested locale using the document default_language fallback contract and MUST NOT choose an arbitrary available translation.")]
+LocalizedScalar = Annotated[str | NonEmptyList[LocalizedName], Field(description="A legacy plain string or an ordered set of one-locale string maps. Producers MUST NOT repeat a locale after replacing '_' with '-' and applying the AdCP locale-tag canonicalization profile. Readers resolve the requested locale using the document default_language fallback contract and MUST NOT choose an arbitrary available translation.")]
 
 
-BrandDiscoveryLocalizedStringListEntry = Annotated[dict[str, NonEmptyList[str]], Field(description='One locale mapped to a complete ordered string list. The list is selected as a unit so readers never assemble mixed-language output from independently localized elements.', max_length=1, min_length=1)]
+LocalizedStringListEntry = Annotated[dict[str, NonEmptyList[str]], Field(description='One locale mapped to a complete ordered string list. The list is selected as a unit so readers never assemble mixed-language output from independently localized elements.', max_length=1, min_length=1)]
 
 
-BrandDiscoveryLocalizedStringList = Annotated[list[str] | NonEmptyList[BrandDiscoveryLocalizedStringListEntry], Field(description="A legacy plain string list or an ordered set of one-locale maps whose values are complete string lists. Producers MUST NOT repeat a locale after replacing '_' with '-' and applying the AdCP locale-tag canonicalization profile.")]
+LocalizedStringList = Annotated[list[str] | NonEmptyList[LocalizedStringListEntry], Field(description="A legacy plain string list or an ordered set of one-locale maps whose values are complete string lists. Producers MUST NOT repeat a locale after replacing '_' with '-' and applying the AdCP locale-tag canonicalization profile.")]
 
 
 class Tone(AdCPBaseModel):
@@ -388,13 +388,13 @@ class Tone(AdCPBaseModel):
     Structured brand voice guidelines
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/brand/properties/tone/oneOf/1')
-    voice: Annotated[BrandDiscoveryLocalizedScalar | None, Field(description='High-level voice descriptor, either a legacy plain string or localized values.')] = None
-    attributes: Annotated[BrandDiscoveryLocalizedStringList | None, Field(description='Personality traits that characterize the brand voice. Localized lists are selected as a whole.')] = None
-    dos: Annotated[BrandDiscoveryLocalizedStringList | None, Field(description='Guidance for copy generation - what TO do. Localized lists are selected as a whole.')] = None
-    donts: Annotated[BrandDiscoveryLocalizedStringList | None, Field(description='Guardrails to avoid brand violations - what NOT to do. Localized lists are selected as a whole.')] = None
+    voice: Annotated[LocalizedScalar | None, Field(description='High-level voice descriptor, either a legacy plain string or localized values.')] = None
+    attributes: Annotated[LocalizedStringList | None, Field(description='Personality traits that characterize the brand voice. Localized lists are selected as a whole.')] = None
+    dos: Annotated[LocalizedStringList | None, Field(description='Guidance for copy generation - what TO do. Localized lists are selected as a whole.')] = None
+    donts: Annotated[LocalizedStringList | None, Field(description='Guardrails to avoid brand violations - what NOT to do. Localized lists are selected as a whole.')] = None
 
 
-class BrandDiscoveryAsset(AdCPBaseModel):
+class Asset(AdCPBaseModel):
     """
     Brand asset (image, video, audio, text)
     """
@@ -406,8 +406,8 @@ class BrandDiscoveryAsset(AdCPBaseModel):
     asset_type: Annotated[AssetContentType, Field(description='Type of asset content')]
     url: Annotated[HttpUrl, Field(description='URL to CDN-hosted asset file')]
     tags: Annotated[list[str] | None, Field(description="Tags for discovery (e.g., 'hero', 'lifestyle', 'product', 'holiday')")] = None
-    name: Annotated[BrandDiscoveryLocalizedScalar | None, Field(description='Human-readable name, either a legacy plain string or localized values.')] = None
-    description: Annotated[BrandDiscoveryLocalizedScalar | None, Field(description='Asset description or usage notes, either a legacy plain string or localized values.')] = None
+    name: Annotated[LocalizedScalar | None, Field(description='Human-readable name, either a legacy plain string or localized values.')] = None
+    description: Annotated[LocalizedScalar | None, Field(description='Asset description or usage notes, either a legacy plain string or localized values.')] = None
     width: Annotated[int | None, Field(description='Image/video width in pixels')] = None
     height: Annotated[int | None, Field(description='Image/video height in pixels')] = None
     duration_seconds: Annotated[float | None, Field(description='Video/audio duration in seconds')] = None
@@ -439,7 +439,7 @@ class Relationship(StrEnum):
     AD_NETWORK = 'ad_network'
 
 
-class BrandDiscoveryProperty(AdCPBaseModel):
+class Property(AdCPBaseModel):
     """
     A digital property associated with a brand. Defaults to owned; use 'relationship' to declare direct, delegated, or ad_network properties. For direct, delegated, and network paths, these values match the delegation_type field in adagents.json, creating a bilateral verification chain: the operator declares the relationship here, the publisher confirms by setting the same delegation_type on the agent's authorization in their adagents.json. 'owned' is an inline ownership declaration with no adagents.json counterpart.
     """
@@ -475,7 +475,7 @@ class AgenticCheckout(AdCPBaseModel):
     supported_payment_providers: Annotated[list[str] | None, Field(description='Payment providers supported by this checkout endpoint')] = None
 
 
-class BrandDiscoveryProductCatalog(AdCPBaseModel):
+class ProductCatalog(AdCPBaseModel):
     """
     Product catalog for e-commerce brands
     """
@@ -518,7 +518,7 @@ class LicenseType(StrEnum):
     LICENSED_OUT = 'licensed_out'
 
 
-class BrandDiscoveryTrademark(AdCPBaseModel):
+class Trademark(AdCPBaseModel):
     """
     A registered trademark. May appear at house level (corporate marks, e.g., 'NIKE' owned by Nike, Inc.) or at brand level (brand-specific marks, e.g., 'CONVERSE' owned by Converse). Resolution between house- and brand-level trademarks is union — both lists are valid claims about marks the publisher controls.
     """
@@ -531,7 +531,7 @@ class BrandDiscoveryTrademark(AdCPBaseModel):
     mark: Annotated[str, Field(description='The registered mark as published')]
     status: Annotated[Status | None, Field(description='Registration status. Omit for active marks if status tracking is not maintained.')] = None
     license_type: Annotated[LicenseType | None, Field(description="Whether the publisher owns the mark, licenses it from another entity, or licenses it to others. 'owned' is the default if omitted.")] = None
-    licensor_domain: Annotated[BrandDiscoveryDomain | None, Field(description='Domain of the entity that licenses this mark to the publisher. Meaningful when license_type=licensed_in; omit otherwise.')] = None
+    licensor_domain: Annotated[Domain | None, Field(description='Domain of the entity that licenses this mark to the publisher. Meaningful when license_type=licensed_in; omit otherwise.')] = None
     countries: Annotated[list[StrMinLen2MaxLen2] | None, Field(description="ISO 3166-1 alpha-2 country codes where this registration applies. Omit for global or where the registry's jurisdiction is implicit.")] = None
     nice_classes: Annotated[list[IntMin1Max45] | None, Field(description='Nice Classification class numbers (1-45) covered by this registration. Disambiguates marks across industries (e.g., Delta-airline vs Delta-faucet). Omit if scope is implicit from registry.')] = None
 
@@ -648,7 +648,7 @@ class Framing(AdCPBaseModel):
     perspective: Annotated[str | None, Field(description="Camera perspective (e.g., 'eye-level', 'overhead', 'low-angle')")] = None
 
 
-class BrandDiscoveryPhotographyStyle(AdCPBaseModel):
+class PhotographyStyle(AdCPBaseModel):
     """
     Photography style rules for generative creative systems. Defines how brand photography should look when selected or generated.
     """
@@ -692,7 +692,7 @@ class StrokeStyle(StrEnum):
     NONE = 'none'
 
 
-class BrandDiscoveryGraphicStyle(AdCPBaseModel):
+class GraphicStyle(AdCPBaseModel):
     """
     Visual language for brand graphics and illustrations
     """
@@ -707,7 +707,7 @@ class BrandDiscoveryGraphicStyle(AdCPBaseModel):
     tags: Annotated[list[str] | None, Field(description='Additional style descriptors')] = None
 
 
-class BrandDiscoveryBrandShapesUsage(AdCPBaseModel):
+class BrandShapesUsage(AdCPBaseModel):
     """
     Shape usage rules
     """
@@ -719,7 +719,7 @@ class BrandDiscoveryBrandShapesUsage(AdCPBaseModel):
     overlap_allowed: Annotated[bool | None, Field(description='Whether shapes may overlap')] = None
 
 
-class BrandDiscoveryBrandShapes(AdCPBaseModel):
+class BrandShapes(AdCPBaseModel):
     """
     Distinctive shapes used as part of brand visual identity
     """
@@ -729,10 +729,10 @@ class BrandDiscoveryBrandShapes(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/brand_shapes')
     primary_shape: Annotated[str | None, Field(description="Primary brand shape (e.g., 'rounded_rectangle', 'circle', 'hexagon')")] = None
     secondary_shapes: Annotated[list[str] | None, Field(description='Secondary shapes in the brand vocabulary')] = None
-    usage: Annotated[BrandDiscoveryBrandShapesUsage | None, Field(description='Shape usage rules')] = None
+    usage: Annotated[BrandShapesUsage | None, Field(description='Shape usage rules')] = None
 
 
-class BrandDiscoveryIconographyStyle(StrEnum):
+class IconographyStyle(StrEnum):
     """
     Icon rendering style
     """
@@ -753,7 +753,7 @@ class CornerStyle(StrEnum):
     MIXED = 'mixed'
 
 
-class BrandDiscoveryIconographyUsage(AdCPBaseModel):
+class IconographyUsage(AdCPBaseModel):
     """
     Icon usage rules
     """
@@ -765,7 +765,7 @@ class BrandDiscoveryIconographyUsage(AdCPBaseModel):
     size_ratio: Annotated[str | None, Field(description="Icon-to-layout size ratio (e.g., '1:8')")] = None
 
 
-class BrandDiscoveryIconography(AdCPBaseModel):
+class Iconography(AdCPBaseModel):
     """
     Icon style system and usage rules
     """
@@ -773,10 +773,10 @@ class BrandDiscoveryIconography(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/iconography')
-    style: Annotated[BrandDiscoveryIconographyStyle | None, Field(description='Icon rendering style')] = None
+    style: Annotated[IconographyStyle | None, Field(description='Icon rendering style')] = None
     stroke_weight: Annotated[str | None, Field(description="Icon stroke weight (e.g., '2px', '1.5px')")] = None
     corner_style: Annotated[CornerStyle | None, Field(description='Corner style for icon paths')] = None
-    usage: Annotated[BrandDiscoveryIconographyUsage | None, Field(description='Icon usage rules')] = None
+    usage: Annotated[IconographyUsage | None, Field(description='Icon usage rules')] = None
 
 
 class GradientStyle(StrEnum):
@@ -856,7 +856,7 @@ class Backgrounds(AdCPBaseModel):
     types_allowed: Annotated[list[TypesAllowedItem] | None, Field(description='Permitted background types')] = None
 
 
-class BrandDiscoveryCompositionRules(AdCPBaseModel):
+class CompositionRules(AdCPBaseModel):
     """
     Layout composition rules including overlays, textures, and backgrounds
     """
@@ -869,7 +869,7 @@ class BrandDiscoveryCompositionRules(AdCPBaseModel):
     backgrounds: Annotated[Backgrounds | None, Field(description='Background treatment rules')] = None
 
 
-class BrandDiscoveryBorderRadius(AdCPBaseModel):
+class BorderRadius(AdCPBaseModel):
     """
     Named border radius presets for UI components and layout elements. One of the most visible brand differentiators — Airbnb uses generous 20px, Stripe uses precise 4–8px, Spotify uses pill/999px.
     """
@@ -885,7 +885,7 @@ class BrandDiscoveryBorderRadius(AdCPBaseModel):
     pill: Annotated[str | None, Field(description="Fully rounded / pill shape (e.g., '999px')")] = None
 
 
-class BrandDiscoveryElevation(AdCPBaseModel):
+class Elevation(AdCPBaseModel):
     """
     Named shadow/elevation levels. Brands use elevation as identity — from Stripe's blue-tinted multi-layer shadows to Apple's single diffuse shadow. Values are CSS box-shadow syntax.
     """
@@ -917,7 +917,7 @@ class Scale(AdCPBaseModel):
     f_2xl: Annotated[str | None, Field(alias='2xl', description="Section-level spacing (e.g., '48px', '64px')")] = None
 
 
-class BrandDiscoverySpacing(AdCPBaseModel):
+class Spacing(AdCPBaseModel):
     """
     Spacing system for consistent layout rhythm. Most design systems use an 8px base grid.
     """
@@ -929,7 +929,7 @@ class BrandDiscoverySpacing(AdCPBaseModel):
     scale: Annotated[Scale | None, Field(description='Named spacing scale built from the base unit')] = None
 
 
-class BrandDiscoveryGraphicElementType(StrEnum):
+class GraphicElementType(StrEnum):
     """
     Element type
     """
@@ -942,7 +942,7 @@ class BrandDiscoveryGraphicElementType(StrEnum):
     DECORATIVE = 'decorative'
 
 
-class BrandDiscoveryGraphicElementOrientation(StrEnum):
+class GraphicElementOrientation(StrEnum):
     """
     Preferred orientation when used in layouts
     """
@@ -951,10 +951,10 @@ class BrandDiscoveryGraphicElementOrientation(StrEnum):
     ANY = 'any'
 
 
-BrandDiscoveryHexColor = Annotated[StrMatchingF01B4765, Field(description='A single hex color value')]
+HexColor = Annotated[StrMatchingF01B4765, Field(description='A single hex color value')]
 
 
-class BrandDiscoveryGraphicElement(AdCPBaseModel):
+class GraphicElement(AdCPBaseModel):
     """
     A reusable decorative or structural visual element that is part of the brand identity (e.g., torn paper edges, watermarks, dividers, background patterns)
     """
@@ -963,10 +963,10 @@ class BrandDiscoveryGraphicElement(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/graphic_element')
     name: Annotated[str, Field(description="Element name (e.g., 'Paper Tear', 'Brand Watermark', 'Section Divider')")]
-    type: Annotated[BrandDiscoveryGraphicElementType | None, Field(description='Element type')] = None
+    type: Annotated[GraphicElementType | None, Field(description='Element type')] = None
     description: Annotated[str | None, Field(description='How the element is used in layouts')] = None
-    orientation: Annotated[BrandDiscoveryGraphicElementOrientation | None, Field(description='Preferred orientation when used in layouts')] = None
-    colors: Annotated[list[BrandDiscoveryHexColor] | None, Field(description='Colors this element may appear in')] = None
+    orientation: Annotated[GraphicElementOrientation | None, Field(description='Preferred orientation when used in layouts')] = None
+    colors: Annotated[list[HexColor] | None, Field(description='Colors this element may appear in')] = None
     max_per_layout: Annotated[int | None, Field(description='Maximum instances per layout')] = None
 
 
@@ -1012,7 +1012,7 @@ class Pacing(StrEnum):
     FAST_CUTS = 'fast_cuts'
 
 
-class BrandDiscoveryMotionGuidelines(AdCPBaseModel):
+class MotionGuidelines(AdCPBaseModel):
     """
     Motion and animation rules for video, animated display, and interactive formats
     """
@@ -1051,7 +1051,7 @@ class BackgroundContrast(StrEnum):
     ANY = 'any'
 
 
-class BrandDiscoveryLogoPlacement(AdCPBaseModel):
+class LogoPlacement(AdCPBaseModel):
     """
     Logo placement and clear space rules for automated creative production
     """
@@ -1065,7 +1065,7 @@ class BrandDiscoveryLogoPlacement(AdCPBaseModel):
     background_contrast: Annotated[BackgroundContrast | None, Field(description='Permitted background contrast behind logo')] = None
 
 
-class BrandDiscoveryColorway(AdCPBaseModel):
+class Colorway(AdCPBaseModel):
     """
     A named color pairing that defines how colors work together. Colorways ensure foreground/background combinations are always on-brand and accessible.
     """
@@ -1074,12 +1074,12 @@ class BrandDiscoveryColorway(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/colorway')
     name: Annotated[str, Field(description="Colorway name (e.g., 'primary', 'inverted', 'subtle')")]
-    foreground: BrandDiscoveryHexColor
-    background: BrandDiscoveryHexColor
-    accent: BrandDiscoveryHexColor | None = None
-    border: BrandDiscoveryHexColor | None = None
-    cta_foreground: Annotated[BrandDiscoveryHexColor | None, Field(description='CTA text/icon color, if different from foreground')] = None
-    cta_background: Annotated[BrandDiscoveryHexColor | None, Field(description='CTA button/container color, if different from accent')] = None
+    foreground: HexColor
+    background: HexColor
+    accent: HexColor | None = None
+    border: HexColor | None = None
+    cta_foreground: Annotated[HexColor | None, Field(description='CTA text/icon color, if different from foreground')] = None
+    cta_background: Annotated[HexColor | None, Field(description='CTA button/container color, if different from accent')] = None
     channels: Annotated[list[str] | None, Field(description="Channels or contexts where this colorway applies (e.g., 'online', 'print', 'pos', 'social', 'outdoor'). Omit for universal colorways.")] = None
 
 
@@ -1107,7 +1107,7 @@ class Surface(StrEnum):
     GRAPHIC_ELEMENT = 'graphic_element'
 
 
-class BrandDiscoveryColorRef(BranchDispatchMixin, AdCPBaseModel):
+class ColorRef(BranchDispatchMixin, AdCPBaseModel):
     """
     Reference to a brand color or usage surface for machine-readable guideline constraints. Use kind=name for palette lookup keys in colors, kind=value for a literal hex color, and kind=surface for layout surfaces such as background or text.
     """
@@ -1123,11 +1123,11 @@ class BrandDiscoveryColorRef(BranchDispatchMixin, AdCPBaseModel):
         return "oneOf"
     kind: Annotated[Kind | None, Field(description='Discriminator for the color reference variant.')] = None
     name: Annotated[str | None, Field(description='Key from the colors object, such as market_yellow, river_green, or any custom palette key. Unambiguous lookup into colors{}.')] = None
-    value: Annotated[BrandDiscoveryHexColor | None, Field(description='Literal hex color when no palette key exists.')] = None
+    value: Annotated[HexColor | None, Field(description='Literal hex color when no palette key exists.')] = None
     surface: Annotated[Surface | None, Field(description='Usage surface rather than a specific color value.')] = None
 
 
-class BrandDiscoveryColorRefName(BrandDiscoveryColorRef):
+class ColorRefName(ColorRef):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -1136,16 +1136,16 @@ class BrandDiscoveryColorRefName(BrandDiscoveryColorRef):
     name: Annotated[str, Field(description='Key from the colors object, such as market_yellow, river_green, or any custom palette key. Unambiguous lookup into colors{}.')]
 
 
-class BrandDiscoveryColorRefValue(BrandDiscoveryColorRef):
+class ColorRefValue(ColorRef):
     model_config = ConfigDict(
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/color_ref/oneOf/1')
     kind: Annotated[Literal['value'], Field(description='Discriminator for the color reference variant.')]
-    value: Annotated[BrandDiscoveryHexColor, Field(description='Literal hex color when no palette key exists.')]
+    value: Annotated[HexColor, Field(description='Literal hex color when no palette key exists.')]
 
 
-class BrandDiscoveryColorRefSurface(BrandDiscoveryColorRef):
+class ColorRefSurface(ColorRef):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -1154,8 +1154,8 @@ class BrandDiscoveryColorRefSurface(BrandDiscoveryColorRef):
     surface: Annotated[Surface, Field(description='Usage surface rather than a specific color value.')]
 
 
-BrandDiscoveryColorRef._branch_models = (BrandDiscoveryColorRefName, BrandDiscoveryColorRefValue, BrandDiscoveryColorRefSurface,)
-BrandDiscoveryColorRef.model_rebuild(force=True)
+ColorRef._branch_models = (ColorRefName, ColorRefValue, ColorRefSurface,)
+ColorRef.model_rebuild(force=True)
 
 
 class AppliesToItem(StrEnum):
@@ -1170,7 +1170,7 @@ class AppliesToItem(StrEnum):
     GRAPHIC_ELEMENT = 'graphic_element'
 
 
-class BrandDiscoveryGuidelineSeverity(StrEnum):
+class GuidelineSeverity(StrEnum):
     """
     Strength of a machine-readable brand guideline constraint.
     """
@@ -1178,7 +1178,7 @@ class BrandDiscoveryGuidelineSeverity(StrEnum):
     SHOULD = 'should'
 
 
-class BrandDiscoveryColorConstraint(AdCPBaseModel):
+class ColorConstraint(AdCPBaseModel):
     """
     Machine-readable rule constraining how a brand color may be used or paired. Use for accent-only colors, forbidden foreground/background combinations, and palette pairs that should never appear together.
     """
@@ -1186,13 +1186,13 @@ class BrandDiscoveryColorConstraint(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/color_constraint')
-    color: Annotated[BrandDiscoveryColorRef, Field(description='Color role or value this constraint governs.')]
+    color: Annotated[ColorRef, Field(description='Color role or value this constraint governs.')]
     applies_to: Annotated[list[AppliesToItem] | None, Field(description='Surfaces where this color may be used.')] = None
-    allowed_on: Annotated[list[BrandDiscoveryColorRef] | None, Field(description='Backgrounds, surfaces, or color roles where this color is allowed.')] = None
-    forbidden_on: Annotated[list[BrandDiscoveryColorRef] | None, Field(description='Backgrounds, surfaces, or color roles where this color is forbidden.')] = None
-    never_pair_with: Annotated[list[BrandDiscoveryColorRef] | None, Field(description='Color roles or values that must not be paired with this color.')] = None
+    allowed_on: Annotated[list[ColorRef] | None, Field(description='Backgrounds, surfaces, or color roles where this color is allowed.')] = None
+    forbidden_on: Annotated[list[ColorRef] | None, Field(description='Backgrounds, surfaces, or color roles where this color is forbidden.')] = None
+    never_pair_with: Annotated[list[ColorRef] | None, Field(description='Color roles or values that must not be paired with this color.')] = None
     contexts: Annotated[list[str] | None, Field(description='Channels or creative contexts where this constraint applies, such as digital, print, social, or ctv_end_card.')] = None
-    severity: BrandDiscoveryGuidelineSeverity | None = None
+    severity: GuidelineSeverity | None = None
     description: Annotated[str | None, Field(description='Human-readable rationale or source-language summary for the rule.')] = None
 
 
@@ -1219,7 +1219,7 @@ class MinimumSize(AdCPBaseModel):
     height: Annotated[str | None, Field(description='Minimum height, such as 18px or 6mm.')] = None
 
 
-class BrandDiscoveryLogoUsageRule(AdCPBaseModel):
+class LogoUsageRule(AdCPBaseModel):
     """
     Machine-readable logo selection and placement rule. Complements logos[].usage by making enforceable minimum size, clear-space, background, and context constraints queryable.
     """
@@ -1232,17 +1232,17 @@ class BrandDiscoveryLogoUsageRule(AdCPBaseModel):
         UniqueItems('slots'),
     )
     logo_url: Annotated[HttpUrl | None, Field(description='Specific logo asset URL this rule applies to. Omit when the rule applies by variant or tags.')] = None
-    logo_id: Annotated[BrandDiscoveryLogoId | None, Field(description='Stable `logos[].id` this rule applies to. Prefer this over logo_url when the rule targets a specific logo entry.')] = None
+    logo_id: Annotated[LogoId | None, Field(description='Stable `logos[].id` this rule applies to. Prefer this over logo_url when the rule targets a specific logo entry.')] = None
     logo_variant: Annotated[LogoVariant | None, Field(description='Logo variant this rule applies to.')] = None
     logo_tags: Annotated[list[str] | None, Field(description='Logo tags this rule applies to.', min_length=1)] = None
     contexts: Annotated[list[str] | None, Field(description='Creative contexts where this rule applies.')] = None
     slots: Annotated[list[LogoSlot] | None, Field(description='Canonical renderer slots where this rule applies. Use this for deterministic logo-card, profile-mark, end-card, and lockup selection.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     minimum_size: Annotated[MinimumSize | None, Field(description='Minimum rendered size needed for legibility.')] = None
     clear_space: Annotated[str | None, Field(description='Minimum clear space around the logo, expressed in brand terms or units.')] = None
-    allowed_backgrounds: Annotated[list[BrandDiscoveryColorRef] | None, Field(description='Background color roles, values, or surfaces where this logo may be placed.')] = None
-    forbidden_backgrounds: Annotated[list[BrandDiscoveryColorRef] | None, Field(description='Background color roles, values, or surfaces where this logo must not be placed.')] = None
+    allowed_backgrounds: Annotated[list[ColorRef] | None, Field(description='Background color roles, values, or surfaces where this logo may be placed.')] = None
+    forbidden_backgrounds: Annotated[list[ColorRef] | None, Field(description='Background color roles, values, or surfaces where this logo must not be placed.')] = None
     forbidden_contexts: Annotated[list[str] | None, Field(description='Contexts where this logo must not be used, such as photography_without_knockout.')] = None
-    severity: BrandDiscoveryGuidelineSeverity | None = None
+    severity: GuidelineSeverity | None = None
     description: Annotated[str | None, Field(description='Human-readable rationale or source-language summary for the rule.')] = None
 
 
@@ -1288,11 +1288,11 @@ class Separator(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/mark_lockup/properties/separator')
     type: Annotated[SeparatorType, Field(description='Separator style.')]
-    color: BrandDiscoveryColorRef | None = None
+    color: ColorRef | None = None
     width: Annotated[str | None, Field(description='Separator width, such as 1px.')] = None
 
 
-class BrandDiscoveryMarkLockup(AdCPBaseModel):
+class MarkLockup(AdCPBaseModel):
     """
     Machine-readable layout constraints for co-brand, partner, sponsor, program, or secondary-mark lockups.
     """
@@ -1306,13 +1306,13 @@ class BrandDiscoveryMarkLockup(AdCPBaseModel):
     lockup_type: Annotated[LockupType, Field(description='Type of mark relationship governed by this lockup rule.')]
     ordering: Annotated[Ordering | None, Field(description='Required visual ordering of the brand mark relative to partner or secondary marks.')] = None
     contexts: Annotated[list[str] | None, Field(description='Creative contexts where this lockup rule applies.')] = None
-    brand_logo_id: Annotated[BrandDiscoveryLogoId | None, Field(description='Stable `logos[].id` for the brand logo this lockup rule is anchored on.')] = None
-    secondary_logo_ids: Annotated[list[BrandDiscoveryLogoId] | None, Field(description='Stable `logos[].id` values for secondary, program, sponsor, or partner marks governed by this lockup rule when those marks are represented in this brand.json.', json_schema_extra={'uniqueItems': True})] = None
+    brand_logo_id: Annotated[LogoId | None, Field(description='Stable `logos[].id` for the brand logo this lockup rule is anchored on.')] = None
+    secondary_logo_ids: Annotated[list[LogoId] | None, Field(description='Stable `logos[].id` values for secondary, program, sponsor, or partner marks governed by this lockup rule when those marks are represented in this brand.json.', json_schema_extra={'uniqueItems': True})] = None
     separator: Annotated[Separator | None, Field(description='Separator between marks, when required.')] = None
     min_gap: Annotated[str | None, Field(description='Minimum gap between marks, expressed in brand terms or units.')] = None
     brand_min_optical_weight_ratio: Annotated[FloatGt0 | None, Field(description='Minimum optical weight of the brand mark relative to partner marks. 1 means at least equal.')] = None
     partner_max_optical_weight_ratio: Annotated[FloatGt0 | None, Field(description='Maximum optical weight of partner marks relative to the brand mark. 1 means no larger than the brand mark. Enforcement is at layout time, not parse time — this value signals to renderers and creative agents how much space to provision for each mark.')] = None
-    severity: BrandDiscoveryGuidelineSeverity | None = None
+    severity: GuidelineSeverity | None = None
     description: Annotated[str | None, Field(description='Human-readable rationale or source-language summary for the lockup rule.')] = None
 
 
@@ -1326,7 +1326,7 @@ class TextTransform(StrEnum):
     CAPITALIZE = 'capitalize'
 
 
-class BrandDiscoveryTypeScaleEntry(AdCPBaseModel):
+class TypeScaleEntry(AdCPBaseModel):
     """
     A single entry in the type scale
     """
@@ -1350,16 +1350,16 @@ class TypeScale(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/visual_guidelines/properties/type_scale')
-    __pydantic_extra__: dict[str, BrandDiscoveryTypeScaleEntry]
+    __pydantic_extra__: dict[str, TypeScaleEntry]
     base_width: Annotated[str | None, Field(description="Reference canvas width these sizes were designed for (e.g., '1080px'). Generative systems should scale proportionally for other canvas sizes.")] = None
-    heading: BrandDiscoveryTypeScaleEntry | None = None
-    subheading: BrandDiscoveryTypeScaleEntry | None = None
-    body: BrandDiscoveryTypeScaleEntry | None = None
-    caption: BrandDiscoveryTypeScaleEntry | None = None
-    cta: BrandDiscoveryTypeScaleEntry | None = None
+    heading: TypeScaleEntry | None = None
+    subheading: TypeScaleEntry | None = None
+    body: TypeScaleEntry | None = None
+    caption: TypeScaleEntry | None = None
+    cta: TypeScaleEntry | None = None
 
 
-class BrandDiscoveryAssetLibraryType(StrEnum):
+class AssetLibraryType(StrEnum):
     """
     Type of asset library
     """
@@ -1376,7 +1376,7 @@ class PalettesItem(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/asset_library/properties/color_guide/properties/palettes/items')
     name: Annotated[str, Field(description='Palette name')]
-    colors: Annotated[dict[str, BrandDiscoveryHexColor], Field(description='Map of role names to hex color values')]
+    colors: Annotated[dict[str, HexColor], Field(description='Map of role names to hex color values')]
 
 
 class ColorGuide(AdCPBaseModel):
@@ -1391,7 +1391,7 @@ class ColorGuide(AdCPBaseModel):
     palettes: Annotated[list[PalettesItem] | None, Field(description='Named color palettes mapping roles to specific colors')] = None
 
 
-class BrandDiscoveryAssetLibrary(AdCPBaseModel):
+class AssetLibrary(AdCPBaseModel):
     """
     A managed asset library (icon set, illustration system, image collection). The URL is for human access; agent-facing DAM integration is under investigation.
     """
@@ -1400,13 +1400,13 @@ class BrandDiscoveryAssetLibrary(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/asset_library')
     name: Annotated[str, Field(description='Display name of the asset library')]
-    type: Annotated[BrandDiscoveryAssetLibraryType | None, Field(description='Type of asset library')] = None
+    type: Annotated[AssetLibraryType | None, Field(description='Type of asset library')] = None
     url: Annotated[HttpUrl, Field(description='URL to the asset library (for human access)')]
     description: Annotated[str | None, Field(description='Description of the library contents and usage')] = None
     color_guide: Annotated[ColorGuide | None, Field(description='Color guide for the asset library defining roles and palettes')] = None
 
 
-class BrandDiscoveryVisualGuidelines(AdCPBaseModel):
+class VisualGuidelines(AdCPBaseModel):
     """
     Structured visual rules for generative creative systems. Defines how brand photography, graphics, typography, and composition should be produced to maintain brand consistency at scale.
     """
@@ -1414,27 +1414,27 @@ class BrandDiscoveryVisualGuidelines(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/visual_guidelines')
-    photography: BrandDiscoveryPhotographyStyle | None = None
-    graphic_style: BrandDiscoveryGraphicStyle | None = None
-    shapes: BrandDiscoveryBrandShapes | None = None
-    iconography: BrandDiscoveryIconography | None = None
-    composition: BrandDiscoveryCompositionRules | None = None
-    border_radius: BrandDiscoveryBorderRadius | None = None
-    elevation: BrandDiscoveryElevation | None = None
-    spacing: BrandDiscoverySpacing | None = None
-    graphic_elements: Annotated[list[BrandDiscoveryGraphicElement] | None, Field(description='Reusable decorative elements that are part of the brand visual identity (e.g., torn paper edges, watermarks, dividers)')] = None
-    motion: BrandDiscoveryMotionGuidelines | None = None
-    logo_placement: BrandDiscoveryLogoPlacement | None = None
-    colorways: Annotated[list[BrandDiscoveryColorway] | None, Field(description='Named color pairings for consistent foreground/background combinations')] = None
-    color_constraints: Annotated[list[BrandDiscoveryColorConstraint] | None, Field(description='Machine-readable constraints for color usage and pairings, such as accent-only rules or forbidden foreground/background combinations.')] = None
-    logo_usage_rules: Annotated[list[BrandDiscoveryLogoUsageRule] | None, Field(description='Machine-readable logo selection and placement constraints for minimum size, clear space, backgrounds, and contexts.')] = None
-    mark_lockups: Annotated[list[BrandDiscoveryMarkLockup] | None, Field(description='Machine-readable co-brand, partner, sponsor, program, or secondary-mark lockup rules.')] = None
+    photography: PhotographyStyle | None = None
+    graphic_style: GraphicStyle | None = None
+    shapes: BrandShapes | None = None
+    iconography: Iconography | None = None
+    composition: CompositionRules | None = None
+    border_radius: BorderRadius | None = None
+    elevation: Elevation | None = None
+    spacing: Spacing | None = None
+    graphic_elements: Annotated[list[GraphicElement] | None, Field(description='Reusable decorative elements that are part of the brand visual identity (e.g., torn paper edges, watermarks, dividers)')] = None
+    motion: MotionGuidelines | None = None
+    logo_placement: LogoPlacement | None = None
+    colorways: Annotated[list[Colorway] | None, Field(description='Named color pairings for consistent foreground/background combinations')] = None
+    color_constraints: Annotated[list[ColorConstraint] | None, Field(description='Machine-readable constraints for color usage and pairings, such as accent-only rules or forbidden foreground/background combinations.')] = None
+    logo_usage_rules: Annotated[list[LogoUsageRule] | None, Field(description='Machine-readable logo selection and placement constraints for minimum size, clear space, backgrounds, and contexts.')] = None
+    mark_lockups: Annotated[list[MarkLockup] | None, Field(description='Machine-readable co-brand, partner, sponsor, program, or secondary-mark lockup rules.')] = None
     type_scale: Annotated[TypeScale | None, Field(description='Typography scale defining sizes and weights for different text roles. When sizes are in px, use base_width to indicate the reference canvas.')] = None
-    asset_libraries: Annotated[list[BrandDiscoveryAssetLibrary] | None, Field(description='References to managed asset libraries (icon sets, illustration systems, image collections). URLs are intended for human access; agent-facing DAM integration is under investigation.')] = None
+    asset_libraries: Annotated[list[AssetLibrary] | None, Field(description='References to managed asset libraries (icon sets, illustration systems, image collections). URLs are intended for human access; agent-facing DAM integration is under investigation.')] = None
     restrictions: Annotated[list[str] | None, Field(description="Visual prohibitions and guardrails (e.g., 'Never use black backgrounds', 'Do not crop the logo', 'No stock photography of people on phones')")] = None
 
 
-class BrandDiscoveryRightsAgent(AdCPBaseModel):
+class RightsAgent(AdCPBaseModel):
     """
     Rights licensing agent for this brand. Provides discovery, pricing, and acquisition of licensable rights via MCP. Use get_rights and acquire_rights tasks to interact.
     """
@@ -1449,7 +1449,7 @@ class BrandDiscoveryRightsAgent(AdCPBaseModel):
     countries: Annotated[list[StrMatchingEFC12812] | None, Field(description='Countries where rights are available (ISO 3166-1 alpha-2)')] = None
 
 
-class Contact(AdCPBaseModel):
+class BrandContact(AdCPBaseModel):
     """
     Brand-level contact information
     """
@@ -1469,7 +1469,7 @@ class CollectionsItem(AdCPBaseModel):
     seller_agent_url: Annotated[HttpUrl | None, Field(description='URL of the sales agent that sells inventory for this collection. Buyer agents can query this agent for collection products.')] = None
 
 
-class BrandDiscoveryBrand(AdCPBaseModel):
+class Brand(AdCPBaseModel):
     """
     A brand within a house portfolio. Combines identity (who) with creative assets (how to represent). Referenced as domain + brand_id.
     """
@@ -1477,38 +1477,38 @@ class BrandDiscoveryBrand(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/brand')
-    id: Annotated[BrandDiscoveryBrandId, Field(description='Brand identifier within the house. House chooses this ID.')]
+    id: Annotated[BrandId, Field(description='Brand identifier within the house. House chooses this ID.')]
     url: Annotated[HttpUrl | None, Field(description='Primary brand URL for context and asset discovery')] = None
-    identity_relying_parties: Annotated[list[BrandDiscoveryIdentityRelyingParty] | None, Field(description='Verified-identity relying parties scoped to this brand/property, for attestation provenance in TMP Identity Match. Use when a brand or property runs its own relying_party_id (per-property pseudonyms); entity-wide relying parties live on the house object. See specs/tmp-verified-identity-attestation.md.')] = None
-    names: Annotated[list[BrandDiscoveryLocalizedName], Field(description='Localized brand names. Multiple entries per language allowed for aliases.', min_length=1)]
-    keller_type: BrandDiscoveryKellerType | None = None
-    parent_brand: Annotated[BrandDiscoveryBrandId | None, Field(description='Parent brand ID for sub-brands and endorsed brands')] = None
+    identity_relying_parties: Annotated[list[IdentityRelyingParty] | None, Field(description='Verified-identity relying parties scoped to this brand/property, for attestation provenance in TMP Identity Match. Use when a brand or property runs its own relying_party_id (per-property pseudonyms); entity-wide relying parties live on the house object. See specs/tmp-verified-identity-attestation.md.')] = None
+    names: Annotated[list[LocalizedName], Field(description='Localized brand names. Multiple entries per language allowed for aliases.', min_length=1)]
+    keller_type: KellerType | None = None
+    parent_brand: Annotated[BrandId | None, Field(description='Parent brand ID for sub-brands and endorsed brands')] = None
     description: Annotated[str | None, Field(description='Brand description')] = None
     industries: Annotated[list[str] | None, Field(description="Brand industries (e.g., ['automotive'] or ['pharmaceutical', 'cpg'] for a consumer health company). Describes what the company does — not what regulatory regimes apply (use policy_categories for that).", min_length=1)] = None
     target_audience: Annotated[str | None, Field(description='Primary target audience')] = None
-    logos: Annotated[list[BrandDiscoveryLogo] | None, Field(description='Brand logo assets')] = None
-    colors: BrandDiscoveryColors | None = None
-    fonts: BrandDiscoveryFonts | None = None
+    logos: Annotated[list[Logo] | None, Field(description='Brand logo assets')] = None
+    colors: Colors | None = None
+    fonts: Fonts | None = None
     tone: Annotated[str | Tone | None, Field(description='Brand voice and messaging tone guidelines')] = None
-    tagline: Annotated[str | NonEmptyList[BrandDiscoveryLocalizedName] | None, Field(description='Brand tagline or slogan. Accepts a plain string or a localized array matching the names pattern.')] = None
-    assets: Annotated[list[BrandDiscoveryAsset] | None, Field(description='Brand asset library')] = None
-    properties: Annotated[list[BrandDiscoveryProperty] | None, Field(description='Digital properties associated with this brand — owned, managed, or represented')] = None
-    product_catalog: BrandDiscoveryProductCatalog | None = None
+    tagline: Annotated[str | NonEmptyList[LocalizedName] | None, Field(description='Brand tagline or slogan. Accepts a plain string or a localized array matching the names pattern.')] = None
+    assets: Annotated[list[Asset] | None, Field(description='Brand asset library')] = None
+    properties: Annotated[list[Property] | None, Field(description='Digital properties associated with this brand — owned, managed, or represented')] = None
+    product_catalog: ProductCatalog | None = None
     privacy_policy_url: Annotated[HttpUrl | None, Field(description="URL to the brand's privacy policy")] = None
-    data_subject_contestation: BrandDiscoveryDataSubjectContestation | None = None
+    data_subject_contestation: DataSubjectContestation | None = None
     disclaimers: Annotated[list[DisclaimersItem] | None, Field(description='Legal disclaimers for creatives')] = None
-    trademarks: Annotated[list[BrandDiscoveryTrademark] | None, Field(description="Brand-level registered trademarks. Use for marks the brand owns or controls (e.g., a sub-brand's own marks distinct from the corporate parent). House-level trademarks live on the house object; resolution between the two is union — both lists are valid claims.")] = None
+    trademarks: Annotated[list[Trademark] | None, Field(description="Brand-level registered trademarks. Use for marks the brand owns or controls (e.g., a sub-brand's own marks distinct from the corporate parent). House-level trademarks live on the house object; resolution between the two is union — both lists are valid claims.")] = None
     voice_synthesis: Annotated[VoiceSynthesis | None, Field(description='TTS voice synthesis configuration for AI-generated audio')] = None
     avatar: Annotated[Avatar | None, Field(description='Visual avatar configuration')] = None
-    visual_guidelines: Annotated[BrandDiscoveryVisualGuidelines | None, Field(description='Structured visual rules for generative creative systems')] = None
-    agents: Annotated[BrandDiscoveryAgents | None, Field(description='Agents authorized to act on behalf of this brand. Consumers resolving an agent by URL use the matching brand-level entry; do not infer a type-wide override of unrelated house-level entries when multiple same-type entries exist.')] = None
+    visual_guidelines: Annotated[VisualGuidelines | None, Field(description='Structured visual rules for generative creative systems')] = None
+    agents: Annotated[Agents | None, Field(description='Agents authorized to act on behalf of this brand. Consumers resolving an agent by URL use the matching brand-level entry; do not infer a type-wide override of unrelated house-level entries when multiple same-type entries exist.')] = None
     brand_agent: Annotated[BrandDiscoveryBrandAgent | None, Field(description="Deprecated: use agents array with type 'brand' instead. Brand agent that provides dynamic brand data via MCP.")] = None
-    rights_agent: Annotated[BrandDiscoveryRightsAgent | None, Field(description="Deprecated: use agents array with type 'rights' instead. Rights licensing agent for this brand.")] = None
-    contact: Annotated[Contact | None, Field(description='Brand-level contact information')] = None
+    rights_agent: Annotated[RightsAgent | None, Field(description="Deprecated: use agents array with type 'rights' instead. Rights licensing agent for this brand.")] = None
+    contact: Annotated[BrandContact | None, Field(description='Brand-level contact information')] = None
     collections: Annotated[list[CollectionsItem] | None, Field(description="Collections this person or brand is associated with. Enables bidirectional linking: a collection's talent references brand.json via brand_url, and brand.json links back to collections.")] = None
 
 
-class BrandDiscoveryPortfolioEntry(AdCPBaseModel):
+class PortfolioEntry(AdCPBaseModel):
     """
     A house's ownership entry for a brand that publishes its own canonical brand.json elsewhere. The publisher (the house) asserts 'I own this brand, hosted at this domain, effective on this date.' Mutual-assertion trust requires the child's house_domain to reciprocate. Distinct from core/brand-ref.json (which identifies brands in media-buy plans). See docs/brand-protocol/brand-json.mdx
     """
@@ -1516,9 +1516,9 @@ class BrandDiscoveryPortfolioEntry(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/portfolio_entry')
-    domain: Annotated[BrandDiscoveryDomain, Field(description="Domain where the child's canonical brand.json lives")]
-    brand_id: Annotated[BrandDiscoveryBrandId, Field(description='Stable brand identifier within the house portfolio. Required so the cross-array uniqueness invariant (brand_id MUST NOT appear in both brands[] and brand_refs[]) is enforceable.')]
-    managed_by: Annotated[BrandDiscoveryDomain | None, Field(description="Optional domain of the entity that operationally manages this brand (e.g., an agency network within a holdco). House-declared. Consumers MUST NOT use it for trust or authorization decisions. Aggregation across houses ('show me everything BBH manages') is the intended use; trust is unaffected.")] = None
+    domain: Annotated[Domain, Field(description="Domain where the child's canonical brand.json lives")]
+    brand_id: Annotated[BrandId, Field(description='Stable brand identifier within the house portfolio. Required so the cross-array uniqueness invariant (brand_id MUST NOT appear in both brands[] and brand_refs[]) is enforceable.')]
+    managed_by: Annotated[Domain | None, Field(description="Optional domain of the entity that operationally manages this brand (e.g., an agency network within a holdco). House-declared. Consumers MUST NOT use it for trust or authorization decisions. Aggregation across houses ('show me everything BBH manages') is the intended use; trust is unaffected.")] = None
     effective_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp when the house established this ownership claim. Consumers age mutual-assertion edges from this date for TTL purposes and MUST NOT extend relationship trust before a future effective_at is reached. Optional; absent means the consumer ages from its own durable first observation.')] = None
 
 
@@ -1532,7 +1532,7 @@ class ScopesItem(StrEnum):
     AGENT_OPERATIONS = 'agent_operations'
 
 
-class BrandDiscoveryAuthorizedOperator(AdCPBaseModel):
+class AuthorizedOperator(AdCPBaseModel):
     """
     An entity authorized to represent brands from this house. Verified by resolving the operator's domain. Optional validity fields let houses time-box agency-of-record and delegated-operator relationships without changing historical entries.
     """
@@ -1543,7 +1543,7 @@ class BrandDiscoveryAuthorizedOperator(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('scopes'),
     )
-    domain: Annotated[BrandDiscoveryDomain, Field(description="Domain of the authorized operator (e.g., 'groupm.com')")]
+    domain: Annotated[Domain, Field(description="Domain of the authorized operator (e.g., 'groupm.com')")]
     brands: Annotated[list[StrMatching36CCA380], Field(description="Brand IDs this operator is authorized for. Use ['*'] for all brands in the portfolio.", min_length=1)]
     countries: Annotated[list[StrMatchingEFC12812] | None, Field(description='ISO 3166-1 alpha-2 country codes where this authorization applies. Omit for global authorization.')] = None
     scopes: Annotated[list[ScopesItem] | None, Field(description="Activities this operator is authorized to perform for the listed brands and countries. Omit for backwards-compatible broad authorization. Use ['all'] only when every listed scope is delegated.", json_schema_extra={'uniqueItems': True}, min_length=1)] = None
@@ -1565,16 +1565,16 @@ class HousePortfolio(BrandDiscovery):
     schema_: Annotated[str | None, Field(alias='$schema')] = None
     version: str | None = None
     default_language: LanguageTag | None = 'en'
-    house: BrandDiscoveryHouse
-    brands: Annotated[list[BrandDiscoveryBrand] | None, Field(description='Inline brands owned by this house (parent-owned data). Use for sub-brands without their own canonical document — typically those without a dedicated domain or that the holdco wants to manage centrally. A brand_id MUST NOT appear in both brands[] and brand_refs[].', min_length=1)] = None
-    brand_refs: Annotated[list[BrandDiscoveryPortfolioEntry] | None, Field(description="Portfolio entries for brands owned by this house that publish their own canonical brand.json elsewhere (child-owned data). Each entry asserts ownership plus where the child's document lives. Mutual-assertion trust: the pointed-to document's house_domain must equal this house's domain. Invariants: a brand_id MUST NOT appear in both brands[] and brand_refs[]; brand_id and domain MUST each be unique within brand_refs[]. See docs/brand-protocol/brand-json.mdx", min_length=1)] = None
+    house: House
+    brands: Annotated[list[Brand] | None, Field(description='Inline brands owned by this house (parent-owned data). Use for sub-brands without their own canonical document — typically those without a dedicated domain or that the holdco wants to manage centrally. A brand_id MUST NOT appear in both brands[] and brand_refs[].', min_length=1)] = None
+    brand_refs: Annotated[list[PortfolioEntry] | None, Field(description="Portfolio entries for brands owned by this house that publish their own canonical brand.json elsewhere (child-owned data). Each entry asserts ownership plus where the child's document lives. Mutual-assertion trust: the pointed-to document's house_domain must equal this house's domain. Invariants: a brand_id MUST NOT appear in both brands[] and brand_refs[]; brand_id and domain MUST each be unique within brand_refs[]. See docs/brand-protocol/brand-json.mdx", min_length=1)] = None
     contact: BrandDiscoveryContact | None = None
-    authorized_operators: Annotated[list[BrandDiscoveryAuthorizedOperator] | None, Field(description="Entities authorized to represent brands from this house. Third parties (sellers, platforms) can verify an operator's authorization by checking this list. Operators are identified by domain.")] = None
-    trademarks: Annotated[list[BrandDiscoveryTrademark] | None, Field(description='House-level (corporate) registered trademarks. Brand-level marks live on individual brand entries; resolution is union.')] = None
+    authorized_operators: Annotated[list[AuthorizedOperator] | None, Field(description="Entities authorized to represent brands from this house. Third parties (sellers, platforms) can verify an operator's authorization by checking this list. Operators are identified by domain.")] = None
+    trademarks: Annotated[list[Trademark] | None, Field(description='House-level (corporate) registered trademarks. Brand-level marks live on individual brand entries; resolution is union.')] = None
     last_updated: AwareDatetime | None = None
 
 
-class BrandCanonicalDocument(BrandDiscovery, BrandDiscoveryBrand):
+class BrandCanonicalDocument(BrandDiscovery, Brand):
     """
     Self-published brand document where the brand owns its own identity attributes. Optionally declares its house via house_domain; for trust, the named house's brand_refs[] must reciprocate (mutual assertion). Standalone brands (no parent house) omit house_domain. Hosted at the brand's own /.well-known/brand.json (or via authoritative_location indirection). See docs/brand-protocol/brand-json.mdx
     """
@@ -1588,7 +1588,7 @@ class BrandCanonicalDocument(BrandDiscovery, BrandDiscoveryBrand):
     schema_: Annotated[str | None, Field(alias='$schema')] = None
     version: str | None = None
     default_language: LanguageTag | None = 'en'
-    house_domain: Annotated[BrandDiscoveryDomain | None, Field(description="Optional pointer to the corporate house this brand belongs to. The named house's brand_refs[] MUST reciprocate for mutual-assertion trust. Single-hop only — a brand cannot itself declare brand_refs[]. Omit for standalone brands (no house).")] = None
+    house_domain: Annotated[Domain | None, Field(description="Optional pointer to the corporate house this brand belongs to. The named house's brand_refs[] MUST reciprocate for mutual-assertion trust. Single-hop only — a brand cannot itself declare brand_refs[]. Omit for standalone brands (no house).")] = None
     last_updated: AwareDatetime | None = None
 
 
@@ -1596,4 +1596,4 @@ BrandDiscovery._branch_models = (AuthoritativeLocationRedirect, HouseRedirect, B
 BrandDiscovery.model_rebuild(force=True)
 
 
-__all__ = ["BrandDiscovery", "BrandDiscoveryAgents", "BrandDiscoveryAsset", "BrandDiscoveryAssetLibrary", "BrandDiscoveryAuthorizedOperator", "BrandDiscoveryBorderRadius", "BrandDiscoveryBrand", "BrandDiscoveryBrandAgent", "BrandDiscoveryBrandAgentEntry", "BrandDiscoveryBrandId", "BrandDiscoveryBrandShapes", "BrandDiscoveryColorConstraint", "BrandDiscoveryColorRef", "BrandDiscoveryColorValue", "BrandDiscoveryColors", "BrandDiscoveryColorway", "BrandDiscoveryCompositionRules", "BrandDiscoveryContact", "BrandDiscoveryDataSubjectContestation", "BrandDiscoveryDomain", "BrandDiscoveryElevation", "BrandDiscoveryFontFile", "BrandDiscoveryFontRole", "BrandDiscoveryFonts", "BrandDiscoveryGraphicElement", "BrandDiscoveryGraphicStyle", "BrandDiscoveryGuidelineSeverity", "BrandDiscoveryHexColor", "BrandDiscoveryHouse", "BrandDiscoveryIconography", "BrandDiscoveryIdentityRelyingParty", "BrandDiscoveryKellerType", "BrandDiscoveryLocalizedName", "BrandDiscoveryLocalizedScalar", "BrandDiscoveryLocalizedStringList", "BrandDiscoveryLocalizedStringListEntry", "BrandDiscoveryLogo", "BrandDiscoveryLogoId", "BrandDiscoveryLogoPlacement", "BrandDiscoveryLogoUsageRule", "BrandDiscoveryMarkLockup", "BrandDiscoveryMotionGuidelines", "BrandDiscoveryPhotographyStyle", "BrandDiscoveryPortfolioEntry", "BrandDiscoveryProductCatalog", "BrandDiscoveryProperty", "BrandDiscoveryRightsAgent", "BrandDiscoverySpacing", "BrandDiscoveryTrademark", "BrandDiscoveryTypeScaleEntry", "BrandDiscoveryVisualGuidelines"]
+__all__ = ["BrandDiscovery", "Agents", "Asset", "AssetLibrary", "AuthorizedOperator", "BorderRadius", "Brand", "BrandAgentEntry", "BrandDiscoveryBrandAgent", "BrandDiscoveryContact", "BrandId", "BrandShapes", "ColorConstraint", "ColorRef", "ColorValue", "Colors", "Colorway", "CompositionRules", "DataSubjectContestation", "Domain", "Elevation", "FontFile", "FontRole", "Fonts", "GraphicElement", "GraphicStyle", "GuidelineSeverity", "HexColor", "House", "Iconography", "IdentityRelyingParty", "KellerType", "LocalizedName", "LocalizedScalar", "LocalizedStringList", "LocalizedStringListEntry", "Logo", "LogoId", "LogoPlacement", "LogoUsageRule", "MarkLockup", "MotionGuidelines", "PhotographyStyle", "PortfolioEntry", "ProductCatalog", "Property", "RightsAgent", "Spacing", "Trademark", "TypeScaleEntry", "VisualGuidelines"]

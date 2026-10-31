@@ -10,7 +10,7 @@ from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from ..ext import ExtensionObject
 
 
-class CatalogFieldBindingScalarBinding(AdCPBaseModel):
+class ScalarBinding(AdCPBaseModel):
     """
     Maps an individual format asset to a catalog item field via dot-notation path.
     """
@@ -24,7 +24,7 @@ class CatalogFieldBindingScalarBinding(AdCPBaseModel):
     ext: ExtensionObject | None = None
 
 
-class CatalogFieldBindingAssetPoolBinding(AdCPBaseModel):
+class AssetPoolBinding(AdCPBaseModel):
     """
     Maps an individual format asset to a typed asset pool on the catalog item (e.g., images_landscape, images_vertical, logo). The format slot receives the first item in the pool.
     """
@@ -51,7 +51,7 @@ class CatalogFieldBinding(BranchDispatchMixin, AdCPBaseModel):
         return "oneOf"
 
 
-class CatalogFieldBindingScalar(CatalogFieldBinding, CatalogFieldBindingScalarBinding):
+class CatalogFieldBindingScalar(CatalogFieldBinding, ScalarBinding):
     """
     Maps an individual format asset to a catalog item field via dot-notation path.
     """
@@ -61,7 +61,7 @@ class CatalogFieldBindingScalar(CatalogFieldBinding, CatalogFieldBindingScalarBi
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/requirements/catalog-field-binding.json', pointer='#/oneOf/0')
 
 
-class CatalogFieldBindingAssetPool(CatalogFieldBinding, CatalogFieldBindingAssetPoolBinding):
+class CatalogFieldBindingAssetPool(CatalogFieldBinding, AssetPoolBinding):
     """
     Maps an individual format asset to a typed asset pool on the catalog item (e.g., images_landscape, images_vertical, logo). The format slot receives the first item in the pool.
     """
@@ -71,7 +71,7 @@ class CatalogFieldBindingAssetPool(CatalogFieldBinding, CatalogFieldBindingAsset
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/requirements/catalog-field-binding.json', pointer='#/oneOf/1')
 
 
-class CatalogFieldBindingCatalogGroupTrue(CatalogFieldBinding):
+class CatalogFieldBindingCatalogGroup(CatalogFieldBinding):
     """
     A format repeatable_group where each repetition corresponds to one catalog item. Iterates the group over catalog items in catalog item order.
     """
@@ -82,12 +82,12 @@ class CatalogFieldBindingCatalogGroupTrue(CatalogFieldBinding):
     kind: Literal['catalog_group']
     format_group_id: Annotated[str, Field(description="The asset_group_id of a repeatable_group in the format's assets array.")]
     catalog_item: Annotated[Literal[True], Field(description="Each repetition of the format's repeatable_group maps to one item from the catalog.")]
-    per_item_bindings: Annotated[list[CatalogFieldBindingScalarBinding | CatalogFieldBindingAssetPoolBinding] | None, Field(description='Scalar and asset pool bindings that apply within each repetition of the group. Nested catalog_group bindings are not permitted.', min_length=1)] = None
+    per_item_bindings: Annotated[list[ScalarBinding | AssetPoolBinding] | None, Field(description='Scalar and asset pool bindings that apply within each repetition of the group. Nested catalog_group bindings are not permitted.', min_length=1)] = None
     ext: ExtensionObject | None = None
 
 
-CatalogFieldBinding._branch_models = (CatalogFieldBindingScalar, CatalogFieldBindingAssetPool, CatalogFieldBindingCatalogGroupTrue,)
+CatalogFieldBinding._branch_models = (CatalogFieldBindingScalar, CatalogFieldBindingAssetPool, CatalogFieldBindingCatalogGroup,)
 CatalogFieldBinding.model_rebuild(force=True)
 
 
-__all__ = ["CatalogFieldBinding", "CatalogFieldBindingAssetPoolBinding", "CatalogFieldBindingScalarBinding"]
+__all__ = ["CatalogFieldBinding", "AssetPoolBinding", "ScalarBinding"]

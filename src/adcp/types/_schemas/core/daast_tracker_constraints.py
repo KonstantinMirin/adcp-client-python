@@ -13,7 +13,7 @@ from adcp.types.constraints import StrMatching38E7F7CC
 from ..enums.daast_version import DAASTVersion
 
 
-class DAASTTrackerConstraintsDaastEvent(StrEnum):
+class DaastEvent(StrEnum):
     CREATIVEVIEW = 'creativeView'
     START = 'start'
     FIRSTQUARTILE = 'firstQuartile'
@@ -30,15 +30,15 @@ class DAASTTrackerConstraintsDaastEvent(StrEnum):
     CLOSE = 'close'
 
 
-class DAASTTrackerConstraintsDaastTarget(StrEnum):
+class DaastTarget(StrEnum):
     LINEAR = 'linear'
     COMPANION = 'companion'
 
 
-DAASTTrackerConstraintsDaastOffset = StrMatching38E7F7CC
+DaastOffset = StrMatching38E7F7CC
 
 
-DAASTTrackerConstraintsDaastVersions = Annotated[Annotated[list[DAASTVersion], Field(json_schema_extra={'uniqueItems': True}), AfterValidator(Distinct())], Field(min_length=1)]
+DaastVersions = Annotated[Annotated[list[DAASTVersion], Field(json_schema_extra={'uniqueItems': True}), AfterValidator(Distinct())], Field(min_length=1)]
 
 
 class DAASTTrackerConstraints(AdCPBaseModel):
@@ -50,10 +50,10 @@ class DAASTTrackerConstraints(AdCPBaseModel):
         ConditionalRequired((Match('daast_event', True, ('progress',)),), require=('offset',), forbid=()),
         NegatedConditional((Match('daast_event', True, ('progress',)),), require=(), forbid=('offset',)),
     )
-    daast_event: DAASTTrackerConstraintsDaastEvent | None = None
-    target: DAASTTrackerConstraintsDaastTarget | None = 'linear'
-    offset: DAASTTrackerConstraintsDaastOffset | None = None
-    daast_versions: DAASTTrackerConstraintsDaastVersions | None = None
+    daast_event: DaastEvent | None = None
+    target: DaastTarget | None = 'linear'
+    offset: DaastOffset | None = None
+    daast_versions: DaastVersions | None = None
 
 
-__all__ = ["DAASTTrackerConstraints", "DAASTTrackerConstraintsDaastEvent", "DAASTTrackerConstraintsDaastOffset", "DAASTTrackerConstraintsDaastTarget", "DAASTTrackerConstraintsDaastVersions"]
+__all__ = ["DAASTTrackerConstraints", "DaastEvent", "DaastOffset", "DaastTarget", "DaastVersions"]

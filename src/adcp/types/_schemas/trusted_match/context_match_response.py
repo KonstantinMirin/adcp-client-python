@@ -25,7 +25,7 @@ class Signals(AdCPBaseModel):
     segments: Annotated[list[str] | None, Field(description='Contextual segment identifiers combined across provider responses.')] = None
 
 
-class ContextMatchResponseRouterPublisherTargetingKvsItem(AdCPBaseModel):
+class TargetingKvsItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -34,7 +34,7 @@ class ContextMatchResponseRouterPublisherTargetingKvsItem(AdCPBaseModel):
     value: Annotated[str, Field(description='Targeting value preserved unchanged by the router.')]
 
 
-ContextMatchResponseRouterPublisherTargetingKvs = Annotated[list[ContextMatchResponseRouterPublisherTargetingKvsItem], Field(description='Provider-local key-value pairs for ad-server targeting. The router preserves each pair unchanged and attributes it by provider_id; the publisher maps the tuple (provider_id, key) to a local ad-server destination.')]
+TargetingKvs = Annotated[list[TargetingKvsItem], Field(description='Provider-local key-value pairs for ad-server targeting. The router preserves each pair unchanged and attributes it by provider_id; the publisher maps the tuple (provider_id, key) to a local ad-server destination.')]
 
 
 class SignalsByProviderValue(AdCPBaseModel):
@@ -42,7 +42,7 @@ class SignalsByProviderValue(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='trusted-match/context-match-response.json', pointer='#/properties/signals_by_provider/additionalProperties')
-    targeting_kvs: Annotated[ContextMatchResponseRouterPublisherTargetingKvs, Field(min_length=1)]
+    targeting_kvs: Annotated[TargetingKvs, Field(min_length=1)]
 
 
 class ContextMatchResponseRouterPublisher(AdCPVersionEnvelope, ProtocolEnvelope):
@@ -67,4 +67,4 @@ class ContextMatchResponseRouterPublisher(AdCPVersionEnvelope, ProtocolEnvelope)
     signals_by_provider: Annotated[dict[StrMinLen1MaxLen64MatchingBC7F3822, SignalsByProviderValue] | None, Field(description="Router-authored map of provider targeting pairs, keyed by the publisher-assigned provider_id from provider registration. For every provider response containing a non-empty signals.targeting_kvs list, the router copies the complete list unchanged into that provider's bucket. The router derives the map key from its registration and MUST ignore or reject provider-supplied signals_by_provider data. A provider with no targeting pairs is omitted. Publishers resolve each (provider_id, key) tuple to a local ad-server destination and drop tuples that have no local mapping.", min_length=1)] = None
 
 
-__all__ = ["ContextMatchResponseRouterPublisher", "ContextMatchResponseRouterPublisherTargetingKvs"]
+__all__ = ["ContextMatchResponseRouterPublisher", "TargetingKvs"]

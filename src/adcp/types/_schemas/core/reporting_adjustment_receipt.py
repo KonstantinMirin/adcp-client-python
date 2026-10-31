@@ -16,7 +16,7 @@ class Status(StrEnum):
     REJECTED = 'rejected'
 
 
-ReportingAdjustmentReceiptReportingAdjustmentRejectionCode = StrMinLen1MaxLen128MatchingE43B025C
+ReportingAdjustmentRejectionCode = StrMinLen1MaxLen128MatchingE43B025C
 
 
 class ReportingAdjustmentReceipt(AdCPBaseModel):
@@ -38,9 +38,9 @@ class ReportingAdjustmentReceipt(AdCPBaseModel):
     supersedes_reporting_receipt_id: Annotated[StrMinLen16MaxLen255Matching1E5CF9EB | None, Field(description='Optional immutable rejected receipt replaced by this new receipt for the same adjustment. Accepted current receipts are terminal.')] = None
     status: Status
     observed_adjustment_sha256: Annotated[StrMatching5E987613, Field(description='Digest recomputed from the adjustment using its canonical evidence rule.')]
-    rejection_codes: Annotated[list[ReportingAdjustmentReceiptReportingAdjustmentRejectionCode] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    rejection_codes: Annotated[list[ReportingAdjustmentRejectionCode] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     observed_at: AwareDatetime
     received_at: AwareDatetime | None = None
 
 
-__all__ = ["ReportingAdjustmentReceipt", "ReportingAdjustmentReceiptReportingAdjustmentRejectionCode"]
+__all__ = ["ReportingAdjustmentReceipt", "ReportingAdjustmentRejectionCode"]

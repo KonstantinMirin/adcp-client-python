@@ -8,7 +8,7 @@ from pydantic import ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 
 from .activation_key import ActivationKey
-from .signal_targeting_expression import SignalTargetingExpression, SignalTargetingExpressionBinaryTrue, SignalTargetingExpressionCategorical, SignalTargetingExpressionNumeric
+from .signal_targeting_expression import SignalTargetingExpression, SignalTargetingExpressionBinary, SignalTargetingExpressionCategorical, SignalTargetingExpressionNumeric
 
 
 class PackageSignalTargeting(BranchDispatchMixin, AdCPBaseModel):
@@ -30,7 +30,7 @@ class PackageSignalTargeting(BranchDispatchMixin, AdCPBaseModel):
     activation_key: Annotated[ActivationKey | None, Field(description='Destination-specific activation key returned by get_signals or activate_signal. Usually omitted for seller-offered signals selected directly through the same seller; include only when the selected signal was separately activated and the seller requires the activation key to correlate the package selection.')] = None
 
 
-class PackageSignalTargetingBinaryTrue(PackageSignalTargeting, SignalTargetingExpressionBinaryTrue):
+class PackageSignalTargetingBinary(PackageSignalTargeting, SignalTargetingExpressionBinary):
     """
     Binary signal expression. In grouped package targeting, value is always true; use a parent group with operator 'none' for exclusion.
     """
@@ -60,7 +60,7 @@ class PackageSignalTargetingNumeric(PackageSignalTargeting, SignalTargetingExpre
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/package-signal-targeting.json', pointer='#/allOf/0/oneOf/2')
 
 
-PackageSignalTargeting._branch_models = (PackageSignalTargetingBinaryTrue, PackageSignalTargetingCategorical, PackageSignalTargetingNumeric,)
+PackageSignalTargeting._branch_models = (PackageSignalTargetingBinary, PackageSignalTargetingCategorical, PackageSignalTargetingNumeric,)
 PackageSignalTargeting.model_rebuild(force=True)
 
 

@@ -82,7 +82,7 @@ class RegistryEvent(BranchDispatchMixin, AdCPBaseModel):
     created_at: Annotated[AwareDatetime, Field(description='ISO 8601 timestamp when the registry emitted the event. Advisory only; consumers MUST order and cursor by event_id.')]
 
 
-class RegistryEventClassification(StrEnum):
+class Classification(StrEnum):
     PROPERTY = 'property'
     AD_INFRA = 'ad_infra'
     PUBLISHER_MASK = 'publisher_mask'
@@ -90,33 +90,33 @@ class RegistryEventClassification(StrEnum):
     UNCLASSIFIED = 'unclassified'
 
 
-class RegistryEventPropertySource(StrEnum):
+class PropertySource(StrEnum):
     AUTHORITATIVE = 'authoritative'
     ENRICHED = 'enriched'
     CONTRIBUTED = 'contributed'
 
 
-RegistryEventDomain = StrMatching32F5291C
+Domain = StrMatching32F5291C
 
 
-RegistryEventChangedFields = Annotated[Annotated[list[str], Field(json_schema_extra={'uniqueItems': True}), AfterValidator(Distinct())], Field(description='Advisory list of changed top-level field names from the source document. Example values for publisher.adagents_changed include "formats", "placements", and "authorized_agents"; for agent.profile_updated these are profile field names such as "channels" or "format_kinds". Producers SHOULD enumerate every changed semantic field, explicitly including formats and placements for catalog-only revisions (additive from 3.2). Consumers MAY use this for targeted index refresh but MUST re-resolve every depended-on field when reading an older retained event that lacks this list.', min_length=1)]
+ChangedFields = Annotated[Annotated[list[str], Field(json_schema_extra={'uniqueItems': True}), AfterValidator(Distinct())], Field(description='Advisory list of changed top-level field names from the source document. Example values for publisher.adagents_changed include "formats", "placements", and "authorized_agents"; for agent.profile_updated these are profile field names such as "channels" or "format_kinds". Producers SHOULD enumerate every changed semantic field, explicitly including formats and placements for catalog-only revisions (additive from 3.2). Consumers MAY use this for targeted index refresh but MUST re-resolve every depended-on field when reading an older retained event that lacks this list.', min_length=1)]
 
 
-class RegistryEventPropertyPayload(AdCPBaseModel):
+class PropertyPayload(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/$defs/propertyPayload')
     property_rid: Annotated[str | None, Field(json_schema_extra={'format': 'uuid'})] = None
-    classification: RegistryEventClassification | None = None
-    source: RegistryEventPropertySource | None = None
+    classification: Classification | None = None
+    source: PropertySource | None = None
     identifiers: Annotated[list[Identifier] | None, Field(min_length=1)] = None
-    publisher_domain: RegistryEventDomain | None = None
+    publisher_domain: Domain | None = None
     property: Annotated[Property | None, Field(description='Optional full post-change property object when available.')] = None
-    changed_fields: RegistryEventChangedFields | None = None
+    changed_fields: ChangedFields | None = None
 
 
-class RegistryEventPropertyCreatedPropertyPayload(RegistryEventPropertyPayload):
+class RegistryEventPropertyCreatedPropertyPayload(PropertyPayload):
     """
     Event-type-specific payload. Shape is determined by event_type per the oneOf below.
     """
@@ -124,7 +124,7 @@ class RegistryEventPropertyCreatedPropertyPayload(RegistryEventPropertyPayload):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/0/properties/payload')
-    classification: RegistryEventClassification
+    classification: Classification
     identifiers: Annotated[list[Identifier], Field(min_length=1)]
     property_rid: Annotated[str, Field(json_schema_extra={'format': 'uuid'})]
 
@@ -139,7 +139,7 @@ class RegistryEventPropertyCreatedProperty(RegistryEvent):
     payload: Annotated[RegistryEventPropertyCreatedPropertyPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
 
 
-class RegistryEventPropertyUpdatedPropertyPayload(RegistryEventPropertyPayload):
+class RegistryEventPropertyUpdatedPropertyPayload(PropertyPayload):
     """
     Event-type-specific payload. Shape is determined by event_type per the oneOf below.
     """
@@ -206,7 +206,7 @@ class RegistryEventPropertyStaleProperty(RegistryEvent):
     payload: Annotated[RegistryEventPropertyStalePropertyPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
 
 
-class RegistryEventPropertyReactivatedPropertyPayload(RegistryEventPropertyPayload):
+class RegistryEventPropertyReactivatedPropertyPayload(PropertyPayload):
     """
     Event-type-specific payload. Shape is determined by event_type per the oneOf below.
     """
@@ -234,34 +234,34 @@ class Status(StrEnum):
     REMOVED = 'removed'
 
 
-class RegistryEventCollectionIdentifier(AdCPBaseModel):
+class CollectionIdentifier(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/$defs/collectionIdentifier')
-    publisher_domain: Annotated[RegistryEventDomain, Field(description='Distribution platform domain, such as youtube.com or spotify.com.')]
+    publisher_domain: Annotated[Domain, Field(description='Distribution platform domain, such as youtube.com or spotify.com.')]
     type: DistributionIdentifierType
     value: str
 
 
-class RegistryEventCollectionPayload(AdCPBaseModel):
+class CollectionPayload(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/$defs/collectionPayload')
     collection_rid: Annotated[str | None, Field(json_schema_extra={'format': 'uuid'})] = None
-    publisher_domain: RegistryEventDomain | None = None
+    publisher_domain: Domain | None = None
     collection_id: Annotated[str | None, Field(description='Publisher-local collection_id from the authoritative adagents.json.')] = None
     name: str | None = None
     kind: CollectionKind | None = None
-    source: RegistryEventPropertySource | None = None
+    source: PropertySource | None = None
     status: Status | None = None
-    identifiers: Annotated[list[RegistryEventCollectionIdentifier] | None, Field(description='Distribution identifiers that alias this collection across platforms.')] = None
+    identifiers: Annotated[list[CollectionIdentifier] | None, Field(description='Distribution identifiers that alias this collection across platforms.')] = None
     collection: Annotated[Collection | None, Field(description='Optional full post-change collection object when available.')] = None
-    changed_fields: RegistryEventChangedFields | None = None
+    changed_fields: ChangedFields | None = None
 
 
-class RegistryEventCollectionCreatedCollectionPayload(RegistryEventCollectionPayload):
+class RegistryEventCollectionCreatedCollectionPayload(CollectionPayload):
     """
     Event-type-specific payload. Shape is determined by event_type per the oneOf below.
     """
@@ -271,8 +271,8 @@ class RegistryEventCollectionCreatedCollectionPayload(RegistryEventCollectionPay
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/5/properties/payload')
     collection_id: Annotated[str | None, Field(description='Publisher-local collection_id from the authoritative adagents.json.')]
     collection_rid: Annotated[str, Field(json_schema_extra={'format': 'uuid'})]
-    identifiers: Annotated[list[RegistryEventCollectionIdentifier], Field(description='Distribution identifiers that alias this collection across platforms.')]
-    publisher_domain: RegistryEventDomain
+    identifiers: Annotated[list[CollectionIdentifier], Field(description='Distribution identifiers that alias this collection across platforms.')]
+    publisher_domain: Domain
 
 
 class RegistryEventCollectionCreatedCollection(RegistryEvent):
@@ -285,7 +285,7 @@ class RegistryEventCollectionCreatedCollection(RegistryEvent):
     payload: Annotated[RegistryEventCollectionCreatedCollectionPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
 
 
-class RegistryEventCollectionUpdatedCollectionPayload(RegistryEventCollectionPayload):
+class RegistryEventCollectionUpdatedCollectionPayload(CollectionPayload):
     """
     Event-type-specific payload. Shape is determined by event_type per the oneOf below.
     """
@@ -329,7 +329,7 @@ class RegistryEventCollectionMergedCollection(RegistryEvent):
     payload: Annotated[RegistryEventCollectionMergedCollectionPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
 
 
-class RegistryEventCollectionRemovedCollectionPayload(RegistryEventCollectionPayload):
+class RegistryEventCollectionRemovedCollectionPayload(CollectionPayload):
     """
     Event-type-specific payload. Shape is determined by event_type per the oneOf below.
     """
@@ -339,7 +339,7 @@ class RegistryEventCollectionRemovedCollectionPayload(RegistryEventCollectionPay
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/8/properties/payload')
     status: Literal['removed']
     collection_rid: Annotated[str, Field(json_schema_extra={'format': 'uuid'})]
-    publisher_domain: RegistryEventDomain
+    publisher_domain: Domain
 
 
 class RegistryEventCollectionRemovedCollection(RegistryEvent):
@@ -352,7 +352,7 @@ class RegistryEventCollectionRemovedCollection(RegistryEvent):
     payload: Annotated[RegistryEventCollectionRemovedCollectionPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
 
 
-class RegistryEventAgentProfilePayloadType(StrEnum):
+class AgentProfilePayloadType(StrEnum):
     SALES = 'sales'
     CREATIVE = 'creative'
     SIGNALS = 'signals'
@@ -361,10 +361,10 @@ class RegistryEventAgentProfilePayloadType(StrEnum):
     UNKNOWN = 'unknown'
 
 
-RegistryEventStringArray = list[str]
+StringArray = list[str]
 
 
-class RegistryEventAgentProfilePayload(AdCPBaseModel):
+class AgentProfilePayload(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -375,23 +375,23 @@ class RegistryEventAgentProfilePayload(AdCPBaseModel):
     )
     agent_url: HttpUrl | None = None
     name: str | None = None
-    type: RegistryEventAgentProfilePayloadType | None = None
-    channels: RegistryEventStringArray | None = None
-    property_types: RegistryEventStringArray | None = None
+    type: AgentProfilePayloadType | None = None
+    channels: StringArray | None = None
+    property_types: StringArray | None = None
     markets: Annotated[list[StrMatchingEFC12812] | None, Field(json_schema_extra={'uniqueItems': True})] = None
-    categories: RegistryEventStringArray | None = None
+    categories: StringArray | None = None
     category_taxonomy: str | None = None
     format_ids: Annotated[list[FormatReferenceStructuredObject] | None, Field(description='Deprecated in AdCP 3.2; removed in AdCP 4.0. Named-format profile projection. Use canonical `format_kinds` and `format_option_refs`.')] = None
     format_kinds: Annotated[list[CanonicalFormatKind] | None, Field(json_schema_extra={'uniqueItems': True})] = None
-    tags: RegistryEventStringArray | None = None
-    delivery_types: RegistryEventStringArray | None = None
+    tags: StringArray | None = None
+    delivery_types: StringArray | None = None
     property_count: NonNegativeInt | None = None
     publisher_count: NonNegativeInt | None = None
     has_tmp: bool | None = None
     updated_at: AwareDatetime | None = None
 
 
-class RegistryEventAgentDiscoveredAgentPayload(RegistryEventAgentProfilePayload):
+class RegistryEventAgentDiscoveredAgentPayload(AgentProfilePayload):
     """
     Event-type-specific payload. Shape is determined by event_type per the oneOf below.
     """
@@ -421,7 +421,7 @@ class RegistryEventAgentRemovedAgentPayload(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/10/properties/payload')
     agent_url: HttpUrl
-    removed_from_publishers: Annotated[list[RegistryEventDomain] | None, Field(min_length=1)] = None
+    removed_from_publishers: Annotated[list[Domain] | None, Field(min_length=1)] = None
 
 
 class RegistryEventAgentRemovedAgent(RegistryEvent):
@@ -434,7 +434,7 @@ class RegistryEventAgentRemovedAgent(RegistryEvent):
     payload: Annotated[RegistryEventAgentRemovedAgentPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
 
 
-class RegistryEventAgentProfileUpdatedAgentPayload(RegistryEventAgentProfilePayload):
+class RegistryEventAgentProfileUpdatedAgentPayload(AgentProfilePayload):
     """
     Event-type-specific payload. Shape is determined by event_type per the oneOf below.
     """
@@ -442,7 +442,7 @@ class RegistryEventAgentProfileUpdatedAgentPayload(RegistryEventAgentProfilePayl
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/11/properties/payload')
-    changed_fields: RegistryEventChangedFields | None = None
+    changed_fields: ChangedFields | None = None
     agent_url: HttpUrl
 
 
@@ -456,7 +456,7 @@ class RegistryEventAgentProfileUpdatedAgent(RegistryEvent):
     payload: Annotated[RegistryEventAgentProfileUpdatedAgentPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
 
 
-class RegistryEventComplianceStatus(StrEnum):
+class ComplianceStatus(StrEnum):
     PASSING = 'passing'
     DEGRADED = 'degraded'
     FAILING = 'failing'
@@ -474,7 +474,7 @@ class TracksValue(StrEnum):
     SKIPPED = 'skipped'
 
 
-class RegistryEventStoryboardStatus(StrEnum):
+class StoryboardStatus(StrEnum):
     PASSING = 'passing'
     FAILING = 'failing'
     PARTIAL = 'partial'
@@ -490,19 +490,19 @@ class StoryboardsItem(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/$defs/compliancePayload/properties/storyboards/items')
     storyboard_id: str
-    status: RegistryEventStoryboardStatus
+    status: StoryboardStatus
     steps_passed: NonNegativeInt | None = None
     steps_total: NonNegativeInt | None = None
 
 
-class RegistryEventCompliancePayload(AdCPBaseModel):
+class CompliancePayload(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/$defs/compliancePayload')
     agent_url: HttpUrl
-    previous_status: RegistryEventComplianceStatus
-    current_status: RegistryEventComplianceStatus
+    previous_status: ComplianceStatus
+    current_status: ComplianceStatus
     headline: str | None = None
     tracks: Annotated[dict[str, TracksValue], Field(description='Map of compliance track id to track status.')]
     storyboards_passing: NonNegativeInt
@@ -517,7 +517,7 @@ class RegistryEventAgentComplianceChangedAgent(RegistryEvent):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/12')
     event_type: Annotated[Literal['agent.compliance_changed'], Field(description='Discriminator. Determines the shape of payload.')]
     entity_type: Annotated[Literal['agent'], Field(description='Entity class touched by this event.')]
-    payload: Annotated[RegistryEventCompliancePayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
+    payload: Annotated[CompliancePayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
 
 
 class RegistryEventAgentVerificationEarnedAgentPayloadGradingProfile(StrEnum):
@@ -586,7 +586,7 @@ class RegistryEventAgentVerificationLostAgent(RegistryEvent):
     payload: Annotated[RegistryEventAgentVerificationLostAgentPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
 
 
-class RegistryEventPublisherAdagentsPayload(AdCPBaseModel):
+class PublisherAdagentsPayload(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -594,8 +594,8 @@ class RegistryEventPublisherAdagentsPayload(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         RequiredGroups((('publisher_domain',), ('domain',)), 'anyOf'),
     )
-    publisher_domain: RegistryEventDomain | None = None
-    domain: Annotated[RegistryEventDomain | None, Field(description='Legacy alias for publisher_domain retained for early feed examples.')] = None
+    publisher_domain: Domain | None = None
+    domain: Annotated[Domain | None, Field(description='Legacy alias for publisher_domain retained for early feed examples.')] = None
     properties_added: NonNegativeInt | None = None
     properties_removed: NonNegativeInt | None = None
     agents_added: list[HttpUrl] | None = None
@@ -605,7 +605,7 @@ class RegistryEventPublisherAdagentsPayload(AdCPBaseModel):
     collection_count: NonNegativeInt | None = None
     format_count: Annotated[NonNegativeInt | None, Field(description='Number of top-level formats[] declarations after this revision.')] = None
     placement_count: Annotated[NonNegativeInt | None, Field(description='Number of top-level placements[] declarations after this revision.')] = None
-    changed_fields: RegistryEventChangedFields | None = None
+    changed_fields: ChangedFields | None = None
     discovery_method: str | None = None
     manager_domain: str | None = None
     source: str | None = None
@@ -618,10 +618,10 @@ class RegistryEventPublisherAdagentsDiscoveredPublisher(RegistryEvent):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/15')
     event_type: Annotated[Literal['publisher.adagents_discovered'], Field(description='Discriminator. Determines the shape of payload.')]
     entity_type: Annotated[Literal['publisher'], Field(description='Entity class touched by this event.')]
-    payload: Annotated[RegistryEventPublisherAdagentsPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
+    payload: Annotated[PublisherAdagentsPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
 
 
-class RegistryEventPublisherAdagentsChangedPublisherPayload(RegistryEventPublisherAdagentsPayload):
+class RegistryEventPublisherAdagentsChangedPublisherPayload(PublisherAdagentsPayload):
     """
     Event-type-specific payload. Shape is determined by event_type per the oneOf below.
     """
@@ -653,7 +653,7 @@ class AuthorizationType(StrEnum):
     SIGNAL_TAGS = 'signal_tags'
 
 
-RegistryEventCountries = Annotated[Annotated[list[StrMatchingEFC12812], Field(json_schema_extra={'uniqueItems': True}), AfterValidator(Distinct())], Field(min_length=1)]
+Countries = Annotated[Annotated[list[StrMatchingEFC12812], Field(json_schema_extra={'uniqueItems': True}), AfterValidator(Distinct())], Field(min_length=1)]
 
 
 class DelegationType(StrEnum):
@@ -669,7 +669,7 @@ class Evidence(StrEnum):
     OVERRIDE = 'override'
 
 
-class RegistryEventAuthorizationPayload(AdCPBaseModel):
+class AuthorizationPayload(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -680,7 +680,7 @@ class RegistryEventAuthorizationPayload(AdCPBaseModel):
     id: Annotated[str | None, Field(description='Registry authorization row id when the event is backed by a materialized effective authorization row.', json_schema_extra={'format': 'uuid'})] = None
     agent_url: HttpUrl
     agent_url_canonical: Annotated[str | None, Field(description='Registry-canonicalized form of agent_url for equality checks.')] = None
-    publisher_domain: RegistryEventDomain
+    publisher_domain: Domain
     authorization_type: Annotated[AuthorizationType | None, Field(description='When present, identifies the adagents.json authorization variant represented by this payload.')] = None
     authorized_for: str | None = None
     property_ids: Annotated[list[PropertyID] | None, Field(min_length=1)] = None
@@ -692,7 +692,7 @@ class RegistryEventAuthorizationPayload(AdCPBaseModel):
     placement_ids: Annotated[list[str] | None, Field(min_length=1)] = None
     placement_tags: Annotated[list[str] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     collections: Annotated[list[CollectionSelector] | None, Field(description='Collection constraints from authorized_agents[*].collections. When set, the event does NOT authorize the property unqualified — consumers building a local authorization index MUST scope the grant to these selectors and fail closed when a query carries no collection scope. A selector without collection_ids is a bulk grant for all collections declared at that publisher_domain.', min_length=1)] = None
-    countries: RegistryEventCountries | None = None
+    countries: Countries | None = None
     delegation_type: DelegationType | None = None
     exclusive: bool | None = None
     signing_keys: Annotated[list[AgentSigningKey] | None, Field(description='Publisher-attested signing keys copied from adagents.json when the registry has them. Advisory in feed events; verifiers MUST re-fetch the authoritative publisher artifact before treating keys as a trust anchor.', min_length=1)] = None
@@ -715,7 +715,7 @@ class RegistryEventAuthorizationGrantedAuthorization(RegistryEvent):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/17')
     event_type: Annotated[Literal['authorization.granted'], Field(description='Discriminator. Determines the shape of payload.')]
     entity_type: Annotated[Literal['authorization'], Field(description='Entity class touched by this event.')]
-    payload: Annotated[RegistryEventAuthorizationPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
+    payload: Annotated[AuthorizationPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
 
 
 class RegistryEventAuthorizationRevokedAuthorization(RegistryEvent):
@@ -725,7 +725,7 @@ class RegistryEventAuthorizationRevokedAuthorization(RegistryEvent):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/18')
     event_type: Annotated[Literal['authorization.revoked'], Field(description='Discriminator. Determines the shape of payload.')]
     entity_type: Annotated[Literal['authorization'], Field(description='Entity class touched by this event.')]
-    payload: Annotated[RegistryEventAuthorizationPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
+    payload: Annotated[AuthorizationPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
 
 
 class RegistryEventAuthorizationModifiedAuthorization(RegistryEvent):
@@ -735,11 +735,11 @@ class RegistryEventAuthorizationModifiedAuthorization(RegistryEvent):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/19')
     event_type: Annotated[Literal['authorization.modified'], Field(description='Discriminator. Determines the shape of payload.')]
     entity_type: Annotated[Literal['authorization'], Field(description='Entity class touched by this event.')]
-    payload: Annotated[RegistryEventAuthorizationPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
+    payload: Annotated[AuthorizationPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
 
 
 RegistryEvent._branch_models = (RegistryEventPropertyCreatedProperty, RegistryEventPropertyUpdatedProperty, RegistryEventPropertyMergedProperty, RegistryEventPropertyStaleProperty, RegistryEventPropertyReactivatedProperty, RegistryEventCollectionCreatedCollection, RegistryEventCollectionUpdatedCollection, RegistryEventCollectionMergedCollection, RegistryEventCollectionRemovedCollection, RegistryEventAgentDiscoveredAgent, RegistryEventAgentRemovedAgent, RegistryEventAgentProfileUpdatedAgent, RegistryEventAgentComplianceChangedAgent, RegistryEventAgentVerificationEarnedAgent, RegistryEventAgentVerificationLostAgent, RegistryEventPublisherAdagentsDiscoveredPublisher, RegistryEventPublisherAdagentsChangedPublisher, RegistryEventAuthorizationGrantedAuthorization, RegistryEventAuthorizationRevokedAuthorization, RegistryEventAuthorizationModifiedAuthorization,)
 RegistryEvent.model_rebuild(force=True)
 
 
-__all__ = ["RegistryEvent", "RegistryEventAgentProfilePayload", "RegistryEventAuthorizationPayload", "RegistryEventChangedFields", "RegistryEventClassification", "RegistryEventCollectionIdentifier", "RegistryEventCollectionPayload", "RegistryEventCompliancePayload", "RegistryEventComplianceStatus", "RegistryEventCountries", "RegistryEventDomain", "RegistryEventPropertyPayload", "RegistryEventPropertySource", "RegistryEventPublisherAdagentsPayload", "RegistryEventStoryboardStatus", "RegistryEventStringArray"]
+__all__ = ["RegistryEvent", "AgentProfilePayload", "AuthorizationPayload", "ChangedFields", "Classification", "CollectionIdentifier", "CollectionPayload", "CompliancePayload", "ComplianceStatus", "Countries", "Domain", "PropertyPayload", "PropertySource", "PublisherAdagentsPayload", "StoryboardStatus", "StringArray"]

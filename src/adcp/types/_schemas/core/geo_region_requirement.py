@@ -10,7 +10,7 @@ from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import StrMatchingCE72C7C2, StrMatchingEFC12812
 
 
-class CountriesValueTrue(AdCPBaseModel):
+class CountriesValueAllValues(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -37,7 +37,7 @@ class GeographicRegionRequirement(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/geo-region-requirement.json', pointer='#')
-    countries: Annotated[dict[StrMatchingEFC12812, CountriesValueTrue | CountriesValueValues], Field(description='Required ISO subdivision support keyed by ISO 3166-1 alpha-2 country.', min_length=1)]
+    countries: Annotated[dict[StrMatchingEFC12812, CountriesValueAllValues | CountriesValueValues], Field(description='Required ISO subdivision support keyed by ISO 3166-1 alpha-2 country.', min_length=1)]
 
 
 __all__ = ["GeographicRegionRequirement"]

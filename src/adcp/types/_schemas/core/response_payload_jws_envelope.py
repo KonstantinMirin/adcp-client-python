@@ -18,7 +18,7 @@ class Task(StrEnum):
     VERIFY_BRAND_CLAIMS = 'verify_brand_claims'
 
 
-class ResponsePayloadJWSEnvelopeResponsePayload(AdCPBaseModel):
+class ResponsePayload(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -42,8 +42,8 @@ class ResponsePayloadJWSEnvelope(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/response-payload-jws-envelope.json', pointer='#')
     protected: Annotated[StrMatching2F959EB5, Field(description='Base64url-encoded JWS protected header. The decoded header MUST include alg, kid, and typ: adcp-response-payload+jws, and MUST NOT include the RFC 7797 b64 header. Verifiers enforce the key purpose by resolving kid to a JWK with adcp_use: response-signing.')]
-    payload: Annotated[ResponsePayloadJWSEnvelopeResponsePayload, Field(description='Decoded signed payload. Signers compute the JWS payload bytes from the RFC 8785/JCS canonicalization of this object.')]
+    payload: Annotated[ResponsePayload, Field(description='Decoded signed payload. Signers compute the JWS payload bytes from the RFC 8785/JCS canonicalization of this object.')]
     signature: Annotated[StrMatching2F959EB5, Field(description='Base64url-encoded JWS signature over the protected header and canonicalized payload.')]
 
 
-__all__ = ["ResponsePayloadJWSEnvelope", "ResponsePayloadJWSEnvelopeResponsePayload"]
+__all__ = ["ResponsePayloadJWSEnvelope", "ResponsePayload"]

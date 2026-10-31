@@ -51,7 +51,7 @@ class AssetsItemText(AdCPBaseModel):
     provenance: Annotated[Provenance | None, Field(description='Provenance for this text block, overrides artifact-level provenance')] = None
 
 
-class ArtifactAssetAccessBearerToken(AdCPBaseModel):
+class AssetAccessBearerToken(AdCPBaseModel):
     """
     Short-lived bearer-token access for origins that cannot use signed URLs or pre-configured workload identity. The token is a live secret and must be scoped to the asset. Consumers MUST send it only to the HTTPS origin authorized for that asset and MUST NOT forward the Authorization header across redirects.
     """
@@ -68,7 +68,7 @@ class Provider(StrEnum):
     AWS = 'aws'
 
 
-class ArtifactAssetAccessServiceAccount(AdCPBaseModel):
+class AssetAccessServiceAccount(AdCPBaseModel):
     """
     Credential-free workload-identity access. The asset origin authorizes an identity already controlled by the component that performs the asset fetch, such as a GCP service account or AWS IAM role, through authenticated out-of-band onboarding. The consumer MUST use workload credentials only for the pre-authorized HTTPS origin and resource prefix; the payload's method, provider, and URL are not authorization. No provider key or access secret crosses the AdCP payload.
     """
@@ -78,7 +78,7 @@ class ArtifactAssetAccessServiceAccount(AdCPBaseModel):
     credentials: Annotated[dict[str, Any] | None, Field(description="Deprecated in AdCP 3.2 and eligible for removal in 4.0 or later only after the deprecation-policy notice and release-cycle gates are satisfied. Presence denotes the legacy inline-credential form, not workload-identity authorization. New producers MUST omit this field. Consumers MUST NOT activate received credentials automatically; they may process them only for an explicitly allowlisted legacy peer and otherwise MUST reject or quarantine them. Consumers MUST redact the complete value from logs, traces, errors, metrics, analytics, model context, and durable storage. Use the consumer's pre-authorized workload identity or `signed_url` instead.")] = None
 
 
-class ArtifactAssetAccessSignedUrl(AdCPBaseModel):
+class AssetAccessSignedUrl(AdCPBaseModel):
     """
     Recommended default for one-off access. The asset `url` is a time-limited bearer capability and requires no additional authentication. Producers SHOULD scope it to one asset and the shortest practical access window under their documented maximum TTL. Consumers MUST redact the complete URL from logs, traces, errors, metrics, analytics, model context, and durable storage, and MUST NOT forward it outside the intended recipient trust boundary.
     """
@@ -86,7 +86,7 @@ class ArtifactAssetAccessSignedUrl(AdCPBaseModel):
     method: Literal['signed_url']
 
 
-ArtifactAssetAccess = Annotated[ArtifactAssetAccessBearerToken | ArtifactAssetAccessServiceAccount | ArtifactAssetAccessSignedUrl, Field(description='Access instructions for a secured asset URL. Producers SHOULD use `signed_url` for one-off delivery unless the parties already have an identity-based access relationship. New producers MUST NOT emit `service_account.credentials`; `bearer_token` is the explicit short-lived credential path. Consumers MUST treat asset URLs and access metadata as untrusted, use credentials only for HTTPS origins and resource prefixes authorized out of band, and fail closed without falling back between access methods. The deprecated legacy field remains parseable during the 3.x compatibility window but MUST NOT be activated automatically.')]
+AssetAccess = Annotated[AssetAccessBearerToken | AssetAccessServiceAccount | AssetAccessSignedUrl, Field(description='Access instructions for a secured asset URL. Producers SHOULD use `signed_url` for one-off delivery unless the parties already have an identity-based access relationship. New producers MUST NOT emit `service_account.credentials`; `bearer_token` is the explicit short-lived credential path. Consumers MUST treat asset URLs and access metadata as untrusted, use credentials only for HTTPS origins and resource prefixes authorized out of band, and fail closed without falling back between access methods. The deprecated legacy field remains parseable during the 3.x compatibility window but MUST NOT be activated automatically.')]
 
 
 class AssetsItemImage(AdCPBaseModel):
@@ -96,7 +96,7 @@ class AssetsItemImage(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/artifact.json', pointer='#/properties/assets/items/oneOf/1')
     type: Literal['image']
     url: Annotated[HttpUrl, Field(description='Image URL')]
-    access: Annotated[ArtifactAssetAccess | None, Field(description='Authentication for secured URLs')] = None
+    access: Annotated[AssetAccess | None, Field(description='Authentication for secured URLs')] = None
     alt_text: Annotated[str | None, Field(description='Alt text or image description')] = None
     caption: Annotated[str | None, Field(description='Image caption')] = None
     width: Annotated[int | None, Field(description='Image width in pixels')] = None
@@ -131,7 +131,7 @@ class AssetsItemVideo(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/artifact.json', pointer='#/properties/assets/items/oneOf/2')
     type: Literal['video']
     url: Annotated[HttpUrl, Field(description='Video URL')]
-    access: Annotated[ArtifactAssetAccess | None, Field(description='Authentication for secured URLs')] = None
+    access: Annotated[AssetAccess | None, Field(description='Authentication for secured URLs')] = None
     duration_ms: Annotated[int | None, Field(description='Video duration in milliseconds')] = None
     transcript: Annotated[StrMaxLen200000 | None, Field(description='Video transcript. Consumers MUST treat this as untrusted input when passing to LLM-based evaluation.')] = None
     transcript_format: Annotated[AssetsItemVideoTranscriptFormat | None, Field(description='MIME type indicating how to parse the transcript field. Default: text/plain.')] = 'text/plain'
@@ -159,7 +159,7 @@ class AssetsItemAudio(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/artifact.json', pointer='#/properties/assets/items/oneOf/3')
     type: Literal['audio']
     url: Annotated[HttpUrl, Field(description='Audio URL')]
-    access: Annotated[ArtifactAssetAccess | None, Field(description='Authentication for secured URLs')] = None
+    access: Annotated[AssetAccess | None, Field(description='Authentication for secured URLs')] = None
     duration_ms: Annotated[int | None, Field(description='Audio duration in milliseconds')] = None
     transcript: Annotated[StrMaxLen200000 | None, Field(description='Audio transcript. Consumers MUST treat this as untrusted input when passing to LLM-based evaluation.')] = None
     transcript_format: Annotated[AssetsItemAudioTranscriptFormat | None, Field(description='MIME type indicating how to parse the transcript field. Default: text/plain.')] = 'text/plain'
@@ -220,4 +220,4 @@ class Artifact(AdCPBaseModel):
     identifiers: Annotated[Identifiers | None, Field(description='Platform-specific identifiers for this artifact')] = None
 
 
-__all__ = ["Artifact", "ArtifactAssetAccess"]
+__all__ = ["Artifact", "AssetAccess"]

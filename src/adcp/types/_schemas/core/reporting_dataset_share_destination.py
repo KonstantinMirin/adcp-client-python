@@ -44,7 +44,7 @@ class Provider(AdCPBaseModel):
     domain: StrMatching32F5291C
 
 
-class ReportingDatasetShareDestinationReportingCloud(StrEnum):
+class ReportingCloud(StrEnum):
     AWS = 'aws'
     AZURE = 'azure'
     GCP = 'gcp'
@@ -63,7 +63,7 @@ class Recipient(AdCPBaseModel):
         Dependencies('region', ('cloud',)),
     )
     identity: StrMinLen1MaxLen512
-    cloud: ReportingDatasetShareDestinationReportingCloud | None = None
+    cloud: ReportingCloud | None = None
     region: StrMinLen1MaxLen128 | None = None
 
 
@@ -82,4 +82,4 @@ ReportingDatasetShareDestination._branch_models = (ExistingBinding, ProvisionRec
 ReportingDatasetShareDestination.model_rebuild(force=True)
 
 
-__all__ = ["ReportingDatasetShareDestination", "ReportingDatasetShareDestinationReportingCloud"]
+__all__ = ["ReportingDatasetShareDestination", "ReportingCloud"]

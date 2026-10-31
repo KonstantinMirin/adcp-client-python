@@ -36,38 +36,38 @@ class Area(StrEnum):
     OTHER = 'other'
 
 
-class AccountIdentityChangePreviewImpactEffect(StrEnum):
+class ImpactEffect(StrEnum):
     PRESERVED = 'preserved'
     REVALIDATION_REQUIRED = 'revalidation_required'
     REVOKE_AND_REGRANT = 'revoke_and_regrant'
     BLOCKED = 'blocked'
 
 
-class AccountIdentityChangePreviewImpact(AdCPBaseModel):
+class Impact(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/account-identity-change-preview.json', pointer='#/definitions/impact')
     area: Area
-    effect: AccountIdentityChangePreviewImpactEffect
+    effect: ImpactEffect
     reason: StrMinLen1MaxLen1000 | None = None
 
 
-class AccountIdentityChangePreviewNonblockingImpactsItemEffect(StrEnum):
+class NonblockingImpactsItemEffect(StrEnum):
     PRESERVED = 'preserved'
     REVALIDATION_REQUIRED = 'revalidation_required'
     REVOKE_AND_REGRANT = 'revoke_and_regrant'
 
 
-class AccountIdentityChangePreviewNonblockingImpactsItem(AccountIdentityChangePreviewImpact):
+class NonblockingImpactsItem(Impact):
     model_config = ConfigDict(
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/account-identity-change-preview.json', pointer='#/definitions/nonblocking_impacts/items')
-    effect: AccountIdentityChangePreviewNonblockingImpactsItemEffect
+    effect: NonblockingImpactsItemEffect
 
 
-AccountIdentityChangePreviewNonblockingImpacts = Annotated[list[AccountIdentityChangePreviewNonblockingImpactsItem], Field(description='Account areas the seller evaluated for continuity or reauthorization. Non-blocked outcomes cannot carry a blocked effect.', max_length=16, min_length=1)]
+NonblockingImpacts = Annotated[list[NonblockingImpactsItem], Field(description='Account areas the seller evaluated for continuity or reauthorization. Non-blocked outcomes cannot carry a blocked effect.', max_length=16, min_length=1)]
 
 
 class AccountIdentityChangeWouldApply(AccountIdentityChangePreview):
@@ -77,7 +77,7 @@ class AccountIdentityChangeWouldApply(AccountIdentityChangePreview):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/account-identity-change-preview.json', pointer='#/oneOf/0')
     outcome: Literal['would_apply']
     requested_operator_identity: OperatorIdentity
-    impacts: AccountIdentityChangePreviewNonblockingImpacts
+    impacts: NonblockingImpacts
 
 
 class AccountIdentityChangeWouldRequireApproval(AccountIdentityChangePreview):
@@ -87,10 +87,10 @@ class AccountIdentityChangeWouldRequireApproval(AccountIdentityChangePreview):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/account-identity-change-preview.json', pointer='#/oneOf/1')
     outcome: Literal['would_require_approval']
     requested_operator_identity: OperatorIdentity
-    impacts: AccountIdentityChangePreviewNonblockingImpacts
+    impacts: NonblockingImpacts
 
 
-AccountIdentityChangePreviewBlockedImpacts = Annotated[Annotated[list[AccountIdentityChangePreviewImpact], AfterValidator(AtLeastOne(values=(), pinned=(('effect', 'blocked'),)))], Field(description='Account areas evaluated for a blocked change. At least one impact identifies the blocking area.', max_length=16, min_length=1)]
+BlockedImpacts = Annotated[Annotated[list[Impact], AfterValidator(AtLeastOne(values=(), pinned=(('effect', 'blocked'),)))], Field(description='Account areas evaluated for a blocked change. At least one impact identifies the blocking area.', max_length=16, min_length=1)]
 
 
 class AccountIdentityChangeBlocked(AccountIdentityChangePreview):
@@ -100,7 +100,7 @@ class AccountIdentityChangeBlocked(AccountIdentityChangePreview):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/account-identity-change-preview.json', pointer='#/oneOf/2')
     outcome: Literal['blocked']
     requested_operator_identity: OperatorIdentity
-    impacts: AccountIdentityChangePreviewBlockedImpacts
+    impacts: BlockedImpacts
     blockers: Annotated[list[StrMinLen1MaxLen1000], Field(min_length=1)]
 
 
@@ -108,4 +108,4 @@ AccountIdentityChangePreview._branch_models = (AccountIdentityChangeWouldApply, 
 AccountIdentityChangePreview.model_rebuild(force=True)
 
 
-__all__ = ["AccountIdentityChangePreview", "AccountIdentityChangePreviewBlockedImpacts", "AccountIdentityChangePreviewImpact", "AccountIdentityChangePreviewNonblockingImpacts"]
+__all__ = ["AccountIdentityChangePreview", "BlockedImpacts", "Impact", "NonblockingImpacts"]
