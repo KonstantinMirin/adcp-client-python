@@ -106,74 +106,74 @@ class FormatsItem(BranchDispatchMixin, AdCPBaseModel):
     format_revision: Annotated[StrMatchingF1F3DC8E | None, Field(description="Registry-managed revision of this community format entry's input contract. Required when reference_renderer is present, but independent of any reference-renderer package version or legacy reference_renderer.format_revision annotation. A contract update may retain an existing renderer pin when that export still passes the updated declaration's contract fixtures.")] = None
 
 
-class ImageFormatDeclaration(FormatsItem, ImageFormatDeclaration):
+class FormatsItemImage(FormatsItem, ImageFormatDeclaration):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0/oneOf/0')
 
 
-class HTML5FormatDeclaration(FormatsItem, HTML5FormatDeclaration):
+class FormatsItemHtml5(FormatsItem, HTML5FormatDeclaration):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0/oneOf/1')
 
 
-class DisplayTagFormatDeclaration(FormatsItem, DisplayTagFormatDeclaration):
+class FormatsItemDisplayTag(FormatsItem, DisplayTagFormatDeclaration):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0/oneOf/2')
 
 
-class ImageCarouselFormatDeclaration(FormatsItem, ImageCarouselFormatDeclaration):
+class FormatsItemImageCarousel(FormatsItem, ImageCarouselFormatDeclaration):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0/oneOf/3')
 
 
-class HostedVideoFormatDeclaration(FormatsItem, HostedVideoFormatDeclaration):
+class FormatsItemVideoHosted(FormatsItem, HostedVideoFormatDeclaration):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0/oneOf/4')
 
 
-class VASTVideoFormatDeclaration(FormatsItem, VASTVideoFormatDeclaration):
+class FormatsItemVideoVast(FormatsItem, VASTVideoFormatDeclaration):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0/oneOf/5')
 
 
-class HostedAudioFormatDeclaration(FormatsItem, HostedAudioFormatDeclaration):
+class FormatsItemAudioHosted(FormatsItem, HostedAudioFormatDeclaration):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0/oneOf/6')
 
 
-class VASTAudioFormatDeclaration(FormatsItem, VASTAudioFormatDeclaration):
+class FormatsItemAudioVast(FormatsItem, VASTAudioFormatDeclaration):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0/oneOf/7')
 
 
-class DAASTAudioFormatDeclaration(FormatsItem, DAASTAudioFormatDeclaration):
+class FormatsItemAudioDaast(FormatsItem, DAASTAudioFormatDeclaration):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0/oneOf/8')
 
 
-class SponsoredPlacementFormatDeclaration(FormatsItem, SponsoredPlacementFormatDeclaration):
+class FormatsItemSponsoredPlacement(FormatsItem, SponsoredPlacementFormatDeclaration):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0/oneOf/9')
 
 
-class NativeInFeedFormatDeclaration(FormatsItem, NativeInFeedFormatDeclaration):
+class FormatsItemNativeInFeed(FormatsItem, NativeInFeedFormatDeclaration):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0/oneOf/10')
 
 
-class ResponsiveCreativeFormatDeclaration(FormatsItem, ResponsiveCreativeFormatDeclaration):
+class FormatsItemResponsiveCreative(FormatsItem, ResponsiveCreativeFormatDeclaration):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0/oneOf/11')
 
 
-class AgentPlacementFormatDeclaration(FormatsItem, AgentPlacementFormatDeclaration):
+class FormatsItemAgentPlacement(FormatsItem, AgentPlacementFormatDeclaration):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0/oneOf/12')
 
 
-class SellerRenderedStatefulDisplayFormatDeclaration(FormatsItem, SellerRenderedStatefulDisplayFormatDeclaration):
+class FormatsItemSellerRenderedStatefulDisplay(FormatsItem, SellerRenderedStatefulDisplayFormatDeclaration):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0/oneOf/13')
 
 
-class CoordinatedPlacementsFormatDeclaration(FormatsItem, CoordinatedPlacementsFormatDeclaration):
+class FormatsItemCoordinatedPlacements(FormatsItem, CoordinatedPlacementsFormatDeclaration):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0/oneOf/14')
 
 
-class CustomFormatDeclaration(FormatsItem, CustomFormatDeclaration):
+class FormatsItemCustom(FormatsItem, CustomFormatDeclaration):
     """
     Adopter-defined shape that doesn't fit the 15 canonicals. Requires `format_shape` (vocabulary-registered global pattern) and `format_schema` (URI+digest reference to a fetchable schema describing the actual params/slots). `params` shape is governed by the fetched schema rather than baked into AdCP — kept as `type: object` here with `additionalProperties: true` because the canonical schema validates dynamically post-fetch.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/formats/items/allOf/0/oneOf/15')
 
 
-FormatsItem._branch_models = (ImageFormatDeclaration, HTML5FormatDeclaration, DisplayTagFormatDeclaration, ImageCarouselFormatDeclaration, HostedVideoFormatDeclaration, VASTVideoFormatDeclaration, HostedAudioFormatDeclaration, VASTAudioFormatDeclaration, DAASTAudioFormatDeclaration, SponsoredPlacementFormatDeclaration, NativeInFeedFormatDeclaration, ResponsiveCreativeFormatDeclaration, AgentPlacementFormatDeclaration, SellerRenderedStatefulDisplayFormatDeclaration, CoordinatedPlacementsFormatDeclaration, CustomFormatDeclaration,)
+FormatsItem._branch_models = (FormatsItemImage, FormatsItemHtml5, FormatsItemDisplayTag, FormatsItemImageCarousel, FormatsItemVideoHosted, FormatsItemVideoVast, FormatsItemAudioHosted, FormatsItemAudioVast, FormatsItemAudioDaast, FormatsItemSponsoredPlacement, FormatsItemNativeInFeed, FormatsItemResponsiveCreative, FormatsItemAgentPlacement, FormatsItemSellerRenderedStatefulDisplay, FormatsItemCoordinatedPlacements, FormatsItemCustom,)
 FormatsItem.model_rebuild(force=True)
 
 

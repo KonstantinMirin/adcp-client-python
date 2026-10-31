@@ -32,7 +32,7 @@ class VendorPricingOption(BranchDispatchMixin, AdCPBaseModel):
     applies_to_output_capability_ids: Annotated[list[StrMatchingA828669D] | None, Field(description='Creative transformers only: scopes this pricing option to canonical output capabilities advertised in creative.supported_formats[].capability_id. When absent, the option is the default for any output. A build targeting an output that matches no scoped option and has no unscoped default is rejected with UNPRICEABLE_OUTPUT.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
 
 
-class CpmPricing(VendorPricingOption, CpmPricing):
+class VendorPricingOptionCpm(VendorPricingOption, CpmPricing):
     """
     Fixed cost per thousand impressions
     """
@@ -42,7 +42,7 @@ class CpmPricing(VendorPricingOption, CpmPricing):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/vendor-pricing-option.json', pointer='#/allOf/1/oneOf/0')
 
 
-class PercentOfMediaPricing(VendorPricingOption, PercentOfMediaPricing):
+class VendorPricingOptionPercentOfMedia(VendorPricingOption, PercentOfMediaPricing):
     """
     Percentage of media spend charged for this signal. When max_cpm is set, the effective rate is capped at that CPM — useful for platforms like The Trade Desk that use percent-of-media pricing with a CPM ceiling.
     """
@@ -52,7 +52,7 @@ class PercentOfMediaPricing(VendorPricingOption, PercentOfMediaPricing):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/vendor-pricing-option.json', pointer='#/allOf/1/oneOf/1')
 
 
-class FlatFeePricing(VendorPricingOption, FlatFeePricing):
+class VendorPricingOptionFlatFee(VendorPricingOption, FlatFeePricing):
     """
     Fixed charge per billing period, regardless of impressions or spend. Used for licensed data bundles and audience subscriptions.
     """
@@ -62,7 +62,7 @@ class FlatFeePricing(VendorPricingOption, FlatFeePricing):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/vendor-pricing-option.json', pointer='#/allOf/1/oneOf/2')
 
 
-class PerUnitPricing(VendorPricingOption, PerUnitPricing):
+class VendorPricingOptionPerUnit(VendorPricingOption, PerUnitPricing):
     """
     Fixed price per unit of work. Used for creative transformation (per format), AI generation (per image, per token), and rendering (per variant). The unit field describes what is counted; unit_price is the cost per one unit.
     """
@@ -72,7 +72,7 @@ class PerUnitPricing(VendorPricingOption, PerUnitPricing):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/vendor-pricing-option.json', pointer='#/allOf/1/oneOf/3')
 
 
-class CustomPricing(VendorPricingOption, CustomPricing):
+class VendorPricingOptionCustom(VendorPricingOption, CustomPricing):
     """
     Escape hatch for pricing constructs that do not fit cpm, percent_of_media, flat_fee, or per_unit. Use when a vendor prices via performance kickers, tiered volume, hybrid formulas, outcome-sharing, or any other model the standard forms cannot express. Requires a human-readable description and a structured metadata object that captures the parameters a buyer needs to reason about the charge. Buyers SHOULD route custom pricing through operator review before commitment — automatic selection is not recommended.
     """
@@ -82,7 +82,7 @@ class CustomPricing(VendorPricingOption, CustomPricing):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/vendor-pricing-option.json', pointer='#/allOf/1/oneOf/4')
 
 
-VendorPricingOption._branch_models = (CpmPricing, PercentOfMediaPricing, FlatFeePricing, PerUnitPricing, CustomPricing,)
+VendorPricingOption._branch_models = (VendorPricingOptionCpm, VendorPricingOptionPercentOfMedia, VendorPricingOptionFlatFee, VendorPricingOptionPerUnit, VendorPricingOptionCustom,)
 VendorPricingOption.model_rebuild(force=True)
 
 

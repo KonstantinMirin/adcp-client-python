@@ -968,7 +968,12 @@ def spell(
     about -- measured by making it refuse: ``core/error.json``'s root is ``Error`` and
     the runtime exports an ``Error``, and 98 more follow it or chain behind one.
     Lengthening is an improvement where it is available and the status quo where it is
-    not.
+    not.  **"Cannot lengthen past" is not "has nowhere left to go", and reading it as
+    though it were is what shipped 56 shadowed names**: a BRANCH is a chain of one with a
+    whole LADDER under it, so where lengthening is spent the rung axis still answers and
+    :func:`spell_the_rungs` -- the function the run calls -- is what spends it.  What
+    reaches this function is the position with no rung left either, and a ROOT is the one
+    that always has none: §4's root clause is that it keeps the name, and so does this.
 
     The REFUSAL is the one this pass always had, and it needs two positions: both spelled
     with their whole paths, neither with an ancestor left to prepend, and spelled alike.
@@ -976,7 +981,13 @@ def spell(
     full path was the name then -- so the rule moves no document into the refused set.
     """
     spelled, shared = _lengthened(chains, occupied)
-    if not shared:
+    # **A group of ONE is a position alone on a name an IMPORT holds**, which the
+    # paragraph above is about: it is kept, so it is not what this refusal is for.  The
+    # filter is here rather than in :func:`_lengthened` because the lone group is exactly
+    # what :func:`spell_the_rungs` falls to the next rung, and one reading cannot be both
+    # readers' answer unless each reader states what it does with it.
+    unresolved = {name: ps for name, ps in shared.items() if len(ps) > 1}
+    if not unresolved:
         return spelled
     # Nothing colliding can lengthen and §4's rung axis is not this function's -- see
     # :func:`spell_the_rungs`, which is what the run calls.  The pointer named is the one
@@ -999,7 +1010,7 @@ def spell(
     # count fall would be the ninth hand-minted verdict wearing a derivation's clothes.
     # Filed as a numbered request instead; the arm is unreachable, so no report moves
     # either way.
-    at = next(p for p in chains if p in {q for ps in shared.values() for q in ps[1:]})
+    at = next(p for p in chains if p in {q for ps in unresolved.values() for q in ps[1:]})
     return Refusal(
         "title",
         at,
@@ -1011,7 +1022,12 @@ def spell(
 def _lengthened(
     chains: Mapping[str, tuple[str, ...]], occupied: frozenset[str]
 ) -> tuple[dict[str, str], dict[str, list[str]]]:
-    """§4's collision rule run to a fixed point: the names, and the groups still sharing one.
+    """§4's collision rule run to a fixed point: the names, and the groups still COLLIDING.
+
+    A group is the positions on one name, and the name collides when two positions share
+    it OR an import holds it -- ``occupied``, which is the namespace half §4's rule never
+    stated.  A group of one is therefore a real answer here and not an empty set: the one
+    position is colliding with something that cannot move.
 
     ONE reading with two readers, which is why it is split out: :func:`spell` turns a
     surviving group into the refusal, and :func:`spell_the_rungs` turns it into the set of
@@ -1036,9 +1052,15 @@ def _lengthened(
                     lengthened = True
         if lengthened:
             continue
-        # A position alone on a name an import holds KEEPS it (see the docstring above);
-        # only a name two positions share is unresolved.
-        return spelled, {name: ps for name, ps in colliding.items() if len(ps) > 1}
+        # **Every group that is still colliding, the lone occupied ones included.**  It
+        # returned only the groups two positions share, which made an import a collider
+        # on the LENGTHEN axis and not on the FALL one: a position alone on a name an
+        # import holds, with no ancestor left to spend, was reported as resolved and kept
+        # the name -- 56 of them over this bundle, each a subclass declared under the
+        # symbol its own module imports.  What the two readers do with a lone group
+        # differs and is each one's own business: :func:`spell_the_rungs` falls it to its
+        # next rung, and :func:`spell` keeps it rather than refusing (both say so).
+        return spelled, colliding
 
 
 #: §4's rung rule, in the section's own words.  QUOTED by the checks that grade it, so the
@@ -1059,8 +1081,19 @@ def spell_the_rungs(
 
     :data:`COLLISION` is the first axis and :data:`RUNG_FALL` the second.  A position
     starts at its first rung; :func:`_lengthened` spends ancestor segments until no name
-    is shared; and a group that still shares a name falls -- every member of it that has a
+    collides; and a group that still collides falls -- every member of it that has a
     rung left takes the next one and starts lengthening again.
+
+    **An IMPORT is one of the things a position can collide with, on BOTH axes.**  A
+    module's namespace is its declarations and what it imports, so ``occupied`` is part of
+    §4's "derive the same name" and not a second rule beside it -- and §4 already decides
+    what a position colliding with something that cannot move does: it is the root clause
+    one notch over, the side that can move moves, "the same way any colliding rung does".
+    The axis it crossed only one of is what shipped 56 names bound twice: ``occupied`` was
+    read when deciding whether to LENGTHEN and dropped before deciding whether to FALL, so
+    a bare-``$ref`` branch deriving its target's own symbol -- a chain of one, nothing to
+    prepend -- was reported resolved and declared a subclass under the name its module
+    imports.  Those positions have three rungs below the one they took.
 
     **The ROOT is not special-cased and must not be.**  "The root keeps the name" is not a
     clause here: a root's ladder has exactly ONE rung, because D5 fixes a document's
