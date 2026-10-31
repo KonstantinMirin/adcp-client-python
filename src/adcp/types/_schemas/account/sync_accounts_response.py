@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Annotated, Any, ClassVar
+from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
@@ -116,7 +116,6 @@ class AccountsItem(AdCPBaseModel):
     status: Annotated[Status | None, Field(description='Account status. active: ready for use. pending_approval: seller reviewing (credit, legal). rejected: seller declined the account request. payment_required: credit limit reached or funds depleted. suspended: was active, now paused. closed: was active, now terminated. Required for every non-failed action; omitted on failed results where the seller could not reach or resolve the account far enough to know a lifecycle state (see errors).')] = None
     billing: Annotated[BillingParty | None, Field(description='Who is invoiced on this account. Matches the requested billing model.')] = None
     billing_entity: Annotated[BusinessEntity | None, Field(description='Current canonical business entity for the party responsible for payment. Sellers MAY add verified fields, but MUST NOT return data from a different entity. During an operator-domain handoff this remains the current entity until approval applies atomically; destination_billing_entity is staged and write-only. Bank details are omitted (write-only).')] = None
-    destination_billing_entity: Annotated[Any | None, Field(description='Request-only staging field. It MUST NOT appear in sync_accounts responses.')] = None
     account_scope: AccountScope | None = None
     setup: Annotated[Setup | None, Field(description='Setup information for pending accounts. Provides the agent (or human) with next steps to complete account activation.')] = None
     rate_card: Annotated[str | None, Field(description='Rate card applied to this account')] = None

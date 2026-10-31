@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Annotated, Any, ClassVar
+from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
@@ -118,7 +118,6 @@ class Account(AdCPBaseModel):
     timezone: Annotated[StrMinLen1 | None, Field(description='Immutable operational timezone for this account, expressed as UTC or an IANA timezone identifier. AdCP 3.2 sellers return it on every account. It is the default calendar-day boundary for account-scoped behavior unless a feature explicitly declares another timezone basis. For buyer-selected account_fixed provisioning it participates in the natural account key.')] = None
     billing: Annotated[BillingParty | None, Field(description="Who is invoiced on this account. See billing_entity for the invoiced party's business details.")] = None
     billing_entity: Annotated[BusinessEntity | None, Field(description='Current canonical business entity for the party responsible for payment. Contains the legal name, tax IDs, and address needed for formal B2B invoicing. Corresponds to whoever billing points to (operator, agent, or advertiser). When this account appears in a response, bank details MUST be omitted and the request-only destination_billing_entity MUST NOT be exposed.')] = None
-    destination_billing_entity: Annotated[Any | None, Field(description='Request-only staging field. It MUST NOT appear in account read models.')] = None
     rate_card: Annotated[str | None, Field(description='Identifier for the rate card applied to this account')] = None
     payment_terms: Annotated[PaymentTerms | None, Field(description='Payment terms agreed for this account. Binding for all invoices when the account is active.')] = None
     credit_limit: Annotated[CreditLimit | None, Field(description='Maximum outstanding balance allowed')] = None

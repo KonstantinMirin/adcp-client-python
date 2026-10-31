@@ -344,7 +344,27 @@ _STRUCTURE: dict[str, Row] = {
         grid=STRUCTURE,
     ),
     "properties": Row(
-        Cell(Effect.TYPE, False, Position.PROP, "A class with one field per key."),
+        Cell(
+            Effect.TYPE,
+            False,
+            Position.PROP,
+            "A class with one field per key. An entry whose subschema ADMITS "
+            "NOTHING — `false`, or `{\"not\": {}}`, which draft-07 makes the same "
+            "schema — is NOT a field: draft-07 validates a `properties` entry only "
+            "where the key is PRESENT and that entry then always fails, so the "
+            "document's statement is that the key MAY NOT APPEAR and it says nothing "
+            "at all about a value. The accepted set is the accepted set of "
+            "`not: {required: [key]}`, which the `not` row already compiles to a "
+            "`ForbiddenGroups` rule, so the key joins that rule on the nearest "
+            "enclosing class and no field is declared. EXACT, not wide: nothing is "
+            "dropped reaching it and no declaration is owed. `extra` is NOT the "
+            "carrier — all three sites of the bundle state `additionalProperties: "
+            "true` beside the forbidden key, so closing the class would refuse the "
+            "other extras the document admits. Where `required` ALSO names the key "
+            "the document admits nothing, and so does the class without an arm of its "
+            "own: the `required` row's undeclared-name field refuses a payload "
+            "omitting the key and this rule refuses one carrying it.",
+        ),
         {
             Position.ROOT: Cell(
                 Effect.TYPE,
@@ -1180,7 +1200,12 @@ _COMBINATORS: dict[str, Row] = {
             "`ForbiddenGroups` rule. Over a `const` or `enum` → a `NotValue` "
             "after-validator on the value's own annotated type. Any other shape → "
             "nothing on the model; the schema half answers and the ceiling is named. "
-            "`not: {}` admits nothing, which the typeless `Any` carries.",
+            "`not: {}` admits nothing, which the typeless `Any` carries — at a node "
+            "whose OWN accepted set is the thing being typed. As a `properties` entry "
+            "it is not that node: the enclosing object still admits every instance "
+            "without the key, and the `properties` row answers it there with the "
+            "`ForbiddenGroups` this row already decides for the keyword's other "
+            "spelling.",
         ),
         grid=COMBINATORS,
     ),
