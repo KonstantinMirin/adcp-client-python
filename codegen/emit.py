@@ -226,6 +226,71 @@ def module_path(document: str) -> str:
     return "/".join([*p.parent.parts, p.stem]).replace("-", "_")
 
 
+def domain(document: str) -> str:
+    """§1's DOMAIN for a document: the first segment of D1's module path.
+
+    "re-exported from ``adcp.types.<domain>``, where the domain is derived from the
+    document's own path" -- so it is derived here, from :func:`module_path`, and there is
+    no table.  A new document appears in its domain with nothing edited, and a document at
+    the tree's ROOT is a domain of its own: ``adagents.json`` has no directory beside it,
+    so the derivation answers 23 domains where the 22 directories suggest 22, which §1
+    confirms ("§10's layout rule is untouched -- that rule is about a document whose path
+    is ALSO a directory's, and this one has no directory").
+    """
+    return module_path(document).split("/")[0]
+
+
+@functools.lru_cache(maxsize=None)
+def domain_roots(bundle_dir: Path) -> dict[str, frozenset[str]]:
+    """Per §1 DOMAIN, the ROOT symbol of every portable document in it.
+
+    **The half of §1's domain-scope collision rule that needs no lowering**, and the whole
+    of what ``lower/names.py``'s ``surface`` argument is fed for the six branch-vs-root
+    collisions.  A root's name is ``class_name(title)`` and a title is a fact of the
+    document's own mapping, so this is a PARSE and not a compile: **measured over the 1,054
+    portable documents, reading and parsing every raw document at ROOT costs 0.23 s**,
+    against 66 s to build their records and ~100 s to lower them.  The two branch-vs-branch
+    and two alias-vs-alias collisions need the nested names and so need the walk; they are
+    not this function's.
+
+    **A function of the BUNDLE and never of the run's document set**, which is what makes
+    it legal at all: it ranges over ``bundle.portable(bundle_dir)`` whatever the run was
+    asked for, so a one-document command and a whole-population emission read the same set
+    and derive the same name.  §9's own ruling is the authority -- "the RUN is not the
+    BUNDLE ... a name derived from a bundle-wide reading is the SAME name in both, which is
+    exactly the property this rule protects" -- and ``bundle.composed`` is the precedent
+    with the same sentence in its docstring.  ``lru_cache`` so a run pays the 0.23 s once;
+    the key is the bundle directory, which is the only thing the answer depends on.
+
+    **The RAW document and not the record, which is measured rather than assumed.**
+    ``bundle.record`` inlines a cross-document ``$ref``, so a root that was a bare
+    reference would take its target's ``title`` into the record -- and the walk reads the
+    record.  Over all 1,054 documents the two readings agree on the title and on the
+    symbol, **0 differences**, and :func:`decidable` asserts the agreement per document on
+    every run rather than leaving it to this docstring: the walk's own ``mod.root`` is
+    compared against this answer, so a bundle where the two diverge is a build failure at
+    the document rather than a wrong public name.
+
+    A document whose record carries no title, or whose title derives no identifier,
+    REFUSES in :func:`lower_document` and exports no symbol, so it contributes none here.
+    """
+    out: dict[str, set[str]] = {}
+    for document in bundle.portable(bundle_dir):
+        node = schema.parse(
+            bundle.read(bundle_dir, document),
+            pointer="",
+            position=Position.ROOT,
+            source=schema.Source(document=document),
+        )
+        title = node.title
+        if title is None:
+            continue
+        symbol = lower_names.class_name(title)
+        if symbol.isidentifier():
+            out.setdefault(domain(document), set()).add(symbol)
+    return {known: frozenset(symbols) for known, symbols in out.items()}
+
+
 def module_name(document: str) -> str:
     """D1's module as the DOTTED name Python imports it under.
 
@@ -636,6 +701,21 @@ class Emitted:
     #: whose two nodes are NOT identical is the failure that matters more than a missed
     #: collapse.
     adopted: dict[str, dict[str, str]] = field(default_factory=dict)
+    #: document -> ``ir.Module.exports``: §1's export set for it, symbol -> the kind the
+    #: surface exports it under (``root``, ``branch`` or ``alias``).
+    #:
+    #: **The run's own record of what the DOMAIN SURFACE re-exports**, and the only thing
+    #: §1's domain-scope collision rule can be graded over: §1 forbids
+    #: ``adcp.types.<domain>.<Name>`` naming two declarations, and the question is asked of
+    #: an export set that the emitted TEXT does not state -- a reader of a module sees
+    #: class statements and cannot say which of them a nested ``A | B`` union declared.
+    #: Measured, that is not hypothetical: deriving "branch" from the base list misses
+    #: every arm of a nested bare union, and two of §1's collisions are exactly those.
+    #:
+    #: Written from the one place a position's hop and its declaration are both in hand
+    #: (``lower/names.py``'s ``the_surface_exports``), so the rule, the surface and the
+    #: check read one record and cannot disagree about what is exported.
+    surface: dict[str, dict[str, str]] = field(default_factory=dict)
     #: Section 5's ``default`` row, the REPORTED half: ``document -> {pointer -> the
     #: value dropped}``, for a default the document states on a REQUIRED property.
     #: Dropping it changes no accepted set -- the key is in every admitted instance,
@@ -1036,7 +1116,23 @@ def decidable(
     if isinstance(outcome, Refusal):
         return outcome
     mod, _ = outcome
-    bound = lower_names.assign(mod, carriers)
+    # **§1's domain-scope collision rule, with its two readings of this document's own
+    # root symbol checked against each other.**  :func:`domain_roots` reads the RAW
+    # document and the walk above read the RECORD, so the two can only disagree where
+    # ``record`` inlined a title into the root -- measured 0 over the bundle, and asserted
+    # here per document rather than trusted, because a disagreement would silently take
+    # this document's own name out of the set its branches are compared against and leave
+    # the collision unresolved. It is a property of the inliner and of no document, so §2
+    # makes it a raise and not a refusal.
+    held = domain_roots(bundle_dir).get(domain(document), frozenset())
+    if mod.root not in held:
+        raise BuildFailure(
+            f"{document}: the walk derived the root symbol {mod.root!r} from the record "
+            f"and emit.domain_roots derived something else from the raw document, so the "
+            f"domain's exported names and this module's own are two readings that "
+            f"disagree -- a defect in this compiler and not an outcome of this document"
+        )
+    bound = lower_names.assign(mod, carriers, held - {mod.root})
     if isinstance(bound, Refusal):
         # §4's two naming refusals, both VERDICTS of the document: two pointers deriving
         # one class name, and a branch with no identity.  Returned from here because this
@@ -1745,6 +1841,9 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
         out.adopted[document] = {
             p: bound.symbols[at] for p, at in bound.adopted.items() if at in bound.symbols
         }
+        # §1's export set, carried through from the naming pass unchanged: this is a
+        # record and not a second derivation (:attr:`Emitted.surface`).
+        out.surface[document] = dict(bound.exports)
         if mod.drops:
             out.drops[document] = dict(mod.drops)
         if mod.carries_nothing:

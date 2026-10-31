@@ -118,6 +118,33 @@ SCOPE = (
     "whole-bundle emission disagree about the same document (section 9)"
 )
 
+#: **The stated scope of the COLLISION rule, which is wider than the dedup's and is
+#: wider than one module as of 2026-10-30** (§1's amendment, and §9's ruling behind it).
+#: QUOTED by the checks that grade it, so the sentence the code states and the sentence a
+#: check reports against are one string.
+#:
+#: §4 used to close with "the resolution is also confined to one module, never compared
+#: across modules, because a name's module is its namespace and §9's rule is that a
+#: document's output may not depend on which other documents the run includes".  §1 now
+#: forbids the other direction of the one-path rule -- no ``adcp.types.<domain>.<Name>``
+#: may name two declarations -- and a domain is many modules, so the resolution reaches
+#: across them for the positions the SURFACE exports.
+#:
+#: **§9 is kept rather than amended, and the distinction it rests on is in its own
+#: ruling: the RUN is not the BUNDLE.**  The prohibition is about the run's DOCUMENT SET,
+#: the argument list, which varies between a one-document command and a whole-population
+#: emission.  A domain's exported names are read off the BUNDLE -- pinned, declared, an
+#: input to every run alike -- so the name is the SAME in both, which is the property §9
+#: protects.  :func:`assign`'s signature carries it: what crosses into this pass is a set
+#: of NAMES, and nothing here can ask which documents were asked for.
+COLLISION_SCOPE = (
+    "one module for every position, and the DOMAIN for a position the surface exports: "
+    "no adcp.types.<domain>.<Name> may name two declarations (section 1, 2026-10-30), "
+    "and the domain's other exported names are read off the BUNDLE and never off the "
+    "run's document set, so a one-document emission and a whole-bundle emission derive "
+    "the same name (section 9's ruling, the run is not the bundle)"
+)
+
 
 # --------------------------------------------------------------------------- #
 # §4's name rules
@@ -925,7 +952,10 @@ COLLISION = (
 
 
 def spell(
-    chains: Mapping[str, tuple[str, ...]], occupied: frozenset[str] = frozenset()
+    chains: Mapping[str, tuple[str, ...]],
+    occupied: frozenset[str] = frozenset(),
+    surface: frozenset[str] = frozenset(),
+    exports: frozenset[str] = frozenset(),
 ) -> dict[str, str] | Refusal:
     """§4's collision rule over the names of ONE module: pointer -> the name it is
     declared under, or the refusal of a module two of whose positions cannot be told
@@ -960,6 +990,23 @@ def spell(
     a one-document emission writes as well; §9's rule is about the documents BEYOND that
     closure.  An import cannot lengthen, so only the positions move.
 
+    ``surface`` is the DOMAIN's half of :data:`COLLISION_SCOPE` and it is a name taken for
+    the same reason ``occupied`` is, one scope out: §1 forbids
+    ``adcp.types.<domain>.<Name>`` naming two declarations, so a name another module of
+    the domain exports is taken for the positions THIS module exports -- which is what
+    ``exports`` narrows it to.  **The narrowing is not a refinement, it is the rule.**
+    §1's amendment is stated over the export set, and a position the surface does not
+    export may keep a name the surface uses elsewhere: measured over this bundle, the
+    domain's root symbols are derived by 16 positions of other modules and only 6 of them
+    are exported, so an unnarrowed set would move ten names §1 says nothing about --
+    ``core.Format`` in ``core/account.py``, ``core.Destination`` in
+    ``core/flight_item.py`` and eight more.
+
+    Unlike ``occupied`` it is read off the BUNDLE rather than off this document's closure,
+    and :data:`COLLISION_SCOPE` carries §9's ruling for why that is not a census over the
+    run.  It cannot lengthen either -- the name belongs to another document -- so again
+    only this module's positions move.
+
     **An occupied name a position cannot lengthen past is kept and does not refuse**, and
     the reason is that it is exactly the name this emitter has always given that position.
     A ROOT and a titled branch are chains of ONE -- §4 names them after the document and
@@ -980,7 +1027,7 @@ def spell(
     That is exactly the population the fold refused before the rule was written -- the
     full path was the name then -- so the rule moves no document into the refused set.
     """
-    spelled, shared = _lengthened(chains, occupied)
+    spelled, shared = _lengthened(chains, occupied, surface, exports)
     # **A group of ONE is a position alone on a name an IMPORT holds**, which the
     # paragraph above is about: it is kept, so it is not what this refusal is for.  The
     # filter is here rather than in :func:`_lengthened` because the lone group is exactly
@@ -1020,14 +1067,24 @@ def spell(
 
 
 def _lengthened(
-    chains: Mapping[str, tuple[str, ...]], occupied: frozenset[str]
+    chains: Mapping[str, tuple[str, ...]],
+    occupied: frozenset[str],
+    surface: frozenset[str] = frozenset(),
+    exports: frozenset[str] = frozenset(),
 ) -> tuple[dict[str, str], dict[str, list[str]]]:
     """§4's collision rule run to a fixed point: the names, and the groups still COLLIDING.
 
     A group is the positions on one name, and the name collides when two positions share
-    it OR an import holds it -- ``occupied``, which is the namespace half §4's rule never
-    stated.  A group of one is therefore a real answer here and not an empty set: the one
+    it, OR an import holds it -- ``occupied``, which is the namespace half §4's rule never
+    stated -- OR another module of the DOMAIN exports it and one of these positions is
+    exported too (``surface`` narrowed by ``exports``, which is :data:`COLLISION_SCOPE`).
+    A group of one is therefore a real answer here and not an empty set: the one
     position is colliding with something that cannot move.
+
+    **The domain arm is asked per GROUP and not per name**, which is what keeps it from
+    reaching a position §1 says nothing about: a lone group whose position is not exported
+    is not colliding however the domain spells that name, and a group of two already
+    collides on the module scope alone.
 
     ONE reading with two readers, which is why it is split out: :func:`spell` turns a
     surviving group into the refusal, and :func:`spell_the_rungs` turns it into the set of
@@ -1042,7 +1099,11 @@ def _lengthened(
         for pointer, name in spelled.items():
             groups.setdefault(name, []).append(pointer)
         colliding = {
-            name: ps for name, ps in groups.items() if len(ps) > 1 or name in occupied
+            name: ps
+            for name, ps in groups.items()
+            if len(ps) > 1
+            or name in occupied
+            or (name in surface and any(p in exports for p in ps))
         }
         lengthened = False
         for group in colliding.values():
@@ -1076,6 +1137,8 @@ RUNG_FALL = (
 def spell_the_rungs(
     ladders: Mapping[str, tuple[tuple[str, ...], ...]],
     occupied: frozenset[str] = frozenset(),
+    surface: frozenset[str] = frozenset(),
+    exports: frozenset[str] = frozenset(),
 ) -> dict[str, str] | Refusal:
     """§4's two naming axes together: LENGTHEN first, and FALL where lengthening is spent.
 
@@ -1083,6 +1146,20 @@ def spell_the_rungs(
     starts at its first rung; :func:`_lengthened` spends ancestor segments until no name
     collides; and a group that still collides falls -- every member of it that has a
     rung left takes the next one and starts lengthening again.
+
+    **A NAME ANOTHER MODULE OF THE DOMAIN EXPORTS is a third thing a position can collide
+    with, and it reaches both axes for the same reason an import does** (§1's amendment,
+    2026-10-30; :data:`COLLISION_SCOPE`).  The six it answers over this bundle are one
+    shape, and §4 already decides them with no new rung: an async response's ROOT named
+    ``<Task>Submitted`` against the same-named BRANCH of the corresponding sync response.
+    The root's ladder has exactly one rung -- D5 fixes a document's exported symbol -- so
+    it has nothing to advance and nothing to lengthen, and the branch beside it is the only
+    side that can move, which is §4's root clause one scope out: "it is ANOTHER document's
+    name, which this module has no standing to move".  Both names are the documents' own:
+    ``media-buy/create-media-buy-async-response-submitted.json`` is titled "Create Media
+    Buy - Submitted" and ``media-buy/create-media-buy-response.json``'s ``/oneOf/2`` is
+    titled ``CreateMediaBuySubmitted`` and pins ``status: "submitted"``, so the branch
+    falls to rung 2 and its own pin answers.
 
     **An IMPORT is one of the things a position can collide with, on BOTH axes.**  A
     module's namespace is its declarations and what it imports, so ``occupied`` is part of
@@ -1116,7 +1193,7 @@ def spell_the_rungs(
     rung = dict.fromkeys(ladders, 0)
     while True:
         chains = {p: ladders[p][rung[p]] for p in ladders}
-        spelled, shared = _lengthened(chains, occupied)
+        spelled, shared = _lengthened(chains, occupied, surface, exports)
         if not shared:
             return spelled
         fell = False
@@ -1126,7 +1203,7 @@ def spell_the_rungs(
                     rung[pointer] += 1
                     fell = True
         if not fell:
-            return spell(chains, occupied)
+            return spell(chains, occupied, surface, exports)
 
 
 def resolved(decided: ir.TypeRef, symbols: Mapping[str, str]) -> ir.TypeRef:
@@ -1237,7 +1314,57 @@ def _at(declaration: ir.Declaration) -> str | None:
     return None
 
 
-def assign(mod: Module, carriers: frozenset[str] = frozenset()) -> ir.Module | Refusal:
+def the_surface_exports(
+    pointer: str, declaration: ir.Declaration, hops: Mapping[str, object]
+) -> str | None:
+    """§1's export set, as the KIND one position is exported under, or ``None``.
+
+    §1 (2026-10-30) fixes it as **every document ROOT, every union BRANCH and every D2
+    type ALIAS** -- and not every class the tree declares, which was decided and withdrawn
+    the same day because it makes ``core.Status`` name one of fourteen declarations.  The
+    three arms are read off what the position IS and never off its name:
+
+    * the ROOT is the empty pointer, which is D5's one exported symbol per document;
+    * a BRANCH is a position whose hop is a :class:`Branch`, which is what §4's union row
+      builds a class per;
+    * a D2 ALIAS is an :class:`codegen.ir.AliasDecl` or the :class:`codegen.ir.RootBinding`
+      wrapping one -- §4's "a scalar at a root is a module-level annotated alias, not a
+      class" -- and §1 exports those because "an alias is a name an application writes".
+
+    What it deliberately does NOT reach is the per-module ``strict_validate`` helper, which
+    is not a declaration of this pass at all, and §1's own reason stands: a domain name
+    cannot stand for 241 functions and a caller reaches one through its class.
+
+    **Here rather than in ``emit`` because the facts are here.**  §1's set is stated over
+    positions and the only place a position's hop and its declaration are both in hand is
+    this pass; ``emit`` holds the DOMAIN's half of the question (which names other modules
+    export) and hands that in as names, which is the seam :data:`COLLISION_SCOPE`
+    describes.  The answer is recorded on :attr:`codegen.ir.Module.exports` so that the
+    surface, the collision rule and the check that grades them read ONE reading --
+    measured, a second derivation over the emitted TEXT reads a branch as "a class one of
+    whose bases this module declares" and misses a nested ``A | B`` union's arms, which
+    subclass nothing local.
+
+    The BRANCH arm is therefore the hop and never the base list: ``A | B`` at a nested
+    property declares a class per arm with no shared base, and
+    ``core/targeting_overlay_support.py``'s ``PlacementSelection`` is one of them -- a
+    §1 collision with ``core/placement-selection.json``'s own root that a reading of the
+    text cannot see.
+    """
+    if pointer == "":
+        return "root"
+    if isinstance(hops.get(pointer), Branch):
+        return "branch"
+    if isinstance(declaration, ir.AliasDecl | ir.RootBinding):
+        return "alias"
+    return None
+
+
+def assign(
+    mod: Module,
+    carriers: frozenset[str] = frozenset(),
+    surface: frozenset[str] = frozenset(),
+) -> ir.Module | Refusal:
     """The pass: every declaration of one module given the name §4 derives for it.
 
     ``mod`` is the walk's own module value, ``compiler.Module``, and the import of it is
@@ -1271,8 +1398,14 @@ def assign(mod: Module, carriers: frozenset[str] = frozenset()) -> ir.Module | R
     :func:`spell`'s, where the whole set is in hand, rather than a first-come check that
     would name whichever the walk reached second.
 
-    :data:`SCOPE` is the scope, and the signature holds it: the only inputs are this
-    module and §4's rules, so there is no census over the run to decide a name by.
+    :data:`SCOPE` is the DEDUP's scope and the signature still holds it: two nodes are one
+    class within one module and nowhere else.
+
+    :data:`COLLISION_SCOPE` is the COLLISION rule's, which §1's amendment widened to the
+    domain for the positions the surface exports, and the signature holds that too --
+    ``surface`` is a set of NAMES.  Nothing here can ask which documents the run was given,
+    so §9's prohibition is structural rather than observed: ``emit`` reads the domain's
+    exported names off the BUNDLE, and §9's own ruling is that the run is not the bundle.
     """
     #: The declarations §4's dedup leaves unwritten: an adopting position that derives NO
     #: name of its own, and one whose derived name IS the declaring class's.  The first
@@ -1287,10 +1420,17 @@ def assign(mod: Module, carriers: frozenset[str] = frozenset()) -> ir.Module | R
     #: takes.  Resolved after :func:`spell`, because the symbol it takes is not decided
     #: until the declaring position's own name is.
     takes: dict[str, str] = {}
+    #: Pointer -> the kind §1 exports it under, for the pointers its export set reaches.
+    #: Two readers: ``surface`` is narrowed to these pointers (:data:`COLLISION_SCOPE`),
+    #: and the symbols are recorded on :attr:`ir.Module.exports` for the surface itself.
+    exports: dict[str, str] = {}
     for i, declaration in enumerate(mod.declarations):
         pointer = _at(declaration)
         if pointer is None:
             continue
+        kind = the_surface_exports(pointer, declaration, mod.hops)
+        if kind is not None:
+            exports[pointer] = kind
         rungs = ladder(pointer, mod.hops)
         if isinstance(rungs, Refusal):
             return rungs
@@ -1311,7 +1451,12 @@ def assign(mod: Module, carriers: frozenset[str] = frozenset()) -> ir.Module | R
             degenerate.add(i)
             continue
         ladders[pointer] = rungs
-    spelled = spell_the_rungs(ladders, carriers | {symbol for _, symbol in mod.imports})
+    spelled = spell_the_rungs(
+        ladders,
+        carriers | {symbol for _, symbol in mod.imports},
+        surface,
+        frozenset(exports),
+    )
     if isinstance(spelled, Refusal):
         return spelled
     symbols: dict[str, str] = dict(spelled)
@@ -1332,4 +1477,8 @@ def assign(mod: Module, carriers: frozenset[str] = frozenset()) -> ir.Module | R
         # SYMBOLS, and a declaration names a POINTER, which naming does not move.  It is a
         # tuple here because the IR is immutable and the walk's accumulator is a list.
         approximations=tuple(mod.approximations),
+        # §1's export set as SYMBOLS, which is what the surface re-exports and what §1
+        # forbids two of.  A degenerate adoption is absent by construction: it binds no
+        # name of its own, so no pointer of it reached ``exports``.
+        exports={symbols[pointer]: kind for pointer, kind in exports.items()},
     )

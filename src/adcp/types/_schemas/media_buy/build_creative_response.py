@@ -364,7 +364,7 @@ class BuildCreativeError(BuildCreativeResponse, FailedResponse):
     ext: ExtensionObject | None = None
 
 
-class BuildCreativeSubmitted(BuildCreativeResponse):
+class BuildCreativeResponseSubmitted(BuildCreativeResponse):
     """
     Async task envelope returned when build_creative cannot be confirmed before the response — for example, when a slow generative pipeline or multi-minute LLM workflow is queued. The buyer invokes get_task_status with task_id or receives a webhook when the task completes; the creative_manifest(s) land in the terminal result, not this envelope.
     """
@@ -383,7 +383,7 @@ class BuildCreativeSubmitted(BuildCreativeResponse):
     ext: ExtensionObject | None = None
 
 
-BuildCreativeResponse._branch_models = (BuildCreativeSuccess, BuildCreativeMultiSuccess, BuildCreativeVariantSuccess, BuildCreativeEstimate, BuildCreativeError, BuildCreativeSubmitted,)
+BuildCreativeResponse._branch_models = (BuildCreativeSuccess, BuildCreativeMultiSuccess, BuildCreativeVariantSuccess, BuildCreativeEstimate, BuildCreativeError, BuildCreativeResponseSubmitted,)
 BuildCreativeResponse.model_rebuild(force=True)
 
 

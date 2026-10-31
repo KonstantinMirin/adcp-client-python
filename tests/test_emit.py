@@ -5904,6 +5904,66 @@ def test_one_documents_module_is_the_same_text_alone_as_with_the_whole_bundle() 
     assert alone.adopted[document] == whole.adopted[document]
 
 
+def test_the_one_document_property_holds_for_a_name_the_DOMAIN_decided() -> None:
+    """§9's one-document property at the one scope that could break it, and the reason
+    this test exists beside the one above is that the one above **cannot reach it**.
+
+    §1 (2026-10-30) widened §4's collision rule to DOMAIN scope: no
+    ``adcp.types.<domain>.<Name>`` may name two declarations, so resolving a collision
+    needs the domain's other exported names and naming stopped being a function of one
+    document and its reference closure.  §9 was kept rather than amended, on the
+    distinction its own ruling draws -- **the RUN is not the BUNDLE**: the prohibition is
+    about the run's DOCUMENT SET, the argument list, and a domain's exported names are read
+    off the bundle, which is pinned and is an input to every run alike.
+
+    **So this property is now the whole of what makes that legal, and the test above
+    does not grade it.**  ``creative/preview-render.json`` is in no collision, so its text
+    is the same under a run-scoped reading and a bundle-scoped one; the cheap, wrong
+    implementation (a census over the run's own lowered modules) leaves that test GREEN.
+    §9's ruling refuses that implementation in those words -- "it leaves
+    ``test_one_documents_module_is_the_same_text_alone_as_with_the_whole_bundle`` GREEN
+    while the property it names is false for the documents behind the collisions, because
+    its population does not include one of them" -- and this is the population fix.
+
+    ``creative/get-creative-features-response.json`` is the document chosen, and the three
+    things that make it the right one:
+
+    * its ``/oneOf`` branch titled ``GetCreativeFeaturesSubmitted`` collides with
+      ``creative/get-creative-features-async-response-submitted.json``'s ROOT, which is
+      titled "Get Creative Features - Submitted" -- a name in its DOMAIN and not in its
+      closure, so a run-scoped reading would answer differently for a one-document run;
+    * the root keeps the name and the branch falls, which is §4's root clause one scope
+      out, so the symbol this test pins is one the DOMAIN decided;
+    * its closure is 13 documents, so asking for it alone is cheap.
+    """
+    document = "creative/get-creative-features-response.json"
+    rel = emit.module_file(document, PACKAGES) + ".py"
+    whole = compiled(BUNDLE, population())
+    assert document in whole.emitted, sorted(whole.refusals)[:5]
+
+    # The collision is real and it is across MODULES of one domain: the branch's own title
+    # derives the other document's root symbol, which is why §4's module-scope rule never
+    # reached it.  Both sides read off the run rather than restated.
+    other = "creative/get-creative-features-async-response-submitted.json"
+    assert whole.surface[other]["GetCreativeFeaturesSubmitted"] == "root", whole.surface[other]
+    assert emit.domain(document) == emit.domain(other) == "creative"
+    # And the branch MOVED, to the rung §4 gives it when the name is taken.  Named, not
+    # counted: this is the symbol a consumer will write.
+    assert "GetCreativeFeaturesSubmitted" not in whole.surface[document], whole.surface[document]
+    assert whole.surface[document]["GetCreativeFeaturesResponseSubmitted"] == "branch", (
+        whole.surface[document]
+    )
+
+    alone = compiled(BUNDLE, [document])
+    assert other not in alone.emitted, (
+        f"{other} is in this run's closure, so the collision would be resolved by the "
+        "module scope and this test would not reach the domain scope it exists for"
+    )
+    assert alone.files[rel] == whole.files[rel]
+    assert alone.declared[document] == whole.declared[document]
+    assert alone.surface[document] == whole.surface[document]
+
+
 def test_the_committed_tree_is_what_a_fresh_run_emits(tmp_path) -> None:
     """P10, and D8's compare: the tree equals f(bundle, emitter, pinned compiler),
     so a defect is fixed in one of those and nothing rewrites the output.

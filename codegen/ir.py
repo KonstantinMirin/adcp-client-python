@@ -669,6 +669,23 @@ class Module:
     #: documents the run declares, and ``tests/test_the_declared_backlog.py`` holds the
     #: equality between what the run mints and what the tree declares.
     approximations: tuple[Approximation, ...] = ()
+    #: **§1's EXPORT SET for this module**: the symbol the domain surface re-exports ->
+    #: which of §1's three kinds it is (``root``, ``branch`` or ``alias``).
+    #:
+    #: Recorded by ``lower/names.py``'s pass, which is the one place a position's hop and
+    #: its declaration are both in hand (``names.the_surface_exports``), and carried here
+    #: so that the domain surface, §1's domain-scope collision rule and the check that
+    #: grades them all read ONE answer.  A second derivation over the emitted text is what
+    #: this replaces and it was measured wrong: reading a branch as "a class one of whose
+    #: bases this module declares" misses a nested ``A | B`` union's arms, which subclass
+    #: nothing local -- ``core/targeting_overlay_support.py``'s ``PlacementSelection`` and
+    #: ``core/placement_definition.py``'s ``FormatOptionReference`` are two, and both are
+    #: §1 collisions a check reading the text could not see.
+    #:
+    #: Keyed by SYMBOL and not by pointer, because what §1 forbids two of is a NAME and
+    #: the surface re-exports names; the pointer is in :attr:`symbols` for a reader who
+    #: wants the node.
+    exports: Mapping[str, str] = field(default_factory=dict)
 
 
 def symbols(decided: TypeRef) -> set[str]:

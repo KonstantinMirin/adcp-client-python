@@ -1078,12 +1078,28 @@ def test_the_parser_is_the_only_entry_that_reads_a_raw_mapping() -> None:
     a node and reads its fields.  Four callers and each is a position ``parse`` is
     re-entered at rather than a second walk of one mapping:
 
-    * ``codegen/emit.py`` -- the document ROOT, once per document (``lower_document``);
+    * ``codegen/emit.py`` -- the document ROOT, once per document (``lower_document``), and
+      the document ROOT of every portable document of the BUNDLE, for the one fact §1's
+      domain-scope collision rule needs from a document the run was not asked for
+      (``domain_roots``);
     * ``codegen/compiler.py`` -- a ``definitions`` entry at DEF, parsed on demand when a
       ``$ref`` names it (§5: "an entry nothing references is not declared"), the MERGED
       declaration §2's intersection rule hands back (``_parsed_property``), and a ``$ref``
       CONJUNCT, whose DOCUMENT HALF decides which of the two resolutions it is
       (``_conjunct_base``).
+
+    **The fifth entry's sentence** (``adcp-client-python-82m.9``).  §1 (2026-10-30) forbids
+    ``adcp.types.<domain>.<Name>`` naming two declarations, so resolving a collision needs
+    the ROOT SYMBOL of every document of the domain -- including documents this run was not
+    asked for, which §9's own ruling permits because the BUNDLE is not the run.  A root's
+    symbol is ``class_name(title)`` and ``title`` at ROOT is a NAME cell the parser puts in
+    ``nodes.Base.annotations``, so the one fact is reached through the one parser rather
+    than by ``doc["title"]`` -- which would be the second reading of a mapping this rule
+    exists to prevent, and would be the reading that silently disagreed with the walk's
+    wherever ``bundle.record`` inlined a title into a bare-``$ref`` root.  It is the ROOT
+    position, so it is a re-entry at a position ``parse`` already serves and not a second
+    walk: ``emit.decidable`` compares the two answers per document and raises where they
+    differ.
 
     **The fourth entry's sentence** (``adcp-client-python-10l.43``).  A conjunct is a
     DECLARATION and not a node (``nodes.Conjunct``, and §2's intersection rule is why), so
@@ -1123,6 +1139,9 @@ def test_the_parser_is_the_only_entry_that_reads_a_raw_mapping() -> None:
     assert sites == {
         # the document ROOT, once per document (§5's one path)
         ("emit.py", "lower_document"),
+        # the ROOT of every portable document of the BUNDLE, for the title §1's
+        # domain-scope collision rule needs (``adcp-client-python-82m.9``)
+        ("emit.py", "domain_roots"),
         # a ``definitions`` entry at DEF, parsed when a ``$ref`` names it (§5)
         ("compiler.py", "decide"),
         # the MERGED declaration §2's intersection rule hands back (§6)

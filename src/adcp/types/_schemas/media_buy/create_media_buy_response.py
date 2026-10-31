@@ -111,7 +111,7 @@ class CreateMediaBuyError(CreateMediaBuyResponse, FailedResponse):
     ext: ExtensionObject | None = None
 
 
-class CreateMediaBuySubmitted(CreateMediaBuyResponse):
+class CreateMediaBuyResponseSubmitted(CreateMediaBuyResponse):
     """
     Async task envelope returned when the media buy cannot be confirmed before the response is emitted — for example, when a guaranteed buy requires IO signing, when governance review is outstanding, or when the seller has queued the request for batch processing. The buyer invokes get_task_status with task_id or receives a webhook when the task completes; the media_buy_id and packages land in the terminal result, not this envelope. Do not use a 'pending_approval' MediaBuy.status for this case — that value is not in MediaBuyStatus; IO review and similar pre-issuance workflows are modeled at the task layer only.
     """
@@ -130,7 +130,7 @@ class CreateMediaBuySubmitted(CreateMediaBuyResponse):
     ext: ExtensionObject | None = None
 
 
-CreateMediaBuyResponse._branch_models = (CreateMediaBuySuccess, CreateMediaBuyError, CreateMediaBuySubmitted,)
+CreateMediaBuyResponse._branch_models = (CreateMediaBuySuccess, CreateMediaBuyError, CreateMediaBuyResponseSubmitted,)
 CreateMediaBuyResponse.model_rebuild(force=True)
 
 

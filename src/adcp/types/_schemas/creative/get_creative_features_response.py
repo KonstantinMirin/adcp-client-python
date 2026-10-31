@@ -60,7 +60,7 @@ class GetCreativeFeaturesError(GetCreativeFeaturesResponse):
     ext: ExtensionObject | None = None
 
 
-class GetCreativeFeaturesSubmitted(GetCreativeFeaturesResponse):
+class GetCreativeFeaturesResponseSubmitted(GetCreativeFeaturesResponse):
     """
     Async acknowledgement returned after the provider accepts an evaluation but cannot complete it within the response window. Exact keyed request replays return this original acknowledgement with replayed: true and the same task_id. In AdCP 3.x providers SHOULD also return evaluation_id; it becomes required in AdCP 4.0. When present, exact replays and terminal results preserve it. The caller polls get_task_status using task_id.
     """
@@ -79,7 +79,7 @@ class GetCreativeFeaturesSubmitted(GetCreativeFeaturesResponse):
     ext: ExtensionObject | None = None
 
 
-GetCreativeFeaturesResponse._branch_models = (GetCreativeFeaturesResponseSuccess, GetCreativeFeaturesError, GetCreativeFeaturesSubmitted,)
+GetCreativeFeaturesResponse._branch_models = (GetCreativeFeaturesResponseSuccess, GetCreativeFeaturesError, GetCreativeFeaturesResponseSubmitted,)
 GetCreativeFeaturesResponse.model_rebuild(force=True)
 
 

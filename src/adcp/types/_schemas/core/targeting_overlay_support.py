@@ -147,7 +147,7 @@ class FrequencyCapSupport(FrequencyCapConstraints):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/targeting-overlay-support.json', pointer='#/properties/frequency_cap_support')
 
 
-class PlacementSelection(AdCPBaseModel):
+class TargetingOverlaySupportPlacementSelection(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -227,7 +227,7 @@ class TargetingOverlaySupport(AdCPBaseModel):
     property_list_exclude: Supported | None = None
     collection_list: Supported | None = None
     collection_list_exclude: Supported | None = None
-    placement_selection: Supported | PlacementSelection | None = None
+    placement_selection: Supported | TargetingOverlaySupportPlacementSelection | None = None
     age_restriction: Supported | None = None
     device_platform: Supported | None = None
     device_platform_exclude: Supported | None = None

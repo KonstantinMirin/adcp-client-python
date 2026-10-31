@@ -35,22 +35,29 @@ measurement, because it makes ``core.Status`` name one of fourteen declarations.
 per-module ``strict_validate`` helper either, because a domain name cannot stand for 241
 functions and a caller reaches one through its class.  §1 carries the table.
 
-**The three kinds are read as SYNTAX and the identity as RUNTIME**, and the split is the
-one ``tools/parity/census.py`` already states: which bindings a module OWNS is a fact
-about its source, and an imported one is indistinguishable at runtime -- an
-``Annotated`` alias carries no ``__module__``, so a runtime-only reading counts
-``adcp.types.constraints``' aliases once per module that imports one and calls them that
-domain's.  Measured: **115 owned non-class bindings against 4,545 visible at runtime.**
-Identity is the opposite question and only the runtime can answer it.
+**THE EXPORT SET IS THE RUN'S OWN RECORD AND IS NOT RE-DERIVED HERE** (``emit.surface``,
+written from ``lower/names.py``'s ``the_surface_exports``).  This file derived it twice
+and the second derivation was WRONG, which is the whole reason it reads the record now: a
+reading over the emitted TEXT has to spell "branch" as "a class one of whose bases this
+module declares", and that **misses every arm of a nested ``A | B`` union**, which
+subclasses nothing local.  Measured, the text-reading answered 1,755 declarations with 613
+branches and 115 aliases where the run's record answers **1,951 with 756 branches and 141
+aliases** -- 196 declarations invisible, and four of the collisions below among them.  A
+module's own text cannot say which of its class statements a union declared, so no reader
+of the text can ask §1's question.
+
+Identity is the opposite question and only the RUNTIME can answer it, so the second test
+imports.  The two agree because ``tests/fresh.py`` materialises the tree from the same
+compile this record comes from.
 
 **The set is named BY NAME and never by count** (§8's last paragraph, and
 ``tests/nodeset.py``): the question a reader of a failure asks is "which name can I not
 use", and only the list answers it.  A count would also go stale on the next emitting
 row, which is what ``tests/test_every_check_names_its_set.py`` exists to stop.
 
-**The population is the FRESH tree** (``tests/fresh.py``), not ``src/``, for that
-module's own reason: the committed tree is an artifact verified by one byte-compare and
-is never the subject, so a domain surface that the compiler stopped emitting would
+**The population is the bundle's portable set compiled FRESH**, not ``src/``, for
+``tests/fresh.py``'s own reason: the committed tree is an artifact verified by one
+byte-compare and is never the subject, so a surface the compiler stopped emitting would
 otherwise still be graded green off the checkout.
 
 **The DOMAIN is derived here and never listed.**  §1 says it is "derived from the
@@ -63,115 +70,56 @@ classes are a domain of one module.
 
 **THIS FILE IS RED, and the first test names the blocker rather than the absence.**  The
 surface does not exist yet -- all 23 domains have no public module.  Behind that sits the
-one thing that must land first, and it is this file's own second clause: the export set
-is **1,755 declarations -- a root for each of the 1,054 emitted documents, 613 branches
-and 88 further aliases -- carrying 1,742 distinct ``(domain, name)`` pairs, and 13 of
-those names are wanted by two declarations each** (``adcp-client-python-82m.9``).  §4's
-collision rule settles a name inside one MODULE, and a domain is many modules.  The
-second and third tests pass against a generated surface over this set, so those 13 names
-are the whole of what stands between this file and green.
+one thing that must land first, and it is this file's own second clause: the export set is
+**1,951 declarations -- a root for each of the 1,054 emitted documents, 756 union branches
+and 141 further aliases -- carrying 1,932 distinct ``(domain, name)`` pairs, and 18 of
+those names are wanted by more than one declaration** (``adcp-client-python-82m.9``;
+``core.GeoProximity`` is wanted by three).  §4's collision rule settles a name inside one
+MODULE, and a domain is many modules.  The root axis of the rule has landed -- the
+domain's ROOT symbols are a bundle-wide reading that costs no lowering
+(``emit.domain_roots``) -- and it closed eight: the six async-response ``…Submitted``
+roots against their sync response's branch, plus ``core.FormatOptionReference`` and
+``core.PlacementSelection``, both nested-union arms this file could not see while it read
+the text.  What is left needs the domain's NESTED names, which needs the bundle-wide
+naming pass §9's ruling calls for.
+
+The second and third tests pass against a generated surface over this set, so those 18
+names are the whole of what stands between this file and green.
 """
 
 from __future__ import annotations
 
-import ast
 import importlib
 from pathlib import Path
 
 import pytest
 
 import fresh
+from codegen import emit
+from compiled import compiled
 from nodeset import claimed
 
 
-def _module_path(path: Path, tree: Path) -> list[str]:
-    """A file of the tree as the path segments Python imports it under.
-
-    ``__init__.py`` contributes no segment, because a package's ``__init__`` IS the
-    package -- the same reading ``emit.module_path`` takes, and the case a second
-    spelling goes wrong on (``brand/__init__`` is ``brand`` and never
-    ``brand.__init__``).
-    """
-    parts = list(path.relative_to(tree).parts)
-    if parts[-1] == "__init__.py":
-        return parts[:-1]
-    parts[-1] = parts[-1].removesuffix(".py")
-    return parts
-
-
-def _owned(module: ast.Module) -> dict[str, str]:
-    """Every name one module DECLARES that the surface exports, with its kind.
-
-    Three kinds, each the syntax §1's export set is stated over:
-
-    ``root``
-        the symbol at the document's own root.  Read as ``__all__[0]``, which is where
-        ``emit.exported`` puts it -- "the root goes FIRST, not sorted in with the rest" --
-        and which ``tests/test_emit.py`` already reads the root off.  It is a CLASS for
-        most documents and an ALIAS for a scalar root (§4's "a scalar at a root is a
-        module-level annotated alias, not a class"), so both spellings are looked for.
-    ``branch``
-        a class one of whose bases this module also declares, which is what a union
-        branch IS (§4: "a base plus one class per branch").  Read off the base list and
-        never off a name pattern, so a branch whose name says nothing about its union is
-        still one.
-    ``alias``
-        a module-level binding that is neither.  Two are excluded and §1 says why:
-        ``strict_alias(...)`` is the per-module ``strict_validate`` helper, which the
-        surface does not export, and a bare Capitalised identifier on the right is §1's
-        identity carve-out (``X = Y`` -- "that class and not a second one"), already
-        covered by the class it names.
-    """
-    exported: str | None = None
-    for node in module.body:
-        if isinstance(node, ast.Assign) and any(
-            isinstance(t, ast.Name) and t.id == "__all__" for t in node.targets
-        ):
-            elements = [
-                e.value
-                for e in getattr(node.value, "elts", ())
-                if isinstance(e, ast.Constant) and isinstance(e.value, str)
-            ]
-            exported = elements[0] if elements else None
-    declared = {n.name for n in module.body if isinstance(n, ast.ClassDef)}
-    kinds: dict[str, str] = {}
-    for node in module.body:
-        if isinstance(node, ast.ClassDef):
-            if node.name == exported:
-                kinds[node.name] = "root"
-            elif any(ast.unparse(b) in declared for b in node.bases):
-                kinds[node.name] = "branch"
-            continue
-        targets: list[str] = []
-        if isinstance(node, ast.Assign):
-            targets = [t.id for t in node.targets if isinstance(t, ast.Name)]
-        elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
-            targets = [node.target.id]
-        for name in targets:
-            if name == "__all__" or name.startswith("_") or node.value is None:
-                continue
-            right = ast.unparse(node.value)
-            if right.startswith("strict_alias("):
-                continue
-            if right.isidentifier() and right[:1].isupper():
-                continue
-            kinds[name] = "root" if name == exported else "alias"
-    return kinds
+BUNDLE = Path(__file__).resolve().parents[1] / "schemas" / "cache" / "3.2"
 
 
 def surface() -> dict[tuple[str, str], list[tuple[str, str]]]:
-    """``(domain, name)`` -> every ``(private module, kind)`` the tree exports it from.
+    """``(domain, name)`` -> every ``(private module, kind)`` the surface exports it from.
+
+    Read off ``emit.surface``, the run's own record of §1's export set, which is written
+    from the one place a position's hop and its declaration are both in hand
+    (``lower/names.py``'s ``the_surface_exports``).  The DOMAIN is ``emit.domain``, §1's
+    one derivation of it, so nothing here spells a domain or a kind twice.
 
     A LIST and not one entry, because a name two declarations want is exactly what the
     first test has to report, and a mapping to one could not hold both.
     """
     out: dict[tuple[str, str], list[tuple[str, str]]] = {}
-    for path in sorted(fresh.TREE.rglob("*.py")):
-        parts = _module_path(path, fresh.TREE)
-        if not parts:  # ``_schemas/__init__.py``, which is the package marker
-            continue
-        for name, kind in _owned(ast.parse(path.read_text())).items():
-            out.setdefault((parts[0], name), []).append((".".join(parts), kind))
+    held = compiled(BUNDLE, fresh.population())
+    for document, exported in held.surface.items():
+        module = emit.module_path(document).replace("/", ".")
+        for name, kind in exported.items():
+            out.setdefault((emit.domain(document), name), []).append((module, kind))
     return out
 
 
