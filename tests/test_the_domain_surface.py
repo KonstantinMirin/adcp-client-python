@@ -68,23 +68,18 @@ derivation lives, and the first to go stale.  The derivation answers **23** scop
 §1 confirms: ``adagents.json`` sits at the tree's root with no directory beside it, so its
 classes are a domain of one module.
 
-**THIS FILE IS RED, and the first test names the blocker rather than the absence.**  The
-surface does not exist yet -- all 23 domains have no public module.  Behind that sits the
-one thing that must land first, and it is this file's own second clause: the export set is
-**1,951 declarations -- a root for each of the 1,054 emitted documents, 756 union branches
-and 141 further aliases -- carrying 1,932 distinct ``(domain, name)`` pairs, and 18 of
-those names are wanted by more than one declaration** (``adcp-client-python-82m.9``;
-``core.GeoProximity`` is wanted by three).  §4's collision rule settles a name inside one
-MODULE, and a domain is many modules.  The root axis of the rule has landed -- the
-domain's ROOT symbols are a bundle-wide reading that costs no lowering
-(``emit.domain_roots``) -- and it closed eight: the six async-response ``…Submitted``
-roots against their sync response's branch, plus ``core.FormatOptionReference`` and
-``core.PlacementSelection``, both nested-union arms this file could not see while it read
-the text.  What is left needs the domain's NESTED names, which needs the bundle-wide
-naming pass §9's ruling calls for.
+**THIS FILE IS RED ON ONE THING ONLY: the surface does not exist yet.**  All 23 domains
+have no public module, and that is what the first test names.  **The collision blocker is
+closed** -- the export set is **1,951 declarations (1,054 roots, 756 union branches, 141
+further aliases) over 1,951 DISTINCT ``(domain, name)`` pairs, so §1's "no
+``adcp.types.<domain>.<Name>`` may name two declarations" holds with nothing left over**
+(``adcp-client-python-82m.9``).  It was 26 collisions; §4's collision rule at domain scope
+closed every one, 8 of them off the bundle-wide ROOT symbols (``emit.domain_roots``, 0.23 s
+and no lowering) and the other 18 off ``emit.domain_exports``, which repeats §4's step
+until no two documents of one domain export one name.
 
-The second and third tests pass against a generated surface over this set, so those 18
-names are the whole of what stands between this file and green.
+The second and third tests pass against a generated surface over this set, so what is left
+is emitting it.
 """
 
 from __future__ import annotations

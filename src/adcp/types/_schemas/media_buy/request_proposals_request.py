@@ -87,21 +87,21 @@ class Account(BranchDispatchMixin, AdCPBaseModel):
         return "anyOf"
 
 
-class AccountAccountId(Account, CanonicalAccountReferenceAccountId):
+class RequestProposalsRequestAccountAccountAccountId(Account, CanonicalAccountReferenceAccountId):
     model_config = ConfigDict(
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/request-proposals-request.json', pointer='#/anyOf/1/properties/account/allOf/0/anyOf/0')
 
 
-class AccountBrandOperator(Account, CanonicalAccountReferenceBrandOperator):
+class RequestProposalsRequestAccountAccountBrandOperator(Account, CanonicalAccountReferenceBrandOperator):
     model_config = ConfigDict(
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/request-proposals-request.json', pointer='#/anyOf/1/properties/account/allOf/0/anyOf/1')
 
 
-Account._branch_models = (AccountAccountId, AccountBrandOperator,)
+Account._branch_models = (RequestProposalsRequestAccountAccountAccountId, RequestProposalsRequestAccountAccountBrandOperator,)
 Account.model_rebuild(force=True)
 
 

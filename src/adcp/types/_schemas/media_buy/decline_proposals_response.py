@@ -48,7 +48,7 @@ class ResultsItemDeclined(ResultsItem):
     outcome: Literal['declined']
 
 
-class ResultsItemUnable(ResultsItem):
+class DeclineProposalsResponseResultsItemUnable(ResultsItem):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -57,7 +57,7 @@ class ResultsItemUnable(ResultsItem):
     reason: Annotated[StrMinLen1, Field(description='Why the seller could not apply a decline. Present only for outcome unable.')]
 
 
-ResultsItem._branch_models = (ResultsItemDeclined, ResultsItemUnable,)
+ResultsItem._branch_models = (ResultsItemDeclined, DeclineProposalsResponseResultsItemUnable,)
 ResultsItem.model_rebuild(force=True)
 
 

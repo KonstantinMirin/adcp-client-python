@@ -45,7 +45,7 @@ class Format(StrEnum):
     ORC = 'orc'
 
 
-class FileTransfer(ReportingDeliveryMethod):
+class ReportingDeliveryMethodFileTransfer(ReportingDeliveryMethod):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -79,7 +79,7 @@ class WarehouseMaterialization(ReportingDeliveryMethod):
     destination: ReportingWriteDestination
 
 
-ReportingDeliveryMethod._branch_models = (FileTransfer, DatasetShare, WarehouseMaterialization,)
+ReportingDeliveryMethod._branch_models = (ReportingDeliveryMethodFileTransfer, DatasetShare, WarehouseMaterialization,)
 ReportingDeliveryMethod.model_rebuild(force=True)
 
 

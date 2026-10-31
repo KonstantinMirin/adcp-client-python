@@ -38,7 +38,7 @@ class MetroRequirementSystems(AdCPBaseModel):
 MetroRequirement = TargetingOverlayRequirementsRequired | MetroRequirementSystems
 
 
-class GeoProximity(AdCPBaseModel):
+class TargetingOverlayRequirementsGeoProximity(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -72,7 +72,7 @@ class DaypartRequirementTimezoneModes(AdCPBaseModel):
 DaypartRequirement = TargetingOverlayRequirementsRequired | DaypartRequirementTimezoneModes
 
 
-class DemographicsAge(AdCPBaseModel):
+class TargetingOverlayRequirementsDemographicsAge(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -133,12 +133,12 @@ class TargetingOverlayRequirements(AdCPBaseModel):
     geo_places_exclude: GeographicPlaceRequirement | None = None
     geo_postal_areas: TargetingOverlayRequirementsRequired | PositivePostalAreaSupport | None = None
     geo_postal_areas_exclude: TargetingOverlayRequirementsRequired | PositivePostalAreaSupport | None = None
-    geo_proximity: TargetingOverlayRequirementsRequired | GeoProximity | None = None
+    geo_proximity: TargetingOverlayRequirementsRequired | TargetingOverlayRequirementsGeoProximity | None = None
     daypart_targets: DaypartRequirement | None = None
     audience_include: TargetingOverlayRequirementsRequired | None = None
     audience_exclude: TargetingOverlayRequirementsRequired | None = None
     signal_targeting_groups: TargetingOverlayRequirementsRequired | None = None
-    demographics: TargetingOverlayRequirementsRequired | DemographicsAge | None = None
+    demographics: TargetingOverlayRequirementsRequired | TargetingOverlayRequirementsDemographicsAge | None = None
     frequency_cap: TargetingOverlayRequirementsRequired | None = None
     frequency_cap_support: Annotated[FrequencyCapRequirements | None, Field(description='Minimum structured package-cap support. Matches a broad legacy frequency_cap: true or a containing frequency_cap_support object. Mutually exclusive with a frequency_cap: true requirement, which would exclude every constrained product.')] = None
     property_list: TargetingOverlayRequirementsRequired | None = None

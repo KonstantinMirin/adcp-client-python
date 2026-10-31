@@ -32,7 +32,7 @@ from .format_option_ref import FormatOptionReference
 from .postal_area import PostalArea
 from .product_audience_evidence_requirements import ProductAudienceEvidenceRequirements
 from .property_list_ref import PropertyListReference
-from .targeting import GeoProximity
+from .targeting import TargetingOverlayGeoProximity
 from .vendor_metric_id import VendorMetricID
 
 
@@ -146,7 +146,7 @@ class ProductOfferFilters(AdCPBaseModel):
     regions: Annotated[list[StrMatchingCE72C7C2] | None, Field(description='Inventory coverage in the specified ISO 3166-2 subdivisions: OR within this field, AND across offer filters. Does not add delivery targeting, require targeting support, or rescope pricing or forecasts.', min_length=1)] = None
     metros: Annotated[list[MetrosItem] | None, Field(description='Inventory coverage in the specified metro areas (system and code): OR within this field, AND across offer filters. Does not add delivery targeting, require targeting support, or rescope pricing or forecasts.', min_length=1)] = None
     postal_areas: Annotated[list[PostalArea] | None, Field(description='Inventory coverage in the specified postal areas: OR within this field, AND across offer filters. Does not add delivery targeting, require targeting support, or rescope pricing or forecasts.', min_length=1)] = None
-    geo_proximity: Annotated[GeoProximity | None, Field(description='Inventory coverage in the specified proximity boundaries: OR within this field, AND across offer filters. Does not add delivery targeting, require targeting support, or rescope pricing or forecasts.')] = None
+    geo_proximity: Annotated[TargetingOverlayGeoProximity | None, Field(description='Inventory coverage in the specified proximity boundaries: OR within this field, AND across offer filters. Does not add delivery targeting, require targeting support, or rescope pricing or forecasts.')] = None
     property_list: Annotated[PropertyListReference | None, Field(description='Reference to an externally managed property list. When provided, the seller filters products to only those available on properties in the list. This narrows which publisher inventory is returned; it is a product attribute filter, not a delivery-targeting instruction.')] = None
     channels: Annotated[list[MediaChannel] | None, Field(min_length=1)] = None
     video_placement_types: Annotated[list[VideoPlacementType] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None

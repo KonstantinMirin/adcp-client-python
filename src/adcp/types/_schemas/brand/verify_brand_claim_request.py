@@ -36,7 +36,7 @@ class VerifySubsidiaryClaimClaim(AdCPBaseModel):
     observed_at: Annotated[AwareDatetime | None, Field(description="When the caller observed the leaf's claim.")] = None
 
 
-class VerifySubsidiaryClaim(VerifyBrandClaimRequest):
+class VerifyBrandClaimRequestSubsidiary(VerifyBrandClaimRequest):
     """
     House-side: is this brand a subsidiary of mine? Used by consumers detecting a leaf claiming `house_domain` pointing at this house.
     """
@@ -58,7 +58,7 @@ class VerifyParentClaimClaim(AdCPBaseModel):
     observed_at: AwareDatetime | None = None
 
 
-class VerifyParentClaim(VerifyBrandClaimRequest):
+class VerifyBrandClaimRequestParent(VerifyBrandClaimRequest):
     """
     Leaf-side mirror: is this brand my parent house? The symmetric path that lets a leaf's brand-agent authoritatively confirm or reject a third party's claim about its parentage. Mutual assertion can complete at the agent layer (both house and leaf answer) rather than requiring a static-file crawl.
     """
@@ -105,7 +105,7 @@ class VerifyPropertyClaimClaim(AdCPBaseModel):
     use_case: Annotated[StrMaxLen100 | None, Field(description='Optional caller-declared use case. The agent MAY scope its answer.')] = None
 
 
-class VerifyPropertyClaim(VerifyBrandClaimRequest):
+class VerifyBrandClaimRequestProperty(VerifyBrandClaimRequest):
     """
     Is this property (website, app, podcast, etc.) one of mine? Used at inventory-onboarding, creative-clearance, and fraud-escalation gates.
     """
@@ -129,7 +129,7 @@ class VerifyTrademarkClaimClaim(AdCPBaseModel):
     use_case: StrMaxLen100 | None = None
 
 
-class VerifyTrademarkClaim(VerifyBrandClaimRequest):
+class VerifyBrandClaimRequestTrademark(VerifyBrandClaimRequest):
     """
     Is this trademark mine? Returns ownership plus licensing posture and authorized use cases — the differentiator vs registry crawls.
     """
@@ -141,7 +141,7 @@ class VerifyTrademarkClaim(VerifyBrandClaimRequest):
     claim: VerifyTrademarkClaimClaim
 
 
-VerifyBrandClaimRequest._branch_models = (VerifySubsidiaryClaim, VerifyParentClaim, VerifyPropertyClaim, VerifyTrademarkClaim,)
+VerifyBrandClaimRequest._branch_models = (VerifyBrandClaimRequestSubsidiary, VerifyBrandClaimRequestParent, VerifyBrandClaimRequestProperty, VerifyBrandClaimRequestTrademark,)
 VerifyBrandClaimRequest.model_rebuild(force=True)
 
 

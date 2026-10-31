@@ -341,7 +341,7 @@ class FontFile(AdCPBaseModel):
     style: Annotated[FontFileStyle | None, Field(description='CSS font-style')] = None
 
 
-class FontRoleFamily(AdCPBaseModel):
+class BrandDiscoveryFontRoleFamily(AdCPBaseModel):
     """
     Structured font with family name, downloadable font files, and typographic metadata
     """
@@ -355,7 +355,7 @@ class FontRoleFamily(AdCPBaseModel):
     fallbacks: Annotated[list[StrMaxLen100] | None, Field(description="Ordered fallback font-family names for when the primary font is unavailable or does not support the required script (e.g., ['Noto Sans Arabic', 'Noto Sans SC', 'sans-serif'])", max_length=10)] = None
 
 
-FontRole = Annotated[str | FontRoleFamily, Field(description='A font role entry. Either a CSS font-family string (simple) or a structured object with family name and font files (rich).')]
+BrandDiscoveryFontRole = Annotated[str | BrandDiscoveryFontRoleFamily, Field(description='A font role entry. Either a CSS font-family string (simple) or a structured object with family name and font files (rich).')]
 
 
 class Fonts(AdCPBaseModel):
@@ -366,12 +366,12 @@ class Fonts(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/fonts')
-    __pydantic_extra__: dict[str, FontRole]
+    __pydantic_extra__: dict[str, BrandDiscoveryFontRole]
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         PropertyCount(minimum=None, maximum=20),
     )
-    primary: Annotated[FontRole | None, Field(description='Primary font family')] = None
-    secondary: Annotated[FontRole | None, Field(description='Secondary font family')] = None
+    primary: Annotated[BrandDiscoveryFontRole | None, Field(description='Primary font family')] = None
+    secondary: Annotated[BrandDiscoveryFontRole | None, Field(description='Secondary font family')] = None
 
 
 LocalizedScalar = Annotated[str | NonEmptyList[LocalizedName], Field(description="A legacy plain string or an ordered set of one-locale string maps. Producers MUST NOT repeat a locale after replacing '_' with '-' and applying the AdCP locale-tag canonicalization profile. Readers resolve the requested locale using the document default_language fallback contract and MUST NOT choose an arbitrary available translation.")]
@@ -1596,4 +1596,4 @@ BrandDiscovery._branch_models = (AuthoritativeLocationRedirect, HouseRedirect, B
 BrandDiscovery.model_rebuild(force=True)
 
 
-__all__ = ["BrandDiscovery", "Agents", "Asset", "AssetLibrary", "AuthorizedOperator", "BorderRadius", "Brand", "BrandAgentEntry", "BrandDiscoveryBrandAgent", "BrandDiscoveryContact", "BrandId", "BrandShapes", "ColorConstraint", "ColorRef", "ColorValue", "Colors", "Colorway", "CompositionRules", "DataSubjectContestation", "Domain", "Elevation", "FontFile", "FontRole", "Fonts", "GraphicElement", "GraphicStyle", "GuidelineSeverity", "HexColor", "House", "Iconography", "IdentityRelyingParty", "KellerType", "LocalizedName", "LocalizedScalar", "LocalizedStringList", "LocalizedStringListEntry", "Logo", "LogoId", "LogoPlacement", "LogoUsageRule", "MarkLockup", "MotionGuidelines", "PhotographyStyle", "PortfolioEntry", "ProductCatalog", "Property", "RightsAgent", "Spacing", "Trademark", "TypeScaleEntry", "VisualGuidelines"]
+__all__ = ["BrandDiscovery", "Agents", "Asset", "AssetLibrary", "AuthorizedOperator", "BorderRadius", "Brand", "BrandAgentEntry", "BrandDiscoveryBrandAgent", "BrandDiscoveryContact", "BrandDiscoveryFontRole", "BrandId", "BrandShapes", "ColorConstraint", "ColorRef", "ColorValue", "Colors", "Colorway", "CompositionRules", "DataSubjectContestation", "Domain", "Elevation", "FontFile", "Fonts", "GraphicElement", "GraphicStyle", "GuidelineSeverity", "HexColor", "House", "Iconography", "IdentityRelyingParty", "KellerType", "LocalizedName", "LocalizedScalar", "LocalizedStringList", "LocalizedStringListEntry", "Logo", "LogoId", "LogoPlacement", "LogoUsageRule", "MarkLockup", "MotionGuidelines", "PhotographyStyle", "PortfolioEntry", "ProductCatalog", "Property", "RightsAgent", "Spacing", "Trademark", "TypeScaleEntry", "VisualGuidelines"]

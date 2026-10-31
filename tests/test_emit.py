@@ -5916,43 +5916,53 @@ def test_the_one_document_property_holds_for_a_name_the_DOMAIN_decided() -> None
     about the run's DOCUMENT SET, the argument list, and a domain's exported names are read
     off the bundle, which is pinned and is an input to every run alike.
 
-    **So this property is now the whole of what makes that legal, and the test above
-    does not grade it.**  ``creative/preview-render.json`` is in no collision, so its text
-    is the same under a run-scoped reading and a bundle-scoped one; the cheap, wrong
-    implementation (a census over the run's own lowered modules) leaves that test GREEN.
-    §9's ruling refuses that implementation in those words -- "it leaves
-    ``test_one_documents_module_is_the_same_text_alone_as_with_the_whole_bundle`` GREEN
-    while the property it names is false for the documents behind the collisions, because
-    its population does not include one of them" -- and this is the population fix.
+    **So this property is now the whole of what makes that legal, and the test above does
+    not grade it.**  ``creative/preview-render.json`` is in no collision, so its text is the
+    same under a run-scoped reading and a bundle-scoped one; the cheap, wrong implementation
+    -- a census over the run's own lowered modules -- leaves that test GREEN.  §9's ruling
+    refuses it in those words, and this is the population fix.
 
-    ``creative/get-creative-features-response.json`` is the document chosen, and the three
-    things that make it the right one:
+    **The document is chosen to grade the HARDEST half, which is the fixed point.**
+    ``emit.domain_exports`` repeats §4's step until no two documents of one domain export one
+    name, and ``content-standards/create-content-standards-request.json`` is the only place
+    in this bundle where one round is not enough: its two branches collide with
+    ``update-content-standards-request``'s on ``FailItemUrl`` and ``PassItemUrl``, both move
+    in round one, and **both move onto the same NEW name** --
+    ``CalibrationExemplarsFailItemUrl`` -- which only a second round can see.  A
+    single-round implementation leaves two collisions standing and every cheaper reading
+    leaves this document's text run-dependent, so the symbols pinned below are exactly the
+    ones no shortcut produces.
 
-    * its ``/oneOf`` branch titled ``GetCreativeFeaturesSubmitted`` collides with
-      ``creative/get-creative-features-async-response-submitted.json``'s ROOT, which is
-      titled "Get Creative Features - Submitted" -- a name in its DOMAIN and not in its
-      closure, so a run-scoped reading would answer differently for a one-document run;
-    * the root keeps the name and the branch falls, which is §4's root clause one scope
-      out, so the symbol this test pins is one the DOMAIN decided;
-    * its closure is 13 documents, so asking for it alone is cheap.
+    Named and not counted, because these are the symbols a consumer writes.
     """
-    document = "creative/get-creative-features-response.json"
+    document = "content-standards/create-content-standards-request.json"
+    other = "content-standards/update-content-standards-request.json"
     rel = emit.module_file(document, PACKAGES) + ".py"
     whole = compiled(BUNDLE, population())
     assert document in whole.emitted, sorted(whole.refusals)[:5]
 
-    # The collision is real and it is across MODULES of one domain: the branch's own title
-    # derives the other document's root symbol, which is why §4's module-scope rule never
-    # reached it.  Both sides read off the run rather than restated.
-    other = "creative/get-creative-features-async-response-submitted.json"
-    assert whole.surface[other]["GetCreativeFeaturesSubmitted"] == "root", whole.surface[other]
-    assert emit.domain(document) == emit.domain(other) == "creative"
-    # And the branch MOVED, to the rung §4 gives it when the name is taken.  Named, not
-    # counted: this is the symbol a consumer will write.
-    assert "GetCreativeFeaturesSubmitted" not in whole.surface[document], whole.surface[document]
-    assert whole.surface[document]["GetCreativeFeaturesResponseSubmitted"] == "branch", (
-        whole.surface[document]
-    )
+    # The collision is across MODULES of one domain, which is why §4's module scope never
+    # reached it, and BOTH sides moved -- §4's "all N lengthen" at the wider scope.
+    assert emit.domain(document) == emit.domain(other) == "content_standards"
+    for short in ("FailItemUrl", "PassItemUrl", "CalibrationExemplarsFailItemUrl"):
+        assert short not in whole.surface[document], (short, whole.surface[document])
+        assert short not in whole.surface[other], (short, whole.surface[other])
+    assert (
+        whole.surface[document]["CreateContentStandardsRequestCalibrationExemplarsFailItemUrl"]
+        == "branch"
+    ), whole.surface[document]
+    assert (
+        whole.surface[other]["UpdateContentStandardsRequestCalibrationExemplarsFailItemUrl"]
+        == "branch"
+    ), whole.surface[other]
+    # And the ROOT axis, on the shape §4 decides with no new rung: an async response's root
+    # against the same-named branch of its sync response.  Read off the same run, so this
+    # costs no second compile.
+    submitted = "creative/get-creative-features-async-response-submitted.json"
+    response = "creative/get-creative-features-response.json"
+    assert whole.surface[submitted]["GetCreativeFeaturesSubmitted"] == "root"
+    assert "GetCreativeFeaturesSubmitted" not in whole.surface[response]
+    assert whole.surface[response]["GetCreativeFeaturesResponseSubmitted"] == "branch"
 
     alone = compiled(BUNDLE, [document])
     assert other not in alone.emitted, (

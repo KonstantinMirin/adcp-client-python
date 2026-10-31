@@ -22,7 +22,7 @@ class ReportingWriteDestination(BranchDispatchMixin, AdCPBaseModel):
         return "oneOf"
 
 
-class ExistingBinding(ReportingWriteDestination):
+class ReportingWriteDestinationExisting(ReportingWriteDestination):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -53,7 +53,7 @@ class ProvisionBinding(ReportingWriteDestination):
     access_mode: Annotated[StrMinLen1MaxLen64Matching5CDAE669 | None, Field(description='Optional provider access family used for capability matching.')] = None
 
 
-ReportingWriteDestination._branch_models = (ExistingBinding, ProvisionBinding,)
+ReportingWriteDestination._branch_models = (ReportingWriteDestinationExisting, ProvisionBinding,)
 ReportingWriteDestination.model_rebuild(force=True)
 
 
