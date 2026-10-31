@@ -2065,6 +2065,11 @@ def emit(
     out.beside[f"{constraints_module.MODULE.rsplit('.', 1)[1]}.py"] = render.constraints_module(
         aliases
     )
+    # **§1's DOMAIN SURFACE: one public module per domain, re-exporting every name §1's
+    # export set holds** (:func:`domain_modules`).  Beside the tree rather than inside it
+    # because ``_schemas`` is private (P8) and this is the one path a consumer reaches a
+    # type at.
+    out.beside.update(domain_modules(out.surface))
     # **The envelope bases, over the BUNDLE and not over the run** -- which is the one
     # way this artifact differs from the alias module beside it.  ``constraints.py``
     # holds the shapes a run resolved, so it is a function of the run's document set;
@@ -2083,6 +2088,60 @@ def emit(
     # reddened the gate.  A report about documents this package does NOT contain
     # has no place inside the shipped package anyway: `main` prints it, and the
     # suite reads `Emitted.refusals` from the run it just made.
+    return out
+
+
+def domain_modules(surface: Mapping[str, Mapping[str, str]]) -> dict[str, str]:
+    """§1's DOMAIN SURFACE: ``<domain>.py`` per domain plus ``__init__.py``, as text.
+
+    §1: "a document compiles to a module at its own path under a private tree ... **and is
+    re-exported from** ``adcp.types.<domain>``, where the domain is derived from the
+    document's own path".  This is that re-export, and it is **GENERATED from the same walk
+    as everything else** -- the names come from :attr:`Emitted.surface`, which is
+    ``lower/names.py``'s own record of §1's export set -- so a new document appears in its
+    domain with nobody editing a list.
+
+    **A RE-EXPORT and never a declaration**, which is the half §1's one-path rule turns on:
+    ``from ... import X as X`` binds the very class the private module built, so
+    ``adcp.types.core.AssetRequirementsJavaScript is
+    adcp.types._schemas.core.requirements.asset_requirements.AssetRequirementsJavaScript``
+    and a consumer's ``isinstance`` is true against the object the runtime validates into.
+    A module that DECLARED its own would satisfy "exactly one import path" and hand back a
+    second class with a second ``__adcp_schema__`` to keep in agreement.
+
+    ``X as X`` and not a bare import because that is what makes the name an EXPORT rather
+    than an incidental binding -- the re-export convention a type checker reads -- and
+    ``__all__`` is written as the literal list beside it, because §1 fixes the set and a
+    module that leaves it implicit makes a reader derive it.
+
+    **RELATIVE imports**, for the reason ``relative_module`` already gives: ``_schemas`` is
+    private, and an absolute ``adcp.types._schemas...`` here would publish the private path
+    once per name.
+
+    **``adcp/types/__init__.py`` is NOT among these and cannot be**, which is a fact about
+    Python and not a decision: ``tests/fresh.py`` grades a fresh tree by putting its
+    directory in front of ``adcp.types.__path__``, and ``__path__`` decides where a
+    package's CHILDREN come from.  A package's own ``__init__`` IS the package, so it is
+    already bound before any path entry is consulted and no fresh copy of it could ever be
+    the one graded.  It stays hand-written, it names no type, and §1's reason is that a
+    flat ``from adcp.types import PaginationRequest`` would be the second spelling §1
+    forbids -- the import is meant to tell a reader which document a class came from.
+
+    Keyed relative to the package directory, like D5's alias module, so no caller of
+    :func:`write` can be handed a path that escapes the directory it passed -- and written
+    only on a run that passes ``package``, which is the scope both artifacts need.
+    """
+    held: dict[str, dict[str, str]] = {}
+    for document, exported in surface.items():
+        into = held.setdefault(domain(document), {})
+        for symbol in exported:
+            into[symbol] = module_path(document).replace("/", ".")
+    out: dict[str, str] = {}
+    for known in sorted(held):
+        by_module: dict[str, list[str]] = {}
+        for symbol, module in sorted(held[known].items()):
+            by_module.setdefault(module, []).append(symbol)
+        out[f"{known}.py"] = render.domain_module(known, by_module)
     return out
 
 

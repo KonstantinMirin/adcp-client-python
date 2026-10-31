@@ -6019,11 +6019,19 @@ def test_the_committed_tree_is_what_a_fresh_run_emits(tmp_path) -> None:
     assert sorted(emitted) == sorted(committed)
     for rel in sorted(emitted):
         assert emitted[rel] == committed[rel], rel
-    # Two files beside the tree, which is the set the run INTENDS and not a floor: the
-    # alias module (D5) and the envelope bases (``codegen/lower/envelope.py``).  Each
-    # holds types that belong to no document, so neither has a domain to live under and
-    # neither can sit inside the private tree; both are compared byte for byte below.
-    assert sorted(out.beside) == ["constraints.py", "envelopes.py"], sorted(out.beside)
+    # What sits BESIDE the tree, as the set the run INTENDS and not a floor, and DERIVED
+    # rather than listed because a new domain joins it: §1's public module per domain
+    # (``emit.domain_modules``), plus the alias module (D5) and the envelope bases
+    # (``codegen/lower/envelope.py``).  The last two hold types that belong to no
+    # document, so neither has a domain to live under and neither can sit inside the
+    # private tree.  Every one of them is compared byte for byte below.
+    #
+    # The domain half is read off this run's own export record, which is the one place §1's
+    # export set is decided, so a domain that stops being emitted reddens here by NAME.
+    domains = {f"{emit.domain(document)}.py" for document in out.surface}
+    assert sorted(out.beside) == sorted(domains | {"constraints.py", "envelopes.py"}), (
+        sorted(out.beside)
+    )
     for rel in sorted(out.beside):
         assert (tmp_path / rel).read_text() == (COMMITTED.parent / rel).read_text(), rel
 

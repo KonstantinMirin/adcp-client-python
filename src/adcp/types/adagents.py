@@ -1,0 +1,102 @@
+"""The public types of the ``adagents`` domain.
+
+Every name here is the class, root model, enumeration or alias the schema document
+of that name compiles to, re-exported from the private module at the document's own
+path.  This is the one import path for each of them, and the object is the same one
+the runtime validates into -- ``isinstance`` against a union branch imported from
+here is true.
+
+Generated from the compiler's own record of what it exported: every document ROOT,
+every union BRANCH and every type ALIAS the documents of this domain declare.  A
+document added upstream appears here with nothing edited.
+"""
+
+from __future__ import annotations
+
+from ._schemas.adagents import (
+    AdCPAgentsAuthorization as AdCPAgentsAuthorization,
+    AdCPAgentsAuthorizationAuthoritativeLocation as AdCPAgentsAuthorizationAuthoritativeLocation,
+    AdCPAgentsAuthorizationCommunityFormatRegistry as AdCPAgentsAuthorizationCommunityFormatRegistry,
+    AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemInlineProperties as AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemInlineProperties,
+    AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPropertyIds as AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPropertyIds,
+    AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPropertyTags as AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPropertyTags,
+    AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPublisherProperties as AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPublisherProperties,
+    AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemSignalIds as AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemSignalIds,
+    AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemSignalTags as AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemSignalTags,
+    AdCPAgentsAuthorizationCommunityFormatRegistryBranch0 as AdCPAgentsAuthorizationCommunityFormatRegistryBranch0,
+    AdCPAgentsAuthorizationCommunityFormatRegistryBranch0AuthorizedAgentsItemInlineProperties as AdCPAgentsAuthorizationCommunityFormatRegistryBranch0AuthorizedAgentsItemInlineProperties,
+    AdCPAgentsAuthorizationCommunityFormatRegistryBranch0AuthorizedAgentsItemPropertyIds as AdCPAgentsAuthorizationCommunityFormatRegistryBranch0AuthorizedAgentsItemPropertyIds,
+    AdCPAgentsAuthorizationCommunityFormatRegistryBranch0AuthorizedAgentsItemPropertyTags as AdCPAgentsAuthorizationCommunityFormatRegistryBranch0AuthorizedAgentsItemPropertyTags,
+    AdCPAgentsAuthorizationCommunityFormatRegistryBranch0AuthorizedAgentsItemPublisherProperties as AdCPAgentsAuthorizationCommunityFormatRegistryBranch0AuthorizedAgentsItemPublisherProperties,
+    AdCPAgentsAuthorizationCommunityFormatRegistryBranch0AuthorizedAgentsItemSignalIds as AdCPAgentsAuthorizationCommunityFormatRegistryBranch0AuthorizedAgentsItemSignalIds,
+    AdCPAgentsAuthorizationCommunityFormatRegistryBranch0AuthorizedAgentsItemSignalTags as AdCPAgentsAuthorizationCommunityFormatRegistryBranch0AuthorizedAgentsItemSignalTags,
+    AdCPAgentsAuthorizationCommunityFormatRegistryCollections as AdCPAgentsAuthorizationCommunityFormatRegistryCollections,
+    AdCPAgentsAuthorizationCommunityFormatRegistryFormats as AdCPAgentsAuthorizationCommunityFormatRegistryFormats,
+    AdCPAgentsAuthorizationCommunityFormatRegistryPlacements as AdCPAgentsAuthorizationCommunityFormatRegistryPlacements,
+    AdCPAgentsAuthorizationCommunityFormatRegistryProperties as AdCPAgentsAuthorizationCommunityFormatRegistryProperties,
+    AdCPAgentsAuthorizationCommunityFormatRegistrySignals as AdCPAgentsAuthorizationCommunityFormatRegistrySignals,
+    AuthorizedAgentsItemInlinePropertiesDelegationType as AuthorizedAgentsItemInlinePropertiesDelegationType,
+    AuthorizedAgentsItemPropertyTagsDelegationType as AuthorizedAgentsItemPropertyTagsDelegationType,
+    AuthorizedAgentsItemPublisherPropertiesDelegationType as AuthorizedAgentsItemPublisherPropertiesDelegationType,
+    FormatsItemAgentPlacement as FormatsItemAgentPlacement,
+    FormatsItemAudioDaast as FormatsItemAudioDaast,
+    FormatsItemAudioHosted as FormatsItemAudioHosted,
+    FormatsItemAudioVast as FormatsItemAudioVast,
+    FormatsItemCoordinatedPlacements as FormatsItemCoordinatedPlacements,
+    FormatsItemCustom as FormatsItemCustom,
+    FormatsItemDisplayTag as FormatsItemDisplayTag,
+    FormatsItemHtml5 as FormatsItemHtml5,
+    FormatsItemImage as FormatsItemImage,
+    FormatsItemImageCarousel as FormatsItemImageCarousel,
+    FormatsItemNativeInFeed as FormatsItemNativeInFeed,
+    FormatsItemResponsiveCreative as FormatsItemResponsiveCreative,
+    FormatsItemSellerRenderedStatefulDisplay as FormatsItemSellerRenderedStatefulDisplay,
+    FormatsItemSponsoredPlacement as FormatsItemSponsoredPlacement,
+    FormatsItemVideoHosted as FormatsItemVideoHosted,
+    FormatsItemVideoVast as FormatsItemVideoVast,
+    SignalTagsValue as SignalTagsValue,
+)
+
+__all__ = [
+    'AdCPAgentsAuthorization',
+    'AdCPAgentsAuthorizationAuthoritativeLocation',
+    'AdCPAgentsAuthorizationCommunityFormatRegistry',
+    'AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemInlineProperties',
+    'AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPropertyIds',
+    'AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPropertyTags',
+    'AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPublisherProperties',
+    'AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemSignalIds',
+    'AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemSignalTags',
+    'AdCPAgentsAuthorizationCommunityFormatRegistryBranch0',
+    'AdCPAgentsAuthorizationCommunityFormatRegistryBranch0AuthorizedAgentsItemInlineProperties',
+    'AdCPAgentsAuthorizationCommunityFormatRegistryBranch0AuthorizedAgentsItemPropertyIds',
+    'AdCPAgentsAuthorizationCommunityFormatRegistryBranch0AuthorizedAgentsItemPropertyTags',
+    'AdCPAgentsAuthorizationCommunityFormatRegistryBranch0AuthorizedAgentsItemPublisherProperties',
+    'AdCPAgentsAuthorizationCommunityFormatRegistryBranch0AuthorizedAgentsItemSignalIds',
+    'AdCPAgentsAuthorizationCommunityFormatRegistryBranch0AuthorizedAgentsItemSignalTags',
+    'AdCPAgentsAuthorizationCommunityFormatRegistryCollections',
+    'AdCPAgentsAuthorizationCommunityFormatRegistryFormats',
+    'AdCPAgentsAuthorizationCommunityFormatRegistryPlacements',
+    'AdCPAgentsAuthorizationCommunityFormatRegistryProperties',
+    'AdCPAgentsAuthorizationCommunityFormatRegistrySignals',
+    'AuthorizedAgentsItemInlinePropertiesDelegationType',
+    'AuthorizedAgentsItemPropertyTagsDelegationType',
+    'AuthorizedAgentsItemPublisherPropertiesDelegationType',
+    'FormatsItemAgentPlacement',
+    'FormatsItemAudioDaast',
+    'FormatsItemAudioHosted',
+    'FormatsItemAudioVast',
+    'FormatsItemCoordinatedPlacements',
+    'FormatsItemCustom',
+    'FormatsItemDisplayTag',
+    'FormatsItemHtml5',
+    'FormatsItemImage',
+    'FormatsItemImageCarousel',
+    'FormatsItemNativeInFeed',
+    'FormatsItemResponsiveCreative',
+    'FormatsItemSellerRenderedStatefulDisplay',
+    'FormatsItemSponsoredPlacement',
+    'FormatsItemVideoHosted',
+    'FormatsItemVideoVast',
+    'SignalTagsValue',
+]
