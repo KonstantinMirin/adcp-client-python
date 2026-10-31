@@ -267,6 +267,7 @@ files = [
     "codegen/lower",
     "codegen/compiler.py",
     "codegen/emit.py",
+    "codegen/store.py",
     "codegen/constraints.py",
     "codegen/render.py",
     "codegen/dump_exemptions.py",

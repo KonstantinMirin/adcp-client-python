@@ -111,7 +111,7 @@ from pathlib import Path
 from typing import Any
 
 from adcp.types._base import Approximation
-from codegen import bundle, compiler, harness, ir, keywords, render
+from codegen import bundle, compiler, harness, ir, keywords, render, store
 from codegen.keywords import Position
 from codegen import constraints as constraints_module
 from codegen.compiler import (
@@ -341,6 +341,36 @@ def domain_exports(
     documents it was given.  The symbols are keyed to the documents that want them
     because :func:`decidable` has to subtract its OWN: a name only this document exports
     is not a collision, and §4 settles a name inside one module already.
+
+    **AND HELD ON DISK UNDER A CONTENT ADDRESS, which is §9's own answer to what that
+    costs** (``codegen/store.py``, which carries the measurement and the correctness
+    argument).  ``lru_cache`` does not cross a process, and the process that matters is the
+    one-document loop: measured on ``4eff4354``, a run naming
+    ``compliance/comply-test-controller-request.json`` paid **144.1 s** where its own
+    closure walk is 34.5 s, because the domains that closure touches reach ``core`` and §4's
+    repetition walks them three times.  §9 names the remedy rather than a shortcut -- "the
+    export symbols are a function of the bundle, so they key on the bundle's content exactly
+    as ``tests/compiled.py`` keys a compile.  A miss costs the walk, a hit costs nothing,
+    and a content address cannot go stale" -- so the second layer keys on exactly what this
+    answer is a function of: the bundle, the domain set, and every ``.py`` under
+    ``codegen/``.  It can cost time and never a name, which is the property
+    ``tests/test_the_domain_surface.py``'s export set is the gate on.
+    """
+    return store.held(
+        bundle_dir,
+        sorted(domains),
+        lambda: _the_domains_exports(bundle_dir, domains),
+    )
+
+
+def _the_domains_exports(
+    bundle_dir: Path, domains: frozenset[str]
+) -> dict[str, dict[str, frozenset[str]]]:
+    """:func:`domain_exports`' answer, computed -- the fixed point its docstring states.
+
+    Split out so the two layers above it are each one thing: ``lru_cache`` is the memo
+    inside a process, ``store.held`` is the content address between them, and this is the
+    walk neither of them is allowed to change the answer of.
     """
     wanted = sorted(d for d in bundle.portable(bundle_dir) if domain(d) in domains)
     census: dict[str, dict[str, frozenset[str]]] = {}

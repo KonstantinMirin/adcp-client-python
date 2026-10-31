@@ -41,7 +41,7 @@ import pydantic
 import pytest
 
 from adcp.types import _base, constraints
-from codegen import bundle, compiler, emit, ir, keywords, refusal, render
+from codegen import bundle, compiler, emit, ir, keywords, refusal, render, store
 from codegen import constraints as constraints_module
 from codegen.harness import Pair, check_pair, violated_keywords
 from codegen.lower import names, union
@@ -279,11 +279,16 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
             return Refusal("allOf", pointer, refusal.DEFERRED_TO_A_LATER_ROW, kind=Kind.DEFERRED)
         return composing_at_a_root(node, mod, *rest, **kw)
 
-    with mock.patch.object(compiler, "lower_composition", without_the_root_arm):
+    with mock.patch.object(compiler, "lower_composition", without_the_root_arm), store.perturbed():
         # ``emit.emit`` and NOT ``compiled``: this is a PERTURBATION, and
         # ``tests/compiled.py``'s key is a digest of ``codegen/``'s source, which a
         # runtime patch does not move -- so the cache would hand back the UNPERTURBED
         # compile and the delta below would be zero against itself.
+        #
+        # ``store.perturbed()`` for the same reason one layer down, and here it is the
+        # WRITE that matters: ``emit.emit`` holds §1's census on disk under the same kind
+        # of source digest (``codegen/store.py``), so a miss inside this block would put a
+        # census this stub derived under the key every honest run asks for.
         without = emit.emit(BUNDLE, pop)
 
     claimed("bundle.portable", docs)
