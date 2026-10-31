@@ -1790,6 +1790,30 @@ Each is one sentence and its reason.
   import that depends on which other documents the run includes makes a one-document emission
   and a whole-bundle emission disagree about the same document; §2 names every constrained
   scalar from its constraint alone for this reason.
+
+  **THE RUN IS NOT THE BUNDLE, and that distinction is what §1's domain-scope collision rule
+  rests on (2026-10-30).** This prohibition is about the run's DOCUMENT SET — the argument list,
+  which varies between `./check --why one-document.json` and a whole-population emission. The
+  BUNDLE is neither: it is pinned, declared, and an input to every run alike, so a name derived
+  from a bundle-wide reading is the SAME name in both, which is exactly the property this rule
+  protects. So a census over the RUN is forbidden and a reading of the BUNDLE is not, and the
+  rule is kept rather than amended.
+
+  What that costs is stated plainly: resolving a collision at domain scope needs the domain's
+  other exported names, so naming can no longer be a function of one document and its reference
+  closure. It becomes a function of the bundle, and the one-document path has to do a bundle-wide
+  **NAMING** pass first. **Naming, not lowering** — a root's name is its title or file stem and a
+  branch's is §4's rungs over its pins, all of which parse gives; nothing needs rendering, and the
+  measured cost of lowering a whole domain (`core` is 497 of the 1,054 documents) is not the cost
+  of this.
+
+  **And the alternative is refused on the project's own evidence.** Making it a function of the
+  run instead is one line, and the shipped artifact would be identical because the committed tree
+  is always a whole-population run — but it leaves
+  `test_one_documents_module_is_the_same_text_alone_as_with_the_whole_bundle` GREEN while the
+  property it names is false for the documents behind the collisions, because its population does
+  not include one of them. A test green on a false property is this project's most expensive
+  recurring defect, and buying one line with one is not a trade.
 - **Do not decide a position the bundle does not hold from a view of it.** A shape that appears
   only in a canonicalised or otherwise rewritten copy of a document is the copy's, and a row
   deciding it decides nothing the bundle states; the document of record (§3) is what the tables
