@@ -118,7 +118,7 @@ class SyncCatalogsError(SyncCatalogsResponse, FailedResponse):
     ext: ExtensionObject | None = None
 
 
-class SyncCatalogsSubmitted(SyncCatalogsResponse):
+class SyncCatalogsResponseSubmitted(SyncCatalogsResponse):
     """
     Async task envelope returned when a catalog-only sync cannot be confirmed before the response — for example, when catalog ingestion and deduplication are queued for batch processing. A request containing item_availability_updates or item_availability_queries MUST NOT return this branch because availability operations are synchronous; mixed requests whose catalog work cannot finish synchronously and atomically fail before mutation and are retried as separate calls. For catalog-only requests, the buyer invokes get_task_status with task_id or receives a webhook when the task completes; the per-catalog results land in the terminal result, not this envelope.
     """
@@ -137,7 +137,7 @@ class SyncCatalogsSubmitted(SyncCatalogsResponse):
     ext: ExtensionObject | None = None
 
 
-SyncCatalogsResponse._branch_models = (SyncCatalogsSuccess, SyncCatalogsError, SyncCatalogsSubmitted,)
+SyncCatalogsResponse._branch_models = (SyncCatalogsSuccess, SyncCatalogsError, SyncCatalogsResponseSubmitted,)
 SyncCatalogsResponse.model_rebuild(force=True)
 
 

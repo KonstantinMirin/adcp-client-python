@@ -105,7 +105,7 @@ class UpdateMediaBuyError(UpdateMediaBuyResponse, FailedResponse):
     ext: ExtensionObject | None = None
 
 
-class UpdateMediaBuySubmitted(UpdateMediaBuyResponse):
+class UpdateMediaBuyResponseSubmitted(UpdateMediaBuyResponse):
     """
     Async task envelope returned when update_media_buy cannot be confirmed before the response — for example, when operator re-approval is required for mid-flight changes. The buyer invokes get_task_status with task_id or receives a webhook when the task completes; the updated media buy state lands in the terminal result, not this envelope.
     """
@@ -124,7 +124,7 @@ class UpdateMediaBuySubmitted(UpdateMediaBuyResponse):
     ext: ExtensionObject | None = None
 
 
-UpdateMediaBuyResponse._branch_models = (UpdateMediaBuySuccess, UpdateMediaBuyError, UpdateMediaBuySubmitted,)
+UpdateMediaBuyResponse._branch_models = (UpdateMediaBuySuccess, UpdateMediaBuyError, UpdateMediaBuyResponseSubmitted,)
 UpdateMediaBuyResponse.model_rebuild(force=True)
 
 

@@ -108,7 +108,7 @@ class SyncCreativesError(SyncCreativesResponse, FailedResponse):
     ext: ExtensionObject | None = None
 
 
-class SyncCreativesSubmitted(SyncCreativesResponse):
+class SyncCreativesResponseSubmitted(SyncCreativesResponse):
     """
     Async task envelope returned when the whole sync operation cannot be confirmed before the response is emitted — for example, when the seller batches ingestion, when async review must settle before per-item results can be issued, or when governance review gates the sync. The buyer invokes get_task_status with task_id or receives a webhook when the task completes; the creatives array with per-item action/status lands in the terminal result, not this envelope. Per-item async review (an item in pending_review while the rest of the sync resolves synchronously) belongs on the SyncCreativesSuccess branch with status: pending_review, not here.
     """
@@ -127,7 +127,7 @@ class SyncCreativesSubmitted(SyncCreativesResponse):
     ext: ExtensionObject | None = None
 
 
-SyncCreativesResponse._branch_models = (SyncCreativesSuccess, SyncCreativesError, SyncCreativesSubmitted,)
+SyncCreativesResponse._branch_models = (SyncCreativesSuccess, SyncCreativesError, SyncCreativesResponseSubmitted,)
 SyncCreativesResponse.model_rebuild(force=True)
 
 
