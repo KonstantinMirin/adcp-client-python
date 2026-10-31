@@ -513,6 +513,26 @@ def _object(
     "propertyNames": ...}`` and handed it to the dispatch, which is a node the document
     does not have.  Its KEY is the class's own ``propertyNames`` node, the same object, so
     the key schema is parsed ONCE however many fields read it.
+
+    **A property whose declaration ADMITS NOTHING is not a child node**
+    (:func:`admits_nothing`).  draft-07 validates a ``properties`` entry only where the
+    key is present, so an entry admitting nothing states that the key MAY NOT APPEAR and
+    nothing at all about a value -- there is no type for a field to take.  Parsing it
+    reached :class:`nodes.Typeless`, whose answer is ``Any``, and the class then ACCEPTED
+    a payload its document refuses: measured on
+    ``core/format-option-ref.json#/oneOf/1``, whose own description reads "This branch
+    deliberately forbids ``publisher_domain``" and which emitted
+    ``publisher_domain: Any | None = None``.  The presence half is a rule and
+    ``lower.rules`` writes it off :attr:`nodes.Base.declared`, which is this same map
+    kept raw -- so the key is dropped from the FIELDS here and from nothing else, and the
+    one reader that needs it still has it.
+
+    The key is NOT dropped from :attr:`nodes.Base.declared` or from
+    :func:`closed_maps`, and both readings are right as they stand.  ``declared`` is the
+    document's own map, which is what the rule reader asks of it.  ``closed_maps``
+    answers "the names a closed view DECLARES", and counting a forbidden name among them
+    only makes §4's separator claim FEWER separations than it could -- it can never make
+    it claim one the document does not.
     """
     props = raw.get("properties")
     children: dict[str, nodes.Node] = {}
@@ -525,6 +545,7 @@ def _object(
                 source=source,
             )
             for key, sub in props.items()
+            if not admits_nothing(sub)
         }
     required = raw.get("required")
     key = _key(raw.get("propertyNames"), f"{pointer}/propertyNames", source)
@@ -1003,6 +1024,56 @@ def _rule_sources(raw: Mapping[str, Any], position: Position) -> dict[str, Any]:
     if presence_only(raw, position):
         sources |= keywords.combinators(position)
     return {k: raw[k] for k in raw if k in sources}
+
+
+def admits_nothing(raw: Any) -> bool:
+    """Does this subschema admit NO instance at all -- the empty-SET schema?
+
+    **§5's ``additionalProperties`` row reads the boolean subschemas by what they ADMIT
+    and not as opaque values** -- "The empty schema ``{}`` IS ``true`` and is read as
+    ``true`` everywhere below"; ``false`` → ``forbid``; ``false`` on a mapping → refused,
+    "it admits only the empty object".  This is the other side of that reading, in one
+    place, so ``false`` cannot come to mean ``true`` anywhere by falling through an
+    ``isinstance(raw, Mapping)`` test: draft-07 lets a subschema be either boolean, and
+    ``false`` admits nothing.
+
+    **Three spellings, one schema.**  ``false``; ``{"not": {}}``, the empty schema
+    negated; and ``{"not": true}``, which is the same by the row's own reading of
+    ``{}``.  An ANNOTATION sibling does not change what a node admits, and neither does a
+    CONSTRAINING one -- ``not: {}`` refuses every instance on its own, so a conjunction
+    containing it admits nothing whatever else it says.  The bundle states two of the
+    three and states them at the same KIND of position, so a reader that knew only
+    ``false`` would answer one site and leave the other two.
+
+    Public, and the ONE reading: :func:`_object` asks it of a ``properties`` entry and
+    ``lower.rules`` asks it of the same raw map (:attr:`nodes.Base.declared`) to write
+    the rule.  §4's rule that this module is the only entry reading a raw mapping is why
+    it lives here rather than beside either caller.
+    """
+    if raw is False:
+        return True
+    if not isinstance(raw, Mapping):
+        return False
+    negated = raw.get("not")
+    return negated == {} or negated is True
+
+
+def forbidden_keys(declared: Mapping[str, Any]) -> tuple[str, ...]:
+    """The property keys this declaration says MAY NOT APPEAR, in document order.
+
+    §5's ``properties`` row: a property whose declaration admits nothing is not a field.
+    draft-07 validates a ``properties`` entry only where the key is PRESENT, so an entry
+    admitting nothing says nothing about a value and everything about presence -- the
+    node's accepted set is exactly the objects not carrying the key, which is the
+    accepted set of ``not: {"required": [key]}``, and the ``not`` row already decides
+    that rendering.
+
+    Document order, not sorted, for P7's reason: the keys become groups of a
+    :class:`adcp.types._runtime.ForbiddenGroups` and the emitted tuple must be a function
+    of the document's content.  A JSON object's key order IS document order here, because
+    the map arrived from ``json.loads``.
+    """
+    return tuple(key for key, sub in declared.items() if admits_nothing(sub))
 
 
 def presence_only(raw: Mapping[str, Any], position: Position = Position.ROOT) -> bool:

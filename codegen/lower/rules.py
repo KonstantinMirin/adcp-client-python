@@ -175,8 +175,10 @@ def lower(
     compiles to a RULE" -- and §4 makes this module its only reader.  Two facts are not
     rule sources and are read beside them, each for a reason stated at its own reduction:
     ``declared`` because ``uniqueItems`` sits on a node one level DOWN (the array a
-    property holds), and ``extra_stated`` because the ``minProperties`` minimum rides
-    only where the class keeps every key the document would count.
+    property holds) **and because a ``properties`` entry that ADMITS NOTHING is a
+    statement about PRESENCE, which is :func:`_negated`'s rule and not a field**, and
+    ``extra_stated`` because the ``minProperties`` minimum rides only where the class
+    keeps every key the document would count.
 
     ``resolve`` is the fourth and belongs to the same reduction as the second:
     :func:`_distinct` has to answer "is this property an ARRAY" of a declaration that
@@ -191,7 +193,7 @@ def lower(
     out = Lowered()
     _depends(sources, out)
     _count(sources, out, extra_stated)
-    _negated(sources, out)
+    _negated(sources, out, declared)
     _combinator(sources, out)
     _conditional(sources, out)
     _distinct(declared, out, resolve)
@@ -491,8 +493,40 @@ def _count(node: Mapping[str, Any], out: Lowered, extra_stated: bool) -> None:
     out.rules.append(PropertyCount(minimum=lo, maximum=hi))
 
 
-def _negated(node: Mapping[str, Any], out: Lowered) -> None:
-    groups = _required_groups(node.get("not"))
+def _negated(
+    node: Mapping[str, Any],
+    out: Lowered,
+    declared: Mapping[str, Any] = {},  # noqa: B006 -- read-only, and the empty mapping is the answer
+) -> None:
+    """Every group of key names this node forbids, from the keyword and from a property.
+
+    **Two spellings of one fact, and ONE rule.**  ``not: {"required": [k]}`` is §5's
+    ``not`` row, and a ``properties`` entry that admits nothing has exactly that accepted
+    set -- draft-07 reaches such an entry only where the key is present, and then always
+    refuses -- so §5's ``properties`` row sends it here rather than to a field.  They are
+    merged into one :class:`adcp.types._runtime.ForbiddenGroups` and not appended as two,
+    because a class body binds ``_adcp_rules`` once and two rules naming the same key
+    would state one fact twice.
+
+    **The bundle states both spellings AT ONE NODE, twice**, which is the measurement
+    that makes the merge worth having rather than a tidiness: ``core/account.json`` at
+    ``/`` and ``account/sync-accounts-response.json`` at
+    ``/oneOf/0/properties/accounts/items`` each say
+    ``not: {"required": ["destination_billing_entity"]}`` beside
+    ``properties: {"destination_billing_entity": {"not": {}}}``.  Deduplicated, so those
+    two documents' rule tuples do not move: the group is already there by the keyword,
+    and the property adds nothing to it.  That is also why reading only the one site this
+    row was filed for would have been wrong -- those two were green by the sibling
+    keyword and the third had nothing to save it.
+
+    The keyword's groups come first and the properties' follow in document order (P7):
+    the emitted tuple is then a function of the document's content and not of which
+    reduction ran.
+    """
+    groups = list(_required_groups(node.get("not")) or ())
+    for key in schema.forbidden_keys(declared):
+        if (key,) not in groups:
+            groups.append((key,))
     if not groups:
         return
     out.rules.append(ForbiddenGroups(tuple(groups)))

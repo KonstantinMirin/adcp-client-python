@@ -2211,7 +2211,21 @@ def lower_object(
             "instance to an object, so the document admits a non-object that no class can",
             kind=Kind.VERDICT,
         )
-    if not node.properties:
+    if not node.properties and not node.declared:
+        # **``declared`` and not ``properties`` alone, because the two came apart**:
+        # §5's ``properties`` row drops a property whose declaration ADMITS NOTHING from
+        # the FIELDS (``schema.parse._object``) and leaves it in
+        # :attr:`nodes.Base.declared`, which is the document's own map.  A node whose
+        # every declaration admits nothing then has no field and this refusal's own
+        # sentence would be false of it: the document declares a property, and what it
+        # says about the key is that it may not appear.  Such a node is a class with no
+        # fields carrying the ``ForbiddenGroups`` the presence half lowers to -- which is
+        # the shape §5 already emits for a presence-only union branch -- and its accepted
+        # set is every object not carrying the key, which is not nothing and must not be
+        # refused.  The bundle states no such node (all three of its forbidding nodes
+        # declare other properties beside the forbidden key), so this moves no document;
+        # it is written this way so that the first one to arrive is read by what it
+        # declares rather than by a sentence that is no longer about it.
         return Refusal(
             "properties",
             pointer,
@@ -3546,6 +3560,28 @@ def lower_composition(
     inherited_description: str | None = None
 
     def declare(key: str, node: Any, where: str) -> Refusal | None:
+        # **A declaration that ADMITS NOTHING claims no field here either**, which is §5's
+        # ``properties`` row read at the composing row's own property map.  ``_object``
+        # drops it on the object row and this is the other place a property map is built
+        # -- ``account/sync-accounts-response.json`` at
+        # ``/oneOf/0/properties/accounts/items`` is the measured site, a node stating
+        # ``properties`` beside an ``allOf``, so it reaches THIS loop and not that one and
+        # it kept emitting ``destination_billing_entity: Any | None`` after the object row
+        # stopped.  The presence half is :func:`rules_at`'s, off
+        # :attr:`nodes.Base.declared`, which stays the document's own map -- so the key is
+        # dropped from the FIELDS at both of the two places they are claimed and from
+        # nothing else.
+        #
+        # The intersection is not consulted and the VERDICT does not need it: where one
+        # declaration of a key admits nothing the composed accepted set forbids the key
+        # whatever the other declaration says, and the rule that refuses it is written
+        # off the map that still holds the forbidding declaration.  So a second
+        # declaration winning the field cannot widen the class -- it can only make the
+        # annotation of a key no payload may carry read as though a value were possible,
+        # which is not an acceptance fact.  No node of the bundle states two declarations
+        # of one key with either of them forbidding.
+        if schema.admits_nothing(node):
+            return None
         prior = local.get(key)
         if prior is None:
             local[key], at[key] = node, where
