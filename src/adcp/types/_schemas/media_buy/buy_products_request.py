@@ -119,21 +119,21 @@ class Account(BranchDispatchMixin, AdCPBaseModel):
         return "anyOf"
 
 
-class AccountAccountId(Account, CanonicalAccountReferenceAccountId):
+class BuyProductsRequestBranch1AccountAccountId(Account, CanonicalAccountReferenceAccountId):
     model_config = ConfigDict(
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/buy-products-request.json', pointer='#/anyOf/1/properties/account/allOf/0/anyOf/0')
 
 
-class AccountBrandOperator(Account, CanonicalAccountReferenceBrandOperator):
+class BuyProductsRequestBranch1AccountBrandOperator(Account, CanonicalAccountReferenceBrandOperator):
     model_config = ConfigDict(
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/buy-products-request.json', pointer='#/anyOf/1/properties/account/allOf/0/anyOf/1')
 
 
-Account._branch_models = (AccountAccountId, AccountBrandOperator,)
+Account._branch_models = (BuyProductsRequestBranch1AccountAccountId, BuyProductsRequestBranch1AccountBrandOperator,)
 Account.model_rebuild(force=True)
 
 

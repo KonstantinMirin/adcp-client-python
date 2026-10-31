@@ -63,7 +63,7 @@ class DirectionsItem(StrEnum):
     SELLER_TO_BUYER = 'seller_to_buyer'
 
 
-class FileTransfer(AudienceActivationMethod):
+class AudienceActivationMethodFileTransfer(AudienceActivationMethod):
     """
     Bucket-addressed file exchange over a cloud storage protocol. The buyer moves the bytes; direction declares who hosts the bucket.
     """
@@ -142,7 +142,7 @@ class PlatformDistribution(AudienceActivationMethod):
     bind_expiry_days: Annotated[IntMin1 | None, Field(description="Window after which the seller MAY expire an unfulfilled platform_segment bind (per-audience action: failed on sync_audiences). Initial vendor distribution is days-scale; windows shorter than the vendor's documented distribution latency are non-conformant.")] = None
 
 
-AudienceActivationMethod._branch_models = (AdCPAudienceSync, TMPIdentityMatch, FileTransfer, DatasetQuery, CleanRoom, PlatformDistribution,)
+AudienceActivationMethod._branch_models = (AdCPAudienceSync, TMPIdentityMatch, AudienceActivationMethodFileTransfer, DatasetQuery, CleanRoom, PlatformDistribution,)
 AudienceActivationMethod.model_rebuild(force=True)
 
 

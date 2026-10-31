@@ -20,7 +20,7 @@ from .package_signal_targeting_groups import PackageSignalTargetingGroups
 from .placement_selection import PlacementSelection
 from .property_list_ref import PropertyListReference
 from .signal_targeting import SignalTargeting
-from .targeting import AgeRestriction, AudienceExclude, AudienceInclude, AxeExcludeSegment, AxeIncludeSegment, Browser, BrowserExclude, DaypartTargets, DevicePlatformExclude, DeviceTypeExclude, GeoCountries, GeoCountriesExclude, GeoMetrosExclude, GeoPlaces, GeoPlacesExclude, GeoPostalAreas, GeoPostalAreasExclude, GeoProximity, GeoRegions, GeoRegionsExclude, StoreCatchments, TargetingOverlayDevicePlatform, TargetingOverlayDeviceType
+from .targeting import AgeRestriction, AudienceExclude, AudienceInclude, AxeExcludeSegment, AxeIncludeSegment, Browser, BrowserExclude, DaypartTargets, DevicePlatformExclude, DeviceTypeExclude, GeoCountries, GeoCountriesExclude, GeoMetrosExclude, GeoPlaces, GeoPlacesExclude, GeoPostalAreas, GeoPostalAreasExclude, GeoRegions, GeoRegionsExclude, StoreCatchments, TargetingOverlayDevicePlatform, TargetingOverlayDeviceType, TargetingOverlayGeoProximity
 from .targeting_unknown_age_eligibility_constraint import TargetingUnknownAgeEligibilityConstraint
 from .targeting_verified_age_basis_constraint import TargetingVerifiedAgeBasisConstraint
 
@@ -76,7 +76,7 @@ class TargetingOverlayInput(AdCPBaseModel):
     browser: Browser | None = None
     browser_exclude: BrowserExclude | None = None
     store_catchments: StoreCatchments | None = None
-    geo_proximity: GeoProximity | None = None
+    geo_proximity: TargetingOverlayGeoProximity | None = None
     language: Annotated[NonEmptyList[LanguageTag] | None, Field(description="Restrict to users with specific language preferences using canonical BCP 47 language ranges. Each buyer range is evaluated against a user's language-preference tag with RFC 4647 section 3.3.1 Basic Filtering: 'fr' matches 'fr', 'fr-CA', and 'fr-FR', while 'fr-CA' matches 'fr-CA' and more-specific descendants but not 'fr' or 'fr-FR'. Values use OR logic.")] = None
     keyword_targets: Annotated[NonEmptyList[KeywordTargetsItem] | None, Field(description='Keyword targeting for search and retail media platforms. Restricts delivery to queries matching the specified keywords. Each keyword is identified by the tuple (keyword, match_type) — the same keyword string with different match types are distinct targets. Sellers SHOULD reject duplicate (keyword, match_type) pairs within a single request. Seller must declare support in get_adcp_capabilities.')] = None
     negative_keywords: Annotated[NonEmptyList[NegativeKeyword] | None, Field(description='Keywords to exclude from delivery. Queries matching these keywords will not trigger the ad. Each negative keyword is identified by the tuple (keyword, match_type). Seller must declare support in get_adcp_capabilities.')] = None

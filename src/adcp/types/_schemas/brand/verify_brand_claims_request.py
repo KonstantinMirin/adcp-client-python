@@ -23,7 +23,7 @@ class VerifySubsidiaryClaimClaim(AdCPBaseModel):
     observed_at: Annotated[AwareDatetime | None, Field(description="When the caller observed the leaf's claim.")] = None
 
 
-class VerifySubsidiaryClaim(AdCPBaseModel):
+class ClaimEntrySubsidiary(AdCPBaseModel):
     """
     House-side: is this brand a subsidiary of mine?
     """
@@ -45,7 +45,7 @@ class VerifyParentClaimClaim(AdCPBaseModel):
     observed_at: AwareDatetime | None = None
 
 
-class VerifyParentClaim(AdCPBaseModel):
+class ClaimEntryParent(AdCPBaseModel):
     """
     Leaf-side mirror: is this brand my parent house?
     """
@@ -92,7 +92,7 @@ class VerifyPropertyClaimClaim(AdCPBaseModel):
     use_case: Annotated[StrMaxLen100 | None, Field(description='Optional caller-declared use case.')] = None
 
 
-class VerifyPropertyClaim(AdCPBaseModel):
+class ClaimEntryProperty(AdCPBaseModel):
     """
     Is this property (website, app, podcast, etc.) one of mine?
     """
@@ -116,7 +116,7 @@ class VerifyTrademarkClaimClaim(AdCPBaseModel):
     use_case: StrMaxLen100 | None = None
 
 
-class VerifyTrademarkClaim(AdCPBaseModel):
+class ClaimEntryTrademark(AdCPBaseModel):
     """
     Is this trademark mine?
     """
@@ -128,7 +128,7 @@ class VerifyTrademarkClaim(AdCPBaseModel):
     claim: VerifyTrademarkClaimClaim
 
 
-ClaimEntry = Annotated[VerifySubsidiaryClaim | VerifyParentClaim | VerifyPropertyClaim | VerifyTrademarkClaim, Field(description='One verification claim. Shape mirrors the single-target `verify_brand_claim` request body (minus the version envelope, which lives on the batch).')]
+ClaimEntry = Annotated[ClaimEntrySubsidiary | ClaimEntryParent | ClaimEntryProperty | ClaimEntryTrademark, Field(description='One verification claim. Shape mirrors the single-target `verify_brand_claim` request body (minus the version envelope, which lives on the batch).')]
 
 
 class VerifyBrandClaimsRequestBulk(AdCPVersionEnvelope):

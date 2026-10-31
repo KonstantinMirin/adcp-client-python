@@ -121,7 +121,7 @@ class ResultsItemFinalized(ResultsItem):
     proposal: Proposal
 
 
-class ResultsItemUnable(ResultsItem):
+class RefineProposalsResponseResultsItemUnable(ResultsItem):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -134,7 +134,7 @@ class ResultsItemUnable(ResultsItem):
     reason_code: Annotated[ProposalRefinementReason, Field(description='Single most-significant code for this result. constraint_unsatisfiable takes precedence over every other code; an alternatives shortfall alongside an unsatisfied constraint remains visible through proposals.length.')]
 
 
-ResultsItem._branch_models = (ResultsItemRevised, ResultsItemPartial, ResultsItemFinalized, ResultsItemUnable,)
+ResultsItem._branch_models = (ResultsItemRevised, ResultsItemPartial, ResultsItemFinalized, RefineProposalsResponseResultsItemUnable,)
 ResultsItem.model_rebuild(force=True)
 
 

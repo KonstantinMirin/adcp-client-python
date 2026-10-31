@@ -89,7 +89,7 @@ class PlaceSupport(AdCPBaseModel):
     ext: ExtensionObject | None = None
 
 
-class GeoProximity(AdCPBaseModel):
+class TargetingOverlaySupportGeoProximity(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -128,7 +128,7 @@ class DaypartSupportTimezoneModes(AdCPBaseModel):
 DaypartSupport = Literal[True] | DaypartSupportTimezoneModes
 
 
-class DemographicsAge(AdCPBaseModel):
+class TargetingOverlaySupportDemographicsAge(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -215,12 +215,12 @@ class TargetingOverlaySupport(AdCPBaseModel):
     geo_places_exclude: PlaceSupport | None = None
     geo_postal_areas: Supported | PositivePostalAreaSupport | None = None
     geo_postal_areas_exclude: Supported | PositivePostalAreaSupport | None = None
-    geo_proximity: Supported | GeoProximity | None = None
+    geo_proximity: Supported | TargetingOverlaySupportGeoProximity | None = None
     daypart_targets: DaypartSupport | None = None
     audience_include: Supported | None = None
     audience_exclude: Supported | None = None
     signal_targeting_groups: Supported | None = None
-    demographics: Supported | DemographicsAge | None = None
+    demographics: Supported | TargetingOverlaySupportDemographicsAge | None = None
     frequency_cap: Supported | None = None
     frequency_cap_support: Annotated[FrequencyCapSupport | None, Field(description='Independently positive constrained package-cap support. Mutually exclusive with legacy frequency_cap: a product declares one form or the other.')] = None
     property_list: Supported | None = None

@@ -109,9 +109,23 @@ from codegen.schema import nodes
 if TYPE_CHECKING:  # pragma: no cover -- the annotation only; see :func:`assign`
     from codegen.compiler import Module
 
-#: **The stated scope of the content dedup** (§14 step 7's own words for this row, and
-#: §9's rule behind it).  Read by ``tests/test_emit.py``, so the sentence the code states
-#: and the sentence a check grades are one string.
+#: **The stated scope of the content DEDUP, and of the dedup alone** (§14 step 7's own
+#: words for this row, and §9's rule behind it).  Read by ``tests/test_emit.py``, so the
+#: sentence the code states and the sentence a check grades are one string.
+#:
+#: **It said "the scope" until 2026-10-30 and there are two**, which is why it now names
+#: which one it is.  §1's amendment widened the COLLISION rule to the domain and left the
+#: dedup exactly here: two nodes are one class within one module and nowhere else, because
+#: a class carries ``__adcp_schema__`` for ITS document and a second document's node is a
+#: second schema reference however equal the content.  §1's own carve-out is the reading
+#: from the other side -- it reaches across modules only for "a document that is a bare
+#: ``$ref`` to another document", where the two nodes ARE one node.  :data:`COLLISION_SCOPE`
+#: is the other scope, and a reader who confuses them would take a collision's answer (all
+#: N move) for a dedup's (one class, N names bound by identity).
+#:
+#: The sentence is unchanged because the reason is: no census over the RUN decides a name.
+#: What changed is that a bundle-wide reading was never such a census (§9's ruling, the run
+#: is not the bundle), which is what :data:`COLLISION_SCOPE` spends.
 SCOPE = (
     "one module, which is one document (D1): a name, a shape or an import that depended "
     "on which other documents the run includes would make a one-document emission and a "

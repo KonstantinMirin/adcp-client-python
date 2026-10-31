@@ -291,6 +291,91 @@ def domain_roots(bundle_dir: Path) -> dict[str, frozenset[str]]:
     return {known: frozenset(symbols) for known, symbols in out.items()}
 
 
+@functools.lru_cache(maxsize=None)
+def domain_exports(
+    bundle_dir: Path, domains: frozenset[str]
+) -> dict[str, dict[str, frozenset[str]]]:
+    """PASS ONE of §1's domain-scope collision rule: per domain, every name the surface
+    exports and the documents that want it.
+
+    **It is a WALK and the §9 ruling says why it has to be.**  The ROOT half of this
+    answer is a title and :func:`domain_roots` reads 1,054 of them in 0.23 s; a NESTED
+    name is not, because what it needs is ``mod.hops`` -- which positions exist and what
+    kind each one is -- and that is the WALK's decision.  An untitled ``enum`` branch
+    becomes a ``Literal`` and declares no class; §5's widenings drop a position; §4's
+    bare-``$ref`` branch rung takes the TARGET's distinguishing remainder, so the target
+    had to be named first (§10's order).  A parse answering any of that would
+    re-implement three rules, which is the second derivation §3 forbids.
+
+    **The population is the DOMAIN and never the run** (§9's ruling, 2026-10-30): the
+    collision scope is the domain, a domain's membership is a function of the bundle, so
+    this ranges over ``bundle.portable`` filtered to ``domains`` whatever the run was
+    asked for.  A one-document command and a whole-population emission therefore read
+    one census and derive one name, which is the property §9 protects -- the RUN is not
+    the BUNDLE.
+
+    **IT IS A FIXED POINT, which is §4's own "and the step repeats" one scope out.**  §4's
+    rule inside a module is "where N positions derive the same name, ALL N lengthen ... and
+    the step repeats until every name in the module is unique", and ``_lengthened``
+    implements the repetition by recomputing the groups each round.  The same repetition is
+    owed here, and the measurement is why: resolving the first round took this bundle's
+    domain collisions from 18 to **2**, and both survivors were two branches of
+    ``content_standards`` that had lengthened onto one NEW name --
+    ``CalibrationExemplarsFailItemUrl`` and ``…PassItemUrl``, wanted by
+    ``create-content-standards-request`` and ``update-content-standards-request`` alike.  A
+    single round cannot see them, because the name they collided on is one neither position
+    wanted before the round moved it.
+
+    The census ACCUMULATES rather than being replaced, and that is what makes it terminate
+    rather than oscillate.  A round's names are a function of the census it was given, so
+    replacing the census would let a position return to a name an earlier round had freed:
+    round two frees ``FailItemUrl``, round three would take it back, and the loop would
+    alternate forever.  Accumulating is monotone -- the set of taken names only grows, and
+    the rungs and depths a position can spell are finite -- so the loop stops.  Measured on
+    this bundle it stops after **three** rounds with every domain collision resolved, and
+    the accumulation costs nothing: the names dropped on the way are each wanted by two
+    positions that both moved off them, so no position is pushed off a name another document
+    finally exports.
+
+    Keyed by the DOMAIN SET and memoised, so a run pays pass one once however many
+    documents it was given.  The symbols are keyed to the documents that want them
+    because :func:`decidable` has to subtract its OWN: a name only this document exports
+    is not a collision, and §4 settles a name inside one module already.
+    """
+    wanted = sorted(d for d in bundle.portable(bundle_dir) if domain(d) in domains)
+    census: dict[str, dict[str, frozenset[str]]] = {}
+    while True:
+        round_of = emit(bundle_dir, wanted, naming_census=census)
+        # **The stop condition is read off THIS ROUND's names and never off the
+        # accumulated census.**  §4's rule is "the step repeats until every name is
+        # unique", so what ends the loop is a round in which no two documents of one
+        # domain export one name.  Reading the ACCUMULATION instead is wrong in both
+        # directions and both were measured: growth runs one whole round past the answer,
+        # because the round that resolves the last collision still contributes its new
+        # names; and a round's names compared against the accumulated takers never settles
+        # at all, because a name an earlier round gave up still has that round's document
+        # recorded against it.
+        this_round: dict[str, dict[str, set[str]]] = {}
+        for document, exported in round_of.surface.items():
+            held = this_round.setdefault(domain(document), {})
+            for symbol in exported:
+                held.setdefault(symbol, set()).add(document)
+        shared = any(
+            len(takers) > 1 for held in this_round.values() for takers in held.values()
+        )
+        grown = {known: {s: set(d) for s, d in held.items()} for known, held in census.items()}
+        for known, held in this_round.items():
+            into = grown.setdefault(known, {})
+            for symbol, takers in held.items():
+                into.setdefault(symbol, set()).update(takers)
+        census = {
+            known: {symbol: frozenset(docs) for symbol, docs in held.items()}
+            for known, held in grown.items()
+        }
+        if not shared:
+            return census
+
+
 def module_name(document: str) -> str:
     """D1's module as the DOTTED name Python imports it under.
 
@@ -1095,6 +1180,7 @@ def decidable(
     carriers: frozenset[str],
     asked: set[tuple[str, str]],
     inherited: Mapping[str, Target | Refusal],
+    census: Mapping[str, frozenset[str]],
 ) -> tuple[Module, ir.Module] | Refusal:
     """One document lowered, NAMED, and its carried record checked, as one value.
 
@@ -1116,23 +1202,35 @@ def decidable(
     if isinstance(outcome, Refusal):
         return outcome
     mod, _ = outcome
-    # **§1's domain-scope collision rule, with its two readings of this document's own
-    # root symbol checked against each other.**  :func:`domain_roots` reads the RAW
-    # document and the walk above read the RECORD, so the two can only disagree where
-    # ``record`` inlined a title into the root -- measured 0 over the bundle, and asserted
-    # here per document rather than trusted, because a disagreement would silently take
-    # this document's own name out of the set its branches are compared against and leave
-    # the collision unresolved. It is a property of the inliner and of no document, so §2
-    # makes it a raise and not a refusal.
-    held = domain_roots(bundle_dir).get(domain(document), frozenset())
-    if mod.root not in held:
+    # **§1's domain-scope collision rule: the names ANOTHER document of this domain's
+    # surface exports.**  ``census`` is :func:`domain_exports`' answer for this domain,
+    # symbol -> the documents that want it, and what this module is compared against is
+    # that set minus the symbols only IT wants: a name no other document of the domain
+    # exports is not a domain collision, and §4 settles a name inside one module already.
+    #
+    # Empty on pass one, which is what makes the recursion finite and is not a second
+    # answer: pass one is this compiler with the rule switched off, so each position
+    # reports its own rung-0 spelling, which is the question the rule asks.
+    #
+    # The ROOT half is checked against the cheap reading of it as well, because the two
+    # must agree: :func:`domain_roots` parses the RAW document where the walk read the
+    # RECORD, and ``bundle.record`` inlines a title into a bare-``$ref`` root.  Measured 0
+    # disagreements over the bundle and asserted here per document rather than trusted --
+    # a disagreement is a property of the inliner and of no document, so §2 makes it a
+    # raise.
+    if mod.root not in domain_roots(bundle_dir).get(domain(document), frozenset()):
         raise BuildFailure(
             f"{document}: the walk derived the root symbol {mod.root!r} from the record "
             f"and emit.domain_roots derived something else from the raw document, so the "
             f"domain's exported names and this module's own are two readings that "
             f"disagree -- a defect in this compiler and not an outcome of this document"
         )
-    bound = lower_names.assign(mod, carriers, held - {mod.root})
+    elsewhere = frozenset(
+        symbol
+        for symbol, wanted in census.items()
+        if wanted - {document}
+    )
+    bound = lower_names.assign(mod, carriers, elsewhere)
     if isinstance(bound, Refusal):
         # §4's two naming refusals, both VERDICTS of the document: two pointers deriving
         # one class name, and a branch with no identity.  Returned from here because this
@@ -1222,8 +1320,25 @@ def decidable(
     return mod, bound
 
 
-def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
+def emit(
+    bundle_dir: Path,
+    documents: list[str],
+    *,
+    naming_census: Mapping[str, Mapping[str, frozenset[str]]] | None = None,
+) -> Emitted:
     """Lower every named document, and every document one of them references.
+
+    ``naming_census`` is a ROUND of §1's domain-scope collision rule pass one
+    (:func:`domain_exports`) and nothing else: the names already known to be taken in
+    each domain, which this run resolves against instead of computing them.  ``None`` is
+    pass TWO -- the run a caller wants -- and it computes the fixed point first.  Passing
+    one is what makes the recursion finite, and it is the only argument here that is not
+    the bundle or the document set, because there is only one thing a round needs to be
+    told.  Everything else is identical -- the same closure, the same order, the same
+    record checks, the same refusals -- so a document that refuses in a round refuses in
+    the final run, and the two range over one document set.  What a round does NOT do is
+    write text: no module, no record beside it, no alias module, because its one reader
+    opens no file.
 
     **A FOLD OVER A DEPENDENCY ORDER** (§10), which is what replaced the recursive
     binder: ``bundle.edges`` is the reference graph, :func:`closure` is the set a run
@@ -1304,6 +1419,18 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
         }
         lowering[document] = [e for e in edges if e.pointer in reached]
     ordered, refused = order(closure(documents, lowering), lowering)
+    #: §1's domain-scope collision rule, PASS ONE's answer, per domain: symbol -> the
+    #: documents of that domain whose surface wants it (:func:`domain_exports`).  The
+    #: DOMAINS are the ones this run's closure touches and the MEMBERS of each are the
+    #: bundle's, which is §9's ruling -- the scope is the domain, a domain's membership is
+    #: a function of the bundle, and nothing here reads the run's document set.
+    #:
+    #: Empty on pass one, which is the recursion's base case.
+    census: Mapping[str, Mapping[str, frozenset[str]]] = (
+        naming_census
+        if naming_census is not None
+        else domain_exports(bundle_dir, frozenset(domain(d) for d in ordered))
+    )
 
     lowered: dict[str, tuple[Module, ir.Module, dict]] = {}
     #: document -> the declarations its walk MINTED, before :func:`repointed` moved any.
@@ -1748,6 +1875,7 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
             render.CARRIERS,
             asked.setdefault(document, set()),
             inherited_sites(document),
+            census.get(domain(document), {}),
         )
         if isinstance(outcome, Refusal):
             refused[document] = outcome
@@ -1824,6 +1952,16 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
     for document in sorted(lowered):
         mod, bound, doc = lowered[document]
         rel = module_file(document, package_roots)
+        if naming_census is not None:
+            # **A ROUND answers one question and writes no file.**  §1's rule needs the
+            # export set and nothing else, so the TEXT is skipped -- ``render.module``
+            # over 1,054 modules, the record dumped beside each one, and D5's alias
+            # module.  What is kept is everything the export set is a function of: the
+            # walk, the naming pass, the record checks and the refusals, so pass one and
+            # pass two range over one document set and agree about every name.
+            out.surface[document] = dict(bound.exports)
+            out.emitted[document] = module_name(document)
+            continue
         out.files[f"{rel}.py"] = render.module(
             bound, exported(mod, bound, composed.get(document, frozenset()))
         )
@@ -1908,6 +2046,11 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
     # root (the layout rule beside :func:`write`).  A plain assignment here replaced
     # ``brand/__init__.py``'s 113 classes with the empty marker, which is the same
     # unimportable-module defect the rule removes, arriving from the other side.
+    if naming_census is not None:
+        # A round's whole answer is :attr:`Emitted.surface`; the package markers, D5's
+        # alias module and the envelope bases are TEXT and no reader of a round opens a
+        # file (:func:`domain_exports`).
+        return out
     for pkg in packages:
         out.files.setdefault(f"{pkg}/__init__.py", "")
     out.files["__init__.py"] = ""
@@ -1922,6 +2065,11 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
     out.beside[f"{constraints_module.MODULE.rsplit('.', 1)[1]}.py"] = render.constraints_module(
         aliases
     )
+    # **§1's DOMAIN SURFACE: one public module per domain, re-exporting every name §1's
+    # export set holds** (:func:`domain_modules`).  Beside the tree rather than inside it
+    # because ``_schemas`` is private (P8) and this is the one path a consumer reaches a
+    # type at.
+    out.beside.update(domain_modules(out.surface))
     # **The envelope bases, over the BUNDLE and not over the run** -- which is the one
     # way this artifact differs from the alias module beside it.  ``constraints.py``
     # holds the shapes a run resolved, so it is a function of the run's document set;
@@ -1940,6 +2088,60 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
     # reddened the gate.  A report about documents this package does NOT contain
     # has no place inside the shipped package anyway: `main` prints it, and the
     # suite reads `Emitted.refusals` from the run it just made.
+    return out
+
+
+def domain_modules(surface: Mapping[str, Mapping[str, str]]) -> dict[str, str]:
+    """§1's DOMAIN SURFACE: ``<domain>.py`` per domain plus ``__init__.py``, as text.
+
+    §1: "a document compiles to a module at its own path under a private tree ... **and is
+    re-exported from** ``adcp.types.<domain>``, where the domain is derived from the
+    document's own path".  This is that re-export, and it is **GENERATED from the same walk
+    as everything else** -- the names come from :attr:`Emitted.surface`, which is
+    ``lower/names.py``'s own record of §1's export set -- so a new document appears in its
+    domain with nobody editing a list.
+
+    **A RE-EXPORT and never a declaration**, which is the half §1's one-path rule turns on:
+    ``from ... import X as X`` binds the very class the private module built, so
+    ``adcp.types.core.AssetRequirementsJavaScript is
+    adcp.types._schemas.core.requirements.asset_requirements.AssetRequirementsJavaScript``
+    and a consumer's ``isinstance`` is true against the object the runtime validates into.
+    A module that DECLARED its own would satisfy "exactly one import path" and hand back a
+    second class with a second ``__adcp_schema__`` to keep in agreement.
+
+    ``X as X`` and not a bare import because that is what makes the name an EXPORT rather
+    than an incidental binding -- the re-export convention a type checker reads -- and
+    ``__all__`` is written as the literal list beside it, because §1 fixes the set and a
+    module that leaves it implicit makes a reader derive it.
+
+    **RELATIVE imports**, for the reason ``relative_module`` already gives: ``_schemas`` is
+    private, and an absolute ``adcp.types._schemas...`` here would publish the private path
+    once per name.
+
+    **``adcp/types/__init__.py`` is NOT among these and cannot be**, which is a fact about
+    Python and not a decision: ``tests/fresh.py`` grades a fresh tree by putting its
+    directory in front of ``adcp.types.__path__``, and ``__path__`` decides where a
+    package's CHILDREN come from.  A package's own ``__init__`` IS the package, so it is
+    already bound before any path entry is consulted and no fresh copy of it could ever be
+    the one graded.  It stays hand-written, it names no type, and §1's reason is that a
+    flat ``from adcp.types import PaginationRequest`` would be the second spelling §1
+    forbids -- the import is meant to tell a reader which document a class came from.
+
+    Keyed relative to the package directory, like D5's alias module, so no caller of
+    :func:`write` can be handed a path that escapes the directory it passed -- and written
+    only on a run that passes ``package``, which is the scope both artifacts need.
+    """
+    held: dict[str, dict[str, str]] = {}
+    for document, exported in surface.items():
+        into = held.setdefault(domain(document), {})
+        for symbol in exported:
+            into[symbol] = module_path(document).replace("/", ".")
+    out: dict[str, str] = {}
+    for known in sorted(held):
+        by_module: dict[str, list[str]] = {}
+        for symbol, module in sorted(held[known].items()):
+            by_module.setdefault(module, []).append(symbol)
+        out[f"{known}.py"] = render.domain_module(known, by_module)
     return out
 
 

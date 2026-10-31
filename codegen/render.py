@@ -1219,6 +1219,54 @@ entry point is the document's.
 """'''
 
 
+def domain_module(domain: str, held: Mapping[str, Sequence[str]]) -> str:
+    """The text of ``adcp/types/<domain>.py``: §1's public surface for one domain.
+
+    ``held`` is the private module each exported name is declared in, grouped -- the
+    DECISION, which is ``emit.domain_modules``' (§1's export set, read off the compiler's
+    own record of it).  What is here is the TEXT, because §7 gives a module's header,
+    import block and ``__all__`` to this module and because ``tests/test_import_rule.py``
+    holds it: nothing before the renderer holds a string of Python.
+
+    **``X as X`` and a literal ``__all__``, which are two statements of one fact and both
+    are wanted.**  The re-export form is what makes the name an export to a type checker
+    rather than an incidental binding, and the literal list is what §1 asks for in so many
+    words -- a module that leaves its surface implicit makes a reader derive it.  Written
+    from one ``held``, so the two cannot disagree.
+
+    **RELATIVE, for ``emit.relative_module``'s reason**: ``_schemas`` is private (P8) and a
+    relative import is the one spelling that cannot name it.  One level, because every
+    domain module sits directly in ``adcp/types/``.
+    """
+    lines = [
+        f'"""The public types of the ``{domain}`` domain.',
+        "",
+        "Every name here is the class, root model, enumeration or alias the schema document",
+        "of that name compiles to, re-exported from the private module at the document's own",
+        "path.  This is the one import path for each of them, and the object is the same one",
+        "the runtime validates into -- ``isinstance`` against a union branch imported from",
+        "here is true.",
+        "",
+        "Generated from the compiler's own record of what it exported: every document ROOT,",
+        "every union BRANCH and every type ALIAS the documents of this domain declare.  A",
+        "document added upstream appears here with nothing edited.",
+        '"""',
+        "",
+        "from __future__ import annotations",
+        "",
+    ]
+    names: list[str] = []
+    for module in sorted(held):
+        lines.append(f"from ._schemas.{module} import (")
+        lines += [f"    {symbol} as {symbol}," for symbol in sorted(held[module])]
+        lines.append(")")
+        names += held[module]
+    lines += ["", "__all__ = ["]
+    lines += [f"    {symbol!r}," for symbol in sorted(names)]
+    lines += ["]", ""]
+    return "\n".join(lines)
+
+
 def constraints_module(shapes: Mapping[str, constraint_names.Shape]) -> str:
     """The text of ``adcp/types/constraints.py``, for the shapes a run met (§8).
 

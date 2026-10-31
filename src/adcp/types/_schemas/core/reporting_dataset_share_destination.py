@@ -24,7 +24,7 @@ class ReportingDatasetShareDestination(BranchDispatchMixin, AdCPBaseModel):
         return "oneOf"
 
 
-class ExistingBinding(ReportingDatasetShareDestination):
+class ReportingDatasetShareDestinationExisting(ReportingDatasetShareDestination):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -78,7 +78,7 @@ class ProvisionRecipient(ReportingDatasetShareDestination):
     recipient: Annotated[Recipient, Field(description='Intended buyer principal. The identity is interpreted by the provider and access mode; for example, a Databricks sharing identifier, Snowflake organization/account pair, or Open Sharing recipient email. It is an identifier, never a credential.')]
 
 
-ReportingDatasetShareDestination._branch_models = (ExistingBinding, ProvisionRecipient,)
+ReportingDatasetShareDestination._branch_models = (ReportingDatasetShareDestinationExisting, ProvisionRecipient,)
 ReportingDatasetShareDestination.model_rebuild(force=True)
 
 
