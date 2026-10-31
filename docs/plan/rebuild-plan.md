@@ -1816,11 +1816,8 @@ Each is one sentence and its reason.
 
   What that costs is stated plainly: resolving a collision at domain scope needs the domain's
   other exported names, so naming can no longer be a function of one document and its reference
-  closure. It becomes a function of the bundle, and the one-document path has to do a bundle-wide
-  **NAMING** pass first. **Naming, not lowering** — a root's name is its title or file stem and a
-  branch's is §4's rungs over its pins, all of which parse gives; nothing needs rendering, and the
-  measured cost of lowering a whole domain (`core` is 497 of the 1,054 documents) is not the cost
-  of this.
+  closure. It becomes a function of the bundle, and the one-document path has to read the domain's
+  exported names before it can name its own.
 
   **And the alternative is refused on the project's own evidence.** Making it a function of the
   run instead is one line, and the shipped artifact would be identical because the committed tree
@@ -1830,8 +1827,8 @@ Each is one sentence and its reason.
   not include one of them. A test green on a false property is this project's most expensive
   recurring defect, and buying one line with one is not a trade.
 
-  **AND THE NAMING PASS IS A WALK, NOT A PARSE (corrected 2026-10-30).** The sentence above said
-  parse gives a branch's name; it does not. A ROOT's name is a title and parse gives that — 1,054
+  **THE ROOT AXIS IS A PARSE; A NESTED NAME IS A WALK.** A ROOT's name is a title and parse
+  gives it — 1,054
   raw documents read at ROOT cost 0.23 s, which is why the root axis is free. A NESTED name needs
   which positions exist and what kind each one is, and that is the WALK's decision, not the
   parse's: an untitled `enum` branch becomes a `Literal` and declares no class, §5's widenings drop
