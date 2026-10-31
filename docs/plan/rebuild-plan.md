@@ -45,6 +45,47 @@ alias, an enumeration or a root model, where there is nothing to subclass.
 **Every portable document of the bundle contributes a symbol** — a class, a root model, an
 enumeration or an alias — because §2 admits no document without one.
 
+**AND THE RULE'S OTHER DIRECTION, which this section forbade in neither words nor scope until now
+(decided 2026-10-30).** "One import path per class" forbids two paths to one class. The domain
+surface produces the INVERSE — **one path bound to two classes** — and that is forbidden too, at
+the scope the surface creates: **no `adcp.types.<domain>.<Name>` may name two declarations.** §4's
+collision rule settles a name inside one MODULE, and a domain is many modules, which is why it was
+never reached. It is the same rule at a wider scope, and its answer is unchanged: all N colliders
+lengthen.
+
+**WHAT THE SURFACE EXPORTS: every document ROOT and every union BRANCH, and not every class
+(decided 2026-10-30).** Measured over the emitted tree before choosing, at domain scope:
+
+| export set | distinct `(domain, name)` | colliding names | declarations involved |
+|---|---|---|---|
+| roots only | 1,027 | **0** | 0 |
+| roots **+ every branch** | 1,629 | **11** | 22 |
+| every class the tree declares | 3,056 | **237** | 630 |
+
+The third was decided earlier the same day and is **withdrawn on the measurement**: it makes
+`core.Status` name one of FOURTEEN declarations, `core.Reason` one of eleven, `core.Location` one
+of ten, and only 12 of its 237 collisions are identical-body. A name that means fourteen things is
+not a surface, and the 225 genuinely different classes behind those names are inner shapes of one
+document each — a consumer reaches them through the field whose annotation names them, which is
+the path the document itself gives.
+
+Roots and branches are exactly the set a consumer must be able to NAME: a root to construct or
+validate a message, and a branch because a union hands one back and `isinstance` is the question
+the rewrite exists to answer. Its 11 collisions are nameable and lengthen under the rule above.
+**Two of them collide inside `emit.exported` already**, so the module-to-module question is
+ambiguous today independently of any surface: `brand.SignedResponse` and
+`brand.SignedSuccessPayload`, each declared by both `verify_brand_claim_response` and
+`verify_brand_claims_response`.
+
+A D2 `Annotated` alias is a name an application writes, so the 113 distinct type aliases are
+exported with the same rule. The 241 per-module `strict_validate` helpers are not: a domain name
+cannot stand for 241 functions, and a caller reaches one through the class it belongs to.
+
+**`adagents` is a domain (2026-10-30).** `adagents.json` sits at the tree's root with no directory
+beside it, so the derivation answers 23 domains and not the 22 the directories suggest. It gets
+`adcp.types.adagents`, carrying its 39 classes. §10's layout rule is untouched — that rule is
+about a document whose path is ALSO a directory's, and this one has no directory.
+
 The bundle directory is an argument (`python -m codegen.emit --bundle <dir>`). Nothing reads a
 hard-coded path, so a second bundle version can be generated beside the first.
 
