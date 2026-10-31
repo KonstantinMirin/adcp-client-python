@@ -59,8 +59,17 @@ lengthen.
 | export set | distinct `(domain, name)` | colliding names | declarations involved |
 |---|---|---|---|
 | roots only | 1,027 | **0** | 0 |
-| roots **+ every branch** | 1,629 | **11** | 22 |
+| roots **+ every branch** | 1,932 | **26** | 54 |
 | every class the tree declares | 3,056 | **237** | 630 |
+
+The middle row's figures were **first measured 196 declarations too low, and the undercount is
+itself the finding (corrected 2026-10-30).** A reading over the emitted TEXT has to spell "branch"
+as *a class one of whose bases this module declares*, and that misses every arm of a nested
+`A | B` union, which subclasses nothing local. So the export set is read off the RUN's own record
+— `ir.Module.exports`, written where a position's hop and its declaration are both in hand —
+giving **1,951 declarations: 1,054 roots, 756 branches, 141 aliases**, over 1,932 distinct pairs in
+23 domains. The 1,054 roots are exactly this section's "every portable document contributes a
+symbol", read from the other end.
 
 The third was decided earlier the same day and is **withdrawn on the measurement**: it makes
 `core.Status` name one of FOURTEEN declarations, `core.Reason` one of eleven, `core.Location` one
@@ -764,9 +773,15 @@ be typed by a *sibling* position's name. Lengthening all of them makes each name
 the SET of colliding positions, and that set is a function of the one document — so the name is
 recomputable after the walk, and no census over the run enters.
 
-The resolution is also confined to one module, never compared across modules, because a name's
-module is its namespace and `§9`'s rule is that a document's output may not depend on which other
-documents the run includes.
+The DEDUP is confined to one module, never compared across modules, because a name's module is
+its namespace.
+
+**The COLLISION rule is not, for a name §1 exports (2026-10-30).** This clause used to confine
+both, on the ground that §9 forbids a document's output depending on which other documents the run
+includes — and that ground is intact, but it is about the RUN and the collision scope is the
+BUNDLE, which §9 now says in as many words. So: one module for every position, and **the domain
+for a position the surface exports**, read off the bundle and never off the run's document set.
+`names.COLLISION_SCOPE` states it beside `names.SCOPE`, which keeps the dedup's scope unchanged.
 
 *What this costs:* a long name becomes the exception it was meant to be, arising only where one
 document genuinely says `context` twice. The failure it avoids is the one the upstream v9 SDK
@@ -1814,6 +1829,27 @@ Each is one sentence and its reason.
   property it names is false for the documents behind the collisions, because its population does
   not include one of them. A test green on a false property is this project's most expensive
   recurring defect, and buying one line with one is not a trade.
+
+  **AND THE NAMING PASS IS A WALK, NOT A PARSE (corrected 2026-10-30).** The sentence above said
+  parse gives a branch's name; it does not. A ROOT's name is a title and parse gives that — 1,054
+  raw documents read at ROOT cost 0.23 s, which is why the root axis is free. A NESTED name needs
+  which positions exist and what kind each one is, and that is the WALK's decision, not the
+  parse's: an untitled `enum` branch becomes a `Literal` and declares no class, §5's widenings drop
+  a position outright, and §4's bare-`$ref` rung takes its target's distinguishing remainder, which
+  needs the target already named in §10's dependency order. A parse answering that would
+  re-implement every one of those decisions, which is the second derivation §3 forbids.
+
+  So the shape is **two passes: walk and name with an empty surface, collect the exported symbols,
+  walk and name again with the real one.** Approved, with the scope reduced: **pass one ranges over
+  the DOMAIN, not the bundle**, because the collision scope is the domain and a domain's membership
+  is a function of the bundle — so the pass stays bundle-derived and §9 stays true. `core` is 497 of
+  the 1,054 documents and is the worst case; most domains are a handful.
+
+  Where that still costs too much on the one-document path, the answer is a CACHE and not a
+  shortcut: the export symbols are a function of the bundle, so they key on the bundle's content
+  exactly as `tests/compiled.py` keys a compile. A miss costs the walk, a hit costs nothing, and a
+  content address cannot go stale — which is why this is not the second derived artifact the
+  corpus argument was about.
 - **Do not decide a position the bundle does not hold from a view of it.** A shape that appears
   only in a canonicalised or otherwise rewritten copy of a document is the copy's, and a row
   deciding it decides nothing the bundle states; the document of record (§3) is what the tables
