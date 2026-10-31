@@ -47,12 +47,188 @@ from __future__ import annotations
 
 import argparse
 import collections
+import importlib
 import sys
+import time
 from pathlib import Path
 
-from adcp.types._base import KINDS
-from codegen import keywords, refusal
-from codegen.emit import TREE, emit, write
+from adcp.types._base import KINDS, SchemaRef, schema_at
+from codegen import bundle as bundle_module
+from codegen import harness, held, keywords, refusal
+from codegen.emit import PACKAGE, TREE, emit, write
+
+#: Where the run writes §10's per-pair verdict table, relative to the tree it wrote.
+#:
+#: **Beside the tree and not inside it**, because ``emit.write`` PRUNES the tree: it
+#: deletes every ``.py`` and ``.json`` under it that this run did not intend, so a table
+#: written inside would survive only until the next run and would be deleted by a run over
+#: part of the population.  Beside it, the path is a function of ``--tree`` exactly as the
+#: modules are, so a run over a scratch tree leaves its table there and a run over the
+#: committed tree leaves it where a reviewer and ``git diff`` can both reach it.
+VERDICTS = "verdicts.tsv"
+
+#: Seconds one pair of the verdict table may cost before the run gives up on it and writes
+#: ``absent`` instead.  ``harness.within`` says what forces a bound at all; what forces THIS
+#: number is the shape of the cost: a pair whose instances are held replays in 0.0 to 0.4 s,
+#: and the pairs that exceed a budget of any size are the ones that DRAW -- 133 s to over
+#: 2 h 57 m each.  There is nothing between the two, so the budget is small enough that the
+#: whole table stays obtainable and large enough that no replayed pair can reach it.
+BUDGET = 30
+
+
+def grade(tree: Path, package: Path | None, bundle_dir: Path) -> tuple[str, int]:
+    """Grade every pair of the tree this run WROTE, and return the table and the row count.
+
+    **The run grades what it wrote, which is the whole of why this is here.**
+    ``docs/plan/architecture.md`` §10: "one row per graded pair, written to a FILE by the
+    run -- document, pointer, and each check's verdict -- because a figure that exists only
+    in a terminal cannot be reviewed, and because a check that computed nothing shows up
+    there as a blank column instead of as a pass."  The checks are
+    ``codegen.harness``'s, the pairing is ``harness.pairs``, and the format is
+    ``harness.verdict_table``; this function is only WHICH TREE and WHICH STORE, which is
+    the run's half of the division ``tests/compared.py`` holds for the suite.
+
+    **The tree is bound in FRONT of the committed one and nothing is copied.**  An emitted
+    module says ``from adcp.types.constraints import StrMatchingA828669D`` -- an ABSOLUTE
+    name -- so the modules have to be imported as ``adcp.types._schemas.*`` and cannot be
+    loaded from a path.  Prepending ``tree`` to that package's ``__path__`` is what makes
+    the import reach THIS run's output; prepending ``package`` to ``adcp.types.__path__``
+    is what makes its aliases resolve through THIS run's ``constraints`` module.
+
+    **A run that wrote no ``--package`` is graded anyway and the table says so.**  Without
+    it the aliases resolve through the COMMITTED ``constraints`` module, so a module naming
+    a constraint this run minted and the committed module lacks does not import -- and that
+    is reported as a row per module with every verdict ``absent:unimportable``, which is
+    exactly the blank column this artifact exists to make visible.  Suppressing the grade
+    in that case would be a flag by another name.
+
+    **The draws are REPLAYED from the committed floor** (``codegen.held``).  A cold grade of
+    the population is 2,015.6 s against a 39.6 s warm pass, and the floor is in the
+    repository precisely so that a fresh checkout pays no draw; a run that drew would make
+    the artifact cost hours and nobody would run it.  ``harness.corpus_defect`` re-offers
+    every held instance to the DOCUMENT before it counts, so a replayed verdict is not a
+    remembered one, and the row's ``evidence`` column says which run paid.
+    """
+    import adcp.types
+
+    schemas = importlib.import_module(PACKAGE)
+    if package is not None:
+        adcp.types.__path__.insert(0, str(package.resolve()))
+    schemas.__path__.insert(0, str(tree.resolve()))
+    found, unimportable = harness.pairs(schemas, path=[str(tree.resolve())])
+    identities = bundle_module.source_identities(bundle_dir)
+    formats = harness.FORMAT_STRATEGIES
+    rows = [
+        #: A row for a module that did not import, so the table has no HOLE where its
+        #: pairs would have been.  ``harness.pairs`` records them rather than raising,
+        #: and a reader of the table cannot otherwise tell a module whose classes all
+        #: passed from a module whose classes were never built.
+        harness.verdict_row(None, None, name=name, model="-", error=f"unimportable module {why}")
+        for name, why in sorted(unimportable.items())
+    ]
+    for p in found:
+        name = f"{p.ref.document}{p.ref.pointer}"
+        model = getattr(p.model, "__name__", repr(p.model))[:120]
+        #: EVERY failure of the per-pair setup becomes a row, and never an exception out
+        #: of this loop.  Measured on this base: four pairs of
+        #: ``media-buy/buy-products-request.json`` and
+        #: ``media-buy/request-proposals-request.json`` declare a pointer the document of
+        #: record does not carry, and ``schema_at`` raises ``KeyError`` on it -- which is
+        #: enough to take a whole grading pass down and leave every other pair ungraded.
+        #: ``adcp-client-python-82m.4``'s own reason: "one raised in its own setup so it
+        #: never computed anything.  In a per-pair table, a check that computed nothing is
+        #: a BLANK COLUMN."
+        try:
+            holder = (
+                p.model if isinstance(p.model, type) else importlib.import_module(p.module)
+            )
+            pair = harness.Pair(
+                name=name,
+                schema=schema_at(p.ref),
+                model=p.model,
+                accept=p.accept,
+                document=schema_at(SchemaRef(p.ref.document, "#")),
+                ref=p.ref,
+                declared=harness.declarations_of(holder),
+                identity={
+                    "document": p.ref.document,
+                    "pointer": p.ref.pointer,
+                    "source": identities[p.ref.document],
+                },
+            )
+        except Exception as e:  # noqa: BLE001 -- a row with a cause, never a lost pair
+            rows.append(
+                harness.verdict_row(
+                    p.ref, None, model=model, error=f"pairing raised {type(e).__name__} {e}"
+                )
+            )
+            continue
+        #: **THE RUN REPLAYS AND DOES NOT DRAW, and a pair with no held instance is a ROW
+        #: and not a draw.**  The accepts key is computable without grading anything
+        #: (``harness.corpus_key`` over the pair's static identity), so the run can see
+        #: the miss before it costs anything -- and a miss costs, by design: "an absent
+        #: corpus is one full cold run."
+        #:
+        #: Measured, which is why this line exists rather than a comment about it: the
+        #: committed floor is short 98 of the 2,793 pairs
+        #: (``adcp-client-python-3be.26``), 15 of them at or above 8 MB of resolved node,
+        #: and the two largest -- ``core/async-response-data.json#`` and
+        #: ``core/mcp-webhook-payload.json#`` at 44 MB -- ran 2 h 57 m at 32 GB of RSS
+        #: without finishing.  A run that drew them would never write the table at all,
+        #: and a table nobody can obtain is the terminal figure this artifact replaces.
+        #:
+        #: **So the division is: the SUITE draws and the RUN reports.**  The drawn corpus
+        #: is committed precisely so that "a cold checkout pays zero draws", and the
+        #: shortfall has its own instrument
+        #: (``test_every_graded_pair_has_a_committed_entry_under_the_current_key``).  What
+        #: this adds is the shortfall PER PAIR, in the artifact, as ``absent`` -- which is
+        #: strictly more than a hang and strictly more than a count.
+        key = harness.corpus_key(pair.identity, examples=1, custom_formats=formats)
+        if held.STORE.get(key) is None:
+            rows.append(
+                harness.verdict_row(
+                    p.ref, None, model=model, error="no held instance for this pair"
+                )
+            )
+            continue
+        #: **A BACKSTOP ON THE WALL CLOCK, because §8's obligation draws from a key space
+        #: nothing can precompute.**  ``check_widening`` derives its draws from the
+        #: declared pointer -- a value class, an intermediate node, the node conjoined
+        #: with a demand -- so which positions a pair asks for is known only by running
+        #: it, and the committed widening floor holds ZERO entries (``tests/corpus.py``
+        #: records that it has no currency gate yet).  Measured: 246.7 s on one pair of
+        #: ``core/async-response-data.json`` and over 600 s on another, with every accepts
+        #: draw already replayed.
+        #:
+        #: A pair that does not finish inside the budget becomes ``absent`` with the
+        #: budget in the cause, which is this artifact's own rule applied to itself: a
+        #: check that computed nothing is a blank column, and a blank column is still a
+        #: row.  ``SIGALRM`` and not a thread, because the harness is pure Python on this
+        #: thread and a timer that cannot interrupt it is not a bound.
+        try:
+            with harness.within(BUDGET):
+                report = harness.check_pair(
+                    pair,
+                    custom_formats=formats,
+                    corpus=held.STORE,
+                    widening_corpus=held.WIDENING_STORE,
+                )
+        except harness.OverBudget:
+            rows.append(
+                harness.verdict_row(
+                    p.ref, None, model=model, error=f"did not finish inside {BUDGET} s"
+                )
+            )
+            continue
+        except Exception as e:  # noqa: BLE001 -- as above: the run reports, it does not die
+            rows.append(
+                harness.verdict_row(
+                    p.ref, None, model=model, error=f"check raised {type(e).__name__} {e}"
+                )
+            )
+            continue
+        rows.append(harness.verdict_row(p.ref, report, model=model))
+    return harness.verdict_table(rows), len(rows)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -160,6 +336,25 @@ def main(argv: list[str] | None = None) -> int:
         f"({', '.join(f'{k} {n}' for k, n in sorted(counted.items()))}); "
         f"accounted {len(out.emitted) + verdicts}; "
         f"{len(set(ns.document))} named, the rest reached through a $ref"
+    )
+    # **§10's per-pair verdict table, written by the RUN and named on stdout.**  Not behind
+    # a flag, not only on failure, and not by a test: every figure this command used to
+    # produce lived in a terminal, and the two checks that were counted as passing while
+    # having never run at all were invisible for exactly that reason
+    # (``adcp-client-python-82m.4``).  The path is printed and the counts are not: the
+    # counts are IN the file, where a reviewer can grep them and a diff can date them.
+    #
+    # LAST, after every line above, because grading imports the tree this run wrote and a
+    # tree that does not import must not cost the report its numbers.
+    started = time.time()
+    table, written = grade(ns.tree, ns.package, ns.bundle)
+    path = ns.tree.parent / VERDICTS
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(table)
+    print(
+        f"verdicts {written} rows -> {path} "
+        f"({time.time() - started:.1f} s; grep 'dump=fail' for one check, "
+        f"diff against the last run for what moved)"
     )
     return 1 if out.refusals else 0
 
