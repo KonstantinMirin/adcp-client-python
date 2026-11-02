@@ -71,7 +71,7 @@ giving **1,951 declarations: 1,054 roots, 756 branches, 141 aliases**, over 1,93
 23 domains. The 1,054 roots are exactly this section's "every portable document contributes a
 symbol", read from the other end.
 
-The third was decided earlier the same day and is **withdrawn on the measurement**: it makes
+The third is **refused**: it makes
 `core.Status` name one of FOURTEEN declarations, `core.Reason` one of eleven, `core.Location` one
 of ten, and only 12 of its 237 collisions are identical-body. A name that means fourteen things is
 not a surface, and the 225 genuinely different classes behind those names are inner structures of one
@@ -1209,10 +1209,9 @@ enum there is no override to conflict with, and `Literal[value]` stands as §5 a
 
 **A `default` is emitted through its annotation's OWN TYPE, and the document's `default` survives
 it.** The field must carry a value of the type it declares; a raw JSON literal against a model or
-an enum annotation is the defect — **and it was broken for CALLERS, not only for checkers, which
-this rule first understated.** Pydantic does not validate a plain default, so before the fix
-`CanonicalFormatNativeInFeed().slots[0]` was a `dict` and reading `.asset_group_id` off it raised
-`AttributeError`. A type checker was the way it was noticed, not the only thing it affected. Measured over the emitted tree by pydantic's own introspection —
+an enum annotation is the defect, **and it reaches callers and not only checkers**: pydantic does
+not validate a plain default, so `CanonicalFormatNativeInFeed().slots[0]` was a `dict` and reading
+`.asset_group_id` off it raised `AttributeError`. Measured over the emitted tree by pydantic's own introspection —
 2,552 classes — **146 sites over 66 documents disagree**, and the population is not where this
 rule first read as though it were:
 

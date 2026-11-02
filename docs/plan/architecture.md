@@ -601,9 +601,9 @@ consumer experiences.
 | **L2** object types, 2+ properties | 13,453 | 1,368 | 13,151 | 450 |
 | **L3** array types | 6,712 | 1,808 | 11,746 | 1,242 |
 
-**L0's row is withdrawn: the figure I published matched no honest reading of the bundle
-(corrected 2026-11-02).** It claimed 16,135 positions, 807 identities, 663 repeated and 203
-nameable. Three readings, each reproducible:
+**L0 is counted over STATING POSITIONS (decided 2026-11-02).** Three readings of the bundle are
+reproducible and they disagree by more than an order of magnitude, so the row names which one
+governs:
 
 | reading | positions | identities | repeated | titled / untitled / conflicting | cross-domain |
 |---|---|---|---|---|---|
@@ -675,11 +675,10 @@ left alone, and the only judgement is whether to file it upstream.
 
 ### A DOCUMENT ROOT IS ALREADY A HOME (decided 2026-11-02)
 
-13 of the 15 nameable entries are stated at a document ROOT, and the two sentences I had in
-conflict are both right about different things. **§4 governs and the narrowest-namespace rule does
-not reach a root**, because a root is not an entry looking for a home: §1's "every portable
-document contributes a symbol" means `enums/gop-type.json` **already exports `GOPType`** from
-`adcp.types.enums`. There is nothing to relocate.
+13 of the 15 nameable entries are stated at a document ROOT. **§4 governs and the
+narrowest-namespace rule does not reach a root**: a root is not an entry looking for a home,
+because §1's "every portable document contributes a symbol" means `enums/gop-type.json` already
+exports `GOPType` from `adcp.types.enums`. There is nothing to relocate.
 
 **So L0's job for those 13 is not to move them — it is to stop every other position minting a
 copy.** The other positions reference the existing symbol, which is what §5's `$ref` row already
@@ -1362,9 +1361,8 @@ agree with it, which is a check a test can hold.
 **What the report prints, 2026-10-26, with the pair's retirement REVERSED 2026-10-30.** It
 printed `emitted N / refused M (deferred …, verdict …)`, and the 2026-10-26 reading retired that
 pair on the ground that "`M` goes to zero over this bundle and the pair stops partitioning
-anything". `M` did go to zero. **The ground was wrong anyway, and `codegen/__main__.py` said so
-before this section did: the pair is not a partition and was never doing that work — it is the
-KIND split, and the kind is what names who owns a refusal.** `emitted N / population N` moves
+anything", and `M` did go to zero. **The pair is not a partition and was never doing that work —
+it is the KIND split, and the kind is what names who owns a refusal.** `emitted N / population N` moves
 one number when a document stops emitting and says nothing about which kind moved, so a reader
 cannot tell a document the bundle broke from a row nobody has written — which is the confusion
 that let `emitted + refused == 1054` read green over 385 documents waiting on unwritten rows. The
