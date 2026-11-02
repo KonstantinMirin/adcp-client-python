@@ -159,6 +159,13 @@ will not agree on it. **"Shape" was the one this project used and it is removed*
 the three design documents, standing in for *type*, *structure*, *case* and *structural branch*,
 four distinct meanings behind one word. Where a sentence needed one of those, it now says which.
 
+**Two more are banned for the same reason (decided 2026-11-02).** *"Arm"* is a **branch** — a
+member of a `oneOf` or `anyOf` is a branch, the class emitted for it is a branch class, and §4's
+dispatch sources already say *branch*. Nothing is gained by a second word for one concept, and
+`_branch_models`, `_BRANCH_DISCRIMINATOR` and `…Branch<N>` all say which word the code uses.
+*"Population"* is a **set** — the portable set, the declared set, the set a check ranges over.
+A count is stated over a set, and `bundle.portable` returns one.
+
 
 
 ### Where the `oneOf` entailment is derived (decided 2026-10-29)
