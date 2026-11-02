@@ -20,6 +20,10 @@ from jsonschema import Draft7Validator, FormatChecker
 from codegen import bundle, harness
 
 B = Path("schemas/cache/3.2")
+#: The bundle's document set, read once and threaded into every ``bundle.record``
+#: below -- ``docs/plan/architecture.md``: a set derived from the directory is an
+#: argument, and a reader reached once per site must be told it.
+KNOWN = set(bundle.portable(B))
 SITES = [
     ("core/creative-representation-set.json", "/properties/representations", "representation_id"),
     ("core/preview-provider.json", "/properties/routes", "format_option_id"),
@@ -30,7 +34,7 @@ SITES = [
 
 for doc_name, ptr, key in SITES:
     try:
-        root = bundle.record(B, doc_name)
+        root = bundle.record(B, doc_name, KNOWN)
     except Exception as exc:
         print(f"{doc_name}: unresolvable ({type(exc).__name__})")
         continue

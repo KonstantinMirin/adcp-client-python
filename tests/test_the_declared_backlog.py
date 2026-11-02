@@ -465,11 +465,12 @@ def test_the_underdetermined_equality_holds_in_both_directions() -> None:
     holds the SITE, so the site is taken off the front: the suffix is constant text and
     the site is the fact.
     """
-    out = compiled(BUNDLE, sorted(bundle.portable(BUNDLE)))
+    known = set(bundle.portable(BUNDLE))
+    out = compiled(BUNDLE, sorted(known))
     records = {
         document: record
         for document in sorted(out.emitted)
-        if isinstance(record := bundle.record(BUNDLE, document), dict)
+        if isinstance(record := bundle.record(BUNDLE, document, known), dict)
     }
     claimed("documents of record a fresh run emits", set(records))
     stale, silent = harness.underdetermined_census(

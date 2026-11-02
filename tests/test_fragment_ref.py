@@ -270,12 +270,12 @@ def test_resolved_inlines_the_node_a_fragment_names_and_not_the_whole_document()
     assert into == "/properties/type", uri
     target = bundle.document_for(head, known)
     assert target == "core/catalog.json", target
-    got = bundle.record(BUNDLE, document)["properties"]["type"]
+    got = bundle.record(BUNDLE, document, known)["properties"]["type"]
     assert "$ref" not in got, got
     # The NODE, resolved the way the TARGET's own document resolves it -- not the
     # document the node lives in.  A resolver that substituted the whole target would
     # put ``core/catalog.json``'s other properties and its title here.
-    assert got == bundle.record(BUNDLE, target)["properties"][into.split("/")[-1]], got
+    assert got == bundle.record(BUNDLE, target, known)["properties"][into.split("/")[-1]], got
     assert "properties" not in got, "the whole target document was inlined, not the node"
     assert "enum" in got, got
 
@@ -315,9 +315,10 @@ def test_a_local_reference_is_left_in_the_record_exactly_as_the_document_writes_
         "governance/reported-outcome-error.json",
     }
     assert recursive <= set(local), sorted(recursive - set(local))
+    known = set(bundle.portable(BUNDLE))
     for document in local:
         raw = bundle.read(BUNDLE, document)
-        record = bundle.record(BUNDLE, document)
+        record = bundle.record(BUNDLE, document, known)
         assert not isinstance(record, Refusal), (document, record)
         assert bundle.references(record) == bundle.references(raw), document
         assert bundle.undecidable_references(
@@ -717,7 +718,7 @@ def test_a_fragment_whose_node_is_itself_a_ref_imports_from_the_declaring_module
 
     # The description the RECORD states at the referring pointer is the middle node's
     # sibling, and that is the one the field carries.
-    record = bundle.record(root, "core/head.json")
+    record = bundle.record(root, "core/head.json", set(bundle.portable(root)))
     assert (
         record["properties"]["kind"]["description"] == "The middle node's sibling, which wins."
     ), record["properties"]["kind"]

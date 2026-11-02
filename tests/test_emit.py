@@ -9034,7 +9034,9 @@ def test_the_document_type_word_is_not_restated_beside_the_literal() -> None:
     # The record leaves a const node whole, and does so wherever it reaches one --
     # ``test_a_const_node_inlined_through_a_ref_keeps_its_annotations`` below is the
     # same assertion through a reference.
-    node = bundle.record(BUNDLE, "collection/collection-list-changed-webhook.json")
+    node = bundle.record(
+        BUNDLE, "collection/collection-list-changed-webhook.json", set(bundle.portable(BUNDLE))
+    )
     event = node["properties"]["event"]
     assert event["const"] == "collection_list_changed"
     assert event["type"] == "string"
@@ -9054,11 +9056,12 @@ def test_a_const_node_inlined_through_a_ref_keeps_its_annotations() -> None:
     ``core/agent-encryption-key.json``'s ``kty`` and the copy
     ``core/authorized-agent-base.json`` inlines, key for key.
     """
-    own = bundle.record(BUNDLE, "core/agent-encryption-key.json")["properties"]["kty"]
+    known = set(bundle.portable(BUNDLE))
+    own = bundle.record(BUNDLE, "core/agent-encryption-key.json", known)["properties"]["kty"]
     assert own["const"] == "OKP"
     assert own["type"] == "string"
     assert own["description"]
-    through = bundle.record(BUNDLE, "core/authorized-agent-base.json")
+    through = bundle.record(BUNDLE, "core/authorized-agent-base.json", known)
     inlined = through["properties"]["encryption_keys"]["items"]["properties"]["kty"]
     assert inlined == own, (inlined, own)
 

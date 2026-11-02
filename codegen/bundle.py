@@ -969,7 +969,7 @@ def source_identities(bundle_dir: Path) -> dict[str, str]:
     return out
 
 
-def record(bundle_dir: Path, document: str) -> dict | Refusal:
+def record(bundle_dir: Path, document: str, known: Collection[str]) -> dict | Refusal:
     """THE DOCUMENT OF RECORD: ``document`` with every cross-document ``$ref`` inlined.
 
     This package's own inliner (``docs/plan/architecture.md`` §4), and it does what §3
@@ -990,6 +990,30 @@ def record(bundle_dir: Path, document: str) -> dict | Refusal:
       in it, and every check it runs -- the draw, the document's own verdict on what it
       drew, the verdict on the dump -- reads THIS document rather than any
       canonicalisation of it.
+
+    **``known`` IS AN ARGUMENT, and ``docs/plan/architecture.md`` is what makes it one:**
+    "a callee that needs the set of a bundle's documents -- to resolve a reference's head
+    against the documents that exist -- must be **told** it, not go and find it.  Finding
+    it is a directory scan, and a callee reached once per node performs that scan once per
+    node."  That is this function exactly: the set is read at ONE place below --
+    :func:`document_for`, resolving the document half of a cross-document ``$ref`` -- and
+    nothing else here consults it.  It was ``set(portable(bundle_dir))`` on entry, which is
+    an ``rglob`` of the bundle and a sort of its paths, and the whole-set emit calls this
+    1,744 times: **118.8 s of the run's 144.8 s of CPU was that one line**, measured off a
+    counter in the run.
+
+    **And not a cache, for the reason that section gives rather than as a style
+    preference:** "a cache keyed on the directory path is wrong the moment a test builds a
+    bundle in ``tmp_path`` and adds a document between calls; a cache keyed on the
+    directory's contents has to read the contents, which is the cost.  So the set is
+    computed once per run, by the caller that knows the run, and threaded to every reader
+    that needs it."  A test building a bundle in ``tmp_path`` gets whatever it passes, by
+    construction, and there is nothing to invalidate.
+
+    It is REQUIRED and has no default, which is the whole of what the signature buys: a
+    default of :func:`portable` would leave the scan one forgotten argument away and would
+    make the cost invisible again at the next call site written.  :func:`declaring_site` is
+    the precedent beside it -- same set, same name, same reason.
 
     *Why our own, and what it replaced.*  This was ``hypothesis_jsonschema``'s resolver,
     which CANONICALISES while it inlines: it writes a finite type out as its members
@@ -1074,7 +1098,6 @@ def record(bundle_dir: Path, document: str) -> dict | Refusal:
     as in the text.  The text is unchanged here and stays 44 MB; what this removes is
     re-walking and re-copying one target once per path that reaches it.
     """
-    known = set(portable(bundle_dir))
     roots: dict[str, dict] = {document: read(bundle_dir, document)}
     #: The inlined target per key, held for the life of this call.  ``id(node)`` is the
     #: node's identity and is stable because ``roots`` holds every document alive: every
