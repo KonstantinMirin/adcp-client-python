@@ -562,6 +562,120 @@ imports `codegen.refusal` any more, which is the import-graph half of the seam g
 
 ---
 
+## 3a. The CATALOGUE: one pass collects every type, and the walk emits against it
+
+**This layer was not omitted. It was PROHIBITED, in writing, with a reason — and that is why a
+dozen rows touched the code it would have changed and none of them built it.** The semantics
+document's §4 gained a collision rule at `8b38e963` which closed with:
+
+> *"The resolution is also confined to one module, never compared across modules, because a name's
+> module is its namespace and §9's rule is that a document's output may not depend on which other
+> documents the run includes."*
+
+So the one mechanism that did exist — §4's "two nodes of identical content are one class" — was
+fenced to a single module by explicit instruction, and a cross-document type catalogue was
+forbidden by the same sentence. Every lane obeyed it, correctly.
+
+**And the reason it said that was a misreading of §9 that stood for weeks.** §9 forbids a census
+over the RUN — the argument list, which differs between a one-document command and a
+whole-population emission. A catalogue is a reading of the BUNDLE, which is pinned and is an input
+to every run alike, so it yields the same answer in both and is exactly what that rule protects.
+Those are different things. Nobody separated them until 2026-10-30, when §1's domain-scope
+collision rule hit the same wall and the distinction had to be ruled on — and **that ruling
+widened the clause by one case instead of recognising the general principle underneath it**, which
+is the second miss and the more expensive one.
+
+The cost of the prohibition is that the compiler reproduces the defect it was built to escape.
+
+Without it the compiler reproduces the defect it was built to escape. `datamodel-code-generator`
+emitted a type per position and the result was duplicate classes and unions nobody could name; a
+hand-written walk that also emits a type per position arrives at the same place with more effort.
+**Faithfulness per node is not consistency across the bundle**, and only the second is what a
+consumer experiences.
+
+### What is there to collect, measured over the 1,054 portable documents
+
+| layer | distinct shapes | repeated | positions covered | widest single shape |
+|---|---|---|---|---|
+| **L0** enum vocabularies | 807 | 663 | 16,135 | 259 |
+| **L1** constrained scalars | 1,776 | 1,315 | **59,516** | **4,127** |
+| **L2** object shapes, 2+ properties | 13,453 | 1,368 | 13,151 | 450 |
+| **L3** array shapes | 6,712 | 1,808 | 11,746 | 1,242 |
+
+Identity here is STRUCTURAL and ignores annotations — `description`, `title`, `examples`,
+`default`, `$comment`, `deprecated` — because an annotation does not change what a node admits.
+The evidence that this is a real defect and not an accounting curiosity: 897 enum classes are
+emitted for 715 distinct member-sets, **128 member-sets are emitted more than once across 310
+classes**, and one of them appears as `Status`, `BuyerAssetAcceptance` and `HostReceiptStatus` —
+three names for one protocol concept, mutually non-assignable, so a consumer who receives that
+value in two messages cannot pass it between them.
+
+### The layers are BOTTOM-UP, and that is why they are layers
+
+An object shape's identity is the identity of its property types, and an array's is its item
+type's. So L2 cannot be collected before L1 and L0, and a single sweep cannot do it: the same
+object spelled with an inline scalar in one document and a `$ref` to the same scalar in another is
+one shape only once the scalar below it has been collapsed. **Collect L0, then L1, then L2, then
+L3**, each layer's identity computed over the catalogue entries beneath it rather than over raw
+JSON.
+
+### Two passes, and the second is where the schema's own inconsistency is absorbed
+
+**Pass A is DETERMINISTIC**: structural identity, as measured above. It is reproducible, needs no
+judgement, and is where the figures in the table come from.
+
+**Pass B is NORMALISING** — the same concept spelled two ways, which Pass A cannot see because
+the two spellings are genuinely different JSON. The known shapes, each a separate decision with
+its own measurement:
+
+- **`const` against `enum`.** `core/registry-event.json` states `enum: [...]` at its root's
+  `event_type` and `const: "property.created"` at its branch's. One vocabulary, two keywords.
+  This is the shape that produced 362 of the generated tree's 440 type errors.
+- **a single-member `enum` against a `const`** — the same fact from the other side.
+- **`format` against `pattern`.** `{type: string, format: uri}` and
+  `{type: string, pattern: "^https://..."}` constrain overlapping sets by different keywords.
+
+Pass B runs AFTER Pass A and only over what Pass A left distinct, so a normalisation can never
+merge two shapes that structural identity already told apart.
+
+### The catalogue is an INPUT to the walk, never a pass over its output
+
+The walk consults it: a node's type is a REFERENCE to a catalogue entry, or a fresh type where
+the node is genuinely unique. Rewriting emitted output to deduplicate it afterwards is the
+post-processing this project exists to refuse (§2 of the semantics document: "nothing rewrites
+emitted output"), and it is also where the previous generator's patches lived.
+
+This places the catalogue before naming, which §9's census rule permits and §1's domain-scope
+collision rule already requires: both read the BUNDLE, which is pinned and is an input to every
+run alike, and neither reads the run's document set.
+
+### The NAME comes from the bundle, so a catalogue entry is derived and not minted
+
+§4's standing rule. For L0 this is already decided and measured: 203 vocabularies carry exactly
+one `title` the bundle gives and that title is the name; 457 carry none and are **not** collapsed
+across documents, because nothing names the concept and without a title there is nothing to tell
+a coincidental member-set overlap from an identity; 3 carry conflicting titles and are a decision
+brought to the owner. **The same three-way split is the rule for L1, L2 and L3, and each layer's
+counts are to be measured rather than assumed from L0's.**
+
+### What this does to the defects already open
+
+The `const` override dissolves rather than being patched: where a root's `enum` and a branch's
+`const` are one vocabulary, both reference the one entry, so the pin is `Literal[Entry.MEMBER]`
+because no other member exists to name. `82m.10`'s 44 names crossing as a BASE become a question
+about one catalogue entry rather than 44 export decisions. And the wheel can honestly ship
+`py.typed`, which today it cannot.
+
+### Upstream
+
+The bundle spelling one vocabulary as `enum` in one place and `const` in another is a defect in
+the SCHEMA, not only in our reading of it, and Pass B exists to absorb something upstream should
+not be emitting. It is worth filing against the specification — the owner reports that part of
+this normalisation has already landed in the 3.3 bundle, which is evidence the report would be
+accepted rather than argued.
+
+---
+
 ## 4. How the JSON is read
 
 ### The bundle and the document of record
