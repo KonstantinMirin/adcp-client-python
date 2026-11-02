@@ -724,7 +724,9 @@ types that are not assignable to each other and share one definition of the valu
 restated, nothing is merged, and a reader sees the vocabulary in one place.
 
 **Where a title exists the stronger rule still applies**: one type, named for the title,
-referenced by every position. The construction above is for the untitled sets, which are the
+referenced by every position. A title is a human string and the type is an identifier, so the
+title is rendered in the tree's own convention — `Account Status` names `AccountStatus` — and the
+convention is not a second decision per entry. The construction above is for the untitled sets, which are the
 population.
 
 ### THE SAME VALUES UNDER TWO NAMES IS A POPULATION OF THREE
@@ -772,6 +774,42 @@ we are inferring it from two descriptions.
 buries the finding; the same 128 analysed into the families they fall into is a case the
 specification can act on. So the analysis completes first, the filings are grouped by family, and
 nothing is sent per set.
+
+### WHEN A NAME IS THE BUNDLE'S, AND WHEN IT IS MINTED (decided 2026-11-02)
+
+§4 refuses to mint a public name no document states, and judging 63 sets produced four distinct
+ways of arriving at one. The line is per TOKEN: **a name is the bundle's when every token in it is
+stated at that vocabulary's own positions.**
+
+| how the name was reached | stated? | ruling |
+|---|---|---|
+| a `title` the set carries at some position | yes | **take it** |
+| a `title` plus a discriminator the positions state — `US` + `Postal Code System` | both tokens | **take it** |
+| the property name the positions share | yes | **take it** |
+| a stated name lengthened to avoid an existing class | yes, plus §4's own rule | **take it** — that is the collision rule, not a mint |
+| a noun phrase lifted from a `description` | **no** | **refuse** — prose is not a name |
+
+A `description` states what a thing IS; it does not state what it is CALLED. `VariantAxisDimension`
+and `FeatureValueType` read well and neither is in the bundle, and a reader cannot check them
+against anything — which is the whole of §4's objection. **A set whose name can only be composed
+from prose is not nameable, and the filing asks upstream to name it.**
+
+### "DISTINCT" AND "UNNAMEABLE" ARE DIFFERENT, AND ONLY ONE IS TERMINAL
+
+Of thirteen sets left separate, four were left separate because no name could be found rather than
+because the subjects differ — the judgement recorded one of them as "arguably one notion" and
+unnameable. **That is not the same verdict**, and collapsing the two hides which of them upstream
+can fix.
+
+So the local state is one of three:
+
+- **one named type** — the positions are one subject and the bundle names it;
+- **separate types, one value list** — the positions are genuinely different subjects;
+- **separate types pending a name** — the positions are plausibly one subject and nothing in the
+  bundle names it. The filing asks for the name, and the local answer changes when it arrives.
+
+The third is where the bundle's silence costs us, and it is the row most worth filing, because the
+answer is a word the specification's authors already have.
 
 ### WHAT THE CATALOGUE DOES TO AN APPROXIMATION'S DENOMINATOR
 
