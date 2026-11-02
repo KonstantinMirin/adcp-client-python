@@ -742,6 +742,37 @@ Two are two concepts over one value set and keep both names. The third states on
 and is an upstream report. **None of them motivates machinery**: three cases and twelve member
 strings. The scale is entirely in the untitled 128.
 
+### EVERY REPEATED VALUE SET IS AN UPSTREAM QUESTION (decided 2026-11-02)
+
+"One concept stated twice" and "one concept we should name" are the same finding, so they are not
+two verdicts. A value set stated at more than one position is a defect in the SPECIFICATION
+whatever we do about it locally: either the bundle defines one thing twice, or it defines two
+things that coincide on their values and says nothing about why. **Both are questions for the
+specification, and both are filed.**
+
+So the verdict space has two axes and they are independent.
+
+**What we emit** — one named type serving every position, or several types sharing one value list.
+That is the local decision and it is settled by whether the positions are about one subject.
+
+**What we ask upstream** — and there is always something to ask:
+
+| the positions are | we emit | the filing asks |
+|---|---|---|
+| one subject | one named type | you define this twice; define it once and `$ref` it |
+| different subjects | one type per subject, one value list | these have identical values — do you mean different things? If yes, say so; if no, define it once |
+
+`Catalog Action` against `Creative Action` is the second row, not an outcome that closes. Identical
+five members, one about a catalog and one about a creative — which is a reasonable thing for the
+bundle to mean and an unreasonable thing for it to leave implicit. **The filing asks the question
+rather than asserting the answer**, because the specification's authors know which they meant and
+we are inferring it from two descriptions.
+
+**The filings are consolidated before they are sent.** 128 sets filed one at a time is noise that
+buries the finding; the same 128 analysed into the families they fall into is a case the
+specification can act on. So the analysis completes first, the filings are grouped by family, and
+nothing is sent per set.
+
 ### WHAT THE CATALOGUE DOES TO AN APPROXIMATION'S DENOMINATOR
 
 An approximation is counted today at the declaration SITE, because each position derives its own
