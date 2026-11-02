@@ -587,6 +587,81 @@ is the second miss and the more expensive one.
 
 The cost of the prohibition is that the compiler reproduces the defect it was built to escape.
 
+### THE RECORD'S TEXT IS A DAG; ITS POINTERS ARE NOT (decided 2026-11-02)
+
+The record stores each distinct subtree once under its own `definitions` with a local reference at
+each occurrence. **Every pointer any reader SPELLS keeps the spelling it has today.** The hoisting
+is a storage representation and the readers dereference through it; it is not a renaming.
+
+Measured, which is what makes the second half of that sentence a rule and not a preference:
+
+| | |
+|---|---|
+| `core/mcp-webhook-payload.json` | 112,920,473 → **2,202,370 bytes**, 51× |
+| whole set | 835,864,437 → **66,773,403 bytes**, 13× |
+| name collisions introduced | **0** — that root's own `definitions` is empty, 5,245 subtrees hoisted |
+
+**Why the pointers may not move.** `harness.corpus_key` walks no pointer — it hashes the document's
+raw bytes and its closure's, plus the pointer, deliberately moved off our rendering onto the static
+upstream fact. But the pointer **is** in the identity, so respelling one declared pointer as
+`#/definitions/Shared<N>` misses every committed corpus entry and redraws that pair at its cold
+cost of 133 s to 2 h 57 m. The store that makes reading 1 affordable is the thing a renaming
+destroys.
+
+Holding the spellings costs almost nothing: of 2,793 `SchemaRef` declarations, **8 stop resolving
+by a plain segment walk and 5 of those already stop today** — 4 of them `la8`/`87t`'s
+`KeyError: '0'`. So the DAG form breaks **3 new declared pointers**, named and fixable. And
+`core/mcp-webhook-payload.json`, the worst document by a factor of fifty, declares exactly one
+pointer — its root — which survives.
+
+**The record's own walk is a FORK and not a port, and it is the whole of the remaining radius.**
+`bundle.nodes` yields 1,374,947 pointers today, of which **1,281,844 — 93.2 percent — stop
+resolving** in the DAG form; for `mcp-webhook-payload.json` alone, 164,781 of 166,381. Either the
+walk follows references and re-derives a pointer per occurrence, which hands back all 1.8 million
+occurrences and shrinks the record while leaving the walk exactly as expensive, or it walks the DAG
+and yields 8,730 where it yields 166,381 — and then every census derived from it moves. **That
+choice is a separate decision and must not be taken inside the hoisting commit.**
+
+`_base.applied_schema` is the reader that makes it a decision rather than a relocation. It does not
+merely walk: it carries the enclosing `type` through the same-instance hops, conjoins
+`SAME_INSTANCE_FACTS` with the enclosing `allOf`, and applies §8's sibling-conjunct cut. Following
+a local reference makes its answer stop being a function of `(document, pointer)` — one shared
+definition reached through two enclosing contexts has two applied answers — so the conjoined facts
+must accumulate ACROSS the hop, the definition may never be read alone, and a `definitions/Shared<N>`
+segment is not an instance-bearing hop and must be transparent to the cut. That machinery already
+raises on 4 pairs, which is the evidence that a new hop kind in it is not free.
+
+**Cross-document sharing is measured and DEFERRED.** Per-document hoisting gives 67 MB; the
+residual is cross-document repetition — **18,866 distinct subtrees over all 1,054 records, 6,034,010
+canonical bytes stored once each against 1,797,065 occurrences, 95.3×**. That is 6.0 MB, within 12
+percent of the bundle's own 5,363,667 source bytes, and it is the honest floor. It needs one store
+shared across documents, which is an artifact neither document describes and which breaks §1's
+"a document compiles to a module at its own path, and the record sits beside it". **Take the 13×
+first; decide the 95× when a 67 MB wheel is the thing being weighed.**
+
+### A DERIVED READING OF THE BUNDLE IS AN ARGUMENT, NOT SOMETHING A CALLEE RECOMPUTES (decided 2026-11-02)
+
+§1 and §3 already say *"the bundle directory is an argument and nothing reads a hard-coded path"*.
+**That rule extends one level: a set derived from the directory is also an argument.**
+
+Measured after the inliner's sharing landed: `bundle.portable()` is called **1,749 times in one
+whole-set emit and costs 123.0 s of it — 80 percent** — because `bundle.record` re-runs it before
+inlining anything, and each call is an `rglob` plus a sort of 1,054 paths at 70 ms. It is now the
+pole of the run, ahead of the inlining it was hiding.
+
+**The answer is not a cache, and the staleness question that a cache raises is the reason.** A
+cache keyed on the directory path is wrong the moment a test builds a bundle in `tmp_path` and adds
+a document between calls; a cache keyed on the directory's contents has to read the contents, which
+is the cost. **So the set is computed once per run, by the caller that knows the run, and threaded
+to every reader that needs it.** `record` needs it only to resolve a reference's head against the
+documents that exist, which is exactly the kind of fact a callee must be told rather than go and
+find. A test building a bundle in `tmp_path` then gets whatever it passes, by construction, and
+there is nothing to invalidate.
+
+This is the same rule as §9's: **the RUN is not the BUNDLE**, and a reading of the bundle is stable
+precisely because it does not depend on which documents the run names. Threading it makes that
+visible in the signature instead of leaving it to a comment.
+
 Without it the compiler reproduces the defect it was built to escape. `datamodel-code-generator`
 emitted a type per position and the result was duplicate classes and unions nobody could name; a
 hand-written walk that also emits a type per position arrives at the same place with more effort.
