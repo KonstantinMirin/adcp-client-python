@@ -1235,6 +1235,24 @@ grades, so the factory must be accompanied by `json_schema_extra={'default': …
 document's own JSON — through the one channel `render` already merges `format` and `uniqueItems`
 into, not a second one.
 
+**THE VALUE IS CONSTRUCTED THROUGH A `TypeAdapter`, NOT BY CALLING THE CARRIER (decided
+2026-11-02).** Calling it is undecidable where the decision has to be made: the renderer cannot
+tell an imported enumeration from an imported `Annotated` alias. Measured at `render._field` over
+all 1,054 documents, `brand.json`'s `default_language` and `markdown-asset.json`'s
+`markdown_flavor` produce **byte-identical `TypeRef`s** — and `MarkdownFlavor` is a `StrEnum`
+while `LanguageTag` is `Annotated[…]` and **not callable**. `ir.Module` carries no kind for an
+imported symbol and **58 of the 120 defaulted sites name a symbol from another module**, so a rule
+reading "call the carrier" emits `LanguageTag('en')` and the package fails at import. The kind
+exists at lowering time and the reference lowering drops it at PROP.
+
+So the field renders `default_factory=lambda: TypeAdapter(X | None).validate_python(<the
+document's value>)`, which needs no kind, and the same spelling serves the scalar and both list
+positions rather than a per-position discriminator that would be a bet.
+
+**And two of the 120 sites must NOT be converted**, which no error count will tell anyone: the
+`Annotated`-alias carriers at `brand/__init__.py` 1567 and 1590 produce no mypy error at all. The
+population is **118 convert, 2 leave**, and the two are named in the gate by hand.
+
 *The mutable-default argument for the factory is withdrawn as a reason, having been measured:*
 pydantic deep-copies a plain mutable default per instance, so two instances already receive
 distinct objects and mutating one does not reach the other. What the factory still buys is real
