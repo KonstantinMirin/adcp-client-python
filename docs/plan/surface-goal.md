@@ -12,8 +12,8 @@ A goal is **observable in the emitted artifact**. A consumer can see it; a scrip
 
 A property of `codegen/` that no consumer can observe — how many lines `compiler.py` has, which
 modules import it, how many `Refusal(` sites the walk mints — **is not a goal and must not be
-gated.** It is a maintainability preference, done when it pays for itself. Encoding code shape as
-tests freezes the shape, blocks refactoring, and proves nothing about correctness: there are
+gated.** It is a maintainability preference, done when it pays for itself. Encoding code case as
+tests freezes the case, blocks refactoring, and proves nothing about correctness: there are
 infinite ways to write the internals wrongly and enumerating them is not a strategy.
 
 ## The two instruments, and they are both censuses
@@ -58,7 +58,7 @@ So an upstream name with no class of ours is **unresolved until it carries one o
   consulted.** If the fold dropped a constraint, the schema admits a payload we refuse, or refuses
   one we accept, and the draw finds it. If it dropped nothing, there is nothing to find. So an
   upstream class is a prompt to go and look at a node; it is never the evidence about that node.
-- **THEY EMIT A CLASS THAT SHOULD NOT EXIST.** Three shapes, and the verdict must say which: two
+- **THEY EMIT A CLASS THAT SHOULD NOT EXIST.** Three cases, and the verdict must say which: two
   of their classes carry the same schema node (a duplicate); the class is not schema-derived at
   all but belongs to one of their hand-written ergonomic, eager, forward-compat, partial, legacy
   or POC-alias layers; or it comes from a bundle version that is not 3.2. None of these is work
@@ -75,7 +75,7 @@ consulted by drawing values — not by reading their class.
 
 **And the migration layer comes AFTER.** A set of aliases letting an application keep its current
 import spellings is owed and will be built, but it is not this work and must not be allowed to
-shape it: designing the classes to make the aliases easy is how upstream's mistakes get copied in
+case it: designing the classes to make the aliases easy is how upstream's mistakes get copied in
 through the back door. Build the correct surface, then map onto it.
 
 And the comparison is **one-directional**. Every name upstream exposes gets a verdict; the
@@ -112,7 +112,7 @@ Each of these is observable, and each is currently false:
 - **A gate that passes when nothing happens is not a gate.** The two architecture steps that never
   landed were the ones whose only check was "the emitted tree does not change" — true of a no-op.
   A check must fail before the work and pass after, and be shown doing so.
-- **Where the honest floor is not zero, record the floor with its shapes.** A ratchet set below the
+- **Where the honest floor is not zero, record the floor with its structures.** A ratchet set below the
   truth gets exempted later, which is how a guard stops guarding.
 - **A fact is DROPPED, never SUBSTITUTED**, and a model may be wider than its document and never
   tighter. 120 declared approximations rest on that holding.

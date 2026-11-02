@@ -16,7 +16,7 @@ it keeps.
 
 ---
 
-## 1. The shape
+## 1. The case
 
 A bundle document is read once into a typed node tree. One function decides what every node
 becomes. The decisions compose into a module of declarations, which one renderer writes as
@@ -93,7 +93,7 @@ Four rules follow, and each is held strictly:
   The sum type used to make a caller that read a `Lowering` field without handling the other
   branch a type error, which was the mechanical form of §9's "a crash is not an outcome". With
   one inhabitant there is no branch to force, so the obligation moves into each handler: a
-  handler's match over the shapes of its own node is total, its final arm calls
+  handler's match over the cases of its own node is total, its final arm calls
   `approximate(node, keyword)`, and **no handler raises**. The import-rule tests gain the third
   boundary that holds it (§11), and §8 of the semantics document gains the two equalities that
   catch a widening nobody declared. A guarantee the type checker held is now held by a test, and
@@ -137,7 +137,7 @@ cycle. `emit` is its only reader. Three consequences, each mechanical:
 - **`Kind.VERDICT` is the only resolved kind.** With DEFERRED gone and CHAINED delegating,
   `RESOLVED_KINDS` has one member, and the figure the exit condition reads is just the count of
   refused documents. The enum stays an enum rather than collapsing into a boolean: a bundle that
-  grows a shape neither kind covers needs somewhere to put it, and the cost of keeping the type
+  grows a case neither kind covers needs somewhere to put it, and the cost of keeping the type
   is nothing.
 
 **The handler's own obligation.** `approximate(node, keyword)` is to an approximation what
@@ -175,7 +175,7 @@ deferred edge.
 
 **It goes where the CARRIERS go.** Both the dispatch and the handlers need the entry and neither
 owns it, which is what `compiler.py` accidentally is today; what makes that accidental rather than
-designed is that `compiler.py` also holds `Module`, `Shape`, `Target` and `Decided`. `Decided` is
+designed is that `compiler.py` also holds `Module`, `Case`, `Target` and `Decided`. `Decided` is
 now `ir.py`'s. As the rest follow, the entry is a thin module importing `ir` and `decide`, with the
 handlers importing `ir` alone — and §11's table gains the row it is missing, naming that module and
 the one direction its arrow runs.
@@ -212,7 +212,7 @@ redraw step on a bundle bump, which is the same discipline the packaged records 
 ### The widening store's currency is the OBLIGATION, not a second gate (decided 2026-10-30)
 
 §8's widening obligation draws too, at three sites, and those draws now have a store of their own
-in a separate key space and a separate directory. The accepts gate's shape **does not transfer to
+in a separate key space and a separate directory. The accepts gate's case **does not transfer to
 it**, and the reason is worth stating because it looks like an omission: `live_keys()` reads every
 graded pair's accepts key with no draw at all, where the widening space's live set depends on
 which borrowed base hosted each declaration's location — decided by placement attempts against the
@@ -227,7 +227,7 @@ entry point sees it — so it either still hosts the location, in which case the
 fails placement and the declaration is reported `unproved`, which §8 treats as **as much a failure
 as a narrowing.** Staleness here is self-reporting. The obligation is the currency gate.
 
-So the floor is committed as it fills, graded on its SHAPE, and **no second derived artifact is
+So the floor is committed as it fills, graded on its STRUCTURE, and **no second derived artifact is
 minted to record which keys the population asks for.** That artifact would need its own equality,
 and that equality would need the same thing one level further out — the regress `tests/corpus.py`'s
 original argument was right to fear. Leaving the space cache-only is also refused: the saving is
@@ -416,7 +416,7 @@ def cell(keyword: str, position: Position) -> Cell | None   # None: no row, whic
 ```
 
 A row is written per keyword with a default cell and an override per position that differs,
-because that is the shape of the semantics document's own tables: most rows give one answer
+because that is the case of the semantics document's own tables: most rows give one answer
 and name the positions that depart from it.
 
 **`Effect.REFUSE` leaves the enum and `widens_to` enters the cell (2026-10-26).** Both follow
@@ -459,7 +459,7 @@ reader keeps honest against the cells is the reasoning around the grid rather th
 **How a row renders to a grid line.** The line is the default cell's `compiles`, followed by
 one clause per position override, in `Position` declaration order; overrides whose `compiles`
 is identical are one clause and their positions are joined with ` / `. That is already the
-shape the semantics document's rows are written in — "`min_length` / `max_length` on the type,
+case the semantics document's rows are written in — "`min_length` / `max_length` on the type,
 as a named alias. KEY → the key type … ELEM / MAPV → the alias inside the container. ROOT → the
 root alias. RULE → nothing." — so the rule is read off the existing grids rather than imposed on
 them. A co-occurrence that is not a position (`pattern` beside `format: uri`, an `enum` beside
@@ -595,12 +595,12 @@ consumer experiences.
 
 ### What is there to collect, measured over the 1,054 portable documents
 
-| layer | distinct shapes | repeated | positions covered | widest single shape |
+| layer | distinct cases | repeated | positions covered | widest single case |
 |---|---|---|---|---|
 | **L0** enum vocabularies | 807 | 663 | 16,135 | 259 |
 | **L1** constrained scalars | 1,776 | 1,315 | **59,516** | **4,127** |
-| **L2** object shapes, 2+ properties | 13,453 | 1,368 | 13,151 | 450 |
-| **L3** array shapes | 6,712 | 1,808 | 11,746 | 1,242 |
+| **L2** object types, 2+ properties | 13,453 | 1,368 | 13,151 | 450 |
+| **L3** array types | 6,712 | 1,808 | 11,746 | 1,242 |
 
 Identity here is STRUCTURAL and ignores annotations — `description`, `title`, `examples`,
 `default`, `$comment`, `deprecated` — because an annotation does not change what a node admits.
@@ -612,10 +612,10 @@ value in two messages cannot pass it between them.
 
 ### The layers are BOTTOM-UP, and that is why they are layers
 
-An object shape's identity is the identity of its property types, and an array's is its item
+An object type's identity is the identity of its property types, and an array's is its item
 type's. So L2 cannot be collected before L1 and L0, and a single sweep cannot do it: the same
 object spelled with an inline scalar in one document and a `$ref` to the same scalar in another is
-one shape only once the scalar below it has been collapsed. **Collect L0, then L1, then L2, then
+one type only once the scalar below it has been collapsed. **Collect L0, then L1, then L2, then
 L3**, each layer's identity computed over the catalogue entries beneath it rather than over raw
 JSON.
 
@@ -625,18 +625,18 @@ JSON.
 judgement, and is where the figures in the table come from.
 
 **Pass B is NORMALISING** — the same concept spelled two ways, which Pass A cannot see because
-the two spellings are genuinely different JSON. The known shapes, each a separate decision with
+the two spellings are genuinely different JSON. The known cases, each a separate decision with
 its own measurement:
 
 - **`const` against `enum`.** `core/registry-event.json` states `enum: [...]` at its root's
   `event_type` and `const: "property.created"` at its branch's. One vocabulary, two keywords.
-  This is the shape that produced 362 of the generated tree's 440 type errors.
+  This is the case that produced 362 of the generated tree's 440 type errors.
 - **a single-member `enum` against a `const`** — the same fact from the other side.
 - **`format` against `pattern`.** `{type: string, format: uri}` and
   `{type: string, pattern: "^https://..."}` constrain overlapping sets by different keywords.
 
 Pass B runs AFTER Pass A and only over what Pass A left distinct, so a normalisation can never
-merge two shapes that structural identity already told apart.
+merge two types that structural identity already told apart.
 
 ### The catalogue is an INPUT to the walk, never a pass over its output
 
@@ -680,8 +680,8 @@ so a cycle is not avoided by care — it is unrepresentable:
 ```
 L0 vocabularies      → depends on nothing
 L1 constrained scalars → L0
-L2 object shapes       → L0, L1
-L3 array shapes        → L0, L1, L2
+L2 object types       → L0, L1
+L3 array types        → L0, L1, L2
 document modules       → any catalogue layer, and each other by §10's existing order
 ```
 
@@ -698,13 +698,13 @@ keeps a consumer's import close to where they met the concept and is derived rat
 
 **The shared namespace is `adcp.types.common`, one place and not one per layer.** A consumer who
 does not know which domain a type belongs to has exactly one place to look, and does not have to
-guess whether `AuthenticationScheme` is a "value" or a "shape". The LAYERS are the private
+guess whether `AuthenticationScheme` is a "value" or a "case". The LAYERS are the private
 module structure beneath it — the same split the tree already makes, `_schemas` private and the
 domain modules public — so the acyclic order is a property of the emission and the public surface
 stays flat.
 
 **And this is the reuse the design was for.** 653 vocabularies stop being re-derived per domain;
-one scalar shape that appears 4,127 times is declared once; and a type a consumer receives in a
+one scalar case that appears 4,127 times is declared once; and a type a consumer receives in a
 `media_buy` message is the same object as the one in a `governance` message, so it can be passed
 between them. That last property is the one nothing in the artifact provides today.
 
@@ -740,11 +740,11 @@ The payload generator's resolver (`hypothesis_jsonschema`) is confined to drawin
 `verify/accepts.py` and never writes a document anything else reads.
 
 **This is the one refusal the compiler mints (2026-10-26, §2 of the semantics document).** The
-principle that unifies its shapes is that **the document has no defined accepted set**: there is
+principle that unifies its structures is that **the document has no defined accepted set**: there is
 no schema half for `strict_validate` to run and nothing for §8 to grade against, which is the
-one place the partial-model objection still bites. Three shapes reach it — a reference whose
+one place the partial-model objection still bites. Three cases reach it — a reference whose
 target is not a bundle document, a cross-document cycle, and a document that **fails its own
-declared draft's meta-schema** (the shape failures `parse` validates for below, which were
+declared draft's meta-schema** (the case failures `parse` validates for below, which were
 VERDICT refusals of their own and are this class rather than a second one, since a document that
 is not a schema under its own draft has no accepted set to be faithful to). Measured over bundle
 3.2's 1,054 portable documents, all three are **empty**: 0 undefined records, 0 meta-schema
@@ -765,7 +765,7 @@ verifier carries folds of that kind today. An inliner that changes nothing needs
 
 `codegen/schema/nodes.py` declares the in-memory form, and it is a **typed representation of a
 schema node, not the raw mapping**. One frozen dataclass per kind, each carrying exactly the
-keywords its kind can consume, already validated for shape:
+keywords its kind can consume, already validated for case:
 
 | node kind | selected by | carries |
 | --- | --- | --- |
@@ -773,7 +773,7 @@ keywords its kind can consume, already validated for shape:
 | `Enumeration` | `enum` | members, member descriptions (both spellings), the applied type word |
 | `Constant` | `const` | the value |
 | `Composition` | `allOf` | conjuncts at CONJ, own properties and required, extra policy, rule sources |
-| `Union` | `oneOf` / `anyOf` whose branches are shapes | combinator, branches at BRANCH, the root's siblings when at ROOT |
+| `Union` | `oneOf` / `anyOf` whose branches are cases | combinator, branches at BRANCH, the root's siblings when at ROOT |
 | `Object` | `type: object` (stated or applied) with `properties` | properties at PROP, required, extra policy, key schema at KEY, rule sources |
 | `Mapping` | `type: object` without `properties` | value schema at MAPV, key schema at KEY, key-count bounds |
 | `Array` | `type: array` | element at ELEM, bounds, distinct, contains predicate |
@@ -797,9 +797,9 @@ def parse(raw: Mapping, *, document: str, pointer: str, position: Position,
 ```
 
 **`parse` is total too (2026-10-26).** It returned `Node | Refusal` and the refusals it minted
-were the shape failures below. A document that fails its own meta-schema has no accepted set and
+were the case failures below. A document that fails its own meta-schema has no accepted set and
 is `bundle.record`'s refusal before `parse` is ever called, so by the time a mapping reaches
-`parse` its shape is a draft-07 schema's and a failure here is the compiler disagreeing with the
+`parse` its structure is a draft-07 schema's and a failure here is the compiler disagreeing with the
 meta-schema — a `BuildFailure`, not a document outcome. The checks stay; what changes is who they
 blame.
 
@@ -812,7 +812,7 @@ composition with fields of its own; a combinator whose every branch is `required
 `Union` but a rule source of the enclosing object (the `presence_only` reading, read once
 here); a `type: object` beside `oneOf` is a union whose branches inherit the applied word. It
 descends by the table's descent column, assigning each child its position and the applied
-word for a same-instance hop. And it validates shape: `required` is a list of names,
+word for a same-instance hop. And it validates case: `required` is a list of names,
 `properties` is a mapping of schemas, and so on, each failure a `BuildFailure` by the paragraph
 above. **`items` is no longer among them**: a list-valued `items` is draft-07's tuple validation,
 and the semantics document's §5 now lowers it to `list[A | B | …]` at the JOIN rung rather than
@@ -874,10 +874,10 @@ def decide(node: Node, ctx: Context) -> Lowering:
 This is the one place a node's kind is routed, it contains no decision beyond the route, and
 `assert_never` makes the type checker refuse a kind the match does not cover. A handler takes
 its node and the context and returns a `Lowering` — always, by §2. It reads the table for every
-keyword on its node, consults the position through `node.position`, and where it meets a shape
+keyword on its node, consults the position through `node.position`, and where it meets a case
 of its own kind it has no rendering for, its final arm calls `approximate(node, keyword)` and
 composes the result like any other child. **A handler has no second return type and no raise**,
-so there is one shape of answer at this seam and `assert_never` is the only exhaustiveness the
+so there is one case of answer at this seam and `assert_never` is the only exhaustiveness the
 type checker still proves here.
 
 **The form, against the alternatives.**
@@ -959,7 +959,7 @@ class Lowering:
     type: TypeRef                       # what the parent writes where it holds this node
     declarations: tuple[Declaration, ...] = ()
     imports: frozenset[Import] = frozenset()
-    aliases: frozenset[ConstraintShape] = frozenset()   # for adcp.types.constraints
+    aliases: frozenset[ConstraintCase] = frozenset()   # for adcp.types.constraints
     approximations: tuple[Approximation, ...] = ()      # §2's widenings, accumulated
     reports: tuple[Report, ...] = ()    # a dropped default, a name the class carries nothing for
 ```
@@ -1013,13 +1013,13 @@ An entry nothing references is never decided, which is the §5 rule that a `defi
 is nothing by itself.
 
 **Composition.** A `Composition` handler lowers each `$ref` conjunct to a base — the target's
-`ClassDecl` is read off `ctx.targets` for its field shape — and merges inline conjuncts' fields
+`ClassDecl` is read off `ctx.targets` for its field case — and merges inline conjuncts' fields
 and rule sources into its own by the intersection rule, which moves from `compiler.py` to
 `lower/composition.py` unchanged in substance: `restatement`, `intersection` and
 `at_least_as_tight` are pure functions over two nodes and stay so. A conjunct carrying its own
 `allOf` is a `Composition` node at CONJ and the handler recurses.
 
-**Unions.** A `Union` at ROOT whose branches are all shapes lowers to a base `ClassDecl` carrying
+**Unions.** A `Union` at ROOT whose branches are all cases lowers to a base `ClassDecl` carrying
 the branch-dispatch facts and one `ClassDecl` per branch, each branch a class with the base first
 among its bases; the root's siblings compile onto the base as §5 of the semantics document says.
 A `Union` at ROOT whose branches are all scalars lowers to an `AliasDecl` and a `RootBinding`.
@@ -1070,7 +1070,7 @@ module for an alias — exactly the split §4 of the semantics document already 
 reason, and the review that put it there recorded it: a verifier handed its facts by the run
 grades the run's account of the output instead of the output. A side channel also makes a
 one-document run and a whole-bundle run disagree about what the verifier can see, which the
-semantics document's §9 forbids for names and shapes and which has no better claim here.
+semantics document's §9 forbids for names and cases and which has no better claim here.
 
 *Where it must NOT go.* Not into `Field(json_schema_extra=…)`. A declaration is a record of what
 the model DROPPED, so writing it into `model_json_schema()` would put it into the very payload
@@ -1136,7 +1136,7 @@ it is not an input either: it is assigned after.
 
 `codegen/render.py` is the only module under `codegen/` outside `verify/` that imports
 `pydantic` or `datamodel_code_generator`. It takes a `Module` and returns the module's text; it
-takes the run's union of `ConstraintShape`s and returns `adcp/types/constraints.py`. It renders
+takes the run's union of `ConstraintCase`s and returns `adcp/types/constraints.py`. It renders
 through the model layer of the pinned code generator and never its parser, for the reason the
 present code gives: the parser decides names and structure, which is this compiler's half.
 
@@ -1146,7 +1146,7 @@ nothing in `schema/`, `lower/`, `ir.py`, `keywords.py` or `bundle.py` imports `p
 is a Python symbol the semantics document names in its `format` row, and naming a symbol is
 not a Pydantic idiom; constructing a `Field`, a `ConfigDict`, an `Annotated` or a `DataType`
 is, and only `render.py` does it. `codegen/constraints.py` keeps its naming rule — a pure
-function from a constraint shape to a `TypeRef` — and stops importing the renderer.
+function from a constraint case to a `TypeRef` — and stops importing the renderer.
 
 The runtime package `src/adcp/types/_base.py` and `_runtime.py` is the other side of the
 boundary: `SchemaRef`, `applied_schema`, `strict_validate`, `strict_alias`,
@@ -1155,7 +1155,7 @@ them. Two extensions, and no replacement.
 
 **`applied_schema`** gains the same-instance keywords §13 item 3 names.
 
-**`AdCPRootModel`, new on 2026-10-26.** The semantics document's §4 now gives three shapes to a
+**`AdCPRootModel`, new on 2026-10-26.** The semantics document's §4 now gives three cases to a
 root model — an array, a union mixing a scalar branch with a class branch, and a document stating
 no schema keyword — and each must carry `__adcp_schema__`, `strict_validate` and a rule tuple
 exactly as a class does, or a root model and a class disagree about what their document accepts.
@@ -1191,7 +1191,7 @@ intersection rule it carries stays a second spelling of the one in `lower/compos
 purpose. Sharing DATA is a different matter from sharing a READING: the keyword table is the
 declared semantics, and both halves must read the same declaration or the grade means nothing.
 
-Its three checks are the semantics document's §8 and keep today's shape: `accepts.py` draws
+Its three checks are the semantics document's §8 and keep today's case: `accepts.py` draws
 from the record and constructs; `dump.py` serialises and validates against the record,
 striking the exemptions `exemptions.py` lists; `compare.py` compares `model_json_schema()`
 against the record over the table's rendered column, fact by fact and in both directions. Every
@@ -1401,7 +1401,7 @@ semantics of composition (intersection, the requiredness overlay, the reused inh
 of union dispatch (derived from the branches, three sources), and of every keyword row the code
 already implements faithfully.
 
-**Replaced, because the evidence says the shape is not right there.** The reviews' first
+**Replaced, because the evidence says the case is not right there.** The reviews' first
 finding — one declaration missing, with the admission, the lowering and the grading as three
 hand-written copies of it — is answered by `keywords.py` and its four readers (§3). The absence
 of a position type, with position recovered from pointer strings and nodes rewritten to reach
@@ -1707,7 +1707,7 @@ condition, below.
     predicate no `AtLeastOne` carries; a keyword with no row; a list-valued `items`; a root
     stating no schema keyword.
 
-    *One more shape, added 2026-10-27, because `refused == 0` had no answer for it.* **A `$ref`
+    *One more case, added 2026-10-27, because `refused == 0` had no answer for it.* **A `$ref`
     conjunct whose target is NOT a class, beside a node that declares fields of its own.** §5's
     `$ref` row at CONJ says the target becomes this node's own TYPE where it is a scalar, an
     enum, a container or a union root — and that clause is scoped, in its own words, to "a node
@@ -1720,7 +1720,7 @@ condition, below.
     It is a WIDENED row and not a faithful one. Carrying it faithfully means the instance must
     satisfy the node's fields AND one of the target union's branches, and "also satisfies this
     imported union" is not one of §2's rule families — adding one is a larger decision than this
-    shape earns at three sites. So the conjunct's union membership is DROPPED, the class emits
+    case earns at three sites. So the conjunct's union membership is DROPPED, the class emits
     with its own fields, and the gap is declared. The widening is safe in the usual way:
     `strict_validate` still enforces the union from the document, so only the annotation loosens.
 
