@@ -5,7 +5,7 @@ from datetime import date
 from enum import StrEnum
 from typing import Annotated, Any, ClassVar, Literal
 
-from pydantic import ConfigDict, Field, NonNegativeFloat
+from pydantic import ConfigDict, Field, NonNegativeFloat, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Presence, PresenceGroups, RequiredGroups, Rule, UniqueItems
@@ -213,7 +213,7 @@ class SignalTargetingItem(BranchDispatchMixin, AdCPBaseModel):
     @classmethod
     def _branch_combinator(cls) -> str:
         return "oneOf"
-    targeting_mode: Annotated[TargetingMode | None, Field(description="Desired use of this signal on the product. 'include' requires the product option to allow use in an any group. 'exclude' requires the product option to allow use in a none group.")] = 'include'
+    targeting_mode: Annotated[TargetingMode | None, Field(default_factory=lambda: TypeAdapter(TargetingMode).validate_python('include'), description="Desired use of this signal on the product. 'include' requires the product option to allow use in an any group. 'exclude' requires the product option to allow use in a none group.", json_schema_extra={'default': 'include'})]
 
 
 class SignalTargetingItemBinary(SignalTargetingItem, SignalTargetingBinary):
@@ -329,7 +329,7 @@ class KeywordsItem(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-filters.json', pointer='#/properties/keywords/items')
     keyword: Annotated[StrMinLen1, Field(description='The keyword to target')]
-    match_type: MatchType | None = 'broad'
+    match_type: Annotated[MatchType | None, Field(default_factory=lambda: TypeAdapter(MatchType).validate_python('broad'), json_schema_extra={'default': 'broad'})]
 
 
 class ProductFilters(AdCPBaseModel):

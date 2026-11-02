@@ -89,6 +89,7 @@ from datamodel_code_generator.model.enum import EnumMemberValue, IntEnum, StrEnu
 from datamodel_code_generator.model.pydantic_v2 import BaseModel, DataModelField
 from datamodel_code_generator.model.pydantic_v2.base_model import Constraints
 from datamodel_code_generator.model.pydantic_v2.types import DataTypeManager
+from datamodel_code_generator.python_literal import PythonCode, represent_python_value
 from datamodel_code_generator.reference import Reference
 from datamodel_code_generator.types import DataType
 from pydantic import BaseModel as PydanticBaseModel
@@ -368,16 +369,117 @@ CARRIERS = frozenset(
 )
 
 
+#: The model layer's own name for "construct this annotation's value from JSON", which is
+#: the ONE spelling :func:`_constructed_default` can write, and the reason is a
+#: MEASUREMENT of what reaches this module rather than a preference between spellings.
+#:
+#: §5 requires a ``default`` to be emitted through its annotation's own type.  That needs
+#: the annotation's KIND -- an enumeration takes ``Carrier(value)``, a class takes
+#: ``Carrier.model_validate(value)``, and an ``Annotated`` alias takes NEITHER because it
+#: is not callable -- and **a** :class:`codegen.ir.TypeRef` **does not carry it.**  Measured
+#: over the 1,054 portable documents: ``LanguageTag`` (an alias, ``Annotated[StrMinLen2…,
+#: Field(description=…)]``) and ``SortMetric`` (a ``StrEnum``) both arrive here as
+#: ``TypeRef(path=<name>, local=True, container='', of=(), key=None, literals=(),
+#: members=(), facts={}, format=None, validators=())`` -- byte-identical -- so no
+#: condition over a ``TypeRef`` tells them apart.  Nor does ``Module.declarations``: of the
+#: 120 defaulted fields whose carrier is a declaration this run emits, **58 name a symbol
+#: IMPORTED from another module**, whose kind that module alone declares.  A rule reading
+#: "call the local carrier" therefore emits ``LanguageTag('en')`` at 2 sites, which is a
+#: ``TypeError`` at module import and takes the package down.
+#:
+#: ``TypeAdapter`` needs no kind.  It takes the annotation itself -- the text
+#: :func:`_data_type` already decides for the field -- and validates the document's JSON
+#: through it, so one spelling is correct at every carrier the bundle has: a ``StrEnum``
+#: comes back a MEMBER, a class comes back an INSTANCE, a nested enumeration inside a
+#: class's own field comes back a member too (pydantic validates to the leaf), and an
+#: alias comes back the value it already was.  mypy reads
+#: ``TypeAdapter(X).validate_python(...)`` as ``X``, which is the half a checker grades.
+#:
+#: HERE and not in ``lower/``, because the walk decided the type and the value and this is
+#: the text for them -- §1's seam, and the same one ``container="alias"`` and
+#: :func:`_bound_to_the_type` are composed on.
+#:
+#: As the ``(module, name)`` PAIR this module holds an import as, because both readers
+#: need a different half of it: :func:`_constructed_default` resolves the dotted path
+#: through the model layer to get the spelling, and :func:`klass` matches the bare name
+#: against the rendered text to decide the import.  Two spellings of one symbol is how
+#: those two come apart.
+TYPE_ADAPTER = ("pydantic", "TypeAdapter")
+
+
+def _constructed_default(decided: ir.Field) -> PythonCode | None:
+    """§5's constructed ``default`` as a ``default_factory`` expression, or ``None``.
+
+    **The rule fires where the field's value must be an instance of something this run
+    EMITS**, which is the one position a raw JSON literal can disagree with the
+    annotation: a declaration's name resolves to a class, an enumeration or an alias, and
+    only the first two make the literal wrong -- but see :data:`TYPE_ADAPTER` for why this
+    cannot ask which.  A carrier the model layer already owns (``bool``, ``str``,
+    ``adcp.types.constraints.IntMin1``, ``pydantic.NonNegativeInt``) is skipped: the
+    document's JSON IS a value of it, so there is nothing to construct and firing would
+    be churn.
+
+    ``None`` is skipped as a VALUE and not as an absence: ``default: null`` is a default
+    (:data:`codegen.ir.MISSING` is what absence is), and ``None`` inhabits the ``| None``
+    every optional field's annotation carries, so it needs no construction.
+
+    The three positions it reaches are the three the section's table names -- the type
+    itself, a ``list`` of it, and a ``dict`` of it -- and the annotation handed to the
+    adapter is the field's own WITHOUT the ``| None``: the document states a non-null
+    default, so what it has to validate against is the type the document declares there.
+    A ``union`` of two real arms is NOT one of them and is skipped, because there is no
+    single type to validate through and the arm the value belongs to is the document's
+    judgement rather than this module's.
+    """
+    if decided.default is MISSING or decided.default is None:
+        return None
+    carried = decided.type
+    if carried.container in {"list", "dict"}:
+        carried = carried.of[0] if carried.of else carried
+    # A BARE reference to an emitted declaration, and nothing else: a container, a
+    # ``Literal``, a member subscript or a type carrying value rules is already a
+    # composed annotation, and ``local`` on one of those says nothing about the value's
+    # own type.  ``ir.symbols`` reads ``local`` the same way -- "a local arm is marked
+    # ``local`` where it is decided" -- which is why this needs no second notion of what
+    # a reference is.
+    if not (
+        carried.local
+        and carried.path
+        and not carried.container
+        and not carried.literals
+        and not carried.members
+        and not carried.validators
+    ):
+        return None
+    adapter = _TYPES.get_data_type_from_full_path(".".join(TYPE_ADAPTER), is_custom_type=False)
+    return PythonCode(
+        f"lambda: {adapter.type_hint}({_data_type(decided.type).type_hint})"
+        f".validate_python({represent_python_value(decided.default)})"
+    )
+
+
 def _field(decided: ir.Field) -> DataModelField:
     extras: dict[str, Any] = {}
     if decided.description:
         extras["description"] = decided.description
-    # One ``json_schema_extra`` dict, two facts that can both be true of one field:
-    # a ``format`` no type was selected for, and D6's ``uniqueItems``.  Assigning
-    # rather than merging dropped whichever came second.
+    constructed = _constructed_default(decided)
+    # One ``json_schema_extra`` dict, three facts that can all be true of one field:
+    # a ``format`` no type was selected for, D6's ``uniqueItems``, and the document's own
+    # ``default`` where that default is CONSTRUCTED.  Assigning rather than merging
+    # dropped whichever came second.
+    #
+    # **The ``default`` is here because ``default_factory`` does not render one.**
+    # Measured on pydantic 2.13.5 and §5's own reason for the pairing: a field carrying
+    # ``default_factory`` renders ``model_json_schema()`` with NO ``default`` at all,
+    # where a plain default renders it -- so constructing the value through the
+    # annotation would silently drop a keyword §8 grades the document by.  It rides THIS
+    # channel and not a second one for the reason ``format`` and ``uniqueItems`` do: a
+    # fact pydantic has no annotation for reaches the rendered schema here or nowhere.
+    # The key is LAST so that every field that constructs nothing renders byte-identically.
     extra_schema = {
         **({"format": decided.type.format} if decided.type.format else {}),
         **({"uniqueItems": True} if decided.distinct else {}),
+        **({"default": decided.default} if constructed is not None else {}),
     }
     if extra_schema:
         extras["json_schema_extra"] = extra_schema
@@ -387,7 +489,13 @@ def _field(decided: ir.Field) -> DataModelField:
         if k in ir.FACTS or k in KEY_COUNT
     }
     kwargs: dict[str, Any] = {}
-    if decided.default is not MISSING:
+    if constructed is not None:
+        # The factory is the model layer's ``default_factory`` extra, which is the slot
+        # that makes the template write no ``= <literal>`` line at all
+        # (``has_default_factory_in_field``).  So the two arms are EXCLUSIVE by
+        # construction: a constructed default has no literal beside it to disagree with.
+        extras["default_factory"] = constructed
+    elif decided.default is not MISSING:
         # ``has_default`` is what the template reads; the value alone is not
         # enough, because ``None`` is a legitimate default.
         kwargs["default"] = decided.default
@@ -395,9 +503,30 @@ def _field(decided: ir.Field) -> DataModelField:
     if decided.wire != decided.name:
         kwargs["alias"] = decided.wire
         kwargs["original_name"] = decided.wire
+    annotation = _data_type(decided.type)
+    if constructed is not None and not decided.required:
+        # **The ``| None`` an optional field's annotation carries is stated HERE when the
+        # default is constructed, because the model layer stops deriving it.**  Measured
+        # on the pinned generator: ``DataModelFieldBase._type_hint_from_data_type``
+        # returns the bare hint as soon as ``has_default_factory`` is true, which is its
+        # own ``use_default_factory_for_optional_nested_models`` feature's intent and not
+        # ours -- so ``slots`` rendered ``list[SlotsItem]`` where every other optional
+        # field renders ``list[SlotsItem] | None``, and the class then REFUSED the
+        # ``None`` the document admits and rendered ``{"type": "array"}`` where it had
+        # rendered an ``anyOf`` with ``null``.  Both are changes to the accepted set, and
+        # neither belongs to a row about the default's TYPE.
+        #
+        # Stated as the type it is -- a union with the ``None`` arm -- rather than by
+        # reaching past the model layer, so the annotation is composed the one way this
+        # module composes a union (:func:`_data_type`'s ``union`` arm) and the hint is
+        # still the model layer's own text.  The ADAPTER keeps the non-optional type: the
+        # document states a non-null default, so that is what it must validate against.
+        annotation = _TYPES.data_type(
+            data_types=[annotation, _data_type(ir.TypeRef(path="None"))]
+        )
     return DataModelField(
         name=decided.name,
-        data_type=_data_type(decided.type),
+        data_type=annotation,
         required=decided.required,
         constraints=Constraints(**constraints) if constraints else None,
         extras=extras,
@@ -717,6 +846,16 @@ def klass(decl: ir.ClassDecl, declared: Sequence[Approximation] = ()) -> Rendere
         out.imports.add(("pydantic", "ConfigDict"))
     else:
         out.imports.discard(("pydantic", "ConfigDict"))
+    # ``TypeAdapter`` follows the TEXT, which is the rule one line up and for its reason.
+    # The name is named by a CONSTRUCTED default's factory expression and by nothing else,
+    # and that expression is a field's rather than a class's -- so it cannot be decided
+    # from ``decl``, and the model layer does not report it: ``_constructed_default``
+    # resolves the symbol through the model layer to get its spelling, but the import
+    # rides a field's ``extras`` and a ``DataModelField`` collects imports off its
+    # ``data_type`` alone.  A class with no constructed default therefore adds nothing,
+    # which is what keeps every module the tree already carried byte-identical.
+    if f"{TYPE_ADAPTER[1]}(" in out.text:
+        out.imports.add(TYPE_ADAPTER)
     # ``ClassVar`` and ``SchemaRef`` are named by the class-body lines and by nothing
     # else, so a class with no body line needs neither.  Read off the LINES this call
     # produced rather than off ``decl``, which is the ``ConfigDict`` filter's own rule

@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, Any, ClassVar, Literal
 
-from pydantic import AfterValidator, ConfigDict, Field, NonNegativeInt
+from pydantic import AfterValidator, ConfigDict, Field, NonNegativeInt, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule, UniqueItems
@@ -547,7 +547,7 @@ class RepeatableGroupAsset(AdCPBaseModel):
     required: Annotated[bool, Field(description='Whether this asset group is required. If true, at least min_count repetitions must be provided.')]
     min_count: Annotated[NonNegativeInt, Field(description='Minimum number of repetitions required (if group is required) or allowed (if optional)')]
     max_count: Annotated[IntMin1, Field(description='Maximum number of repetitions allowed')]
-    selection_mode: Annotated[SelectionMode | None, Field(description="How the platform uses repetitions of this group. 'sequential' means all items display in order (carousels, playlists). 'optimize' means the platform selects the best-performing combination from alternatives (asset group optimization like Meta Advantage+ or Google Pmax).")] = 'sequential'
+    selection_mode: Annotated[SelectionMode | None, Field(default_factory=lambda: TypeAdapter(SelectionMode).validate_python('sequential'), description="How the platform uses repetitions of this group. 'sequential' means all items display in order (carousels, playlists). 'optimize' means the platform selects the best-performing combination from alternatives (asset group optimization like Meta Advantage+ or Google Pmax).", json_schema_extra={'default': 'sequential'})]
     assets: Annotated[list[GroupImageAsset | GroupVideoAsset | GroupAudioAsset | GroupTextAsset | GroupMarkdownAsset | GroupHtmlAsset | GroupCssAsset | GroupJavaScriptAsset | GroupZipAsset | GroupVastAsset | GroupDaastAsset | GroupUrlAsset | GroupWebhookAsset | GroupBriefAsset | GroupCatalogAsset | GroupDisplayTagAsset | GroupPublishedPostAsset | GroupCardAsset | GroupPixelTrackerAsset | GroupVastTrackerAsset | GroupDaastTrackerAsset], Field(description='Assets within each repetition of this group')]
 
 

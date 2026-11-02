@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
@@ -28,8 +28,8 @@ class Sort(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/list-creatives-request.json', pointer='#/properties/sort')
-    field: Annotated[CreativeSortField | None, Field(description='Field to sort by')] = 'created_date'
-    direction: Annotated[SortDirection | None, Field(description='Sort direction')] = 'desc'
+    field: Annotated[CreativeSortField | None, Field(default_factory=lambda: TypeAdapter(CreativeSortField).validate_python('created_date'), description='Field to sort by', json_schema_extra={'default': 'created_date'})]
+    direction: Annotated[SortDirection | None, Field(default_factory=lambda: TypeAdapter(SortDirection).validate_python('desc'), description='Sort direction', json_schema_extra={'default': 'desc'})]
 
 
 class AssignmentProjection(StrEnum):
@@ -79,7 +79,7 @@ class ListCreativesRequest(AdCPVersionEnvelope):
     sort: Annotated[Sort | None, Field(description='Sorting parameters')] = None
     pagination: PaginationRequest | None = None
     include_assignments: Annotated[bool | None, Field(description='Include package assignment information in response')] = True
-    assignment_projection: Annotated[AssignmentProjection | None, Field(description='Controls nested assigned_packages projection when assignments are included. all returns up to assignment_limit active assignments per creative. matching returns only assignments matching filters.indicator_types and requires that filter. Use matching for compact indicator discovery; get_media_buys remains the complete authoritative repair path when assignments_truncated is true.')] = 'all'
+    assignment_projection: Annotated[AssignmentProjection | None, Field(default_factory=lambda: TypeAdapter(AssignmentProjection).validate_python('all'), description='Controls nested assigned_packages projection when assignments are included. all returns up to assignment_limit active assignments per creative. matching returns only assignments matching filters.indicator_types and requires that filter. Use matching for compact indicator discovery; get_media_buys remains the complete authoritative repair path when assignments_truncated is true.', json_schema_extra={'default': 'all'})]
     assignment_limit: Annotated[IntMin1Max200 | None, Field(description='Maximum assigned_packages rows returned per creative. Sellers MUST set assignments.assignments_truncated when additional qualifying rows exist.')] = 50
     include_snapshot: Annotated[bool | None, Field(description='Include a lightweight delivery snapshot per creative (lifetime impressions and last-served date). For detailed performance analytics, use get_creative_delivery.')] = False
     include_items: Annotated[bool | None, Field(description='Include items for multi-asset formats like carousels and native ads')] = False

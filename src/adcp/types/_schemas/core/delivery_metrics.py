@@ -5,7 +5,7 @@ from datetime import date
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, NonNegativeFloat, NonNegativeInt
+from pydantic import ConfigDict, Field, NonNegativeFloat, NonNegativeInt, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Dependencies, Match, Rule
@@ -170,7 +170,7 @@ class PostingsItem(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/delivery-metrics.json', pointer='#/properties/ooh_metrics/properties/postings/items')
     panel_id: Annotated[str, Field(description='Panel reference matching one of panels[].identifiers[].id')]
-    event_type: Annotated[PostingsItemEventType | None, Field(description='What the record attests: initial posting, rotary rotation to a new face, repair/reposting after damage, or removal at flight end')] = 'posted'
+    event_type: Annotated[PostingsItemEventType | None, Field(default_factory=lambda: TypeAdapter(PostingsItemEventType).validate_python('posted'), description='What the record attests: initial posting, rotary rotation to a new face, repair/reposting after damage, or removal at flight end', json_schema_extra={'default': 'posted'})]
     occurred_at: Annotated[date, Field(description='Date the attested event happened. For posted events this is the posting date — display terms customarily run from the average posting date across units.')]
     evidence: Annotated[PlacementEvidence | None, Field(description='Evidence artifact for this event (completion photograph); capture time and location ride the artifact')] = None
 

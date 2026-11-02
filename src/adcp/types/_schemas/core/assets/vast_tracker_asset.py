@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AfterValidator, ConfigDict, Field, NonNegativeInt
+from pydantic import AfterValidator, ConfigDict, Field, NonNegativeInt, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NotValue, Rule
@@ -63,7 +63,7 @@ class VASTTrackerAsset(AdCPBaseModel):
     url: Annotated[MacroBearingURL, Field(description='Tracker URL fired for the VAST event. Attached declarations identify each macro occurrence, registry revision, processing actor, and exact encoding profile.')]
     macro_declarations: Annotated[list[MacroDeclarationsItem] | None, Field(description='Exact tokens in `url` and their resolver/encoding contracts.', min_length=1)] = None
     offset: Annotated[StrMatching38E7F7CC | None, Field(description='VAST `offset` attribute. Required when `vast_event` is `progress`; ignored otherwise for compatibility with existing 3.x manifests. Format matches the VAST 4.2 XSD `Tracking@offset` pattern: `HH:MM:SS` or `HH:MM:SS.mmm` for absolute time (two-digit hours, minutes 00–59, seconds 00–59), or an integer percentage 0–100 suffixed with `%`. Negative offsets are NOT permitted — the VAST 4.2 XSD pattern does not allow a leading minus.')] = None
-    target: Annotated[Target | None, Field(description='Which VAST creative element this tracker scopes to — `linear` for `<Linear>/<TrackingEvents>`, `non_linear` for `<NonLinearAds>/<TrackingEvents>`, `companion` for `<CompanionAds>/<Companion>/<TrackingEvents>`. Defaults to `linear`. Existing 3.x assets remain structurally permissive; a tracker execution contract applies the standards-valid event/target matrix when matching a creative to a product.')] = 'linear'
+    target: Annotated[Target | None, Field(default_factory=lambda: TypeAdapter(Target).validate_python('linear'), description='Which VAST creative element this tracker scopes to — `linear` for `<Linear>/<TrackingEvents>`, `non_linear` for `<NonLinearAds>/<TrackingEvents>`, `companion` for `<CompanionAds>/<Companion>/<TrackingEvents>`. Defaults to `linear`. Existing 3.x assets remain structurally permissive; a tracker execution contract applies the standards-valid event/target matrix when matching a creative to a product.', json_schema_extra={'default': 'linear'})]
     provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this asset, overrides manifest-level provenance.')] = None
 
 

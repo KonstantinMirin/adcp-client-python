@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
+from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
@@ -55,7 +55,7 @@ class Budget(BranchDispatchMixin, AdCPBaseModel):
         return "oneOf"
     total: Annotated[float, Field(description='Total authorized budget.')]
     currency: Annotated[str, Field(description='ISO 4217 currency code.')]
-    accounting_mode: Annotated[AccountingMode | None, Field(description='Controls which verified adjustments restore reusable plan headroom. gross_commitment allows verified decommitments only; verified_net_cost also allows buyer-accepted refunds and credits. Both modes retain the original commitment in anti-fragmentation history and expose economic net cost separately.')] = 'gross_commitment'
+    accounting_mode: Annotated[AccountingMode | None, Field(default_factory=lambda: TypeAdapter(AccountingMode).validate_python('gross_commitment'), description='Controls which verified adjustments restore reusable plan headroom. gross_commitment allows verified decommitments only; verified_net_cost also allows buyer-accepted refunds and credits. Both modes retain the original commitment in anti-fragmentation history and expose economic net cost separately.', json_schema_extra={'default': 'gross_commitment'})]
     per_seller_max_pct: Annotated[float | None, Field(description='Maximum percentage of budget that can go to a single seller.')] = None
     reallocation_threshold: Annotated[NonNegativeFloat | None, Field(description='Amount above which budget reallocations require human escalation. The orchestrator can reallocate spend across sellers, channels, or purchase types up to this threshold per change without asking a human. Set equal to `total` for effectively unlimited reallocation; set to 0 to require approval for every reallocation. Separate from `plan.human_review_required`, which governs decisions affecting data subjects (targeting, creative, delivery) under GDPR Art 22 / EU AI Act Annex III. Denominated in `budget.currency`.')] = None
     reallocation_unlimited: Annotated[bool | None, Field(description='Set to true to allow the orchestrator to reallocate without any limit up to `total`. Mutually exclusive with `reallocation_threshold`. Use this for deliberate full-autonomy declarations rather than setting `reallocation_threshold: total` (which silently tightens when `total` changes).')] = None

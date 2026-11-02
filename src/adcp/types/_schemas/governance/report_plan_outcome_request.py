@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNegativeInt
+from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNegativeInt, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
@@ -101,7 +101,7 @@ class ReportPlanOutcomeRequest(AdCPVersionEnvelope):
     plan_id: Annotated[str, Field(description='The plan this outcome is for. The plan is owned by the authenticated buyer that synchronized it; plan_id is an identifier, not an account credential. Completed and failed settlements inherit their commercial binding from the exact approved check tuple.')]
     check_id: Annotated[str | None, Field(description='The check_id from check_governance. Required for completed and failed outcomes and for buyer delivery observations. A delivery observation names the exact seller delivery check whose canonical statement is being compared.')] = None
     idempotency_key: Annotated[StrMinLen16MaxLen255Matching1E5CF9EB, Field(description='Buyer-generated unique key for this outcome report. An identical retry returns the cached response without another settlement; reuse with a different canonical payload returns IDEMPOTENCY_CONFLICT. Use a fresh UUID v4 for each distinct report.')]
-    purchase_type: Annotated[PurchaseType | None, Field(description="The type of financial commitment this outcome is for. Must equal the original approved intent's purchase_type. Determines which budget allocation (if any) to charge against. Defaults to 'media_buy' when omitted.")] = 'media_buy'
+    purchase_type: Annotated[PurchaseType | None, Field(default_factory=lambda: TypeAdapter(PurchaseType).validate_python('media_buy'), description="The type of financial commitment this outcome is for. Must equal the original approved intent's purchase_type. Determines which budget allocation (if any) to charge against. Defaults to 'media_buy' when omitted.", json_schema_extra={'default': 'media_buy'})]
     outcome: Annotated[OutcomeType, Field(description='Outcome type.')]
     seller_response: Annotated[SellerResponse | None, Field(description="The seller's full response. Required when outcome is 'completed'.")] = None
     delivery: Annotated[Delivery | None, Field(description='Buyer-attributed observation compared with the canonical seller delivery statement identified by check_id. This evidence never overwrites seller evidence or creates a second commitment. A conflict produces an explicit disputed reconciliation state while the operational period is open; the plan owner may close it without asserting final billing truth.')] = None

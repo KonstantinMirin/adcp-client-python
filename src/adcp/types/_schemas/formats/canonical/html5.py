@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import ConfigDict, Field, NonNegativeInt
+from pydantic import ConfigDict, Field, NonNegativeInt, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Presence, PresenceGroups, Rule
@@ -41,7 +41,7 @@ class CanonicalFormatHTML5Banner(CanonicalFormatBase):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         PresenceGroups((Presence(require=(('width', 'height'),), forbid=(('sizes',), ('min_width',), ('max_width',), ('min_height',), ('max_height',))), Presence(require=(('sizes',),), forbid=(('width',), ('height',), ('min_width',), ('max_width',), ('min_height',), ('max_height',))), Presence(require=(('min_width',), ('max_width',), ('min_height',), ('max_height',)), forbid=(('width',), ('height',), ('sizes',))), Presence(require=(), forbid=(('width',), ('height',), ('sizes',), ('min_width',), ('max_width',), ('min_height',), ('max_height',)))), 'oneOf'),
     )
-    slots: Annotated[list[SlotsItem] | None, Field(description="Default slots for html5 canonical. Buyer ships a zip bundle plus optional backup image (required when `backup_image_required: true`) and clickthrough URL. The zip's entry point is typically `index.html`; click handling uses the `clickTag` (or `clickTAG`) macro substituted by the seller at serve time.")] = [{'asset_group_id': 'html5_bundle', 'asset_type': 'zip', 'required': True}, {'asset_group_id': 'backup_image', 'asset_type': 'image', 'required': False}, {'asset_group_id': 'landing_page_url', 'asset_type': 'url', 'required': False}]
+    slots: Annotated[list[SlotsItem] | None, Field(default_factory=lambda: TypeAdapter(list[SlotsItem]).validate_python([{'asset_group_id': 'html5_bundle', 'asset_type': 'zip', 'required': True}, {'asset_group_id': 'backup_image', 'asset_type': 'image', 'required': False}, {'asset_group_id': 'landing_page_url', 'asset_type': 'url', 'required': False}]), description="Default slots for html5 canonical. Buyer ships a zip bundle plus optional backup image (required when `backup_image_required: true`) and clickthrough URL. The zip's entry point is typically `index.html`; click handling uses the `clickTag` (or `clickTAG`) macro substituted by the seller at serve time.", json_schema_extra={'default': [{'asset_group_id': 'html5_bundle', 'asset_type': 'zip', 'required': True}, {'asset_group_id': 'backup_image', 'asset_type': 'image', 'required': False}, {'asset_group_id': 'landing_page_url', 'asset_type': 'url', 'required': False}]})]
     width: Annotated[IntMin1 | None, Field(description='Required banner width in pixels — use for fixed-size slots. For multi-size flexible slots use `sizes[]`; for responsive use `min_width`/`max_width`/`min_height`/`max_height`. Exactly one of `(width, height)`, `sizes[]`, or `min/max_width` + `min/max_height` ranges MUST be set.')] = None
     height: Annotated[IntMin1 | None, Field(description='Required banner height in pixels. See `width` for size-mode mutual exclusion.')] = None
     sizes: Annotated[list[SizesItem] | None, Field(description='List of accepted (width, height) pairs for a multi-size flexible slot (publisher banner that accepts 300×250 OR 728×90 OR 970×250). Mirrors OpenRTB `banner.format[]`. Mutually exclusive with `(width, height)` and with responsive ranges.', min_length=1)] = None

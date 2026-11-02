@@ -5,7 +5,7 @@ from datetime import date
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types.constraints import HttpUrl, StrMatchingA2A26C71, StrMaxLen500, StrMaxLen5000, StrMinLen1
@@ -68,7 +68,7 @@ class PolicyEntry(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/policy-entry.json', pointer='#')
     policy_id: Annotated[str, Field(description='Unique identifier for this policy. Registry-published ids are canonical (e.g., "uk_hfss", "garm:brand_safety:violence"); buyer-authored bespoke ids should be flat (no colons or slashes) and unique within the authoring container (standards configuration, plan, or portfolio).')]
-    source: Annotated[Source | None, Field(description="Origin of this policy. 'registry' = published to the shared AdCP policy registry with full regulatory metadata. 'inline' = authored bespoke for a specific standards configuration, plan, or portfolio. Defaults to 'inline'. Governance agents MUST set 'registry' when publishing to the registry. Within AdCP *task* payloads (every `$ref` to this schema in a request or response), the field is always 'inline' — registry entries are served by the policy registry API, not embedded in task traffic. The x-entity annotation on `policy_id` assumes the task-payload invariant; if a future task schema adopts registry-publishing, split the annotation accordingly (see issue #2685).")] = 'inline'
+    source: Annotated[Source | None, Field(default_factory=lambda: TypeAdapter(Source).validate_python('inline'), description="Origin of this policy. 'registry' = published to the shared AdCP policy registry with full regulatory metadata. 'inline' = authored bespoke for a specific standards configuration, plan, or portfolio. Defaults to 'inline'. Governance agents MUST set 'registry' when publishing to the registry. Within AdCP *task* payloads (every `$ref` to this schema in a request or response), the field is always 'inline' — registry entries are served by the policy registry API, not embedded in task traffic. The x-entity annotation on `policy_id` assumes the task-payload invariant; if a future task schema adopts registry-publishing, split the annotation accordingly (see issue #2685).", json_schema_extra={'default': 'inline'})]
     version: Annotated[str | None, Field(description='Semver version string (e.g., "1.0.0"). Incremented when policy content changes. Optional for inline bespoke policies — defaults to "1.0.0". SHOULD be provided for registry-published policies.')] = None
     name: Annotated[str | None, Field(description='Human-readable name (e.g., "UK HFSS Restrictions"). Optional for inline bespoke policies — servers MAY default to policy_id.')] = None
     description: Annotated[StrMaxLen500 | None, Field(description='Brief summary of what this policy covers.')] = None
