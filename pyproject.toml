@@ -262,6 +262,7 @@ files = [
     "codegen/keywords.py",
     "codegen/ir.py",
     "codegen/bundle.py",
+    "codegen/catalogue.py",
     "codegen/patch.py",
     "codegen/schema",
     "codegen/lower",
