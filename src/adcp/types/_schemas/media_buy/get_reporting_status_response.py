@@ -146,7 +146,7 @@ class SummaryView(SuccessfulLookup):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-reporting-status-response.json', pointer='#/oneOf/0/oneOf/0')
-    view: Annotated[Literal['summary'], Field(description='Stable response-shape discriminator. SDK convenience methods may default this to summary, but the wire request is explicit.')]
+    view: Annotated[Literal[ReportingStatusView.SUMMARY], Field(description='Stable response-shape discriminator. SDK convenience methods may default this to summary, but the wire request is explicit.')]
     account_id: Annotated[StrMinLen1, Field(description='Resolved seller/storefront account identifier.')]
     coverage: Annotated[ReportingCoverage, Field(description='Aggregated effective coverage for the exact selected scope. This remains independent of reporting health and finality so a fresh covered subset cannot look like complete campaign reporting.')]
     data_through: Annotated[AwareDatetime | None, Field(description='Conservative latest included event time across satisfied obligations in scope, or null when unavailable/unknown.')]
@@ -174,7 +174,7 @@ class PeriodsView(SuccessfulLookup):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-reporting-status-response.json', pointer='#/oneOf/0/oneOf/1')
-    view: Annotated[Literal['periods'], Field(description='Stable response-shape discriminator. SDK convenience methods may default this to summary, but the wire request is explicit.')]
+    view: Annotated[Literal[ReportingStatusView.PERIODS], Field(description='Stable response-shape discriminator. SDK convenience methods may default this to summary, but the wire request is explicit.')]
     pagination: PeriodsViewPagination
     account_id: Annotated[StrMinLen1, Field(description='Resolved seller/storefront account identifier.')]
     ledger_as_of: Annotated[AwareDatetime, Field(description='Exclusive observation boundary for ledger_snapshot_id. Revisions committed later appear only in a later reconciliation.')]
@@ -194,7 +194,7 @@ class RevisionView(SuccessfulLookup):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-reporting-status-response.json', pointer='#/oneOf/0/oneOf/2')
-    view: Annotated[Literal['revision'], Field(description='Stable response-shape discriminator. SDK convenience methods may default this to summary, but the wire request is explicit.')]
+    view: Annotated[Literal[ReportingStatusView.REVISION], Field(description='Stable response-shape discriminator. SDK convenience methods may default this to summary, but the wire request is explicit.')]
     pagination: RevisionViewPagination
     account_id: Annotated[StrMinLen1, Field(description='Resolved seller/storefront account identifier.')]
     ledger_as_of: Annotated[AwareDatetime, Field(description='Exclusive observation boundary for ledger_snapshot_id. Revisions committed later appear only in a later reconciliation.')]

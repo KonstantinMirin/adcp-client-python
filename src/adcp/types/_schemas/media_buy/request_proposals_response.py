@@ -153,8 +153,8 @@ class RequestProposalsResponseProposedCompleted(RequestProposalsResponse):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('reason',), ('suggestions',), ('purchase_continuation',), ('task_id',))),
     )
-    outcome: Literal['proposed']
-    status: Literal['completed'] | None = None
+    outcome: Literal[Outcome.PROPOSED]
+    status: Literal[Status.COMPLETED] | None = None
     products: Annotated[list[CanonicalProduct], Field(min_length=1)]
     proposals: Annotated[list[ProposalsItem], Field(min_length=1)]
 
@@ -167,8 +167,8 @@ class RequestProposalsResponseProductsAvailableCompleted(RequestProposalsRespons
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('proposals',), ('reason',), ('suggestions',), ('task_id',))),
     )
-    outcome: Literal['products_available']
-    status: Literal['completed'] | None = None
+    outcome: Literal[Outcome.PRODUCTS_AVAILABLE]
+    status: Literal[Status.COMPLETED] | None = None
     products: Annotated[list[CanonicalProduct], Field(min_length=1)]
     purchase_continuation: Annotated[PurchaseContinuationListedPurchaseAccount | PurchaseContinuationLegacyCreate, Field(description='Deprecated AdCP 3.x projection instruction for purchasing products returned without a proposal. This is coordinator state, not a claim that the established seller implements a compact task. A native 3.2 seller MUST NOT emit it.')]
 
@@ -181,8 +181,8 @@ class RequestProposalsResponseRejectedCompleted(RequestProposalsResponse):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('proposals',), ('products',), ('incomplete',), ('purchase_continuation',), ('task_id',))),
     )
-    outcome: Literal['rejected']
-    status: Literal['completed'] | None = None
+    outcome: Literal[Outcome.REJECTED]
+    status: Literal[Status.COMPLETED] | None = None
     reason: StrMinLen1
 
 

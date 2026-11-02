@@ -75,7 +75,7 @@ class ResultsItemRevised(ResultsItem):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('proposal',), ('reason_code',), ('reason',), ('unsatisfied_constraints',), ('unsatisfied_product_changes',))),
     )
-    outcome: Literal['revised']
+    outcome: Literal[Outcome.REVISED]
     proposals: Annotated[list[ResultsItemRevisedProposalsItem], Field(description='Draft successors produced for a revision. Without alternatives this contains one proposal. With alternatives.count, revised contains exactly that many proposals with unique terms_digest values; fewer or commercially duplicate proposals require partial.', min_length=1)]
 
 
@@ -90,7 +90,7 @@ class ResultsItemPartial(ResultsItem):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('proposal',),)),
     )
-    outcome: Literal['partial']
+    outcome: Literal[Outcome.PARTIAL]
     proposals: Annotated[list[ResultsItemPartialProposalsItem], Field(description='Draft successors produced for a revision. Without alternatives this contains one proposal. With alternatives.count, revised contains exactly that many proposals with unique terms_digest values; fewer or commercially duplicate proposals require partial.', min_length=1)]
     reason: StrMinLen1
     reason_code: Annotated[ProposalRefinementReason, Field(description='Single most-significant code for this result. constraint_unsatisfiable takes precedence over every other code; an alternatives shortfall alongside an unsatisfied constraint remains visible through proposals.length.')]
@@ -117,7 +117,7 @@ class ResultsItemFinalized(ResultsItem):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('proposals',), ('reason_code',), ('reason',), ('unsatisfied_constraints',), ('unsatisfied_product_changes',))),
     )
-    outcome: Literal['finalized']
+    outcome: Literal[Outcome.FINALIZED]
     proposal: Proposal
 
 
@@ -129,7 +129,7 @@ class RefineProposalsResponseResultsItemUnable(ResultsItem):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('proposal',), ('proposals',))),
     )
-    outcome: Literal['unable']
+    outcome: Literal[Outcome.UNABLE]
     reason: StrMinLen1
     reason_code: Annotated[ProposalRefinementReason, Field(description='Single most-significant code for this result. constraint_unsatisfiable takes precedence over every other code; an alternatives shortfall alongside an unsatisfied constraint remains visible through proposals.length.')]
 
@@ -180,7 +180,7 @@ class RefineProposalsResponseCompleted(RefineProposalsResponse):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('task_id',),)),
     )
-    status: Literal['completed'] | None = None
+    status: Literal[Status.COMPLETED] | None = None
     products: Annotated[list[CanonicalProduct], Field(description="Canonical products needed to evaluate the resulting terms. For revised or partial results whose effective criteria contain property or collection lists, each affected product MUST carry fresh list_applications receipts from the revision's product reevaluation. Finalization changes no terms and MAY repeat the receipts already bound to the source proposal rather than reevaluating them.")]
     results: Annotated[list[ResultsItem], Field(description="Ordered results. If any result is finalized, every result MUST be finalized; a finalize batch either creates every requested hold or none. Every returned proposal carries parent_proposal_id equal to the result's source_proposal_id, making negotiation lineage reconstructible from the proposals alone.", min_length=1)]
 

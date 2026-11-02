@@ -133,7 +133,7 @@ class ProposalRefinementFinalize(ProposalRefinement):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('change_kind',), ('constraints',), ('product_changes',), ('alternatives',), ('ask',), ('criteria',), ('remove_media_buy_frequency_cap',))),
     )
-    action: Annotated[Literal['finalize'], Field(description='revise creates a new draft snapshot with changed commercial terms. finalize MUST target a draft; it creates a new committed snapshot without changing terms and reserves inventory until its expires_at.')]
+    action: Annotated[Literal[Action.FINALIZE], Field(description='revise creates a new draft snapshot with changed commercial terms. finalize MUST target a draft; it creates a new committed snapshot without changing terms and reserves inventory until its expires_at.')]
 
 
 class ProposalRefinementRevise(ProposalRefinement):
@@ -150,7 +150,7 @@ class ProposalRefinementRevise(ProposalRefinement):
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='media-buy/proposal-refinement.json', pointer='#/oneOf/1/anyOf', keyword='anyOf', kind='UNDERDETERMINED', rung='JOIN', fact=({'required': ['constraints']}, {'required': ['product_changes']}, {'required': ['alternatives']}, {'required': ['ask']}, {'required': ['criteria']}, {'required': ['remove_media_buy_frequency_cap']}, {'properties': {'change_kind': {'type': 'string', 'const': 'cancellation'}}, 'required': ['change_kind']}), attribution='docs/plan/rebuild-plan.md §5 combinators/anyOf'),
     )
-    action: Annotated[Literal['revise'], Field(description='revise creates a new draft snapshot with changed commercial terms. finalize MUST target a draft; it creates a new committed snapshot without changing terms and reserves inventory until its expires_at.')]
+    action: Annotated[Literal[Action.REVISE], Field(description='revise creates a new draft snapshot with changed commercial terms. finalize MUST target a draft; it creates a new committed snapshot without changing terms and reserves inventory until its expires_at.')]
 
 
 class ProposalRefinementReviseConstraints(ProposalRefinementRevise):
@@ -206,7 +206,7 @@ class ProposalRefinementReviseCancellation(ProposalRefinementRevise):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/proposal-refinement.json', pointer='#/oneOf/1/anyOf/6')
-    change_kind: Annotated[Literal['cancellation'], Field(description='Desired successor proposal. cancellation is valid only when the source proposal is accepted and attached to a non-terminal MediaBuy.')]
+    change_kind: Annotated[Literal[ChangeKind.CANCELLATION], Field(description='Desired successor proposal. cancellation is valid only when the source proposal is accepted and attached to a non-terminal MediaBuy.')]
 
 
 ProposalRefinementRevise._branch_models = (ProposalRefinementReviseConstraints, ProposalRefinementReviseProductChanges, ProposalRefinementReviseAlternatives, ProposalRefinementReviseAsk, ProposalRefinementReviseCriteria, ProposalRefinementReviseRemoveMediaBuyFrequencyCap, ProposalRefinementReviseCancellation,)

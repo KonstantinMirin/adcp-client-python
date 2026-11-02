@@ -82,37 +82,37 @@ class Country(StrEnum):
 class PostalCountrySystemPlz(PostalCountrySystem):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/postal-country-system.json', pointer='#/anyOf/3')
     country: Annotated[Country, Field(description='ISO 3166-1 alpha-2 country code.')]
-    system: Annotated[Literal['plz'], Field(description='Country-local postal code system.')]
+    system: Annotated[Literal[PostalCodeSystem.PLZ], Field(description='Country-local postal code system.')]
 
 
 class PostalCountrySystemFRCodePostal(PostalCountrySystem):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/postal-country-system.json', pointer='#/anyOf/4')
     country: Annotated[Literal['FR'], Field(description='ISO 3166-1 alpha-2 country code.')]
-    system: Annotated[Literal['code_postal'], Field(description='Country-local postal code system.')]
+    system: Annotated[Literal[PostalCodeSystem.CODE_POSTAL], Field(description='Country-local postal code system.')]
 
 
 class PostalCountrySystemAUPostcode(PostalCountrySystem):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/postal-country-system.json', pointer='#/anyOf/5')
     country: Annotated[Literal['AU'], Field(description='ISO 3166-1 alpha-2 country code.')]
-    system: Annotated[Literal['postcode'], Field(description='Country-local postal code system.')]
+    system: Annotated[Literal[PostalCodeSystem.POSTCODE], Field(description='Country-local postal code system.')]
 
 
 class PostalCountrySystemBRCep(PostalCountrySystem):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/postal-country-system.json', pointer='#/anyOf/6')
     country: Annotated[Literal['BR'], Field(description='ISO 3166-1 alpha-2 country code.')]
-    system: Annotated[Literal['cep'], Field(description='Country-local postal code system.')]
+    system: Annotated[Literal[PostalCodeSystem.CEP], Field(description='Country-local postal code system.')]
 
 
 class PostalCountrySystemINPin(PostalCountrySystem):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/postal-country-system.json', pointer='#/anyOf/7')
     country: Annotated[Literal['IN'], Field(description='ISO 3166-1 alpha-2 country code.')]
-    system: Annotated[Literal['pin'], Field(description='Country-local postal code system.')]
+    system: Annotated[Literal[PostalCodeSystem.PIN], Field(description='Country-local postal code system.')]
 
 
 class PostalCountrySystemZAPostalCode(PostalCountrySystem):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/postal-country-system.json', pointer='#/anyOf/8')
     country: Annotated[Literal['ZA'], Field(description='ISO 3166-1 alpha-2 country code.')]
-    system: Annotated[Literal['postal_code'], Field(description='Country-local postal code system.')]
+    system: Annotated[Literal[PostalCodeSystem.POSTAL_CODE], Field(description='Country-local postal code system.')]
 
 
 class PostalCountrySystemBranch9System(StrEnum):

@@ -1132,7 +1132,7 @@ class ColorRefName(ColorRef):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/color_ref/oneOf/0')
-    kind: Annotated[Literal['name'], Field(description='Discriminator for the color reference variant.')]
+    kind: Annotated[Literal[Kind.NAME], Field(description='Discriminator for the color reference variant.')]
     name: Annotated[str, Field(description='Key from the colors object, such as market_yellow, river_green, or any custom palette key. Unambiguous lookup into colors{}.')]
 
 
@@ -1141,7 +1141,7 @@ class ColorRefValue(ColorRef):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/color_ref/oneOf/1')
-    kind: Annotated[Literal['value'], Field(description='Discriminator for the color reference variant.')]
+    kind: Annotated[Literal[Kind.VALUE], Field(description='Discriminator for the color reference variant.')]
     value: Annotated[HexColor, Field(description='Literal hex color when no palette key exists.')]
 
 
@@ -1150,7 +1150,7 @@ class ColorRefSurface(ColorRef):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/color_ref/oneOf/2')
-    kind: Annotated[Literal['surface'], Field(description='Discriminator for the color reference variant.')]
+    kind: Annotated[Literal[Kind.SURFACE], Field(description='Discriminator for the color reference variant.')]
     surface: Annotated[Surface, Field(description='Usage surface rather than a specific color value.')]
 
 
