@@ -931,12 +931,14 @@ sources, in order:
    limitation of its own, and there is nothing to work around. Reading the key ourselves in
    `BranchDispatchMixin._dispatch` fails identically: an absent key cannot be read.
 
-   The two predicates agree wherever the pinned key is required, which is every union of this
-   bundle but one, so the weaker one passes 83 of 84 and the counterexample is the only place it
-   shows. `media-buy/refine-proposals-response.json` pins `status` to `completed` at `/anyOf/0`
-   and does not list it in that arm's `required`, while `/anyOf/1` pins `submitted` and does
-   require it — so the arms are separated by their `required` sets, which are disjoint
-   (`[results, products]` against `[status, task_id]`), and source 3 is the one that answers.
+   **The two predicates agree wherever the pinned key is required**, so testing the weaker one
+   passes nearly everywhere and fails only where a document pins a key one branch lets an instance
+   omit. That near-agreement is why the weak predicate must be named and not merely corrected: it
+   will look right in every case a reader checks by hand.
+
+   A `oneOf` whose branches pin distinct values requires the key by implication — absent, the
+   instance matches several branches and `oneOf` admits none — so the entailment, not the
+   `required` list alone, is what this source reads.
 2. **A key the bundle's manifest states.** `manifest.task_result_resolution` names the
    discriminator field and a template resolving a schema from it, and `manifest.tools` is the
    table. Such a union emits as a mapping keyed by that field: its discriminant is in the
