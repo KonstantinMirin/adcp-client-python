@@ -1114,6 +1114,48 @@ WIDENED declaration and §8's draw hands the class exactly such a value. The cel
 says "the schema half enforces exclusivity", which is true only of a caller who invokes
 `strict_validate`; correcting that sentence is a cell edit and not this rendering's.
 
+**ONE VOCABULARY IS ONE TYPE, COLLECTED BEFORE EMISSION (decided 2026-11-02).** The bundle
+states the same value set at many positions and says so in many spellings, and compiling each
+position independently turns one protocol concept into several Python types that are not
+interchangeable. Measured:
+
+| reading | |
+|---|---|
+| distinct string-enum vocabularies in the bundle | **807** |
+| declared at more than one position | **663**, covering **16,135** positions |
+| enum classes emitted for them | **897** |
+| distinct member-sets among those classes | **715** |
+| member-sets emitted MORE THAN ONCE | **128**, across **310** classes |
+
+One member set is emitted as `Status`, `BuyerAssetAcceptance` **and** `HostReceiptStatus` — seven
+classes, three names, one concept. A function annotated with one refuses the others and
+`isinstance` fails across them, so a consumer meeting the same protocol value in two messages
+cannot pass it between them. §4's identity rule does not reach this: it collapses nodes of
+IDENTICAL CONTENT, and these are the same vocabulary spelled independently.
+
+**So the walk COLLECTS vocabularies before it names anything, and every position references the
+one type.** The alias is the emission's single declaration of that value set; a position holds a
+reference to it and never a copy.
+
+**The NAME comes from the bundle and from nowhere else**, which is §4's standing rule and is what
+makes this derivable rather than a mint:
+
+- **the bundle gives exactly one `title` — 203 vocabularies.** That title is the name. The widest
+  is titled "Authentication Scheme" at 94 of its 259 positions, which is enough: one title, no
+  conflict.
+- **the bundle gives no title anywhere — 457 vocabularies.** These are **NOT collapsed across
+  documents.** Nothing names the concept, and §4 already refuses to mint a public name no document
+  states. Two fields sharing a member set by coincidence are not one type, and without a title
+  there is nothing to tell coincidence from identity.
+- **the bundle gives conflicting titles — 3 vocabularies.** A decision, brought to the owner with
+  the titles and the positions. Not resolved by picking the commonest.
+
+**And this fixes the `const` override by construction rather than by a second rule.** Where the
+root's `enum` and a branch's `const` are the same vocabulary, both positions reference the one
+alias, so the branch's pin is `Literal[Alias.MEMBER]` because there is no other member to name.
+The rule below stands as the general case — a pin whose field has no collected alias — and stops
+being the mechanism for the discriminator shape that produced the 362.
+
 **TWO RENDERINGS THAT DO NOT TYPE-CHECK, and both are cells (decided 2026-11-02).** Measured
 against the shipped package: mypy reports **440 errors in the generated tree — 362 `[assignment]`
 and 78 `[list-item]`** — so the wheel cannot honestly ship `py.typed` (`architecture.md`), and a
