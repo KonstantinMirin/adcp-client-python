@@ -1,4 +1,4 @@
-# The final state, as ten readings
+# The final state, as nine readings
 
 **A READING IS A FACT ABOUT THE ARTIFACT.** A consumer who has only the installed wheel and the
 bundle can check it. That is the whole of the test for belonging here: a property of `codegen/`
@@ -14,81 +14,91 @@ passes when nothing happens is not a gate: the two structural steps of `architec
 never landed are exactly the two whose only check was "the emitted tree does not change", which is
 true of a no-op.
 
-**A ROW THAT MOVES NO READING IS NOT BRIEFED.** This is what the document is for. `bd` holds the
-rows; this holds what they are for.
+**A ROW THAT MOVES NO READING IS NOT BRIEFED.** `bd` holds the rows; this holds what they are for.
 
-Measured on `emit/from-scratch` at `cc89c418`, 2026-11-02. `oom_kill` 54 before and after every
-run quoted.
+Measured on `emit/from-scratch` at `cd160fe5`, 2026-11-02.
 
 ---
 
-## The ten
+## Two preconditions, which are not readings
+
+**EMISSION IS NOT A READING, AND MISTAKING IT FOR ONE COST WEEKS.** `./check` prints
+`emitted 1054 / refused 0 (deferred 0, verdict 0); accounted 1054` in 1.19 s warm. A document
+emits when the walk produces a class for it. **That says nothing about whether the class states
+what the document states.** It belongs here, beside "the tree compiles", and the correctness
+statement is reading 1. Held by `./check` and by
+`tests/test_emit.py::test_the_committed_tree_is_what_a_fresh_run_emits`.
+
+**THE COMMITTED TREE IS THE FRESH EMISSION.** Every reading below except 8 is measured against
+`src/`, and a reading over `src/` is not a reading over a wheel: packaging decides which files
+ship. Reading 8 is where that gap is closed.
+
+## The nine readings
 
 | # | reading | today |
 |---|---|---|
-| 1 | Every portable document of the bundle emits, and none is refused. | **HOLDS** |
-| 2 | Every class is importable at exactly one `adcp.types.<domain>.<Name>`. | **HOLDS** |
-| 3 | No class admits a value its document refuses, and none refuses a value its document admits. | **does not hold** |
-| 4 | Every exception to reading 3 is a declared widening with a value proving it. | **does not hold** |
-| 5 | Every union root dispatches. | **does not hold** |
-| 6 | Each distinct vocabulary is one type, referenced wherever it is stated. | **does not hold** |
-| 7 | The record states each distinct subtree once. | **does not hold** |
-| 8 | The package declares its types to a consumer's type checker. | **does not hold** |
-| 9 | The wheel builds, installs into a clean environment, and every exported name imports. | **does not hold** |
-| 10 | Every approximated fact is attributed: ours with a decision, upstream with a live issue. | **does not hold** |
+| 1 | **Every class accepts every value its document admits, refuses every value it refuses, and what it dumps validates against the document again.** | **does not hold** |
+| 2 | Every exception to reading 1 is a declared widening with a value proving it. | **does not hold** |
+| 3 | Every union root dispatches. | **does not hold** |
+| 4 | Each distinct vocabulary is one type, referenced wherever it is stated. | **does not hold** |
+| 5 | The record states each distinct subtree once. | **does not hold** |
+| 6 | Every class is importable at exactly one `adcp.types.<domain>.<Name>`. | **HOLDS over `src/`** |
+| 7 | The package declares its types to a consumer's type checker. | **does not hold** |
+| 8 | The wheel builds, installs into a clean environment, and every exported name imports. | **does not hold** |
+| 9 | Every approximated fact is attributed: ours with a decision, upstream with a live issue. | **does not hold** |
 
 ---
 
-### 1. Every portable document emits, and none is refused — HOLDS
+### 1. Every class accepts what its document admits, refuses what it refuses, and its dump validates again
 
-```
-./check  ->  emitted 1054 / refused 0 (deferred 0, verdict 0); accounted 1054
-             kind: verdict 0, deferred 0, chained 0  ->  primary 0, chained 0
-             approximated 120 facts in 53 documents
-```
+**This is the deliverable's correctness, it is the definition of "1,054 schemas produced classes",
+and nothing has ever established it over the whole set.** 2,793 pairs, each a class or alias
+against the document and pointer it names.
 
-1.19 s warm. **This reading is not correctness** and was mistaken for it for weeks: a document
-emits when the walk produces a class for it, which says nothing about whether that class states
-what the document states. Readings 3 to 5 are the correctness ones.
-
-**Gate:** `./check`, and `tests/test_emit.py::test_the_committed_tree_is_what_a_fresh_run_emits`.
-Green. It guards against regression and proves nothing new.
-
-### 2. Every class is importable at exactly one `adcp.types.<domain>.<Name>` — HOLDS
-
-**24 domain modules, 1,952 exports, 0 collisions.** `rebuild-plan.md` §1's one-path rule, over
-roots, branch classes and aliases alike. The 611-of-613 unimportable branch classes that were the
-whole reason for the rewrite are reachable and named.
-
-**Gate:** `tests/test_the_domain_surface.py`, 3 tests, 17.6 s — every export resolves at exactly
-one path, and importing it gives the same object as the private path. Green.
-
-### 3. No class admits a value its document refuses, and none refuses one its document admits
-
-**This is the deliverable's correctness and it is the one reading nothing has ever established.**
-Three failures are proved by payload, and the rest of the set has never been drawn.
+Three failures proved by payload:
 
 | site | direction | row |
 |---|---|---|
-| `media-buy/refine-proposals-response.json#/anyOf/1` | admits `{"task_id": "0"}`, the document requires `status` | `82m.23` |
-| `media-buy/buy-products-request.json#/anyOf/1/properties/account` | admits `{"account_id": "a1"}`, the document requires `brand` and `operator` | `82m.24` |
+| `media-buy/refine-proposals-response.json#/anyOf/1` | admits `{"task_id": "0"}`; the document requires `status` | `82m.23` |
+| `media-buy/buy-products-request.json#/anyOf/1/properties/account` | admits `{"account_id": "a1"}`; the document requires `brand` and `operator` | `82m.24` |
 | `media-buy/request-proposals-request.json#/anyOf/1/properties/account` | the same | `82m.24` |
 
-Six more are proved on the promoted corpus entries (`12d`), including four dropped facts and two
-values the document refuses after a round trip.
+Six more on the promoted corpus entries (`12d`): four dropped facts, one value the document refuses
+after a round trip, one unproved widening.
 
-**And the instrument has never completed a run over the whole set.** 2,793 pairs; the committed
-floor answers 2,714; **79 still draw**, at 240 s to over 2 h 57 m each. That cost is reading 7, not
-a property of the work — which is why reading 7 is the critical path and not a performance row.
+**WHY IT WAS NEVER GREEN, AND IT IS NOT THAT IT WAS GREEN FALSELY.** The run does not finish. The
+committed floor answers 2,714 of the 2,793; **79 still draw**, at 240 s to over 2 h 57 m each.
+Nobody has seen the gate's verdict over the whole set, so "every class passes" was never a reading
+anything produced — it was a test id whose result was unknown. That cost is reading 5, not a
+property of the work, which is why reading 5 is the critical path.
 
-**Gate:** `tests/test_emit.py::test_every_class_passes_all_three_checks`. Red, and it does not
-finish. The per-site payloads above each fail now and must pass; the whole-set run becomes
-affordable when reading 7 holds.
+**AND THE GATE HAS THREE EXITS, which must each be read before any green is believed:**
 
-### 4. Every exception to reading 3 is a declared widening with a value proving it
+- `tests/test_emit.py:1340` reads `if rep.accepts.outcome != "strategy_error":` — **so a
+  `strategy_error` leaves the accepts assertion unexecuted.** It is then caught downstream: a
+  `strategy_error` with no `no_instrument` cause becomes `accepts:strategy_error` and the final
+  assertion fails. The hole is the conjunction — `strategy_error` **with** a cause — which passes
+  with no accepts verdict. `harness.py:554` records the author's own worry about exactly this:
+  "a cause naming every co-occurrence would admit a `strategy_error` from ANY" schema.
+- `no_instrument` passes the pair when the draw was structurally impossible, asserted against a
+  named cause rather than taken on trust.
+- `liveness` accepts `no_payload` beside `pass`.
+
+**A BUDGET CUT IS SPELLED LIKE A VERDICT, and measured it reddens rather than greens.**
+`OverBudget` is a plain `Exception`, so `accepts`'s final `except Exception` clause catches it as
+`model_error` — the category meaning "the model raised something other than a `ValidationError`".
+The test fails on `model_error`, so a cut is a **false red**, indistinguishable from a real defect
+by anything but the clock. 43 of the fill lane's 100 outcomes were cuts spelled this way.
+
+**Gate:** `tests/test_emit.py::test_every_class_passes_all_three_checks`, parametrised over the
+2,793 pairs. Red, and it does not complete. Each payload above fails now and must pass. Two gates
+are owed beside it: no pair may pass through `strategy_error`, and a budget cut must be reported as
+a cut and never as a verdict.
+
+### 2. Every exception to reading 1 is a declared widening with a value proving it
 
 `approximated 120 facts in 53 documents`, declared in the emitted modules as
-`__adcp_approximations__` and equal in both directions to what a fresh run mints. What does **not**
+`__adcp_approximations__` and equal in both directions to what a fresh run mints. What does not
 hold is the proof: the widening store serves a timeout as if it were evidence —
 `[null, "OverBudget: the grade did not finish inside 30 s"]` — and **46 such entries remain**
 (`pjc`). Removing the one covering `trusted-match/offer.json#` turned a pair that "graded" in 8.8 s
@@ -97,32 +107,33 @@ into one that does not finish in 600 s.
 A declaration with no value behind it is an allowlist wearing a measurement.
 
 **Gate:** `tests/test_the_declared_backlog.py` holds the set equality, green. The missing gate is
-the one that is named and does not exist: **no entry of the widening store may record a budget cut
-rather than a value.** Red on 46 the moment it is written.
+named and does not exist: **no entry of the widening store may record a budget cut rather than a
+value.** Red on 46 the moment it is written.
 
-### 5. Every union root dispatches
+### 3. Every union root dispatches
 
 Built every union base's branch adapter over the committed tree: **718 build, 3 raise**, and the 3
 are one root with its two branch classes inheriting the method.
 `RefineProposalsResponse.model_validate(anything)` raises `PydanticUserError` before validating —
-so a consumer receiving a refine-proposals response cannot use the normal entry point, while
-reading 1 calls the document emitted and unrefused.
+so a consumer receiving a refine-proposals response cannot use the normal entry point, while the
+emission precondition calls the document emitted and unrefused.
 
 One cause, and it is a predicate: §4's first dispatch source tests whether every branch **pins** a
 shared property where it must test whether the key **determines** the branch. Pinning is not
 determining — a pin on a key a branch lets an instance omit determines nothing when the key is
 absent. The two predicates agree wherever the pinned key is required, which is 83 of the bundle's
-84 discriminated unions, so the weaker one passes almost everywhere.
+84 discriminated unions, so the weaker one passes almost everywhere and this is its one
+counterexample.
 
 **Gate:** build every union base's branch adapter over the whole committed tree, 0 raises. 1.6 GB
 peak, under a minute. Red on 3. A second: no union carries `Field(discriminator=)` over a key any
 branch does not require.
 
-### 6. Each distinct vocabulary is one type, referenced wherever it is stated
+### 4. Each distinct vocabulary is one type, referenced wherever it is stated
 
 **128 distinct value sets are emitted more than once, across 305 classes, restating 632 member
-strings.** The same enumeration, written out independently at each position that states it, is the
-redeclaration this rewrite exists to remove — and `architecture.md` §3a's catalogue is the answer:
+strings.** The same enumeration written out independently at each position that states it is the
+redeclaration this rewrite exists to remove, and `architecture.md` §3a's catalogue is the answer:
 the value list is written once per distinct member set and the named type is constructed from it.
 
 Of the 128: **35 collapse 79 classes** into one named type each, judged and named; **65** already
@@ -133,10 +144,10 @@ description prose, and a description states what a thing IS, not what it is CALL
 **Gate:** `tests/test_catalogue.py`'s `xfail(strict=True)`, red by construction. It flips when the
 catalogue feeds the walk, and a strict xfail that passes is an error — deliberately.
 
-### 7. The record states each distinct subtree once
+### 5. The record states each distinct subtree once
 
 **THIS IS THE CRITICAL PATH, and it is not a performance row.** Every other reading is verified
-through the record, so its cost is what has kept readings 3 and 4 unknown.
+through the record, so its cost is what has kept readings 1 and 2 unknown.
 
 | | |
 |---|---|
@@ -145,11 +156,11 @@ through the record, so its cost is what has kept readings 3 and 4 unknown.
 | largest single record | **112.9 MB** — `core/mcp-webhook-payload.json` |
 | worst ratio | **7,912×** — `compliance/task-completion-data.json`, 998 bytes to 7,896,628 |
 
-And it is duplication, not content: that 44 MB in-memory record holds **957,187 nodes of which
-6,442 dict subtrees are distinct**, one appearing **1,957 times**. `codegen/bundle.py`'s `inline`
-recurses with no memo and deep-copies every leaf, so each reference re-copies its whole target and
-nested references multiply. `harness.py:306` states where it lands: *"the record is what
-`from_schema` is handed"* — so a strategy is built over 957,187 nodes instead of 6,442.
+And it is duplication, not content: that record holds **957,187 nodes of which 6,442 dict subtrees
+are distinct**, one appearing **1,957 times**. `codegen/bundle.py`'s `inline` recurses with no memo
+and deep-copies every leaf, so each reference re-copies its whole target and nested references
+multiply. `harness.py:306` states where it lands: *"the record is what `from_schema` is handed"* —
+a strategy over 957,187 nodes instead of 6,442.
 
 Two layers. **Sharing** is output-neutral and pays immediately: the same object returned to every
 reference, every record byte-identical. **The record as a DAG** — each distinct subtree once under
@@ -162,7 +173,18 @@ with per-document wall clock and peak RSS as the real gate — byte-identity pas
 the DAG layer, the record's own size: no record exceeds its source document by more than the
 references it resolves. Row `82m.25`.
 
-### 8. The package declares its types to a consumer's type checker
+### 6. Every class is importable at exactly one `adcp.types.<domain>.<Name>` — HOLDS over `src/`
+
+**24 domain modules, 1,952 exports, 0 collisions.** `rebuild-plan.md` §1's one-path rule, over
+roots, branch classes and aliases alike. The 611-of-613 unimportable branch classes that were the
+whole reason for the rewrite are reachable and named.
+
+It holds over the source tree and **not yet over a wheel**, which is reading 8.
+
+**Gate:** `tests/test_the_domain_surface.py`, 3 tests, 17.6 s — every export resolves at exactly
+one path, and importing it gives the same object as the private path. Green.
+
+### 7. The package declares its types to a consumer's type checker
 
 `src/adcp/py.typed` **does not exist**, and neither does `src/adcp/types/py.typed`. Without PEP 561
 a consumer's checker treats the whole package as untyped, so **0 of 20,036 fields over 2,562
@@ -174,19 +196,17 @@ checker over a consumer module importing from `adcp.types.<domain>`, and require
 assignment is an error. Red today because the file is absent, and `architecture.md` records that
 `py.typed` ships with its errors declared rather than waiting for zero.
 
-### 9. The wheel builds, installs into a clean environment, and every exported name imports
+### 8. The wheel builds, installs into a clean environment, and every exported name imports
 
 **The wheel has never been built** (`82m.21`), and cannot be in this environment. So no claim about
-what ships is verified — including readings 2 and 8, which are measured against the source tree and
-not against an installed package. Reading 2 holding over `src/` is not reading 2 holding over a
-wheel: packaging decides what files are included, and 797 MB of records (reading 7) is what would
-ship today.
+what ships is verified — including reading 6, which is measured against `src/` and not against an
+installed package. And 797 MB of records (reading 5) is what would ship today.
 
 **Gate:** none exists. The named one: build the wheel, install it into an environment that has
 never seen this repository, and import all 1,952 exported names from `adcp.types.<domain>`. Red
 today because it has never run.
 
-### 10. Every approximated fact is attributed: ours with a decision, upstream with a live issue
+### 9. Every approximated fact is attributed: ours with a decision, upstream with a live issue
 
 All **120 facts in 53 documents** read as `ours`, because `architecture.md` §14 is right that an
 unfiled gap IS ours. One upstream issue is filed —
@@ -202,8 +222,8 @@ that ground; `82m.19` measures both directions by payload.
 
 **Gate:** `tests/test_the_declared_backlog.py` for the set equality, green. The named one: every
 `upstream` attribution names an issue that exists, and the registry of deliberate narrowings is
-compared by equality against the set of narrowings the run takes — which is red while `url_type`
-narrows and nothing admits it.
+compared by equality against the set of narrowings the run takes — red while `url_type` narrows and
+nothing admits it.
 
 ---
 
@@ -211,8 +231,8 @@ narrows and nothing admits it.
 
 `what-remains.md` is a snapshot of trunk at `b9be6d46`, three weeks and one deleted instrument ago.
 Its groups E and F quote a schema-text comparison that no longer exists, and its group A measures
-an exit condition against code that has since moved. **It is retired by this file.** Where a figure
-is wanted from it, re-measure instead of reading it.
+an exit condition against code that has since moved. **It is retired by this file**, with a banner
+saying so; it is kept because it records what was true when each decision was taken.
 
 ## How to add a reading
 
