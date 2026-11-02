@@ -55,7 +55,7 @@ v9 is not strictly worse, and the comparison should be made honestly: it compute
 `url-asset` `allOf` intersection to `Literal['url']` with a default, for a document this
 compiler currently refuses. The difference is that its waivers are **predicates** over a
 `schema_path`, where this compiler enumerates each site — and that a predicate waiver is, in
-`harness.URL_IMPLIED`'s words, "invisible and permanent".
+`rebuild-plan.md` §2's words, "invisible and permanent".
 
 ## The decision that changes the project (2026-10-26)
 
@@ -82,22 +82,17 @@ all).
 
 ## The guard against the obvious failure mode
 
-285 refusals are impossible to ignore. Declared approximations in a report are easy to. So two
-equalities sit **above** the three checks of `rebuild-plan.md` §8, and neither side of either is
-hand-written:
-
-1. **The comparison's keyword set equals the set the declaration renders.** A keyword missing from
-   the comparison is unexamined in both directions and passes either way.
-2. **The approximated set equals the declared set, in both directions.** Every approximated fact
-   has a declaration or it is *missing* (a defect); every declaration has an approximated fact or
-   it is *over-declared* (also a defect, and the thing that stops declarations rotting into stale
-   excuses).
+A refusal is impossible to ignore. A declared approximation in a report is easy to. So one equality
+sits **above** the checks of `rebuild-plan.md` §8, and neither side of it is hand-written: **the
+set the committed tree carries equals the set a fresh run mints, in both directions.** A fact the
+run mints and the tree does not carry is a stale tree; a declaration the tree carries and the run
+does not mint is an excuse that outlived its cause.
 
 The teeth are in the accepts check: for every fact an approximation drops, the draw takes **the
 dropped keyword's own value classes** and the class must accept every one. A widening is therefore
 *proved*, not believed — a narrowing wearing a declaration fails by value and by pointer. That is
-what keeps "approximated" from being an allowlist: a declaration is a claim with two instruments
-pointed at it.
+what keeps "approximated" from being an allowlist: a declaration is a claim with a value pointed
+at it.
 
 `architecture.md` §14 step 8 is this instrument end to end **with zero cells widened**, and
 nothing else in the directive may land before it passes.
@@ -146,8 +141,8 @@ order, each merged `--no-ff` only after its emitted tree was re-measured:
 1. an entry-point module, so no module of the compiler is ever bound as `__main__`;
 2. the keyword × position declaration, which makes one keyword decision live in one place — the
    keyword screen and the verifier's compared set became its first two readers;
-3. our own `$ref` inliner, replacing a delegated resolver that canonicalised while inlining, so a
-   comparison failure stops being excused by a fold;
+3. our own `$ref` inliner, replacing a delegated resolver that canonicalised while inlining, so
+   the document of record states what the document states;
 4. a complete IR, so nothing before the renderer holds a string of Python;
 5. one parser that assigns position when it builds the node, with one exhaustive dispatch — position
    stops being recovered by parsing pointer strings;
@@ -220,21 +215,23 @@ states `{"type": "string", "format": "uri"}` and nothing about length while the 
 carries `minLength: 1, maxLength: 2083` — `HttpUrl`'s bounds — so the model is tighter than its
 document, "the one defect the design says must never happen", owned by `FORMAT_TYPES`.
 
-**Those bounds are a recorded decision, not a defect.** The bundle spells "a URL" nine different
-ways across 74 sites, and a bare `format: uri` is RFC 3986 — it admits `urn:`, `file:///` and
-`http://` beside `https://`. `codegen/constraints.py`'s `url_type` therefore normalises:
-`AdCPUrl` where the document pins `^https://`, `HttpUrl` elsewhere. `AdCPUrl` everywhere was
-tried first and measured worse — 228 of 300 positions narrowed against `HttpUrl`'s 227. The two
-facts the type adds are admitted by `harness.URL_IMPLIED`, by equality, one entry each.
+**The bounds are a live narrowing and nothing admits them.** The bundle spells "a URL" nine
+different ways across 74 sites, and a bare `format: uri` is RFC 3986 — it admits `urn:`,
+`file:///` and `http://` beside `https://`. `codegen/constraints.py`'s `url_type` normalises:
+`AdCPUrl` where the document pins `^https://`, `HttpUrl` elsewhere. `AdCPUrl` everywhere was tried
+first and measured worse — 228 of 300 positions narrowed against `HttpUrl`'s 227. The registry
+that once admitted the two facts the type adds, `harness.URL_IMPLIED`, **does not exist**: 0
+references repo-wide.
 
-So the test is red for a reason that is not the compiler's. Its own subject, which its docstring
-states, is **which node a bound lands on** — the array or its elements — and it is tripped
-because `HttpUrl` renders `minLength` on the element and **this test does not read
-`URL_IMPLIED`**, while the comparison that grades every pair does. The fix is one test consulting
-the registry the rest of the system already honours.
+So the narrowing is unregistered, and `rebuild-plan.md` §2 withdrew the type on exactly that
+ground — a pydantic URL type **normalises the value**, lowercasing the host and giving an empty
+path a `/`, so the class's value is not the document's. Both directions are measured by payload on
+`adcp-client-python-82m.19`: three `uniqueItems` sites where two document-distinct URI strings
+coerce equal and the class refuses what the document admits, and two sites where the document
+refuses our own dump because the value was rewritten. That row is open and owns the fix.
 
-Reading this passage as written cost a lane: an agent was briefed from it, took the bounds for
-the defect it names, and degraded 86 modules from a URL type to `str` before the change was
-reverted. **A document that calls a decision a defect will be believed.** The gate for this
-branch is "this one and no others"; narrowing the test's assertion to go green would still be
-wrong, but so is changing the compiler to satisfy it.
+Reading an earlier version of this passage cost a lane: it called the bounds a recorded decision,
+an agent was briefed from it, and 86 modules were degraded from a URL type to `str` before the
+change was reverted. **A document that calls a defect a decision will be believed, and so will the
+reverse.** The fix is `82m.19`'s, and it is neither "narrow the assertion until it is green" nor
+"replace the type with `str`".

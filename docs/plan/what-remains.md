@@ -111,12 +111,10 @@ split, and the kind is what names who owns a refusal. `emitted N / population N`
 when a document stops emitting and never says which kind moved — the confusion that let
 `emitted + refused == 1054` read green over 385 documents waiting on unwritten rows.
 
-What remains here is a row, not a decision: **the run prints none of the four defect counts**, so
-a reader infers the pin from a silence §10 forbids, and **the pin is not zero.** `./check
---compare` reads the comparison's three over the whole population in 33 s: paired 2,793 (compared
-2,789, document unreadable 4); red 155 pairs in 75 documents carrying 1,086 facts — missing 718,
-differs 43, added 325; 147 pairs where the model is wider than its document, 8 where it adds a
-fact. Those belong beside `emitted` in the run rather than behind a flag.
+What remains here is a row, not a decision: **the run prints no defect count**, so a reader infers
+the pin from a silence §10 forbids. The counts the run owes are the two checks' — pairs drawn,
+pairs the class admits where the document refuses, pairs it refuses where the document admits, and
+dumps the document rejects — beside `emitted`, and not behind a flag.
 
 ## F. The instruments
 
@@ -131,12 +129,13 @@ None of these is a document the compiler cannot express. They are our ability to
 - `.108`: `_intersection` composes a restatement as `{**child, "allOf": [base]}`, so pointers below
   carry an `allOf` index the document does not have; 2 classes cannot be graded at all and 144 of
   the old 235 approximation pointers did not resolve.
-- 292 red comparison pairs on a fresh tree, 196 on the committed one, against a `COMPARISON_FACTS`
-  pinned empty. **Re-measured and re-pinned at `3be.23`: 155 red pairs over 75 documents carrying
-  1,086 facts (missing 718, differs 43, added 325), every one named in
-  `tests/test_the_comparison_census.py` and read in 53 s by `./check --compare` rather than behind
-  the pole. The pin is no longer empty; the 155 are still red, and 147 of them are a model wider
-  than its document.** The 8 red on `added` alone are classified there and none is a real narrowing.
+- **The schema-text comparison is DELETED (2026-10-30).** It read the class's generated JSON
+  Schema against the document's text and reported 1,086 facts over 155 pairs that no payload ever
+  demonstrated, and that number was reported as correctness for weeks. There is no third check:
+  a class tighter than its document refuses a payload the document admits, a class wider admits
+  one it refuses, and both are the draw's verdict with the payload named. A row naming `missing`,
+  `differs`, `added`, `over-declared` or `COMPARISON_FACTS` predates the deletion and the
+  instrument that produced it is gone.
 
 ## G. Upstream
 
