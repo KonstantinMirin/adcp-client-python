@@ -868,6 +868,28 @@ class Module:
     #: Read only where :attr:`targets` has no entry for the site, so a reference the
     #: document spells itself is answered by its own site and this map cannot shadow one.
     inherited_targets: Mapping[str, Target | Refusal] = field(default_factory=dict)
+    #: **§3a's CATALOGUE, as the walk sees it: ``pointer -> the entry this position
+    #: RESTATES``.**  Keyed by this document's own pointer, so the question a node asks
+    #: is a lookup at its own position and nothing here is a reading of the bundle.
+    #:
+    #: §3a: "The catalogue is an INPUT to the walk, never a pass over its output -- a
+    #: node's type is a REFERENCE to a catalogue entry, or a fresh type where the node is
+    #: genuinely unique.  Rewriting emitted output to deduplicate it afterwards is the
+    #: post-processing this project exists to refuse."  A pointer in this map is the
+    #: first of those and every other enum position is the second.
+    #:
+    #: A :class:`Target` and not a catalogue value, because what the position needs is
+    #: exactly what a ``$ref`` at the same position would need -- a module spelling, a
+    #: symbol and §4's three outcomes -- and an enum entry is :attr:`TargetKind.ANNOTATION`
+    #: like every other enumeration.  The run builds it (``emit.emit``) because the
+    #: SPELLING is a function of the two document paths (D1) and this layer knows
+    #: neither; ``codegen/catalogue.py`` names the home's NODE and derives no import.
+    #:
+    #: Empty by default, so a document lowered outside a run restates its vocabularies
+    #: exactly as it did before this layer existed -- the same refusing default
+    #: :attr:`targets` has, and for the same reason: §9 forbids a reading of the run, and
+    #: a walk with no table minted no reference to invent.
+    vocabularies: Mapping[str, Target] = field(default_factory=dict)
     #: **The reference sites this document's walk ASKED about**, written by
     #: :meth:`target` and read by the run.  It is what decides which documents the run
     #: WRITES, and §10's own sentence is the reason: "a module cannot import from a

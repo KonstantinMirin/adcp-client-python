@@ -20,6 +20,7 @@ from ..enums.property_type import PropertyType
 from ..enums.right_type import RightType
 from ..enums.right_use import RightUse
 from ..enums.talent_role import TalentRole
+from ..enums.update_frequency import UpdateFrequency
 
 
 class BrandDiscovery(BranchDispatchMixin, AdCPBaseModel):
@@ -453,16 +454,6 @@ class Property(AdCPBaseModel):
     region: Annotated[StrMatchingC2978503 | None, Field(description="ISO 3166-1 alpha-2 country code or 'global'")] = None
     primary: Annotated[bool | None, Field(description='Whether this is the primary property for the brand')] = False
     relationship: Annotated[Relationship | None, Field(default_factory=lambda: TypeAdapter(Relationship).validate_python('owned'), description="How this brand relates to the property. 'owned': the brand owns and operates this property (default) and has no adagents.json delegation_type counterpart. 'direct': the brand is the direct sales path for this property, even if a third party operates the software (e.g., a publisher's in-house ad team using a vendor's tech). 'delegated': the brand manages monetization for this property — they are in charge of ad sales (e.g., Mediavine managing a food blog). 'ad_network': the brand sells this property's inventory as part of a network or exchange — they are a path to the inventory, not the path (e.g., PubMatic as an SSP). For non-owned properties, the publisher confirms the relationship by setting the matching delegation_type on the agent's authorization in their adagents.json.", json_schema_extra={'default': 'owned'})]
-
-
-class UpdateFrequency(StrEnum):
-    """
-    How frequently the product catalog is updated
-    """
-    REALTIME = 'realtime'
-    HOURLY = 'hourly'
-    DAILY = 'daily'
-    WEEKLY = 'weekly'
 
 
 class AgenticCheckout(AdCPBaseModel):

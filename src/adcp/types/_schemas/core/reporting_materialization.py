@@ -10,15 +10,9 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import IntMin1, StrMinLen1MaxLen128MatchingE43B025C, StrMinLen1MaxLen255, StrMinLen1MaxLen255Matching67860854, StrMinLen1MaxLen64Matching5CDAE669, StrMinLen1MaxLen64MatchingD373B860
 
-from .reporting_delivery_offering import ReportingFeedPurpose
+from .reporting_delivery_offering import ReportingDeliveryPattern, ReportingFeedPurpose
 from .reporting_resource import ReportingResource
 from .reporting_verification import ReportingVerification
-
-
-class Method(StrEnum):
-    FILE_TRANSFER = 'file_transfer'
-    DATASET_SHARE = 'dataset_share'
-    WAREHOUSE_MATERIALIZATION = 'warehouse_materialization'
 
 
 class Status(StrEnum):
@@ -50,7 +44,7 @@ class ReportingMaterialization(AdCPBaseModel):
     delivery_config_version: IntMin1
     destination_ref: Annotated[StrMinLen1MaxLen255, Field(description='Immutable caller-owned destination generation selected by the account-authorized obligation. It may be reused by the same caller across other independently authorized accounts.')]
     feed_purpose: ReportingFeedPurpose
-    method: Method
+    method: ReportingDeliveryPattern
     transport: StrMinLen1MaxLen64Matching5CDAE669 | None = None
     attempt: IntMin1
     status: Annotated[Status, Field(description='Lifecycle of this attempt. pending may transition once to available, delivered, or failed; terminal evidence is immutable. Staleness is evaluated in get_reporting_status health, not stored as a materialization state.')]

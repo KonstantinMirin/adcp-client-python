@@ -426,7 +426,6 @@ from ._schemas.core.bidding_policy import (
 )
 from ._schemas.core.bidding_policy_capability import (
     BiddingPolicyCapability as BiddingPolicyCapability,
-    MaxBidWithCostPerCostPerStrengthsItem as MaxBidWithCostPerCostPerStrengthsItem,
     MaxBidWithRoasRoasStrengthsItem as MaxBidWithRoasRoasStrengthsItem,
 )
 from ._schemas.core.brand_id import (
@@ -2518,7 +2517,6 @@ __all__ = [
     'MarkdownAsset',
     'MarkdownAssetRequirements',
     'MaterialDeadline',
-    'MaxBidWithCostPerCostPerStrengthsItem',
     'MaxBidWithRoasRoasStrengthsItem',
     'MeasurementReadiness',
     'MeasurementTerms',

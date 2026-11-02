@@ -10,13 +10,7 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule, UniqueItems
 from adcp.types.constraints import StrMatching32F5291C, StrMatching3524D29B, StrMinLen1MaxLen128, StrMinLen1MaxLen2048, StrMinLen1MaxLen255, StrMinLen1MaxLen255Matching67860854, StrMinLen1MaxLen512, StrMinLen1MaxLen64
 
-
-class ContractVersion(StrEnum):
-    """
-    1.1 adds immutable official closes with adjustments_only correction semantics for Reliable Reporting 1.0. Version 1.0 remains accepted for compatibility with the preceding experimental managed-reporting contract.
-    """
-    V_1_0 = '1.0'
-    V_1_1 = '1.1'
+from ..enums.daast_version import DAASTVersion
 
 
 class Provider(AdCPBaseModel):
@@ -135,7 +129,7 @@ class ReportingReportDefinition(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('dimensions'),
     )
-    contract_version: Annotated[ContractVersion, Field(description='1.1 adds immutable official closes with adjustments_only correction semantics for Reliable Reporting 1.0. Version 1.0 remains accepted for compatibility with the preceding experimental managed-reporting contract.')]
+    contract_version: Annotated[DAASTVersion, Field(description='1.1 adds immutable official closes with adjustments_only correction semantics for Reliable Reporting 1.0. Version 1.0 remains accepted for compatibility with the preceding experimental managed-reporting contract.')]
     media_type: Literal['application/vnd.adcp.reporting-definition+json']
     report_definition_id: StrMinLen1MaxLen255Matching67860854
     reporting_profile: StrMinLen1MaxLen128

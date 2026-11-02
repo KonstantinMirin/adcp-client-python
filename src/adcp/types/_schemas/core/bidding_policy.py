@@ -10,13 +10,7 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, PropertyCount, Rule
 from adcp.types.constraints import FloatGt0
 
-
-class CostPerStrength(StrEnum):
-    """
-    `cap` optimizes for an average at or below the amount and accepts underdelivery when necessary; `target` optimizes around the amount while balancing volume and spend. Neither is a per-result or per-auction guarantee.
-    """
-    CAP = 'cap'
-    TARGET = 'target'
+from ..enums.outcome_target_cost_strength import OutcomeTargetCostStrength
 
 
 class CostPer(AdCPBaseModel):
@@ -28,10 +22,10 @@ class CostPer(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/bidding-policy.json', pointer='#/properties/cost_per')
     amount: Annotated[FloatGt0, Field(description='Average cost amount per scope-bound primary-goal result, denominated in the media-buy currency.')]
-    strength: Annotated[CostPerStrength, Field(description='`cap` optimizes for an average at or below the amount and accepts underdelivery when necessary; `target` optimizes around the amount while balancing volume and spend. Neither is a per-result or per-auction guarantee.')]
+    strength: Annotated[OutcomeTargetCostStrength, Field(description='`cap` optimizes for an average at or below the amount and accepts underdelivery when necessary; `target` optimizes around the amount while balancing volume and spend. Neither is a per-result or per-auction guarantee.')]
 
 
-class RoasStrength(StrEnum):
+class Strength(StrEnum):
     """
     `floor` prefers underdelivery to knowingly optimizing below the requested return; `target` optimizes around the requested return. Neither guarantees realized return.
     """
@@ -48,7 +42,7 @@ class Roas(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/bidding-policy.json', pointer='#/properties/roas')
     value: Annotated[FloatGt0, Field(description='Return per unit of ad spend; 4 means 4 units of value per 1 unit spent.')]
-    strength: Annotated[RoasStrength, Field(description='`floor` prefers underdelivery to knowingly optimizing below the requested return; `target` optimizes around the requested return. Neither guarantees realized return.')]
+    strength: Annotated[Strength, Field(description='`floor` prefers underdelivery to knowingly optimizing below the requested return; `target` optimizes around the requested return. Neither guarantees realized return.')]
 
 
 class BiddingPolicy(AdCPBaseModel):

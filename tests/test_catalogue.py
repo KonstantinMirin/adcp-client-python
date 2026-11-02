@@ -256,21 +256,19 @@ def _a_fresh_package(out: emit.Emitted, root: Path) -> Path:
     return root
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "section 3a as of 2026-11-02 orders PASS B before the cross-document COLLECTION, "
-        "on the measurement that Pass B reaches 145 of the 264 base-class type errors and "
-        "the collection reaches about 10.  So the walk does not consult L0 yet and 13 of "
-        "the 15 named vocabularies are still carried by more than one class.  STRICT: "
-        "wiring the collection flips this, and a flip that went unnoticed would leave the "
-        "obligation recorded and ungraded"
-    ),
-)
 def test_no_two_classes_carry_one_named_vocabulary(
     l0: catalogue.Catalogue, tmp_path: Path
 ) -> None:
     """**THE GATE.**  A vocabulary the bundle NAMES is exactly one class in the tree.
+
+    **It was ``xfail(strict=True)`` and the walk now consults L0**, which is what flips
+    it: ``codegen/catalogue.py``'s ``Catalogue.restating`` is the table
+    ``compiler.Module.vocabularies`` carries, and a position that restates a named
+    vocabulary imports the symbol the NAMING position declares instead of minting a
+    second class over the same members.  22 positions over 21 documents stop minting
+    one.  The marker's reason -- "section 3a orders PASS B before the cross-document
+    COLLECTION" -- is still the measurement it was, and it ordered the WORK rather than
+    excusing the obligation; the strictness is what made the flip loud.
 
     §3a's whole claim: "a type a consumer receives in a ``media_buy`` message is the same
     object as the one in a ``governance`` message, so it can be passed between them.  That

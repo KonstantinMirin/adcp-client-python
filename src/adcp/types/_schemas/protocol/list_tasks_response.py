@@ -13,6 +13,7 @@ from ..core.ext import ExtensionObject
 from ..core.pagination_response import PaginationResponse
 from ..core.protocol_envelope import ProtocolEnvelope
 from ..core.version_envelope import AdCPVersionEnvelope
+from ..enums.sort_direction import SortDirection
 from ..enums.task_status import TaskStatus
 from ..enums.task_type import TaskType
 
@@ -30,11 +31,6 @@ class DomainBreakdown(AdCPBaseModel):
     creative: Annotated[NonNegativeInt | None, Field(description='Number of creative tasks in results')] = None
 
 
-class Direction(StrEnum):
-    ASC = 'asc'
-    DESC = 'desc'
-
-
 class SortApplied(AdCPBaseModel):
     """
     Sort order that was applied
@@ -44,7 +40,7 @@ class SortApplied(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/list-tasks-response.json', pointer='#/properties/query_summary/properties/sort_applied')
     field: str
-    direction: Direction
+    direction: SortDirection
 
 
 class QuerySummary(AdCPBaseModel):

@@ -26,6 +26,7 @@ from ..core.protocol_envelope import ProtocolEnvelope
 from ..core.reporting_delivery_config_state import ReportingDeliveryConfigurationState
 from ..core.version_envelope import AdCPVersionEnvelope
 from ..enums.account_scope import AccountScope
+from ..enums.account_status import AccountStatus
 from ..enums.billing_party import BillingParty
 from ..enums.payment_terms import PaymentTerms
 
@@ -54,18 +55,6 @@ class Action(StrEnum):
     UPDATED = 'updated'
     UNCHANGED = 'unchanged'
     FAILED = 'failed'
-
-
-class Status(StrEnum):
-    """
-    Account status. active: ready for use. pending_approval: seller reviewing (credit, legal). rejected: seller declined the account request. payment_required: credit limit reached or funds depleted. suspended: was active, now paused. closed: was active, now terminated. Required for every non-failed action; omitted on failed results where the seller could not reach or resolve the account far enough to know a lifecycle state (see errors).
-    """
-    ACTIVE = 'active'
-    PENDING_APPROVAL = 'pending_approval'
-    REJECTED = 'rejected'
-    PAYMENT_REQUIRED = 'payment_required'
-    SUSPENDED = 'suspended'
-    CLOSED = 'closed'
 
 
 class Setup(AdCPBaseModel):
@@ -113,7 +102,7 @@ class AccountsItem(AdCPBaseModel):
     timezone: Annotated[StrMinLen1 | None, Field(description='Immutable operational timezone for this account. AdCP 3.2 sellers echo it on created, updated, and unchanged results. For buyer-selected account_fixed provisioning it participates in the natural key.')] = None
     name: Annotated[str | None, Field(description='Human-readable account name assigned by the seller')] = None
     action: Annotated[Action, Field(description='Action taken for this account. created: new account provisioned. updated: existing account modified. unchanged: no changes needed. failed: could not process (see errors).')]
-    status: Annotated[Status | None, Field(description='Account status. active: ready for use. pending_approval: seller reviewing (credit, legal). rejected: seller declined the account request. payment_required: credit limit reached or funds depleted. suspended: was active, now paused. closed: was active, now terminated. Required for every non-failed action; omitted on failed results where the seller could not reach or resolve the account far enough to know a lifecycle state (see errors).')] = None
+    status: Annotated[AccountStatus | None, Field(description='Account status. active: ready for use. pending_approval: seller reviewing (credit, legal). rejected: seller declined the account request. payment_required: credit limit reached or funds depleted. suspended: was active, now paused. closed: was active, now terminated. Required for every non-failed action; omitted on failed results where the seller could not reach or resolve the account far enough to know a lifecycle state (see errors).')] = None
     billing: Annotated[BillingParty | None, Field(description='Who is invoiced on this account. Matches the requested billing model.')] = None
     billing_entity: Annotated[BusinessEntity | None, Field(description='Current canonical business entity for the party responsible for payment. Sellers MAY add verified fields, but MUST NOT return data from a different entity. During an operator-domain handoff this remains the current entity until approval applies atomically; destination_billing_entity is staged and write-only. Bank details are omitted (write-only).')] = None
     account_scope: AccountScope | None = None

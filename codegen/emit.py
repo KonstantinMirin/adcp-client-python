@@ -111,7 +111,7 @@ from pathlib import Path
 from typing import Any
 
 from adcp.types._base import Approximation
-from codegen import bundle, compiler, harness, ir, keywords, render, store
+from codegen import bundle, catalogue, compiler, harness, ir, keywords, render, store
 from codegen.keywords import Position
 from codegen import constraints as constraints_module
 from codegen.compiler import (
@@ -622,6 +622,7 @@ def lower_document(
     reserved: frozenset[str] = frozenset(),
     asked: set[tuple[str, str]] | None = None,
     inherited: Mapping[str, Target | Refusal] | None = None,
+    vocabularies: Mapping[str, Target] | None = None,
 ) -> tuple[Module, str] | Refusal:
     """One document's module and root symbol, or the refusal the walk returned.
 
@@ -643,6 +644,10 @@ def lower_document(
         # this document and keyed by URI (``inherited_sites``).  Empty for a document
         # lowered outside a run, exactly as ``targets`` is.
         inherited_targets=inherited if inherited is not None else {},
+        # **§3a's catalogue, as this document's own rows** (:attr:`Module.vocabularies`).
+        # Empty for a document lowered outside a run, exactly as ``targets`` is: §9
+        # forbids a reading of the run and a walk with no table mints no reference.
+        vocabularies=vocabularies if vocabularies is not None else {},
         referenced=referenced if referenced is not None else {},
         reserved=reserved,
         # The run's own record of which sites this walk asked about, handed IN so that
@@ -1112,7 +1117,39 @@ def repointed(
     return tuple(folded.values())
 
 
-def closure(documents: Collection[str], sites: Mapping[str, Sequence[bundle.Edge]]) -> list[str]:
+def needs(
+    sites: Mapping[str, Sequence[bundle.Edge]],
+    homes: Mapping[str, Collection[str]] = {},
+) -> dict[str, frozenset[str]]:
+    """document -> every OTHER document whose module it will import a symbol from.
+
+    The one reading :func:`closure` and :func:`order` both range over, so the set a run
+    must write and the order it writes them in cannot disagree about what an edge is.
+
+    **Two kinds of edge and §3a adds the second.**  A ``$ref`` is the first
+    (``bundle.Edge``).  A position that RESTATES a vocabulary the bundle names is the
+    second: §3a's catalogue makes its type "a REFERENCE to a catalogue entry", and the
+    entry lives in the module of the position that NAMES it -- so the importing module
+    cannot be written before that one, exactly as a ``$ref``'s cannot, and the symbol
+    cannot be imported from a module no run wrote.
+
+    ``homes`` is :meth:`codegen.catalogue.Catalogue.restating` read for its home
+    documents, and it is a function of the BUNDLE: a one-document command and a
+    whole-population run are handed the same map, which is §9's rule and the whole
+    reason §3a's collection is permitted at all.
+    """
+    out: dict[str, frozenset[str]] = {}
+    for document in {*sites, *homes}:
+        reached = {
+            edge.target
+            for edge in sites.get(document, ())
+            if edge.target is not None and edge.target != document
+        }
+        out[document] = frozenset(reached | {h for h in homes.get(document, ()) if h != document})
+    return out
+
+
+def closure(documents: Collection[str], sites: Mapping[str, frozenset[str]]) -> list[str]:
     """``documents`` and every document one of them references, transitively.
 
     §10: "takes the transitive closure of the named documents over them (a module cannot
@@ -1124,6 +1161,11 @@ def closure(documents: Collection[str], sites: Mapping[str, Sequence[bundle.Edge
     Sorted, so the run is order-independent (P7).  A site whose URI names no document of
     this bundle contributes nothing here and refuses at the site, which is where the
     pointer that carried it is.
+
+    **It takes :func:`needs`' reading and not the edges**, so §3a's catalogue edge is in
+    the closure by construction rather than by a second loop here: a module importing a
+    catalogue entry's symbol needs that entry's document written, for the same reason a
+    ``$ref`` does.
     """
     out: set[str] = set()
     unread = sorted(set(documents))
@@ -1132,16 +1174,12 @@ def closure(documents: Collection[str], sites: Mapping[str, Sequence[bundle.Edge
         if document in out:
             continue
         out.add(document)
-        unread += [
-            edge.target
-            for edge in sites.get(document, ())
-            if edge.target is not None and edge.target not in out
-        ]
+        unread += [target for target in sorted(sites.get(document, ())) if target not in out]
     return sorted(out)
 
 
 def order(
-    documents: Sequence[str], sites: Mapping[str, Sequence[bundle.Edge]]
+    documents: Sequence[str], sites: Mapping[str, frozenset[str]]
 ) -> tuple[list[str], dict[str, Refusal]]:
     """``documents`` ordered so every document follows the documents it references, and
     the refusal for each document on a reference CYCLE.
@@ -1187,9 +1225,9 @@ def order(
             return
         done[document] = False
         stack.append(document)
-        for edge in sites.get(document, ()):
-            if edge.target is not None and edge.target in held:
-                visit(edge.target, stack)
+        for target in sorted(sites.get(document, ())):
+            if target in held:
+                visit(target, stack)
         stack.pop()
         done[document] = True
         ready.append(document)
@@ -1211,6 +1249,7 @@ def decidable(
     asked: set[tuple[str, str]],
     inherited: Mapping[str, Target | Refusal],
     census: Mapping[str, frozenset[str]],
+    vocabularies: Mapping[str, Target] = {},
 ) -> tuple[Module, ir.Module] | Refusal:
     """One document lowered, NAMED, and its carried record checked, as one value.
 
@@ -1227,7 +1266,7 @@ def decidable(
     and no in-flight stack to push.
     """
     outcome = lower_document(
-        document, doc, targets, named, referenced, reserved, asked, inherited
+        document, doc, targets, named, referenced, reserved, asked, inherited, vocabularies
     )
     if isinstance(outcome, Refusal):
         return outcome
@@ -1448,7 +1487,24 @@ def emit(
             )
         }
         lowering[document] = [e for e in edges if e.pointer in reached]
-    ordered, refused = order(closure(documents, lowering), lowering)
+    #: **§3a's CATALOGUE, layer L0, read off the BUNDLE before any document is parsed.**
+    #: "This places the catalogue before naming, which §9's census rule permits and §1's
+    #: domain-scope collision rule already requires: both read the BUNDLE, which is
+    #: pinned and is an input to every run alike, and neither reads the run's document
+    #: set."  The call takes ``bundle_dir`` and nothing else, which is that rule held by
+    #: the signature -- a collection handed ``documents`` would be the census §9 forbids.
+    l0 = catalogue.collect(bundle_dir)
+    #: document -> pointer -> the entry that position RESTATES, which is the one thing
+    #: the walk consults (``compiler.Module.vocabularies``).  22 positions over 21
+    #: documents for this bundle's 15 named vocabularies.
+    restating = l0.restating()
+    #: The two reference kinds as one reading (:func:`needs`), so the closure and the
+    #: order range over §3a's catalogue edge exactly as they range over a ``$ref``'s.
+    reaches = needs(
+        lowering,
+        {d: {home.document for home in rows.values()} for d, rows in restating.items()},
+    )
+    ordered, refused = order(closure(documents, reaches), reaches)
     #: §1's domain-scope collision rule, PASS ONE's answer, per domain: symbol -> the
     #: documents of that domain whose surface wants it (:func:`domain_exports`).  The
     #: DOMAINS are the ones this run's closure touches and the MEMBERS of each are the
@@ -1888,6 +1944,52 @@ def emit(
         composes = grown
 
 
+    def vocabularies(document: str) -> dict[str, Target]:
+        """§3a's catalogue entries this document RESTATES, as the walk's own table.
+
+        The three things the walk cannot derive, derived in the one place that knows
+        them: the SPELLING, which D1 makes a function of the two document paths; the
+        SYMBOL, which is §4's and belongs to the module that DECLARED it (§10's order
+        puts that module in ``lowered`` before this one is parsed, so this is a lookup);
+        and the DOCUMENT, so a third module composing this one takes the symbol from its
+        declarer rather than from here (:class:`compiler.Importable`).
+
+        **A home whose own document REFUSED contributes nothing**, and the position then
+        declares its own class exactly as it does today.  That is the conservative
+        direction and the only one available: a refused document writes no module, so
+        there is no symbol to import, and refusing this document too would charge it for
+        a defect in another.  Measured over the 1,054 portable documents: 0 refusals, so
+        the clause selects nothing and is the guard that says so.
+        """
+        out: dict[str, Target] = {}
+        for pointer, home in sorted(restating.get(document, {}).items()):
+            held = lowered.get(home.document)
+            if held is None:
+                continue
+            symbol = held[1].symbols.get(home.pointer)
+            if symbol is None:
+                continue
+            out[pointer] = Target(
+                # ``package_roots`` and not the run's ``packages``, which is the same
+                # reading §5's ``$ref`` row already takes (:func:`resolve`'s own
+                # ``relative_module`` call): the LEADING DOTS count hops up from the
+                # importing module's FILE, and a document whose own path is also a
+                # directory of the bundle is written to ``<path>/__init__.py`` one level
+                # down.  The run's ``packages`` set is accumulated as files are written
+                # and is EMPTY while the fold is still lowering, so reading it here
+                # spelled ``brand/__init__.py``'s import of *Update Frequency* as
+                # ``.enums.update_frequency`` -- one dot short, and an ImportError that
+                # took the whole ``brand`` package out of the import census with it.
+                module=relative_module(document, home.document, package_roots),
+                symbol=symbol,
+                document=home.document,
+                # §3a's L0 is a VOCABULARY, and §4 makes an enumeration an annotation and
+                # never a class: "D2 makes it an ``Annotated`` alias and subclassing one
+                # is a ``TypeError`` at import, so every row refuses it as a base".
+                kind=compiler.TargetKind.ANNOTATION,
+            )
+        return out
+
     for document in ordered:
         doc = bundle.read(bundle_dir, document)
         outcome = decidable(
@@ -1906,6 +2008,7 @@ def emit(
             asked.setdefault(document, set()),
             inherited_sites(document),
             census.get(domain(document), {}),
+            vocabularies(document),
         )
         if isinstance(outcome, Refusal):
             refused[document] = outcome
