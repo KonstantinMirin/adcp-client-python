@@ -8,6 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 
+from ..enums.sort_direction import SortDirection
 from ..enums.task_status import TaskStatus
 from ..enums.task_type import TaskType
 from .context import ContextObject
@@ -30,11 +31,6 @@ class DomainBreakdown(AdCPBaseModel):
     creative: Annotated[NonNegativeInt | None, Field(description='Number of creative tasks in results')] = None
 
 
-class Direction(StrEnum):
-    ASC = 'asc'
-    DESC = 'desc'
-
-
 class SortApplied(AdCPBaseModel):
     """
     Sort order that was applied
@@ -44,7 +40,7 @@ class SortApplied(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/tasks-list-response.json', pointer='#/properties/query_summary/properties/sort_applied')
     field: str
-    direction: Direction
+    direction: SortDirection
 
 
 class QuerySummary(AdCPBaseModel):

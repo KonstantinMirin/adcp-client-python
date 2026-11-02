@@ -19,6 +19,7 @@ from ..core.ext import ExtensionObject
 from ..core.protocol_envelope import ProtocolEnvelope
 from ..core.version_envelope import AdCPVersionEnvelope
 from ..enums.action_source import ActionSource
+from ..enums.canceled_by import CanceledBy
 from ..enums.event_type import EventType
 
 
@@ -36,14 +37,6 @@ class SyncEventSourcesResponse(BranchDispatchMixin, AdCPVersionEnvelope, Protoco
     @classmethod
     def _branch_combinator(cls) -> str:
         return "oneOf"
-
-
-class ManagedBy(StrEnum):
-    """
-    Who manages this event source. 'buyer' = configured via this sync. 'seller' = always-on, managed by the seller (e.g. Amazon sales attribution for Amazon advertisers).
-    """
-    BUYER = 'buyer'
-    SELLER = 'seller'
 
 
 class SnippetType(StrEnum):
@@ -95,7 +88,7 @@ class EventSourcesItem(AdCPBaseModel):
     value_currencies: Annotated[list[StrMatching43E30B32] | None, Field(description='ISO 4217 currencies accepted for monetary event values from this source. Canonical ROAS buys require their media-buy currency in this list.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     action_source: Annotated[ActionSource | None, Field(description='Type of event source (website pixel, app SDK, in-store, etc.)')] = None
     surface: Annotated[EventSurface | None, Field(description='Optional structured surface this source represents, such as an owned channel, profile, feed, podcast, newsletter list, website, app, or store. Complements `action_source`; use it when optimization-relevant source meaning would otherwise live only in platform-specific `ext` metadata.')] = None
-    managed_by: Annotated[ManagedBy | None, Field(description="Who manages this event source. 'buyer' = configured via this sync. 'seller' = always-on, managed by the seller (e.g. Amazon sales attribution for Amazon advertisers).")] = None
+    managed_by: Annotated[CanceledBy | None, Field(description="Who manages this event source. 'buyer' = configured via this sync. 'seller' = always-on, managed by the seller (e.g. Amazon sales attribution for Amazon advertisers).")] = None
     setup: Annotated[Setup | None, Field(description='Implementation details for activating this event source (e.g. JavaScript tag, pixel URL)')] = None
     action: Annotated[Action, Field(description='Action taken for this event source')]
     health: Annotated[EventSourceHealth | None, Field(description='Health assessment for this event source. Reflects event volume, data quality, and parameter completeness. Sellers that support health scoring include this on every source (buyer-managed and seller-managed). Absent when the seller does not evaluate event source health.')] = None

@@ -233,6 +233,28 @@ def lower(
         node
     ):
         return literal(node)
+    # **§3a's CATALOGUE, asked at the node's own position.**  "A node's type is a
+    # REFERENCE to a catalogue entry, or a fresh type where the node is genuinely
+    # unique" -- and ``mod.vocabularies`` is the first of those, so a position that
+    # RESTATES a vocabulary the bundle names imports the symbol the naming position
+    # declares instead of minting a second class over the same members.
+    #
+    # **Asked here and not above the ``Literal`` arm**, which is a scope and not an
+    # oversight: a ``Literal`` position declares no class, so it is not part of the
+    # defect §3a states -- "the defect is the positions that restate the vocabulary
+    # inline instead" of referencing the existing symbol, and what makes a restatement
+    # one is the second CLASS.  Over this bundle that leaves 2 of the 24 restating
+    # positions spelling their members a second time inside a ``Literal``
+    # (``core/webhook-challenge.json`` and ``core/agent-webhook-challenge.json``, both
+    # at an ``if`` branch of *Authentication Scheme*), and widening the arm would change
+    # what §4 derives at a position it deliberately gives no name.
+    entry = mod.vocabularies.get(node.pointer)
+    if entry is not None:
+        # The same two records a ``$ref`` writes, through the same one writer: §1 gives a
+        # class one import path, so the symbol is taken from the module that DECLARES it
+        # and never re-exported from a third.
+        mod.importing(entry.symbol, compiler.Importable(entry.module, entry.document))
+        return ir.Decided(ir.TypeRef(entry.symbol))
     # **Declared at the node's POINTER, with no name of its own** (§7): the enumeration
     # the walk builds carries the pointer in its name slot and ``lower/names.py`` binds
     # §4's derived name onto it in one pass over the finished module.

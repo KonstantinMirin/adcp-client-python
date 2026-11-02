@@ -11,6 +11,7 @@ from adcp.types._runtime import ForbiddenGroups, Presence, PresenceGroups, Rule,
 from adcp.types.constraints import FloatGt0, FloatGt0Max100, FloatMin0Max100, IntMin1, StrMatching05DF6832, StrMatching4D6E1599, StrMatchingE02C3DE8, StrMatchingF601B9EB
 
 from ...core.canvas_constraint import CanvasConstraint
+from ...enums.co_branding_requirement import CoBrandingRequirement
 from ._base import CanonicalFormatBase, CompositionModel, SlotsItem
 
 
@@ -291,15 +292,6 @@ TransitionsItem._branch_models = (TransitionsItemTimer, TransitionsItemInViewTim
 TransitionsItem.model_rebuild(force=True)
 
 
-class Clickthrough(StrEnum):
-    """
-    Destination policy. `required` (default): manifest MUST supply `landing_page_url`. `optional`: click-optional units (in-feed brand units) may omit it. `none`: unit is non-clickable; manifests MUST NOT supply `landing_page_url` or `state_click_urls`. Per-state overrides via `state_click_urls` entries carrying `state_id`; `landing_page_url` is the fallback for unlisted states.
-    """
-    REQUIRED = 'required'
-    OPTIONAL = 'optional'
-    NONE = 'none'
-
-
 class UserControls(AdCPBaseModel):
     """
     When any state anchors as `overlay` or `fullscreen_overlay`, either `dismissible` MUST be true or that state's `close_affordance` MUST be true (dismissibility floor; semantic validators enforce).
@@ -345,7 +337,7 @@ class CanonicalFormatSellerRenderedStatefulDisplay(CanonicalFormatBase):
     initial_state_id: Annotated[StrMatching4D6E1599, Field(description='State rendered when the unit first becomes visible. MUST resolve to `states[].state_id`; for a single-state unit it MUST equal the sole state.')]
     reveal: Annotated[Reveal | None, Field(default_factory=lambda: TypeAdapter(Reveal).validate_python('none'), description='How the unit enters view, distinct from state changes. `clip_window`: canvas fixed and progressively exposed through a scrolling window (interscroller, topscroll). `scroll_parallax`: canvas moves at a different rate than content. Reveal is presentation of one canvas, not a transition; do not fabricate a second state to express it.', json_schema_extra={'default': 'none'})]
     transitions: Annotated[list[TransitionsItem] | None, Field(description='Bounded seller-rendered transitions between declared visual states. Required when `states` has more than one entry; MUST be omitted for single-state units. Every non-initial state MUST be reachable from `initial_state_id`. Dismissal is terminal unit behavior declared by `user_controls.dismissible`, not a hidden visual state.', min_length=1)] = None
-    clickthrough: Annotated[Clickthrough | None, Field(default_factory=lambda: TypeAdapter(Clickthrough).validate_python('required'), description='Destination policy. `required` (default): manifest MUST supply `landing_page_url`. `optional`: click-optional units (in-feed brand units) may omit it. `none`: unit is non-clickable; manifests MUST NOT supply `landing_page_url` or `state_click_urls`. Per-state overrides via `state_click_urls` entries carrying `state_id`; `landing_page_url` is the fallback for unlisted states.', json_schema_extra={'default': 'required'})]
+    clickthrough: Annotated[CoBrandingRequirement | None, Field(description='Destination policy. `required` (default): manifest MUST supply `landing_page_url`. `optional`: click-optional units (in-feed brand units) may omit it. `none`: unit is non-clickable; manifests MUST NOT supply `landing_page_url` or `state_click_urls`. Per-state overrides via `state_click_urls` entries carrying `state_id`; `landing_page_url` is the fallback for unlisted states.')] = 'required'
     user_controls: Annotated[UserControls, Field(description="When any state anchors as `overlay` or `fullscreen_overlay`, either `dismissible` MUST be true or that state's `close_affordance` MUST be true (dismissibility floor; semantic validators enforce).")]
     canvas_constraints: Annotated[list[CanvasConstraint] | None, Field(description='Rectangular areas constraining buyer artwork. Omitted state/breakpoint selectors apply the constraint to every canvas. For fluid or range-sized breakpoints, use percent-unit regions.')] = None
     duration_ms_range: Annotated[list[NonNegativeInt | None] | None, Field(description='Accepted embedded-video duration [min, max]. `duration_ms_exact` takes precedence when both are present.', max_length=2, min_length=2)] = None
