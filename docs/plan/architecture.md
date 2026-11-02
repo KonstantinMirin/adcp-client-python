@@ -648,14 +648,59 @@ the IDENTITY instead of through the name. Measured both ways: the member-set rea
 titled member-sets under 42 names and is unfixable at that entry; a per-title reading gives 12 of
 15 entries under more than one name, 29 classes for 15 entries, and is fixable.
 
-### An unresolved contradiction between two of my own sentences
+### A CONFLICTING TITLE NEVER COLLAPSES, and the reason is §4's (decided 2026-11-02)
 
-**13 of the 15 nameable entries are stated at a document ROOT.** The narrowest-namespace rule
-below says such an entry belongs in `adcp.types.common`; the semantics document's §4 clause of
-2026-10-30 says the opposite — a root keeps its name, because it is "another document's name,
-which this module has no standing to move". Only 2 of 15 are unambiguous. **This is not settled
-and no lane may pick a side.** It is resolved with the measurement in hand, and the resolution
-belongs in both documents at once.
+All three conflicts in the bundle resolve the same way, and the descriptions settle them:
+
+- **`Catalog Action` / `Creative Action`**, both `['created','updated','unchanged','failed','deleted']`
+  — *"Action taken on a catalog during sync operation"* against *"Action taken on a creative during
+  sync operation"*. **Two concepts over one value set.** The values and the semantics coincide; the
+  SUBJECT does not.
+- **`Delivery Recipient Cloud` / `Reporting Cloud`**, both `['aws','azure','gcp']` — the cloud
+  hosting a delivery recipient's account against the cloud a reporting dataset is shared into.
+  **Two concepts over one value set.**
+- **`Canonical Media Buy Action Mode` / `Media Buy Action Mode`**, identical members and nearly
+  identical descriptions. **One concept stated twice** — a canonicalisation left beside its
+  original.
+
+**Neither case collapses, and the rule is one sentence: a conflicting title is not a question
+about which name wins.** Where the bundle states two concepts, both names are right and merging
+types one subject with the other's name. Where it states one concept twice, the duplication is the
+BUNDLE's and removing it is an upstream report, not a rename we perform — and a merge would hide
+the evidence the report needs. In neither case is there a third name to collapse to, and minting
+one is what §4 refuses.
+
+So the three-way naming split's third arm is **decided, not deferred**: a conflict is reported and
+left alone, and the only judgement is whether to file it upstream.
+
+### A DOCUMENT ROOT IS ALREADY A HOME (decided 2026-11-02)
+
+13 of the 15 nameable entries are stated at a document ROOT, and the two sentences I had in
+conflict are both right about different things. **§4 governs and the narrowest-namespace rule does
+not reach a root**, because a root is not an entry looking for a home: §1's "every portable
+document contributes a symbol" means `enums/gop-type.json` **already exports `GOPType`** from
+`adcp.types.enums`. There is nothing to relocate.
+
+**So L0's job for those 13 is not to move them — it is to stop every other position minting a
+copy.** The other positions reference the existing symbol, which is what §5's `$ref` row already
+does for a position that spells the reference; the defect is the positions that restate the
+vocabulary inline instead. That is a smaller and better-defined change than a relocation, and it
+explains the measurement that looked wrong: **`adcp.types.common` holds 1 entry for L0, not 653**,
+because 13 of 15 are already at home.
+
+### PASS B RUNS FIRST, and it needs no catalogue at all (decided 2026-11-02)
+
+The order in this section is reversed on measurement. Pass B — a `const` pin naming its enum's
+member — carries **145 of the 457** type errors, and of its 145 sites **97 have the base's enum
+declared in the same module and 48 import it**. In both cases the class that types the base's
+field already exists and is already one object; the pin has only to name its member. `ir.TypeRef`
+already carries the members, and the compiler already renders `Literal[Symbol.MEMBER, …]` for the
+`$ref`-target case. Pydantic renders `Literal[E.A]` as `{"const": …, "type": "string"}`,
+**byte-identical** to `Literal['…']`, so no accepts verdict and no dump moves.
+
+L0's cross-document collapse reaches about **10**. So the normalisation is both the larger win and
+the one with no namespace question, no new ordering edge and no relocation — it goes first, and
+the collection follows it.
 
 ### The layers are BOTTOM-UP, and that is why they are layers
 
