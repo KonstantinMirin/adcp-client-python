@@ -239,6 +239,34 @@ exceed 900 s on an 8,145,255-byte conjunction and one exceeds 600 s on a 6,832,2
 residue is not a currency question. It is the document-derived construction decision, and it is
 open.
 
+### The wheel SHIPS `py.typed`, and 350 internal errors are its precondition (decided 2026-11-02)
+
+**Nothing this project built reaches a consumer's type checker today.** Measured against the
+INSTALLED package rather than the source tree: `Skipping analyzing "adcp.types.core": module is
+installed, but missing library stubs or py.typed marker`, then `Revealed type is "Any"` — and
+**two deliberate bugs in the consumer file pass silently.** So **0 of 14,570 fields, 0 of 991
+`Literal`s, 0 of 244 `StrEnum`s and 0 of 582 union arms** are visible to the tool a consumer
+actually runs. Every ergonomic property the surface work established is invisible at the wheel
+boundary.
+
+`pyproject.toml` names the absence and defers it: *"Adding one is a change to the WHEEL's public
+surface — it promises every annotation in `src/adcp` to every consumer's checker — so it is a
+decision for the row that owns the shipped package."* **No row owned it.** The goal is an
+ergonomic, schema-faithful, DX-friendly SDK, and a typed SDK whose types are `Any` to its
+consumer is none of the three. So the marker ships.
+
+**And pyproject is right about what it promises, which makes the precondition non-negotiable.**
+A `py.typed` marker asserts that every annotation in `src/adcp` is sound, and the same mypy run
+reports **350 errors in 80 files inside the SDK — 260 `[assignment]`, 74 `[list-item]`**.
+Shipping the marker over those promises something false, so they are resolved first and the
+ordering is part of this decision rather than a follow-up.
+
+**The gate is the consumer's checker, not ours.** A file outside the package that misuses a field
+and an enum member must FAIL a check against the installed wheel. The audit measured both of those
+passing silently, which is the red state; green is both reported, by error code. Checking our own
+tree proves nothing about this — the source tree is readable with or without a marker, which is
+exactly why the gap survived.
+
 ### The suite's scratch goes on DISK, not in RAM (decided 2026-10-30)
 
 `/tmp` on this machine is a **63 GB tmpfs — it is RAM.** The suite materialises a fresh package per
