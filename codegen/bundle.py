@@ -870,6 +870,40 @@ class _Where(NamedTuple):
     anchors: tuple[tuple[str, str], ...]
 
 
+class _Reached(NamedTuple):
+    """One inlined node, beside WHAT THE TWO CYCLE GUARDS WERE CONSULTED FOR under it.
+
+    **This is what makes :func:`record`'s share sound, and it is the whole of the
+    argument.**  An inlined node is a function of the node, the document it is being
+    copied out of, the position it is placed at -- and of :class:`_Where`, because the
+    guards decide whether a reference under it refuses.  So a result computed under one
+    :class:`_Where` may be handed to an occurrence standing at another ONLY where no
+    guard consulted under it can answer differently there.
+
+    The guards are consulted for exactly two things: a cross-document hop asks whether
+    the document it is entering is in :attr:`_Where.chain`, and a local hop asks whether
+    the ``(document, pointer)`` it is opening is in :attr:`_Where.anchors`.  So these are
+    the two sets of what was ASKED -- every document entered under this node, and every
+    local reference opened under it inside the same root scope -- and a held result is
+    reusable at an occurrence whose own guards are DISJOINT from both.  Where they are
+    not, the question the guard asks has a different answer and the node is inlined
+    again.
+
+    Each is the union of its children's, with the hop's own answer added as the hop is
+    taken: a cross-document hop contributes the document it enters and RESETS the anchors,
+    because :class:`_Where` resets them there -- a local reference opened below a copy
+    cannot collide with one open above it.
+    """
+
+    #: The inlined node itself, which is what the caller places.
+    node: dict
+    #: Every document entered by a cross-document hop under this node.
+    documents: frozenset[str]
+    #: Every ``(document, pointer)`` a local hop opened under this node, inside the root
+    #: scope this node is being copied out of.
+    anchors: frozenset[tuple[str, str]]
+
+
 def source_identities(bundle_dir: Path) -> dict[str, str]:
     """Per portable document, the digest of the BUNDLE TEXT its record is built from:
     its own raw bytes and the raw bytes of every document it transitively references.
@@ -1011,15 +1045,41 @@ def record(bundle_dir: Path, document: str) -> dict | Refusal:
     a position the package's own validation may decide through, and now the record
     decides it locally.
 
-    KNOWN CEILING, unchanged in kind from the delegated resolver's: this is O(paths
-    through the reference graph), because a fresh copy is placed per path, and the bundle
-    holds a 9,109-byte document whose record is megabytes.  A cache keyed on
-    ``(document, pointer)`` is not sound while :func:`_beside` lets a referring node
-    contribute keys, so the cache's key would be the referring node too; nothing asks
-    for it yet.
+    **THE SAME OBJECT IS PLACED AT EVERY OCCURRENCE OF ONE TARGET, which costs no byte
+    of the record and is what makes it buildable.**  ``json.dumps`` writes a shared
+    object out once per occurrence, so the text is the text a fresh copy per occurrence
+    wrote -- and §4's deep copy was never about the bytes.  It was about ALIASING, which
+    is the reason stated at :func:`rebuilt`: "a record that aliased the bundle's own
+    object would let one reader's edit reach another's".  That reason is answered by the
+    readers rather than by a copy, and it was measured: the ONE reader that edits a
+    record subtree is ``dump_exemptions.struck``, which deep-copies before it strikes and
+    says so; ``harness.resolve`` deep-copies before it hands a document to a library
+    that mutates; every other reader of a record -- ``undecidable_references`` here,
+    ``json.dumps`` in ``emit``, ``applied_schema`` and ``schema_at`` in the package --
+    reads, and ``applied_schema`` already returns the node it was given as the same
+    object wherever nothing is conjoined.
+
+    So a target is inlined ONCE per ``(node, the document it is copied out of, whether
+    that document is this record's own, the position it is placed at)`` and the result is
+    shared.  :class:`_Reached` is what keeps the share sound against the two cycle
+    guards; its docstring is the argument and :func:`_beside` is why the position is in
+    the key.  The referring node's own keys are NOT in it: ``_beside`` builds a fresh
+    mapping per occurrence out of the shared one, so two occurrences of one target with
+    different siblings get different nodes and share everything below them.
+
+    MEASURED on the 3.2 bundle, which is why this is here: 5,363,667 bytes of bundle
+    source became 365,030,691 bytes of record, and ``core/mcp-webhook-payload.json``'s
+    957,187 nodes were 6,442 distinct ones -- one subtree placed 1,957 times.  The record
+    is a TREE where the document is a DAG, and the duplication was in the BUILD as well
+    as in the text.  The text is unchanged here and stays 44 MB; what this removes is
+    re-walking and re-copying one target once per path that reaches it.
     """
     known = set(portable(bundle_dir))
     roots: dict[str, dict] = {document: read(bundle_dir, document)}
+    #: The inlined target per key, held for the life of this call.  ``id(node)`` is the
+    #: node's identity and is stable because ``roots`` holds every document alive: every
+    #: node this descent is handed is a node of a parsed document, never one it built.
+    shared: dict[tuple[int, str, bool, keywords.Position], _Reached] = {}
 
     def root_of(name: str) -> dict:
         if name not in roots:
@@ -1031,12 +1091,18 @@ def record(bundle_dir: Path, document: str) -> dict | Refusal:
 
     def placed(
         uri: str, *, pointer: str, home: str, scope: dict | None, where: _Where
-    ) -> dict | Refusal | None:
+    ) -> _Reached | Refusal | None:
         """The node a reference names, inlined and ready to be placed, or ``None`` where
         the reference STAYS as written.
 
         ``None`` is the one case §4 leaves alone: a LOCAL reference of the document whose
         record this is, which ``scope is None`` says we are at.
+
+        The hop's own guard answer is added to what :class:`_Reached` carries up: the
+        document a cross-document hop ENTERS, and the ``(document, pointer)`` a local hop
+        OPENS.  A cross-document hop resets the anchors it carries up for the reason
+        :class:`_Where` resets them -- a local reference opened inside a copy is not open
+        outside it.
         """
         head, into = split_ref(uri)
         if not head:
@@ -1051,6 +1117,7 @@ def record(bundle_dir: Path, document: str) -> dict | Refusal:
                 )
             root, at_home = scope, home
             where = _Where(where.chain, (*where.anchors, (home, into)))
+            crossed, opened = False, frozenset({(home, into)})
         else:
             named = document_for(head, known)
             if named is None:
@@ -1063,6 +1130,7 @@ def record(bundle_dir: Path, document: str) -> dict | Refusal:
                 )
             root, at_home = root_of(named), named
             where = _Where((*where.chain, named), ())
+            crossed, opened = True, frozenset()
         try:
             target = node_at(root, into)
         except (KeyError, IndexError, TypeError, ValueError):
@@ -1071,7 +1139,17 @@ def record(bundle_dir: Path, document: str) -> dict | Refusal:
             return refuse(
                 pointer, f"{uri} names a {type(target).__name__} of {at_home}, not a schema"
             )
-        return inline(target, pointer=pointer, home=at_home, scope=root, where=where)
+        answer = inline(target, pointer=pointer, home=at_home, scope=root, where=where)
+        if isinstance(answer, Refusal):
+            return answer
+        # A CROSS-DOCUMENT hop carries up NO anchor of the copy it took, because every
+        # one of them was opened inside a root scope this hop stands outside of -- which
+        # is the same fact ``where`` states by resetting them.
+        return _Reached(
+            answer.node,
+            answer.documents | ({at_home} if crossed else frozenset()),
+            opened if crossed else (answer.anchors | opened),
+        )
 
     def inline(
         node: dict,
@@ -1081,39 +1159,100 @@ def record(bundle_dir: Path, document: str) -> dict | Refusal:
         scope: dict | None,
         position: keywords.Position = keywords.Position.ROOT,
         where: _Where = _Where((), ()),
-    ) -> dict | Refusal:
+    ) -> _Reached | Refusal:
         """``node`` with every reference under it inlined, or the first refusal reached.
 
         ``home`` is the document whose text this node is and ``scope`` is the root a
         local pointer in it resolves against -- ``None`` at the document whose record
         this is, where a local reference is left as written.  ``where`` carries the two
         cycle guards.
+
+        **Computed once per key and shared**, which is the docstring above.  The key is
+        everything the ANSWER is a function of other than the guards -- the node's
+        identity, the document it is being copied out of, whether that document is this
+        record's own (``scope is None``, which decides whether a local reference is
+        followed at all), and the position, which :func:`_beside` reads.  The guards are
+        answered by :class:`_Reached` instead of being keyed on: a held answer is reused
+        where nothing it consulted them for can answer differently at this occurrence,
+        and inlined again where something can -- which is a reference cycle, and leaves
+        the record undefined one hop further down.
+
+        ``pointer`` is not in the key and must not be: it names WHERE a refusal is, and
+        no refusal is held.  So a refused reference is reported at the pointer that
+        carried it, once per occurrence, exactly as it was before this shared.
         """
+        at = (id(node), home, scope is None, position)
+        held = shared.get(at)
+        if (
+            held is not None
+            and held.documents.isdisjoint(where.chain)
+            and held.anchors.isdisjoint(where.anchors)
+        ):
+            return held
+        answer = inlined(
+            node, pointer=pointer, home=home, scope=scope, position=position, where=where
+        )
+        # Held only where nothing was: an answer computed because a held one was unusable
+        # is this occurrence's and narrower, and the unusable one is still the answer for
+        # every occurrence that can use it.  A REFUSAL is never held, because it names the
+        # pointer that carried the reference.
+        if held is None and not isinstance(answer, Refusal):
+            shared[at] = answer
+        return answer
+
+    def inlined(
+        node: dict,
+        *,
+        pointer: str,
+        home: str,
+        scope: dict | None,
+        position: keywords.Position,
+        where: _Where,
+    ) -> _Reached | Refusal:
+        """``node``'s inlining computed from nothing held.  :func:`inline` is the share."""
         uri = node.get("$ref")
         if isinstance(uri, str):
             copied = placed(uri, pointer=pointer, home=home, scope=scope, where=where)
             if isinstance(copied, Refusal):
                 return copied
             if copied is not None:
-                return _beside(copied, node, position)
+                # ``_beside`` is per OCCURRENCE: the referring node's own keys are not in
+                # the key, and the mapping it builds is fresh around the shared one.
+                return _Reached(
+                    _beside(copied.node, node, position), copied.documents, copied.anchors
+                )
         done: dict[str, object] = {}
-        for _, suffix, sub, at in subschemas(node):
+        documents: frozenset[str] = frozenset()
+        anchors: frozenset[tuple[str, str]] = frozenset()
+        for _, suffix, sub, holds in subschemas(node):
             if not isinstance(sub, dict):
                 continue  # not a schema; §3 drops nothing, so ``rebuilt`` keeps it
             answer = inline(
-                sub, pointer=f"{pointer}{suffix}", home=home, scope=scope, position=at, where=where
+                sub,
+                pointer=f"{pointer}{suffix}",
+                home=home,
+                scope=scope,
+                position=holds,
+                where=where,
             )
             if isinstance(answer, Refusal):
                 return answer
-            done[suffix] = answer
-        return {
-            key: rebuilt(key, value, done) if key in DESCENDS else copy.deepcopy(value)
-            for key, value in node.items()
-        }
+            done[suffix] = answer.node
+            documents |= answer.documents
+            anchors |= answer.anchors
+        return _Reached(
+            {
+                key: rebuilt(key, value, done) if key in DESCENDS else value
+                for key, value in node.items()
+            },
+            documents,
+            anchors,
+        )
 
-    return inline(
+    answer = inline(
         roots[document], pointer="", home=document, scope=None, where=_Where((document,), ())
     )
+    return answer if isinstance(answer, Refusal) else answer.node
 
 
 def rebuilt(keyword: str, held: object, done: Mapping[str, object]) -> object:
