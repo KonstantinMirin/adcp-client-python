@@ -20,6 +20,10 @@ from jsonschema import Draft7Validator, FormatChecker
 from codegen import bundle
 
 B = Path("schemas/cache/3.2")
+#: The bundle's document set, read once and threaded into every ``bundle.record``
+#: below -- ``docs/plan/architecture.md``: a set derived from the directory is an
+#: argument, and a reader reached once per site must be told it.
+KNOWN = set(bundle.portable(B))
 FC = FormatChecker()
 
 
@@ -83,7 +87,7 @@ tally = {"accepts the duplicate": 0, "control failed (witness not conforming)": 
          "refused with the duplicate": 0, "unresolvable": 0}
 for doc_name, ptr, keys in sites():
     try:
-        root = bundle.record(B, doc_name)
+        root = bundle.record(B, doc_name, KNOWN)
     except Exception:
         tally["unresolvable"] += 1
         print(f"  {doc_name}#{ptr or '/'}: unresolvable")

@@ -721,7 +721,7 @@ def test_the_document_decides_both_payloads_at_the_notvalue_site() -> None:
     one §2 forbids.
     """
     document = "core/delivery-metric-aggregate.json"
-    record = bundle.record(BUNDLE, document)
+    record = bundle.record(BUNDLE, document, set(bundle.portable(BUNDLE)))
     assert not isinstance(record, Refusal), record
     validator = jsonschema.Draft7Validator(record)
     admitted = {"scope": "standard", "metric_id": "impressions", "value": 1.0}

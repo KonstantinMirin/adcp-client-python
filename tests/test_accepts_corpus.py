@@ -484,12 +484,13 @@ def test_our_own_inlining_moves_the_record_and_moves_no_key() -> None:
     def keys(records: dict[str, Any]) -> dict[str, str]:
         return {d: corpus_key(r, custom_formats={}) for d, r in records.items()}
 
-    before = {d: bundle.record(BUNDLE, d) for d in sample}
+    known = set(bundle.portable(BUNDLE))
+    before = {d: bundle.record(BUNDLE, d, known) for d in sample}
     live = {d: test_emit.identity_of(SchemaRef(d, "#")) for d in sample}
     key_before = keys(live)
     try:
         with mock.patch.object(bundle, "_beside", differently):
-            after = {d: bundle.record(BUNDLE, d) for d in sample}
+            after = {d: bundle.record(BUNDLE, d, known) for d in sample}
             #: Cleared, so a cached answer cannot stand in for the one this perturbation
             #: would produce: an identity read through ``bundle.record`` would move here,
             #: and a held value would hide that it had.

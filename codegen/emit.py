@@ -1211,8 +1211,16 @@ def decidable(
     asked: set[tuple[str, str]],
     inherited: Mapping[str, Target | Refusal],
     census: Mapping[str, frozenset[str]],
+    *,
+    known: Collection[str],
 ) -> tuple[Module, ir.Module] | Refusal:
     """One document lowered, NAMED, and its carried record checked, as one value.
+
+    ``known`` is the bundle's document set, which :func:`emit` reads ONCE and hands down
+    for ``bundle.record`` below: ``docs/plan/architecture.md``, "a set derived from the
+    directory is also an argument".  It is threaded rather than read here because this
+    function is reached once per document and a scan here is a scan per document -- which
+    is the cost ``record``'s own docstring measures.
 
     **The naming pass runs here** (§7, §14 step 7): ``lower/names.py`` takes the module
     the walk built -- declarations keyed by pointer, every local type naming one by
@@ -1316,7 +1324,7 @@ def decidable(
     # relaxed to fit: nothing here is narrower, the record is wider.  Firing
     # again would mean ``record`` left a reference at a position the package's
     # own validation decides through, which is a defect in the inliner.
-    rec = bundle.record(bundle_dir, document)
+    rec = bundle.record(bundle_dir, document, known)
     if isinstance(rec, Refusal):
         # §4: a reference whose target is not a bundle document, and a
         # cross-document cycle, make the record undefined for this document.
@@ -1394,6 +1402,15 @@ def emit(
     #: names it, and every leading dot in its own import block -- must not depend on
     #: which other documents this run was given.
     package_roots = bundle.package_roots(bundle_dir)
+    #: THE BUNDLE'S DOCUMENT SET, read once by the caller that knows the run and threaded
+    #: to every reader of it below -- ``bundle.record`` through :func:`decidable` and again
+    #: in the write loop, ``bundle.envelope_shape``, ``bundle.declaring_site``.
+    #: ``docs/plan/architecture.md``: "a callee that needs the set of a bundle's documents
+    #: ... must be **told** it, not go and find it.  Finding it is a directory scan, and a
+    #: callee reached once per node performs that scan once per node ... So the set is
+    #: computed once per run, by the caller that knows the run, and threaded to every
+    #: reader that needs it."  **This function is that caller**: it is handed the bundle
+    #: directory and the run's documents, so it is the one frame that knows both.
     known = set(bundle.portable(bundle_dir))
     # **ONE SCAN of the bundle, and three readings of it** (``bundle.edges``): the
     # per-document ``named`` set, the pointers a root ``allOf`` composes, and the
@@ -1906,6 +1923,7 @@ def emit(
             asked.setdefault(document, set()),
             inherited_sites(document),
             census.get(domain(document), {}),
+            known=known,
         )
         if isinstance(outcome, Refusal):
             refused[document] = outcome
@@ -2040,7 +2058,7 @@ def emit(
         # whose record is undefined is in ``refused`` and not in ``lowered``.  It is
         # written rather than asserted because this is the call that produces the FILE,
         # and a mapping is the only thing that can be written to one.
-        record = bundle.record(bundle_dir, document) if bundle.references(doc) else doc
+        record = bundle.record(bundle_dir, document, known) if bundle.references(doc) else doc
         if isinstance(record, Refusal):
             # **UNREACHABLE, and a BUILD FAILURE rather than a refusal.**  ``decidable``
             # above takes the record of every document it lowers and returns that very

@@ -371,9 +371,21 @@ def differing(published: Path, patched: Path) -> Iterator[Difference]:
     KNOWN COST: :func:`codegen.bundle.record` is O(paths through the reference graph) and
     this takes 2,108 of them, which is minutes rather than seconds.  The population is the
     whole bundle and the check is the deliverable, so the cost is paid rather than sampled.
+    What is NOT paid 2,108 times any more is the directory scan each one used to open with:
+    the two document sets are read once below and threaded in, which is ``record``'s own
+    docstring and ``docs/plan/architecture.md``'s rule.
     """
-    for document in bundle.portable(published):
-        before, after = bundle.record(published, document), bundle.record(patched, document)
+    # The two document sets, read ONCE each and threaded into every ``record`` below:
+    # ``docs/plan/architecture.md``, "a set derived from the directory is also an
+    # argument".  TWO of them here and not one, because this check reads two bundles and
+    # a reference's head resolves against the bundle it was found in -- which is the
+    # second thing threading makes visible that a cache keyed on a path would have to be
+    # trusted to get right.
+    in_published = set(bundle.portable(published))
+    in_patched = set(bundle.portable(patched))
+    for document in sorted(in_published):
+        before = bundle.record(published, document, in_published)
+        after = bundle.record(patched, document, in_patched)
         if not isinstance(before, Mapping) or not isinstance(after, Mapping):
             if type(before) is not type(after) or before != after:
                 yield Difference(
