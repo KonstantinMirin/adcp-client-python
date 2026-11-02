@@ -1207,13 +1207,39 @@ overridden — not "an enum appears somewhere in the document", which is a loose
 pin a member of an enum the field does not take. Where no enclosing declaration gives the field an
 enum there is no override to conflict with, and `Literal[value]` stands as §5 already has it.
 
-**A `default` whose annotation is a model is emitted CONSTRUCTED, not as the document's raw JSON.**
-`formats/canonical/native_in_feed.json` gives `slots` fifteen default objects and the field is
-emitted as `list[SlotsItem] | None = [{'asset_group_id': 'title', …}, …]` — raw dicts against a
-model annotation, which is the whole of the 78. The type alias is not the problem and is working:
-`SlotsItem` is imported from `._base` as this section intends. The DEFAULT is the problem. It is
-emitted through the annotation's own type, by `default_factory` rather than a shared mutable
-literal, so the value a consumer reads has the type the field declares.
+**A `default` is emitted through its annotation's OWN TYPE, and the document's `default` survives
+it.** The field must carry a value of the type it declares; a raw JSON literal against a model or
+an enum annotation is the defect. Measured over the emitted tree by pydantic's own introspection —
+2,552 classes — **146 sites over 66 documents disagree**, and the population is not where this
+rule first read as though it were:
+
+| annotation | sites with a default | disagreeing |
+|---|---|---|
+| a model | 2,229 | **0** |
+| a list of models | 1,232 | **14** (72 list items) |
+| an **enum** | 1,040 | **126** |
+| a list of enums | 408 | **6** |
+| a dict of models or enums | 46 | 0 |
+
+**No bare-model default exists anywhere in the bundle**, so the case this rule was first written
+about has no population; the defect is a list of models and, far more of it, a plain enum —
+`asset_source: AssetSource | None = 'buyer_uploaded'`, 126 times across 57 documents. The two
+carry different error codes and belong to this rule rather than to §3a's catalogue: 78
+`[list-item]` and **98 of the 362 `[assignment]`**, where the remaining 264 are the override
+incompatibilities the catalogue dissolves.
+
+**And `default_factory` alone is NOT the mechanism, because it drops the document's fact.**
+Measured on pydantic 2.13.5: a field carrying `default_factory` renders `model_json_schema()` with
+**no `default` at all**, where a plain default renders it. A document's `default` is a fact §8
+grades, so the factory must be accompanied by `json_schema_extra={'default': …}` carrying the
+document's own JSON — through the one channel `render` already merges `format` and `uniqueItems`
+into, not a second one.
+
+*The mutable-default argument for the factory is withdrawn as a reason, having been measured:*
+pydantic deep-copies a plain mutable default per instance, so two instances already receive
+distinct objects and mutating one does not reach the other. What the factory still buys is real
+and smaller — no shared object behind `model_fields[…].default`, and no model instances
+constructed at import time.
 
 ### The widening each row takes
 
