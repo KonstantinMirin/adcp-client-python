@@ -911,9 +911,25 @@ field is a fact the branch's node states.
 **Which branch a payload is, is derived from bundle data, never from a hand-written map.** Three
 sources, in order:
 
-1. **A `const` every branch pins on one shared property.** The union carries
-   `Field(discriminator=<property>)` and the key alone selects the branch, so Pydantic reports
-   against that branch rather than against all of them.
+1. **A `const` every branch pins on one shared property AND every branch REQUIRES (decided
+   2026-11-02).** The union carries `Field(discriminator=<property>)` and the key alone selects
+   the branch, so Pydantic reports against that branch rather than against all of them.
+
+   **PINNING IS NOT DETERMINING, and the requiredness half is the whole of the rule.** A
+   discriminator is a total function from the instance to one branch. A pin on a key the branch
+   lets an instance OMIT determines nothing when the key is absent, so such a key is not a
+   discriminator and this source does not apply — the union falls to source 3. Pydantic raises
+   `PydanticUserError: needs field <key> to be of type Literal` on an `Optional[Literal[...]]`
+   discriminator for exactly that reason; it is refusing an undefined function, not imposing a
+   limitation of its own, and there is nothing to work around. Reading the key ourselves in
+   `BranchDispatchMixin._dispatch` fails identically: an absent key cannot be read.
+
+   The two predicates agree wherever the pinned key is required, which is every union of this
+   bundle but one, so the weaker one passes 83 of 84 and the counterexample is the only place it
+   shows. `media-buy/refine-proposals-response.json` pins `status` to `completed` at `/anyOf/0`
+   and does not list it in that arm's `required`, while `/anyOf/1` pins `submitted` and does
+   require it — so the arms are separated by their `required` sets, which are disjoint
+   (`[results, products]` against `[status, task_id]`), and source 3 is the one that answers.
 2. **A key the bundle's manifest states.** `manifest.task_result_resolution` names the
    discriminator field and a template resolving a schema from it, and `manifest.tools` is the
    table. Such a union emits as a mapping keyed by that field: its discriminant is in the
