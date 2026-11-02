@@ -1209,7 +1209,10 @@ enum there is no override to conflict with, and `Literal[value]` stands as §5 a
 
 **A `default` is emitted through its annotation's OWN TYPE, and the document's `default` survives
 it.** The field must carry a value of the type it declares; a raw JSON literal against a model or
-an enum annotation is the defect. Measured over the emitted tree by pydantic's own introspection —
+an enum annotation is the defect — **and it was broken for CALLERS, not only for checkers, which
+this rule first understated.** Pydantic does not validate a plain default, so before the fix
+`CanonicalFormatNativeInFeed().slots[0]` was a `dict` and reading `.asset_group_id` off it raised
+`AttributeError`. A type checker was the way it was noticed, not the only thing it affected. Measured over the emitted tree by pydantic's own introspection —
 2,552 classes — **146 sites over 66 documents disagree**, and the population is not where this
 rule first read as though it were:
 
@@ -1258,6 +1261,24 @@ pydantic deep-copies a plain mutable default per instance, so two instances alre
 distinct objects and mutating one does not reach the other. What the factory still buys is real
 and smaller — no shared object behind `model_fields[…].default`, and no model instances
 constructed at import time.
+
+**A NARROWED `enum` INSIDE AN INHERITED VOCABULARY NAMES ITS MEMBERS (decided 2026-11-02).** This
+is the `const` rule above generalised from one value to several, and it is the whole of the 158
+`[assignment]` errors left after Pass B. Measured on `core/postal-country-system.json`: the base
+declares `system: PostalCodeSystem`, 23 members; the `US` branch narrows it to
+`['zip', 'zip_plus_four']` and we mint a **separate** `StrEnum` named
+`PostalCountrySystemUSSystem`. Two unrelated enum classes, so the branch is an incompatible
+override — exactly the defect the `const` case had, with a set in place of a single value. The
+branch's members are a strict SUBSET of the base's, verified.
+
+Python forbids the obvious repair, as it did before: an enum carrying members cannot be
+subclassed. So the branch pins `Literal[PostalCodeSystem.ZIP, PostalCodeSystem.ZIP_PLUS_FOUR]` —
+a literal over the base vocabulary's own members, which IS a subtype of that enum. The same
+document already shows the one-member form working where Pass B reached it:
+`Literal[PostalCodeSystem.PLZ]`.
+
+It is also the better surface. A consumer reads the base vocabulary's members at the branch
+instead of meeting a second two-member class that exists only because a branch narrowed.
 
 ### The widening each row takes
 
