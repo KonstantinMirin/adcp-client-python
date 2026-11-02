@@ -1970,7 +1970,17 @@ def emit(
             if symbol is None:
                 continue
             out[pointer] = Target(
-                module=relative_module(document, home.document, packages),
+                # ``package_roots`` and not the run's ``packages``, which is the same
+                # reading §5's ``$ref`` row already takes (:func:`resolve`'s own
+                # ``relative_module`` call): the LEADING DOTS count hops up from the
+                # importing module's FILE, and a document whose own path is also a
+                # directory of the bundle is written to ``<path>/__init__.py`` one level
+                # down.  The run's ``packages`` set is accumulated as files are written
+                # and is EMPTY while the fold is still lowering, so reading it here
+                # spelled ``brand/__init__.py``'s import of *Update Frequency* as
+                # ``.enums.update_frequency`` -- one dot short, and an ImportError that
+                # took the whole ``brand`` package out of the import census with it.
+                module=relative_module(document, home.document, package_roots),
                 symbol=symbol,
                 document=home.document,
                 # §3a's L0 is a VOCABULARY, and §4 makes an enumeration an annotation and

@@ -20,7 +20,7 @@ from ..enums.property_type import PropertyType
 from ..enums.right_type import RightType
 from ..enums.right_use import RightUse
 from ..enums.talent_role import TalentRole
-from .enums.update_frequency import UpdateFrequency
+from ..enums.update_frequency import UpdateFrequency
 
 
 class BrandDiscovery(BranchDispatchMixin, AdCPBaseModel):
