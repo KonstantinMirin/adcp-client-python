@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, Any, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import AwareDatetime, ConfigDict, Field, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, PropertyCount, RequiredGroups, Rule, UniqueItems
@@ -452,7 +452,7 @@ class Property(AdCPBaseModel):
     store: Annotated[Store | None, Field(description='App store for mobile/CTV apps')] = None
     region: Annotated[StrMatchingC2978503 | None, Field(description="ISO 3166-1 alpha-2 country code or 'global'")] = None
     primary: Annotated[bool | None, Field(description='Whether this is the primary property for the brand')] = False
-    relationship: Annotated[Relationship | None, Field(description="How this brand relates to the property. 'owned': the brand owns and operates this property (default) and has no adagents.json delegation_type counterpart. 'direct': the brand is the direct sales path for this property, even if a third party operates the software (e.g., a publisher's in-house ad team using a vendor's tech). 'delegated': the brand manages monetization for this property — they are in charge of ad sales (e.g., Mediavine managing a food blog). 'ad_network': the brand sells this property's inventory as part of a network or exchange — they are a path to the inventory, not the path (e.g., PubMatic as an SSP). For non-owned properties, the publisher confirms the relationship by setting the matching delegation_type on the agent's authorization in their adagents.json.")] = 'owned'
+    relationship: Annotated[Relationship | None, Field(default_factory=lambda: TypeAdapter(Relationship).validate_python('owned'), description="How this brand relates to the property. 'owned': the brand owns and operates this property (default) and has no adagents.json delegation_type counterpart. 'direct': the brand is the direct sales path for this property, even if a third party operates the software (e.g., a publisher's in-house ad team using a vendor's tech). 'delegated': the brand manages monetization for this property — they are in charge of ad sales (e.g., Mediavine managing a food blog). 'ad_network': the brand sells this property's inventory as part of a network or exchange — they are a path to the inventory, not the path (e.g., PubMatic as an SSP). For non-owned properties, the publisher confirms the relationship by setting the matching delegation_type on the agent's authorization in their adagents.json.", json_schema_extra={'default': 'owned'})]
 
 
 class UpdateFrequency(StrEnum):
@@ -1564,7 +1564,7 @@ class HousePortfolio(BrandDiscovery):
     )
     schema_: Annotated[str | None, Field(alias='$schema')] = None
     version: str | None = None
-    default_language: LanguageTag | None = 'en'
+    default_language: Annotated[LanguageTag | None, Field(default_factory=lambda: TypeAdapter(LanguageTag).validate_python('en'), json_schema_extra={'default': 'en'})]
     house: House
     brands: Annotated[list[Brand] | None, Field(description='Inline brands owned by this house (parent-owned data). Use for sub-brands without their own canonical document — typically those without a dedicated domain or that the holdco wants to manage centrally. A brand_id MUST NOT appear in both brands[] and brand_refs[].', min_length=1)] = None
     brand_refs: Annotated[list[PortfolioEntry] | None, Field(description="Portfolio entries for brands owned by this house that publish their own canonical brand.json elsewhere (child-owned data). Each entry asserts ownership plus where the child's document lives. Mutual-assertion trust: the pointed-to document's house_domain must equal this house's domain. Invariants: a brand_id MUST NOT appear in both brands[] and brand_refs[]; brand_id and domain MUST each be unique within brand_refs[]. See docs/brand-protocol/brand-json.mdx", min_length=1)] = None
@@ -1587,7 +1587,7 @@ class BrandCanonicalDocument(BrandDiscovery, Brand):
     )
     schema_: Annotated[str | None, Field(alias='$schema')] = None
     version: str | None = None
-    default_language: LanguageTag | None = 'en'
+    default_language: Annotated[LanguageTag | None, Field(default_factory=lambda: TypeAdapter(LanguageTag).validate_python('en'), json_schema_extra={'default': 'en'})]
     house_domain: Annotated[Domain | None, Field(description="Optional pointer to the corporate house this brand belongs to. The named house's brand_refs[] MUST reciprocate for mutual-assertion trust. Single-hop only — a brand cannot itself declare brand_refs[]. Omit for standalone brands (no house).")] = None
     last_updated: AwareDatetime | None = None
 

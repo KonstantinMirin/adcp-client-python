@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AfterValidator, Field
+from pydantic import AfterValidator, Field, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Distinct, Match, NegatedConditional, Rule
@@ -65,7 +65,7 @@ class VASTTrackerConstraints(AdCPBaseModel):
         NegatedConditional((Match('vast_event', True, ('progress',)),), require=(), forbid=('offset',)),
     )
     vast_event: VastEvent | None = None
-    target: VastTarget | None = 'linear'
+    target: Annotated[VastTarget | None, Field(default_factory=lambda: TypeAdapter(VastTarget).validate_python('linear'), json_schema_extra={'default': 'linear'})]
     offset: VastOffset | None = None
     vast_versions: VastVersions | None = None
 

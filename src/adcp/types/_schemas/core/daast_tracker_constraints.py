@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AfterValidator, Field
+from pydantic import AfterValidator, Field, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Distinct, Match, NegatedConditional, Rule
@@ -51,7 +51,7 @@ class DAASTTrackerConstraints(AdCPBaseModel):
         NegatedConditional((Match('daast_event', True, ('progress',)),), require=(), forbid=('offset',)),
     )
     daast_event: DaastEvent | None = None
-    target: DaastTarget | None = 'linear'
+    target: Annotated[DaastTarget | None, Field(default_factory=lambda: TypeAdapter(DaastTarget).validate_python('linear'), json_schema_extra={'default': 'linear'})]
     offset: DaastOffset | None = None
     daast_versions: DaastVersions | None = None
 

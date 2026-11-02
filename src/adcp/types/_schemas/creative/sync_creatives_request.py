@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, RequiredGroups, Rule, UniqueItems
@@ -116,7 +116,7 @@ class SyncCreativesRequest(AdCPVersionEnvelope):
     idempotency_key: Annotated[StrMinLen16MaxLen255Matching1E5CF9EB, Field(description='Client-generated idempotency key for safe retries. If a sync fails without a response, resending with the same idempotency_key guarantees at-most-once execution. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.')]
     delete_missing: Annotated[bool | None, Field(description='When true, creatives not included in this sync will be archived. Use with caution for full library replacement. Invalid when creative_ids is provided — delete_missing applies to the entire library scope, not a filtered subset.')] = False
     dry_run: Annotated[bool | None, Field(description="When true, rehearse this sync_creatives operation without applying it. Validates the actual trafficking request in the seller's current context, including library upsert semantics, creative IDs, assignments, account-scoped gates, and seller policies, then returns what would be created/updated/deleted. This is distinct from validate_input, which only validates manifest structure against canonical/product format targets.")] = False
-    validation_mode: Annotated[ValidationMode | None, Field(description="Validation strictness. 'strict' fails entire sync on any validation error. 'lenient' processes valid creatives and reports errors.")] = 'strict'
+    validation_mode: Annotated[ValidationMode | None, Field(default_factory=lambda: TypeAdapter(ValidationMode).validate_python('strict'), description="Validation strictness. 'strict' fails entire sync on any validation error. 'lenient' processes valid creatives and reports errors.", json_schema_extra={'default': 'strict'})]
     push_notification_config: Annotated[PushNotificationConfig | None, Field(description='Optional webhook configuration for async sync notifications. The agent will send a webhook when sync completes if the operation takes longer than immediate response time (typically for large bulk operations or manual approval/HITL).')] = None
     context: ContextObject | None = None
     ext: ExtensionObject | None = None

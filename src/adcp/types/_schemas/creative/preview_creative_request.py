@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, RequiredGroups, Rule
@@ -70,7 +70,7 @@ class RequestsItem(AdCPBaseModel):
     inputs: Annotated[list[RequestsItemInputsItem] | None, Field(description='Array of input sets for generating multiple preview variants', min_length=1)] = None
     template_id: Annotated[str | None, Field(description='Specific template ID for custom format rendering')] = None
     quality: Annotated[CreativeQuality | None, Field(description='Render quality for this preview. Overrides batch-level default.')] = None
-    output_format: Annotated[PreviewOutputFormat | None, Field(description='Output format for this preview. Overrides batch-level default.')] = 'url'
+    output_format: Annotated[PreviewOutputFormat | None, Field(default_factory=lambda: TypeAdapter(PreviewOutputFormat).validate_python('url'), description='Output format for this preview. Overrides batch-level default.', json_schema_extra={'default': 'url'})]
     item_limit: Annotated[IntMin1 | None, Field(description='Maximum number of catalog items to render in this preview.')] = None
 
 
@@ -99,7 +99,7 @@ class PreviewCreativeRequest(AdCPVersionEnvelope):
     inputs: Annotated[list[PreviewCreativeRequestInputsItem] | None, Field(description='Array of input sets for generating multiple preview variants. Each input set defines macros and context values for one preview rendering. Used in single mode.', min_length=1)] = None
     template_id: Annotated[str | None, Field(description='Specific template ID for custom format rendering. Used in single mode.')] = None
     quality: Annotated[CreativeQuality | None, Field(description="Render quality. 'draft' produces fast, lower-fidelity renderings. 'production' produces full-quality renderings. In batch mode, sets the default for all requests (individual items can override).")] = None
-    output_format: Annotated[PreviewOutputFormat | None, Field(description="Output format. 'url' returns preview_url (iframe-embeddable URL), 'html' returns preview_html (raw HTML). In batch mode, sets the default for all requests (individual items can override). Default: 'url'.")] = 'url'
+    output_format: Annotated[PreviewOutputFormat | None, Field(default_factory=lambda: TypeAdapter(PreviewOutputFormat).validate_python('url'), description="Output format. 'url' returns preview_url (iframe-embeddable URL), 'html' returns preview_html (raw HTML). In batch mode, sets the default for all requests (individual items can override). Default: 'url'.", json_schema_extra={'default': 'url'})]
     item_limit: Annotated[IntMin1 | None, Field(description='Maximum number of catalog items to render per preview variant. Used in single mode. Creative agents SHOULD default to a reasonable sample when omitted and the catalog is large.')] = None
     requests: Annotated[list[RequestsItem] | None, Field(description="Array of preview requests (1-50 items). Required when request_type is 'batch'. Each item follows the single request structure.", max_length=50, min_length=1)] = None
     variant_id: Annotated[str | None, Field(description="Agent-assigned AdCP served-execution identifier from get_creative_delivery. Required when request_type is 'variant'. It is agent-unique when the source agent advertises creative.supports_revisions; for legacy agents the published scope remains agent plus creative, and callers SHOULD also send creative_id to disambiguate reused values.")] = None

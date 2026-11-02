@@ -2,9 +2,9 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import ClassVar
+from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, NonNegativeFloat
+from pydantic import ConfigDict, Field, NonNegativeFloat, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Dependencies, Rule
@@ -32,7 +32,7 @@ class Region(AdCPBaseModel):
     y: NonNegativeFloat
     width: FloatGt0
     height: FloatGt0
-    unit: Unit | None = 'px'
+    unit: Annotated[Unit | None, Field(default_factory=lambda: TypeAdapter(Unit).validate_python('px'), json_schema_extra={'default': 'px'})]
 
 
 class CanvasConstraint(AdCPBaseModel):

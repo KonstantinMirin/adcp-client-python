@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
+from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Dependencies, Rule
@@ -65,7 +65,7 @@ class MediaBuy(AdCPBaseModel):
     accepted_proposal_terms_digest: Annotated[StrMatching325DEB97 | None, Field(description='Digest of the current accepted proposal commercial_terms, allowing buyers and governance agents to verify the recovered snapshot.')] = None
     account: Annotated[Account | None, Field(description='Account billed for this media buy')] = None
     status: MediaBuyStatus
-    health: Annotated[MediaBuyHealth | None, Field(description="Aggregate health based on open impairments[]. Orthogonal to status — a paused, pending, or active buy can each be impaired. Defaults to 'ok' when impairments[] is empty.")] = 'ok'
+    health: Annotated[MediaBuyHealth | None, Field(default_factory=lambda: TypeAdapter(MediaBuyHealth).validate_python('ok'), description="Aggregate health based on open impairments[]. Orthogonal to status — a paused, pending, or active buy can each be impaired. Defaults to 'ok' when impairments[] is empty.", json_schema_extra={'default': 'ok'})]
     impairments: Annotated[list[Impairment] | None, Field(description="Open impairments — upstream dependency state changes that affect delivery for at least one package on this buy. Empty when health is 'ok'. Sellers MUST add an entry on next sync/poll response after a referenced resource transitions to an offline state, and MUST remove the entry (flipping health to 'ok' when the array empties) when the resource returns to a serviceable state. Staleness budget: the snapshot MUST reflect the impairment within 5 minutes of impairment.observed_at regardless of buyer poll cadence — sellers cannot rely on rare buyer polls to defer write propagation. See impairment.coherence assertion for the cross-resource invariant.")] = None
     rejection_reason: Annotated[str | None, Field(description="Reason provided by the seller when status is 'rejected'. Present only when status is 'rejected'.")] = None
     confirmed_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp when the seller committed to this media buy. May be null until seller commitment occurs in deferred/manual approval flows. Once populated, remains stable through later pause, resume, activation, completion, cancellation, and reporting transitions.')]

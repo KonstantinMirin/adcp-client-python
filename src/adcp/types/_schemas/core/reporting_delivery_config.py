@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import AwareDatetime, ConfigDict, Field, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, PropertyCount, Rule, UniqueItems
@@ -72,7 +72,7 @@ class ReportingDeliveryConfiguration(AdCPBaseModel):
     coverage_requirement: Annotated[CoverageRequirement, Field(description='Whether every package in the resolved media-buy scope must support the exact selected offering. full fails closed when any package is unsupported or unknown. allow_partial permits publication only for the explicitly covered package denominator; every revision and status response still exposes partial coverage and MUST NOT present covered-subset totals as whole-buy totals.')]
     required_finality: Annotated[ReportingFinality, Field(description='Finality the durable path must ultimately provide. Snapshot delivery may still precede an official requirement.')]
     reconciliation_mode: Annotated[ReportingReconciliationMode, Field(description='Whether producer-side delivery evidence is sufficient or the selected consumer must submit an authenticated matching receipt. A seller-authoritative billing feed MUST use consumer_receipt.')]
-    authoritative_party: Annotated[AuthoritativeParty | None, Field(description="Reserved: which party's count of this feed is authoritative. seller (the default, and the only value any 3.2 seller accepts) means the seller produces every revision and the consumer may only attest to what it consumed. consumer is reserved for the buyer-deposited billing revision task scoped to a later minor; until that task exists sellers MUST reject it with UNSUPPORTED_FEATURE. Reserving the field now keeps a future buyer-basis billing feed additive instead of breaking the billing-feed constraints. See https://github.com/adcontextprotocol/adcp/issues/7440.")] = 'seller'
+    authoritative_party: Annotated[AuthoritativeParty | None, Field(default_factory=lambda: TypeAdapter(AuthoritativeParty).validate_python('seller'), description="Reserved: which party's count of this feed is authoritative. seller (the default, and the only value any 3.2 seller accepts) means the seller produces every revision and the consumer may only attest to what it consumed. consumer is reserved for the buyer-deposited billing revision task scoped to a later minor; until that task exists sellers MUST reject it with UNSUPPORTED_FEATURE. Reserving the field now keeps a future buyer-basis billing feed additive instead of breaking the billing-feed constraints. See https://github.com/adcontextprotocol/adcp/issues/7440.", json_schema_extra={'default': 'seller'})]
     schedule: ReportingSchedule
     method: ReportingDeliveryMethod | None = None
     revocation_effective_at: Annotated[AwareDatetime | None, Field(description='Optional requested cutoff for deactivation. No new publication may begin after the applied cutoff; historical access is limited to the contracted recovery window.')] = None

@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, AdCPRootModel, SchemaRef
 from adcp.types.constraints import StrMinLen1
@@ -35,7 +35,7 @@ class ProductRefinementRequestsItemProduct(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/product-refinement.json', pointer='#/items/oneOf/1')
     scope: Annotated[Literal['product'], Field(description='Change scoped to a specific product.')]
     product_id: Annotated[StrMinLen1, Field(description='Product ID from a previous product-discovery response.')]
-    action: Annotated[ProductRefinementRequestsItemProductAction | None, Field(description='Requested product-level action.')] = 'include'
+    action: Annotated[ProductRefinementRequestsItemProductAction | None, Field(default_factory=lambda: TypeAdapter(ProductRefinementRequestsItemProductAction).validate_python('include'), description='Requested product-level action.', json_schema_extra={'default': 'include'})]
     ask: Annotated[StrMinLen1 | None, Field(description='What the buyer is asking for on this product.')] = None
 
 
@@ -55,7 +55,7 @@ class ProductRefinementRequestsItemProposal(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/product-refinement.json', pointer='#/items/oneOf/2')
     scope: Annotated[Literal['proposal'], Field(description='Change scoped to a specific proposal.')]
     proposal_id: Annotated[StrMinLen1, Field(description='Proposal ID from a previous product-discovery response.')]
-    action: Annotated[ProductRefinementRequestsItemProposalAction | None, Field(description='Requested proposal-level action.')] = 'include'
+    action: Annotated[ProductRefinementRequestsItemProposalAction | None, Field(default_factory=lambda: TypeAdapter(ProductRefinementRequestsItemProposalAction).validate_python('include'), description='Requested proposal-level action.', json_schema_extra={'default': 'include'})]
     ask: Annotated[StrMinLen1 | None, Field(description='What the buyer is asking for on this proposal.')] = None
 
 
