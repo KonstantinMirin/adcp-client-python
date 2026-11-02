@@ -1114,6 +1114,41 @@ WIDENED declaration and §8's draw hands the class exactly such a value. The cel
 says "the schema half enforces exclusivity", which is true only of a caller who invokes
 `strict_validate`; correcting that sentence is a cell edit and not this rendering's.
 
+**TWO RENDERINGS THAT DO NOT TYPE-CHECK, and both are cells (decided 2026-11-02).** Measured
+against the shipped package: mypy reports **440 errors in the generated tree — 362 `[assignment]`
+and 78 `[list-item]`** — so the wheel cannot honestly ship `py.typed` (`architecture.md`), and a
+consumer's checker sees `Any` instead of any of this. Each has one cause and neither costs the
+architecture anything.
+
+**A `const` pinning an enum member emits the MEMBER, not the raw value.** `core/registry-event.json`
+states `enum: [...]` at its root's `event_type` and `const: "property.created"` at its branch's. The
+`enum` cell gives `EventType`, a `StrEnum`; the `const` cell gives `Literal['property.created']`, a
+`str` literal. **Those are not narrower-and-wider, they are different vocabularies for one field** —
+`str` is not a subtype of the enum, so the branch is an INCOMPATIBLE OVERRIDE rather than a
+refinement, and that is the whole of the 362.
+
+The fix keeps base-plus-branch inheritance, which this section does not reopen. Measured on all
+three candidate shapes:
+
+| shape at the branch | mypy | `isinstance(branch, base)` |
+|---|---|---|
+| `Literal['property.created']` — today | **error** `[assignment]` | True |
+| `Literal[EventType.PROPERTY_CREATED]` | **clean** | True |
+| a generic base parameterised per branch | clean | True |
+
+So the second is taken: **where a `const`'s value is a member of an enum the same field's enclosing
+declaration compiles to, the pin is that member.** An enum-member literal IS a subtype of its enum,
+so the override is legal; `isinstance` is unaffected; and pydantic still accepts the raw wire string,
+because the enum is a `StrEnum`. No generics, no union alias, nothing given up.
+
+**A `default` whose annotation is a model is emitted CONSTRUCTED, not as the document's raw JSON.**
+`formats/canonical/native_in_feed.json` gives `slots` fifteen default objects and the field is
+emitted as `list[SlotsItem] | None = [{'asset_group_id': 'title', …}, …]` — raw dicts against a
+model annotation, which is the whole of the 78. The type alias is not the problem and is working:
+`SlotsItem` is imported from `._base` as this section intends. The DEFAULT is the problem. It is
+emitted through the annotation's own type, by `default_factory` rather than a shared mutable
+literal, so the value a consumer reads has the type the field declares.
+
 ### The widening each row takes
 
 Every "→ refused" clause above becomes one of three answers, and **the largest group is neither
