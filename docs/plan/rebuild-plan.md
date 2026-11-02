@@ -1139,7 +1139,20 @@ three candidate shapes:
 So the second is taken: **where a `const`'s value is a member of an enum the same field's enclosing
 declaration compiles to, the pin is that member.** An enum-member literal IS a subtype of its enum,
 so the override is legal; `isinstance` is unaffected; and pydantic still accepts the raw wire string,
-because the enum is a `StrEnum`. No generics, no union alias, nothing given up.
+because the enum is a `StrEnum`.
+
+**The stronger rule — "a `const` compiles to a StrEnum of its own" — is refused, and by two facts
+rather than a preference.** First, Python forbids it from working: an enum carrying members cannot
+be subclassed (`TypeError: <enum 'Sub'> cannot extend <enum 'E'>`), so a branch's own StrEnum could
+never be a SUBTYPE of the root's, and the override would stay incompatible with a one-member class
+added per pin. Second, half the pins have nothing to enumerate: of **37,999 `const` positions,
+19,036 sit at a field whose declaration carries an enum and 18,963 do not — and 2,975 of those are
+`bool` and 2,439 are `int`.** A boolean pin has no string vocabulary to join.
+
+So the condition is necessary and not a convenience, and it is exactly the declaration being
+overridden — not "an enum appears somewhere in the document", which is a looser reading and would
+pin a member of an enum the field does not take. Where no enclosing declaration gives the field an
+enum there is no override to conflict with, and `Literal[value]` stands as §5 already has it.
 
 **A `default` whose annotation is a model is emitted CONSTRUCTED, not as the document's raw JSON.**
 `formats/canonical/native_in_feed.json` gives `slots` fifteen default objects and the field is
