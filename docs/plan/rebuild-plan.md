@@ -426,9 +426,47 @@ The refusal argument survives in exactly two places, and the design keeps both.
   incident this rule exists for, so the guard switches each admission mechanism off in turn and
   pins which keywords reappear.
 
-  There is one today: `harness.URL_IMPLIED`, the two facts a pydantic URL type renders of its
-  own (`minLength: 1`, `maxLength: 2083`). `codegen/constraints.py`'s `url_type` decides which
-  type each position takes and its docstring carries the measurement.
+  **The registry is EMPTY, because the URL type that filled it is withdrawn (decided
+  2026-11-02).** It held two facts a pydantic URL type renders of its own — `minLength: 1`,
+  `maxLength: 2083` — and those were the registered part. The type's NORMALISATION was never
+  registered, and by the sentence above that makes it the defect: a pydantic URL lowercases the
+  host and gives an empty path a `/`, so two distinct strings the document admits become one
+  value, and the value dumped is not the string supplied.
+
+  It cannot be registered either, and the reason is the one this subsection already gives: an
+  entry is compared by EQUALITY so that it admits that fact and not its kind, and a
+  normalisation is a kind. "The sort of rewriting a URL type performs" is exactly the invisible,
+  permanent admission the rule forbids.
+
+  Measured, both directions at once, which is what makes it a defect and not a trade:
+  `core/attestation-capabilities.json#` admits `accepted_proof_formats:
+  ["https://A.com", "https://a.com"]` — two distinct strings — and the class REFUSES it on its
+  own `uniqueItems`, because both coerce to `https://a.com/`. And
+  `core/product-offer-filters.json#` accepts `https://Qo1P.here` and dumps
+  `https://qo1p.here/`, which the document then refuses on its own
+  `pattern: ^https://[^/?#@]+$`. One type decision, a narrowing and a broken round trip.
+
+  **A rule-level repair is provably wrong**, and was measured rather than argued: neutralise the
+  `UniqueItems` comparison and the same pair fails the other way, because the DUMP then carries
+  the duplicate and the document refuses it on `uniqueItems`. The rule is not the defect; the
+  non-injective type is.
+
+  **So `format: uri` carries the document's own string, with the URL grammar asserted beside
+  it.** Reach: 50 `uniqueItems` arrays whose items declare `format: uri` in 29 documents, 149
+  `format: uri` positions beside a pattern the normalised form violates, about 300 `uri`
+  positions in 160 documents.
+
+  This is a widening TOWARD the document on three counts, so `approximated` moves DOWN rather
+  than up: both `URL_IMPLIED` facts stop being dropped, the URL type's refusal of `urn:` and
+  `file:` — which `format: uri` admits — stops narrowing, and §5's "a `uri` beside another
+  string constraint → refused" stops refusing, because a string carries bounds and a URL type
+  does not. What is lost is a consumer receiving a parsed URL object instead of a string, and §2
+  settles that trade where it always settles it: an annotation tighter than its document is the
+  defect nothing may widen into.
+
+  Three cells follow and are a lane's to write, not this rendering's: `format`'s (`uri` no
+  longer selects a type), `pattern`'s (the pattern goes on the type rather than staying with the
+  schema half), and `minLength`/`maxLength`'s (no URL type to refuse against).
 
   **A reading that finds code contradicting this section reports it and does not change either
   side.** A registry entry is a decision even though it is not in this document.
