@@ -236,6 +236,52 @@ class Entry:
         """
         return tuple(p for p in self.positions if p.is_a_root)
 
+    @property
+    def naming(self) -> Stated:
+        """The position whose ``title`` NAMES this entry, which is where it lives.
+
+        §3a: "A DOCUMENT ROOT IS ALREADY A HOME ... §1's 'every portable document
+        contributes a symbol' means ``enums/gop-type.json`` already exports ``GOPType``
+        from ``adcp.types.enums``.  There is nothing to relocate.  **So L0's job for
+        those 13 is not to move them -- it is to stop every other position minting a
+        copy.**"
+
+        The same sentence reaches the two entries stated at no root, because what it
+        turns on is §1's export set and not the root rule: a titled position has a
+        symbol on the surface whatever position it sits at, so the entry is already at
+        home there and the narrowest-namespace rule has nothing to relocate either.
+        Measured over this bundle: at all 15 entries the symbol §4 derives at this
+        position is ``pascal_case(title)``, so the name the other positions reference is
+        the title's and is not minted here.
+
+        A title is stated at ONE position -- that is the module docstring's own tell for
+        why the three naming groups do not multiply under inlining -- so ``next`` is a
+        lookup and not a choice.  Where a title is stated twice the entry is one of
+        §3a's CONFLICTS and is not an :class:`Entry` at all.
+        """
+        return next(p for p in self.positions if p.title == self.title)
+
+    @property
+    def restating(self) -> tuple[Stated, ...]:
+        """Every position that states this vocabulary and is not the one that NAMES it.
+
+        §3a's whole job for layer L0: "to stop every other position minting a copy".
+        These are the positions that reference :attr:`naming`'s symbol instead of
+        declaring a second class over the same members.
+
+        **A position at a document ROOT is never among them**, and that is §1's rule and
+        not a precaution: "every portable document contributes a symbol", so a root that
+        declared nothing would leave its own document with no exported name.  Over this
+        bundle no entry is stated at two roots, so the clause selects nothing and is the
+        guard that says so.
+        """
+        return tuple(
+            p
+            for p in self.positions
+            if (p.document, p.pointer) != (self.naming.document, self.naming.pointer)
+            and not p.is_a_root
+        )
+
 
 @dataclass(frozen=True)
 class Conflict:
@@ -249,6 +295,26 @@ class Conflict:
     identity: tuple[tuple[str, str], ...]
     titles: tuple[str, ...]
     positions: tuple[Stated, ...]
+
+
+@dataclass(frozen=True)
+class Reference:
+    """Where ONE catalogue entry lives, for the position that is about to reference it.
+
+    The NODE and not the module: §11's arrows run ``catalogue <- emit``, and the import
+    spelling is a function of the two document PATHS, which D1 derives and
+    ``emit.relative_module`` is the one derivation of.  So this layer names the home's
+    document and the pointer inside it, the run turns that into a spelling, and the
+    spelling is not derived twice.
+
+    :attr:`title` rides along because it is the entry's own evidence: a reader of a
+    refusal or of a report wants the name the bundle states, and re-deriving it from the
+    pointer would be a second reading of the thing §3a says is read once.
+    """
+
+    document: str
+    pointer: str
+    title: str
 
 
 @dataclass(frozen=True)
@@ -282,6 +348,34 @@ class Catalogue:
                 if position.document == document and position.pointer == pointer:
                     return entry
         return None
+
+    def restating(self) -> dict[str, dict[str, Reference]]:
+        """document -> pointer -> the entry's home, for every position that RESTATES one.
+
+        **This is the whole of what the walk consults** (§3a: "the catalogue is an INPUT
+        to the walk, never a pass over its output -- a node's type is a REFERENCE to a
+        catalogue entry, or a fresh type where the node is genuinely unique").  A
+        position in this table is the first of those and every other enum position is
+        the second, so the walk asks one question of a mapping and derives nothing.
+
+        Keyed by DOCUMENT first, because the run hands one document at a time to the
+        walk and §11's arrows forbid the walk knowing the run: what crosses the seam is
+        this document's own rows and not a reading of the bundle.
+
+        A pure function of the BUNDLE, which is §9's rule held by the signature of
+        :func:`collect`: the same answer for a one-document command and for the whole
+        population, so a module's text does not depend on who else was named.
+        """
+        out: dict[str, dict[str, Reference]] = {}
+        for entry in self.entries.values():
+            home = Reference(
+                document=entry.naming.document,
+                pointer=entry.naming.pointer,
+                title=entry.title,
+            )
+            for position in entry.restating:
+                out.setdefault(position.document, {})[position.pointer] = home
+        return out
 
     def pinned(self, entry: Entry, value: object) -> bool:
         """Is ``value`` one of ``entry``'s members?
