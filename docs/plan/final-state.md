@@ -162,16 +162,36 @@ and deep-copies every leaf, so each reference re-copies its whole target and nes
 multiply. `harness.py:306` states where it lands: *"the record is what `from_schema` is handed"* —
 a strategy over 957,187 nodes instead of 6,442.
 
-Two layers. **Sharing** is output-neutral and pays immediately: the same object returned to every
-reference, every record byte-identical. **The record as a DAG** — each distinct subtree once under
-`definitions`, a local reference at each use — is the reading itself, and it moves every pointer
-`node_at`, `schema_at`, `applied_schema`, `corpus_key` and `__adcp_schema__` walk. That needs a
-design sentence before a line is written.
+**THE SHARING LAYER IS MERGED** at `d52c3f26`, and it is output-neutral by construction: all 2,163
+emitted files byte-identical by sha256 before and after, *and* byte-identical to the committed
+artifact on both sides. `core/mcp-webhook-payload.json`'s 217,363 dict occurrences become **9,000
+distinct objects, 24.2×**, against a 33.7× ceiling; net of a 36–39 MB process floor its inlining is
+**519 ms → 46 ms** and its record memory **53 MB → 10 MB**. Whole-set cold emit 148.52 → 119.47 s
+CPU.
 
-**Gate:** all 1,054 records and 1,084 modules byte-identical by sha256 across the sharing layer,
-with per-document wall clock and peak RSS as the real gate — byte-identity passes on a no-op. For
-the DAG layer, the record's own size: no record exceeds its source document by more than the
-references it resolves. Row `82m.25`.
+**That is 1.24× over the set and not 11×, because removing one pole exposed the next.**
+`bundle.portable()` is called **1,749 times in one emit and costs 123.0 s of it — 80 percent** —
+since `record` re-runs it before inlining anything. `architecture.md` decides it: a derived reading
+of the bundle is an **argument**, threaded once per run, not a cache — a cache keyed on the path is
+wrong when a test builds a bundle in `tmp_path`, and one keyed on the contents must read the
+contents. Row `82m.26`.
+
+**The reading itself is the DAG layer**, and `architecture.md`'s *"the record's text is a DAG; its
+pointers are not"* decides its form: each distinct subtree once under `definitions`, and **every
+pointer a reader spells keeps its spelling**, because `corpus_key` hashes the pointer and a
+respelling misses every committed corpus entry. Per-document hoisting is
+**835,864,437 → 66,773,403 bytes, 13×, 0 collisions**, breaking **3 new declared pointers** of
+2,793. Cross-document sharing is measured at **6,034,010 bytes, 95.3×** — within 12 percent of the
+bundle's own source size — and deferred, because it needs a store shared across documents.
+
+The record's own walk is a separate decision: `bundle.nodes` yields 1,374,947 pointers of which
+**1,281,844 stop resolving** in the DAG form, and `applied_schema` is why — one shared definition
+reached through two enclosing contexts has two applied answers.
+
+**Gate:** byte identity across the sharing layer is **green and does not prove the reading** — it
+passes on a no-op, which is why the per-document wall clock and peak RSS above are the gate that
+moved. For the DAG layer: no record exceeds its source document by more than the references it
+resolves. Row `82m.25`, still open on the hoisting.
 
 ### 6. Every class is importable at exactly one `adcp.types.<domain>.<Name>` — HOLDS over `src/`
 
