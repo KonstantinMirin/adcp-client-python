@@ -666,6 +666,48 @@ because no other member exists to name. `82m.10`'s 44 names crossing as a BASE b
 about one catalogue entry rather than 44 export decisions. And the wheel can honestly ship
 `py.typed`, which today it cannot.
 
+### WHERE A CATALOGUE ENTRY LIVES, which is what makes the fencing unnecessary
+
+The clause that forbade cross-module identity was guarding something real: shared types reached
+for across document modules create import cycles, and the bundle's own design invites them — one
+vocabulary is stated in up to **five different domains**. Measured over 807 vocabularies: **154
+are confined to one domain and 653 cross more than one.** Sharing is the main case, not an edge.
+
+**But a cycle is only possible if the shared type lives INSIDE a document module.** Put the
+catalogue in its own layer beneath every document module and the dependency arrows point one way,
+so a cycle is not avoided by care — it is unrepresentable:
+
+```
+L0 vocabularies      → depends on nothing
+L1 constrained scalars → L0
+L2 object shapes       → L0, L1
+L3 array shapes        → L0, L1, L2
+document modules       → any catalogue layer, and each other by §10's existing order
+```
+
+That is the whole of the answer to the fencing. We cannot fix the schema's habit of restating a
+concept in five places; we decide the layers we emit it into, and the layering removes the hazard
+the prohibition was written for.
+
+**An entry lives in the NARROWEST namespace that contains every position referencing it**, which
+keeps a consumer's import close to where they met the concept and is derived rather than chosen:
+
+- referenced from one document → that document's module, which is what happens today;
+- from one domain → that domain;
+- from more than one domain → the shared namespace, which is the 653.
+
+**The shared namespace is `adcp.types.common`, one place and not one per layer.** A consumer who
+does not know which domain a type belongs to has exactly one place to look, and does not have to
+guess whether `AuthenticationScheme` is a "value" or a "shape". The LAYERS are the private
+module structure beneath it — the same split the tree already makes, `_schemas` private and the
+domain modules public — so the acyclic order is a property of the emission and the public surface
+stays flat.
+
+**And this is the reuse the design was for.** 653 vocabularies stop being re-derived per domain;
+one scalar shape that appears 4,127 times is declared once; and a type a consumer receives in a
+`media_buy` message is the same object as the one in a `governance` message, so it can be passed
+between them. That last property is the one nothing in the artifact provides today.
+
 ### Upstream
 
 The bundle spelling one vocabulary as `enum` in one place and `const` in another is a defect in
