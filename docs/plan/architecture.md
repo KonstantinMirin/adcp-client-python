@@ -701,6 +701,65 @@ L0's cross-document collapse reaches about **10**. So the normalisation is both 
 the one with no namespace question, no new ordering edge and no relocation — it goes first, and
 the collection follows it.
 
+### THE VALUE LIST IS WRITTEN ONCE; THE NAMED TYPE IS PER POSITION (decided 2026-11-02)
+
+An identical value set is emitted repeatedly today. Measured over the tree: **128 value sets are
+emitted more than once, across 305 classes under 189 distinct names, restating 632 member strings
+that the bundle states once each.** That is the cost of compiling a position without asking what
+already exists.
+
+**But collapsing them into one type is the wrong repair**, and the reason is the untitled rule:
+nothing names those sets, so two positions sharing a member set may be two concepts that coincide.
+Merging would type one with the other's name.
+
+So the two halves separate:
+
+- **the VALUE LIST is a module-level constant in the catalogue layer, written once per distinct
+  member set;**
+- **the NAMED TYPE is constructed from it at each position that needs one**, keeping the name §4
+  derives and keeping the types distinct.
+
+`StrEnum('CatalogAction', …)` and `StrEnum('CreativeAction', …)` built from one list are two
+types that are not assignable to each other and share one definition of the values. Nothing is
+restated, nothing is merged, and a reader sees the vocabulary in one place.
+
+**Where a title exists the stronger rule still applies**: one type, named for the title,
+referenced by every position. The construction above is for the untitled sets, which are the
+population.
+
+### THE SAME VALUES UNDER TWO NAMES IS A POPULATION OF THREE
+
+Measured across the whole bundle, one member set carrying more than one title happens exactly
+three times:
+
+| titles | members |
+|---|---|
+| `Delivery Recipient Cloud` / `Reporting Cloud` | `aws, azure, gcp` |
+| `Canonical Media Buy Action Mode` / `Media Buy Action Mode` | identical four |
+| `Catalog Action` / `Creative Action` | `created, deleted, failed, unchanged, updated` |
+
+Two are two concepts over one value set and keep both names. The third states one concept twice
+and is an upstream report. **None of them motivates machinery**: three cases and twelve member
+strings. The scale is entirely in the untitled 128.
+
+### WHAT THE CATALOGUE DOES TO AN APPROXIMATION'S DENOMINATOR
+
+An approximation is counted today at the declaration SITE, because each position derives its own
+type and a dropped fact is dropped at that position. **Under a catalogue the denominator becomes
+the ENTRY**: a constrained scalar appearing 4,127 times and dropping one fact is one approximation,
+not 4,127. The 120 declared facts are a per-site reading and will not survive the change —
+whatever they become must be re-derived and reported as a changed denominator rather than as
+progress.
+
+**And the near-duplicate constraint question is a different kind, not a smaller one.** 1,775
+distinct constrained-scalar types cover 59,873 positions. A `format: uri` position carrying a
+`pattern` is not two rules that nearly agree — it is one rule compiled to a non-injective type,
+which is a NARROWING and already decided in the semantics document's §2. Two types differing in a
+single constraint keyword are a separate question, and **the census for it does not exist**: a
+reading keyed on "same value-carrying keyword, differing constraint" is what would answer it, and
+a cruder key counts two unrelated vocabularies as a near miss. That census is owed before any rule
+about near-duplicates is written.
+
 ### The layers are BOTTOM-UP, and that is why they are layers
 
 An object type's identity is the identity of its property types, and an array's is its item
