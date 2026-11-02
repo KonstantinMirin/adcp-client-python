@@ -587,6 +587,45 @@ is the second miss and the more expensive one.
 
 The cost of the prohibition is that the compiler reproduces the defect it was built to escape.
 
+### THREE CORRECTIONS TO §3a, EACH FROM A LANE THAT REFUSED TO DECIDE IT (2026-11-02)
+
+**A DOCUMENT ROOT BEATS A RESTATING TITLE, so a CONFLICT with a rooted vocabulary is not one.**
+§3a said of two titles over one member set that *"in neither case is there a third name to collapse
+to, and minting one is what §4 refuses"*. That is right about minting and wrong about the
+population it ranges over: where one of the titles belongs to a **document of its own**, §1 has
+already given that vocabulary an exported symbol and §3a's own rule says a document root is
+already a home. There is nothing to mint, because the bundle named it. The other title is then a
+restating position that happens to carry a title of its own — a case §3a did not cover — and a
+local title does not create a second type over an identical member set, because no value
+distinguishes them. **So the conflict rule applies only where NEITHER title is a document root.**
+Where one is, that root is the home and the rest reference it. A restated title that a consumer
+needs is an alias at its position, never a second class.
+
+**ONE TYPE IS A CLASS STATEMENT; THE FUNCTIONAL FORM IS FOR TWO TYPES SHARING ONE VALUE LIST.**
+§3a's *"the value list is written once per distinct member set and the named type is constructed
+from it"* was read as mandating `StrEnum('<Name>', …)` everywhere, which costs two things that were
+measured rather than argued: a functionally-built enum has no slot for the class docstring pydantic
+renders as `description`, and a name bound by assignment is invisible to a guard that reads class
+statements. **Where the vocabulary is one type, its members ARE the value list and a normal class
+statement writes it once** — the rule is satisfied with nothing lost. The functional form is needed
+only where the bundle states one member set under names judged genuinely distinct, which is the
+narrow case, and there the docstring is written as its own statement.
+
+**AND A GUARD THAT READS CLASS STATEMENTS GOES BLIND TO AN ASSIGNMENT, so it reads the NAMESPACE.**
+A collision guard exists to answer what a consumer meets when importing the module, and a consumer
+meets the module's namespace, not its syntax. Reading the emitted module's own bindings is both
+stricter and not a structural assertion — it stops caring how a name came to be bound, which is the
+property that let the functional form slip past it.
+
+**THE EXPORT RECORD IS KEYED ON THE MODULE, NOT ON THE DOCUMENT (decided 2026-11-02).** A
+vocabulary with no naming position needs a module of its own, and that module has no document
+behind it. **A pseudo-document path is refused**: it names a file the bundle does not contain, and
+every reader that resolves a record from a key would then be lying about where the schema came
+from. The honest relocation is one level up — every document already maps to the module it
+produced, so the key becomes that module and a catalogue module is simply one with no document.
+The readers that take a document to answer a domain or a path take the module instead, which is
+what they were always asking about.
+
 ### THE RECORD'S TEXT IS A DAG; ITS POINTERS ARE NOT (decided 2026-11-02)
 
 The record stores each distinct subtree once under its own `definitions` with a local reference at
