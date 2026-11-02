@@ -20,6 +20,23 @@ not about the artifact.
 **A READING NAMES WHAT DECIDES IT**, and that must be something that fails when the reading fails.
 A check that passes when nothing happens decides nothing.
 
+**NO CHECK IS MARKED EXPECTED-TO-FAIL, SKIPPED, OR SCOPED AWAY FROM THE CODE IT IS ABOUT.** This
+code is new; there is no legacy to carry and nothing to grandfather. A red is a defect with an
+owner or it is fixed — never a marker, because a marker converts a failing check into a passing
+suite and the suite is what anyone reads.
+
+Three forms of the same evasion, and each has been found here:
+
+- **An expected-failure marker.** Legitimate only as a gate written before the work it gates, and
+  then it must be strict, so that the moment the work lands the marker's own passing is an error
+  and must be removed in the same commit.
+- **A skip when a tool is missing.** A gate that disappears with its own instrument is worse than
+  no gate: it reports green. Absent tooling is an error.
+- **A scope that omits the code the check is about.** A type checker configured over part of the
+  tree is green for free on the rest, and a guard asserting "the scope is not a corner" is worthless
+  if its own required set shares the omission. **The shipped package is in scope by definition** —
+  it is the artifact every reading is about.
+
 **A ROW THAT MOVES NO READING IS NOT BRIEFED.**
 
 ---
