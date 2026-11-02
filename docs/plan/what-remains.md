@@ -1,5 +1,12 @@
 # What remains, derived from the two documents
 
+> **RETIRED 2026-11-02 by [`final-state.md`](final-state.md).** This file is a snapshot of trunk
+> at `b9be6d46`, before the schema-text comparison was deleted and before the consumer surface was
+> built. Group A measures an exit condition against code that has moved, and several figures here
+> are superseded. **Do not brief a row from this file.** Re-measure, or read `final-state.md`,
+> which states the ten readings the artifact must satisfy and the gate for each. Kept because it
+> records what was true when each decision was taken.
+
 Measured on trunk at `b9be6d46`. Every figure here is read off the code or a run, not off a
 docstring — this project has produced seven stale censuses and several docstrings that described
 a defect as a decision.
