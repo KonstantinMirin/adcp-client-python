@@ -1664,6 +1664,7 @@ def fields(
     declared_at: Mapping[str, str] | None = None,
     distinct: Collection[str] = (),
     reuse: Mapping[str, ir.Field] | None = None,
+    pinned: Mapping[str, ir.TypeRef] | None = None,
     carried: Collection[str] = (),
 ) -> list[ir.Field] | Refusal:
     """The decided properties for one property map, children declared first.
@@ -1713,6 +1714,17 @@ def fields(
     ``properties/slots`` carries a ``default`` and a ``description`` and nothing else,
     and ``schema_at`` raises ``KeyError: 'items'``.  There is still exactly one
     lowering of the node: the base's.
+
+    ``pinned`` is §3a's PASS B, and it is the SAME "one position, not everywhere" shape
+    ``distinct`` has rather than a second ``decided``: it names the keys whose pin
+    ``codegen.lower.normalise.pins_a_member`` decided names a MEMBER of the enumeration an
+    enclosing class already declared for the property, and carries the narrowed type.  The
+    node is still lowered here -- ``codegen.lower.const`` runs, and every refusal it owes
+    the pin is still reported, which is what keeps ONE lowering of the node -- and the
+    decided type is replaced afterwards.  Replacing it instead of skipping the lowering is
+    the whole difference between this and the ``decided`` argument that was removed: that
+    one carried a type the caller decided *instead* of this loop deciding it, and the
+    keyword then had two lowerings to agree about.
 
     ``distinct`` is the same "one position, not everywhere" shape that ``decided``
     had, and it survives because its keyword has no such row: it names the keys whose
@@ -1814,6 +1826,21 @@ def fields(
                 facts=decided_type.constraints,
                 format=decided_type.format,
             )
+            # **§3a's PASS B, applied to the DECIDED type and not instead of deciding
+            # it.**  The pin was lowered by ``codegen.lower.const`` on the line above, so
+            # every refusal that row owes it has already been reported; what this replaces
+            # is the RENDERING of a value set the base already named -- ``Literal[v]``
+            # becomes ``Literal[Enum.MEMBER]`` over the enumeration the base declared, so
+            # the branch's narrowing is one a type checker reads as a narrowing and not as
+            # an incompatible override.  The decision is ``lower.normalise``'s and was
+            # made where the DECLARATIONS were in hand; this site applies it.
+            #
+            # Guarded on the lowered type still BEING the pin, which is the one thing this
+            # site can check that the decider could not: a pin whose row answered with
+            # anything else is not a pin this narrowing is about.
+            narrowed = (pinned or {}).get(key)
+            if narrowed is not None and len(field_type.literals) == 1:
+                field_type = narrowed
         is_required = key in required
         default = MISSING
         # **Through a LOCAL ``$ref`` the target's ``default`` is this field's**, which is
@@ -4495,6 +4522,37 @@ def lower_composition(
         reuse[key] = overlaid
         own[key] = dict(inherited[key])
 
+    # **§3a's PASS B: a property this class RESTATES with a pin the base's enumeration
+    # already contains.**  "``core/registry-event.json`` states ``enum: [...]`` at its
+    # root's ``event_type`` and ``const: 'property.created'`` at its branch's.  One
+    # vocabulary, two keywords" -- and this is the one site in the compiler where both
+    # spellings are in hand at once: ``own[key]`` is §2's intersection of the two
+    # declarations, ``inherited[key]`` is the base's own, and ``inherited_fields[key]`` is
+    # the enumeration the base DECIDED for it.
+    #
+    # **Imported on use, for ``lower_node``'s reason**: ``codegen.lower.normalise`` imports
+    # ``codegen.lower.enum`` for the one ``member_name`` the declaring side minted the
+    # members with, and that module imports this one, so a module-level arrow here would
+    # close a cycle.  It is a LAYER DOWN and not the run.
+    #
+    # The decision is ``normalise.pins_a_member``'s and the IMPORT is ``_reused``'s: where
+    # the base is another module's, the symbol the narrowed type names has to be importable
+    # here or the class is an undefined name, and that function is the one reader of
+    # :attr:`Target.imports`.  It is called only where the row fires, so a key the
+    # normalisation declines imports nothing.
+    from codegen.lower import normalise
+
+    pinned: dict[str, ir.TypeRef] = {}
+    for key in sorted(set(own) & set(inherited) - set(reuse)):
+        narrowed = normalise.pins_a_member(
+            _constraining(own[key]),
+            _constraining(_dereferenced(inherited[key], mod.resolve_node)),
+            inherited_fields.get(key),
+        )
+        if narrowed is None or not _placeable(narrowed.path, mod):
+            continue
+        pinned[key] = narrowed
+
     # **The merged declarations go through the PARSER**, which is ``schema/nodes.py``'s
     # own sentence about why a conjunct is a declaration: §2's intersection rule merges
     # two declarations of one property and "hands the merged declaration back to
@@ -4548,6 +4606,8 @@ def lower_composition(
         # two halves of one claim, so the row that writes the tuple passes the keys.
         distinct=(*stated.distinct, *sorted(inherited_distinct - set(stated.distinct))),
         reuse=reuse,
+        # §3a's Pass B, decided above and applied to the lowered pin.
+        pinned=pinned,
         # **§5's ``required`` row at ROOT beside a union, which is the one place a
         # required name is neither a field of this class nor undeclared**: the row puts
         # the root's own names in ``_ROOT_REQUIRED`` precisely "so a refusal can
@@ -4894,6 +4954,40 @@ def _required(node: Mapping[str, Any], pointer: str) -> list[str] | Refusal:
             kind=Kind.VERDICT,
         )
     return req
+
+
+def _placeable(symbol: str, mod: Module) -> bool:
+    """Is ``symbol`` NAMEABLE in this module -- declared here, or imported and recorded?
+
+    §3a's Pass B names a member OF a symbol, so the symbol has to resolve in the module
+    that writes the annotation or the class is an undefined name at import.  Three ways it
+    does, and this asks all three because a base's field type reaches them by three
+    different routes:
+
+    * the symbol is a POINTER this module declares (:attr:`Module.at`) -- §4's union base
+      is in this module, so its enumeration travels as a pointer until
+      ``lower/names.py`` binds it, and a pointer is nameable by construction;
+    * a declaration of this module already carries the name;
+    * this module already IMPORTS it (:attr:`Module.imported`), which is the record
+      :meth:`Module.importing` wrote when some other row named it.
+
+    **It adds no import of its own, and that is the decision.**  Pass B narrows a type the
+    BASE decided; it does not reach for a symbol this module had no other reason to name.
+    Where the enumeration is two hops away -- a branch over a local union base whose own
+    base in another module declares the field, which is ``core/protocol-envelope.json``'s
+    ``status`` and 14 sites of it -- the narrowing is DECLINED rather than an import
+    invented for it.  Measured: declining costs 14 of the 145 sites and keeps the rule that
+    an import is derived from two document paths by ``emit.resolve`` and never by a
+    lowering (D1, and :attr:`Target.imports`' own note).  The alternative was a search over
+    every target the run resolved for a module that happens to offer the name, which is a
+    second derivation of §1's one import path and is exactly what ``_reused``'s refusal
+    exists to prevent.
+    """
+    if symbol in mod.at or symbol in mod.imported:
+        return True
+    return any(
+        getattr(declaration, "name", None) == symbol for declaration in mod.declarations
+    )
 
 
 def _reused(

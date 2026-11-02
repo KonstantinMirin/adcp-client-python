@@ -112,7 +112,7 @@ class CanonicalProductPlacementPublisherRef(CanonicalProductPlacement):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('seller_agent',),)),
     )
-    kind: Literal['publisher_ref']
+    kind: Literal[Kind.PUBLISHER_REF]
     publisher_domain: Annotated[StrMatching32F5291C, Field(description='For publisher_ref, the adagents.json publisher namespace. For seller_inline, optional inventory-publisher attribution only.')]
 
 
@@ -121,7 +121,7 @@ class CanonicalProductPlacementSellerInline(CanonicalProductPlacement):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/canonical-placement.json', pointer='#/oneOf/1')
-    kind: Literal['seller_inline']
+    kind: Literal[Kind.SELLER_INLINE]
     name: StrMinLen1
 
 

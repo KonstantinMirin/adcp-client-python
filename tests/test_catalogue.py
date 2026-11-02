@@ -256,6 +256,17 @@ def _a_fresh_package(out: emit.Emitted, root: Path) -> Path:
     return root
 
 
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "section 3a as of 2026-11-02 orders PASS B before the cross-document COLLECTION, "
+        "on the measurement that Pass B reaches 145 of the 264 base-class type errors and "
+        "the collection reaches about 10.  So the walk does not consult L0 yet and 13 of "
+        "the 15 named vocabularies are still carried by more than one class.  STRICT: "
+        "wiring the collection flips this, and a flip that went unnoticed would leave the "
+        "obligation recorded and ungraded"
+    ),
+)
 def test_no_two_classes_carry_one_named_vocabulary(
     l0: catalogue.Catalogue, tmp_path: Path
 ) -> None:

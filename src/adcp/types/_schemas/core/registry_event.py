@@ -134,8 +134,8 @@ class RegistryEventPropertyCreatedProperty(RegistryEvent):
     property.created - a new property_rid was assigned.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/0')
-    event_type: Annotated[Literal['property.created'], Field(description='Discriminator. Determines the shape of payload.')]
-    entity_type: Annotated[Literal['property'], Field(description='Entity class touched by this event.')]
+    event_type: Annotated[Literal[EventType.PROPERTY_CREATED], Field(description='Discriminator. Determines the shape of payload.')]
+    entity_type: Annotated[Literal[EntityType.PROPERTY], Field(description='Entity class touched by this event.')]
     payload: Annotated[RegistryEventPropertyCreatedPropertyPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
 
 
@@ -155,8 +155,8 @@ class RegistryEventPropertyUpdatedProperty(RegistryEvent):
     property.updated - classification, identifiers, or metadata changed.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/1')
-    event_type: Annotated[Literal['property.updated'], Field(description='Discriminator. Determines the shape of payload.')]
-    entity_type: Annotated[Literal['property'], Field(description='Entity class touched by this event.')]
+    event_type: Annotated[Literal[EventType.PROPERTY_UPDATED], Field(description='Discriminator. Determines the shape of payload.')]
+    entity_type: Annotated[Literal[EntityType.PROPERTY], Field(description='Entity class touched by this event.')]
     payload: Annotated[RegistryEventPropertyUpdatedPropertyPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
 
 
@@ -178,8 +178,8 @@ class RegistryEventPropertyMergedProperty(RegistryEvent):
     property.merged - one property_rid became an alias of another.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/2')
-    event_type: Annotated[Literal['property.merged'], Field(description='Discriminator. Determines the shape of payload.')]
-    entity_type: Annotated[Literal['property'], Field(description='Entity class touched by this event.')]
+    event_type: Annotated[Literal[EventType.PROPERTY_MERGED], Field(description='Discriminator. Determines the shape of payload.')]
+    entity_type: Annotated[Literal[EntityType.PROPERTY], Field(description='Entity class touched by this event.')]
     payload: Annotated[RegistryEventPropertyMergedPropertyPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
 
 
@@ -201,8 +201,8 @@ class RegistryEventPropertyStaleProperty(RegistryEvent):
     property.stale - a property has aged out of active resolution.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/3')
-    event_type: Annotated[Literal['property.stale'], Field(description='Discriminator. Determines the shape of payload.')]
-    entity_type: Annotated[Literal['property'], Field(description='Entity class touched by this event.')]
+    event_type: Annotated[Literal[EventType.PROPERTY_STALE], Field(description='Discriminator. Determines the shape of payload.')]
+    entity_type: Annotated[Literal[EntityType.PROPERTY], Field(description='Entity class touched by this event.')]
     payload: Annotated[RegistryEventPropertyStalePropertyPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
 
 
@@ -223,8 +223,8 @@ class RegistryEventPropertyReactivatedProperty(RegistryEvent):
     property.reactivated - a stale property was resolved again.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/4')
-    event_type: Annotated[Literal['property.reactivated'], Field(description='Discriminator. Determines the shape of payload.')]
-    entity_type: Annotated[Literal['property'], Field(description='Entity class touched by this event.')]
+    event_type: Annotated[Literal[EventType.PROPERTY_REACTIVATED], Field(description='Discriminator. Determines the shape of payload.')]
+    entity_type: Annotated[Literal[EntityType.PROPERTY], Field(description='Entity class touched by this event.')]
     payload: Annotated[RegistryEventPropertyReactivatedPropertyPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
 
 
@@ -280,8 +280,8 @@ class RegistryEventCollectionCreatedCollection(RegistryEvent):
     collection.created - a new collection_rid was assigned.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/5')
-    event_type: Annotated[Literal['collection.created'], Field(description='Discriminator. Determines the shape of payload.')]
-    entity_type: Annotated[Literal['collection'], Field(description='Entity class touched by this event.')]
+    event_type: Annotated[Literal[EventType.COLLECTION_CREATED], Field(description='Discriminator. Determines the shape of payload.')]
+    entity_type: Annotated[Literal[EntityType.COLLECTION], Field(description='Entity class touched by this event.')]
     payload: Annotated[RegistryEventCollectionCreatedCollectionPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
 
 
@@ -301,8 +301,8 @@ class RegistryEventCollectionUpdatedCollection(RegistryEvent):
     collection.updated - collection metadata or distribution identifiers changed.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/6')
-    event_type: Annotated[Literal['collection.updated'], Field(description='Discriminator. Determines the shape of payload.')]
-    entity_type: Annotated[Literal['collection'], Field(description='Entity class touched by this event.')]
+    event_type: Annotated[Literal[EventType.COLLECTION_UPDATED], Field(description='Discriminator. Determines the shape of payload.')]
+    entity_type: Annotated[Literal[EntityType.COLLECTION], Field(description='Entity class touched by this event.')]
     payload: Annotated[RegistryEventCollectionUpdatedCollectionPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
 
 
@@ -324,8 +324,8 @@ class RegistryEventCollectionMergedCollection(RegistryEvent):
     collection.merged - one collection_rid became an alias of another.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/7')
-    event_type: Annotated[Literal['collection.merged'], Field(description='Discriminator. Determines the shape of payload.')]
-    entity_type: Annotated[Literal['collection'], Field(description='Entity class touched by this event.')]
+    event_type: Annotated[Literal[EventType.COLLECTION_MERGED], Field(description='Discriminator. Determines the shape of payload.')]
+    entity_type: Annotated[Literal[EntityType.COLLECTION], Field(description='Entity class touched by this event.')]
     payload: Annotated[RegistryEventCollectionMergedCollectionPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
 
 
@@ -337,7 +337,7 @@ class RegistryEventCollectionRemovedCollectionPayload(CollectionPayload):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/8/properties/payload')
-    status: Literal['removed']
+    status: Literal[Status.REMOVED]
     collection_rid: Annotated[str, Field(json_schema_extra={'format': 'uuid'})]
     publisher_domain: Domain
 
@@ -347,8 +347,8 @@ class RegistryEventCollectionRemovedCollection(RegistryEvent):
     collection.removed - a collection is no longer visible in the publisher's authoritative catalog.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/8')
-    event_type: Annotated[Literal['collection.removed'], Field(description='Discriminator. Determines the shape of payload.')]
-    entity_type: Annotated[Literal['collection'], Field(description='Entity class touched by this event.')]
+    event_type: Annotated[Literal[EventType.COLLECTION_REMOVED], Field(description='Discriminator. Determines the shape of payload.')]
+    entity_type: Annotated[Literal[EntityType.COLLECTION], Field(description='Entity class touched by this event.')]
     payload: Annotated[RegistryEventCollectionRemovedCollectionPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
 
 
@@ -407,8 +407,8 @@ class RegistryEventAgentDiscoveredAgent(RegistryEvent):
     agent.discovered - a new agent appeared in crawled registry data.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/9')
-    event_type: Annotated[Literal['agent.discovered'], Field(description='Discriminator. Determines the shape of payload.')]
-    entity_type: Annotated[Literal['agent'], Field(description='Entity class touched by this event.')]
+    event_type: Annotated[Literal[EventType.AGENT_DISCOVERED], Field(description='Discriminator. Determines the shape of payload.')]
+    entity_type: Annotated[Literal[EntityType.AGENT], Field(description='Entity class touched by this event.')]
     payload: Annotated[RegistryEventAgentDiscoveredAgentPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
 
 
@@ -429,8 +429,8 @@ class RegistryEventAgentRemovedAgent(RegistryEvent):
     agent.removed - an agent no longer appears in any crawled adagents.json authorization graph.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/10')
-    event_type: Annotated[Literal['agent.removed'], Field(description='Discriminator. Determines the shape of payload.')]
-    entity_type: Annotated[Literal['agent'], Field(description='Entity class touched by this event.')]
+    event_type: Annotated[Literal[EventType.AGENT_REMOVED], Field(description='Discriminator. Determines the shape of payload.')]
+    entity_type: Annotated[Literal[EntityType.AGENT], Field(description='Entity class touched by this event.')]
     payload: Annotated[RegistryEventAgentRemovedAgentPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
 
 
@@ -451,8 +451,8 @@ class RegistryEventAgentProfileUpdatedAgent(RegistryEvent):
     agent.profile_updated - an agent inventory profile changed.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/11')
-    event_type: Annotated[Literal['agent.profile_updated'], Field(description='Discriminator. Determines the shape of payload.')]
-    entity_type: Annotated[Literal['agent'], Field(description='Entity class touched by this event.')]
+    event_type: Annotated[Literal[EventType.AGENT_PROFILE_UPDATED], Field(description='Discriminator. Determines the shape of payload.')]
+    entity_type: Annotated[Literal[EntityType.AGENT], Field(description='Entity class touched by this event.')]
     payload: Annotated[RegistryEventAgentProfileUpdatedAgentPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
 
 
@@ -515,8 +515,8 @@ class RegistryEventAgentComplianceChangedAgent(RegistryEvent):
     agent.compliance_changed - an agent verification or compliance heartbeat changed status.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/12')
-    event_type: Annotated[Literal['agent.compliance_changed'], Field(description='Discriminator. Determines the shape of payload.')]
-    entity_type: Annotated[Literal['agent'], Field(description='Entity class touched by this event.')]
+    event_type: Annotated[Literal[EventType.AGENT_COMPLIANCE_CHANGED], Field(description='Discriminator. Determines the shape of payload.')]
+    entity_type: Annotated[Literal[EntityType.AGENT], Field(description='Entity class touched by this event.')]
     payload: Annotated[CompliancePayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
 
 
@@ -548,8 +548,8 @@ class RegistryEventAgentVerificationEarnedAgent(RegistryEvent):
     agent.verification_earned - an agent earned an AAO Verified badge.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/13')
-    event_type: Annotated[Literal['agent.verification_earned'], Field(description='Discriminator. Determines the shape of payload.')]
-    entity_type: Annotated[Literal['agent'], Field(description='Entity class touched by this event.')]
+    event_type: Annotated[Literal[EventType.AGENT_VERIFICATION_EARNED], Field(description='Discriminator. Determines the shape of payload.')]
+    entity_type: Annotated[Literal[EntityType.AGENT], Field(description='Entity class touched by this event.')]
     payload: Annotated[RegistryEventAgentVerificationEarnedAgentPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
 
 
@@ -581,8 +581,8 @@ class RegistryEventAgentVerificationLostAgent(RegistryEvent):
     agent.verification_lost - an agent lost an AAO Verified badge.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/14')
-    event_type: Annotated[Literal['agent.verification_lost'], Field(description='Discriminator. Determines the shape of payload.')]
-    entity_type: Annotated[Literal['agent'], Field(description='Entity class touched by this event.')]
+    event_type: Annotated[Literal[EventType.AGENT_VERIFICATION_LOST], Field(description='Discriminator. Determines the shape of payload.')]
+    entity_type: Annotated[Literal[EntityType.AGENT], Field(description='Entity class touched by this event.')]
     payload: Annotated[RegistryEventAgentVerificationLostAgentPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
 
 
@@ -616,8 +616,8 @@ class RegistryEventPublisherAdagentsDiscoveredPublisher(RegistryEvent):
     publisher.adagents_discovered - the crawler found a publisher adagents.json file and projected it into the registry.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/15')
-    event_type: Annotated[Literal['publisher.adagents_discovered'], Field(description='Discriminator. Determines the shape of payload.')]
-    entity_type: Annotated[Literal['publisher'], Field(description='Entity class touched by this event.')]
+    event_type: Annotated[Literal[EventType.PUBLISHER_ADAGENTS_DISCOVERED], Field(description='Discriminator. Determines the shape of payload.')]
+    entity_type: Annotated[Literal[EntityType.PUBLISHER], Field(description='Entity class touched by this event.')]
     payload: Annotated[PublisherAdagentsPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
 
 
@@ -636,8 +636,8 @@ class RegistryEventPublisherAdagentsChangedPublisher(RegistryEvent):
     publisher.adagents_changed - the registry crawler detected a semantic change anywhere in a publisher adagents.json document, including formats-only or placements-only revisions. Transport metadata such as $schema and last_updated does not trigger this event by itself.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/16')
-    event_type: Annotated[Literal['publisher.adagents_changed'], Field(description='Discriminator. Determines the shape of payload.')]
-    entity_type: Annotated[Literal['publisher'], Field(description='Entity class touched by this event.')]
+    event_type: Annotated[Literal[EventType.PUBLISHER_ADAGENTS_CHANGED], Field(description='Discriminator. Determines the shape of payload.')]
+    entity_type: Annotated[Literal[EntityType.PUBLISHER], Field(description='Entity class touched by this event.')]
     payload: Annotated[RegistryEventPublisherAdagentsChangedPublisherPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
 
 
@@ -713,8 +713,8 @@ class RegistryEventAuthorizationGrantedAuthorization(RegistryEvent):
     authorization.granted - an agent became authorized for a publisher or scoped inventory slice.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/17')
-    event_type: Annotated[Literal['authorization.granted'], Field(description='Discriminator. Determines the shape of payload.')]
-    entity_type: Annotated[Literal['authorization'], Field(description='Entity class touched by this event.')]
+    event_type: Annotated[Literal[EventType.AUTHORIZATION_GRANTED], Field(description='Discriminator. Determines the shape of payload.')]
+    entity_type: Annotated[Literal[EntityType.AUTHORIZATION], Field(description='Entity class touched by this event.')]
     payload: Annotated[AuthorizationPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
 
 
@@ -723,8 +723,8 @@ class RegistryEventAuthorizationRevokedAuthorization(RegistryEvent):
     authorization.revoked - an agent authorization is no longer visible in the effective registry set.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/18')
-    event_type: Annotated[Literal['authorization.revoked'], Field(description='Discriminator. Determines the shape of payload.')]
-    entity_type: Annotated[Literal['authorization'], Field(description='Entity class touched by this event.')]
+    event_type: Annotated[Literal[EventType.AUTHORIZATION_REVOKED], Field(description='Discriminator. Determines the shape of payload.')]
+    entity_type: Annotated[Literal[EntityType.AUTHORIZATION], Field(description='Entity class touched by this event.')]
     payload: Annotated[AuthorizationPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
 
 
@@ -733,8 +733,8 @@ class RegistryEventAuthorizationModifiedAuthorization(RegistryEvent):
     authorization.modified - an authorization row remained visible, but externally visible metadata changed.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/19')
-    event_type: Annotated[Literal['authorization.modified'], Field(description='Discriminator. Determines the shape of payload.')]
-    entity_type: Annotated[Literal['authorization'], Field(description='Entity class touched by this event.')]
+    event_type: Annotated[Literal[EventType.AUTHORIZATION_MODIFIED], Field(description='Discriminator. Determines the shape of payload.')]
+    entity_type: Annotated[Literal[EntityType.AUTHORIZATION], Field(description='Entity class touched by this event.')]
     payload: Annotated[AuthorizationPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
 
 

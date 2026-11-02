@@ -80,7 +80,7 @@ class ListProductsResponseListed(ListProductsResponse):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/list-products-response.json', pointer='#/oneOf/0')
-    outcome: Annotated[Literal['listed'], Field(description='Whether this response carries a product page or confirms that the selected feed has not changed.')]
+    outcome: Annotated[Literal[Outcome.LISTED], Field(description='Whether this response carries a product page or confirms that the selected feed has not changed.')]
     cache_scope: CacheScope
     feed_version: Annotated[str, Field(description='Opaque version of the selected offer feed. For wholesale webhook consumers this is the same scope-keyed token carried as wholesale_feed_version on product.* and wholesale_feed.bulk_change notifications.')]
     products: list[CanonicalProduct]
@@ -94,7 +94,7 @@ class ListProductsResponseUnchanged(ListProductsResponse):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('products',),)),
     )
-    outcome: Annotated[Literal['unchanged'], Field(description='Whether this response carries a product page or confirms that the selected feed has not changed.')]
+    outcome: Annotated[Literal[Outcome.UNCHANGED], Field(description='Whether this response carries a product page or confirms that the selected feed has not changed.')]
     cache_scope: CacheScope
     feed_version: Annotated[str, Field(description='Opaque version of the selected offer feed. For wholesale webhook consumers this is the same scope-keyed token carried as wholesale_feed_version on product.* and wholesale_feed.bulk_change notifications.')]
 

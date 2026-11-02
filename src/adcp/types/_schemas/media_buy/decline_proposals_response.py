@@ -45,7 +45,7 @@ class ResultsItemDeclined(ResultsItem):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('reason',),)),
     )
-    outcome: Literal['declined']
+    outcome: Literal[Outcome.DECLINED]
 
 
 class DeclineProposalsResponseResultsItemUnable(ResultsItem):
@@ -53,7 +53,7 @@ class DeclineProposalsResponseResultsItemUnable(ResultsItem):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/decline-proposals-response.json', pointer='#/properties/results/items/oneOf/1')
-    outcome: Literal['unable']
+    outcome: Literal[Outcome.UNABLE]
     reason: Annotated[StrMinLen1, Field(description='Why the seller could not apply a decline. Present only for outcome unable.')]
 
 

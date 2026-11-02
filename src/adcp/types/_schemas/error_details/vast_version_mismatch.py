@@ -65,7 +65,7 @@ class AssetOutsideAcceptedVersionIntersection(VASTVersionMismatchDetails):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='error-details/vast-version-mismatch.json', pointer='#/anyOf/0')
-    mismatch_reason: Annotated[Literal['asset_outside_acceptance'], Field(description='Machine-readable modern mismatch branch.')]
+    mismatch_reason: Annotated[Literal[MismatchReason.ASSET_OUTSIDE_ACCEPTANCE], Field(description='Machine-readable modern mismatch branch.')]
     asset_vast_version: VASTVersion
     product_vast_versions: Annotated[list[VASTVersion], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
     seller_vast_versions: Annotated[list[VASTVersion], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
@@ -79,7 +79,7 @@ class InspectedDocumentVersionMismatch(VASTVersionMismatchDetails):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ConditionalRequired((Match('document_role', True, ('wrapper', 'terminal_inline')),), require=('product_vast_versions', 'seller_vast_versions'), forbid=()),
     )
-    mismatch_reason: Annotated[Literal['document_version_mismatch'], Field(description='Machine-readable modern mismatch branch.')]
+    mismatch_reason: Annotated[Literal[MismatchReason.DOCUMENT_VERSION_MISMATCH], Field(description='Machine-readable modern mismatch branch.')]
     asset_vast_version: VASTVersion
     document_role: Annotated[DocumentRole, Field(description='Role of the inspected document. Only the submitted document is required to equal the asset declaration; wrapper and terminal documents are checked against the applicable acceptance sets.')]
     observed_document_vast_version: Annotated[StrMinLen1 | None, Field(description='Raw version observed on the inspected VAST document whose root is being validated. `null` means the required version attribute was missing. This field is intentionally not limited to the governed supported-version enum so diagnostics can report future or invalid document values.')]
