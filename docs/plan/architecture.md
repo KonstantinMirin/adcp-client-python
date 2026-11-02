@@ -593,22 +593,69 @@ hand-written walk that also emits a type per position arrives at the same place 
 **Faithfulness per node is not consistency across the bundle**, and only the second is what a
 consumer experiences.
 
-### What is there to collect, measured over the 1,054 portable documents
+### What is there to collect, and WHICH READING is the open question
 
-| layer | distinct cases | repeated | positions covered | widest single case |
+| layer | distinct identities | repeated | positions covered | widest |
 |---|---|---|---|---|
-| **L0** enum vocabularies | 807 | 663 | 16,135 | 259 |
-| **L1** constrained scalars | 1,776 | 1,315 | **59,516** | **4,127** |
+| **L1** constrained scalars | 1,776 | 1,315 | 59,516 | 4,127 |
 | **L2** object types, 2+ properties | 13,453 | 1,368 | 13,151 | 450 |
 | **L3** array types | 6,712 | 1,808 | 11,746 | 1,242 |
 
-Identity here is STRUCTURAL and ignores annotations — `description`, `title`, `examples`,
-`default`, `$comment`, `deprecated` — because an annotation does not change what a node admits.
-The evidence that this is a real defect and not an accounting curiosity: 897 enum classes are
-emitted for 715 distinct member-sets, **128 member-sets are emitted more than once across 310
-classes**, and one of them appears as `Status`, `BuyerAssetAcceptance` and `HostReceiptStatus` —
-three names for one protocol concept, mutually non-assignable, so a consumer who receives that
-value in two messages cannot pass it between them.
+**L0's row is withdrawn: the figure I published matched no honest reading of the bundle
+(corrected 2026-11-02).** It claimed 16,135 positions, 807 identities, 663 repeated and 203
+nameable. Three readings, each reproducible:
+
+| reading | positions | identities | repeated | titled / untitled / conflicting | cross-domain |
+|---|---|---|---|---|---|
+| stating positions, raw | 1,069 | 822 | 165 | **15 / 124 / 3** | 61 |
+| the inlined record | 171,331 | 805 | 623 | 209 / 411 / 3 | 550 |
+| declaration + one `$ref` hop | 1,999 | 805 | 371 | 211 / 157 / 3 | 245 |
+
+My figure came from a record reading presented as a bundle reading. **The tell is that 3
+conflicting titles reproduce in every one of them**: a title is stated once and every `$ref`
+carries it along, so inlining multiplies the titled and untitled groups and leaves the conflicts
+untouched. The nameable population is therefore on the order of **15 entries, not 203** — a
+thirteenfold overstatement, and the kind this document exists to prevent rather than produce.
+
+**Which reading L0 collects over is not yet decided, and it is the first question of the row.** It
+is not a detail: the raw reading names 15 entries and the record reading names 209, over the same
+bundle. §3a's TREE figures are unaffected and reproduce exactly — 897 enum classes carrying 715
+distinct member-sets, 128 of those emitted more than once across 310 classes.
+
+### What the catalogue does NOT fix, measured before it was built
+
+The 457 mypy errors in the generated tree were presented as the catalogue's headline. They are
+not. The 362 `[assignment]` decompose as **145** an enum base against a `Literal` pin, **44**
+`dict[str, Any]`, **31** object, **23** container, **21** an enum against a different enum class;
+and of the 166 enum-base errors, **108 are stated at a single position** so a cross-document
+collection never reaches them, **41 are untitled cross-document** which this section expressly
+refuses to collapse, 5 are same-document restatements §4 already owns, and 2 are the conflicts.
+
+**So L0 reaches roughly 10 of the 264.** The 145 belong to Pass B — `const` against `enum` — and
+**89 of those are single-document**, needing no catalogue at all. Pass B is therefore both the
+larger win and the cheaper one, which reorders the work: the normalisation comes first and the
+cross-document collection second.
+
+### The gate is worded PER TITLE, never per member-set
+
+"No two classes carry one member-set unless the bundle gives the field no title" cannot go green,
+and the reason is instructive. `{closed, open}` is stated at `enums/gop-type.json`'s root, titled
+**'GOP Type'** for video Group-of-Pictures, and at four untitled positions —
+`core/opportunity-context.json`'s `status` and three governance `delivery_period_state`. Under
+member-set identity that group IS titled, so satisfying the gate types a governance reporting
+field as `GOPType`: the coincidental overlap the untitled rule exists to refuse, arriving through
+the IDENTITY instead of through the name. Measured both ways: the member-set reading gives 17
+titled member-sets under 42 names and is unfixable at that entry; a per-title reading gives 12 of
+15 entries under more than one name, 29 classes for 15 entries, and is fixable.
+
+### An unresolved contradiction between two of my own sentences
+
+**13 of the 15 nameable entries are stated at a document ROOT.** The narrowest-namespace rule
+below says such an entry belongs in `adcp.types.common`; the semantics document's §4 clause of
+2026-10-30 says the opposite — a root keeps its name, because it is "another document's name,
+which this module has no standing to move". Only 2 of 15 are unambiguous. **This is not settled
+and no lane may pick a side.** It is resolved with the measurement in hand, and the resolution
+belongs in both documents at once.
 
 ### The layers are BOTTOM-UP, and that is why they are layers
 
