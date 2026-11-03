@@ -1341,14 +1341,21 @@ def _enumeration(declaration: ir.Declaration) -> ir.EnumDecl | None:
     return None
 
 
-def _constructed(declaration: ir.Declaration, values: str) -> ir.Declaration:
-    """``declaration`` with its enumeration CONSTRUCTED from the value list ``values``."""
-    if isinstance(declaration, ir.RootBinding):
-        return replace(
-            declaration,
-            declaration=replace(declaration.declaration, values=values),
-        )
-    return replace(declaration, values=values)
+def _constructed(
+    declaration: ir.Declaration, found: ir.EnumDecl, values: str
+) -> ir.Declaration:
+    """``declaration`` with its enumeration CONSTRUCTED from the value list ``values``.
+
+    ``found`` is :func:`_enumeration`'s answer for ``declaration``, handed in rather than
+    read again: a :class:`codegen.ir.RootBinding` wraps an ``AliasDecl`` or an
+    ``EnumDecl``, only one of those has a value list to construct from, and the caller has
+    already asked which.  So the ROOT arm rewraps and the other arm IS ``found`` -- which
+    is why nothing here has to narrow ``declaration`` a second time.
+    """
+    built = replace(found, values=values)
+    return replace(declaration, declaration=built) if isinstance(
+        declaration, ir.RootBinding
+    ) else built
 
 
 def the_value_lists(
@@ -1428,7 +1435,7 @@ def the_value_lists(
         if spelled not in written:
             written.add(spelled)
             out.append(ir.ValuesDecl(name=spelled, kind=found.kind, members=found.members))
-        out.append(_constructed(declaration, spelled))
+        out.append(_constructed(declaration, found, spelled))
     return tuple(out)
 
 

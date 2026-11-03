@@ -11,6 +11,7 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import AtLeastOne, ConditionalRequired, ForbiddenGroups, Match, NotValue, Rule, UniqueItems
 from adcp.types.constraints import IntMin0Max50, IntMin0Max86400, IntMin1, IntMin1Max365, IntMin1Max604800, IntMin1Max64, IntMin1Max86400, IntMin2Max10, IntMin3600Max604800, IntMin60Max604800, IntMin86400Max604800, IntMin90, StrFormatUri, StrFormatUriMatching5E721644, StrMatching071A974C, StrMatching32F5291C, StrMatching3A976806, StrMatching3CBDBB74, StrMatching4D6E1599, StrMatching611F08F3, StrMatching6C40A8AC, StrMatchingA828669D, StrMatchingEFC12812, StrMaxLen10000, StrMaxLen256MatchingF7F39876, StrMaxLen5000, StrMinLen1, StrMinLen1MaxLen100Matching85112285, StrMinLen1MaxLen255, StrMinLen1MaxLen64Matching5CDAE669
 
+from ..common._vocabularies import _VALUES_BINARY_QUANTITATIVE_CATEGORICAL, _VALUES_CAPABILITIES_CHANGED, _VALUES_COST_PER_THRESHOLD_RATE, _VALUES_VOICE_THEME_BEST_OF_N_TRANSFORMER_CONFIG_CUSTOM
 from ..core.account_timezone_capability import AccountTimezoneCapability
 from ..core.attestation_capabilities import AttestationCapabilities
 from ..core.audience_activation_method import AudienceActivationMethod
@@ -148,8 +149,7 @@ class RegistrationTask(StrEnum):
     SYNC_PRINCIPAL = 'sync_principal'
 
 
-class CapabilityChangeNotificationsSupportedEventTypesItem(StrEnum):
-    CAPABILITIES_CHANGED = 'capabilities.changed'
+CapabilityChangeNotificationsSupportedEventTypesItem = StrEnum('CapabilityChangeNotificationsSupportedEventTypesItem', _VALUES_CAPABILITIES_CHANGED)
 
 
 class CapabilityChangeNotificationsSupported(AdCPBaseModel):
@@ -794,9 +794,7 @@ class AudienceTargeting(AdCPBaseModel):
     matching_latency_hours: Annotated[MatchingLatencyHours | None, Field(description='Expected matching latency range in hours after upload. Use to calibrate polling cadence and set appropriate expectations before configuring push_notification_config.')] = None
 
 
-class SupportedTargetsItem(StrEnum):
-    COST_PER = 'cost_per'
-    THRESHOLD_RATE = 'threshold_rate'
+SupportedTargetsItem = StrEnum('SupportedTargetsItem', _VALUES_COST_PER_THRESHOLD_RATE)
 
 
 class VendorMetricOptimization(AdCPBaseModel):
@@ -1030,13 +1028,10 @@ class RuntimeAttestations(AdCPBaseModel):
     signal_activation: SignalActivation
 
 
-class PropertyFeaturesItemType(StrEnum):
-    """
-    Data type: 'binary' for yes/no, 'quantitative' for numeric scores, 'categorical' for enum values
-    """
-    BINARY = 'binary'
-    QUANTITATIVE = 'quantitative'
-    CATEGORICAL = 'categorical'
+PropertyFeaturesItemType = StrEnum('PropertyFeaturesItemType', _VALUES_BINARY_QUANTITATIVE_CATEGORICAL)
+PropertyFeaturesItemType.__doc__ = """
+Data type: 'binary' for yes/no, 'quantitative' for numeric scores, 'categorical' for enum values
+"""
 
 
 class PropertyFeaturesItemRange(AdCPBaseModel):
@@ -1151,12 +1146,7 @@ class RepresentationResolution(AdCPBaseModel):
     strategies: Annotated[list[RepresentationSelectionStrategy], Field(description='Deterministic selection strategies the seller implements after compatibility filtering. `representation_order` selects the first compatible source entry. `highest_compatible_vast` selects the highest exact VAST version from the already-intersected candidate set, with equal-version ties resolved by source array order.', json_schema_extra={'uniqueItems': True}, min_length=1)]
 
 
-class VariantDimensionsItem(StrEnum):
-    VOICE = 'voice'
-    THEME = 'theme'
-    BEST_OF_N = 'best_of_n'
-    TRANSFORMER_CONFIG = 'transformer_config'
-    CUSTOM = 'custom'
+VariantDimensionsItem = StrEnum('VariantDimensionsItem', _VALUES_VOICE_THEME_BEST_OF_N_TRANSFORMER_CONFIG_CUSTOM)
 
 
 class Multiplicity(AdCPBaseModel):

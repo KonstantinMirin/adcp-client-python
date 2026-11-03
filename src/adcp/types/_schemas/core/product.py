@@ -10,6 +10,7 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, PropertyCount, RequiredGroups, Rule, UniqueItems
 from adcp.types.constraints import FloatGt0, IntMin1, StrFormatUriMatching5E721644, StrMatchingEE2029C8, StrMatchingEFC12812, StrMaxLen200, StrMaxLen2000, StrMaxLen25, StrMaxLen30, StrMaxLen60
 
+from ..common._vocabularies import _VALUES_COST_PER_THRESHOLD_RATE
 from ..enums.action_source import ActionSource
 from ..enums.audio_distribution_type import AudioDistributionType
 from ..enums.catalog_type import CatalogType
@@ -72,9 +73,7 @@ class DeliveryMeasurement(AdCPBaseModel):
     notes: Annotated[str | None, Field(description="Additional details about measurement methodology in plain language (e.g., 'MRC-accredited viewability. 50% in-view for 1s display / 2s video', 'Panel-based demographic measurement updated monthly'). Free-form prose for context that doesn't fit the structured `vendors` field.")] = None
 
 
-class MetricOptimizationSupportedTargetsItem(StrEnum):
-    COST_PER = 'cost_per'
-    THRESHOLD_RATE = 'threshold_rate'
+MetricOptimizationSupportedTargetsItem = StrEnum('MetricOptimizationSupportedTargetsItem', _VALUES_COST_PER_THRESHOLD_RATE)
 
 
 class MetricOptimization(AdCPBaseModel):

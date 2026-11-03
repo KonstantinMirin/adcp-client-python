@@ -5,18 +5,15 @@ from enum import StrEnum
 
 from adcp.types._base import SchemaRef, strict_alias
 
+from ._vocabularies import _VALUES_CREATED_UPDATED_UNCHANGED_FAILED_DELETED
+
 
 __adcp_schema__ = SchemaRef(document='enums/catalog-action.json', pointer='#')
 
-class CatalogAction(StrEnum):
-    """
-    Action taken on a catalog during sync operation
-    """
-    CREATED = 'created'
-    UPDATED = 'updated'
-    UNCHANGED = 'unchanged'
-    FAILED = 'failed'
-    DELETED = 'deleted'
+CatalogAction = StrEnum('CatalogAction', _VALUES_CREATED_UPDATED_UNCHANGED_FAILED_DELETED)
+CatalogAction.__doc__ = """
+Action taken on a catalog during sync operation
+"""
 
 
 strict_validate = strict_alias(__adcp_schema__, "CatalogAction", CatalogAction)

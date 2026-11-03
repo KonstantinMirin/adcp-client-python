@@ -10,6 +10,7 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, RequiredGroups, Rule, UniqueItems
 from adcp.types.constraints import IntMin1, StrMatchingA828669D
 
+from ..common._vocabularies import _VALUES_VOICE_THEME_BEST_OF_N_TRANSFORMER_CONFIG_CUSTOM
 from .format_id import FormatReferenceStructuredObject
 from .product_format_declaration import ProductFormatDeclaration
 from .transformer_param import TransformerParam
@@ -38,12 +39,7 @@ class VoiceSynthesisRefItem(AdCPBaseModel):
     rights_id: Annotated[str | None, Field(description='Optional rights offering or buyer-specific grant identifier associated with this provisioned voice. Brand-side voice_synthesis uses rights_offering_id for the configuration-time offering anchor. This transformer field may carry that offering ID or a grant ID after provisioning; it remains provenance metadata only, not a build_creative rights token.')] = None
 
 
-class VariantDimensionsItem(StrEnum):
-    VOICE = 'voice'
-    THEME = 'theme'
-    BEST_OF_N = 'best_of_n'
-    TRANSFORMER_CONFIG = 'transformer_config'
-    CUSTOM = 'custom'
+VariantDimensionsItem = StrEnum('VariantDimensionsItem', _VALUES_VOICE_THEME_BEST_OF_N_TRANSFORMER_CONFIG_CUSTOM)
 
 
 class Multiplicity(AdCPBaseModel):

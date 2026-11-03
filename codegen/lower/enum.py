@@ -282,13 +282,29 @@ def lower(
     # at an ``if`` branch of *Authentication Scheme*), and widening the arm would change
     # what §4 derives at a position it deliberately gives no name.
     entry = mod.vocabularies.get(node.pointer)
-    if entry is None and not node.facts:
+    if entry is None:
         # **The VALUE LIST arm, for a restating position no pointer of this document's own
         # text reaches** (:attr:`compiler.Module.restatements`): a node a COMPOSITION
         # re-lowers at a pointer belonging to no edge of either document, and a position
-        # whose home is in this same module.  Asked only where the node carries no
-        # constraint beside its ``enum``, because a value list beside a ``pattern`` admits
-        # a subset of the members and is not the entry's vocabulary.
+        # whose home is in this same module.
+        #
+        # **IT WAS ASKED ONLY OF A NODE WITH NO CONSTRAINT BESIDE ITS ``enum``, and that
+        # guard is :func:`excluded` restated** -- "a value list beside a ``pattern``
+        # admits a subset of the members and is not the entry's vocabulary".  The premise
+        # is false by the time this line runs: :func:`excluded` above REFUSES a node whose
+        # own constraints exclude any member, so past it every member satisfies every
+        # fact, the node admits exactly the members, and the value list IS the admitted
+        # set whatever is spelled beside it.  Two positions over one value list therefore
+        # admit the same instances, which is the whole of what the key has to mean.
+        #
+        # Measured, the guard cost exactly one class: ``core/postal-area.json`` re-lowers
+        # ``core/postal-country-system.json#/anyOf/3/properties/country``, where §2's
+        # intersection rule puts the root's ``^[A-Z]{2}$`` beside ``["DE", "CH", "AT"]`` --
+        # the one node of this bundle that reaches the case -- and all three members match
+        # it, so BOTH sides dropped the pattern and declared the same three-member class.
+        # Relaxing it moves that one position onto the home's symbol and moves nothing
+        # else: the emitted tree differs in that module and in no other.
+        #
         # **A document ROOT is never answered here**, and that is §1's rule: "every
         # portable document contributes a symbol", so a root that referenced another
         # module's class would leave its own document with no exported name.  The pointer

@@ -28,6 +28,7 @@ from ..enums.sponsored_placement_type import SponsoredPlacementType
 from ..enums.transport_mode import TransportMode
 from ..enums.travel_time_unit import TravelTimeUnit
 from ..enums.video_placement_type import VideoPlacementType
+from ._vocabularies import _VALUES_INCLUDE_EXCLUDE
 from .audience_activation_method import DirectionsItem
 from .audience_evidence_requirements import AudienceEvidenceRequirements
 from .brand_ref import BrandReference
@@ -194,12 +195,10 @@ class RequiredGeoTargetingItem(AdCPBaseModel):
     system: Annotated[str | None, Field(description="Optional classification system within the level. Use for a specific metro system (e.g., 'nielsen_dma'), native postal_area system (e.g., 'zip' with country 'US'), or deprecated legacy postal alias (e.g., 'us_zip'). Not applicable for country/region which use ISO standards.")] = None
 
 
-class TargetingMode(StrEnum):
-    """
-    Desired use of this signal on the product. 'include' requires the product option to allow use in an any group. 'exclude' requires the product option to allow use in a none group.
-    """
-    INCLUDE = 'include'
-    EXCLUDE = 'exclude'
+TargetingMode = StrEnum('TargetingMode', _VALUES_INCLUDE_EXCLUDE)
+TargetingMode.__doc__ = """
+Desired use of this signal on the product. 'include' requires the product option to allow use in an any group. 'exclude' requires the product option to allow use in a none group.
+"""
 
 
 class SignalTargetingItem(BranchDispatchMixin, AdCPBaseModel):

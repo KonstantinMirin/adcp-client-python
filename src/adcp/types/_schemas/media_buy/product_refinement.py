@@ -9,6 +9,8 @@ from pydantic import ConfigDict, Field, TypeAdapter
 from adcp.types._base import AdCPBaseModel, AdCPRootModel, SchemaRef
 from adcp.types.constraints import StrMinLen1
 
+from ._vocabularies import _VALUES_INCLUDE_OMIT_FINALIZE, _VALUES_INCLUDE_OMIT_MORE_LIKE_THIS
+
 
 class ProductRefinementRequestsItemRequest(AdCPBaseModel):
     model_config = ConfigDict(
@@ -19,13 +21,10 @@ class ProductRefinementRequestsItemRequest(AdCPBaseModel):
     ask: Annotated[StrMinLen1, Field(description='What the buyer is asking for at the request level.')]
 
 
-class ProductRefinementRequestsItemProductAction(StrEnum):
-    """
-    Requested product-level action.
-    """
-    INCLUDE = 'include'
-    OMIT = 'omit'
-    MORE_LIKE_THIS = 'more_like_this'
+ProductRefinementRequestsItemProductAction = StrEnum('ProductRefinementRequestsItemProductAction', _VALUES_INCLUDE_OMIT_MORE_LIKE_THIS)
+ProductRefinementRequestsItemProductAction.__doc__ = """
+Requested product-level action.
+"""
 
 
 class ProductRefinementRequestsItemProduct(AdCPBaseModel):
@@ -39,13 +38,10 @@ class ProductRefinementRequestsItemProduct(AdCPBaseModel):
     ask: Annotated[StrMinLen1 | None, Field(description='What the buyer is asking for on this product.')] = None
 
 
-class ProductRefinementRequestsItemProposalAction(StrEnum):
-    """
-    Requested proposal-level action.
-    """
-    INCLUDE = 'include'
-    OMIT = 'omit'
-    FINALIZE = 'finalize'
+ProductRefinementRequestsItemProposalAction = StrEnum('ProductRefinementRequestsItemProposalAction', _VALUES_INCLUDE_OMIT_FINALIZE)
+ProductRefinementRequestsItemProposalAction.__doc__ = """
+Requested proposal-level action.
+"""
 
 
 class ProductRefinementRequestsItemProposal(AdCPBaseModel):

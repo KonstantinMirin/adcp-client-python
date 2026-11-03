@@ -12,8 +12,9 @@ from adcp.types.constraints import StrMatchingEFC12812
 
 from ..enums.legacy_postal_system import CountryFusedPostalCodeSystem
 from ..enums.postal_system import PostalCodeSystem
+from ._vocabularies import _VALUES_POSTAL_CODE_CUSTOM
 from .postal_area_support import CaPostalCodeSystem, GBPostalCodeSystem, USPostalCodeSystem
-from .postal_country_system import PostalCountrySystem, PostalCountrySystemAUPostcode, PostalCountrySystemBRCep, PostalCountrySystemBranch9, PostalCountrySystemCA, PostalCountrySystemFRCodePostal, PostalCountrySystemGB, PostalCountrySystemINPin, PostalCountrySystemPlz, PostalCountrySystemUS, PostalCountrySystemZAPostalCode
+from .postal_country_system import Country, PostalCountrySystem, PostalCountrySystemAUPostcode, PostalCountrySystemBRCep, PostalCountrySystemBranch9, PostalCountrySystemCA, PostalCountrySystemFRCodePostal, PostalCountrySystemGB, PostalCountrySystemINPin, PostalCountrySystemPlz, PostalCountrySystemUS, PostalCountrySystemZAPostalCode
 
 
 class PostalArea(BranchDispatchMixin, AdCPBaseModel):
@@ -72,15 +73,6 @@ class PostalAreaCA(PostalAreaCountrySystemValues, PostalCountrySystemCA):
     system: Annotated[CaPostalCodeSystem, Field(description='Country-local postal code system.')]
 
 
-class Country(StrEnum):
-    """
-    ISO 3166-1 alpha-2 country code.
-    """
-    DE = 'DE'
-    CH = 'CH'
-    AT = 'AT'
-
-
 class PostalAreaPlz(PostalAreaCountrySystemValues, PostalCountrySystemPlz):
     model_config = ConfigDict(
         extra='forbid',
@@ -135,12 +127,10 @@ class PostalAreaZAPostalCode(PostalAreaCountrySystemValues, PostalCountrySystemZ
     system: Annotated[Literal['postal_code'], Field(description='Country-local postal code system.')]
 
 
-class System(StrEnum):
-    """
-    Country-local postal code system.
-    """
-    POSTAL_CODE = 'postal_code'
-    CUSTOM = 'custom'
+System = StrEnum('System', _VALUES_POSTAL_CODE_CUSTOM)
+System.__doc__ = """
+Country-local postal code system.
+"""
 
 
 class PostalAreaBranch9(PostalAreaCountrySystemValues, PostalCountrySystemBranch9):

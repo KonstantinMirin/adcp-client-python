@@ -26,6 +26,7 @@ from ..core.targeting import TargetingOverlay
 from ..core.targeting_overlay_requirements import TargetingOverlayRequirements
 from ..core.version_envelope import AdCPVersionEnvelope
 from ..enums.delivery_type import DeliveryType
+from ._vocabularies import _VALUES_INCLUDE_OMIT_FINALIZE, _VALUES_INCLUDE_OMIT_MORE_LIKE_THIS
 from .acceptance_context import AcceptanceContext
 from .product_fields import ProductResponseFieldsItem
 
@@ -48,13 +49,10 @@ class RefineItemRequest(AdCPBaseModel):
     ask: Annotated[StrMinLen1, Field(description="What the buyer is asking for at the request level (e.g., 'more video options and less display', 'suggest how to combine these products').")]
 
 
-class RefineItemProductAction(StrEnum):
-    """
-    'include' (default): return this product with updated pricing and data. 'omit': exclude this product from the response. 'more_like_this': find additional products similar to this one (the original is also returned). Optional — when omitted, the seller treats the entry as action: 'include'.
-    """
-    INCLUDE = 'include'
-    OMIT = 'omit'
-    MORE_LIKE_THIS = 'more_like_this'
+RefineItemProductAction = StrEnum('RefineItemProductAction', _VALUES_INCLUDE_OMIT_MORE_LIKE_THIS)
+RefineItemProductAction.__doc__ = """
+'include' (default): return this product with updated pricing and data. 'omit': exclude this product from the response. 'more_like_this': find additional products similar to this one (the original is also returned). Optional — when omitted, the seller treats the entry as action: 'include'.
+"""
 
 
 class RefineItemProduct(AdCPBaseModel):
@@ -68,15 +66,12 @@ class RefineItemProduct(AdCPBaseModel):
     ask: Annotated[StrMinLen1 | None, Field(description="What the buyer is asking for on this product. For 'include': specific changes to request (e.g., 'add 16:9 format'). For 'more_like_this': what 'similar' means (e.g., 'same audience but video format'). Ignored when action is 'omit'.")] = None
 
 
-class RefineItemProposalAction(StrEnum):
-    """
-    'include' (default): return this proposal with updated allocations and pricing. 'omit': exclude this proposal from the response. 'finalize': request firm pricing and inventory hold. New callers use refine_proposals with action revise for a draft successor or action finalize for a committed held successor; terminal feedback is available through decline_proposals.
+RefineItemProposalAction = StrEnum('RefineItemProposalAction', _VALUES_INCLUDE_OMIT_FINALIZE)
+RefineItemProposalAction.__doc__ = """
+'include' (default): return this proposal with updated allocations and pricing. 'omit': exclude this proposal from the response. 'finalize': request firm pricing and inventory hold. New callers use refine_proposals with action revise for a draft successor or action finalize for a committed held successor; terminal feedback is available through decline_proposals.
 
-    Legacy finalize is exclusive within the parent `refine[]` array: see the array-level description for the finalize-exclusivity rule (mixing finalize with non-finalize entries is rejected) and multi-finalize atomicity contract.
-    """
-    INCLUDE = 'include'
-    OMIT = 'omit'
-    FINALIZE = 'finalize'
+Legacy finalize is exclusive within the parent `refine[]` array: see the array-level description for the finalize-exclusivity rule (mixing finalize with non-finalize entries is rejected) and multi-finalize atomicity contract.
+"""
 
 
 class RefineItemProposal(AdCPBaseModel):

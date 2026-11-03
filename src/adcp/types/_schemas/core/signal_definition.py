@@ -15,6 +15,7 @@ from ..enums.audience_subject_type import AudienceSubjectType
 from ..enums.consent_basis import ConsentBasis
 from ..enums.restricted_attribute import RestrictedAttribute
 from ..enums.signal_value_type import SignalValueType
+from ._vocabularies import _VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY
 from .demographic_predicate import DemographicPredicate
 from .signal_definition_enrichment import AiActRiskClass, Art9Basis, DataSourcesItem, MatchKeysItem, Method, Methodology, ParentMatchBehavior, PreOnboardingPrecisionLevel, RightsItem, SeedSourceType
 from .signal_modeling_disclosure import SignalModelingDisclosure
@@ -69,18 +70,6 @@ class Taxonomy(AdCPBaseModel):
     values: Annotated[list[ValuesItem], Field(description='Taxonomy node values that describe this signal. These are meaning/discovery metadata for the signal definition, not the values a buyer submits in package targeting expressions.', min_length=1)]
     value_mappings: Annotated[list[ValueMappingsItem] | None, Field(description="For categorical signals, maps package-targeting allowed_values[] strings to stable taxonomy node identifiers. The allowed_values[] strings remain the wire values buyers submit; this mapping explains how those strings resolve into the published taxonomy. Each value_mappings[].value SHOULD match one of the signal's allowed_values[] entries; JSON Schema draft-07 cannot enforce this cross-array constraint.", min_length=1)] = None
     parent_match_behavior: Annotated[ParentMatchBehavior | None, Field(description="Whether this signal definition supports treating a parent taxonomy node as matching descendant nodes for discovery/filtering or seller-side expansion. 'exact_only' means only explicitly listed node ids match. 'descendants_supported' means the seller can expand known, version-pinned parent nodes to descendants internally, typically by ORing the children in its execution system. 'unknown' means the provider has not declared parent-node behavior. This field is metadata about discovery/translation behavior, not a package targeting operator.")] = None
-
-
-_VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY: tuple[tuple[str, str], ...] = (
-    ('INTRA_DAY', 'intra_day'),
-    ('DAILY', 'daily'),
-    ('WEEKLY', 'weekly'),
-    ('MONTHLY', 'monthly'),
-    ('BI_MONTHLY', 'bi_monthly'),
-    ('QUARTERLY', 'quarterly'),
-    ('BI_ANNUALLY', 'bi_annually'),
-    ('ANNUALLY', 'annually'),
-)
 
 
 RefreshCadence = StrEnum('RefreshCadence', _VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY)

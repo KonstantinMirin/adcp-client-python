@@ -10,6 +10,7 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import FloatGt0, FloatMin0Max1, IntMin1, StrMatching3CBDBB74, StrMatching43E30B32, StrMatchingE9418C71, StrMinLen1MaxLen255
 
+from ..common._vocabularies import _VALUES_OPEN_CLOSED
 from ..core.attestation_evaluation import AttestationEvaluation
 from ..core.attestation_reference import AttestationReference
 from ..core.context import ContextObject
@@ -298,12 +299,6 @@ class DeliveryReconciliationStatus(StrEnum):
     DISPUTED = 'disputed'
     UNMATCHED = 'unmatched'
     CLOSED_UNRESOLVED = 'closed_unresolved'
-
-
-_VALUES_OPEN_CLOSED: tuple[tuple[str, str], ...] = (
-    ('OPEN', 'open'),
-    ('CLOSED', 'closed'),
-)
 
 
 EntriesItemDeliveryPeriodState = StrEnum('EntriesItemDeliveryPeriodState', _VALUES_OPEN_CLOSED)

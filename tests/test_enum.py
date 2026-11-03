@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import ast
 import enum as pyenum
+import functools
 import importlib
 import json
 from pathlib import Path
@@ -68,38 +69,62 @@ def root_enums() -> list[str]:
     return [d for d in bundle.portable(BUNDLE) if populations.is_enum_root(bundle.read(BUNDLE, d))]
 
 
-def emitted_enum_classes() -> list[tuple[str, str, ast.ClassDef]]:
+@functools.cache
+def emitted_enum_classes() -> list[tuple[str, str, type[pyenum.Enum]]]:
     """``(document, module source, class)`` for every enum class in the tree.
 
-    Two readings, and they are different readings of different things.  WHICH CLASSES
-    are collected is read off the AST and selected by the BASE the compiler rendered, so
-    a class that stopped being an enumeration drops out of the population instead of
-    being graded as one.  WHICH FILE each document's module is in is a derivation and
-    not a scan, and the derivation is ``emit.module_file`` -- a document whose path is
-    also a directory's is a package ROOT written to ``<path>/__init__.py``, so
-    ``module_path`` (the NAME's path) names no file for ``brand.json`` and the read
-    raised ``FileNotFoundError`` on ``brand.py``.
+    **A reading of the module's NAMESPACE, which is §3a's own correction of 2026-11-02:**
+
+        "**AND A GUARD THAT READS CLASS STATEMENTS GOES BLIND TO AN ASSIGNMENT, so it
+        reads the NAMESPACE.**  A collision guard exists to answer what a consumer meets
+        when importing the module, and a consumer meets the module's namespace, not its
+        syntax.  Reading the emitted module's own bindings is both stricter and not a
+        structural assertion -- it stops caring how a name came to be bound, which is the
+        property that let the functional form slip past it."
+
+    It read the AST and selected by the BASE the compiler rendered, and §3a's other
+    correction is what made that population wrong rather than merely narrow: a value
+    list the bundle states under two names judged distinct is written once and the types
+    over it are ``StrEnum('<Name>', _VALUES)``, which subclasses nothing in the text.
+    Measured over this bundle: 33 classes in 34 modules are built that way, and an AST
+    census by base graded none of them -- a scope omitting exactly the code the new row
+    added.
+
+    ``__module__`` is what tells a DECLARATION from an import, so a class one module
+    declares and another imports is graded once, under the document that produced it.
+
+    The SOURCE rides along because two checks here are about the TEXT and not about the
+    namespace -- a member docstring is a class-body statement and a module-level
+    ``__doc__`` assignment, and neither is a runtime attribute of an ``Enum`` member.
+    WHICH FILE each document's module is in is a derivation and not a scan, and the
+    derivation is ``emit.module_file``: a document whose path is also a directory's is a
+    package ROOT written to ``<path>/__init__.py``, so ``module_path`` (the NAME's path)
+    names no file for ``brand.json``.
     """
-    out: list[tuple[str, str, ast.ClassDef]] = []
+    out: list[tuple[str, str, type[pyenum.Enum]]] = []
     for document in sorted({g.ref.document for g in graded()}):
         src = (TREE / f"{emit.module_file(document, PACKAGES)}.py").read_text()
-        for node in ast.walk(ast.parse(src)):
-            if isinstance(node, ast.ClassDef) and {
-                b.id for b in node.bases if isinstance(b, ast.Name)
-            } & {"StrEnum", "IntEnum"}:
-                out.append((document, src, node))
+        name = emit.module_name(document)
+        module = importlib.import_module(name)
+        for value in vars(module).values():
+            if (
+                isinstance(value, type)
+                and issubclass(value, pyenum.Enum)
+                and value.__module__ == name
+            ):
+                out.append((document, src, value))
     return out
 
 
-def _members(cls: ast.ClassDef) -> list[tuple[str, Any]]:
-    """``(name, value)`` for each member, read off the emitted class body."""
-    return [
-        (t.id, s.value.value)
-        for s in cls.body
-        if isinstance(s, ast.Assign) and isinstance(s.value, ast.Constant)
-        for t in s.targets
-        if isinstance(t, ast.Name)
-    ]
+def _members(cls: type[pyenum.Enum]) -> list[tuple[str, Any]]:
+    """``(name, value)`` for each member, read off the class the module BOUND.
+
+    ``__members__`` and not ``__iter__``, so an ALIAS is reached under its own key: two
+    values that spell one member name render a ``Literal`` and no class at all (§5's
+    ``enum`` row), so a class here has one member per value by construction -- and a
+    reading that silently dropped an alias would be the one that could not say so.
+    """
+    return [(name, member.value) for name, member in cls.__members__.items()]
 
 
 # --------------------------------------------------------------------------- #
@@ -274,13 +299,22 @@ def test_a_root_stating_two_kinds_reaches_one_arm_and_the_enum_wins_by_position(
 # --------------------------------------------------------------------------- #
 # the emitted class
 # --------------------------------------------------------------------------- #
-def test_an_enum_node_is_a_class_over_an_enum_base_and_is_not_also_assigned() -> None:
+def test_an_enum_node_is_an_enumeration_in_the_modules_namespace_and_not_a_scalar() -> None:
     """D2: an ``enum`` node is an enumeration, not the scalar its ``type`` names.
 
-    The AST half -- the symbol is a ClassDef over ``StrEnum``/``IntEnum`` and is
-    not ALSO a module-level assignment, which is what a lowering that fell back to
-    the scalar row would emit -- and then the imported half: the members' values
-    are the document's ``enum`` array, in order, exactly.
+    **It was two halves and is one, which is §3a's correction of 2026-11-02 and not a
+    weakening**: the first half read the AST for a ``ClassDef`` over
+    ``StrEnum``/``IntEnum`` and asserted the symbol was *not also* a module-level
+    assignment, "which is what a lowering that fell back to the scalar row would emit".
+    §3a's functional form IS a module-level assignment, so that reading reported the
+    thing it was built to permit -- and a guard "exists to answer what a consumer meets
+    when importing the module, and a consumer meets the module's namespace, not its
+    syntax".
+
+    So the one half is the namespace, and it is STRICTER than the pair it replaces: it
+    answers "the name is bound to an enumeration whose members are the document's own
+    ``enum`` array, in order, exactly", which a lowering that fell back to the scalar row
+    fails at the binding rather than at the syntax.
     """
     classes = emitted_enum_classes()
     # **NO COUNT OF THE CLASSES IS ASSERTED, and the comment that stood here is why.**
@@ -290,7 +324,7 @@ def test_an_enum_node_is_a_class_over_an_enum_base_and_is_not_also_assigned() ->
     # this check exists to catch.  Two rows in flight compute two different right
     # answers for it.  What IS asserted is the set: the classes the tree carries are
     # non-empty, and the root half of them is exactly the root enums.
-    claimed("enum classes the tree carries", {(d, c.name) for d, _, c in classes})
+    claimed("enum classes the tree carries", {(d, c.__name__) for d, _, c in classes})
     # The ROOT half is exactly the root enums, by name: every root enum the tree
     # carries a class for IS a root enum, and none is missing.  A set identity rather
     # than a count of 214, so a root enum that stops getting a class is named here.
@@ -301,26 +335,19 @@ def test_an_enum_node_is_a_class_over_an_enum_base_and_is_not_also_assigned() ->
 
     for document in roots:
         doc = bundle.read(BUNDLE, document)
-        module = importlib.import_module(f"{emit.PACKAGE}.{emit.module_path(document).replace('/', '.')}")
+        module = importlib.import_module(emit.module_name(document))
         (symbol,) = module.__all__
-        tree = ast.parse((TREE / f"{emit.module_file(document, PACKAGES)}.py").read_text())
-        declared = [n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == symbol]
-        assert len(declared) == 1, document
-        assert {b.id for b in declared[0].bases if isinstance(b, ast.Name)} <= {
-            "StrEnum",
-            "IntEnum",
-        }, document
-        assigned = {
-            t.id
-            for n in tree.body
-            if isinstance(n, ast.Assign)
-            for t in n.targets
-            if isinstance(t, ast.Name)
-        }
-        assert symbol not in assigned, document
-
         cls = getattr(module, symbol)
-        assert issubclass(cls, pyenum.Enum), document
+        # The BASE off the class and not off a base list in the text, which is the same
+        # move: ``StrEnum`` and ``IntEnum`` are what D2's two kinds resolve to, and a
+        # class built from a value list has them as bases without naming them in a
+        # statement.
+        assert isinstance(cls, type) and issubclass(cls, pyenum.Enum), document
+        assert issubclass(cls, pyenum.StrEnum | pyenum.IntEnum), document
+        # The one symbol this document exports is DECLARED here and not imported, which
+        # is §1's one-import-path rule read at the root: a root that re-exported another
+        # module's class would leave its own document with no name of its own.
+        assert cls.__module__ == emit.module_name(document), document
         assert [m.value for m in cls] == doc["enum"], document
 
 
@@ -343,9 +370,14 @@ def test_a_member_name_is_upper_cased_and_that_is_why_the_module_parses() -> Non
     keywords_seen: set[str] = set()
     for document, _, cls in classes:
         for name, value in _members(cls):
-            assert name == name.upper(), (document, cls.name, name)
-            assert name == lower_enum.member_name(value), (document, cls.name, name, value)
-            names.add((cls.name, name))
+            assert name == name.upper(), (document, cls.__name__, name)
+            assert name == lower_enum.member_name(value), (
+                document,
+                cls.__name__,
+                name,
+                value,
+            )
+            names.add((cls.__name__, name))
             if isinstance(value, str) and value in ("pass", "global"):
                 keywords_seen.add(value)
     # The member names, as the non-empty set of (class, member) pairs the loop graded.
@@ -418,15 +450,14 @@ def test_the_injectivity_check_binds_to_the_function_that_actually_runs() -> Non
             if len(set(spelled)) == len(spelled):
                 nodes.add((document, pointer))
             else:  # routed to a ``Literal``, so no class was minted from it
-                source = compiled(BUNDLE, population()).files[
-                    f"{emit.module_file(document, PACKAGES)}.py"
-                ]
+                # **Off the module's NAMESPACE** (§3a, 2026-11-02: a guard "reads the
+                # NAMESPACE" because that is what a consumer meets), which is also the
+                # only reading that can still see the class a value list is CONSTRUCTED
+                # into -- ``X = StrEnum('X', _VALUES)`` has no base list to select on.
                 minted = {
-                    frozenset(n for n, _ in _members(cls))
-                    for cls in ast.walk(ast.parse(source))
-                    if isinstance(cls, ast.ClassDef)
-                    and {b.id for b in cls.bases if isinstance(b, ast.Name)}
-                    & {"StrEnum", "IntEnum"}
+                    frozenset(name for name, _ in _members(cls))
+                    for _, _, cls in emitted_enum_classes()
+                    if cls.__module__ == emit.module_name(document)
                 }
                 assert frozenset(spelled) not in minted, (document, pointer)
     # The enum NODES the walk reaches, as a non-empty set.  It is deliberately NOT
@@ -451,13 +482,25 @@ def test_enum_descriptions_are_carried_into_the_member_docstrings() -> None:
     nodes: set[tuple[str, str]] = set()
     entries: set[tuple[str, str, str]] = set()
     multiline: set[tuple[str, str, str]] = set()
+    by_document: dict[str, list[type[pyenum.Enum]]] = {}
+    for document, _, cls in emitted_enum_classes():
+        by_document.setdefault(document, []).append(cls)
     for document in sorted({g.ref.document for g in graded()}):
         tree = ast.parse((TREE / f"{emit.module_file(document, PACKAGES)}.py").read_text())
+        # **The TEXT and not the namespace, and that is a fact about ``enum`` rather than
+        # a leftover reading.**  A member docstring is a bare string EXPRESSION in a class
+        # body, which Python evaluates and discards -- ``X.A.__doc__`` is the ``Enum``
+        # default and never the text -- so the module's bindings cannot answer this and
+        # the source is what carries it (:func:`_docstrings`).  §3a's namespace rule is
+        # about what a consumer MEETS, and a consumer meets a member docstring in an
+        # editor and in ``help()``, both of which read the source.
+        #
+        # The classes, though, come from the namespace census, so the functional form is
+        # in scope: it writes the same text as ``X.A.__doc__ = "..."`` statements, and
+        # :func:`_docstrings` reads both.
         rendered = {
-            frozenset(n for n, _ in _members(cls)): _docstrings(cls)
-            for cls in ast.walk(tree)
-            if isinstance(cls, ast.ClassDef)
-            if {b.id for b in cls.bases if isinstance(b, ast.Name)} & {"StrEnum", "IntEnum"}
+            frozenset(name for name, _ in _members(cls)): _docstrings(tree, cls.__name__)
+            for cls in by_document.get(document, ())
         }
         for pointer, node in bundle.nodes(bundle.read(BUNDLE, document)):
             described = node.get("enumDescriptions")
@@ -510,21 +553,45 @@ def _by_words(x: Any) -> Any:
     return " ".join(x.split()) if isinstance(x, str) else x
 
 
-def _docstrings(cls: ast.ClassDef) -> dict[str, str]:
-    """``member -> docstring`` for one emitted enum class, off the AST.
+def _docstrings(tree: ast.Module, symbol: str) -> dict[str, str]:
+    """``member -> docstring`` for the enum class ``symbol``, off the module's source.
 
     The parsed CONSTANT and not the source text, so what is compared is the string
     the module defines rather than the compiler's escaping of it -- a description
     carrying a quote or a backslash is escaped in the source and would never match
     the document verbatim there.
+
+    **TWO FORMS, because §3a's correction gives an enumeration two renderings** and the
+    member docstring is written differently in each: a class statement carries it as a
+    bare string expression under the member, and a type CONSTRUCTED from a shared value
+    list has no class body at all, so the renderer writes
+    ``<Symbol>.<MEMBER>.__doc__ = "..."`` at module level.  Both are read here and the
+    answer is one mapping, so a check written against it cannot be told which rendering
+    a position took -- which is what keeps the two forms one obligation.
     """
     out: dict[str, str] = {}
-    for assign, after in zip(cls.body, cls.body[1:], strict=False):
-        if not (isinstance(assign, ast.Assign) and isinstance(assign.targets[0], ast.Name)):
+    for node in tree.body:
+        # The functional form's statements, which name the class and the member.
+        if (
+            isinstance(node, ast.Assign)
+            and isinstance(node.value, ast.Constant)
+            and isinstance(node.value.value, str)
+            and len(node.targets) == 1
+            and isinstance(target := node.targets[0], ast.Attribute)
+            and target.attr == "__doc__"
+            and isinstance(member := target.value, ast.Attribute)
+            and isinstance(held := member.value, ast.Name)
+            and held.id == symbol
+        ):
+            out[member.attr] = node.value.value
+        if not (isinstance(node, ast.ClassDef) and node.name == symbol):
             continue
-        if isinstance(after, ast.Expr) and isinstance(after.value, ast.Constant):
-            if isinstance(after.value.value, str):
-                out[assign.targets[0].id] = after.value.value
+        for assign, after in zip(node.body, node.body[1:], strict=False):
+            if not (isinstance(assign, ast.Assign) and isinstance(assign.targets[0], ast.Name)):
+                continue
+            if isinstance(after, ast.Expr) and isinstance(after.value, ast.Constant):
+                if isinstance(after.value.value, str):
+                    out[assign.targets[0].id] = after.value.value
     return out
 
 

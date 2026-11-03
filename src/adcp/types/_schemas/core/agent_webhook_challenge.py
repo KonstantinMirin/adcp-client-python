@@ -10,6 +10,8 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import StrMatchingEF42E836, StrMinLen1MaxLen64MatchingD373B860, StrMinLen32MaxLen255Matching3AEA6666
 
+from ..common._vocabularies import _VALUES_CAPABILITIES_CHANGED
+
 
 class Mode(StrEnum):
     """
@@ -36,8 +38,7 @@ class DeliveryAuth(AdCPBaseModel):
     credential_fingerprint: Annotated[StrMatchingEF42E836 | None, Field(description='SHA-256 hex fingerprint of the exact legacy credential string supplied in notification_configs[].authentication.credentials. Required when mode is Bearer or HMAC-SHA256; absent for rfc9421.')] = None
 
 
-class EventTypesItem(StrEnum):
-    CAPABILITIES_CHANGED = 'capabilities.changed'
+EventTypesItem = StrEnum('EventTypesItem', _VALUES_CAPABILITIES_CHANGED)
 
 
 class AgentWebhookChallenge(AdCPBaseModel):

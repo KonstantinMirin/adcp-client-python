@@ -9,6 +9,7 @@ from pydantic import ConfigDict, Field, NonNegativeFloat, NonNegativeInt, TypeAd
 from adcp.types._base import SchemaRef
 from adcp.types.constraints import FloatGt0, IntMin1
 
+from ...common._vocabularies import _VALUES_ACCEPTED_REJECTED
 from ...core.canonical_projection_ref import AssetSource
 from ...core.requirements.audio_asset_requirements import AudioChannels
 from ._base import CanonicalFormatBase, SlotsItem
@@ -22,12 +23,10 @@ class AudioCodecsItem(StrEnum):
     FLAC = 'flac'
 
 
-class BuyerAssetAcceptance(StrEnum):
-    """
-    Whether the product accepts buyer-uploaded audio. When `rejected`, the buyer cannot ship an audio asset directly — they must use build_creative (or sync_creatives with brief inputs) so the seller produces the audio. Combined with `asset_source`, lets a product declare 'I produce audio from briefs and refuse buyer uploads' (asset_source=`seller_pre_rendered_from_brief`, buyer_asset_acceptance=`rejected`).
-    """
-    ACCEPTED = 'accepted'
-    REJECTED = 'rejected'
+BuyerAssetAcceptance = StrEnum('BuyerAssetAcceptance', _VALUES_ACCEPTED_REJECTED)
+BuyerAssetAcceptance.__doc__ = """
+Whether the product accepts buyer-uploaded audio. When `rejected`, the buyer cannot ship an audio asset directly — they must use build_creative (or sync_creatives with brief inputs) so the seller produces the audio. Combined with `asset_source`, lets a product declare 'I produce audio from briefs and refuse buyer uploads' (asset_source=`seller_pre_rendered_from_brief`, buyer_asset_acceptance=`rejected`).
+"""
 
 
 class CanonicalFormatHostedAudio(CanonicalFormatBase):

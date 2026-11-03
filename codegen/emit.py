@@ -118,6 +118,7 @@ from codegen.compiler import (
     SCALAR,
     Module,
     Target,
+    ValuesImport,
     check_keywords,
     class_name,
     declare_alias,
@@ -238,7 +239,21 @@ def domain(document: str) -> str:
     confirms ("§10's layout rule is untouched -- that rule is about a document whose path
     is ALSO a directory's, and this one has no directory").
     """
-    return module_path(document).split("/")[0]
+    return module_domain(module_path(document))
+
+
+def module_domain(module: str) -> str:
+    """§1's DOMAIN for one MODULE of the tree: the first segment of its path.
+
+    **The reading the export record takes now that it is keyed on the MODULE** (§3a,
+    2026-11-02): "The readers that take a document to answer a domain or a path take the
+    module instead, which is what they were always asking about."  §3a's catalogue module
+    has no document, so :func:`domain` has nothing to ask about it, and the derivation §1
+    states -- "the domain is derived from the document's own path" -- was already a
+    reading of the MODULE path by way of :func:`module_path`.  So this is the one
+    derivation and :func:`domain` is it composed with D1.
+    """
+    return module.split("/")[0]
 
 
 @functools.lru_cache(maxsize=None)
@@ -387,9 +402,15 @@ def _the_domains_exports(
         # at all, because a name an earlier round gave up still has that round's document
         # recorded against it.
         this_round: dict[str, dict[str, set[str]]] = {}
-        for document, exported in round_of.surface.items():
+        # **Over the round's DOCUMENTS and not over the record's keys**, because what a
+        # domain's census holds is the documents that want each symbol and
+        # ``decidable`` subtracts its OWN.  The record is keyed on the MODULE (§3a), so
+        # the question is asked the way round: a document names its module (D1) and the
+        # record answers with that module's exports.  §3a's catalogue module is on the
+        # record with no document and exports nothing, so it is absent from both sides.
+        for document in round_of.emitted:
             held = this_round.setdefault(domain(document), {})
-            for symbol in exported:
+            for symbol in round_of.surface.get(module_path(document), {}):
                 held.setdefault(symbol, set()).add(document)
         shared = any(
             len(takers) > 1 for held in this_round.values() for takers in held.values()
@@ -461,7 +482,24 @@ def relative_module(frm: str, to: str, packages: Collection[str]) -> str:
     module under ``brand/`` reaches it as ``..brand`` and never as ``.__init__`` --
     which would import the package's body a second time under a second name.
     """
-    src, dst = module_file(frm, packages).split("/"), module_path(to).split("/")
+    return relative_to_module(frm, module_path(to), packages)
+
+
+def relative_to_module(frm: str, to: str, packages: Collection[str]) -> str:
+    """:func:`relative_module` where the TARGET is a module path and not a document.
+
+    Split out for §3a's catalogue module, which has no document to derive a path from:
+    "**A pseudo-document path is refused**: it names a file the bundle does not contain,
+    and every reader that resolves a record from a key would then be lying about where
+    the schema came from."  A function taking a document and a module path cannot be
+    handed one.
+
+    The arithmetic is :func:`relative_module`'s own and is stated there; both sides of
+    the asymmetry it describes hold unchanged, because the only thing that changed is
+    where the TAIL comes from -- and a catalogue module is never a package root, so the
+    package-root clause has nothing to say about it.
+    """
+    src, dst = module_file(frm, packages).split("/"), to.split("/")
     common = 0
     while common < len(src) - 1 and common < len(dst) - 1 and src[common] == dst[common]:
         common += 1
@@ -625,6 +663,7 @@ def lower_document(
     inherited: Mapping[str, Target | Refusal] | None = None,
     vocabularies: Mapping[str, Target] | None = None,
     restatements: Mapping[tuple[object, ...], Target | str] | None = None,
+    value_lists: Mapping[tuple[object, ...], ValuesImport | str] | None = None,
 ) -> tuple[Module, str] | Refusal:
     """One document's module and root symbol, or the refusal the walk returned.
 
@@ -653,6 +692,10 @@ def lower_document(
         # The same table keyed on the VALUE LIST, for the restating positions no pointer
         # of this document's own text reaches (:attr:`Module.restatements`).
         restatements=restatements if restatements is not None else {},
+        # §3a's OTHER half: the value lists this document DECLARES a type over and does
+        # not write (:attr:`Module.value_lists`).  Empty by the same rule -- a document
+        # lowered outside a run writes every value list in its own class bodies.
+        value_lists=value_lists if value_lists is not None else {},
         referenced=referenced if referenced is not None else {},
         reserved=reserved,
         # The run's own record of which sites this walk asked about, handed IN so that
@@ -826,8 +869,22 @@ class Emitted:
     #: whose two nodes are NOT identical is the failure that matters more than a missed
     #: collapse.
     adopted: dict[str, dict[str, str]] = field(default_factory=dict)
-    #: document -> ``ir.Module.exports``: §1's export set for it, symbol -> the kind the
+    #: **MODULE** -> ``ir.Module.exports``: §1's export set for it, symbol -> the kind the
     #: surface exports it under (``root``, ``branch`` or ``alias``).
+    #:
+    #: **KEYED ON THE MODULE AND NOT ON THE DOCUMENT** (§3a, 2026-11-02): "A vocabulary
+    #: with no naming position needs a module of its own, and that module has no document
+    #: behind it.  **A pseudo-document path is refused** ... The honest relocation is one
+    #: level up -- every document already maps to the module it produced, so the key
+    #: becomes that module and a catalogue module is simply one with no document.  The
+    #: readers that take a document to answer a domain or a path take the module instead,
+    #: which is what they were always asking about."  Both readers did exactly that:
+    #: :func:`domain_modules` spelled ``module_path(document)`` and the domain surface's
+    #: check spelled it again, and neither wanted the document for anything else.
+    #:
+    #: So the record is every module the run WROTE, and §3a's catalogue module is on it
+    #: with an EMPTY export set -- which is a fact about that module and not an absence:
+    #: nothing in it is a type, so §1's surface has nothing of it to re-export.
     #:
     #: **The run's own record of what the DOMAIN SURFACE re-exports**, and the only thing
     #: §1's domain-scope collision rule can be graded over: §1 forbids
@@ -1256,6 +1313,7 @@ def decidable(
     census: Mapping[str, frozenset[str]],
     vocabularies: Mapping[str, Target] = {},
     restatements: Mapping[tuple[object, ...], Target | str] = {},
+    value_lists: Mapping[tuple[object, ...], ValuesImport | str] = {},
     judged: Mapping[str, str] = {},
     *,
     known: Collection[str],
@@ -1291,6 +1349,7 @@ def decidable(
         inherited,
         vocabularies,
         restatements,
+        value_lists,
     )
     if isinstance(outcome, Refusal):
         return outcome
@@ -2048,10 +2107,30 @@ def emit(
         construction rather than by coincidence.
         """
         out: dict[tuple[object, ...], Target | str] = {}
-        for entry in l0.entries.values():
-            home = entry.naming
+        homes: list[tuple[tuple[object, ...], catalogue.Stated]] = [
+            (entry.members, entry.naming) for entry in l0.entries.values()
+        ]
+        # **A value list the bundle states at EXACTLY ONE position is homed there too**
+        # (:attr:`catalogue.Catalogue.alone`), and the one case that reaches is the one
+        # ``codegen/vocabularies.py`` records as refused there: ``["DE", "CH", "AT"]`` is
+        # stated once, at ``core/postal-country-system.json``'s ``anyOf`` branch, and
+        # ``core/postal-area.json`` re-lowers that very node under §2's intersection rule
+        # and declared a second class over it.  One position, so §3a's three-way naming
+        # split has nothing to decide and nothing is judged: what is needed is a HOME, and
+        # a single stating position is one by construction.
+        #
+        # **Only where the home is ANOTHER document**, which is what keeps §4's own scope
+        # intact: a LOCAL pointer here would collapse two positions of one document by
+        # VALUE LIST, and §4's key is node equality -- "widening §4's key from node
+        # equality to the value list is a change to THAT rule and is not taken here".  The
+        # same-document case is ``lower/names.py``'s ``the_value_lists``, which writes the
+        # value list once and leaves both types standing.
+        homes += [
+            (at.members, at) for at in l0.alone.values() if at.document != document
+        ]
+        for members, home in homes:
             if home.document == document:
-                out[entry.members] = home.pointer
+                out[members] = home.pointer
                 continue
             held = lowered.get(home.document)
             if held is None:
@@ -2059,13 +2138,51 @@ def emit(
             symbol = held[1].symbols.get(home.pointer)
             if symbol is None:
                 continue
-            out[entry.members] = Target(
+            out[members] = Target(
                 module=relative_module(document, home.document, package_roots),
                 symbol=symbol,
                 document=home.document,
                 kind=compiler.TargetKind.ANNOTATION,
             )
         return out
+
+    def value_lists(document: str) -> dict[tuple[object, ...], ValuesImport | str]:
+        """§3a's SHARED VALUE LIST, for the positions this document DECLARES a type at.
+
+        The other half of §3a's split, and the half :func:`restatements` is not: that one
+        says "this position is the same type as one declared elsewhere, so import it", and
+        this one says "this position is a DIFFERENT type over the same value list, so
+        declare it and take the values from one place".
+
+            "the **VALUE LIST** is a module-level constant in the catalogue layer, written
+            once per distinct member set; the **NAMED TYPE** is constructed from it at each
+            position that needs one, keeping the name §4 derives and keeping the types
+            distinct."
+
+        Every shared value list of the bundle is offered to every document, for
+        :func:`restatements`' own reason: a document that STATES none of them can still
+        declare a type over one, because §2's intersection rule hands a base's node back
+        and the composing document lowers it again.  A document that declares no type over
+        a value list writes no import for it, so the table is wider than the answer by
+        construction and never by coincidence.
+
+        Only a ``ValuesImport``: §3a's catalogue module is never the module being lowered,
+        because a document's module is the module of a DOCUMENT and the catalogue's has
+        none.  The same-module case has its own answer and its own pass
+        (``lower/names.py``'s ``the_value_lists``), which is why the walk's table takes a
+        ``str`` at all -- the type says the two cases share one slot on the module.
+        """
+        return {
+            shared.members: ValuesImport(
+                module=relative_to_module(
+                    document,
+                    vocabularies_module(catalogue.namespace(shared.documents)),
+                    package_roots,
+                ),
+                symbol=lower_enum.values_name(shared.members),
+            )
+            for shared in l0.shared.values()
+        }
 
     def judged(document: str) -> dict[str, str]:
         """§3a's JUDGED NAME for the catalogue entries this document DECLARES.
@@ -2107,6 +2224,7 @@ def emit(
             census.get(domain(document), {}),
             vocabularies(document),
             restatements(document),
+            value_lists(document),
             judged(document),
             known=known,
         )
@@ -2192,7 +2310,7 @@ def emit(
             # module.  What is kept is everything the export set is a function of: the
             # walk, the naming pass, the record checks and the refusals, so pass one and
             # pass two range over one document set and agree about every name.
-            out.surface[document] = dict(bound.exports)
+            out.surface[module_path(document)] = dict(bound.exports)
             out.emitted[document] = module_name(document)
             continue
         out.files[f"{rel}.py"] = render.module(
@@ -2214,7 +2332,7 @@ def emit(
         }
         # §1's export set, carried through from the naming pass unchanged: this is a
         # record and not a second derivation (:attr:`Emitted.surface`).
-        out.surface[document] = dict(bound.exports)
+        out.surface[module_path(document)] = dict(bound.exports)
         if mod.drops:
             out.drops[document] = dict(mod.drops)
         if mod.carries_nothing:
@@ -2284,6 +2402,27 @@ def emit(
         # alias module and the envelope bases are TEXT and no reader of a round opens a
         # file (:func:`domain_exports`).
         return out
+    # **§3a's CATALOGUE modules, over the BUNDLE and not over the run** -- the same scope
+    # ``_envelope_bases`` below has and for the same sentence: a value list's namespace is
+    # a function of the positions that state it, which is a reading of the pinned bundle,
+    # so a one-document command writes the same file as a whole-population emission (§9).
+    #
+    # Written for every namespace the catalogue names, whether or not THIS run lowered a
+    # document that references one.  The alternative is a module whose content depends on
+    # who else was named, which is the defect §9 exists to prevent and the one thing a
+    # module with no document could still be made to have.
+    #
+    # It goes on the EXPORT RECORD with an empty export set, which is §3a's own reason for
+    # moving that record's key: "every document already maps to the module it produced, so
+    # the key becomes that module and a catalogue module is simply one with no document."
+    # Nothing in it is a type, so there is nothing for §1's surface to re-export, and
+    # :func:`domain_modules` reads that absence rather than being told about it.
+    for namespace, declarations in sorted(vocabularies_modules(l0).items()):
+        rel = vocabularies_module(namespace)
+        out.files[f"{rel}.py"] = render.vocabularies_module(declarations)
+        out.surface.setdefault(rel, {})
+        parts = rel.split("/")[:-1]
+        packages.update("/".join(parts[: i + 1]) for i in range(len(parts)))
     for pkg in packages:
         out.files.setdefault(f"{pkg}/__init__.py", "")
     out.files["__init__.py"] = ""
@@ -2322,6 +2461,81 @@ def emit(
     # has no place inside the shipped package anyway: `main` prints it, and the
     # suite reads `Emitted.refusals` from the run it just made.
     return out
+
+
+#: §3a's CATALOGUE module, as the last segment of its path inside its namespace.
+#: PRIVATE, like ``_schemas`` itself and for the same reason (P8): nothing here is a type
+#: a consumer writes, so there is no public path for one to be reached at.
+VOCABULARIES = "_vocabularies"
+
+
+def vocabularies_module(namespace: str) -> str:
+    """D1's module for §3a's CATALOGUE in one namespace, as a path under the tree.
+
+    **There is no document, and that is the point rather than a gap** (§3a, 2026-11-02):
+    "A vocabulary with no naming position needs a module of its own, and that module has
+    no document behind it.  **A pseudo-document path is refused**: it names a file the
+    bundle does not contain, and every reader that resolves a record from a key would
+    then be lying about where the schema came from."
+
+    Inside the namespace's own directory, so :func:`module_domain` answers the namespace
+    with no second derivation -- §1's domain is the first segment of a module's path and
+    this module's first segment IS the namespace §3a's scope rule named.  For the SHARED
+    namespace that directory is ``common``, which §3a fixes: "The shared namespace is
+    ``adcp.types.common``, one place and not one per layer."
+    """
+    return f"{namespace}/{VOCABULARIES}"
+
+
+def vocabularies_modules(l0: catalogue.Catalogue) -> dict[str, tuple[ir.ValuesDecl, ...]]:
+    """namespace -> the VALUE LISTS §3a writes once in that namespace's catalogue module.
+
+    §3a: "the **VALUE LIST** is a module-level constant in the catalogue layer, written
+    once per distinct member set", and :func:`catalogue.namespace` is where it lives --
+    "an entry lives in the NARROWEST namespace that contains every position referencing
+    it ... from one domain → that domain; from more than one domain → the shared
+    namespace".
+
+    **A function of the BUNDLE and never of the run** (§9), which is what makes a
+    one-document command write the same file as a whole-population emission: the argument
+    is ``codegen/catalogue.py``'s reading of the bundle and nothing here sees the
+    document set.  It is the same scope ``_envelope_bases`` already has and for the same
+    sentence.
+
+    The ORDER inside a module is the value list's own spelling, which is a function of
+    the value lists alone -- not of the order a mapping was built in (P7) and not of
+    which document the walk reached first.
+
+    The members carry no DESCRIPTION, and that is measured rather than overlooked: a
+    block ``enumDescriptions`` is stated per POSITION, and the two positions of this
+    bundle that state one over a shared value list -- *Canonical Media Buy Action Mode*
+    and *Media Buy Action Mode* -- describe their members DIFFERENTLY.  So a description
+    belongs to the type and not to the list, and ``render._functional_enum`` writes it
+    there.
+    """
+    held: dict[str, dict[str, ir.ValuesDecl]] = {}
+    for shared in sorted(l0.shared.values(), key=lambda s: (s.kind, repr(s.members))):
+        into = held.setdefault(catalogue.namespace(shared.documents), {})
+        spelled = lower_enum.values_name(shared.members)
+        if spelled in into:
+            raise BuildFailure(
+                f"{spelled!r} is the name both {list(into[spelled].members)!r} and "
+                f"{list(shared.members)!r} spell for their value list: the separator is a "
+                "character a member name can hold, so the two are not told apart -- which "
+                "is a defect in this compiler and not an outcome of any document"
+            )
+        into[spelled] = ir.ValuesDecl(
+            name=spelled,
+            kind=shared.kind,
+            members=tuple(
+                ir.Member(name=lower_enum.member_name(value), value=value)
+                for value in shared.members
+            ),
+        )
+    return {
+        namespace: tuple(by_name[name] for name in sorted(by_name))
+        for namespace, by_name in held.items()
+    }
 
 
 def domain_modules(surface: Mapping[str, Mapping[str, str]]) -> dict[str, str]:
@@ -2365,10 +2579,19 @@ def domain_modules(surface: Mapping[str, Mapping[str, str]]) -> dict[str, str]:
     only on a run that passes ``package``, which is the scope both artifacts need.
     """
     held: dict[str, dict[str, str]] = {}
-    for document, exported in surface.items():
-        into = held.setdefault(domain(document), {})
+    for module, exported in surface.items():
+        if not exported:
+            # **A module that exports NOTHING contributes no domain**, which is the one
+            # thing keying the record on the module adds here: §3a's catalogue module is
+            # on the record because the run wrote it, and it declares no type a consumer
+            # writes -- "Nothing here is a type" -- so a ``<namespace>.py`` re-exporting
+            # it would be a public module with an empty ``__all__``.  §1's surface is
+            # stated over what is exported, and this is that sentence read in the one
+            # case where the two readings differ.
+            continue
+        into = held.setdefault(module_domain(module), {})
         for symbol in exported:
-            into[symbol] = module_path(document).replace("/", ".")
+            into[symbol] = module.replace("/", ".")
     out: dict[str, str] = {}
     for known in sorted(held):
         by_module: dict[str, list[str]] = {}

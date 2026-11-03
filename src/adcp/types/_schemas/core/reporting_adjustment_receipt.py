@@ -10,10 +10,10 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule, UniqueItems
 from adcp.types.constraints import StrMatching5E987613, StrMinLen16MaxLen255Matching1E5CF9EB, StrMinLen1MaxLen128MatchingE43B025C, StrMinLen1MaxLen255Matching67860854
 
+from ..common._vocabularies import _VALUES_ACCEPTED_REJECTED
 
-class Status(StrEnum):
-    ACCEPTED = 'accepted'
-    REJECTED = 'rejected'
+
+Status = StrEnum('Status', _VALUES_ACCEPTED_REJECTED)
 
 
 ReportingAdjustmentRejectionCode = StrMinLen1MaxLen128MatchingE43B025C

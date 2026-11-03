@@ -10,6 +10,7 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule
 from adcp.types.constraints import StrMinLen1MaxLen255Matching67860854, StrMinLen1MaxLen500
 
+from ..common._vocabularies import _VALUES_OPEN_CLOSED
 from .date_range import DateRange
 
 
@@ -32,12 +33,10 @@ class Intent(StrEnum):
     LIVE_RFP = 'live_rfp'
 
 
-class Status(StrEnum):
-    """
-    Whether the planning cycle remains open. On calls after initial creation, omission means no status update and MUST NOT reopen or close the opportunity implicitly, except that successful create_media_buy proposal execution explicitly infers accepted closure.
-    """
-    OPEN = 'open'
-    CLOSED = 'closed'
+Status = StrEnum('Status', _VALUES_OPEN_CLOSED)
+Status.__doc__ = """
+Whether the planning cycle remains open. On calls after initial creation, omission means no status update and MUST NOT reopen or close the opportunity implicitly, except that successful create_media_buy proposal execution explicitly infers accepted closure.
+"""
 
 
 class CloseReason(StrEnum):

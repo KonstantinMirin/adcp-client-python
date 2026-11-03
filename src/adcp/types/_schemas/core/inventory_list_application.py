@@ -9,6 +9,8 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types.constraints import StrMinLen1
 
+from ._vocabularies import _VALUES_INCLUDE_EXCLUDE
+
 
 class InventoryListApplication(BranchDispatchMixin, AdCPBaseModel):
     """
@@ -21,12 +23,6 @@ class InventoryListApplication(BranchDispatchMixin, AdCPBaseModel):
     @classmethod
     def _branch_combinator(cls) -> str:
         return "oneOf"
-
-
-_VALUES_INCLUDE_EXCLUDE: tuple[tuple[str, str], ...] = (
-    ('INCLUDE', 'include'),
-    ('EXCLUDE', 'exclude'),
-)
 
 
 PropertyListApplicationEffect = StrEnum('PropertyListApplicationEffect', _VALUES_INCLUDE_EXCLUDE)

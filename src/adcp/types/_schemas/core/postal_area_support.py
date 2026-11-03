@@ -11,6 +11,7 @@ from adcp.types._runtime import Distinct, Rule, UniqueItems
 from adcp.types.constraints import NonEmptyList, StrMatchingEFC12812
 
 from ..enums.legacy_postal_system import CountryFusedPostalCodeSystem
+from ._vocabularies import _VALUES_POSTAL_CODE_CUSTOM
 
 
 class USPostalCodeSystem(StrEnum):
@@ -28,9 +29,7 @@ class CaPostalCodeSystem(StrEnum):
     FULL = 'full'
 
 
-class PostalAreaSupportValueItem(StrEnum):
-    POSTAL_CODE = 'postal_code'
-    CUSTOM = 'custom'
+PostalAreaSupportValueItem = StrEnum('PostalAreaSupportValueItem', _VALUES_POSTAL_CODE_CUSTOM)
 
 
 class PostalAreaSupport(AdCPBaseModel):

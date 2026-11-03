@@ -9,6 +9,7 @@ from pydantic import ConfigDict, Field, TypeAdapter
 from adcp.types._base import SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 
+from ._vocabularies import _VALUES_INCLUDE_EXCLUDE
 from .signal_listing import SignalListing
 from .signal_ref import SignalRef
 from .vendor_pricing_option import VendorPricingOption
@@ -22,9 +23,7 @@ class ActivationStatus(StrEnum):
     REQUIRES_ACTIVATION = 'requires_activation'
 
 
-class AllowedTargetingModesItem(StrEnum):
-    INCLUDE = 'include'
-    EXCLUDE = 'exclude'
+AllowedTargetingModesItem = StrEnum('AllowedTargetingModesItem', _VALUES_INCLUDE_EXCLUDE)
 
 
 class ProductSignalTargetingOption(SignalListing):
