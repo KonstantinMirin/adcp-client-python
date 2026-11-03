@@ -4205,26 +4205,6 @@ def _pins(node: Mapping[str, Any]) -> dict[str, Any]:
     return out
 
 
-def _named_values(node: Mapping[str, Any]) -> frozenset | None:
-    """``node``'s ``const`` or ``enum`` as a set of scalars, or ``None`` for neither.
-
-    Draft-07's own reading: a ``const`` is a one-member ``enum``.  ``None`` rather than
-    the empty set, because "names no values" and "admits nothing" are different
-    statements.  Scalars only, and a list with one non-scalar member contributes NOTHING
-    rather than its scalar part -- a partial set would claim a disjointness the document
-    does not state.
-    """
-    if "const" in node:
-        value = node["const"]
-        return frozenset({value}) if isinstance(value, (str, bool, int)) else None
-    members = node.get("enum")
-    if not isinstance(members, list) or not members:
-        return None
-    if not all(isinstance(member, (str, bool, int)) for member in members):
-        return None
-    return frozenset(members)
-
-
 def _value_sets(node: Mapping[str, Any]) -> dict[str, tuple[frozenset, bool]]:
     """For each key this branch constrains to a value set, that set and whether it is a
     COMPLEMENT.
@@ -4249,7 +4229,7 @@ def _value_sets(node: Mapping[str, Any]) -> dict[str, tuple[frozenset, bool]]:
         for sub, complement in ((declaration, False), (declaration.get("not"), True)):
             if not isinstance(sub, Mapping):
                 continue
-            named = _named_values(sub)
+            named = bundle.named_values(sub)
             if named is not None:
                 out[key] = (named, complement)
                 break

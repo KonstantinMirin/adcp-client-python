@@ -168,7 +168,7 @@ from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass, replace
 from typing import Any
 
-from codegen import compiler, ir, keywords
+from codegen import bundle, compiler, ir, keywords
 from codegen.lower import approximate, names
 from codegen.schema import nodes
 from codegen.schema import parse as schema
@@ -420,30 +420,11 @@ def value_sets(props: Any) -> dict[str, ValueSet]:
         for node, complement in ((declaration, False), (declaration.get("not"), True)):
             if not isinstance(node, dict):
                 continue
-            named = _named_values(node)
+            named = bundle.named_values(node)
             if named is not None:
                 out[key] = ValueSet(named, complement)
                 break
     return out
-
-
-def _named_values(node: Mapping[str, Any]) -> frozenset | None:
-    """``node``'s ``const`` or ``enum`` as a set of scalars, or ``None`` where it names none.
-
-    One reading for both spellings, which is draft-07's own: a ``const`` is a one-member
-    ``enum``.  ``None`` and not the empty set, because "this node names no values" and
-    "this node admits nothing" are different statements and only the first is what an
-    absent keyword says.
-    """
-    if "const" in node:
-        value = node["const"]
-        return frozenset({value}) if isinstance(value, (str, bool, int)) else None
-    members = node.get("enum")
-    if not isinstance(members, list) or not members:
-        return None
-    if not all(isinstance(member, (str, bool, int)) for member in members):
-        return None
-    return frozenset(members)
 
 
 def _spell(one: ValueSet) -> str:

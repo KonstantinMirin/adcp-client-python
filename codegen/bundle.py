@@ -18,7 +18,7 @@ import hashlib
 import json
 from collections.abc import Callable, Collection, Iterator, Mapping
 from pathlib import Path, PurePosixPath
-from typing import NamedTuple
+from typing import Any, NamedTuple
 
 from adcp.types import _base
 from adcp.types._base import applied_schema
@@ -305,6 +305,26 @@ def nodes(node: object, pointer: str = "") -> Iterator[tuple[str, dict]]:
 def schema_keywords(node: object) -> set[str]:
     """Every key appearing at a SCHEMA POSITION anywhere in the document."""
     return {k for _, n in nodes(node) for k in n}
+
+
+def named_values(node: Mapping[str, Any]) -> frozenset | None:
+    """``node``'s ``const`` or ``enum`` as a set of scalars, or ``None`` for neither.
+
+    Draft-07's own reading: a ``const`` is a one-member ``enum``.  ``None`` rather than
+    the empty set, because "names no values" and "admits nothing" are different
+    statements.  Scalars only, and a list with one non-scalar member contributes NOTHING
+    rather than its scalar part -- a partial set would claim a disjointness the document
+    does not state.
+    """
+    if "const" in node:
+        value = node["const"]
+        return frozenset({value}) if isinstance(value, (str, bool, int)) else None
+    members = node.get("enum")
+    if not isinstance(members, list) or not members:
+        return None
+    if not all(isinstance(member, (str, bool, int)) for member in members):
+        return None
+    return frozenset(members)
 
 
 def references(node: object) -> list[tuple[str, str, keywords.Position]]:
