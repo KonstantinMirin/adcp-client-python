@@ -6,12 +6,12 @@ from typing import Annotated
 from pydantic import Field
 
 from adcp.types._base import SchemaRef, strict_alias
-from adcp.types.constraints import HttpUrl, StrFormatUriTemplate, StrMatching60409A9F
+from adcp.types.constraints import StrFormatUriMatching03786FB9, StrFormatUriTemplate, StrMatching60409A9F
 
 
 __adcp_schema__ = SchemaRef(document='core/macro-bearing-url.json', pointer='#')
 
-MacroBearingURL = Annotated[StrFormatUriTemplate | HttpUrl | StrMatching60409A9F, Field(description='Backward-compatible URL value that preserves the existing `uri-template` branch (including deep links, protocol-relative references, and RFC 6570 host variables) while additionally accepting absolute HTTP(S) URLs with byte-preserved macro delimiters not legal in a strict URI, including `%%...%%`, `[...]`, and `${...}`. Macro-bearing HTTP(S) URLs require a valid lexical authority and valid percent triplets; an AdCP verifier replaces each recognized token with an unreserved sentinel and validates the resulting absolute URI. Token semantics are established only by `macro_declarations`.')]
+MacroBearingURL = Annotated[StrFormatUriTemplate | StrFormatUriMatching03786FB9 | StrMatching60409A9F, Field(description='Backward-compatible URL value that preserves the existing `uri-template` branch (including deep links, protocol-relative references, and RFC 6570 host variables) while additionally accepting absolute HTTP(S) URLs with byte-preserved macro delimiters not legal in a strict URI, including `%%...%%`, `[...]`, and `${...}`. Macro-bearing HTTP(S) URLs require a valid lexical authority and valid percent triplets; an AdCP verifier replaces each recognized token with an unreserved sentinel and validates the resulting absolute URI. Token semantics are established only by `macro_declarations`.')]
 
 
 strict_validate = strict_alias(__adcp_schema__, "MacroBearingURL", MacroBearingURL)

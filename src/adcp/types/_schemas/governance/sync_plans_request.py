@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, TypeAda
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
-from adcp.types.constraints import FloatMin0Max100, HttpUrl, IntMin1, StrMaxLen2000, StrMinLen16MaxLen255Matching1E5CF9EB
+from adcp.types.constraints import FloatMin0Max100, IntMin1, StrFormatUri, StrMaxLen2000, StrMinLen16MaxLen255Matching1E5CF9EB
 
 from ..core.brand_ref import BrandReference
 from ..core.context import ContextObject
@@ -139,7 +139,7 @@ class DelegationsItem(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/sync-plans-request.json', pointer='#/properties/plans/items/properties/delegations/items')
-    agent_url: Annotated[HttpUrl, Field(description='URL of the delegated agent.')]
+    agent_url: Annotated[str, Field(description='URL of the delegated agent.', json_schema_extra={'format': 'uri'})]
     authority: Annotated[DelegationAuthority, Field(description='Authority level granted to this agent.')]
     budget_limit: Annotated[BudgetLimit | None, Field(description="Maximum budget this agent can commit. When omitted, the agent can commit up to the plan's total budget.")] = None
     markets: Annotated[list[str] | None, Field(description='ISO 3166-1/3166-2 codes this agent is authorized for. When omitted, the agent can operate in all plan markets.')] = None
@@ -193,7 +193,7 @@ class PlansItem(AdCPBaseModel):
     min_audience_size: Annotated[IntMin1 | None, Field(description='Minimum audience segment size. Prevents micro-targeting by ensuring segments meet a k-anonymity threshold. Applies to the estimated combined (intersection) audience when multiple criteria are used, not just individual criterion sizes. The governance agent validates this by querying published signal metadata or seller-reported segment sizes. When segment size data is unavailable, the governance agent SHOULD produce a finding with reduced confidence rather than silently passing.')] = None
     human_review_required: Annotated[bool | None, Field(description='When true, the governance agent MUST escalate any action on this plan for human review before execution — regardless of budget. Required by regulations that prohibit solely automated decisions affecting data subjects (GDPR Art 22, EU AI Act Annex III): credit, insurance pricing, recruitment, housing allocation. Governance agents MUST set this to true automatically when any resolved policy or policy_category has requires_human_review: true. Distinct from budget.reallocation_threshold, which only governs budget reallocation autonomy — human_review_required covers decisions affecting individuals (targeting, creative, delivery).')] = False
     custom_policies: Annotated[list[PolicyEntry] | None, Field(description='Bespoke policies specific to this campaign, using the same shape as registry entries. Each policy has a policy_id, enforcement (must|should), and natural-language policy text. Governance findings reference policy_id to identify which policy triggered. For quick authoring, omit version/name/category — servers default them.')] = None
-    approved_sellers: Annotated[list[HttpUrl] | None, Field(description='List of approved seller agent URLs. null means any seller.')] = None
+    approved_sellers: Annotated[list[StrFormatUri] | None, Field(description='List of approved seller agent URLs. null means any seller.')] = None
     delegations: Annotated[list[DelegationsItem] | None, Field(description="Agents authorized to execute against this plan. Each delegation scopes an agent's authority by budget, markets, and expiration. The governance agent validates that the requesting agent matches a delegation before approving actions.")] = None
     portfolio: Annotated[Portfolio | None, Field(description='Portfolio-level governance constraints. When present, this plan acts as a portfolio plan that governs member plans. Portfolio plans define cross-brand constraints that no individual brand plan can override.')] = None
     ext: ExtensionObject | None = None

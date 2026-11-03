@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import HttpUrl, StrMatching66C55F6F, StrMinLen16MaxLen255Matching1E5CF9EB, StrMinLen1MaxLen255, StrMinLen1MaxLen255Matching67860854, StrMinLen1MaxLen64MatchingD373B860
+from adcp.types.constraints import StrMatching66C55F6F, StrMinLen16MaxLen255Matching1E5CF9EB, StrMinLen1MaxLen255, StrMinLen1MaxLen255Matching67860854, StrMinLen1MaxLen64MatchingD373B860
 
 from .ext import ExtensionObject
 
@@ -42,7 +42,7 @@ class CapabilitiesChangedWebhook(AdCPBaseModel):
     notification_type: Annotated[Literal['capabilities.changed'], Field(description="Fixed notification type discriminator. Matches the value registered on the subscriber's `event_types`.")]
     fired_at: Annotated[AwareDatetime, Field(description='ISO 8601 timestamp when the seller initiated this fire. Distinct from `changed_at`, which is when the seller recorded the material capability change.')]
     subscriber_id: Annotated[StrMinLen1MaxLen64MatchingD373B860, Field(description="Identifies which caller-scoped notification_configs[] entry is receiving this fire. Echoed verbatim from the entry's subscriber_id.")]
-    agent_url: Annotated[HttpUrl, Field(description='Canonical seller agent URL whose capabilities changed. Receivers that subscribe to multiple agents use this to select the cache entry to invalidate.')]
+    agent_url: Annotated[str, Field(description='Canonical seller agent URL whose capabilities changed. Receivers that subscribe to multiple agents use this to select the cache entry to invalidate.', json_schema_extra={'format': 'uri'})]
     changed_at: Annotated[AwareDatetime, Field(description='ISO 8601 timestamp when the seller recorded the material capability change. SHOULD match or precede `adcp.capability_changes.last_modified` on the next `get_adcp_capabilities` response.')]
     reason: Annotated[Reason, Field(description='Coarse reason for the invalidation. This is advisory routing/debug metadata; receivers MUST re-read `get_adcp_capabilities` rather than relying on the reason to infer the new capability surface.')]
     capabilities_version: Annotated[StrMinLen1MaxLen255, Field(description='Required opaque revision token for the capability document after the change. MUST equal `adcp.capability_changes.capabilities_version` on the authoritative `get_adcp_capabilities` response available before this webhook is sent. Receivers MUST treat the token as opaque and compare it only for equality.')]

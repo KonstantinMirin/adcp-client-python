@@ -7,7 +7,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Dependencies, Rule
-from adcp.types.constraints import FloatGt0Lt1, HttpUrl, IntMin1, StrMinLen1, StrMinLen1MaxLen100, StrMinLen1MaxLen255
+from adcp.types.constraints import FloatGt0Lt1, IntMin1, StrMinLen1, StrMinLen1MaxLen100, StrMinLen1MaxLen255
 
 from ..enums.feedback_source import FeedbackSource
 from ..enums.metric_type import MetricType
@@ -69,7 +69,7 @@ class PerformanceFeedbackAssertion(AdCPBaseModel):
     methodology_version: Annotated[StrMinLen1MaxLen100 | None, Field(description='Producer-defined version of the methodology used for this assertion.')] = None
     study_ref: Annotated[StrMinLen1MaxLen255 | None, Field(description='Opaque producer-assigned study or model-run reference. Receivers use it for correlation only and MUST NOT interpret it as an experiment-execution instruction.')] = None
     evidence: Annotated[Evidence | None, Field(description='Small inline evidence summary used to weight the assertion without transporting the full study.')] = None
-    evidence_ref: Annotated[HttpUrl | None, Field(description='Provider-hosted evidence or result reference for parties authorized to inspect the full study.')] = None
+    evidence_ref: Annotated[str | None, Field(description='Provider-hosted evidence or result reference for parties authorized to inspect the full study.', json_schema_extra={'format': 'uri'})] = None
     as_of: Annotated[AwareDatetime | None, Field(description='When the producer computed this assertion.')] = None
     final: Annotated[bool | None, Field(description='Whether the producer expects this assertion to be revised as data matures.')] = None
     supersedes_feedback_id: Annotated[StrMinLen1 | None, Field(description='Receiver-issued feedback_id of the earlier assertion this one replaces at the same hop.')] = None

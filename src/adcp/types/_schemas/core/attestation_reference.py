@@ -7,7 +7,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, PropertyCount, RequiredGroups, Rule
-from adcp.types.constraints import HttpUrl, StrMatching3CBDBB74, StrMinLen1, StrMinLen1MaxLen1024, StrMinLen1MaxLen255, StrMinLen1MaxLen255MatchingEAB1CA79
+from adcp.types.constraints import StrFormatUriMatching339ABAF8, StrMatching3CBDBB74, StrMinLen1, StrMinLen1MaxLen1024, StrMinLen1MaxLen255, StrMinLen1MaxLen255MatchingEAB1CA79
 
 from .attestation_issuer import AttestationIssuer
 from .attestation_subject import AttestationSubject
@@ -20,7 +20,7 @@ class AttestationCredentialUriLocator(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/attestation-reference.json', pointer='#/properties/locator/oneOf/0')
     type: Literal['credential_uri']
-    credential_uri: Annotated[HttpUrl, Field(description='HTTPS URI of the credential. Before any fetch, evaluators MUST match its canonical origin to credential_origins on the accepted issuer capability and then apply the attestation fetch contract.')]
+    credential_uri: Annotated[StrFormatUriMatching339ABAF8, Field(description='HTTPS URI of the credential. Before any fetch, evaluators MUST match its canonical origin to credential_origins on the accepted issuer capability and then apply the attestation fetch contract.')]
     ext: ExtensionObject | None = None
 
 
@@ -43,7 +43,7 @@ class EmbeddedCredential(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/attestation-reference.json', pointer='#/properties/embedded_credential')
-    format: Annotated[HttpUrl, Field(description='Open, absolute URI identifying the credential/proof format. AdCP does not impose a universal issuer payload schema.')]
+    format: Annotated[str, Field(description='Open, absolute URI identifying the credential/proof format. AdCP does not impose a universal issuer payload schema.', json_schema_extra={'format': 'uri'})]
     value: Annotated[dict[str, Any] | StrMinLen1, Field(description='Credential encoded as a JSON object or a compact string, according to format.')]
     ext: ExtensionObject | None = None
 
@@ -71,7 +71,7 @@ class VerifyAgent(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/attestation-reference.json', pointer='#/properties/verify_agent')
-    agent_url: HttpUrl
+    agent_url: StrFormatUriMatching339ABAF8
 
 
 class AttestationReference(AdCPBaseModel):
@@ -87,7 +87,7 @@ class AttestationReference(AdCPBaseModel):
         ConditionalRequired((Match('locator', True, None),Match('embedded_credential', True, None),), require=('content_digest',), forbid=()),
     )
     issuer: AttestationIssuer
-    claim_type: Annotated[HttpUrl, Field(description='Open, absolute URI identifying the claim vocabulary. The URI is an identifier and need not be dereferenceable. AdCP does not maintain an enum of approved claims.')]
+    claim_type: Annotated[str, Field(description='Open, absolute URI identifying the claim vocabulary. The URI is an identifier and need not be dereferenceable. AdCP does not maintain an enum of approved claims.', json_schema_extra={'format': 'uri'})]
     subject: AttestationSubject
     locator: Annotated[AttestationCredentialUriLocator | AttestationIssuerCredentialIdLocator | None, Field(description='Stable locator for resolving the credential. Credential URLs are permitted only when their canonical origin is allowlisted for the matched issuer. Issuer-scoped IDs name a resolver_id already published by the evaluator; the presentation cannot introduce a resolver URL.')] = None
     embedded_credential: Annotated[EmbeddedCredential | None, Field(description='Optional inline credential for private, authenticated, or offline delivery. It may accompany locator or be the only delivery path. Its format must be supported by the evaluator, and the evaluator MUST verify the credential exactly as it would a resolved credential.')] = None

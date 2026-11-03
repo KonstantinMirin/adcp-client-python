@@ -8,7 +8,7 @@ from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field, NonNegati
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, PropertyCount, RequiredGroups, Rule, UniqueItems
-from adcp.types.constraints import AdCPUrl, FloatGt0, HttpUrl, IntMin1, StrMatchingEE2029C8, StrMatchingEFC12812, StrMaxLen200, StrMaxLen2000, StrMaxLen25, StrMaxLen30, StrMaxLen60
+from adcp.types.constraints import FloatGt0, IntMin1, StrFormatUriMatching5E721644, StrMatchingEE2029C8, StrMatchingEFC12812, StrMaxLen200, StrMaxLen2000, StrMaxLen25, StrMaxLen30, StrMaxLen60
 
 from ..enums.action_source import ActionSource
 from ..enums.audio_distribution_type import AudioDistributionType
@@ -200,7 +200,7 @@ class ProvidersItem(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ConditionalRequired((Match('identity_match', True, (True,)),), require=('agent_url', 'countries', 'uid_types'), forbid=()),
     )
-    agent_url: Annotated[HttpUrl, Field(description="Provider's agent URL from the registry. Canonical identifier for this TMP provider.")]
+    agent_url: Annotated[str, Field(description="Provider's agent URL from the registry. Canonical identifier for this TMP provider.", json_schema_extra={'format': 'uri'})]
     context_match: Annotated[bool | None, Field(description='Whether this provider handles context match for this product.')] = False
     identity_match: Annotated[bool | None, Field(description='Whether this provider handles identity match for this product.')] = False
     countries: Annotated[list[StrMatchingEFC12812] | None, Field(description="ISO 3166-1 alpha-2 country codes this provider serves for identity match. The router uses this to select the correct regional provider based on the request's country field. Required when identity_match is true.", min_length=1)] = None
@@ -246,7 +246,7 @@ class MaterialSubmission(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         PropertyCount(minimum=1, maximum=None),
     )
-    url: Annotated[AdCPUrl | None, Field(description='HTTPS URL for uploading or submitting physical creative materials')] = None
+    url: Annotated[StrFormatUriMatching5E721644 | None, Field(description='HTTPS URL for uploading or submitting physical creative materials')] = None
     email: Annotated[str | None, Field(description='Email address for creative material submission', json_schema_extra={'format': 'email'})] = None
     instructions: Annotated[StrMaxLen2000 | None, Field(description='Human-readable instructions for material submission (file naming conventions, shipping address, etc.)')] = None
     ext: ExtensionObject | None = None

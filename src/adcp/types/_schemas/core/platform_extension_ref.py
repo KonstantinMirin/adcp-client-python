@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import AdCPUrl, StrMatching3CBDBB74
+from adcp.types.constraints import StrFormatUriMatching5E721644, StrMatching3CBDBB74
 
 
 class PlatformExtensionReference(AdCPBaseModel):
@@ -19,7 +19,7 @@ class PlatformExtensionReference(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/platform-extension-ref.json', pointer='#')
-    uri: Annotated[AdCPUrl, Field(description="HTTPS URL identifying the extension. `https://` is mandatory — `http://`, `file://`, `data:`, and other schemes are rejected at the schema layer (defense-in-depth on top of the fetch-contract normative rules). The URI base is the owning agent's URL; the path identifies the extension within that agent. Example: 'https://creative.adcontextprotocol.org/translated/meta/extensions/meta_pixel'. The full fetch contract — SSRF allowlist, response-size cap, $ref sandbox, schema-compile bounds — is documented on `product-format-declaration.json#format_schema` and applies to ALL fetches of this reference shape regardless of whether the field is named `format_schema` (load-bearing for validation) or `platform_extensions` (informational); the *transport* rules are identical, only the *consumption* semantics differ.")]
+    uri: Annotated[StrFormatUriMatching5E721644, Field(description="HTTPS URL identifying the extension. `https://` is mandatory — `http://`, `file://`, `data:`, and other schemes are rejected at the schema layer (defense-in-depth on top of the fetch-contract normative rules). The URI base is the owning agent's URL; the path identifies the extension within that agent. Example: 'https://creative.adcontextprotocol.org/translated/meta/extensions/meta_pixel'. The full fetch contract — SSRF allowlist, response-size cap, $ref sandbox, schema-compile bounds — is documented on `product-format-declaration.json#format_schema` and applies to ALL fetches of this reference shape regardless of whether the field is named `format_schema` (load-bearing for validation) or `platform_extensions` (informational); the *transport* rules are identical, only the *consumption* semantics differ.")]
     digest: Annotated[StrMatching3CBDBB74, Field(description='SHA-256 content digest of the extension definition (sha256:<hex>). Used to detect drift — if the agent revises the extension, the digest changes and cached definitions become invalid.')]
 
 

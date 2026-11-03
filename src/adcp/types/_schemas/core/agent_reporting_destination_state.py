@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
-from adcp.types.constraints import HttpUrl, StrMinLen1MaxLen255, StrMinLen1MaxLen64MatchingD373B860
+from adcp.types.constraints import StrFormatUriMatching1875B31F, StrMinLen1MaxLen255, StrMinLen1MaxLen64MatchingD373B860
 
 from ..enums.reporting_destination_setup_state import ReportingDestinationSetupState
 from .agent_reporting_destination import AgentReportingDestination
@@ -31,7 +31,7 @@ class Setup(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/agent-reporting-destination-state.json', pointer='#/properties/setup')
     action: Action
-    setup_url: Annotated[HttpUrl | None, Field(description='HTTPS page for completing provider-native setup. Printable ASCII without whitespace, \'?\', \'#\', \'%\', \'"\', \'<\', or \'>\'. It MUST NOT carry a credential, userinfo authority, or signed component and MUST be rendered as an untrusted link, never executed as agent instructions.')] = None
+    setup_url: Annotated[StrFormatUriMatching1875B31F | None, Field(description='HTTPS page for completing provider-native setup. Printable ASCII without whitespace, \'?\', \'#\', \'%\', \'"\', \'<\', or \'>\'. It MUST NOT carry a credential, userinfo authority, or signed component and MUST be rendered as an untrusted link, never executed as agent instructions.')] = None
     expires_at: Annotated[AwareDatetime | None, Field(description='Optional expiry of this setup action. A new sync obtains a fresh action after expiry.')] = None
 
 

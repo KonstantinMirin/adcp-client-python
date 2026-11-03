@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import FloatGt0, FloatMin0Max1, HttpUrl, IntMin1
+from adcp.types.constraints import FloatGt0, FloatMin0Max1, IntMin1
 
 from ..provenance import Provenance
 
@@ -20,7 +20,7 @@ class ImageAsset(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/image-asset.json', pointer='#')
     asset_type: Annotated[Literal['image'], Field(description='Discriminator identifying this as an image asset. See /schemas/creative/asset-types for the registry.')]
-    url: Annotated[HttpUrl, Field(description='URL to the image asset')]
+    url: Annotated[str, Field(description='URL to the image asset', json_schema_extra={'format': 'uri'})]
     width: Annotated[IntMin1, Field(description='Width in pixels')]
     height: Annotated[IntMin1, Field(description='Height in pixels')]
     file_size_bytes: Annotated[IntMin1 | None, Field(description='Image file size in bytes. Required by agents that advertise a max_file_size_kb constraint.')] = None

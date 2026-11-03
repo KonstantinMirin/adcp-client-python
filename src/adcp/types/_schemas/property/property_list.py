@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import HttpUrl, IntMin1
+from adcp.types.constraints import IntMin1
 
 from ..core.account_ref import AccountReference
 from ..core.brand_ref import BrandReference
@@ -30,7 +30,7 @@ class PropertyList(AdCPBaseModel):
     base_properties: Annotated[list[BasePropertySource] | None, Field(description="Array of property sources to evaluate. Each entry is a discriminated union: publisher_tags (publisher_domain + tags), publisher_ids (publisher_domain + property_ids), or identifiers (direct identifiers). If omitted, queries the agent's entire property database.")] = None
     filters: Annotated[PropertyListFilters | None, Field(description='Dynamic filters applied when resolving the list')] = None
     brand: Annotated[BrandReference | None, Field(description='Brand reference used to automatically apply appropriate rules. Resolved to full brand identity at execution time.')] = None
-    webhook_url: Annotated[HttpUrl | None, Field(description='URL to receive notifications when the resolved list changes')] = None
+    webhook_url: Annotated[str | None, Field(description='URL to receive notifications when the resolved list changes', json_schema_extra={'format': 'uri'})] = None
     cache_duration_hours: Annotated[IntMin1 | None, Field(description='Recommended cache duration for resolved list. Consumers should re-fetch after this period.')] = 24
     created_at: Annotated[AwareDatetime | None, Field(description='When the list was created')] = None
     updated_at: Annotated[AwareDatetime | None, Field(description='When the list was last modified')] = None

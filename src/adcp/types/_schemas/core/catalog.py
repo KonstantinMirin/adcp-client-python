@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import HttpUrl, StrMatchingEE2029C8
+from adcp.types.constraints import StrMatchingEE2029C8
 
 from ..enums.catalog_type import CatalogType
 from ..enums.content_id_type import ContentIDType
@@ -46,7 +46,7 @@ class Catalog(AdCPBaseModel):
     catalog_id: Annotated[str | None, Field(description="Buyer's identifier for this catalog. Required when syncing via sync_catalogs. When used in creatives, references a previously synced catalog on the account.")] = None
     name: Annotated[str | None, Field(description="Human-readable name for this catalog (e.g., 'Summer Products 2025', 'Amsterdam Store Locations').")] = None
     type: Annotated[CatalogType, Field(description="Catalog type. Structural types: 'offering' (AdCP Offering objects), 'product' (ecommerce entries), 'inventory' (stock per location), 'store' (physical locations), 'promotion' (deals and pricing). Vertical types: 'hotel', 'flight', 'job', 'vehicle', 'real_estate', 'education', 'destination', 'app' — each with an industry-specific item schema.")]
-    url: Annotated[HttpUrl | None, Field(description="URL to an external catalog feed. The platform fetches and resolves items from this URL. For offering-type catalogs, the feed contains an array of Offering objects. For other types, the feed format is determined by feed_format. When omitted with type 'product', the platform uses its synced copy of the brand's product catalog.")] = None
+    url: Annotated[str | None, Field(description="URL to an external catalog feed. The platform fetches and resolves items from this URL. For offering-type catalogs, the feed contains an array of Offering objects. For other types, the feed format is determined by feed_format. When omitted with type 'product', the platform uses its synced copy of the brand's product catalog.", json_schema_extra={'format': 'uri'})] = None
     feed_format: Annotated[FeedFormat | None, Field(description='Format of the external feed at url. Required when url points to a non-AdCP feed (e.g., Google Merchant Center XML, Meta Product Catalog). Omit for offering-type catalogs where the feed is native AdCP JSON.')] = None
     update_frequency: Annotated[UpdateFrequency | None, Field(description='How often the platform should re-fetch the feed from url. Only applicable when url is provided. Platforms may use this as a hint for polling schedules.')] = None
     items: Annotated[list[dict[str, Any]] | None, Field(description="Inline catalog data. The item schema depends on the catalog type: Offering objects for 'offering', StoreItem for 'store', HotelItem for 'hotel', FlightItem for 'flight', JobItem for 'job', VehicleItem for 'vehicle', RealEstateItem for 'real_estate', EducationItem for 'education', DestinationItem for 'destination', AppItem for 'app', or freeform objects for 'product', 'inventory', and 'promotion'. Mutually exclusive with url — provide one or the other, not both. Implementations should validate items against the type-specific schema.", min_length=1)] = None

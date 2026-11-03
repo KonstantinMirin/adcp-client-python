@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
-from adcp.types.constraints import DictMinProperties1, HttpUrl, StrMatchingEFC12812
+from adcp.types.constraints import DictMinProperties1, StrMatchingEFC12812
 from adcp.types.envelopes import FailedResponse
 
 from ..core.context import ContextObject
@@ -106,7 +106,7 @@ class LogosItem(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/search-brands-response.json', pointer='#/definitions/SearchBrandResult/properties/logos/items')
-    url: Annotated[HttpUrl, Field(description='URL to the logo asset')]
+    url: Annotated[str, Field(description='URL to the logo asset', json_schema_extra={'format': 'uri'})]
     orientation: Annotated[Orientation | None, Field(description='Logo aspect ratio orientation')] = None
     background: Annotated[Background | None, Field(description='Background compatibility')] = None
     variant: Annotated[Variant | None, Field(description='Logo variant type')] = None

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
-from adcp.types.constraints import HttpUrl, StrMinLen16MaxLen255Matching1E5CF9EB
+from adcp.types.constraints import StrMinLen16MaxLen255Matching1E5CF9EB
 
 from ..core.account_ref import AccountReference
 from ..core.brand_ref import BrandReference
@@ -32,7 +32,7 @@ class UpdatePropertyListRequest(AdCPVersionEnvelope):
     base_properties: Annotated[list[BasePropertySource] | None, Field(description='Complete replacement for the base properties list (not a patch). Each entry is a discriminated union: publisher_tags (publisher_domain + tags), publisher_ids (publisher_domain + property_ids), or identifiers (direct identifiers).')] = None
     filters: Annotated[PropertyListFilters | None, Field(description='Complete replacement for the filters (not a patch)')] = None
     brand: Annotated[BrandReference | None, Field(description='Update brand reference. Resolved to full brand identity at execution time.')] = None
-    webhook_url: Annotated[HttpUrl | None, Field(description='Update the webhook URL for list change notifications (set to empty string to remove)')] = None
+    webhook_url: Annotated[str | None, Field(description='Update the webhook URL for list change notifications (set to empty string to remove)', json_schema_extra={'format': 'uri'})] = None
     context: ContextObject | None = None
     ext: ExtensionObject | None = None
     idempotency_key: Annotated[StrMinLen16MaxLen255Matching1E5CF9EB, Field(description='Client-generated unique key for at-most-once execution. If a request with the same key has already been processed, the server returns the original response without re-processing. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.')]

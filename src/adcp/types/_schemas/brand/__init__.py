@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, PropertyCount, RequiredGroups, Rule, UniqueItems
-from adcp.types.constraints import AdCPUrl, FloatGt0, HttpUrl, IntMin100Max900, IntMin1Max45, NonEmptyList, StrMatching068A244C, StrMatching32F5291C, StrMatching36CCA380, StrMatching83577F62, StrMatchingC2978503, StrMatchingD342F02C, StrMatchingE02C3DE8, StrMatchingEFC12812, StrMatchingF01B4765, StrMaxLen100, StrMaxLen100MatchingE02C3DE8, StrMaxLen255, StrMaxLen500, StrMinLen1, StrMinLen1MaxLen255, StrMinLen2MaxLen2
+from adcp.types.constraints import FloatGt0, IntMin100Max900, IntMin1Max45, NonEmptyList, StrFormatEmailMaxLen255, StrFormatUriMatching5E721644, StrMatching068A244C, StrMatching32F5291C, StrMatching36CCA380, StrMatching83577F62, StrMatchingC2978503, StrMatchingD342F02C, StrMatchingE02C3DE8, StrMatchingEFC12812, StrMatchingF01B4765, StrMaxLen100, StrMaxLen100MatchingE02C3DE8, StrMaxLen500, StrMinLen1, StrMinLen1MaxLen255, StrMinLen2MaxLen2
 
 from ..core.brand_ref import BrandReference
 from ..core.locale_tag import LanguageTag
@@ -61,7 +61,7 @@ class AuthoritativeLocationRedirect(BrandDiscovery):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/oneOf/0')
     schema_: Annotated[str | None, Field(alias='$schema')] = None
-    authoritative_location: Annotated[AdCPUrl, Field(description='HTTPS URL of the authoritative brand.json file')]
+    authoritative_location: Annotated[StrFormatUriMatching5E721644, Field(description='HTTPS URL of the authoritative brand.json file')]
     redirect_reason: Annotated[AuthoritativeLocationRedirectRedirectReason | None, Field(description="Optional structured signal indicating why this redirect was put in place. Consumers SHOULD use this to inform cache TTL decisions: 'acquisition' / 'divestiture' / 'rebrand' / 'consolidation' suggest the resolved target is in transition and consumers SHOULD shorten cache TTL until stable. 'regional' / 'legacy' suggest a stable redirect with no special cache handling needed. Free-text rationale belongs in 'note'.")] = None
     redirect_effective_at: Annotated[AwareDatetime | None, Field(description='Optional timestamp when this redirect became effective. Caches MUST treat any entry cached before this timestamp as stale and re-fetch through the redirect.')] = None
     note: Annotated[str | None, Field(description='Optional human-readable rationale for the redirect.')] = None
@@ -100,10 +100,10 @@ class BrandAgentEntry(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/brand_agent_entry')
     type: Annotated[BrandAgentType, Field(description='Functional role of this agent')]
-    url: Annotated[AdCPUrl, Field(description="Agent endpoint URL (MCP or A2A). Callers comparing a brand's declared agent URL against another value (e.g., resolving 'is this the agent that signed this artifact?' or matching against a discovery cache) MUST canonicalize both sides per the AdCP URL canonicalization rules, not byte-equality. After the publication chain and an authorized request-signing key verify, this exact entry's canonical URL is the stable Agent identity input for principal mapping; the domain, JWKS URI, kid, and key material are credential or trust facts beneath it, not the Agent identity. See docs/reference/url-canonicalization.")]
+    url: Annotated[StrFormatUriMatching5E721644, Field(description="Agent endpoint URL (MCP or A2A). Callers comparing a brand's declared agent URL against another value (e.g., resolving 'is this the agent that signed this artifact?' or matching against a discovery cache) MUST canonicalize both sides per the AdCP URL canonicalization rules, not byte-equality. After the publication chain and an authorized request-signing key verify, this exact entry's canonical URL is the stable Agent identity input for principal mapping; the domain, JWKS URI, kid, and key material are credential or trust facts beneath it, not the Agent identity. See docs/reference/url-canonicalization.")]
     id: Annotated[StrMaxLen100MatchingE02C3DE8, Field(description='Agent identifier (useful for logging, multi-tenant platforms)')]
     description: Annotated[StrMaxLen500 | None, Field(description="Human-readable description of this agent's capabilities or scope")] = None
-    jwks_uri: Annotated[AdCPUrl | None, Field(description="HTTPS URL of the agent's JWKS (RFC 7517) containing public keys used to verify artifacts this agent signs or requests it sends. Verified artifacts include signed governance_context tokens (for governance agents) and RFC 9421 HTTP Signatures on outgoing requests (for any agent). When absent, verifiers MUST default to /.well-known/jwks.json on the origin of `url`. Keys are identified by `kid` in the JWS header or RFC 9421 `keyid` parameter; JWKS MAY contain multiple keys to support rotation and per-purpose separation via `key_ops` and `use`.")] = None
+    jwks_uri: Annotated[StrFormatUriMatching5E721644 | None, Field(description="HTTPS URL of the agent's JWKS (RFC 7517) containing public keys used to verify artifacts this agent signs or requests it sends. Verified artifacts include signed governance_context tokens (for governance agents) and RFC 9421 HTTP Signatures on outgoing requests (for any agent). When absent, verifiers MUST default to /.well-known/jwks.json on the origin of `url`. Keys are identified by `kid` in the JWS header or RFC 9421 `keyid` parameter; JWKS MAY contain multiple keys to support rotation and per-purpose separation via `key_ops` and `use`.")] = None
     available_uses: Annotated[list[RightUse] | None, Field(description='For rights agents: rights uses available for licensing', min_length=1)] = None
     right_types: Annotated[list[RightType] | None, Field(description='For rights agents: types of rights available', min_length=1)] = None
     countries: Annotated[list[StrMatchingEFC12812] | None, Field(description='ISO 3166-1 alpha-2 country codes where this agent operates. Omit for global scope.')] = None
@@ -120,7 +120,7 @@ class BrandDiscoveryBrandAgent(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/brand_agent')
-    url: Annotated[AdCPUrl, Field(description="Brand agent MCP endpoint URL. Callers comparing this URL against another value (e.g., resolving 'is this the brand's declared agent?' against a discovery cache) MUST canonicalize both sides per the AdCP URL canonicalization rules, not byte-equality. See docs/reference/url-canonicalization.")]
+    url: Annotated[StrFormatUriMatching5E721644, Field(description="Brand agent MCP endpoint URL. Callers comparing this URL against another value (e.g., resolving 'is this the brand's declared agent?' against a discovery cache) MUST canonicalize both sides per the AdCP URL canonicalization rules, not byte-equality. See docs/reference/url-canonicalization.")]
     id: Annotated[StrMatchingE02C3DE8, Field(description='Agent identifier (useful for logging, multi-tenant DAMs)')]
 
 
@@ -133,7 +133,7 @@ class BrandDiscoveryContact(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/contact')
     name: StrMinLen1MaxLen255
-    email: Annotated[StrMaxLen255 | None, Field(json_schema_extra={'format': 'email'})] = None
+    email: StrFormatEmailMaxLen255 | None = None
     domain: Domain | None = None
 
 
@@ -148,7 +148,7 @@ class DataSubjectContestation(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         RequiredGroups((('url',), ('email',)), 'anyOf'),
     )
-    url: Annotated[AdCPUrl | None, Field(description='HTTPS URL to a human-accessible contestation form or information page.')] = None
+    url: Annotated[StrFormatUriMatching5E721644 | None, Field(description='HTTPS URL to a human-accessible contestation form or information page.')] = None
     email: Annotated[str | None, Field(description='Email address for contestation requests. Deployer MUST monitor and respond within the timelines set by applicable law (e.g., 1 month under GDPR Art. 12(3)).', json_schema_extra={'format': 'email'})] = None
     languages: Annotated[list[str] | None, Field(description="BCP 47 language tags the contestation channel supports (e.g., ['en', 'de', 'fr']). At minimum SHOULD include a language spoken in every jurisdiction where the brand runs regulated-vertical campaigns.")] = None
 
@@ -282,7 +282,7 @@ class Logo(AdCPBaseModel):
         UniqueItems('slots'),
     )
     id: Annotated[LogoId | None, Field(description='Stable identifier for this logo entry. Recommended when logo usage rules or mark lockups need to bind to a specific logo asset.')] = None
-    url: Annotated[HttpUrl, Field(description='URL to the logo asset')]
+    url: Annotated[str, Field(description='URL to the logo asset', json_schema_extra={'format': 'uri'})]
     orientation: Annotated[LogoOrientation | None, Field(description='Logo aspect ratio orientation. square: ~1:1, horizontal: wide, vertical: tall, stacked: vertically arranged elements')] = None
     background: Annotated[Background | None, Field(description='Background compatibility. dark-bg: use on dark backgrounds, light-bg: use on light backgrounds, transparent-bg: has transparent background')] = None
     variant: Annotated[Variant | None, Field(description='Logo variant type. primary: main logo, secondary: alternative, icon: symbol only, wordmark: text only, full-lockup: complete logo')] = None
@@ -336,7 +336,7 @@ class FontFile(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/font_file')
-    url: Annotated[AdCPUrl, Field(description='HTTPS URL to the font file (WOFF2, TTF, or OTF)')]
+    url: Annotated[StrFormatUriMatching5E721644, Field(description='HTTPS URL to the font file (WOFF2, TTF, or OTF)')]
     weight: Annotated[IntMin100Max900 | None, Field(description='CSS numeric font-weight for static fonts (100-900)')] = None
     weight_range: Annotated[list[IntMin100Max900] | None, Field(description='Variable font weight axis range as [min, max] (e.g., [100, 900]). Use instead of weight for variable fonts.', max_length=2, min_length=2)] = None
     style: Annotated[FontFileStyle | None, Field(description='CSS font-style')] = None
@@ -405,7 +405,7 @@ class Asset(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/asset')
     asset_id: Annotated[str, Field(description='Unique identifier')]
     asset_type: Annotated[AssetContentType, Field(description='Type of asset content')]
-    url: Annotated[HttpUrl, Field(description='URL to CDN-hosted asset file')]
+    url: Annotated[str, Field(description='URL to CDN-hosted asset file', json_schema_extra={'format': 'uri'})]
     tags: Annotated[list[str] | None, Field(description="Tags for discovery (e.g., 'hero', 'lifestyle', 'product', 'holiday')")] = None
     name: Annotated[LocalizedScalar | None, Field(description='Human-readable name, either a legacy plain string or localized values.')] = None
     description: Annotated[LocalizedScalar | None, Field(description='Asset description or usage notes, either a legacy plain string or localized values.')] = None
@@ -461,7 +461,7 @@ class AgenticCheckout(AdCPBaseModel):
     Agentic checkout endpoint configuration
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/product_catalog/properties/agentic_checkout')
-    endpoint: Annotated[HttpUrl, Field(description='Base URL for checkout session API')]
+    endpoint: Annotated[str, Field(description='Base URL for checkout session API', json_schema_extra={'format': 'uri'})]
     spec: Annotated[str, Field(description='Checkout API specification identifier. Use a namespaced string to identify the checkout protocol (e.g., vendor-prefixed or custom). Vendor-specific values belong under ext.{vendor}.')]
     supported_payment_providers: Annotated[list[str] | None, Field(description='Payment providers supported by this checkout endpoint')] = None
 
@@ -474,7 +474,7 @@ class ProductCatalog(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/product_catalog')
-    feed_url: Annotated[HttpUrl, Field(description='URL to product catalog feed')]
+    feed_url: Annotated[str, Field(description='URL to product catalog feed', json_schema_extra={'format': 'uri'})]
     feed_format: Annotated[FeedFormat | None, Field(description='Format of the product feed')] = None
     categories: Annotated[list[str] | None, Field(description='Product categories available in the catalog')] = None
     last_updated: Annotated[AwareDatetime | None, Field(description='When the product catalog was last updated')] = None
@@ -1222,7 +1222,7 @@ class LogoUsageRule(AdCPBaseModel):
         RequiredGroups((('logo_id',), ('logo_url',), ('logo_variant',), ('logo_tags',), ('slots',)), 'anyOf'),
         UniqueItems('slots'),
     )
-    logo_url: Annotated[HttpUrl | None, Field(description='Specific logo asset URL this rule applies to. Omit when the rule applies by variant or tags.')] = None
+    logo_url: Annotated[str | None, Field(description='Specific logo asset URL this rule applies to. Omit when the rule applies by variant or tags.', json_schema_extra={'format': 'uri'})] = None
     logo_id: Annotated[LogoId | None, Field(description='Stable `logos[].id` this rule applies to. Prefer this over logo_url when the rule targets a specific logo entry.')] = None
     logo_variant: Annotated[LogoVariant | None, Field(description='Logo variant this rule applies to.')] = None
     logo_tags: Annotated[list[str] | None, Field(description='Logo tags this rule applies to.', min_length=1)] = None
@@ -1392,7 +1392,7 @@ class AssetLibrary(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/asset_library')
     name: Annotated[str, Field(description='Display name of the asset library')]
     type: Annotated[AssetLibraryType | None, Field(description='Type of asset library')] = None
-    url: Annotated[HttpUrl, Field(description='URL to the asset library (for human access)')]
+    url: Annotated[str, Field(description='URL to the asset library (for human access)', json_schema_extra={'format': 'uri'})]
     description: Annotated[str | None, Field(description='Description of the library contents and usage')] = None
     color_guide: Annotated[ColorGuide | None, Field(description='Color guide for the asset library defining roles and palettes')] = None
 
@@ -1433,7 +1433,7 @@ class RightsAgent(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/rights_agent')
-    url: Annotated[AdCPUrl, Field(description="Rights agent MCP endpoint URL. Callers comparing this URL against another value (e.g., matching against a brand's declared rights endpoint) MUST canonicalize both sides per the AdCP URL canonicalization rules, not byte-equality. See docs/reference/url-canonicalization.")]
+    url: Annotated[StrFormatUriMatching5E721644, Field(description="Rights agent MCP endpoint URL. Callers comparing this URL against another value (e.g., matching against a brand's declared rights endpoint) MUST canonicalize both sides per the AdCP URL canonicalization rules, not byte-equality. See docs/reference/url-canonicalization.")]
     id: Annotated[StrMatchingE02C3DE8, Field(description='Agent identifier')]
     available_uses: Annotated[list[RightUse], Field(description='Rights uses available for licensing through this agent', min_length=1)]
     right_types: Annotated[list[RightType] | None, Field(description='Types of rights available', min_length=1)] = None
@@ -1457,7 +1457,7 @@ class CollectionsItem(AdCPBaseModel):
     collection_id: Annotated[str | None, Field(description="Collection identifier as used in the seller's get_products responses")] = None
     name: Annotated[str, Field(description='Human-readable collection name')]
     role: Annotated[TalentRole | None, Field(description="This person's role on the collection")] = None
-    seller_agent_url: Annotated[HttpUrl | None, Field(description='URL of the sales agent that sells inventory for this collection. Buyer agents can query this agent for collection products.')] = None
+    seller_agent_url: Annotated[str | None, Field(description='URL of the sales agent that sells inventory for this collection. Buyer agents can query this agent for collection products.', json_schema_extra={'format': 'uri'})] = None
 
 
 class Brand(AdCPBaseModel):
@@ -1469,7 +1469,7 @@ class Brand(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/brand')
     id: Annotated[BrandId, Field(description='Brand identifier within the house. House chooses this ID.')]
-    url: Annotated[HttpUrl | None, Field(description='Primary brand URL for context and asset discovery')] = None
+    url: Annotated[str | None, Field(description='Primary brand URL for context and asset discovery', json_schema_extra={'format': 'uri'})] = None
     identity_relying_parties: Annotated[list[IdentityRelyingParty] | None, Field(description='Verified-identity relying parties scoped to this brand/property, for attestation provenance in TMP Identity Match. Use when a brand or property runs its own relying_party_id (per-property pseudonyms); entity-wide relying parties live on the house object. See specs/tmp-verified-identity-attestation.md.')] = None
     names: Annotated[list[LocalizedName], Field(description='Localized brand names. Multiple entries per language allowed for aliases.', min_length=1)]
     keller_type: KellerType | None = None
@@ -1485,7 +1485,7 @@ class Brand(AdCPBaseModel):
     assets: Annotated[list[Asset] | None, Field(description='Brand asset library')] = None
     properties: Annotated[list[Property] | None, Field(description='Digital properties associated with this brand — owned, managed, or represented')] = None
     product_catalog: ProductCatalog | None = None
-    privacy_policy_url: Annotated[HttpUrl | None, Field(description="URL to the brand's privacy policy")] = None
+    privacy_policy_url: Annotated[str | None, Field(description="URL to the brand's privacy policy", json_schema_extra={'format': 'uri'})] = None
     data_subject_contestation: DataSubjectContestation | None = None
     disclaimers: Annotated[list[DisclaimersItem] | None, Field(description='Legal disclaimers for creatives')] = None
     trademarks: Annotated[list[Trademark] | None, Field(description="Brand-level registered trademarks. Use for marks the brand owns or controls (e.g., a sub-brand's own marks distinct from the corporate parent). House-level trademarks live on the house object; resolution between the two is union — both lists are valid claims.")] = None

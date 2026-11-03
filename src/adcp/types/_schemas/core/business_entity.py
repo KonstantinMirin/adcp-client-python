@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import StrMatching02AE7B1E, StrMatching81D52C51, StrMatchingC09B4F04, StrMatchingEFC12812, StrMaxLen100, StrMaxLen20, StrMaxLen200, StrMaxLen254, StrMaxLen30, StrMaxLen50
+from adcp.types.constraints import StrFormatEmailMaxLen254, StrMatching02AE7B1E, StrMatching81D52C51, StrMatchingC09B4F04, StrMatchingEFC12812, StrMaxLen100, StrMaxLen20, StrMaxLen200, StrMaxLen30, StrMaxLen50
 
 from .ext import ExtensionObject
 
@@ -54,7 +54,7 @@ class ContactsItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/business-entity.json', pointer='#/properties/contacts/items')
     role: Annotated[Role, Field(description="Contact's functional role in the business relationship")]
     name: Annotated[StrMaxLen200 | None, Field(description='Full name of the contact')] = None
-    email: Annotated[StrMaxLen254 | None, Field(json_schema_extra={'format': 'email'})] = None
+    email: StrFormatEmailMaxLen254 | None = None
     phone: StrMaxLen30 | None = None
 
 

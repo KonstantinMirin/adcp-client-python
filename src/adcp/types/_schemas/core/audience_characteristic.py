@@ -7,7 +7,7 @@ from pydantic import AfterValidator, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Distinct, Presence, PresenceGroups, PropertyCount, Rule
-from adcp.types.constraints import AdCPUrl, NonEmptyList, StrMinLen1
+from adcp.types.constraints import NonEmptyList, StrFormatUriMatching5E721644, StrMinLen1
 
 
 class Range(AdCPBaseModel):
@@ -33,7 +33,7 @@ class Taxonomy(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/audience-characteristic.json', pointer='#/properties/taxonomy')
-    system: AdCPUrl
+    system: StrFormatUriMatching5E721644
     version: StrMinLen1 | None = None
     value_id: StrMinLen1 | None = None
 
@@ -49,7 +49,7 @@ class AudienceCharacteristic(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         PresenceGroups((Presence(require=(('value',),), forbid=(('range',),)), Presence(require=(('range',),), forbid=(('value',),))), 'anyOf'),
     )
-    dimension: Annotated[Literal['age'] | AdCPUrl, Field(description='Canonical dimension name or HTTPS URI. AdCP 3.2 defines `age`; other values remain provider- or taxonomy-scoped.')]
+    dimension: Annotated[Literal['age'] | StrFormatUriMatching5E721644, Field(description='Canonical dimension name or HTTPS URI. AdCP 3.2 defines `age`; other values remain provider- or taxonomy-scoped.')]
     value: Annotated[str | float | bool | Annotated[NonEmptyList[str | float | bool], Field(json_schema_extra={'uniqueItems': True}), AfterValidator(Distinct())] | None, Field(description='Scalar or set value for the dimension.')] = None
     range: Annotated[Range | None, Field(description='Inclusive numeric interval. For dimension `age`, values are completed years and MUST be non-negative integers, and min MUST be less than or equal to max. JSON Schema enforces the age value and bound types; implementations enforce the relational min <= max constraint.')] = None
     taxonomy: Annotated[Taxonomy | None, Field(description='External system that defines the dimension or value. Taxonomy metadata is descriptive and does not create exact demographic targeting semantics.')] = None

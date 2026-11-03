@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import AdCPUrl, StrMatching32F5291C
+from adcp.types.constraints import StrFormatUriMatching5E721644, StrMatching32F5291C
 
 from ..core.brand_ref import BrandReference
 from ..core.ext import ExtensionObject
@@ -114,7 +114,7 @@ class DeclaredBy(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-sponsored-context.json', pointer='#/properties/declared_by')
-    agent_url: Annotated[AdCPUrl | None, Field(description='HTTPS URL of the declaring agent or service.')] = None
+    agent_url: Annotated[StrFormatUriMatching5E721644 | None, Field(description='HTTPS URL of the declaring agent or service.')] = None
     role: Annotated[Role, Field(description='Role of the declaring party.')]
 
 

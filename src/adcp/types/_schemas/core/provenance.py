@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import AdCPUrl, FloatMin0Max1, HttpUrl, IntMin1
+from adcp.types.constraints import FloatMin0Max1, IntMin1, StrFormatUriMatching5E721644
 
 from ..enums.c2pa_watermark_action import C2PAWatermarkAction
 from ..enums.digital_source_type import DigitalSourceType
@@ -82,7 +82,7 @@ class DeclaredBy(AdCPBaseModel):
     Party declaring this provenance. Identifies who attached the provenance claim, enabling receiving parties to assess trust.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/provenance.json', pointer='#/properties/declared_by')
-    agent_url: Annotated[HttpUrl | None, Field(description='URL of the agent or service that declared this provenance')] = None
+    agent_url: Annotated[str | None, Field(description='URL of the agent or service that declared this provenance', json_schema_extra={'format': 'uri'})] = None
     role: Annotated[Role, Field(description='Role of the declaring party in the supply chain')]
 
 
@@ -91,7 +91,7 @@ class C2pa(AdCPBaseModel):
     C2PA sidecar manifest reference. Links to a detached cryptographic provenance manifest for this content. Note: file-level C2PA bindings break when ad servers transcode, resize, or re-encode assets. For pipelines with intermediaries, consider embedded_provenance as the primary provenance mechanism.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/provenance.json', pointer='#/properties/c2pa')
-    manifest_url: Annotated[HttpUrl, Field(description='URL to the C2PA manifest store for this content')]
+    manifest_url: Annotated[str, Field(description='URL to the C2PA manifest store for this content', json_schema_extra={'format': 'uri'})]
 
 
 class EmbeddedProvenanceItemVerifyAgent(AdCPBaseModel):
@@ -102,7 +102,7 @@ class EmbeddedProvenanceItemVerifyAgent(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/provenance.json', pointer='#/properties/embedded_provenance/items/properties/verify_agent')
-    agent_url: Annotated[AdCPUrl, Field(description="URL of the governance agent the buyer represents was used to embed/verify this layer. MUST use the `https://` scheme and MUST appear in the seller's `creative_policy.accepted_verifiers[].agent_url` list (canonicalized per /docs/reference/url-canonicalization: lowercase scheme and host, strip default port, normalize path dot-segments). Sellers MUST NOT call this URL until the canonicalized match is confirmed.")]
+    agent_url: Annotated[StrFormatUriMatching5E721644, Field(description="URL of the governance agent the buyer represents was used to embed/verify this layer. MUST use the `https://` scheme and MUST appear in the seller's `creative_policy.accepted_verifiers[].agent_url` list (canonicalized per /docs/reference/url-canonicalization: lowercase scheme and host, strip default port, normalize path dot-segments). Sellers MUST NOT call this URL until the canonicalized match is confirmed.")]
     feature_id: Annotated[str | None, Field(description="Optional `feature_id` the buyer represents the seller should request via `get_creative_features` (e.g., `encypher.markers_present_v2`). SHOULD match the `feature_id` declared on the matching `accepted_verifiers[]` entry, or be omitted to defer the selector to the seller. When the seller's entry pins a `feature_id`, that value wins; when neither side pins, the seller selects from the agent's `governance.creative_features` catalog.")] = None
 
 
@@ -123,7 +123,7 @@ class WatermarksItemVerifyAgent(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/provenance.json', pointer='#/properties/watermarks/items/properties/verify_agent')
-    agent_url: Annotated[AdCPUrl, Field(description="URL of the governance agent the buyer represents was used to apply/detect this watermark. MUST use the `https://` scheme and MUST appear in the seller's `creative_policy.accepted_verifiers[].agent_url` list (canonicalized per /docs/reference/url-canonicalization: lowercase scheme and host, strip default port, normalize path dot-segments). Sellers MUST NOT call this URL until the canonicalized match is confirmed.")]
+    agent_url: Annotated[StrFormatUriMatching5E721644, Field(description="URL of the governance agent the buyer represents was used to apply/detect this watermark. MUST use the `https://` scheme and MUST appear in the seller's `creative_policy.accepted_verifiers[].agent_url` list (canonicalized per /docs/reference/url-canonicalization: lowercase scheme and host, strip default port, normalize path dot-segments). Sellers MUST NOT call this URL until the canonicalized match is confirmed.")]
     feature_id: Annotated[str | None, Field(description="Optional `feature_id` the buyer represents the seller should request via `get_creative_features` (e.g., `imatag.watermark_detected`). SHOULD match the `feature_id` declared on the matching `accepted_verifiers[]` entry, or be omitted to defer the selector to the seller. When the seller's entry pins a `feature_id`, that value wins; when neither side pins, the seller selects from the agent's `governance.creative_features` catalog.")] = None
 
 
@@ -184,7 +184,7 @@ class VerificationItem(AdCPBaseModel):
     verified_time: Annotated[AwareDatetime | None, Field(description='When the verification was performed (ISO 8601)')] = None
     result: Annotated[Result, Field(description='Verification outcome')]
     confidence: Annotated[FloatMin0Max1 | None, Field(description='Confidence score of the verification result (0.0 to 1.0)')] = None
-    details_url: Annotated[HttpUrl | None, Field(description='URL to the full verification report')] = None
+    details_url: Annotated[str | None, Field(description='URL to the full verification report', json_schema_extra={'format': 'uri'})] = None
 
 
 class Provenance(AdCPBaseModel):

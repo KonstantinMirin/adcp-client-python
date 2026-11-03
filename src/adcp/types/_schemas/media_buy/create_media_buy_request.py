@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Dependencies, ForbiddenGroups, Match, Rule
-from adcp.types.constraints import FloatMin0Max1, HttpUrl, StrMatching43E30B32, StrMaxLen100, StrMinLen1, StrMinLen16, StrMinLen16MaxLen255Matching1E5CF9EB, StrMinLen1MaxLen250, StrMinLen1MaxLen255Matching130C1C9D, StrMinLen1MaxLen4096MatchingB34ADF3C, StrMinLen32
+from adcp.types.constraints import FloatMin0Max1, StrMatching43E30B32, StrMaxLen100, StrMinLen1, StrMinLen16, StrMinLen16MaxLen255Matching1E5CF9EB, StrMinLen1MaxLen250, StrMinLen1MaxLen255Matching130C1C9D, StrMinLen1MaxLen4096MatchingB34ADF3C, StrMinLen32
 
 from ..core.account_ref import AccountReference
 from ..core.bidding_policy import BiddingPolicy
@@ -112,7 +112,7 @@ class ArtifactWebhook(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/create-media-buy-request.json', pointer='#/properties/artifact_webhook')
-    url: Annotated[HttpUrl, Field(description='Webhook endpoint URL for artifact delivery')]
+    url: Annotated[str, Field(description='Webhook endpoint URL for artifact delivery', json_schema_extra={'format': 'uri'})]
     token: Annotated[StrMinLen16 | None, Field(description='Optional client-provided token for webhook validation. Echoed back in webhook payload to validate request authenticity.')] = None
     authentication: Annotated[Authentication, Field(description="Legacy authentication configuration for webhook delivery (A2A-compatible). Opts the receiver into Bearer or HMAC-SHA256 signing. Both schemes are deprecated; the preferred signing profile for new integrations is RFC 9421, where the seller signs with a key published at its brand.json agents[] entry and the buyer verifies against the seller's JWKS — no shared secret crosses the wire (see docs/building/by-layer/L1/security.mdx#webhook-callbacks). This field is required in AdCP 3.x; the requirement is removed in AdCP 4.0 when the default RFC 9421 path becomes the only path.")]
     delivery_mode: Annotated[DeliveryMode, Field(description="How artifacts are delivered. 'realtime' pushes artifacts as impressions occur. 'batched' aggregates artifacts and pushes periodically (see batch_frequency).")]

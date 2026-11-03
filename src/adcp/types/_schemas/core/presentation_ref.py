@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import AdCPUrl, StrMatching3CBDBB74
+from adcp.types.constraints import StrFormatUriMatching5E721644, StrMatching3CBDBB74
 
 
 class PlacementPresentationReference(AdCPBaseModel):
@@ -17,7 +17,7 @@ class PlacementPresentationReference(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/presentation-ref.json', pointer='#')
-    uri: Annotated[AdCPUrl, Field(description='Publisher-controlled HTTPS URL for the presentation metadata. Consumers MUST apply the same SSRF, redirect, response-size, timeout, and DNS-rebinding protections used for format_schema fetches.')]
+    uri: Annotated[StrFormatUriMatching5E721644, Field(description='Publisher-controlled HTTPS URL for the presentation metadata. Consumers MUST apply the same SSRF, redirect, response-size, timeout, and DNS-rebinding protections used for format_schema fetches.')]
     digest: Annotated[StrMatching3CBDBB74, Field(description='SHA-256 content digest. Consumers cache by uri@digest and MUST fail closed on a digest mismatch.')]
     media_type: Annotated[Literal['application/vnd.adcp.placement-presentation+json'], Field(description='Media type of the referenced declarative presentation document.')]
     schema_version: Annotated[Literal['1.0'], Field(description='Version of /schemas/core/placement-presentation.json used to validate and compose the referenced document.')]

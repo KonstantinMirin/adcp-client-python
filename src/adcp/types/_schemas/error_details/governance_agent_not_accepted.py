@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
-from adcp.types.constraints import StrMaxLen128Matching71E52EB8, StrMaxLen2048Matching2E1F4D86
+from adcp.types.constraints import StrFormatUriMaxLen2048Matching2E1F4D86, StrMaxLen128Matching71E52EB8
 
 from ..governance.accepted_governance_agents import AcceptedGovernanceAgents
 
@@ -30,7 +30,7 @@ class GovernanceAgentNotAcceptedDetailsDisclosed(GovernanceAgentNotAcceptedDetai
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='error-details/governance-agent-not-accepted.json', pointer='#/oneOf/0')
     disclosure: Literal['disclosed']
-    attempted_agent_origin: Annotated[StrMaxLen2048Matching2E1F4D86, Field(description='Parsed HTTPS origin only. The seller MUST strip userinfo, path, query, and fragment and MUST NOT echo the raw candidate URL.', json_schema_extra={'format': 'uri'})]
+    attempted_agent_origin: Annotated[StrFormatUriMaxLen2048Matching2E1F4D86, Field(description='Parsed HTTPS origin only. The seller MUST strip userinfo, path, query, and fragment and MUST NOT echo the raw candidate URL.')]
     accepted_governance_agents: AcceptedGovernanceAgents
 
 
