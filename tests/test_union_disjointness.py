@@ -381,6 +381,22 @@ def test_the_derivation_decides_the_roots_that_reach_it_and_the_refusal_takes_th
             # rather than this comment, and :func:`_borne` is what says which sites those
             # are -- this set is the roots reaching the DERIVATION and not that census.
             "governance/check-governance-request.json",
+            # **ONE MORE AT ``adcp-client-python-82m.23``, and it is GROWTH: the set gains
+            # this root and loses none.**  §4's first dispatch source was corrected on
+            # 2026-11-02 -- "a ``const`` every branch pins on one shared property AND
+            # every branch REQUIRES" -- and ``union.discriminator`` now tests whether the
+            # document GUARANTEES the key's presence, which it does through the root's own
+            # ``required`` or through every branch's.  This root pins ``status`` to
+            # ``completed`` at ``/anyOf/0`` WITHOUT requiring it there, so the key
+            # determines nothing when it is absent and the first source does not apply:
+            # the root falls to this derivation, which separates its two branches on their
+            # ``required`` sets (``[results, products]`` against ``[status, task_id]``).
+            # It is in the DISJOINT half, which the partition below asserts rather than
+            # this comment.  Before the correction it carried
+            # ``Field(discriminator="status")`` over an ``Optional[Literal[...]]``, so
+            # every ``model_validate`` on the root raised ``PydanticUserError`` before
+            # looking at any payload.
+            "media-buy/refine-proposals-response.json",
         },
         inside=bundle.portable(BUNDLE),
     )

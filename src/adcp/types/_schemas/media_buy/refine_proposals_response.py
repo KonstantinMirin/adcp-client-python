@@ -153,7 +153,7 @@ class RefineProposalsResponse(BranchDispatchMixin, AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/refine-proposals-response.json', pointer='#')
     _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
     _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()
-    _BRANCH_DISCRIMINATOR: ClassVar[str] = "status"
+    _BRANCH_DISCRIMINATOR: ClassVar[str] = ""
     @classmethod
     def _branch_combinator(cls) -> str:
         return "anyOf"
@@ -193,6 +193,8 @@ class RefineProposalsResponseSubmitted(RefineProposalsResponse, CompactTaskSubmi
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/refine-proposals-response.json', pointer='#/anyOf/1')
+    task_id: Annotated[StrMinLen1, Field(description='Unique identifier for tracking asynchronous operations. Present when a task requires extended processing time. Used to query task status and retrieve results when complete.')]
+    status: Annotated[Literal['submitted'], Field(description='Current AdCP task state or structured outcome. Indicates whether the task completed, is in progress, was submitted for async processing, failed, requires user input, or returned a typed business rejection. REQUIRED on every task response envelope. Synchronous tasks (including read-only metadata calls like `get_adcp_capabilities`) normally emit `status: "completed"`; a task-specific rejection arm emits `status: "rejected"` without turning the transport into a failure. Async tasks emit `submitted`, `working`, `input-required`, etc. per their lifecycle. Agents MUST NOT emit the legacy task_status or response_status fields alongside this field — the status field is the single authoritative AdCP response state.')]
 
 
 RefineProposalsResponse._branch_models = (RefineProposalsResponseCompleted, RefineProposalsResponseSubmitted,)
