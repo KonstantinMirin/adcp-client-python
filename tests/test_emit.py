@@ -521,6 +521,40 @@ def identity_of(ref: SchemaRef) -> dict[str, str]:
     }
 
 
+@functools.cache
+def fixtures() -> harness.Fixtures:
+    """**§8's FIXTURES for this suite's grading pass, over this bundle.**
+
+    "A referenced document is graded by its own pair, so at a referring position it is a
+    fixture and not a draw."  ``harness.Fixtures`` holds the derivation and the memo; this
+    supplies the three readers it needs and nothing else, which is the seam
+    ``docs/plan/architecture.md`` §9 draws for the accepts corpus and for the same reason --
+    the verifier reads nothing but its arguments, so WHERE a document lives is the caller's
+    business.
+
+    * ``read`` is the RAW document, because that is the layer that still spells a ``$ref``:
+      ``bundle.record`` inlines a cross-document reference by copying, so the record cannot
+      say that a subtree came from somewhere else.
+    * ``node`` is the document OF RECORD at a pointer -- ``schema_at``, the same accessor
+      ``pair_of`` reads the graded node through, so a fixture is derived from the node its
+      own pair is graded against and not from a second rendering.
+    * ``identity`` is :func:`identity_of`'s answer, which is what the held accepts corpus is
+      keyed on.
+
+    One object per process and memoised inside it: the whole content of "the product
+    becomes a sum" is that one document's fixture is derived once however many referrers
+    ask for it.
+    """
+    return harness.Fixtures(
+        read=lambda document: bundle.read(BUNDLE, document),
+        node=lambda document, pointer: schema_at(SchemaRef(document, pointer)),
+        identity=lambda document, pointer: identity_of(SchemaRef(document, pointer)),
+        documents=frozenset(bundle.portable(BUNDLE)),
+        corpus=corpus.STORE,
+        custom_formats=FORMAT_STRATEGIES,
+    )
+
+
 def pair_of(g: Graded) -> Pair:
     """The pair, and the document ROOT beside the node.
 

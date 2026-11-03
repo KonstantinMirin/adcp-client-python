@@ -262,6 +262,328 @@ def strategy(schema: dict, custom_formats: Mapping[str, Any]) -> st.SearchStrate
     return from_schema(schema, custom_formats=dict(custom_formats))
 
 
+# --------------------------------------------------------------------------- #
+# §8: a referenced document is a FIXTURE at a referring position, not a draw
+# --------------------------------------------------------------------------- #
+#: **The positions at which a referenced document describes an instance of ITS OWN**, read
+#: off the descent column rather than named.  §8's rule is that "every subtree a class
+#: reaches through a reference is a document with a pair of its own, graded there -- so at
+#: the referring position the instrument needs one instance that document admits and one it
+#: refuses, not a generated space."  The subtree has to describe its own instance for that
+#: to be true: a PROP value, an ELEM member, a MAPV or KEY value and a DEF entry each name
+#: a position of the payload that the referenced document, and nothing else, decides.
+#:
+#: **A CONJ, a RULE, a ``not`` and a ``oneOf`` branch are NOT such positions, and this is
+#: the one clause the rule as written does not carry** (measured, see :class:`Fixtures`).
+#: A conjunct co-describes the ENCLOSING instance, so two references at two conjuncts of one
+#: ``allOf`` are two documents deciding one value -- and substituting each one's own fixture
+#: independently makes the intersection EMPTY, which is a draw that reports
+#: ``Unsatisfiable`` rather than a cheap one.  Measured on
+#: ``media-buy/get-products-response.json#``, whose root states
+#: ``allOf: [{$ref: core/version-envelope.json}, {$ref: core/protocol-envelope.json}, ...]``:
+#: one fixture per conjunct draws nothing at all.
+#:
+#: So such a reference is TRANSPARENT instead: :func:`referring_positions` reads THROUGH it
+#: and keeps looking for own-instance positions below, which is the same reading
+#: ``architecture.md`` already makes of the record's storage -- "a reader asking what the
+#: document states reads through the storage".  The fixtures then land inside the
+#: conjunct, at its own ``properties`` and ``items``, where they do not meet each other.
+_OWN_INSTANCE = frozenset(
+    {Position.PROP, Position.ELEM, Position.MAPV, Position.KEY, Position.DEF}
+)
+
+#: How deep the transparent walk follows a reference before it stops looking.  The bundle's
+#: reference graph is a DAG with diamonds rather than a tree (``bundle._Where``), so the
+#: guard that terminates the walk is the visited SET below and this is only a bound on an
+#: unreasonable answer.
+_FIXTURE_DEPTH = 12
+
+
+#: "There is no fixture for this position", told apart from a fixture that IS JSON
+#: ``null`` -- which a document can admit, so ``None`` cannot carry both answers.
+#: :class:`_Draws` records the same defect one key space over, where ``[None]`` meant both
+#: "the draw produced null" and "the draw failed".
+NONE: Any = object()
+
+
+class Referring(NamedTuple):
+    """One position a fixture is substituted at, and the document it is derived FROM.
+
+    ``pointer`` is relative to the node under grade; ``document`` and ``target`` name the
+    referenced document and the pointer into it, which is the pair that grades it.
+    """
+
+    pointer: str
+    document: str
+    target: str
+
+
+def referring_positions(
+    read: Callable[[str], Any],
+    document: str,
+    pointer: str,
+    documents: Collection[str],
+) -> tuple[Referring, ...]:
+    """Every FIXTURE position at or under ``document``'s ``pointer``, in document order.
+
+    **Read off the RAW documents' own ``$ref`` strings and never off the record**, which is
+    the one reading that answers.  ``bundle.record`` inlines a cross-document reference by
+    copying, so by the time a node reaches this module there is no ``$ref`` left to say
+    that a subtree came from somewhere else -- all 68,254 references the packaged records
+    carry are local, and every one of them is either the document's own ``definitions`` or
+    the record's storage.  §8's rule is about the DRAW and not about the record ("a fixture
+    collapses it whether or not the record inlined the bytes"), so the reading has to come
+    from the layer that still spells the reference: the bundle's own text.  ``read`` is the
+    caller's reader for it (``bundle.read``), because this module reads no path.
+
+    The pointers line up because the record inlines IN PLACE: ``architecture.md``'s
+    "every pointer any reader SPELLS keeps the spelling it has today".  A raw ``$ref`` at
+    ``/anyOf/0`` is the inlined target at ``/anyOf/0`` of the record, so a relative pointer
+    taken here addresses the resolved node :func:`resolve` produced.
+
+    A reference at an own-instance position (:data:`_OWN_INSTANCE`, or a whole ``anyOf``
+    branch) is a fixture position and the walk STOPS there -- that is the sum the rule
+    buys. Anywhere else it is transparent and the walk reads through it, which is the
+    clause :data:`_OWN_INSTANCE` carries the measurement for.
+
+    An ``anyOf`` branch is included because restricting one branch of a union cannot empty
+    it while any branch survives, and because it is the case the rule is stated about: a
+    root with 42 referenced branches is 42 fixtures, and ``core/async-response-data.json``
+    is that root.
+    """
+    out: list[Referring] = []
+
+    def node_at(home: str, at: str) -> Any:
+        raw = read(home)
+        inside = at.lstrip("#")
+        return raw if not inside else bundle.node_at(raw, inside)
+
+    def walk(node: Any, rel: str, own: bool, home: str, seen: frozenset, depth: int) -> None:
+        if not isinstance(node, Mapping) or depth > _FIXTURE_DEPTH:
+            return
+        ref = node.get("$ref")
+        if isinstance(ref, str):
+            head, fragment = bundle.split_ref(ref)
+            target = bundle.document_for(head, documents) if head else home
+            if target is None:
+                return
+            at = "#" + fragment
+            if own:
+                out.append(Referring(rel, target, at))
+                return
+            if (target, at) in seen:
+                return
+            try:
+                inner = node_at(target, at)
+            except Exception:  # noqa: BLE001 -- a pointer the document does not hold
+                return
+            walk(inner, rel, own, target, seen | {(target, at)}, depth + 1)
+            return
+        for keyword, suffix, sub, position in bundle.subschemas(node):
+            walk(
+                sub,
+                rel + suffix,
+                position in _OWN_INSTANCE or keyword == "anyOf",
+                home,
+                seen,
+                depth + 1,
+            )
+
+    try:
+        start = node_at(document, pointer)
+    except Exception:  # noqa: BLE001 -- a pointer the raw document does not hold
+        return ()
+    walk(start, "", False, document, frozenset({(document, pointer)}), 0)
+    return tuple(out)
+
+
+def fixtured(schema: Any, placements: Sequence[tuple[str, Any]]) -> tuple[Any, int]:
+    """``schema`` with each ``(relative pointer, instance)`` pinned as ``{"const": ...}``.
+
+    **A RESTRICTION and never a widening**, which is what makes the substitution sound in
+    the one direction the accepts draw needs: ``{"const": v}`` admits a subset of what the
+    referenced subtree admits, so every value the fixtured schema admits is a value the
+    document admits.  :func:`_restricted` carries the same argument for the widening
+    obligation's value classes, and :func:`check_accepts` validates the drawn instance
+    against the UNFIXTURED node anyway, because "by construction" is a claim about this
+    function and the claim is cheap to check.
+
+    **COPY-ON-WRITE along the path and nothing else**, because the resolved schema is a DAG:
+    :func:`resolve` deep-copies with a memo that preserves sharing, so one object stands at
+    many pointers and mutating it in place would substitute at every one of them.  Each
+    step rebuilds exactly the mapping or list it descends through, so a position nobody
+    named keeps the object it had.
+
+    Returns the schema and HOW MANY placements landed.  A pointer the resolved node does
+    not hold is skipped: the raw document and the record agree about pointers everywhere
+    this has been measured, and where they do not the fail-safe direction is to lose the
+    saving rather than to place a value at a position nobody named.
+    """
+    placed = 0
+    out = schema
+    for pointer, value in placements:
+        segments = [s for s in pointer.split("/") if s]
+
+        def rebuilt(current: Any, i: int, _segments: list[str] = segments) -> Any:
+            if i == len(_segments):
+                return {"const": value}
+            word = _segments[i]
+            if isinstance(current, list):
+                index = int(word)
+                return [
+                    *current[:index],
+                    rebuilt(current[index], i + 1),
+                    *current[index + 1 :],
+                ]
+            return {**current, word: rebuilt(current[word], i + 1)}
+
+        try:
+            out = rebuilt(out, 0)
+            placed += 1
+        except (KeyError, IndexError, TypeError, ValueError):
+            continue
+    return out, placed
+
+
+@dataclass
+class Fixtures:
+    """**WHERE §8's FIXTURE FOR A REFERENCED DOCUMENT COMES FROM, and why it is DERIVED.**
+
+    §8: "the fixture is DERIVED from the referenced document, never hand-written: a
+    hand-written one is a thousand files to maintain and a silent exemption the first time
+    a document changes under it."  Two derivations, in this order, and the first answers
+    for almost all of them:
+
+    * **the accepts corpus's own held instance for that document's pair.**  That corpus is
+      one instance per graded pair, drawn from the document by ``check_accepts``, keyed on
+      the document's RAW BYTES and its raw reference closure's (``corpus_key``), and
+      re-offered to the document on every read (``corpus_defect``).  So it is a derivation
+      in the strict sense -- nothing is written down that the document does not decide --
+      and it is already in the tree. **Measured: it answers 2,674 of the 2,753 pairs.**
+    * **a fixtured draw over that document's own node, recursively**, for the rest.  The 79
+      pairs the corpus holds nothing for are exactly the pairs the pole cannot finish, so
+      the entry is missing precisely where it is needed: the referenced document's own
+      draw is unaffordable for the same reason its referrer's is.  The recursion
+      terminates because it is the sum the rule describes -- each document's fixtures are
+      derived once, memoised, and the visited set cuts a cycle in the reference graph.
+
+    A document neither answers for is reported rather than guessed: ``None``, the position
+    is not substituted, and the pair draws exactly as it did before.  **The fail-safe
+    direction is to lose the saving, never to place a value the document does not admit.**
+
+    The three callables are the seam ``docs/plan/architecture.md`` §9 draws for the corpus
+    and for the same reason -- "the store is the CALLER's, the key is the harness's" -- so
+    this holds no path and reads no filesystem:
+
+    * ``read(document)`` -- the RAW document, which is what still spells a ``$ref``;
+    * ``node(document, pointer)`` -- the RECORD node a pair is graded against;
+    * ``identity(document, pointer)`` -- the pair's static identity, for the corpus key.
+    """
+
+    read: Callable[[str], Any]
+    node: Callable[[str, str], Any]
+    identity: Callable[[str, str], Any]
+    documents: Collection[str]
+    corpus: Any = None
+    custom_formats: Mapping[str, Any] = ()
+
+    #: ``(document, pointer) -> the instance, or None``.  Memoised for the run, which is
+    #: what turns the product into a sum.
+    held: dict[tuple[str, str], Any] = field(default_factory=dict)
+    #: How many fixtures came from each derivation, and how many could not be derived.
+    replayed: int = 0
+    derived: int = 0
+    unavailable: int = 0
+
+    def positions(self, document: str, pointer: str) -> tuple[Referring, ...]:
+        return referring_positions(self.read, document, pointer, self.documents)
+
+    def substitute(self, schema: Any, document: str, pointer: str) -> tuple[Any, int]:
+        """``schema`` with a fixture pinned at every referring position under ``pointer``."""
+        placements = []
+        for position in self.positions(document, pointer):
+            instance = self.one(position.document, position.target)
+            if instance is not NONE:
+                placements.append((position.pointer, instance))
+        return fixtured(schema, placements)
+
+    def one(self, document: str, pointer: str, seen: frozenset = frozenset()) -> Any:
+        """One instance ``document``'s node at ``pointer`` admits, or :data:`NONE`.
+
+        **:data:`NONE` and never ``None``, which is the mistake :class:`_Draws` records
+        one key space over**: a document can admit JSON ``null``, so ``None`` means both
+        "the fixture is null" and "there is no fixture", and the first of those is a value
+        the draw must be allowed to pin.
+        """
+        key = (document, pointer)
+        if key in self.held:
+            return self.held[key]
+        if key in seen:
+            return NONE  # a cycle in the reference graph is no fixture
+        answer = self._replayed(key)
+        if answer is NONE:
+            answer = self._derived(key, seen)
+        if answer is NONE:
+            self.unavailable += 1
+        self.held[key] = answer
+        return answer
+
+    def _replayed(self, key: tuple[str, str]) -> Any:
+        if self.corpus is None:
+            return NONE
+        try:
+            identity = self.identity(*key)
+        except Exception:  # noqa: BLE001 -- a pair the caller cannot name has no entry
+            return NONE
+        entry = self.corpus.get(corpus_key(identity, custom_formats=self.custom_formats))
+        if not isinstance(entry, list) or not entry:
+            return NONE
+        self.replayed += 1
+        return entry[0]
+
+    def _derived(self, key: tuple[str, str], seen: frozenset) -> Any:
+        document, pointer = key
+        try:
+            node = self.node(document, pointer)
+        except Exception:  # noqa: BLE001 -- a pointer the record does not carry
+            return NONE
+        try:
+            root = self.node(document, "#")
+            drawn_from = resolve(node, store={}, referrer=root)
+        except Exception:  # noqa: BLE001 -- as check_pair: an unresolved node is used as is
+            drawn_from = node
+        placements = []
+        for position in self.positions(document, pointer):
+            instance = self.one(position.document, position.target, seen | {key})
+            if instance is not NONE:
+                placements.append((position.pointer, instance))
+        substituted, _ = fixtured(drawn_from, placements)
+        #: **NO BUDGET OF ITS OWN, and that is a correction rather than an omission.**  A
+        #: :func:`within` here looked right and silently removed the CALLER's bound:
+        #: ``signal.setitimer`` is process-global, so a nested block re-arms the timer to
+        #: its own interval and then clears it on the way out, leaving the enclosing grade
+        #: with no timer at all.  Measured: one pair ran ten minutes against a 20 s budget.
+        #: ``OverBudget`` is therefore not caught either -- a cut belongs to whoever set
+        #: the budget, and a derivation that swallowed one would make the pair run past it.
+        #: The caller's bound is the only bound, and a derivation that exceeds it cuts the
+        #: pair, which is what the pair did before this rule existed.
+        try:
+            instance = one_instance(substituted, self.custom_formats)
+        except Exception:  # noqa: BLE001 -- an undrawable node has no fixture
+            if budget_expired():
+                raise OverBudget("the fixture derivation was cut") from None
+            return NONE
+        #: **The DOCUMENT decides, before anything else reads the value.**  The
+        #: substitution is a restriction, so this cannot fail by construction; it is
+        #: checked because the construction is this module's claim and because an empty
+        #: intersection is the one way the clause :data:`_OWN_INSTANCE` carries could be
+        #: wrong at a position nobody has measured yet.
+        if conforms(drawn_from, instance) is False:
+            return NONE
+        self.derived += 1
+        return instance
+
+
 #: The identity of ``from_schema``'s own behaviour, in the key below.  The drawn stream is
 #: a function of the library as much as of the schema, so a version bump MISSES every
 #: entry and the population is re-drawn -- which is the honest direction: a held instance
@@ -1505,6 +1827,7 @@ def check_accepts(
     ref: SchemaRef | None = None,
     corpus: Any = None,
     identity: Any = None,
+    draw_from: dict | None = None,
 ) -> AcceptsResult:
     """The accepts check: every instance the schema admits, ``accept`` admits --
     and what it constructed, DUMPED back out, is an instance the schema admits too.
@@ -1581,6 +1904,17 @@ def check_accepts(
       adding a document adds one key, changing one changes that key and every dependent's
       with it (``identity`` carries the closure, so their identities moved too), and an
       absent corpus is one full cold run.
+
+    **``draw_from`` IS WHERE THE INSTANCES COME FROM; ``schema`` STAYS WHAT DECIDES.**
+    §8's fixture rule substitutes an instance of a referenced document at the referring
+    position (:class:`Fixtures`), and that is a statement about the DRAW: the fixtured node
+    is a RESTRICTION of this one, so every instance it yields is an instance ``schema``
+    admits, and ``schema`` is still what the dump is validated against and what
+    :func:`corpus_defect` re-offers a held instance to.  Validating the dump against the
+    restriction instead would report ``model_dropped_a_fact`` wherever the class returned
+    a value the referenced document admits and the one pinned fixture is not -- a defect
+    manufactured by the instrument.  ``None`` means "draw from ``schema``", which is what
+    every caller did before the rule and what a caller with no fixtures still does.
 
     **``identity`` is REQUIRED with a ``corpus`` and there is no fallback, because the
     fallback was the defect.**  :func:`corpus_key` says why ``schema`` cannot stand in for
@@ -1666,7 +2000,9 @@ def check_accepts(
                 canonicalisation_shared_within_one_call(),
                 validator_classes_shared_within_one_call(),
             ):
-                run = given(instance=strategy(schema, cf))(body)
+                run = given(instance=strategy(schema if draw_from is None else draw_from, cf))(
+                    body
+                )
                 run = settings(
                     max_examples=examples,
                     phases=[Phase.explicit, Phase.generate],
@@ -3984,6 +4320,11 @@ class PairReport:
     #: says anything about.  Read by :attr:`no_instrument` to name the shape behind an
     #: accepts check that could not draw.
     accepts_undrawable: tuple[str, ...] = ()
+    #: How many §8 FIXTURES were pinned at a referring position of this pair's node
+    #: (:class:`Fixtures`).  Reported for ``AcceptsResult.replayed``'s reason: the draw
+    #: varied this class's own payload and took each referenced document's value as given,
+    #: and a reader of a green pair is entitled to know how much of the node was a fixture.
+    fixtures: int = 0
 
     @property
     def graded_instances(self) -> int:
@@ -4688,10 +5029,52 @@ def _inseparable(
             # whole of what UNDERDETERMINED names.  Measured: without this clause the
             # derivation reports 185 pointers, 16 of them roots whose documents emit as a
             # single class with a presence rule.
+            #: **EVERY BRANCH IS READ THROUGH THE RECORD'S OWN STORAGE, which is §8
+            #: sentence 3a applied to this derivation** -- and the reading
+            #: ``architecture.md`` already settled: *a reader asking what the document
+            #: states reads through the storage, because a reference to a storage entry is
+            #: not a fact the document states but where the fact is kept*.  FIRST, before
+            #: either clause below, because both of them are such readers.
+            #:
+            #: Without it a branch the store replaced with ``{"$ref":
+            #: "#/definitions/Shared<N>"}`` carries no ``required``, no ``type`` and no
+            #: ``properties``, so the presence-only clause does not fire and the shape test
+            #: rejects it, the whole union is skipped, and a union the declaration
+            #: correctly calls inseparable reports as DECLARED AND SEPARABLE.  Measured:
+            #: 6 of the 7 sites the stale direction named have at least one bare storage
+            #: reference among their branches, and
+            #: ``media-buy/proposal-refinement.json#/oneOf/1/anyOf`` has 6 of 7 -- all
+            #: seven of them ``{"required": [one name]}``, which is the presence-only
+            #: clause's own subject, read by nothing until now.
+            branches = [bundle.expanded(b, record) for b in branches]
             if all(set(b) <= {"required"} for b in branches):
                 continue
             applied = [b.get("type") or node.get("type") for b in branches]
-            if not all(t == "object" or (t is None and b.get("properties")) for t, b in zip(applied, branches)):
+            #: **THE SHAPE TEST READS EVERY VIEW OF THE BRANCH and not the branch node
+            #: alone**, which is §8's third pairing rule ("a node at a CONJUNCT of an
+            #: ``allOf`` is paired with its node read AS THE COMPOSITION") and the reading
+            #: every other clause of this derivation already makes (:func:`_views`,
+            #: "``node`` and every node its ``allOf`` applies to the SAME instance").
+            #:
+            #: Measured on ``core/async-response-data.json#/anyOf``: 3 of its 42 branches --
+            #: 6, 8 and 28 -- state their object-ness in an ``allOf`` conjunct and carry
+            #: neither ``type`` nor ``properties`` at their own top level, so the node-only
+            #: test rejected them and the 42-branch union was skipped whole.  With the
+            #: composition read, ``separates`` answers ``None`` for 846 of its 861 pairs.
+            #: The payload says the same thing independently: the instance the accepts
+            #: corpus holds for branch pair ``#/anyOf/0`` --
+            #: ``{"cache_scope": "public", "status": "failed", "unchanged": true,
+            #: "wholesale_feed_version": ""}`` -- satisfies 17 of the 42 branches, so the
+            #: union IS overlapping, ``lower.union.overlapping`` is right, and the
+            #: disagreement was this gate.
+            if not all(
+                any(
+                    (view.get("type") or t) == "object"
+                    or ((view.get("type") or t) is None and view.get("properties"))
+                    for view in _views(b)
+                )
+                for t, b in zip(applied, branches)
+            ):
                 continue
             base = "" if pointer == "/" else pointer
             # The ROOT's own ``required`` is handed to every pair, because section 4
@@ -4767,6 +5150,7 @@ def check_pair(
     custom_formats: Mapping[str, Any] = (),
     corpus: Any = None,
     widening_corpus: Any = None,
+    fixtures: "Fixtures | None" = None,
 ) -> PairReport:
     """ONE CLASS AGAINST ONE SCHEMA: the whole harness, per section 6.
 
@@ -4846,6 +5230,30 @@ def check_pair(
         drawn_from = resolve(pair.schema, store={}, referrer=pair.document)
     except Exception:  # noqa: BLE001 -- any resolution failure falls back to the node
         drawn_from = pair.schema
+    #: **§8's FIXTURE RULE, and it is a change to the DRAW and to nothing else.**  "A
+    #: referenced document is graded by its own pair, so at a referring position it is a
+    #: fixture and not a draw."  Every position under this node that the BUNDLE spells as a
+    #: reference to another document is pinned to one instance that document admits
+    #: (:class:`Fixtures`), and the draw then varies this class's OWN payload.  The result
+    #: is a restriction of ``drawn_from``, so ``drawn_from`` stays what the dump, the
+    #: liveness payload, the held corpus and §8's obligation are all decided by -- which is
+    #: ``check_accepts``' ``draw_from`` argument and the reason it is a second argument
+    #: rather than a replacement.
+    #:
+    #: FAIL-SAFE with no ``fixtures``: the pair draws exactly as it did before, which costs
+    #: the time the rule exists to remove and grades the same thing.
+    draw_from = None
+    if fixtures is not None and pair.ref is not None:
+        try:
+            draw_from, rep.fixtures = fixtures.substitute(
+                drawn_from, pair.ref.document, pair.ref.pointer
+            )
+        except OverBudget:
+            raise
+        except Exception:  # noqa: BLE001 -- a derivation that raises loses the saving only
+            draw_from, rep.fixtures = None, 0
+        if not rep.fixtures:
+            draw_from = None
     rep.accepts = check_accepts(
         drawn_from,
         pair.accept,
@@ -4855,6 +5263,7 @@ def check_pair(
         ref=pair.ref,
         corpus=corpus,
         identity=pair.identity,
+        draw_from=draw_from,
     )
     #: Measured only where the generator errored, because that is the only pair the
     #: measurement says anything about -- 2 of 1,079 on the emitted tree, so the
