@@ -58,6 +58,7 @@ from typing import Annotated, Any, NamedTuple
 import jsonschema
 import pytest
 from compiled import compiled
+from nodeset import claimed, partitions
 from pydantic import AfterValidator, TypeAdapter, ValidationError
 from pydantic_core import PydanticCustomError
 
@@ -99,8 +100,6 @@ _THE_REFERENCE = schema_parse.parse(
     position=Position.CONJ,
     source=schema_parse.Source(document="probe.json"),
 )
-
-from nodeset import claimed, partitions
 
 REPO = Path(__file__).resolve().parents[1]
 BUNDLE = REPO / "schemas" / "cache" / "3.2"

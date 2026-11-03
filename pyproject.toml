@@ -468,5 +468,17 @@ ignore = [
     "E501",
 ]
 
+# **``×`` IS THIS REPOSITORY'S OWN MULTIPLICATION SIGN, and declaring it is not the same
+# as declining ``RUF001``-``RUF003``.**  "keyword × position" is the name of the central
+# declaration -- ``docs/plan/architecture.md`` §§71 and 401, ``docs/plan/rebuild-plan.md``
+# §2028 and ``docs/rebuild-overview.md`` -- and two code comments cite it by that name
+# (``codegen/schema/nodes.py`` and ``tests/test_keywords.py``).  The confusable rules exist
+# to catch a character typed by accident where its ASCII twin was meant; this one is typed
+# on purpose everywhere it appears, and spelling the two comments ``x`` would make the code
+# disagree with the four documents it is quoting.  The rules stay SELECTED, so any OTHER
+# confusable still reports -- which is the difference between parameterising a rule and
+# turning it off, and is why this is a one-character list and not an ``ignore`` entry.
+allowed-confusables = ["×"]
+
 [tool.ruff.lint.isort]
 known-first-party = ["adcp", "codegen"]

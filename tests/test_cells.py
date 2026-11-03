@@ -312,7 +312,7 @@ def test_every_live_cell_has_a_probe_and_every_probe_names_a_live_cell() -> None
 
     # Backwards: every keyword the probe table carries has a live cell, and every
     # position override names a live cell of its own keyword.
-    assert {k for k in NODES} == {k for k, _ in live()}
+    assert set(NODES) == {k for k, _ in live()}
     assert claimed("position overrides", set(AT)) <= live()
 
 
@@ -513,7 +513,7 @@ def test_the_premise_that_the_positions_are_closed_under_descent() -> None:
     every position it assigns comes from ``keywords.descends_at``, so the closure is the
     column's and not a second reading of it.
     """
-    assigned = {position for position in bundle_positions()}
+    assigned = set(bundle_positions())
     assert assigned <= set(Position)
     # Every position a keyword descends INTO is one of the nine, and the column assigns
     # at least one keyword to each of the eight that are not ROOT.

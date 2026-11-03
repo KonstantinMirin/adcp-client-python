@@ -248,7 +248,7 @@ def test_the_root_populations_are_disjoint_because_a_root_is_exactly_one_kind() 
     assert [i for i, n in enumerate(claims) if n == 1], "no document is counted at all"
 
     def scalar_without_the_exclusion(doc: dict) -> bool:
-        return isinstance(doc.get("type"), str) and doc["type"] in emit.SCALAR
+        return isinstance(doc.get("type"), str) and doc["type"] in compiler.SCALAR
 
     overlap = [
         d

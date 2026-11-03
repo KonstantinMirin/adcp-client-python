@@ -186,8 +186,9 @@ def _data_type(decided: ir.TypeRef) -> Any:
         # with only the text, the module names a symbol it does not import.
         holder = _data_type(dataclasses.replace(decided, members=()))
         return _TYPES.data_type(
-            type="Literal[%s]"
-            % ", ".join(f"{holder.type_hint}.{member}" for member in decided.members),
+            type="Literal[{}]".format(
+                ", ".join(f"{holder.type_hint}.{member}" for member in decided.members)
+            ),
             import_=_TYPES.get_data_type_from_full_path(
                 "typing.Literal", is_custom_type=False
             ).import_,

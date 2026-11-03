@@ -1273,7 +1273,7 @@ def test_a_refused_payload_is_derived_for_every_pair_an_instance_was_drawn_for()
             validator.is_valid(value) for value in (42, "x", None, True, {}, [])
         ), (g.ref, node)
         causes["refuses_nothing"].add(name)
-    partitions(set(NO_PAYLOAD_PAIRS), **{k: v for k, v in causes.items()})
+    partitions(set(NO_PAYLOAD_PAIRS), **causes)
     assert causes["refuses_nothing"] == {
         "core/targeting-unknown-age-eligibility-constraint.json#",
         "core/targeting-verified-age-basis-constraint.json#",
@@ -1455,7 +1455,7 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
                 continue
             seen[fmt] = seen.get(fmt, 0) + 1
             # **A MULTI-TYPE node carries a format too, and this used to RAISE on
-            # one.**  ``node["type"] in emit.SCALAR`` hashes the value, and a list is
+            # one.**  ``node["type"] in compiler.SCALAR`` hashes the value, and a list is
             # unhashable, so the site died with a ``TypeError`` rather than failing an
             # assertion -- latent until a document declaring ``["string", "null"]``
             # beside a ``format`` emitted (``salesagent-j3k2l.21``).  D5's rule is
@@ -1474,7 +1474,7 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
             applied = applied_schema(bundle.read(BUNDLE, document), pointer).get("type")
             kinds = applied if isinstance(applied, list) else [applied]
             assert [k for k in kinds if k != "null"], (document, pointer, kinds)
-            assert all(k in emit.SCALAR or k == "null" for k in kinds), (
+            assert all(k in compiler.SCALAR or k == "null" for k in kinds), (
                 document,
                 pointer,
                 kinds,
@@ -2483,7 +2483,7 @@ def test_a_class_pointed_at_another_document_grades_red() -> None:
 
     class Misaimed(AdCPBaseModel):
         __adcp_schema__ = SchemaRef(other, "#")
-        model_config = {"extra": "forbid"}
+        model_config = ConfigDict(extra="forbid")
         max_results: int | None = 50
         cursor: str | None = None
 
@@ -4127,7 +4127,7 @@ def _constructed(doc: dict, *, binds: dict[str, Any] | None = None) -> tuple[Any
     assert not isinstance(bound, Refusal), bound
     text = render.module(bound, emit.exported(mod, bound))
     module = types.ModuleType("_constructed_fixture")
-    module.__dict__.update({name: type_ for name, type_ in held.values()})
+    module.__dict__.update(dict(held.values()))
     # D5's aliases are reached by an ABSOLUTE import, so they survive the strip
     # below -- and a constructed document can derive a shape the INSTALLED module
     # has no site for, which is an ``ImportError`` here rather than a test failure
@@ -4521,7 +4521,7 @@ def test_a_root_array_is_a_root_model_carrying_its_bound_and_its_uniqueItems_rul
         "r.json", {"title": "R", "type": "array", "items": {"type": "string"}}
     )
     assert not isinstance(built, Refusal), built
-    module, symbol = built
+    module, _symbol = built
     (declared,) = [d for d in module.declarations if isinstance(d, ir.RootModelDecl)]
     assert declared.type.container == "list", declared
     assert [of.path for of in declared.type.of] == ["str"], declared

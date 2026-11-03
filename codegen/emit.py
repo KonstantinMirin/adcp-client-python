@@ -115,24 +115,17 @@ from adcp.types._base import Approximation
 from codegen import bundle, catalogue, compiler, harness, ir, keywords, refusal, render, store
 from codegen import constraints as constraints_module
 from codegen.compiler import (
-    SCALAR,
     Module,
     Target,
     ValuesImport,
-    check_keywords,
     class_name,
     declare_alias,
 )
 from codegen.keywords import Position
-from codegen.lower import const as lower_const
-from codegen.lower import containers as lower_containers
 from codegen.lower import enum as lower_enum
 from codegen.lower import envelope as lower_envelope
 from codegen.lower import names as lower_names
-from codegen.lower import rules as lower_rules
-from codegen.lower import union as lower_union
 from codegen.refusal import BuildFailure, Kind, Refusal
-from codegen.schema import nodes
 from codegen.schema import parse as schema
 
 #: Where a document's module lands, relative to the repository root.

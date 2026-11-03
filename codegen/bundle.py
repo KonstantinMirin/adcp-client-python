@@ -890,6 +890,15 @@ class _Where(NamedTuple):
     anchors: tuple[tuple[str, str], ...]
 
 
+#: The walk's starting point, as a module-level singleton rather than a call in a
+#: parameter default.  ``_Where`` is a ``NamedTuple``, so one instance is shared with no
+#: risk a mutable default carries -- but a default that is a CALL is evaluated once at
+#: import whatever its type, which is a fact about the shape and not about this class, and
+#: a reader of the signature cannot tell the two apart.  Named here so the signature reads
+#: a value.
+_NOWHERE = _Where((), ())
+
+
 class _Reached(NamedTuple):
     """One inlined node, beside WHAT THE TWO CYCLE GUARDS WERE CONSULTED FOR under it.
 
@@ -1270,7 +1279,7 @@ def recorded(
         home: str,
         scope: dict | None,
         position: keywords.Position = keywords.Position.ROOT,
-        where: _Where = _Where((), ()),
+        where: _Where = _NOWHERE,
         stated: str = "",
     ) -> _Reached | Refusal:
         """``node`` with every reference under it inlined, or the first refusal reached.

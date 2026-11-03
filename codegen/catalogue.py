@@ -967,7 +967,7 @@ class Admitted:
                         # carries the URI and the run reports the refusal.
                         out.append((word, ("unresolved", json.dumps(held))))
                     else:
-                        out.append((word, self.of(at[0], reached, stack + (at,))))
+                        out.append((word, self.of(at[0], reached, (*stack, at))))
             elif word in BY_NAME and isinstance(held, dict):
                 out.append(
                     (word, tuple(sorted((k, self.of(document, v, stack)) for k, v in held.items())))

@@ -951,9 +951,9 @@ class LivenessResult:
 # --------------------------------------------------------------------------- #
 # the two directions
 # --------------------------------------------------------------------------- #
-_SETTINGS = dict(
-    deadline=None,
-    database=None,
+_SETTINGS = {
+    "deadline": None,
+    "database": None,
     # **What this buys and what it does NOT, measured rather than assumed.**  It fixes the
     # SEED, so the same strategy yields the same stream; it does not make the drawn
     # instance a function of the schema.  Over two full passes of the same 1,664 pairs at
@@ -963,9 +963,10 @@ _SETTINGS = dict(
     # ``hypothesis`` whose lifetime garbage collection governs.  ``corpus_key`` and the
     # store behind it are what make the witness reproducible; this makes it cheap to
     # reproduce once held.
-    derandomize=True,  # one seed per call; see above for what that does and does not fix
-    suppress_health_check=list(HealthCheck),
-)
+    # one seed per call; see above for what that does and does not fix
+    "derandomize": True,
+    "suppress_health_check": list(HealthCheck),
+}
 
 
 def check_format_strategy(
@@ -4671,7 +4672,10 @@ def _inseparable(
             if all(set(b) <= {"required"} for b in branches):
                 continue
             applied = [b.get("type") or node.get("type") for b in branches]
-            if not all(t == "object" or (t is None and b.get("properties")) for t, b in zip(applied, branches)):
+            if not all(
+                t == "object" or (t is None and b.get("properties"))
+                for t, b in zip(applied, branches, strict=True)
+            ):
                 continue
             base = "" if pointer == "/" else pointer
             # The ROOT's own ``required`` is handed to every pair, because section 4

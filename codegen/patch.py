@@ -473,7 +473,7 @@ def _disagreements(
             )
         return
     if isinstance(before, list) and isinstance(after, list) and len(before) == len(after):
-        for index, (one, other) in enumerate(zip(before, after)):
+        for index, (one, other) in enumerate(zip(before, after, strict=True)):
             yield from _disagreements(document, f"{pointer}/{index}", one, other, at)
         return
     head, _, key = pointer.rpartition("/")
