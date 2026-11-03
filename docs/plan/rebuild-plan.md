@@ -474,13 +474,33 @@ The refusal argument survives in exactly two places, and the design keeps both.
   `format: uri` positions beside a pattern the normalised form violates, about 300 `uri`
   positions in 160 documents.
 
-  This is a widening TOWARD the document on three counts, so `approximated` moves DOWN rather
-  than up: both `URL_IMPLIED` facts stop being dropped, the URL type's refusal of `urn:` and
-  `file:` — which `format: uri` admits — stops narrowing, and §5's "a `uri` beside another
-  string constraint → refused" stops refusing, because a string carries bounds and a URL type
-  does not. What is lost is a consumer receiving a parsed URL object instead of a string, and §2
-  settles that trade where it always settles it: an annotation tighter than its document is the
-  defect nothing may widen into.
+  This is a widening TOWARD the document: the URL type's refusal of `urn:` and `file:` — which
+  `format: uri` admits — stops narrowing. What is lost is a consumer receiving a parsed URL
+  object instead of a string, and §2 settles that trade where it always settles it: an
+  annotation tighter than its document is the defect nothing may widen into.
+
+  **BUT `approximated` DOES NOT MOVE, and the sentence that said it moves DOWN on three counts
+  is withdrawn (2026-11-03).** It described the arithmetic of a world where the registry still
+  existed. Measured: **none of the declared facts is a URL fact** — they are
+  `patternProperties` at CONTAINER, `anyOf` and `oneOf` at JOIN, and one `maxLength` at an
+  `x-adcp-open-payload` node that is not a `uri` position. So there is nothing to subtract:
+  `URL_IMPLIED`'s two facts cannot "stop being dropped" when the registry that declared them has
+  no references left, and `tests/test_decision_set.py` — which this section names as holding the
+  guard — **does not exist**. The third count is already zero as well, since `refused` is 0 and
+  §5's `uri`-beside-a-constraint case is answered by the TYPE rung already.
+
+  **What the withdrawal moves is the NARROWING count, and that is invisible to the drawn set** —
+  which is the measure of the problem rather than an excuse. None of the narrowing's measured
+  pairs appears among the failures of a whole-set grade, because a draw does not produce two
+  case-differing URLs by chance; the payloads had to be constructed by hand. An unadmitted
+  narrowing is exactly the fact no instrument finds.
+
+  **The order is forced and it is two commits.** The withdrawal lands first and moves the emitted
+  tree; the registry lands second, EMPTY, with its equality in both directions. Registry-first
+  cannot be done: this section already says a normalisation cannot be registered, because an
+  entry is compared by equality so that it admits one fact and not its kind — so a
+  registry-first commit would land a gate whose only green path is the withdrawal, which is a
+  marker by another name.
 
   Three cells follow and are a lane's to write, not this rendering's: `format`'s (`uri` no
   longer selects a type), `pattern`'s (the pattern goes on the type rather than staying with the
