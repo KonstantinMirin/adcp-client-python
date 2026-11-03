@@ -1247,8 +1247,21 @@ def test_eight_open_branches_requiring_one_name_separate_on_their_nested_nots() 
 #: (``AtLeastOne`` / ``PresenceGroups``) and not to a discriminated union, so no
 #: separator is owed one.  ``adagents.json#/oneOf/1/allOf/0/anyOf`` says so in its own
 #: ``$comment``: "Each arm asserts non-emptiness directly."
-#: ``core/postal-country-system.json`` narrows ``country`` and ``system`` ten ways; the
-#: last three are "at least one of these two keys".
+#:
+#: **``core/postal-country-system.json#/anyOf`` LEFT THIS SET on 2026-11-04, and it left
+#: because the READING of the population was corrected rather than because the set was
+#: relaxed.**  It was described here as narrowing ``country`` and ``system`` ten ways
+#: with the last three being "at least one of these two keys", and it was in this set
+#: because the two readers above asked ``harness.separates`` the question WITHOUT the
+#: enclosing node's ``required``.  §4's first separator reads the entailment, the walk
+#: has always handed it that list (``lower/union.py``'s ``root_required``), and §4's own
+#: paragraph names this very document as the case the weak reading got wrong: "Reading
+#: only single values made ``core/postal-country-system.json#/anyOf`` inseparable on 12
+#: pairs ... while all ten branches are pairwise disjoint in fact and the emitted classes
+#: dispatch deterministically."  With the question asked properly the derivation
+#: separates all ten branches, and the walk already agreed -- it declares no
+#: UNDERDETERMINED for this document.  Removing the entry is the pin FOLLOWING the
+#: behaviour, the same move the two ``viewability`` nodes needed.
 #:
 #: **The two ``viewability`` nodes LEFT this set, and the set is where the departure is
 #: recorded** (``adcp-client-python-10l.64``, corrected at ``10l.76``).
@@ -1267,7 +1280,6 @@ def test_eight_open_branches_requiring_one_name_separate_on_their_nested_nots() 
 _INSEPARABLE_CONSTRAINTS = frozenset(
     {
         "adagents.json#/oneOf/1/allOf/0/anyOf",
-        "core/postal-country-system.json#/anyOf",
         "media-buy/buy-products-request.json#/anyOf",
         "media-buy/request-proposals-request.json#/anyOf",
         "trusted-match/provider-registration.json#/anyOf",
@@ -1312,14 +1324,27 @@ def test_a_fact_a_ref_conjunct_holds_is_out_of_the_derivations_reach() -> None:
     assert lower_union.separates(closed, catchall, "object", "object") is None
 
 
-def _authored_unions() -> list[tuple[str, str, list[dict], list[Any]]]:
-    """Every authored union of 3.2 whose branches are all SHAPES, with the applied type.
+def _authored_unions() -> list[tuple[str, str, list[dict], list[Any], frozenset[str]]]:
+    """Every authored union of 3.2 whose branches are all SHAPES, with the applied type
+    and the ENCLOSING NODE'S ``required``.
 
     The GATE is the one both halves of §8's third equality already apply -- a branch is a
     shape where its node under the enclosing ``type`` is an object -- because that is the
     set where branch CLASSES exist and a declaration order has something to choose
     between.  A presence-only combinator is excluded for the same reason: it lowers to a
     rule on the enclosing class (``schema.presence_only``, the parser's own reading).
+
+    **THE ENCLOSING ``required`` IS RETURNED BECAUSE §4's FIRST SEPARATOR READS THE
+    ENTAILMENT AND NOT THE BRANCH'S OWN LIST** (2026-11-04).  §4's first source is "a
+    ``const`` every branch pins on one shared property AND every branch REQUIRES", and
+    the plan's own paragraph beneath it says the question is whether the document
+    GUARANTEES the key's presence -- which it does "through the root's own ``required``
+    or through every branch's".  ``lower.union.dispatch`` reads it that way
+    (``lower/union.py``: ``root_required = frozenset(node.required)``, handed to
+    ``separates`` one line down), and the two callers in this file did NOT: they asked
+    both readings the weaker question, so the two agreed with each other while neither
+    agreed with the walk.  27 of the authored unions state a non-empty ``required`` at
+    the enclosing node, and two of them are separable only through it.
     """
     out = []
     for document in sorted(bundle.portable(BUNDLE)):
@@ -1340,7 +1365,15 @@ def _authored_unions() -> list[tuple[str, str, list[dict], list[Any]]]:
                 ):
                     continue
                 base = "" if pointer == "/" else pointer
-                out.append((f"{document}#{base}/{keyword}", keyword, branches, applied))
+                out.append(
+                    (
+                        f"{document}#{base}/{keyword}",
+                        keyword,
+                        branches,
+                        applied,
+                        frozenset(node.get("required") or ()),
+                    )
+                )
     return out
 
 
@@ -1373,20 +1406,31 @@ def test_the_two_readings_of_separability_agree_over_every_authored_union() -> N
     pair of the same union reddens.
     """
     unions = claimed("authored unions of 3.2 whose branches are all shapes", {
-        at for at, _, _, _ in _authored_unions()
+        at for at, _, _, _, _ in _authored_unions()
     })
     assert len(unions) == len(_authored_unions()), "two unions at one pointer"
     disagreed = []
-    for at, _, branches, applied in _authored_unions():
+    for at, _, branches, applied, root_required in _authored_unions():
         for i in range(len(branches)):
             for j in range(i + 1, len(branches)):
+                # **BOTH READINGS TAKE THE ENCLOSING ``required``**, which is the question
+                # §4 asks and the one ``lower.union.dispatch`` hands the walk.  Omitting it
+                # on both sides kept this equality green while neither side answered the
+                # walk's question (see :func:`_authored_unions`).
                 walk = lower_union.separates(
                     _planned(at, f"{at}/{i}", branches[i]),
                     _planned(at, f"{at}/{j}", branches[j]),
                     applied[i],
                     applied[j],
+                    root_required=root_required,
                 )
-                record = harness.separates(branches[i], branches[j], applied[i], applied[j])
+                record = harness.separates(
+                    branches[i],
+                    branches[j],
+                    applied[i],
+                    applied[j],
+                    root_required=root_required,
+                )
                 if (walk is None) != (record is None):
                     disagreed.append((at, i, j, walk, record))
     assert disagreed == [], disagreed
@@ -1413,7 +1457,7 @@ def test_every_union_the_derivation_cannot_separate_is_named_and_partitioned() -
         "authored unions of shapes stating no $ref inside a branch",
         [
             (at, keyword, tuple(range(len(branches))))
-            for at, keyword, branches, _ in _authored_unions()
+            for at, keyword, branches, _, _ in _authored_unions()
             if not any(_states_a_reference(b) for b in branches)
         ],
     )
@@ -1422,9 +1466,20 @@ def test_every_union_the_derivation_cannot_separate_is_named_and_partitioned() -
             (i, j)
             for i in range(len(branches))
             for j in range(i + 1, len(branches))
-            if harness.separates(branches[i], branches[j], applied[i], applied[j]) is None
+            # ``root_required``: §4's first separator reads the ENTAILMENT, so the
+            # enclosing node's ``required`` is part of the question (see
+            # :func:`_authored_unions`).  Without it this reading called two pairs
+            # inseparable that the walk separates.
+            if harness.separates(
+                branches[i],
+                branches[j],
+                applied[i],
+                applied[j],
+                root_required=root_required,
+            )
+            is None
         ]
-        for at, keyword, branches, applied in _authored_unions()
+        for at, keyword, branches, applied, root_required in _authored_unions()
         if not any(_states_a_reference(b) for b in branches)
     }
     remainder = claimed(
