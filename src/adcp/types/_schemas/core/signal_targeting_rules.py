@@ -9,7 +9,7 @@ from pydantic import ConfigDict, Field, NonNegativeInt, TypeAdapter
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types.constraints import IntMin1
 
-from .signal_selection_group_rule import SignalSelectionGroupRule
+from .signal_selection_group_rule import SelectionMode, SignalSelectionGroupRule
 
 
 class ResolutionModel(StrEnum):
@@ -18,15 +18,6 @@ class ResolutionModel(StrEnum):
     """
     DIRECT_TARGETING = 'direct_targeting'
     SELLER_PLANNED = 'seller_planned'
-
-
-class SelectionMode(StrEnum):
-    """
-    Default selection behavior for selectable signals on this product. 'optional' means the buyer may select zero or more signals. 'required' means the buyer must select at least min_selected_signals, or 1 when min_selected_signals is omitted. 'fixed' means the seller applies the default_selected signals and the buyer cannot add or remove them; buyers SHOULD render those entries as read-only and sellers MUST echo them in package targeting_overlay.signal_targeting_groups. Use selection_group_rules for product-scoped products that need different behavior for different groups, such as fixed suppressions plus a required include tier.
-    """
-    OPTIONAL = 'optional'
-    REQUIRED = 'required'
-    FIXED = 'fixed'
 
 
 class SignalTargetingRules(AdCPBaseModel):
@@ -38,7 +29,7 @@ class SignalTargetingRules(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-targeting-rules.json', pointer='#')
     resolution_model: Annotated[ResolutionModel | None, Field(default_factory=lambda: TypeAdapter(ResolutionModel).validate_python('direct_targeting'), description="How selected signal_targeting_options are resolved against the product's inventory. 'direct_targeting' means selected signals are applied as targeting predicates to the package inventory. 'seller_planned' means selected signals are planning inputs that the seller resolves against product-specific inventory, timing, availability, reach, or pacing constraints; buyers SHOULD NOT attempt to decompose the signal selection into lower-level inventory or schedule decisions. Use 'seller_planned' for products such as linear broadcast schedules where the audience definition may be portable but the audience-to-avails plan is seller-resolved.", json_schema_extra={'default': 'direct_targeting'})]
-    selection_mode: Annotated[SelectionMode | None, Field(default_factory=lambda: TypeAdapter(SelectionMode).validate_python('optional'), description="Default selection behavior for selectable signals on this product. 'optional' means the buyer may select zero or more signals. 'required' means the buyer must select at least min_selected_signals, or 1 when min_selected_signals is omitted. 'fixed' means the seller applies the default_selected signals and the buyer cannot add or remove them; buyers SHOULD render those entries as read-only and sellers MUST echo them in package targeting_overlay.signal_targeting_groups. Use selection_group_rules for product-scoped products that need different behavior for different groups, such as fixed suppressions plus a required include tier.", json_schema_extra={'default': 'optional'})]
+    selection_mode: Annotated[SelectionMode | None, Field(description="Default selection behavior for selectable signals on this product. 'optional' means the buyer may select zero or more signals. 'required' means the buyer must select at least min_selected_signals, or 1 when min_selected_signals is omitted. 'fixed' means the seller applies the default_selected signals and the buyer cannot add or remove them; buyers SHOULD render those entries as read-only and sellers MUST echo them in package targeting_overlay.signal_targeting_groups. Use selection_group_rules for product-scoped products that need different behavior for different groups, such as fixed suppressions plus a required include tier.")] = 'optional'
     min_selected_signals: Annotated[NonNegativeInt | None, Field(description="Minimum number of signals the buyer must select when selection_mode is 'required'. If selection_mode is 'required' and this field is omitted, sellers MUST treat the minimum as 1. Defaults to 0 for optional selection.")] = None
     max_selected_signals: Annotated[IntMin1 | None, Field(description='Maximum number of signals the buyer may select for a package. Omit when there is no declared limit beyond the available options.')] = None
     max_selected_per_group: Annotated[IntMin1 | None, Field(description='Maximum number of signal_targeting_options the buyer may select from the same ProductSignalTargetingOption.selection_group. Use 1 for mutually exclusive alternatives within each option group. This limit applies to product option grouping, not to the number of child groups in packages[].targeting_overlay.signal_targeting_groups.')] = None

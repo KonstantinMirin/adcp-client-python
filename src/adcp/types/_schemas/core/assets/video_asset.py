@@ -15,6 +15,7 @@ from ...enums.gop_type import GOPType
 from ...enums.moov_atom_position import MoovAtomPosition
 from ...enums.scan_type import ScanType
 from ..provenance import Provenance
+from .audio_asset import BitDepth
 
 
 class ColorSpace(StrEnum):
@@ -57,15 +58,6 @@ class VideoBitDepth(IntEnum):
     V_12 = 12
 
 
-class AudioBitDepth(IntEnum):
-    """
-    Audio bit depth
-    """
-    V_16 = 16
-    V_24 = 24
-    V_32 = 32
-
-
 class VideoAsset(AdCPBaseModel):
     """
     A hosted video file delivered directly (e.g., an MP4 you host), with URL and technical specifications including audio track properties. `width` and `height` are required because a hosted video file has intrinsic, native pixel dimensions that are known when the file is created. Tag-delivered video uses the separate `vast` asset, which carries no `width`/`height`: a VAST response resolves geometry per-`MediaFile` at serve time, so there is no single width/height for the ad. Aspect-ratio and size *constraints* (what a placement accepts) belong on the format/requirements layer, not on the asset.
@@ -97,7 +89,7 @@ class VideoAsset(AdCPBaseModel):
     audio_codec: Annotated[str | None, Field(description='Audio codec used (aac, aac_lc, he_aac, pcm, mp3, ac3, eac3, etc.)')] = None
     audio_sampling_rate_hz: Annotated[int | None, Field(description='Audio sampling rate in Hz (e.g., 44100, 48000)')] = None
     audio_channels: Annotated[AudioChannelLayout | None, Field(description='Audio channel configuration')] = None
-    audio_bit_depth: Annotated[AudioBitDepth | None, Field(description='Audio bit depth')] = None
+    audio_bit_depth: Annotated[BitDepth | None, Field(description='Audio bit depth')] = None
     audio_bitrate_kbps: Annotated[IntMin1 | None, Field(description='Audio bitrate in kilobits per second')] = None
     audio_loudness_lufs: Annotated[float | None, Field(description='Integrated loudness in LUFS')] = None
     audio_true_peak_dbfs: Annotated[float | None, Field(description='True peak level in dBFS')] = None

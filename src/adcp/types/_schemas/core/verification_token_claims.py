@@ -10,6 +10,8 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import HttpUrl, StrMatchingD4A41027, StrMinLen1
 
+from .registry_event import GradingProfile
+
 
 class Role(StrEnum):
     MEDIA_BUY = 'media-buy'
@@ -25,9 +27,7 @@ class VerificationTokenMode(StrEnum):
     LIVE = 'live'
 
 
-class VerificationTokenGradingProfile(StrEnum):
-    LEGACY = 'legacy'
-    SPEC = 'spec'
+VerificationTokenGradingProfile = GradingProfile
 
 
 class AgenticAdvertisingOrgVerificationTokenClaims(AdCPBaseModel):

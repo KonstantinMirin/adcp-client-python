@@ -16,6 +16,7 @@ from ..enums.consent_basis import ConsentBasis
 from ..enums.restricted_attribute import RestrictedAttribute
 from ..enums.signal_value_type import SignalValueType
 from .demographic_predicate import DemographicPredicate
+from .signal_definition_enrichment import AiActRiskClass, Art9Basis, DataSourcesItem, MatchKeysItem, Method, Methodology, ParentMatchBehavior, PreOnboardingPrecisionLevel, RightsItem, SeedSourceType
 from .signal_modeling_disclosure import SignalModelingDisclosure
 
 
@@ -53,15 +54,6 @@ class ValueMappingsItem(AdCPBaseModel):
     modifiers: Annotated[list[str] | None, Field(description='Optional taxonomy-specific modifiers that qualify the mapped value.')] = None
 
 
-class ParentMatchBehavior(StrEnum):
-    """
-    Whether this signal definition supports treating a parent taxonomy node as matching descendant nodes for discovery/filtering or seller-side expansion. 'exact_only' means only explicitly listed node ids match. 'descendants_supported' means the seller can expand known, version-pinned parent nodes to descendants internally, typically by ORing the children in its execution system. 'unknown' means the provider has not declared parent-node behavior. This field is metadata about discovery/translation behavior, not a package targeting operator.
-    """
-    EXACT_ONLY = 'exact_only'
-    DESCENDANTS_SUPPORTED = 'descendants_supported'
-    UNKNOWN = 'unknown'
-
-
 class Taxonomy(AdCPBaseModel):
     """
     Optional taxonomy metadata describing what this signal means in an external audience, content, retail-media, or provider-owned taxonomy. Taxonomy metadata does not create a new value_type and does not change package targeting grammar: buyers still target the named signal according to value_type. When a taxonomy value is a parent node, parent/descendant expansion is seller behavior and must be declared through parent_match_behavior rather than assumed.
@@ -77,37 +69,6 @@ class Taxonomy(AdCPBaseModel):
     values: Annotated[list[ValuesItem], Field(description='Taxonomy node values that describe this signal. These are meaning/discovery metadata for the signal definition, not the values a buyer submits in package targeting expressions.', min_length=1)]
     value_mappings: Annotated[list[ValueMappingsItem] | None, Field(description="For categorical signals, maps package-targeting allowed_values[] strings to stable taxonomy node identifiers. The allowed_values[] strings remain the wire values buyers submit; this mapping explains how those strings resolve into the published taxonomy. Each value_mappings[].value SHOULD match one of the signal's allowed_values[] entries; JSON Schema draft-07 cannot enforce this cross-array constraint.", min_length=1)] = None
     parent_match_behavior: Annotated[ParentMatchBehavior | None, Field(description="Whether this signal definition supports treating a parent taxonomy node as matching descendant nodes for discovery/filtering or seller-side expansion. 'exact_only' means only explicitly listed node ids match. 'descendants_supported' means the seller can expand known, version-pinned parent nodes to descendants internally, typically by ORing the children in its execution system. 'unknown' means the provider has not declared parent-node behavior. This field is metadata about discovery/translation behavior, not a package targeting operator.")] = None
-
-
-class DataSourcesItem(StrEnum):
-    APP_BEHAVIOR = 'app_behavior'
-    APP_USAGE = 'app_usage'
-    WEB_USAGE = 'web_usage'
-    GEO_LOCATION = 'geo_location'
-    EMAIL = 'email'
-    TV_OTT_OR_STB_DEVICE = 'tv_ott_or_stb_device'
-    PANEL = 'panel'
-    ONLINE_ECOMMERCE = 'online_ecommerce'
-    CREDIT_DATA = 'credit_data'
-    LOYALTY_CARD = 'loyalty_card'
-    TRANSACTION = 'transaction'
-    ONLINE_SURVEY = 'online_survey'
-    OFFLINE_SURVEY = 'offline_survey'
-    PUBLIC_RECORD_CENSUS = 'public_record_census'
-    PUBLIC_RECORD_VOTER_FILE = 'public_record_voter_file'
-    PUBLIC_RECORD_OTHER = 'public_record_other'
-    OFFLINE_TRANSACTION = 'offline_transaction'
-
-
-class Methodology(StrEnum):
-    """
-    How the signal's audience membership or attribute was determined. 'modeled' requires the modeling block.
-    """
-    OBSERVED = 'observed'
-    DECLARED = 'declared'
-    DERIVED = 'derived'
-    INFERRED = 'inferred'
-    MODELED = 'modeled'
 
 
 class RefreshCadence(StrEnum):
@@ -136,26 +97,6 @@ class LookbackWindow(StrEnum):
     QUARTERLY = 'quarterly'
     BI_ANNUALLY = 'bi_annually'
     ANNUALLY = 'annually'
-
-
-class MatchKeysItem(StrEnum):
-    NAME = 'name'
-    ADDRESS = 'address'
-    EMAIL = 'email'
-    POSTAL = 'postal'
-    LAT_LONG = 'lat_long'
-    MOBILE_ID = 'mobile_id'
-    COOKIE_ID = 'cookie_id'
-    IP = 'ip'
-    CUSTOMER_ID = 'customer_id'
-    PHONE = 'phone'
-
-
-class PreOnboardingPrecisionLevel(StrEnum):
-    INDIVIDUAL = 'individual'
-    HOUSEHOLD = 'household'
-    BUSINESS = 'business'
-    GEOGRAPHY = 'geography'
 
 
 class Onboarder(AdCPBaseModel):
@@ -189,31 +130,6 @@ class AudienceScope(StrEnum):
     OFFLINE = 'offline'
 
 
-class Art9Basis(StrEnum):
-    """
-    GDPR Article 9 basis when restricted_attributes is non-empty and the signal is used in jurisdictions where Article 9 applies. Required by policy for applicable use cases rather than universally required at schema level because sensitivity and lawful basis are jurisdiction-relative.
-    """
-    EXPLICIT_CONSENT = 'explicit_consent'
-    MANIFESTLY_MADE_PUBLIC = 'manifestly_made_public'
-    SUBSTANTIAL_PUBLIC_INTEREST = 'substantial_public_interest'
-    VITAL_INTERESTS = 'vital_interests'
-
-
-class Method(StrEnum):
-    LOOKALIKE = 'lookalike'
-    SUPERVISED = 'supervised'
-    EMBEDDING = 'embedding'
-    RULES = 'rules'
-
-
-class SeedSourceType(StrEnum):
-    FIRST_PARTY_CRM = 'first_party_crm'
-    PANEL = 'panel'
-    DECLARED_SURVEY = 'declared_survey'
-    TRANSACTIONAL = 'transactional'
-    BEHAVIORAL = 'behavioral'
-
-
 class SeedSource(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -221,15 +137,6 @@ class SeedSource(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-definition.json', pointer='#/properties/modeling/properties/seed_source')
     type: SeedSourceType
     provider_signed: Annotated[bool, Field(description="Whether the seed source carries a signed attestation under one of the provider's published signing keys. This is a forward-looking claim until the consumer can resolve and verify the provider's applicable signing keys through the AdCP signing profile; consumers MUST NOT treat this boolean alone as cryptographic proof.")]
-
-
-class AiActRiskClass(StrEnum):
-    """
-    EU AI Act risk classification self-declared by the provider. Prohibited-risk modeled signals must not be published as AdCP signal definitions.
-    """
-    MINIMAL = 'minimal'
-    LIMITED = 'limited'
-    HIGH_RISK = 'high_risk'
 
 
 class Modeling(AdCPBaseModel):
@@ -245,14 +152,6 @@ class Modeling(AdCPBaseModel):
     training_data_jurisdictions: Annotated[list[StrMatchingEFC12812], Field(description="ISO 3166-1 alpha-2 country codes where the model's training data was collected.", min_length=1)]
     ai_act_risk_class: Annotated[AiActRiskClass, Field(description='EU AI Act risk classification self-declared by the provider. Prohibited-risk modeled signals must not be published as AdCP signal definitions.')]
     disclosure: Annotated[SignalModelingDisclosure | None, Field(description='Signal/modeling-specific disclosure requirements and jurisdictional notes. This is not creative provenance render guidance.')] = None
-
-
-class RightsItem(StrEnum):
-    ACCESS = 'access'
-    RECTIFICATION = 'rectification'
-    ERASURE = 'erasure'
-    PORTABILITY = 'portability'
-    OBJECTION = 'objection'
 
 
 class ChannelsItem(AdCPBaseModel):

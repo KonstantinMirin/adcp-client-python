@@ -28,9 +28,11 @@ from ..enums.sponsored_placement_type import SponsoredPlacementType
 from ..enums.transport_mode import TransportMode
 from ..enums.travel_time_unit import TravelTimeUnit
 from ..enums.video_placement_type import VideoPlacementType
+from .audience_activation_method import DirectionsItem
 from .audience_evidence_requirements import AudienceEvidenceRequirements
 from .brand_ref import BrandReference
 from .canonical_format_kind import CanonicalFormatKind
+from .catchment import GeometryType
 from .ext import ExtensionObject
 from .format_id import FormatReferenceStructuredObject
 from .format_option_ref import FormatOptionReference
@@ -123,11 +125,6 @@ class AudienceActivationMethodsItemTmpIdentityMatch(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-filters.json', pointer='#/properties/audience_activation_methods/items/oneOf/1')
     pattern: Literal['tmp_identity_match']
     buyer_agent: Annotated[BuyerAgent | None, Field(description='Require this buyer agent on tmp_identity_match entries. Buyers typically filter on their own agent_url.')] = None
-
-
-class DirectionsItem(StrEnum):
-    BUYER_TO_SELLER = 'buyer_to_seller'
-    SELLER_TO_BUYER = 'seller_to_buyer'
 
 
 class AudienceActivationMethodsItemFileTransfer(AdCPBaseModel):
@@ -272,14 +269,6 @@ class Radius(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-filters.json', pointer='#/properties/geo_proximity/items/properties/radius')
     value: Annotated[FloatGt0, Field(description='Radius distance')]
     unit: Annotated[DistanceUnit, Field(description='Distance unit')]
-
-
-class GeometryType(StrEnum):
-    """
-    GeoJSON geometry type
-    """
-    POLYGON = 'Polygon'
-    MULTIPOLYGON = 'MultiPolygon'
 
 
 class Geometry(AdCPBaseModel):

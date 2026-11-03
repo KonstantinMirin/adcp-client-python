@@ -76,14 +76,6 @@ class LocalizationUnavailable(AdCPBaseModel):
     retryable: Annotated[bool, Field(description='Whether a later list_creatives call may recover without buyer mutation.')]
 
 
-class IndicatorsItemType(StrEnum):
-    """
-    A seller-asserted material risk or optimization opportunity that currently warrants buyer attention on an AdCP resource relationship. AdCP standardizes the broad meaning of each value for the protocol release; it does not standardize or version the seller's detection methodology or prescribe a universal remedy.
-    """
-    CREATIVE_FATIGUE = 'creative_fatigue'
-    CREATIVE_QUALITY_OPPORTUNITY = 'creative_quality_opportunity'
-
-
 class IndicatorsItem(Indicator):
     """
     A compact current seller assertion identifying a material risk or optimization opportunity that warrants buyer attention on the containing media buy, package, or package–creative relationship. An indicator is read-side state, not an error, warning, durable event record, authorization, executable action, or independently addressable resource. The responding seller is the source. Different sellers may use different methodologies for the same standard type; native scores, evaluation windows, suggested actions, deep links, and upstream attribution belong in ext.
@@ -92,10 +84,15 @@ class IndicatorsItem(Indicator):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/list-creatives-response.json', pointer='#/properties/creatives/items/properties/assignments/properties/assigned_packages/items/allOf/1/properties/indicators/items')
-    type: Annotated[IndicatorsItemType, Field(description="A seller-asserted material risk or optimization opportunity that currently warrants buyer attention on an AdCP resource relationship. AdCP standardizes the broad meaning of each value for the protocol release; it does not standardize or version the seller's detection methodology or prescribe a universal remedy.")]
+    type: Annotated[IndicatorTypesEvaluatedItem, Field(description="A seller-asserted material risk or optimization opportunity that currently warrants buyer attention on an AdCP resource relationship. AdCP standardizes the broad meaning of each value for the protocol release; it does not standardize or version the seller's detection methodology or prescribe a universal remedy.")]
 
 
-IndicatorTypesEvaluatedItem = IndicatorsItemType
+class IndicatorTypesEvaluatedItem(StrEnum):
+    """
+    A seller-asserted material risk or optimization opportunity that currently warrants buyer attention on an AdCP resource relationship. AdCP standardizes the broad meaning of each value for the protocol release; it does not standardize or version the seller's detection methodology or prescribe a universal remedy.
+    """
+    CREATIVE_FATIGUE = 'creative_fatigue'
+    CREATIVE_QUALITY_OPPORTUNITY = 'creative_quality_opportunity'
 
 
 class AssignedPackagesItem(IndicatorBearingResourceState):

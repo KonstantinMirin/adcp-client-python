@@ -890,6 +890,35 @@ class Module:
     #: :attr:`targets` has, and for the same reason: §9 forbids a reading of the run, and
     #: a walk with no table minted no reference to invent.
     vocabularies: Mapping[str, Target] = field(default_factory=dict)
+    #: **§3a's catalogue keyed on the VALUE LIST, for the positions no pointer reaches.**
+    #: ``members -> the entry's home``, where a :class:`Target` is a home in ANOTHER
+    #: module and a ``str`` is a POINTER of this one.
+    #:
+    #: :attr:`vocabularies` answers a position the BUNDLE states, which is a pointer this
+    #: document's own text carries.  Two restating positions are not of that kind and both
+    #: were measured leaving a second class over an entry's members:
+    #:
+    #: * **a node a COMPOSITION re-lowers.**  §2's intersection rule reads a base's
+    #:   declaration beside this document's own, so a node the base alone declares is
+    #:   lowered again here -- and ":attr:`inherited_targets`" says why no pointer key
+    #:   reaches it: "the pointer it arrives at is this document's -- derived from the
+    #:   restating conjunct -- and belongs to no edge of either document".  3 entries over
+    #:   this bundle, all ``core/postal-area.json`` re-lowering
+    #:   ``core/postal-country-system.json``'s per-country ``system`` branches.
+    #: * **a position whose home is in this SAME module.**  §4's content dedup is the rule
+    #:   there and its key is node EQUALITY, so two positions stating one value list under
+    #:   different descriptions are two classes to it.  Where the catalogue has judged them
+    #:   one subject across documents, the positions inside the home's own document are
+    #:   part of that one subject too -- and the reference is LOCAL, which is why the value
+    #:   is a pointer rather than an import.  7 entries over this bundle.
+    #:
+    #: **Asked only of a node carrying NO constraint beside its ``enum``**, which is the
+    #: whole of the guard and is §3a's structural identity read at the one place it can
+    #: still differ: a value list beside a ``pattern`` admits a subset of the members, so
+    #: it is not the entry's vocabulary whatever its members spell.  The one node of this
+    #: bundle that reaches that case is
+    #: ``core/postal-country-system.json#/anyOf/3/properties/country``.
+    restatements: Mapping[tuple[Any, ...], Target | str] = field(default_factory=dict)
     #: **The reference sites this document's walk ASKED about**, written by
     #: :meth:`target` and read by the run.  It is what decides which documents the run
     #: WRITES, and §10's own sentence is the reason: "a module cannot import from a

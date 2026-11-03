@@ -21,6 +21,7 @@ from ..enums.governance_decision import GovernanceDecision
 from ..enums.governance_mode import GovernanceMode
 from ..enums.outcome_type import OutcomeType
 from ..enums.purchase_type import PurchaseType
+from .check_governance_response import CheckType
 from .reported_outcome_error import ReportedOutcomeError
 
 
@@ -158,14 +159,6 @@ class EntriesItemType(StrEnum):
     CHECK = 'check'
     OUTCOME = 'outcome'
     ADJUSTMENT = 'adjustment'
-
-
-class CheckType(StrEnum):
-    """
-    Whether the check was an intent check (orchestrator) or execution check (seller). Inferred from the fields present on the original check request. Present for check entries.
-    """
-    INTENT = 'intent'
-    EXECUTION = 'execution'
 
 
 class FindingsItem(AdCPBaseModel):

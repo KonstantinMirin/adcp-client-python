@@ -12,6 +12,7 @@ from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
 from ..core.version_envelope import AdCPVersionEnvelope
 from ..enums.escalation_severity import EscalationSeverity
+from .get_plan_audit_logs_response import EntriesItemDeliveryReconciliationStatus
 
 
 class OutcomeState(StrEnum):
@@ -20,17 +21,6 @@ class OutcomeState(StrEnum):
     """
     ACCEPTED = 'accepted'
     FINDINGS = 'findings'
-
-
-class DeliveryReconciliationStatus(StrEnum):
-    """
-    Comparison state between the buyer-attributed observation and canonical seller statement. Present for delivery outcomes. A disputed state blocks adjustment verification while the period is open. measurement_variance records a buyer-measured cumulative_spend that differs from the seller statement; it never blocks verification — the higher amount bounds conservative exposure and decommitments instead. closed_unresolved preserves the discrepancy after operational closure without claiming a final billing result.
-    """
-    CONSISTENT = 'consistent'
-    MEASUREMENT_VARIANCE = 'measurement_variance'
-    DISPUTED = 'disputed'
-    UNMATCHED = 'unmatched'
-    CLOSED_UNRESOLVED = 'closed_unresolved'
 
 
 class DeliveryPeriodState(StrEnum):
@@ -75,7 +65,7 @@ class ReportPlanOutcomeResponse(AdCPVersionEnvelope):
     outcome_id: Annotated[str, Field(description='Unique identifier for this outcome record.')]
     outcome_state: Annotated[OutcomeState, Field(description="Outcome state. 'accepted' means state updated with no issues. 'findings' means issues were detected. Renamed from `status` in 3.1 to free the top-level `status` key for the envelope task-status (TaskStatus) under MCP flat-on-the-wire serialization.")]
     committed_budget: Annotated[float | None, Field(description="Budget committed from this outcome. Present for 'completed' and 'failed' outcomes.")] = None
-    delivery_reconciliation_status: Annotated[DeliveryReconciliationStatus | None, Field(description='Comparison state between the buyer-attributed observation and canonical seller statement. Present for delivery outcomes. A disputed state blocks adjustment verification while the period is open. measurement_variance records a buyer-measured cumulative_spend that differs from the seller statement; it never blocks verification — the higher amount bounds conservative exposure and decommitments instead. closed_unresolved preserves the discrepancy after operational closure without claiming a final billing result.')] = None
+    delivery_reconciliation_status: Annotated[EntriesItemDeliveryReconciliationStatus | None, Field(description='Comparison state between the buyer-attributed observation and canonical seller statement. Present for delivery outcomes. A disputed state blocks adjustment verification while the period is open. measurement_variance records a buyer-measured cumulative_spend that differs from the seller statement; it never blocks verification — the higher amount bounds conservative exposure and decommitments instead. closed_unresolved preserves the discrepancy after operational closure without claiming a final billing result.')] = None
     delivery_period_state: Annotated[DeliveryPeriodState | None, Field(description='Operational state of the governance reporting period. Closure freezes governance evidence for that period but is not billing settlement.')] = None
     findings: Annotated[list[FindingsItem] | None, Field(description="Issues detected. Present only when outcome_state is 'findings'.")] = None
     plan_summary: Annotated[PlanSummary | None, Field(description="Updated plan budget state. Present for 'completed' and 'failed' outcomes.")] = None

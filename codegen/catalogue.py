@@ -111,7 +111,7 @@ from collections.abc import Collection, Iterator, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from codegen import bundle, keywords
+from codegen import bundle, keywords, vocabularies
 
 #: The EFFECTS a keyword can have without changing what a node ADMITS: a symbol
 #: (``NAME``), a fact a lowering carries (``ANNOTATION``), a fact the enclosing FIELD
@@ -232,6 +232,16 @@ class Stated:
     title: str | None
     #: The identity :func:`identity` computed, carried so a caller does not recompute it.
     identity: tuple[tuple[str, str], ...]
+    #: Does the walk LOWER a type from this position at all?  ``False`` for a position
+    #: inside a ``definitions`` entry no ``$ref`` names, which §5 lowers nothing from --
+    #: ``bundle.named_nodes`` is what asks and ``bundle.section_entries`` is what a
+    #: section entry is.  Such a position states the vocabulary and declares no class, so
+    #: it cannot be an entry's HOME: measured over this bundle, one entry's first position
+    #: in bundle order is of that kind -- ``a2ui/si-catalog.json``'s
+    #: ``definitions/IntegrationAction``, which nothing references -- and homing the entry
+    #: there left its three restating positions importing a symbol no module declares and
+    #: two of them minting a class instead.
+    reached: bool = True
 
     @property
     def is_a_root(self) -> bool:
@@ -254,17 +264,29 @@ class Entry:
     states, and :attr:`home` is computed from the positions that state the vocabulary.
     """
 
-    identity: tuple[tuple[str, str], ...]
+    #: The VALUE LIST this entry is the one type over (:func:`value_list`).
+    vocabulary: Vocabulary
     #: The members in document order, read off the NAMING position so that the rendered
     #: order is a function of the document that names the concept.
     members: tuple[object, ...]
     #: ``"string"`` or ``"integer"``, in JSON Schema's words, which is ``ir.EnumDecl``'s
     #: own spelling of the base.
     kind: str
-    #: The ``title`` the bundle states, exactly as it states it.
-    title: str
+    #: The ``title`` the bundle states, exactly as it states it, or ``None`` where the
+    #: bundle titles this vocabulary at no position and
+    #: ``codegen/vocabularies.py``'s judgement is what makes it one type.
+    title: str | None
     #: Every position that states this vocabulary, in bundle order.
     positions: tuple[Stated, ...]
+    #: The name ``codegen/vocabularies.py`` states for this entry, or ``None`` where §4's
+    #: own derivation at :attr:`naming` is the name -- which is every titled entry (the
+    #: title IS the name §4 derives at a root) and every entry of
+    #: ``vocabularies.AGREED`` (every position derived the one name already).
+    name: str | None = None
+    #: The position this entry is DECLARED at (:attr:`naming`), chosen by :func:`collect`
+    #: because the choice needs the bundle's reference graph and an :class:`Entry` carries
+    #: only its own positions.
+    at: Stated | None = None
 
     @property
     def documents(self) -> frozenset[str]:
@@ -301,12 +323,29 @@ class Entry:
         position is ``pascal_case(title)``, so the name the other positions reference is
         the title's and is not minted here.
 
-        A title is stated at ONE position -- that is the module docstring's own tell for
-        why the three naming groups do not multiply under inlining -- so ``next`` is a
-        lookup and not a choice.  Where a title is stated twice the entry is one of
-        §3a's CONFLICTS and is not an :class:`Entry` at all.
+        **A DOCUMENT ROOT COMES FIRST, which is §3a's correction of 2026-11-02** -- "a
+        document root beats a restating title, so a conflict with a rooted vocabulary is
+        not one ... where one of the titles belongs to a document of its own, §1 has
+        already given that vocabulary an exported symbol and §3a's own rule says a
+        document root is already a home.  There is nothing to mint, because the bundle
+        named it."  So where this entry's title is stated at a root, that root is the
+        home; otherwise the first titled position in bundle order is, and the order is
+        the bundle's so the answer is not the collection's iteration order.
+
+        **AN UNTITLED ENTRY'S HOME IS A ROOT TOO WHERE IT HAS ONE, and otherwise its
+        first position in bundle order.**  §1 settles both: "every portable document
+        contributes a symbol", so a root cannot become a reference to another document's
+        class and is the one position of its group that MUST declare -- which makes it the
+        home rather than a candidate for one.  Where no position is a root, every position
+        derives a symbol on its own module's surface, so the entry is already at home at
+        any of them and the choice is the bundle's ORDER: §4's content dedup makes the
+        same choice inside a module -- "declared under the name of the position the walk
+        reaches first" -- and :func:`states` iterates the bundle in sorted document order,
+        so the answer is a function of the bundle and not of this run.
         """
-        return next(p for p in self.positions if p.title == self.title)
+        if self.at is not None:
+            return self.at
+        return min(self.positions, key=lambda p: ranked(p, self.title))
 
     @property
     def restating(self) -> tuple[Stated, ...]:
@@ -318,15 +357,24 @@ class Entry:
 
         **A position at a document ROOT is never among them**, and that is §1's rule and
         not a precaution: "every portable document contributes a symbol", so a root that
-        declared nothing would leave its own document with no exported name.  Over this
-        bundle no entry is stated at two roots, so the clause selects nothing and is the
-        guard that says so.
+        declared nothing would leave its own document with no exported name.  It is also
+        what keeps §3a's correction honest in one direction only: a root beats a restating
+        title, and a root never becomes a restatement of anything.
+
+        **A position in the HOME's OWN document is not among them either**, and that is
+        §4's scope rather than a second rule: within one module "two nodes of identical
+        content are one class", the dedup key is node equality, and a position this clause
+        drops is one §4 either already merged or deliberately kept apart.  Reaching into
+        a module to merge two of its own declarations is a change to that rule and not to
+        this one.
         """
+        home = (self.naming.document, self.naming.pointer)
         return tuple(
             p
             for p in self.positions
-            if (p.document, p.pointer) != (self.naming.document, self.naming.pointer)
+            if (p.document, p.pointer) != home
             and not p.is_a_root
+            and p.document != self.naming.document
         )
 
 
@@ -339,7 +387,7 @@ class Conflict:
     concept the bundle spells twice or two concepts whose value sets coincide.
     """
 
-    identity: tuple[tuple[str, str], ...]
+    vocabulary: Vocabulary
     titles: tuple[str, ...]
     positions: tuple[Stated, ...]
 
@@ -361,16 +409,18 @@ class Reference:
 
     document: str
     pointer: str
-    title: str
+    #: The entry's own name: the ``title`` the bundle states, or the name
+    #: ``codegen/vocabularies.py`` judges for a vocabulary the bundle titles nowhere.
+    title: str | None
 
 
 @dataclass(frozen=True)
 class Catalogue:
     """Layer L0 over one bundle: the entries, and the two groups that are NOT entries."""
 
-    #: identity -> the entry, for a vocabulary the bundle states in more than one document
-    #: and gives exactly one title.
-    entries: Mapping[tuple[tuple[str, str], ...], Entry]
+    #: value list -> the entry, for a vocabulary the bundle states in more than one
+    #: document and names.
+    entries: Mapping[Vocabulary, Entry]
     #: The vocabularies stated in more than one document with NO title anywhere.  Not
     #: entries, by §3a's rule, and carried so a check can range over the population rather
     #: than over a list (``tests/nodeset.py``'s ``claimed``).
@@ -481,6 +531,37 @@ def vocabulary(node: Mapping[str, object]) -> tuple[object, ...] | None:
 #: because ``bool`` is a subclass of ``int`` and an ``isinstance`` test would admit it.
 KIND = {str: "string", int: "integer"}
 
+#: **A VALUE LIST: the key reading 4 is worded on.**  "A set of values stated at more than
+#: one position is written once and referenced, never restated ... no value list appears
+#: twice in the emitted tree."  The kind rides along because ``['1', '2']`` and ``[1, 2]``
+#: render two different bases and are two value lists.
+Vocabulary = tuple[str, tuple[object, ...]]
+
+
+def value_list(stated: Stated) -> Vocabulary:
+    """The VALUE LIST ``stated`` states, which is what an entry is keyed on.
+
+    **COARSER than :func:`identity`, and the difference is measured rather than argued.**
+    Reading 4 is worded on the value list -- "no value list appears twice in the emitted
+    tree" -- and §3a's structural identity splits one value list wherever two positions
+    state it with any other admitting keyword spelled differently.  Over this bundle's 169
+    value lists stated at more than one position, **159 carry one structural identity and
+    10 carry two; in all 10 the whole of the difference is a redundant ``type: "string"``
+    beside an all-``str`` ``enum``**, which admits not one value more.  So the coarser key
+    merges no two positions that admit different sets, and
+    ``tests/test_catalogue.py``'s own check of that is what keeps the sentence true: a
+    group whose positions differ in a keyword that NARROWS would redden there rather than
+    collapse here.
+
+    It is what §3a's "stronger rule" needs to reach at all.  *Reporting Status View* is
+    titled at ``protocol/get-reporting-status-request.json``'s ``view`` and restated
+    untitled beside a ``type`` at two error branches of the response; under the structural
+    key the titled identity and the untitled one are two entries, the second carries no
+    title, and §3a's "one type, named for the title, referenced by every position" cannot
+    be applied to it.
+    """
+    return (KIND[type(stated.members[0])], stated.members)
+
 
 def states(bundle_dir: Path, documents: Collection[str] | None = None) -> Iterator[Stated]:
     """Every position of the bundle that STATES a vocabulary this layer collects.
@@ -491,8 +572,15 @@ def states(bundle_dir: Path, documents: Collection[str] | None = None) -> Iterat
     bundle and the parameter is documented as a test's: the two readings differ and only
     one of them is a function of the pinned input.
     """
+    names = bundle.named_nodes(bundle_dir)
     for document in sorted(documents if documents is not None else bundle.portable(bundle_dir)):
         doc = bundle.read(bundle_dir, document)
+        # The ``definitions`` entries of this document that NO ``$ref`` names, which §5
+        # lowers no type from: a position inside one declares nothing, so it cannot be an
+        # entry's home (:attr:`Stated.reached`).
+        unreferenced = tuple(
+            sorted(bundle.section_entries(doc) - names.get(document, frozenset()))
+        )
         for pointer, node, position in bundle.nodes_at(doc):
             members = vocabulary(node)
             if members is None:
@@ -505,12 +593,151 @@ def states(bundle_dir: Path, documents: Collection[str] | None = None) -> Iterat
                 members=members,
                 title=title if isinstance(title, str) and title.strip() else None,
                 identity=identity(node),
+                reached=not any(pointer.startswith(entry) for entry in unreferenced),
             )
 
 
 def titles(positions: Collection[Stated]) -> frozenset[str]:
     """The distinct titles the bundle gives this vocabulary, which decides §3a's case."""
     return frozenset(p.title for p in positions if p.title is not None)
+
+
+def ranked(position: Stated, title: str | None) -> tuple[object, ...]:
+    """:attr:`Entry.naming`'s order over the positions of one entry, best first.
+
+    A root carrying the entry's own title, then any position carrying it, then any root,
+    then the bundle's own order.  §1 is what puts the roots first: "every portable document
+    contributes a symbol", so a root cannot become a reference to another document's class
+    and is the one position of its group that MUST declare.
+    """
+    return (
+        not position.reached,
+        not (position.is_a_root and position.title == title),
+        position.title != title,
+        not position.is_a_root,
+        position.document,
+        position.pointer,
+    )
+
+
+def beneath(bundle_dir: Path) -> dict[str, frozenset[str]]:
+    """document -> every document it reaches through a ``$ref``, transitively.
+
+    A reading of the BUNDLE and not of the run, which is §9's rule and the same one
+    :func:`collect` is permitted by: the answer is the same for a one-document command and
+    for a whole-population emission.
+    """
+    direct: dict[str, set[str]] = {}
+    for edge in bundle.edges(bundle_dir):
+        if edge.target is not None and edge.target != edge.document:
+            direct.setdefault(edge.document, set()).add(edge.target)
+    out: dict[str, frozenset[str]] = {}
+    for document in direct:
+        seen: set[str] = set()
+        unread = [document]
+        while unread:
+            for target in direct.get(unread.pop(), ()):
+                if target not in seen:
+                    seen.add(target)
+                    unread.append(target)
+        out[document] = frozenset(seen)
+    return out
+
+
+def declared_at(
+    positions: Collection[Stated], title: str | None, reaches: Mapping[str, frozenset[str]]
+) -> Stated:
+    """The position a vocabulary's ONE class is declared at (:attr:`Entry.naming`).
+
+    A TITLE or a ROOT answers it outright and :func:`ranked` is that order.  **What is left
+    is a vocabulary the bundle names at no position and states at no root**, and there §3a
+    says both where the entry belongs and why the obvious answer is wrong:
+
+        "An entry lives in the NARROWEST namespace that contains every position
+        referencing it ... **But a cycle is only possible if the shared type lives INSIDE a
+        document module.**  Put the catalogue in its own layer beneath every document
+        module and the dependency arrows point one way, so a cycle is not avoided by care
+        -- it is unrepresentable."
+
+    **That layer is not built here and the reason is a question §3a does not settle: the
+    NAME.**  An entry in a module with no document has no position for §4 to derive a name
+    at, and §4's collision rule lengthens a colliding name "by its own nearest ancestor
+    segment" -- which an entry stated at six positions has six of.  Measured over this
+    bundle under §3a's own namespace rule, 8 of the 95 untitled entries collide inside the
+    namespace it sends them to: six distinct value lists derive ``Reason`` in the shared
+    one, ``Mode`` and ``Unit`` collide in ``core`` and ``Status`` in ``media_buy``.  Until
+    that sentence exists an entry is declared at a POSITION, where §4 names it and §1's
+    domain-scope rule resolves it, and nothing is minted.
+
+    **So the home is the stating document the other stating documents ALREADY REACH**, and
+    the arrow a restatement adds then runs the way the bundle's own references already run.
+    Measured over this bundle, against two other orders that are equally functions of it:
+
+    ======================================================  ==========================
+    the home is                                             reference cycles the
+                                                            catalogue edge closes
+    ======================================================  ==========================
+    the first stating position in bundle order                                       4
+    the last                                                                         5
+    **the document the most other stating documents reach**                      **0**
+    ======================================================  ==========================
+
+    A cycle is a VERDICT for every document on it (``emit.order``), so the two rejected
+    orders do not emit a wrong answer -- they refuse 9 documents.  **This order is
+    measured cycle-free and not cycle-free by construction**, which is exactly the
+    difference §3a's layer buys and is why this function names it.
+    """
+    best = min(positions, key=lambda p: ranked(p, title))
+    if best.title == title and title is not None or best.is_a_root:
+        return best
+    documents = {p.document for p in positions}
+
+    def already_beneath(position: Stated) -> tuple[object, ...]:
+        others = documents - {position.document}
+        under = sum(1 for other in others if position.document in reaches.get(other, ()))
+        # ``reached`` first, for :attr:`Stated.reached`'s own reason: a home the walk
+        # lowers nothing from declares no class for anything to reference.
+        return (not position.reached, -under, position.document, position.pointer)
+
+    return min(positions, key=already_beneath)
+
+
+def the_name(positions: Collection[Stated], stated: Collection[str]) -> str | None:
+    """The one title that NAMES this value list, or ``None`` where §3a's conflict rule
+    holds.
+
+    One title and it is the name.  Two or more, and **§3a's correction of 2026-11-02
+    decides between them by whether either belongs to a document of its own**:
+
+        "§3a said of two titles over one member set that *'in neither case is there a
+        third name to collapse to, and minting one is what §4 refuses'*.  That is right
+        about minting and wrong about the population it ranges over: where one of the
+        titles belongs to a **document of its own**, §1 has already given that vocabulary
+        an exported symbol and §3a's own rule says a document root is already a home.
+        There is nothing to mint, because the bundle named it.  The other title is then a
+        restating position that happens to carry a title of its own -- a case §3a did not
+        cover -- and a local title does not create a second type over an identical member
+        set, because no value distinguishes them.  **So the conflict rule applies only
+        where NEITHER title is a document root.**"
+
+    So exactly one rooted title is the name, and that is this bundle's
+    *Delivery Recipient Cloud* against *Reporting Cloud*: ``aws, azure, gcp`` stated at
+    ``enums/delivery-recipient-cloud.json``'s own root and restated under a title at
+    ``core/reporting-dataset-share.json``.  **Minting a third name for it -- the ``Cloud``
+    that reads best and that no document states -- is what §4 refuses**, and the root
+    makes the mint unnecessary rather than merely wrong.
+
+    ``None`` where two or more titles are each a root, because then §1 obliges both
+    documents to export a symbol and neither can become a reference to the other: that is
+    *Catalog Action* / *Creative Action* and *Canonical Media Buy Action Mode* /
+    *Media Buy Action Mode*, two titled ``enums/`` documents apiece.  §3a's answer for
+    them is unchanged -- "a conflict is reported and left alone, and the only judgement is
+    whether to file it upstream".
+    """
+    if len(stated) == 1:
+        return next(iter(stated))
+    rooted = {p.title for p in positions if p.is_a_root and p.title is not None}
+    return next(iter(rooted)) if len(rooted) == 1 else None
 
 
 def home(entry: Entry) -> str:
@@ -534,20 +761,25 @@ def home(entry: Entry) -> str:
 def collect(bundle_dir: Path, documents: Collection[str] | None = None) -> Catalogue:
     """Layer L0 over the bundle: one pass, before naming (§3a).
 
-    The three groups are a PARTITION of the identities stated at more than one position,
-    and the partition is the thing a check ranges over: an identity is stated in one
+    The four groups are a PARTITION of the VALUE LISTS stated at more than one position,
+    and the partition is the thing a check ranges over: a value list is stated in one
     document (:attr:`Catalogue.restated`) or in several, and in the second case the bundle
-    gives it one title (:attr:`Catalogue.entries`), none (:attr:`Catalogue.untitled`) or
-    more than one (:attr:`Catalogue.conflicting`).  Nothing falls outside and nothing is
-    counted twice.
+    names it (:attr:`Catalogue.entries`), names it nowhere (:attr:`Catalogue.untitled`) or
+    gives it two names neither of which is a document's own
+    (:attr:`Catalogue.conflicting`).  Nothing falls outside and nothing is counted twice.
+
+    **Keyed on the VALUE LIST and not on §3a's structural identity** --
+    :func:`value_list` carries the measurement that makes the two interchangeable here and
+    the one case the coarser key reaches that the finer one cannot.
     """
-    grouped: dict[tuple[tuple[str, str], ...], list[Stated]] = {}
+    reaches = beneath(bundle_dir)
+    grouped: dict[Vocabulary, list[Stated]] = {}
     every: list[Stated] = []
     for position in states(bundle_dir, documents):
         every.append(position)
-        grouped.setdefault(position.identity, []).append(position)
+        grouped.setdefault(value_list(position), []).append(position)
 
-    entries: dict[tuple[tuple[str, str], ...], Entry] = {}
+    entries: dict[Vocabulary, Entry] = {}
     untitled: list[tuple[Stated, ...]] = []
     conflicting: list[Conflict] = []
     restated: list[tuple[Stated, ...]] = []
@@ -559,24 +791,40 @@ def collect(bundle_dir: Path, documents: Collection[str] | None = None) -> Catal
             continue
         stated_titles = titles(group)
         if not stated_titles:
-            untitled.append(tuple(group))
-            continue
-        if len(stated_titles) > 1:
-            conflicting.append(
-                Conflict(key, tuple(sorted(stated_titles)), tuple(group))
+            # **§3a's JUDGEMENT, for the value lists the bundle names nowhere**, which is
+            # the one question this collection cannot derive and ``codegen/vocabularies.py``
+            # is where it is declared.  §3a's default for an untitled vocabulary is that it
+            # is NOT collapsed, so an un-rowed value list falls through to ``untitled``
+            # exactly as every untitled one did before the rows existed.
+            if not vocabularies.one_subject(key):
+                untitled.append(tuple(group))
+                continue
+            at = declared_at(group, None, reaches)
+            entries[key] = Entry(
+                vocabulary=key,
+                members=at.members,
+                kind=KIND[type(at.members[0])],
+                title=None,
+                positions=tuple(group),
+                name=vocabularies.judged(key),
+                at=at,
             )
             continue
-        title = next(iter(stated_titles))
-        # The NAMING position is the one the title is stated at, and its member order is
-        # the entry's: §3a derives the name from the bundle, so the document that names
-        # the concept is the one whose spelling of it the entry carries.
-        naming = next(p for p in group if p.title == title)
+        title = the_name(group, stated_titles)
+        if title is None:
+            conflicting.append(Conflict(key, tuple(sorted(stated_titles)), tuple(group)))
+            continue
+        # The entry's member order is the NAMING position's: §3a derives the name from the
+        # bundle, so the document that names the concept is the one whose spelling of it
+        # the entry carries.
+        naming = declared_at(group, title, reaches)
         entries[key] = Entry(
-            identity=key,
+            vocabulary=key,
             members=naming.members,
             kind=KIND[type(naming.members[0])],
             title=title,
             positions=tuple(group),
+            at=naming,
         )
     return Catalogue(
         entries=entries,

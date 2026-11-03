@@ -11,6 +11,7 @@ from adcp.types._runtime import ConditionalRequired, Distinct, Match, NegatedCon
 from adcp.types.constraints import StrMatching38E7F7CC
 
 from ..enums.daast_version import DAASTVersion
+from .assets.daast_tracker_asset import Target
 
 
 class DaastEvent(StrEnum):
@@ -30,9 +31,7 @@ class DaastEvent(StrEnum):
     CLOSE = 'close'
 
 
-class DaastTarget(StrEnum):
-    LINEAR = 'linear'
-    COMPANION = 'companion'
+DaastTarget = Target
 
 
 DaastOffset = StrMatching38E7F7CC

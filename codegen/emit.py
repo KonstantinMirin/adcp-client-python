@@ -623,6 +623,7 @@ def lower_document(
     asked: set[tuple[str, str]] | None = None,
     inherited: Mapping[str, Target | Refusal] | None = None,
     vocabularies: Mapping[str, Target] | None = None,
+    restatements: Mapping[tuple[object, ...], Target | str] | None = None,
 ) -> tuple[Module, str] | Refusal:
     """One document's module and root symbol, or the refusal the walk returned.
 
@@ -648,6 +649,9 @@ def lower_document(
         # Empty for a document lowered outside a run, exactly as ``targets`` is: §9
         # forbids a reading of the run and a walk with no table mints no reference.
         vocabularies=vocabularies if vocabularies is not None else {},
+        # The same table keyed on the VALUE LIST, for the restating positions no pointer
+        # of this document's own text reaches (:attr:`Module.restatements`).
+        restatements=restatements if restatements is not None else {},
         referenced=referenced if referenced is not None else {},
         reserved=reserved,
         # The run's own record of which sites this walk asked about, handed IN so that
@@ -1250,6 +1254,7 @@ def decidable(
     inherited: Mapping[str, Target | Refusal],
     census: Mapping[str, frozenset[str]],
     vocabularies: Mapping[str, Target] = {},
+    restatements: Mapping[tuple[object, ...], Target | str] = {},
     *,
     known: Collection[str],
 ) -> tuple[Module, ir.Module] | Refusal:
@@ -1274,7 +1279,16 @@ def decidable(
     and no in-flight stack to push.
     """
     outcome = lower_document(
-        document, doc, targets, named, referenced, reserved, asked, inherited, vocabularies
+        document,
+        doc,
+        targets,
+        named,
+        referenced,
+        reserved,
+        asked,
+        inherited,
+        vocabularies,
+        restatements,
     )
     if isinstance(outcome, Refusal):
         return outcome
@@ -1980,6 +1994,8 @@ def emit(
         """
         out: dict[str, Target] = {}
         for pointer, home in sorted(restating.get(document, {}).items()):
+            if home.document == document:
+                continue
             held = lowered.get(home.document)
             if held is None:
                 continue
@@ -2007,6 +2023,48 @@ def emit(
             )
         return out
 
+    def restatements(document: str) -> dict[tuple[object, ...], Target | str]:
+        """§3a's catalogue keyed on the VALUE LIST, for this document's own walk.
+
+        :attr:`compiler.Module.restatements` states what the two kinds of row are for and
+        measures each.  What is derived here is the same three things
+        :func:`vocabularies` derives -- the spelling, the symbol and the home's document --
+        plus the one answer that is not a Target at all: where the home is a position of
+        THIS document, the reference is local and the value is the home's POINTER, which
+        ``lower/names.py`` resolves to a symbol in the same pass that names the home.
+
+        **The home's own pointer is never a key**, which is what keeps the home declaring:
+        a map whose entry pointed its own home at itself would leave the value list
+        declared nowhere.
+
+        **It is NOT narrowed to the documents that STATE the entry**, and that is the
+        composed case's whole requirement: ``core/postal-area.json`` states none of the
+        three per-country vocabularies and re-lowers all three.  Nothing is widened by
+        that, because this collection sees every position of the bundle that states a
+        value list -- so an enum node in a document that states none of them is a node
+        some base stated and this document re-derived, which is the same vocabulary by
+        construction rather than by coincidence.
+        """
+        out: dict[tuple[object, ...], Target | str] = {}
+        for entry in l0.entries.values():
+            home = entry.naming
+            if home.document == document:
+                out[entry.members] = home.pointer
+                continue
+            held = lowered.get(home.document)
+            if held is None:
+                continue
+            symbol = held[1].symbols.get(home.pointer)
+            if symbol is None:
+                continue
+            out[entry.members] = Target(
+                module=relative_module(document, home.document, package_roots),
+                symbol=symbol,
+                document=home.document,
+                kind=compiler.TargetKind.ANNOTATION,
+            )
+        return out
+
     for document in ordered:
         doc = bundle.read(bundle_dir, document)
         outcome = decidable(
@@ -2026,6 +2084,7 @@ def emit(
             inherited_sites(document),
             census.get(domain(document), {}),
             vocabularies(document),
+            restatements(document),
             known=known,
         )
         if isinstance(outcome, Refusal):

@@ -13,7 +13,7 @@ from adcp.types.constraints import HttpUrl, StrMatching32F5291C, StrMatching5E98
 from ..enums.reporting_finality import ReportingFinality
 from .reporting_canonicalization_contract import ReportingPrimaryKey
 from .reporting_dataset_share_destination import ReportingCloud
-from .reporting_delivery_method import ReportingOrchestration
+from .reporting_delivery_method import Format, ReportingOrchestration
 from .reporting_reconciliation_mode import ReportingReconciliationMode
 from .reporting_resource import ReportingReaderCompatibilityItem
 from .reporting_schedule_offering import ReportingScheduleOffering
@@ -71,14 +71,6 @@ class MethodProvider(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-delivery-offering.json', pointer='#/properties/method/properties/provider')
     domain: StrMatching32F5291C
-
-
-class Format(StrEnum):
-    JSONL = 'jsonl'
-    CSV = 'csv'
-    PARQUET = 'parquet'
-    AVRO = 'avro'
-    ORC = 'orc'
 
 
 ProducerIdentityProvider = MethodProvider

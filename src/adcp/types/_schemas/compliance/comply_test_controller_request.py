@@ -14,7 +14,7 @@ from adcp.types.constraints import FloatMin0Max100, StrMatching43E30B32, StrMaxL
 from ..core.brand_ref import BrandReference
 from ..core.committed_metric import CommittedMetricVendorQualifier
 from ..core.context import ContextObject
-from ..core.delivery_metrics import DoohMetrics, Viewability
+from ..core.delivery_metrics import DoohMetrics, Kind, Viewability
 from ..core.duration import Duration
 from ..core.ext import ExtensionObject
 from ..core.reporting_status_issue import ReportingStatusSeverity
@@ -84,15 +84,6 @@ class ReportedSpend(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='compliance/comply-test-controller-request.json', pointer='#/properties/params/properties/reported_spend')
     amount: NonNegativeFloat
     currency: StrMatching43E30B32
-
-
-class Kind(StrEnum):
-    """
-    Window kind. `cumulative` — no period field required. `period` and `rolling` — period field REQUIRED.
-    """
-    CUMULATIVE = 'cumulative'
-    PERIOD = 'period'
-    ROLLING = 'rolling'
 
 
 class Period(Duration):

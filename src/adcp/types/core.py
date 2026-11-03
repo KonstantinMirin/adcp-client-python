@@ -426,7 +426,6 @@ from ._schemas.core.bidding_policy import (
 )
 from ._schemas.core.bidding_policy_capability import (
     BiddingPolicyCapability as BiddingPolicyCapability,
-    MaxBidWithRoasRoasStrengthsItem as MaxBidWithRoasRoasStrengthsItem,
 )
 from ._schemas.core.brand_id import (
     BrandID as BrandID,
@@ -704,6 +703,7 @@ from ._schemas.core.creative_variant import (
 from ._schemas.core.daast_tracker_constraints import (
     DAASTTrackerConstraints as DAASTTrackerConstraints,
     DaastOffset as DaastOffset,
+    DaastTarget as DaastTarget,
     DaastVersions as DaastVersions,
 )
 from ._schemas.core.data_provider_signal_selector import (
@@ -1525,6 +1525,7 @@ from ._schemas.core.reporting_coverage import (
 )
 from ._schemas.core.reporting_dataset_share_destination import (
     ProvisionRecipient as ProvisionRecipient,
+    ReportingCloud as ReportingCloud,
     ReportingDatasetShareDestination as ReportingDatasetShareDestination,
     ReportingDatasetShareDestinationExisting as ReportingDatasetShareDestinationExisting,
 )
@@ -1934,6 +1935,7 @@ from ._schemas.core.vendor_pricing_option import (
 )
 from ._schemas.core.verification_token_claims import (
     AgenticAdvertisingOrgVerificationTokenClaims as AgenticAdvertisingOrgVerificationTokenClaims,
+    VerificationTokenGradingProfile as VerificationTokenGradingProfile,
 )
 from ._schemas.core.version_envelope import (
     AdCPVersionEnvelope as AdCPVersionEnvelope,
@@ -2287,6 +2289,7 @@ __all__ = [
     'DAASTTrackerAsset',
     'DAASTTrackerConstraints',
     'DaastOffset',
+    'DaastTarget',
     'DaastVersions',
     'DataProviderSignalSelector',
     'DataProviderSignalSelectorAll',
@@ -2517,7 +2520,6 @@ __all__ = [
     'MarkdownAsset',
     'MarkdownAssetRequirements',
     'MaterialDeadline',
-    'MaxBidWithRoasRoasStrengthsItem',
     'MeasurementReadiness',
     'MeasurementTerms',
     'MeasurementWindow',
@@ -2741,6 +2743,7 @@ __all__ = [
     'ReportingCanonicalContentDigest',
     'ReportingCanonicalizationContract',
     'ReportingCapabilities',
+    'ReportingCloud',
     'ReportingConsumerStatus',
     'ReportingControlTotal',
     'ReportingCoverage',
@@ -2923,6 +2926,7 @@ __all__ = [
     'VendorPricingOptionFlatFee',
     'VendorPricingOptionPerUnit',
     'VendorPricingOptionPercentOfMedia',
+    'VerificationTokenGradingProfile',
     'VideoAsset',
     'VideoAssetRequirements',
     'WarehouseMaterialization',

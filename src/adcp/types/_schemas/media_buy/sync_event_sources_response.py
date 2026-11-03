@@ -21,6 +21,7 @@ from ..core.version_envelope import AdCPVersionEnvelope
 from ..enums.action_source import ActionSource
 from ..enums.canceled_by import CanceledBy
 from ..enums.event_type import EventType
+from .sync_audiences_response import Action
 
 
 class SyncEventSourcesResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope):
@@ -60,17 +61,6 @@ class Setup(AdCPBaseModel):
     snippet: Annotated[str | None, Field(description='Code snippet to place on the site (JavaScript, HTML pixel, etc.)')] = None
     snippet_type: Annotated[SnippetType | None, Field(description="Type of implementation. 'server_only' means no client-side tag is needed.")] = None
     instructions: Annotated[str | None, Field(description='Human/agent-readable setup instructions')] = None
-
-
-class Action(StrEnum):
-    """
-    Action taken for this event source
-    """
-    CREATED = 'created'
-    UPDATED = 'updated'
-    UNCHANGED = 'unchanged'
-    DELETED = 'deleted'
-    FAILED = 'failed'
 
 
 class EventSourcesItem(AdCPBaseModel):

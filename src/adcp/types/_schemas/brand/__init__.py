@@ -1187,17 +1187,6 @@ class ColorConstraint(AdCPBaseModel):
     description: Annotated[str | None, Field(description='Human-readable rationale or source-language summary for the rule.')] = None
 
 
-class LogoVariant(StrEnum):
-    """
-    Logo variant this rule applies to.
-    """
-    PRIMARY = 'primary'
-    SECONDARY = 'secondary'
-    ICON = 'icon'
-    WORDMARK = 'wordmark'
-    FULL_LOCKUP = 'full-lockup'
-
-
 class MinimumSize(AdCPBaseModel):
     """
     Minimum rendered size needed for legibility.
@@ -1224,7 +1213,7 @@ class LogoUsageRule(AdCPBaseModel):
     )
     logo_url: Annotated[HttpUrl | None, Field(description='Specific logo asset URL this rule applies to. Omit when the rule applies by variant or tags.')] = None
     logo_id: Annotated[LogoId | None, Field(description='Stable `logos[].id` this rule applies to. Prefer this over logo_url when the rule targets a specific logo entry.')] = None
-    logo_variant: Annotated[LogoVariant | None, Field(description='Logo variant this rule applies to.')] = None
+    logo_variant: Annotated[Variant | None, Field(description='Logo variant this rule applies to.')] = None
     logo_tags: Annotated[list[str] | None, Field(description='Logo tags this rule applies to.', min_length=1)] = None
     contexts: Annotated[list[str] | None, Field(description='Creative contexts where this rule applies.')] = None
     slots: Annotated[list[LogoSlot] | None, Field(description='Canonical renderer slots where this rule applies. Use this for deterministic logo-card, profile-mark, end-card, and lockup selection.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None

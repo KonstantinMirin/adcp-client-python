@@ -16,14 +16,8 @@ from ..enums.macro_processing_operation import MacroProcessingOperation
 from ..enums.macro_resolution_reason import MacroResolutionReason
 from ..enums.macro_resolver import MacroProcessingActor
 from ..enums.universal_macro import UniversalMacro
+from .macro_declaration import UnavailableBehavior
 from .macro_encoding import MacroEncoding
-
-
-class UnavailableBehavior(StrEnum):
-    PRESERVE = 'preserve'
-    OMIT_PARAMETER = 'omit_parameter'
-    DIALECT_SENTINEL = 'dialect_sentinel'
-    REJECT = 'reject'
 
 
 class Status(StrEnum):

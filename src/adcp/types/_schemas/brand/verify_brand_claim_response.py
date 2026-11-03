@@ -36,17 +36,7 @@ class VerifyBrandClaimResponse(BranchDispatchMixin, AdCPVersionEnvelope, Protoco
         return "oneOf"
 
 
-class VerifyBrandClaimSuccessClaimType(StrEnum):
-    """
-    Echoes the request's claim_type for caller-side routing.
-    """
-    SUBSIDIARY = 'subsidiary'
-    PARENT = 'parent'
-    PROPERTY = 'property'
-    TRADEMARK = 'trademark'
-
-
-class SignedSuccessPayloadClaimType(StrEnum):
+class ClaimType(StrEnum):
     SUBSIDIARY = 'subsidiary'
     PARENT = 'parent'
     PROPERTY = 'property'
@@ -64,7 +54,7 @@ class SignedSuccessPayload(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('errors',), ('signed_response',))),
     )
-    claim_type: SignedSuccessPayloadClaimType
+    claim_type: ClaimType
     verification_status: VerificationStatus
     details: dict[str, Any] | None = None
     context_note: StrMaxLen500 | None = None
@@ -103,7 +93,7 @@ class VerifyBrandClaimSuccess(VerifyBrandClaimResponse):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('errors',),)),
     )
-    claim_type: Annotated[VerifyBrandClaimSuccessClaimType, Field(description="Echoes the request's claim_type for caller-side routing.")]
+    claim_type: Annotated[ClaimType, Field(description="Echoes the request's claim_type for caller-side routing.")]
     verification_status: Annotated[VerificationStatus, Field(description='Verification status. Not every status applies to every claim_type — see the task page for the applicable subset. Renamed from `status` in 3.1 to free the top-level `status` key for the envelope task-status (TaskStatus) under MCP flat-on-the-wire serialization (#4878).')]
     details: Annotated[dict[str, Any] | None, Field(description="Per-claim-type response fields. Shape varies — see the task page for each claim_type's expected fields. Examples: subsidiary returns brand_id + first_observed_by_house_at + expected_resolution_window_days; parent returns house_domain; property returns relationship + regions + use_case_authorization; trademark returns matched_registration + licensor_domain + countries + nice_classes + use_case_authorization.")] = None
     context_note: Annotated[StrMaxLen500 | None, Field(description='Public — free-text context the brand chooses to surface. For disputed/transferring, typically carries the rationale or transition details.')] = None
