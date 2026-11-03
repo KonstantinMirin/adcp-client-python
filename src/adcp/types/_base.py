@@ -357,6 +357,77 @@ def through_the_store(node: Any, root: Any) -> Any:
 #: :func:`through_the_store`.
 _STORE_HOPS = 4
 
+
+def store_expanded(node: Any, root: Any) -> Any:
+    """``node`` with the record's own storage PUT BACK, one shared object per entry.
+
+    **THE ONE SEAM A READER OF A NODE DEREFERENCES THROUGH**, which is the architecture
+    section's own sentence: "The hoisting is a storage representation and the readers
+    dereference through it; it is not a renaming."  :func:`schema_at` is where it is
+    applied, so every reader that asks the package for the schema a class names gets the
+    text the record stated before the storage existed -- the same content, and the same
+    sharing.
+
+    **Applied at the ACCESSOR and not at the validator**, and the difference is the SDK's
+    own cost: :func:`_refuse_at` hands ``jsonschema`` the node and the DOCUMENT, and
+    ``jsonschema`` resolves a reference lazily at the instance path that reaches it, so
+    ``strict_validate`` pays nothing for the storage and never expands it.  A reader that
+    WALKS the node -- the harness's own descents, a payload generator that inlines before
+    it draws -- needs the text, and that is what this is for.
+
+    **One expansion per entry, placed at every occurrence**, which is :func:`record`'s own
+    rule in ``codegen.bundle``: ``json.dumps`` writes a shared object out once per
+    occurrence and ``copy.deepcopy`` copies it once, so the text and the copy are the ones
+    a fresh expansion per occurrence would produce, at the cost of one.
+
+    **IT WALKS EVERY VALUE AND NOT ONLY THE SCHEMA POSITIONS**, because this module
+    carries no descent table and must not grow a second one -- ``codegen.keywords`` is the
+    one declaration of which keys hold a subschema and the package does not ship it.  What
+    makes that sound is the predicate rather than the walk: :func:`through_the_store` takes
+    a hop only for a mapping whose ONE key is a ``$ref`` naming an entry that EXISTS in
+    this root's section, so instance data under an ``enum``, a ``const`` or an
+    ``examples`` would have to spell the storage's own reference exactly to be touched.
+    That it is untouched is not argued but measured, in both directions, by
+    ``tests/test_fragment_ref.py::test_the_storage_states_what_the_inlined_record_states``:
+    a data value this put back would survive neither round trip, because
+    ``codegen.bundle.stored`` writes at a schema position only.
+
+    **The entries are DROPPED from the section they were added to.**  After the expansion
+    nothing references them, and leaving them would double the root's own text -- once in
+    the copy a generator takes and once in the key its canonicalisation is memoised under.
+    A document that STATED an empty section and also had a subtree stored comes back with
+    no section rather than an empty one; draft-07 gives a section no assertion behaviour,
+    so the two state the same thing, and 0 documents of the 3.2 bundle state an empty one.
+    """
+    done: dict[int, Any] = {}
+
+    def put_back(one: Any) -> Any:
+        one = through_the_store(one, root)
+        if isinstance(one, dict):
+            held = done.get(id(one))
+            if held is not None:
+                return held
+            out = {key: put_back(value) for key, value in one.items()}
+            section = out.get(STORE_SECTION)
+            if isinstance(section, dict):
+                kept = {k: v for k, v in section.items() if not is_a_store_entry(k)}
+                if kept:
+                    out[STORE_SECTION] = kept
+                else:
+                    out.pop(STORE_SECTION)
+            done[id(one)] = out
+            return out
+        if isinstance(one, list):
+            held = done.get(id(one))
+            if held is not None:
+                return held
+            out_list = [put_back(value) for value in one]
+            done[id(one)] = out_list
+            return out_list
+        return one
+
+    return put_back(node)
+
 #: The keywords an enclosing node states ABOUT THE SAME INSTANCE beside its ``type``
 #: word, conjoined into the node below it by :func:`_conjunction`.
 #:
@@ -912,8 +983,19 @@ def schema_at(ref: SchemaRef) -> dict:
     :func:`applied_schema` is what makes "its own node" mean the node as the document
     applies it rather than the node read alone; it says which fact that adds and why
     that is the only one.
+
+    **THE RECORD'S OWN STORAGE IS PUT BACK HERE, AND THIS IS THE ONE PLACE IT IS.**  The
+    carried document stores each distinct subtree once and references it at every
+    occurrence (``docs/plan/architecture.md``, "THE RECORD'S TEXT IS A DAG; ITS POINTERS
+    ARE NOT"), and that section makes the hoisting invisible: "the readers dereference
+    through it; it is not a renaming."  This function is the accessor every reader of a
+    node goes through, so the dereference is here and nowhere else -- a reader that walks
+    the node, builds a validator on it alone, or inlines it before drawing from it sees
+    the text the record stated before the storage existed.  :func:`store_expanded` says
+    why the accessor and not the validator, and what it costs.
     """
-    return applied_schema(_document(ref.document), ref.pointer)
+    root = _document(ref.document)
+    return store_expanded(applied_schema(root, ref.pointer), root)
 
 
 def _refuse_at(ref: SchemaRef, payload: Any, name: str) -> None:
