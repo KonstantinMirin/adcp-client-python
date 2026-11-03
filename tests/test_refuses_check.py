@@ -196,7 +196,8 @@ def test_a_class_wider_than_its_document_fails_and_names_the_value() -> None:
     row = next(r for r in result.undeclared if r[1] == "maxLength")
     # EXACTLY one character past the bound: §8's witness is "both sides of each bound and
     # the bound itself", so a reader of the failure sees which boundary was crossed.
-    assert len(json.loads(row[0])) == 4
+    assert len(json.loads(row[0])) > len("abc")
+    assert len(json.loads(row[0])) < len("abcd") + 1
     assert "maxLength" in row[2]
     # The same document and a class that carries the bound: every witness is refused.
     assert check_refuses(schema, TypeAdapter(Bounded3).validate_python, "abc").outcome == "pass"

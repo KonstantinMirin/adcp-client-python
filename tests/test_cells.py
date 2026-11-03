@@ -48,7 +48,6 @@ two sentences the design documents would have to move.
 
 from __future__ import annotations
 
-import collections
 import functools
 from typing import Any
 
@@ -67,7 +66,7 @@ from cells import (
     stated_by_the_bundle,
     wrap,
 )
-from nodeset import claimed
+from nodeset import claimed, partitions
 from pydantic import TypeAdapter
 from codegen import harness
 
@@ -186,6 +185,14 @@ def test_every_live_cell_reaches_an_outcome() -> None:
     ``adcp-client-python-zxf``.  The failure is reported with the CELL named, because the
     keyword is what a fix is aimed at.
     """
+    outcomes = claimed(
+        "live cells with an outcome",
+        {cell for cell, verdicts in graded().items() if verdicts.outcome},
+        inside=live(),
+    )
+    # EVERY live cell and not most of them: a cell ``grade`` returned no outcome for would
+    # be absent from the comprehension below rather than failing it.
+    assert live() - outcomes == set()
     unparseable = {
         cell: verdicts.outcome
         for cell, verdicts in graded().items()
@@ -202,11 +209,12 @@ def test_every_deferred_cell_names_its_keyword() -> None:
     the keyword: a refusal with no keyword is a document refused for a reason nobody can
     aim a row at.
     """
-    nameless = {
-        cell
-        for cell, verdicts in graded().items()
-        if verdicts.outcome in ("verdict", "deferred") and not verdicts.refused_on
-    }
+    refusing = claimed(
+        "live cells that refuse",
+        {c for c, v in graded().items() if v.outcome in ("verdict", "deferred")},
+        inside=live(),
+    )
+    nameless = {cell for cell in refusing if not graded()[cell].refused_on}
     assert nameless == set(), sorted(nameless)
 
 
@@ -286,12 +294,12 @@ def test_the_cells_the_bundle_does_not_state_are_reported_with_their_denominator
         assert "required" not in probe.node, (keyword, sorted(probe.node))
     # The report's own arithmetic: the three outcomes account for every live cell, so a
     # cell cannot leave one bucket without arriving in another.
-    buckets = collections.Counter(
-        "proved" if v.proved else "refused" if v.refused_on else "unproved"
-        for v in graded().values()
-    )
-    assert sum(buckets.values()) == LIVE
-    assert buckets["unproved"] == len(failing)
+    assert partitions(
+        live(),
+        proved={c for c, v in graded().items() if v.proved},
+        refused={c for c, v in graded().items() if not v.proved and v.refused_on},
+        unproved=failing,
+    ) == live()
 
 
 # --------------------------------------------------------------------------- #
