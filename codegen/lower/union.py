@@ -164,7 +164,7 @@ later: the population grades 0 non-empty ``_ROOT_REQUIRED``.
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass, replace
 from typing import Any
 
@@ -693,7 +693,45 @@ class Branch:
         return self.node.get("properties") if self.inherits is None else self.inherits.shape.properties
 
 
-def discriminator(planned: Sequence[Branch], named: str | None) -> str:
+def guaranteed(planned: Sequence[Branch], root_required: Collection[str]) -> frozenset[str]:
+    """The keys the document guarantees are PRESENT in every instance this union admits.
+
+    §4's first dispatch source is a total function from the instance to one branch, and a
+    key the document lets an instance omit is not one.  Two entailments give the
+    guarantee and this reads both, because either alone is incomplete on this bundle:
+
+    * the key is in the ROOT's own ``required``.  §4: "Every keyword beside the
+      combinator compiles onto the base, and every branch inherits it" -- draft-07
+      applies a root's ``required`` to the same instance every branch describes, so a key
+      the root requires is present in every instance the union admits whatever a branch
+      says about it.  ``creative/preview-creative-response.json``'s
+      ``#/oneOf/1/properties/results/items`` is the bundle's one case: both branches pin
+      ``success`` and NEITHER requires it, and the root's ``required: [success,
+      creative_id]`` is what makes the pin a discriminator.
+    * every BRANCH requires it (:func:`requires`, which reads the ``required`` inside an
+      ``allOf`` conjunct and a bare ``$ref`` branch's target as well).  That is the other
+      83 of the 84 roots that derive a key.
+
+    **``required`` is read and the ``oneOf`` entailment is NOT, and that is a correction
+    to §4 rather than an omission.**  §4 says "a ``oneOf`` whose branches pin distinct
+    values requires the key by implication -- absent, the instance matches several
+    branches and ``oneOf`` admits none".  It does not: an absent key satisfies every
+    branch's pin VACUOUSLY, so the instance matches the branches whose OTHER constraints
+    it satisfies, and where that is exactly one ``oneOf`` admits it with the key still
+    absent.  ``oneOf: [{properties: {k: {const: "a"}}, required: ["x"]}, {properties: {k:
+    {const: "b"}}, required: ["y"]}]`` admits ``{"x": 1}``, which carries no ``k``.  So
+    the implication is not an entailment, and reading it would re-admit exactly the
+    undefined function this predicate exists to exclude.  It is also unnecessary: the one
+    site §4 wrote it for is the ``success`` row above, whose guarantee is the root's own
+    ``required``.
+    """
+    required = [requires(p) for p in planned]
+    return frozenset(root_required) | frozenset.intersection(*required)
+
+
+def discriminator(
+    planned: Sequence[Branch], named: str | None, root_required: Collection[str] = ()
+) -> str:
     """§4's FIRST dispatch source: the property whose ``const`` selects the branch.
 
     DERIVED FROM THE BRANCHES, never from the keyword.  A union whose branches each pin
@@ -704,14 +742,37 @@ def discriminator(planned: Sequence[Branch], named: str | None) -> str:
     declared) and the second is what keeps a stale keyword from naming a property only
     some branches pin.
 
-    Two clauses, and the second is the one that makes the key SELECT rather than
-    merely exist:
+    Three clauses, and the third is the one that makes the key DETERMINE the branch
+    rather than merely be pinned on it:
 
     * SHARED -- every branch pins it.  A property only some branches pin cannot route a
       payload that carries one of the others.
     * DISTINCT -- the branches' values for it are pairwise different.  Two branches
       pinning one property to one value are not told apart by it, and pydantic refuses
       such a union at class-build time rather than at validation.
+    * GUARANTEED PRESENT -- the document admits no instance that omits it
+      (:func:`guaranteed`).
+
+    **PINNING IS NOT DETERMINING, and the third clause is the whole of the difference**
+    (§4, decided 2026-11-02: "A ``const`` every branch pins on one shared property AND
+    every branch REQUIRES").  A discriminator is a total function from the instance to
+    one branch; a pin on a key a branch lets an instance OMIT determines nothing when the
+    key is absent, so such a key is not a discriminator and this source does not apply --
+    the union falls to source 3.  Pydantic raises ``PydanticUserError: needs field <key>
+    to be of type Literal`` on an ``Optional[Literal[...]]`` discriminator for exactly
+    that reason; it is refusing an undefined function, not imposing a limitation of its
+    own, and there is nothing to work around.  Reading the key ourselves in
+    ``BranchDispatchMixin._dispatch`` fails identically: an absent key cannot be read.
+
+    **The first two clauses and the three agree wherever the pinned key is guaranteed**,
+    which is 83 of the 84 roots that derive a key here, so testing the weaker predicate
+    passed nearly everywhere and failed only on
+    ``media-buy/refine-proposals-response.json`` -- whose ``/anyOf/0`` pins ``status`` to
+    ``completed`` without requiring it while ``/anyOf/1``'s target requires it, so every
+    ``RefineProposalsResponse.model_validate`` raised before validating any payload
+    (``adcp-client-python-82m.23``).  That near-agreement is why the clause is named here
+    rather than patched in silently: the weak reading looks right in every case a reader
+    checks by hand.
 
     ``discriminator.propertyName`` is READ where the branches confirm it, and it is read
     first: a document declaring one has said which of several confirmed candidates it
@@ -719,17 +780,24 @@ def discriminator(planned: Sequence[Branch], named: str | None) -> str:
     Where the branches confirm exactly one candidate it is the answer with or without
     the keyword.  Where they confirm several and the document names none, the choice IS
     a function of spelling and this refuses rather than taking the alphabetically first.
+    Measured over the 1,054 portable documents: **no union of this bundle confirms more
+    than one candidate** -- 118 calls confirm exactly one and 65 confirm none -- so the
+    keyword decides nothing here and no candidate is ever preferred over another.  The
+    requiredness clause is therefore a FILTER and not a tie-break: it keeps the one
+    candidate or it drops it.
 
     **Empty IS returned, and it means "this root has no KEY to dispatch on".**  It does
     not mean the root has no dispatch: §4's third source is the branches being pairwise
     disjoint, which needs no key, and :func:`overlapping` is what asks that question of
     the same branches.  So an empty answer here is a question handed on rather than a
     refusal, and the refusal that does fire belongs to the third source.  Measured over
-    the 1,054 portable documents: 7 roots reach that hand-off, 5 of them are disjoint and
-    emit, and 2 overlap.
+    the 1,054 portable documents: 8 roots reach that hand-off, 6 of them are disjoint and
+    emit, and 2 overlap.  ``refine-proposals-response``'s root is the sixth: its
+    branches' ``required`` sets are disjoint (``[results, products]`` against ``[status,
+    task_id]``), so source 3 separates them and a plain union dispatches by the payload.
     """
     maps = [pins(p.properties) for p in planned]
-    shared = set.intersection(*(set(m) for m in maps))
+    shared = set.intersection(*(set(m) for m in maps)) & guaranteed(planned, root_required)
     candidates = sorted(k for k in shared if len({m[k] for m in maps}) == len(maps))
     if named is not None and named in candidates:
         return named
@@ -1356,7 +1424,11 @@ def lower_union(
         if isinstance(plan, Refusal):
             return plan
         planned.append(plan)
-    on = discriminator(planned, named)
+    # ``node.required`` is the third clause's other entailment (:func:`guaranteed`): the
+    # root's own ``required`` applies to the same instance every branch describes, so a
+    # key it names is present whatever a branch says about it.  It is the same list
+    # ``_ROOT_REQUIRED`` carries below, read once.
+    on = discriminator(planned, named, node.required)
     overlaps = overlapping(planned, node) if not on else []
     if overlaps:
         # **§4's three dispatch sources, and the refusal for a union matching none of
@@ -2169,7 +2241,7 @@ def _undetermined(node: "nodes.Union", mod: compiler.Module) -> None:
         for word, plan in zip(applied, planned, strict=True)
     ):
         return
-    if discriminator(planned, dispatch_key(node)):
+    if discriminator(planned, dispatch_key(node), node.required):
         return
     if not overlapping(planned, node):
         return
