@@ -17,12 +17,7 @@
       "description": "Declares supported postal area systems. Native support is keyed by ISO 3166-1 alpha-2 country with arrays of country-local postal systems. Deprecated country-fused boolean aliases may be included during migration.",
       "properties": {
         "AT": {
-          "items": {
-            "const": "plz"
-          },
-          "minItems": 1,
-          "type": "array",
-          "uniqueItems": true
+          "$ref": "#/definitions/Shared0"
         },
         "AU": {
           "items": {
@@ -52,20 +47,10 @@
           "uniqueItems": true
         },
         "CH": {
-          "items": {
-            "const": "plz"
-          },
-          "minItems": 1,
-          "type": "array",
-          "uniqueItems": true
+          "$ref": "#/definitions/Shared0"
         },
         "DE": {
-          "items": {
-            "const": "plz"
-          },
-          "minItems": 1,
-          "type": "array",
-          "uniqueItems": true
+          "$ref": "#/definitions/Shared0"
         },
         "FR": {
           "items": {
@@ -114,48 +99,37 @@
           "uniqueItems": true
         },
         "at_plz": {
-          "deprecated": true,
-          "type": "boolean"
+          "$ref": "#/definitions/Shared1"
         },
         "au_postcode": {
-          "deprecated": true,
-          "type": "boolean"
+          "$ref": "#/definitions/Shared1"
         },
         "ca_fsa": {
-          "deprecated": true,
-          "type": "boolean"
+          "$ref": "#/definitions/Shared1"
         },
         "ca_full": {
-          "deprecated": true,
-          "type": "boolean"
+          "$ref": "#/definitions/Shared1"
         },
         "ch_plz": {
-          "deprecated": true,
-          "type": "boolean"
+          "$ref": "#/definitions/Shared1"
         },
         "de_plz": {
-          "deprecated": true,
-          "type": "boolean"
+          "$ref": "#/definitions/Shared1"
         },
         "fr_code_postal": {
-          "deprecated": true,
-          "type": "boolean"
+          "$ref": "#/definitions/Shared1"
         },
         "gb_full": {
-          "deprecated": true,
-          "type": "boolean"
+          "$ref": "#/definitions/Shared1"
         },
         "gb_outward": {
-          "deprecated": true,
-          "type": "boolean"
+          "$ref": "#/definitions/Shared1"
         },
         "us_zip": {
-          "deprecated": true,
-          "type": "boolean"
+          "$ref": "#/definitions/Shared1"
         },
         "us_zip_plus_four": {
-          "deprecated": true,
-          "type": "boolean"
+          "$ref": "#/definitions/Shared1"
         }
       },
       "propertyNames": {
@@ -192,42 +166,59 @@
       "minProperties": 1,
       "properties": {
         "at_plz": {
-          "const": true
+          "$ref": "#/definitions/Shared2"
         },
         "au_postcode": {
-          "const": true
+          "$ref": "#/definitions/Shared2"
         },
         "ca_fsa": {
-          "const": true
+          "$ref": "#/definitions/Shared2"
         },
         "ca_full": {
-          "const": true
+          "$ref": "#/definitions/Shared2"
         },
         "ch_plz": {
-          "const": true
+          "$ref": "#/definitions/Shared2"
         },
         "de_plz": {
-          "const": true
+          "$ref": "#/definitions/Shared2"
         },
         "fr_code_postal": {
-          "const": true
+          "$ref": "#/definitions/Shared2"
         },
         "gb_full": {
-          "const": true
+          "$ref": "#/definitions/Shared2"
         },
         "gb_outward": {
-          "const": true
+          "$ref": "#/definitions/Shared2"
         },
         "us_zip": {
-          "const": true
+          "$ref": "#/definitions/Shared2"
         },
         "us_zip_plus_four": {
-          "const": true
+          "$ref": "#/definitions/Shared2"
         }
       },
       "type": "object"
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "items": {
+        "const": "plz"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "Shared1": {
+      "deprecated": true,
+      "type": "boolean"
+    },
+    "Shared2": {
+      "const": true
+    }
+  },
   "description": "Non-vacuous postal capability used for hard targeting requirements and product overlay support. At least one native system array or true-valued deprecated alias is required. The general seller-capabilities postal schema remains permissive for backward compatibility, but an empty or false-only map cannot satisfy a hard discovery requirement.",
   "title": "Positive Postal Area Support"
 }

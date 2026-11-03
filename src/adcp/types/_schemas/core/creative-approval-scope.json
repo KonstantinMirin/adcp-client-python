@@ -14,9 +14,7 @@
         ]
       },
       "then": {
-        "required": [
-          "rejection_reason"
-        ]
+        "$ref": "#/definitions/Shared0"
       }
     },
     {
@@ -35,13 +33,18 @@
       },
       "then": {
         "not": {
-          "required": [
-            "rejection_reason"
-          ]
+          "$ref": "#/definitions/Shared0"
         }
       }
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "required": [
+        "rejection_reason"
+      ]
+    }
+  },
   "description": "Approval outcome for one publisher or placement scope inside a package\u2013creative assignment. Used when a multi-publisher package does not have one uniform approval outcome.",
   "properties": {
     "approval_status": {

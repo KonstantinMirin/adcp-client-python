@@ -54,6 +54,37 @@
       }
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "const": "sha256",
+      "type": "string"
+    },
+    "Shared1": {
+      "pattern": "^[A-Fa-f0-9]{64}$",
+      "type": "string"
+    },
+    "Shared2": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$",
+      "type": "string"
+    },
+    "Shared3": {
+      "description": "Profile-defined unit such as impressions or an ISO 4217 currency code.",
+      "maxLength": 32,
+      "minLength": 1,
+      "type": "string"
+    },
+    "Shared4": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Credential-free, destination-relative reference to one reporting data object. For an object store, this is the decoded object key relative to the configured destination, not an absolute URI and not a URI with a version query parameter. Providers URI-encode this value only when constructing their own storage request. The 1024-character limit accommodates an S3 object key of up to 1024 UTF-8 bytes because every Unicode character occupies at least one UTF-8 byte; JSON Schema maxLength counts characters rather than bytes.",
+      "maxLength": 1024,
+      "minLength": 1,
+      "title": "Reporting File Object Reference",
+      "type": "string",
+      "x-status": "experimental"
+    }
+  },
   "description": "Producer evidence for one materialization, with an explicit assurance profile. Native commit and manifest profiles prove a committed destination plus row counts and control totals without claiming full logical-content equality. canonical_digest adds exact logical equality and is required for billing. A separate authenticated consumer receipt records what the consumer actually reconciled.",
   "properties": {
     "canonical_content_digest": {
@@ -62,8 +93,7 @@
       "description": "Cryptographic digest of logical reporting rows under an immutable canonicalization contract.",
       "properties": {
         "algorithm": {
-          "const": "sha256",
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         },
         "canonicalization_id": {
           "maxLength": 128,
@@ -71,8 +101,7 @@
           "type": "string"
         },
         "canonicalization_sha256": {
-          "pattern": "^[A-Fa-f0-9]{64}$",
-          "type": "string"
+          "$ref": "#/definitions/Shared1"
         },
         "canonicalization_uri": {
           "description": "Location of the exact immutable canonicalization contract. Consumers verify canonicalization_sha256 before applying it.",
@@ -81,8 +110,7 @@
           "type": "string"
         },
         "value": {
-          "pattern": "^[A-Fa-f0-9]{64}$",
-          "type": "string"
+          "$ref": "#/definitions/Shared1"
         }
       },
       "required": [
@@ -106,16 +134,10 @@
             "additionalProperties": false,
             "properties": {
               "name": {
-                "maxLength": 128,
-                "minLength": 1,
-                "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$",
-                "type": "string"
+                "$ref": "#/definitions/Shared2"
               },
               "unit": {
-                "description": "Profile-defined unit such as impressions or an ISO 4217 currency code.",
-                "maxLength": 32,
-                "minLength": 1,
-                "type": "string"
+                "$ref": "#/definitions/Shared3"
               },
               "value": {
                 "description": "Canonical base-10 integer with no exponent, grouping separator, decimal point, or insignificant leading zeroes.",
@@ -139,16 +161,10 @@
             "additionalProperties": false,
             "properties": {
               "name": {
-                "maxLength": 128,
-                "minLength": 1,
-                "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$",
-                "type": "string"
+                "$ref": "#/definitions/Shared2"
               },
               "unit": {
-                "description": "Profile-defined unit such as impressions or an ISO 4217 currency code.",
-                "maxLength": 32,
-                "minLength": 1,
-                "type": "string"
+                "$ref": "#/definitions/Shared3"
               },
               "value": {
                 "description": "Canonical base-10 decimal with no exponent, grouping separator, or insignificant leading zeroes.",
@@ -210,21 +226,13 @@
             "additionalProperties": false,
             "properties": {
               "algorithm": {
-                "const": "sha256",
-                "type": "string"
+                "$ref": "#/definitions/Shared0"
               },
               "object_ref": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "description": "Credential-free, destination-relative reference to one reporting data object. For an object store, this is the decoded object key relative to the configured destination, not an absolute URI and not a URI with a version query parameter. Providers URI-encode this value only when constructing their own storage request. The 1024-character limit accommodates an S3 object key of up to 1024 UTF-8 bytes because every Unicode character occupies at least one UTF-8 byte; JSON Schema maxLength counts characters rather than bytes.",
-                "maxLength": 1024,
-                "minLength": 1,
-                "title": "Reporting File Object Reference",
-                "type": "string",
-                "x-status": "experimental"
+                "$ref": "#/definitions/Shared4"
               },
               "value": {
-                "pattern": "^[A-Fa-f0-9]{64}$",
-                "type": "string"
+                "$ref": "#/definitions/Shared1"
               }
             },
             "required": [
@@ -243,13 +251,7 @@
                 "type": "string"
               },
               "object_ref": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "description": "Credential-free, destination-relative reference to one reporting data object. For an object store, this is the decoded object key relative to the configured destination, not an absolute URI and not a URI with a version query parameter. Providers URI-encode this value only when constructing their own storage request. The 1024-character limit accommodates an S3 object key of up to 1024 UTF-8 bytes because every Unicode character occupies at least one UTF-8 byte; JSON Schema maxLength counts characters rather than bytes.",
-                "maxLength": 1024,
-                "minLength": 1,
-                "title": "Reporting File Object Reference",
-                "type": "string",
-                "x-status": "experimental"
+                "$ref": "#/definitions/Shared4"
               },
               "value": {
                 "pattern": "^[A-Fa-f0-9]{128}$",

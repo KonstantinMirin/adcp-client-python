@@ -1,6 +1,15 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": false,
+  "definitions": {
+    "Shared0": {
+      "type": "string"
+    },
+    "Shared1": {
+      "minLength": 1,
+      "type": "string"
+    }
+  },
   "description": "Definition of a policy category in the registry. Policy categories group related regulatory regimes (e.g., 'children_directed' groups COPPA, UK AADC, GDPR Article 8). Used on campaign plans (plan.policy_categories), signal definitions (signal-definition.policy_categories), and policy entries (policy-entry.policy_categories) to connect campaigns and data to the right regulatory frameworks.",
   "properties": {
     "category_id": {
@@ -19,8 +28,7 @@
         "additionalProperties": false,
         "properties": {
           "description": {
-            "minLength": 1,
-            "type": "string"
+            "$ref": "#/definitions/Shared1"
           },
           "facet_id": {
             "pattern": "^[a-z][a-z0-9_]*$",
@@ -28,8 +36,7 @@
             "x-entity": "governance_policy_category_facet"
           },
           "name": {
-            "minLength": 1,
-            "type": "string"
+            "$ref": "#/definitions/Shared1"
           }
         },
         "required": [
@@ -49,7 +56,7 @@
     "industries": {
       "description": "Industries where this category commonly applies (e.g., 'pharmaceutical' for age_restricted). Governance agents MAY suggest relevant categories when a plan's brand industry matches but no policy_categories are declared.",
       "items": {
-        "type": "string"
+        "$ref": "#/definitions/Shared0"
       },
       "type": "array"
     },
@@ -65,7 +72,7 @@
           "jurisdictions": {
             "description": "ISO 3166-1 alpha-2 codes where this framework applies.",
             "items": {
-              "type": "string"
+              "$ref": "#/definitions/Shared0"
             },
             "type": "array"
           },

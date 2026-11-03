@@ -236,8 +236,23 @@ def resolve(
     ``_RefResolutionError: Unresolvable JSON pointer``.  Pass the document and the
     same call inlines it (``salesagent-j3k2l.28``).
     """
-    doc = copy.deepcopy(schema)
-    scope = copy.deepcopy(doc if referrer is None else referrer)
+    #: **THE RECORD'S OWN STORAGE IS PUT BACK HERE AND NOT LEFT TO THE LIBRARY**, which
+    #: is ``bundle.expanded``'s whole reason.  ``bundle.stored`` writes a repeated subtree
+    #: once and references it at each occurrence; ``resolve_all_refs`` merges the
+    #: referring node with a FRESH resolution at every ``$ref`` and holds no memo, so
+    #: delegating the storage to it reintroduces exactly the duplication the storage
+    #: removed -- measured at 0.02 s per pair with the expansion here against 3.4 s
+    #: without it over ``adagents.json``'s 25 pairs.  Expanded here the generator is
+    #: handed the same content and the same sharing it was handed before the storage
+    #: existed, and ``copy.deepcopy`` below preserves that sharing because it memoises on
+    #: identity.
+    #:
+    #: The SCOPE is expanded too, and against itself: it is what a local pointer resolves
+    #: against, so a storage reference left in it would resolve to a node holding another
+    #: reference the library would then have to chase per occurrence.
+    scope = referrer if referrer is not None else schema
+    doc = copy.deepcopy(bundle.expanded(schema, scope))
+    scope = copy.deepcopy(bundle.expanded(scope, scope))
     resolver = LocalResolver(base_uri=base_uri, referrer=scope, store=dict(store))
     return resolve_all_refs(doc, resolver=resolver)
 

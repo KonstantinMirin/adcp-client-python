@@ -1,6 +1,15 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
+  "definitions": {
+    "Shared0": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    }
+  },
   "description": "Terminal success response. In AdCP 3.x evaluation_id is an optional migration field that providers SHOULD emit; it becomes required in AdCP 4.0. When present, it is the provider-side reconciliation identity allocated when the evaluation was accepted and remains stable across exact replays and asynchronous completion.",
   "not": {
     "anyOf": [
@@ -101,11 +110,7 @@
             "type": "object"
           },
           "ext": {
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "additionalProperties": true,
-            "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-            "title": "Extension Object",
-            "type": "object"
+            "$ref": "#/definitions/Shared0"
           },
           "field": {
             "description": "Resolved creative manifest path for the risky claim side of the observation, for example `creative_manifest.provenance.disclosure.required`. Some observations are triggered by a combination of fields; `field` anchors the primary claim, not necessarily every field in the trigger condition.",
@@ -196,11 +201,7 @@
       "x-entity": "creative_evaluation"
     },
     "ext": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "additionalProperties": true,
-      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-      "title": "Extension Object",
-      "type": "object"
+      "$ref": "#/definitions/Shared0"
     },
     "pricing_option_id": {
       "description": "Which rate card pricing option was applied for this evaluation. Present when the governance agent charges for evaluations and account was provided in the request.",
@@ -231,11 +232,7 @@
             "type": "string"
           },
           "ext": {
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "additionalProperties": true,
-            "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-            "title": "Extension Object",
-            "type": "object"
+            "$ref": "#/definitions/Shared0"
           },
           "feature_id": {
             "description": "The feature that was evaluated (e.g., 'auto_redirect', 'brand_consistency'). Features prefixed with 'registry:' reference standardized policies from the shared policy registry (e.g., 'registry:eu_ai_act_article_50'). Unprefixed feature IDs are agent-defined.",

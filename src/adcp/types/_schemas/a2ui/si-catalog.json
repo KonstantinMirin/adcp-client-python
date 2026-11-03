@@ -8,10 +8,10 @@
           "additionalProperties": {
             "properties": {
               "appId": {
-                "type": "string"
+                "$ref": "#/definitions/Shared8"
               },
               "deepLink": {
-                "type": "string"
+                "$ref": "#/definitions/Shared8"
               },
               "url": {
                 "format": "uri",
@@ -37,84 +37,7 @@
           "properties": {
             "context": {
               "additionalProperties": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "description": "A value that can be a literal or bound to a path in the data model",
-                "oneOf": [
-                  {
-                    "additionalProperties": false,
-                    "description": "Literal string value",
-                    "properties": {
-                      "literalString": {
-                        "description": "Static string value",
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "literalString"
-                    ],
-                    "type": "object"
-                  },
-                  {
-                    "additionalProperties": false,
-                    "description": "Literal number value",
-                    "properties": {
-                      "literalNumber": {
-                        "description": "Static number value",
-                        "type": "number"
-                      }
-                    },
-                    "required": [
-                      "literalNumber"
-                    ],
-                    "type": "object"
-                  },
-                  {
-                    "additionalProperties": false,
-                    "description": "Literal boolean value",
-                    "properties": {
-                      "literalBoolean": {
-                        "description": "Static boolean value",
-                        "type": "boolean"
-                      }
-                    },
-                    "required": [
-                      "literalBoolean"
-                    ],
-                    "type": "object"
-                  },
-                  {
-                    "additionalProperties": false,
-                    "description": "Path to data model value",
-                    "properties": {
-                      "path": {
-                        "description": "JSON pointer path to value in data model (e.g., '/products/0/title')",
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "path"
-                    ],
-                    "type": "object"
-                  },
-                  {
-                    "additionalProperties": false,
-                    "description": "Literal with path binding (sets default and binds)",
-                    "properties": {
-                      "literalString": {
-                        "type": "string"
-                      },
-                      "path": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "literalString",
-                      "path"
-                    ],
-                    "type": "object"
-                  }
-                ],
-                "title": "A2UI Bound Value"
+                "$ref": "#/definitions/Shared0"
               },
               "description": "Context data to include with action",
               "type": "object"
@@ -130,161 +53,26 @@
           "type": "object"
         },
         "disabled": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "description": "A value that can be a literal or bound to a path in the data model",
-          "oneOf": [
-            {
-              "additionalProperties": false,
-              "description": "Literal string value",
-              "properties": {
-                "literalString": {
-                  "description": "Static string value",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "literalString"
-              ],
-              "type": "object"
-            },
-            {
-              "additionalProperties": false,
-              "description": "Literal number value",
-              "properties": {
-                "literalNumber": {
-                  "description": "Static number value",
-                  "type": "number"
-                }
-              },
-              "required": [
-                "literalNumber"
-              ],
-              "type": "object"
-            },
-            {
-              "additionalProperties": false,
-              "description": "Literal boolean value",
-              "properties": {
-                "literalBoolean": {
-                  "description": "Static boolean value",
-                  "type": "boolean"
-                }
-              },
-              "required": [
-                "literalBoolean"
-              ],
-              "type": "object"
-            },
-            {
-              "additionalProperties": false,
-              "description": "Path to data model value",
-              "properties": {
-                "path": {
-                  "description": "JSON pointer path to value in data model (e.g., '/products/0/title')",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "path"
-              ],
-              "type": "object"
-            },
-            {
-              "additionalProperties": false,
-              "description": "Literal with path binding (sets default and binds)",
-              "properties": {
-                "literalString": {
-                  "type": "string"
-                },
-                "path": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "literalString",
-                "path"
-              ],
-              "type": "object"
-            }
-          ],
-          "title": "A2UI Bound Value"
+          "$ref": "#/definitions/Shared0"
         },
         "label": {
           "$schema": "http://json-schema.org/draft-07/schema#",
           "description": "Button label text",
           "oneOf": [
             {
-              "additionalProperties": false,
-              "description": "Literal string value",
-              "properties": {
-                "literalString": {
-                  "description": "Static string value",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "literalString"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared3"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal number value",
-              "properties": {
-                "literalNumber": {
-                  "description": "Static number value",
-                  "type": "number"
-                }
-              },
-              "required": [
-                "literalNumber"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared4"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal boolean value",
-              "properties": {
-                "literalBoolean": {
-                  "description": "Static boolean value",
-                  "type": "boolean"
-                }
-              },
-              "required": [
-                "literalBoolean"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared5"
             },
             {
-              "additionalProperties": false,
-              "description": "Path to data model value",
-              "properties": {
-                "path": {
-                  "description": "JSON pointer path to value in data model (e.g., '/products/0/title')",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "path"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared6"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal with path binding (sets default and binds)",
-              "properties": {
-                "literalString": {
-                  "type": "string"
-                },
-                "path": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "literalString",
-                "path"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared7"
             }
           ],
           "title": "A2UI Bound Value"
@@ -312,90 +100,10 @@
           "description": "Action to trigger on card click",
           "properties": {
             "context": {
-              "additionalProperties": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "description": "A value that can be a literal or bound to a path in the data model",
-                "oneOf": [
-                  {
-                    "additionalProperties": false,
-                    "description": "Literal string value",
-                    "properties": {
-                      "literalString": {
-                        "description": "Static string value",
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "literalString"
-                    ],
-                    "type": "object"
-                  },
-                  {
-                    "additionalProperties": false,
-                    "description": "Literal number value",
-                    "properties": {
-                      "literalNumber": {
-                        "description": "Static number value",
-                        "type": "number"
-                      }
-                    },
-                    "required": [
-                      "literalNumber"
-                    ],
-                    "type": "object"
-                  },
-                  {
-                    "additionalProperties": false,
-                    "description": "Literal boolean value",
-                    "properties": {
-                      "literalBoolean": {
-                        "description": "Static boolean value",
-                        "type": "boolean"
-                      }
-                    },
-                    "required": [
-                      "literalBoolean"
-                    ],
-                    "type": "object"
-                  },
-                  {
-                    "additionalProperties": false,
-                    "description": "Path to data model value",
-                    "properties": {
-                      "path": {
-                        "description": "JSON pointer path to value in data model (e.g., '/products/0/title')",
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "path"
-                    ],
-                    "type": "object"
-                  },
-                  {
-                    "additionalProperties": false,
-                    "description": "Literal with path binding (sets default and binds)",
-                    "properties": {
-                      "literalString": {
-                        "type": "string"
-                      },
-                      "path": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "literalString",
-                      "path"
-                    ],
-                    "type": "object"
-                  }
-                ],
-                "title": "A2UI Bound Value"
-              },
-              "type": "object"
+              "$ref": "#/definitions/Shared9"
             },
             "name": {
-              "type": "string"
+              "$ref": "#/definitions/Shared8"
             }
           },
           "required": [
@@ -408,164 +116,44 @@
           "description": "Badge text (e.g., 'New', 'Sale')",
           "oneOf": [
             {
-              "additionalProperties": false,
-              "description": "Literal string value",
-              "properties": {
-                "literalString": {
-                  "description": "Static string value",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "literalString"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared3"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal number value",
-              "properties": {
-                "literalNumber": {
-                  "description": "Static number value",
-                  "type": "number"
-                }
-              },
-              "required": [
-                "literalNumber"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared4"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal boolean value",
-              "properties": {
-                "literalBoolean": {
-                  "description": "Static boolean value",
-                  "type": "boolean"
-                }
-              },
-              "required": [
-                "literalBoolean"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared5"
             },
             {
-              "additionalProperties": false,
-              "description": "Path to data model value",
-              "properties": {
-                "path": {
-                  "description": "JSON pointer path to value in data model (e.g., '/products/0/title')",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "path"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared6"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal with path binding (sets default and binds)",
-              "properties": {
-                "literalString": {
-                  "type": "string"
-                },
-                "path": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "literalString",
-                "path"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared7"
             }
           ],
           "title": "A2UI Bound Value"
         },
         "children": {
-          "description": "Child component IDs",
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
+          "$ref": "#/definitions/Shared1"
         },
         "image": {
           "$schema": "http://json-schema.org/draft-07/schema#",
           "description": "Card image URL",
           "oneOf": [
             {
-              "additionalProperties": false,
-              "description": "Literal string value",
-              "properties": {
-                "literalString": {
-                  "description": "Static string value",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "literalString"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared3"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal number value",
-              "properties": {
-                "literalNumber": {
-                  "description": "Static number value",
-                  "type": "number"
-                }
-              },
-              "required": [
-                "literalNumber"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared4"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal boolean value",
-              "properties": {
-                "literalBoolean": {
-                  "description": "Static boolean value",
-                  "type": "boolean"
-                }
-              },
-              "required": [
-                "literalBoolean"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared5"
             },
             {
-              "additionalProperties": false,
-              "description": "Path to data model value",
-              "properties": {
-                "path": {
-                  "description": "JSON pointer path to value in data model (e.g., '/products/0/title')",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "path"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared6"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal with path binding (sets default and binds)",
-              "properties": {
-                "literalString": {
-                  "type": "string"
-                },
-                "path": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "literalString",
-                "path"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared7"
             }
           ],
           "title": "A2UI Bound Value"
@@ -575,77 +163,19 @@
           "description": "Card subtitle",
           "oneOf": [
             {
-              "additionalProperties": false,
-              "description": "Literal string value",
-              "properties": {
-                "literalString": {
-                  "description": "Static string value",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "literalString"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared3"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal number value",
-              "properties": {
-                "literalNumber": {
-                  "description": "Static number value",
-                  "type": "number"
-                }
-              },
-              "required": [
-                "literalNumber"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared4"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal boolean value",
-              "properties": {
-                "literalBoolean": {
-                  "description": "Static boolean value",
-                  "type": "boolean"
-                }
-              },
-              "required": [
-                "literalBoolean"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared5"
             },
             {
-              "additionalProperties": false,
-              "description": "Path to data model value",
-              "properties": {
-                "path": {
-                  "description": "JSON pointer path to value in data model (e.g., '/products/0/title')",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "path"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared6"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal with path binding (sets default and binds)",
-              "properties": {
-                "literalString": {
-                  "type": "string"
-                },
-                "path": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "literalString",
-                "path"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared7"
             }
           ],
           "title": "A2UI Bound Value"
@@ -655,77 +185,19 @@
           "description": "Card title",
           "oneOf": [
             {
-              "additionalProperties": false,
-              "description": "Literal string value",
-              "properties": {
-                "literalString": {
-                  "description": "Static string value",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "literalString"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared3"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal number value",
-              "properties": {
-                "literalNumber": {
-                  "description": "Static number value",
-                  "type": "number"
-                }
-              },
-              "required": [
-                "literalNumber"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared4"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal boolean value",
-              "properties": {
-                "literalBoolean": {
-                  "description": "Static boolean value",
-                  "type": "boolean"
-                }
-              },
-              "required": [
-                "literalBoolean"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared5"
             },
             {
-              "additionalProperties": false,
-              "description": "Path to data model value",
-              "properties": {
-                "path": {
-                  "description": "JSON pointer path to value in data model (e.g., '/products/0/title')",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "path"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared6"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal with path binding (sets default and binds)",
-              "properties": {
-                "literalString": {
-                  "type": "string"
-                },
-                "path": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "literalString",
-                "path"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared7"
             }
           ],
           "title": "A2UI Bound Value"
@@ -750,16 +222,10 @@
           "type": "string"
         },
         "children": {
-          "description": "Child component IDs",
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
+          "$ref": "#/definitions/Shared1"
         },
         "gap": {
-          "default": "8px",
-          "description": "Gap between children",
-          "type": "string"
+          "$ref": "#/definitions/Shared2"
         }
       },
       "required": [
@@ -775,77 +241,19 @@
           "description": "Alt text for accessibility",
           "oneOf": [
             {
-              "additionalProperties": false,
-              "description": "Literal string value",
-              "properties": {
-                "literalString": {
-                  "description": "Static string value",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "literalString"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared3"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal number value",
-              "properties": {
-                "literalNumber": {
-                  "description": "Static number value",
-                  "type": "number"
-                }
-              },
-              "required": [
-                "literalNumber"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared4"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal boolean value",
-              "properties": {
-                "literalBoolean": {
-                  "description": "Static boolean value",
-                  "type": "boolean"
-                }
-              },
-              "required": [
-                "literalBoolean"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared5"
             },
             {
-              "additionalProperties": false,
-              "description": "Path to data model value",
-              "properties": {
-                "path": {
-                  "description": "JSON pointer path to value in data model (e.g., '/products/0/title')",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "path"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared6"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal with path binding (sets default and binds)",
-              "properties": {
-                "literalString": {
-                  "type": "string"
-                },
-                "path": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "literalString",
-                "path"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared7"
             }
           ],
           "title": "A2UI Bound Value"
@@ -859,77 +267,19 @@
           "description": "Image source URL",
           "oneOf": [
             {
-              "additionalProperties": false,
-              "description": "Literal string value",
-              "properties": {
-                "literalString": {
-                  "description": "Static string value",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "literalString"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared3"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal number value",
-              "properties": {
-                "literalNumber": {
-                  "description": "Static number value",
-                  "type": "number"
-                }
-              },
-              "required": [
-                "literalNumber"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared4"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal boolean value",
-              "properties": {
-                "literalBoolean": {
-                  "description": "Static boolean value",
-                  "type": "boolean"
-                }
-              },
-              "required": [
-                "literalBoolean"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared5"
             },
             {
-              "additionalProperties": false,
-              "description": "Path to data model value",
-              "properties": {
-                "path": {
-                  "description": "JSON pointer path to value in data model (e.g., '/products/0/title')",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "path"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared6"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal with path binding (sets default and binds)",
-              "properties": {
-                "literalString": {
-                  "type": "string"
-                },
-                "path": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "literalString",
-                "path"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared7"
             }
           ],
           "title": "A2UI Bound Value"
@@ -958,77 +308,19 @@
           "description": "Button label",
           "oneOf": [
             {
-              "additionalProperties": false,
-              "description": "Literal string value",
-              "properties": {
-                "literalString": {
-                  "description": "Static string value",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "literalString"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared3"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal number value",
-              "properties": {
-                "literalNumber": {
-                  "description": "Static number value",
-                  "type": "number"
-                }
-              },
-              "required": [
-                "literalNumber"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared4"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal boolean value",
-              "properties": {
-                "literalBoolean": {
-                  "description": "Static boolean value",
-                  "type": "boolean"
-                }
-              },
-              "required": [
-                "literalBoolean"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared5"
             },
             {
-              "additionalProperties": false,
-              "description": "Path to data model value",
-              "properties": {
-                "path": {
-                  "description": "JSON pointer path to value in data model (e.g., '/products/0/title')",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "path"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared6"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal with path binding (sets default and binds)",
-              "properties": {
-                "literalString": {
-                  "type": "string"
-                },
-                "path": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "literalString",
-                "path"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared7"
             }
           ],
           "title": "A2UI Bound Value"
@@ -1046,77 +338,19 @@
           "description": "Integration endpoint URL",
           "oneOf": [
             {
-              "additionalProperties": false,
-              "description": "Literal string value",
-              "properties": {
-                "literalString": {
-                  "description": "Static string value",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "literalString"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared3"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal number value",
-              "properties": {
-                "literalNumber": {
-                  "description": "Static number value",
-                  "type": "number"
-                }
-              },
-              "required": [
-                "literalNumber"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared4"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal boolean value",
-              "properties": {
-                "literalBoolean": {
-                  "description": "Static boolean value",
-                  "type": "boolean"
-                }
-              },
-              "required": [
-                "literalBoolean"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared5"
             },
             {
-              "additionalProperties": false,
-              "description": "Path to data model value",
-              "properties": {
-                "path": {
-                  "description": "JSON pointer path to value in data model (e.g., '/products/0/title')",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "path"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared6"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal with path binding (sets default and binds)",
-              "properties": {
-                "literalString": {
-                  "type": "string"
-                },
-                "path": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "literalString",
-                "path"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared7"
             }
           ],
           "title": "A2UI Bound Value"
@@ -1141,77 +375,19 @@
           "description": "Link text",
           "oneOf": [
             {
-              "additionalProperties": false,
-              "description": "Literal string value",
-              "properties": {
-                "literalString": {
-                  "description": "Static string value",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "literalString"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared3"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal number value",
-              "properties": {
-                "literalNumber": {
-                  "description": "Static number value",
-                  "type": "number"
-                }
-              },
-              "required": [
-                "literalNumber"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared4"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal boolean value",
-              "properties": {
-                "literalBoolean": {
-                  "description": "Static boolean value",
-                  "type": "boolean"
-                }
-              },
-              "required": [
-                "literalBoolean"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared5"
             },
             {
-              "additionalProperties": false,
-              "description": "Path to data model value",
-              "properties": {
-                "path": {
-                  "description": "JSON pointer path to value in data model (e.g., '/products/0/title')",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "path"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared6"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal with path binding (sets default and binds)",
-              "properties": {
-                "literalString": {
-                  "type": "string"
-                },
-                "path": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "literalString",
-                "path"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared7"
             }
           ],
           "title": "A2UI Bound Value"
@@ -1221,77 +397,19 @@
           "description": "URL to navigate to",
           "oneOf": [
             {
-              "additionalProperties": false,
-              "description": "Literal string value",
-              "properties": {
-                "literalString": {
-                  "description": "Static string value",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "literalString"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared3"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal number value",
-              "properties": {
-                "literalNumber": {
-                  "description": "Static number value",
-                  "type": "number"
-                }
-              },
-              "required": [
-                "literalNumber"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared4"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal boolean value",
-              "properties": {
-                "literalBoolean": {
-                  "description": "Static boolean value",
-                  "type": "boolean"
-                }
-              },
-              "required": [
-                "literalBoolean"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared5"
             },
             {
-              "additionalProperties": false,
-              "description": "Path to data model value",
-              "properties": {
-                "path": {
-                  "description": "JSON pointer path to value in data model (e.g., '/products/0/title')",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "path"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared6"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal with path binding (sets default and binds)",
-              "properties": {
-                "literalString": {
-                  "type": "string"
-                },
-                "path": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "literalString",
-                "path"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared7"
             }
           ],
           "title": "A2UI Bound Value"
@@ -1311,77 +429,19 @@
           "description": "Message to show when list is empty",
           "oneOf": [
             {
-              "additionalProperties": false,
-              "description": "Literal string value",
-              "properties": {
-                "literalString": {
-                  "description": "Static string value",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "literalString"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared3"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal number value",
-              "properties": {
-                "literalNumber": {
-                  "description": "Static number value",
-                  "type": "number"
-                }
-              },
-              "required": [
-                "literalNumber"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared4"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal boolean value",
-              "properties": {
-                "literalBoolean": {
-                  "description": "Static boolean value",
-                  "type": "boolean"
-                }
-              },
-              "required": [
-                "literalBoolean"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared5"
             },
             {
-              "additionalProperties": false,
-              "description": "Path to data model value",
-              "properties": {
-                "path": {
-                  "description": "JSON pointer path to value in data model (e.g., '/products/0/title')",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "path"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared6"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal with path binding (sets default and binds)",
-              "properties": {
-                "literalString": {
-                  "type": "string"
-                },
-                "path": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "literalString",
-                "path"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared7"
             }
           ],
           "title": "A2UI Bound Value"
@@ -1391,77 +451,19 @@
           "description": "Path to array in data model",
           "oneOf": [
             {
-              "additionalProperties": false,
-              "description": "Literal string value",
-              "properties": {
-                "literalString": {
-                  "description": "Static string value",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "literalString"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared3"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal number value",
-              "properties": {
-                "literalNumber": {
-                  "description": "Static number value",
-                  "type": "number"
-                }
-              },
-              "required": [
-                "literalNumber"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared4"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal boolean value",
-              "properties": {
-                "literalBoolean": {
-                  "description": "Static boolean value",
-                  "type": "boolean"
-                }
-              },
-              "required": [
-                "literalBoolean"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared5"
             },
             {
-              "additionalProperties": false,
-              "description": "Path to data model value",
-              "properties": {
-                "path": {
-                  "description": "JSON pointer path to value in data model (e.g., '/products/0/title')",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "path"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared6"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal with path binding (sets default and binds)",
-              "properties": {
-                "literalString": {
-                  "type": "string"
-                },
-                "path": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "literalString",
-                "path"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared7"
             }
           ],
           "title": "A2UI Bound Value"
@@ -1501,90 +503,10 @@
         "action": {
           "properties": {
             "context": {
-              "additionalProperties": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "description": "A value that can be a literal or bound to a path in the data model",
-                "oneOf": [
-                  {
-                    "additionalProperties": false,
-                    "description": "Literal string value",
-                    "properties": {
-                      "literalString": {
-                        "description": "Static string value",
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "literalString"
-                    ],
-                    "type": "object"
-                  },
-                  {
-                    "additionalProperties": false,
-                    "description": "Literal number value",
-                    "properties": {
-                      "literalNumber": {
-                        "description": "Static number value",
-                        "type": "number"
-                      }
-                    },
-                    "required": [
-                      "literalNumber"
-                    ],
-                    "type": "object"
-                  },
-                  {
-                    "additionalProperties": false,
-                    "description": "Literal boolean value",
-                    "properties": {
-                      "literalBoolean": {
-                        "description": "Static boolean value",
-                        "type": "boolean"
-                      }
-                    },
-                    "required": [
-                      "literalBoolean"
-                    ],
-                    "type": "object"
-                  },
-                  {
-                    "additionalProperties": false,
-                    "description": "Path to data model value",
-                    "properties": {
-                      "path": {
-                        "description": "JSON pointer path to value in data model (e.g., '/products/0/title')",
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "path"
-                    ],
-                    "type": "object"
-                  },
-                  {
-                    "additionalProperties": false,
-                    "description": "Literal with path binding (sets default and binds)",
-                    "properties": {
-                      "literalString": {
-                        "type": "string"
-                      },
-                      "path": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "literalString",
-                      "path"
-                    ],
-                    "type": "object"
-                  }
-                ],
-                "title": "A2UI Bound Value"
-              },
-              "type": "object"
+              "$ref": "#/definitions/Shared9"
             },
             "name": {
-              "type": "string"
+              "$ref": "#/definitions/Shared8"
             }
           },
           "required": [
@@ -1597,77 +519,19 @@
           "description": "Badge text (e.g., 'Best Seller')",
           "oneOf": [
             {
-              "additionalProperties": false,
-              "description": "Literal string value",
-              "properties": {
-                "literalString": {
-                  "description": "Static string value",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "literalString"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared3"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal number value",
-              "properties": {
-                "literalNumber": {
-                  "description": "Static number value",
-                  "type": "number"
-                }
-              },
-              "required": [
-                "literalNumber"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared4"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal boolean value",
-              "properties": {
-                "literalBoolean": {
-                  "description": "Static boolean value",
-                  "type": "boolean"
-                }
-              },
-              "required": [
-                "literalBoolean"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared5"
             },
             {
-              "additionalProperties": false,
-              "description": "Path to data model value",
-              "properties": {
-                "path": {
-                  "description": "JSON pointer path to value in data model (e.g., '/products/0/title')",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "path"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared6"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal with path binding (sets default and binds)",
-              "properties": {
-                "literalString": {
-                  "type": "string"
-                },
-                "path": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "literalString",
-                "path"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared7"
             }
           ],
           "title": "A2UI Bound Value"
@@ -1677,77 +541,19 @@
           "description": "CTA button label",
           "oneOf": [
             {
-              "additionalProperties": false,
-              "description": "Literal string value",
-              "properties": {
-                "literalString": {
-                  "description": "Static string value",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "literalString"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared3"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal number value",
-              "properties": {
-                "literalNumber": {
-                  "description": "Static number value",
-                  "type": "number"
-                }
-              },
-              "required": [
-                "literalNumber"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared4"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal boolean value",
-              "properties": {
-                "literalBoolean": {
-                  "description": "Static boolean value",
-                  "type": "boolean"
-                }
-              },
-              "required": [
-                "literalBoolean"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared5"
             },
             {
-              "additionalProperties": false,
-              "description": "Path to data model value",
-              "properties": {
-                "path": {
-                  "description": "JSON pointer path to value in data model (e.g., '/products/0/title')",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "path"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared6"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal with path binding (sets default and binds)",
-              "properties": {
-                "literalString": {
-                  "type": "string"
-                },
-                "path": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "literalString",
-                "path"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared7"
             }
           ],
           "title": "A2UI Bound Value"
@@ -1757,77 +563,19 @@
           "description": "Product description",
           "oneOf": [
             {
-              "additionalProperties": false,
-              "description": "Literal string value",
-              "properties": {
-                "literalString": {
-                  "description": "Static string value",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "literalString"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared3"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal number value",
-              "properties": {
-                "literalNumber": {
-                  "description": "Static number value",
-                  "type": "number"
-                }
-              },
-              "required": [
-                "literalNumber"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared4"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal boolean value",
-              "properties": {
-                "literalBoolean": {
-                  "description": "Static boolean value",
-                  "type": "boolean"
-                }
-              },
-              "required": [
-                "literalBoolean"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared5"
             },
             {
-              "additionalProperties": false,
-              "description": "Path to data model value",
-              "properties": {
-                "path": {
-                  "description": "JSON pointer path to value in data model (e.g., '/products/0/title')",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "path"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared6"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal with path binding (sets default and binds)",
-              "properties": {
-                "literalString": {
-                  "type": "string"
-                },
-                "path": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "literalString",
-                "path"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared7"
             }
           ],
           "title": "A2UI Bound Value"
@@ -1837,77 +585,19 @@
           "description": "Product image URL",
           "oneOf": [
             {
-              "additionalProperties": false,
-              "description": "Literal string value",
-              "properties": {
-                "literalString": {
-                  "description": "Static string value",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "literalString"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared3"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal number value",
-              "properties": {
-                "literalNumber": {
-                  "description": "Static number value",
-                  "type": "number"
-                }
-              },
-              "required": [
-                "literalNumber"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared4"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal boolean value",
-              "properties": {
-                "literalBoolean": {
-                  "description": "Static boolean value",
-                  "type": "boolean"
-                }
-              },
-              "required": [
-                "literalBoolean"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared5"
             },
             {
-              "additionalProperties": false,
-              "description": "Path to data model value",
-              "properties": {
-                "path": {
-                  "description": "JSON pointer path to value in data model (e.g., '/products/0/title')",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "path"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared6"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal with path binding (sets default and binds)",
-              "properties": {
-                "literalString": {
-                  "type": "string"
-                },
-                "path": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "literalString",
-                "path"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared7"
             }
           ],
           "title": "A2UI Bound Value"
@@ -1917,77 +607,19 @@
           "description": "Price display string",
           "oneOf": [
             {
-              "additionalProperties": false,
-              "description": "Literal string value",
-              "properties": {
-                "literalString": {
-                  "description": "Static string value",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "literalString"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared3"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal number value",
-              "properties": {
-                "literalNumber": {
-                  "description": "Static number value",
-                  "type": "number"
-                }
-              },
-              "required": [
-                "literalNumber"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared4"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal boolean value",
-              "properties": {
-                "literalBoolean": {
-                  "description": "Static boolean value",
-                  "type": "boolean"
-                }
-              },
-              "required": [
-                "literalBoolean"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared5"
             },
             {
-              "additionalProperties": false,
-              "description": "Path to data model value",
-              "properties": {
-                "path": {
-                  "description": "JSON pointer path to value in data model (e.g., '/products/0/title')",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "path"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared6"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal with path binding (sets default and binds)",
-              "properties": {
-                "literalString": {
-                  "type": "string"
-                },
-                "path": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "literalString",
-                "path"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared7"
             }
           ],
           "title": "A2UI Bound Value"
@@ -1997,77 +629,19 @@
           "description": "Product name",
           "oneOf": [
             {
-              "additionalProperties": false,
-              "description": "Literal string value",
-              "properties": {
-                "literalString": {
-                  "description": "Static string value",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "literalString"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared3"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal number value",
-              "properties": {
-                "literalNumber": {
-                  "description": "Static number value",
-                  "type": "number"
-                }
-              },
-              "required": [
-                "literalNumber"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared4"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal boolean value",
-              "properties": {
-                "literalBoolean": {
-                  "description": "Static boolean value",
-                  "type": "boolean"
-                }
-              },
-              "required": [
-                "literalBoolean"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared5"
             },
             {
-              "additionalProperties": false,
-              "description": "Path to data model value",
-              "properties": {
-                "path": {
-                  "description": "JSON pointer path to value in data model (e.g., '/products/0/title')",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "path"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared6"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal with path binding (sets default and binds)",
-              "properties": {
-                "literalString": {
-                  "type": "string"
-                },
-                "path": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "literalString",
-                "path"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared7"
             }
           ],
           "title": "A2UI Bound Value"
@@ -2093,16 +667,10 @@
           "type": "string"
         },
         "children": {
-          "description": "Child component IDs",
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
+          "$ref": "#/definitions/Shared1"
         },
         "gap": {
-          "default": "8px",
-          "description": "Gap between children",
-          "type": "string"
+          "$ref": "#/definitions/Shared2"
         },
         "justify": {
           "default": "start",
@@ -2121,6 +689,122 @@
       ],
       "type": "object"
     },
+    "Shared0": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "A value that can be a literal or bound to a path in the data model",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/Shared3"
+        },
+        {
+          "$ref": "#/definitions/Shared4"
+        },
+        {
+          "$ref": "#/definitions/Shared5"
+        },
+        {
+          "$ref": "#/definitions/Shared6"
+        },
+        {
+          "$ref": "#/definitions/Shared7"
+        }
+      ],
+      "title": "A2UI Bound Value"
+    },
+    "Shared1": {
+      "description": "Child component IDs",
+      "items": {
+        "$ref": "#/definitions/Shared8"
+      },
+      "type": "array"
+    },
+    "Shared2": {
+      "default": "8px",
+      "description": "Gap between children",
+      "type": "string"
+    },
+    "Shared3": {
+      "additionalProperties": false,
+      "description": "Literal string value",
+      "properties": {
+        "literalString": {
+          "description": "Static string value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "literalString"
+      ],
+      "type": "object"
+    },
+    "Shared4": {
+      "additionalProperties": false,
+      "description": "Literal number value",
+      "properties": {
+        "literalNumber": {
+          "description": "Static number value",
+          "type": "number"
+        }
+      },
+      "required": [
+        "literalNumber"
+      ],
+      "type": "object"
+    },
+    "Shared5": {
+      "additionalProperties": false,
+      "description": "Literal boolean value",
+      "properties": {
+        "literalBoolean": {
+          "description": "Static boolean value",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "literalBoolean"
+      ],
+      "type": "object"
+    },
+    "Shared6": {
+      "additionalProperties": false,
+      "description": "Path to data model value",
+      "properties": {
+        "path": {
+          "description": "JSON pointer path to value in data model (e.g., '/products/0/title')",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "type": "object"
+    },
+    "Shared7": {
+      "additionalProperties": false,
+      "description": "Literal with path binding (sets default and binds)",
+      "properties": {
+        "literalString": {
+          "$ref": "#/definitions/Shared8"
+        },
+        "path": {
+          "$ref": "#/definitions/Shared8"
+        }
+      },
+      "required": [
+        "literalString",
+        "path"
+      ],
+      "type": "object"
+    },
+    "Shared8": {
+      "type": "string"
+    },
+    "Shared9": {
+      "additionalProperties": {
+        "$ref": "#/definitions/Shared0"
+      },
+      "type": "object"
+    },
     "Text": {
       "description": "Text display component",
       "properties": {
@@ -2129,77 +813,19 @@
           "description": "Text content to display",
           "oneOf": [
             {
-              "additionalProperties": false,
-              "description": "Literal string value",
-              "properties": {
-                "literalString": {
-                  "description": "Static string value",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "literalString"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared3"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal number value",
-              "properties": {
-                "literalNumber": {
-                  "description": "Static number value",
-                  "type": "number"
-                }
-              },
-              "required": [
-                "literalNumber"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared4"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal boolean value",
-              "properties": {
-                "literalBoolean": {
-                  "description": "Static boolean value",
-                  "type": "boolean"
-                }
-              },
-              "required": [
-                "literalBoolean"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared5"
             },
             {
-              "additionalProperties": false,
-              "description": "Path to data model value",
-              "properties": {
-                "path": {
-                  "description": "JSON pointer path to value in data model (e.g., '/products/0/title')",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "path"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared6"
             },
             {
-              "additionalProperties": false,
-              "description": "Literal with path binding (sets default and binds)",
-              "properties": {
-                "literalString": {
-                  "type": "string"
-                },
-                "path": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "literalString",
-                "path"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared7"
             }
           ],
           "title": "A2UI Bound Value"

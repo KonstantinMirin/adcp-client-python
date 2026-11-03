@@ -1,6 +1,30 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
+  "definitions": {
+    "Shared0": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "Shared1": {
+      "required": [
+        "radius"
+      ]
+    },
+    "Shared2": {
+      "required": [
+        "geometry"
+      ]
+    },
+    "Shared3": {
+      "required": [
+        "travel_time"
+      ]
+    }
+  },
   "description": "A physical store or location within a store-type catalog. Carries the location data, catchment areas, and metadata that platforms use for proximity targeting, store locator creatives, and inventory-aware ad serving.",
   "examples": [
     {
@@ -251,14 +275,10 @@
             "not": {
               "anyOf": [
                 {
-                  "required": [
-                    "radius"
-                  ]
+                  "$ref": "#/definitions/Shared1"
                 },
                 {
-                  "required": [
-                    "geometry"
-                  ]
+                  "$ref": "#/definitions/Shared2"
                 }
               ]
             },
@@ -271,14 +291,10 @@
             "not": {
               "anyOf": [
                 {
-                  "required": [
-                    "travel_time"
-                  ]
+                  "$ref": "#/definitions/Shared3"
                 },
                 {
-                  "required": [
-                    "geometry"
-                  ]
+                  "$ref": "#/definitions/Shared2"
                 }
               ]
             },
@@ -290,14 +306,10 @@
             "not": {
               "anyOf": [
                 {
-                  "required": [
-                    "travel_time"
-                  ]
+                  "$ref": "#/definitions/Shared3"
                 },
                 {
-                  "required": [
-                    "radius"
-                  ]
+                  "$ref": "#/definitions/Shared1"
                 }
               ]
             },
@@ -312,11 +324,7 @@
             "type": "string"
           },
           "ext": {
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "additionalProperties": true,
-            "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-            "title": "Extension Object",
-            "type": "object"
+            "$ref": "#/definitions/Shared0"
           },
           "geometry": {
             "additionalProperties": false,
@@ -436,11 +444,7 @@
       "type": "array"
     },
     "ext": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "additionalProperties": true,
-      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-      "title": "Extension Object",
-      "type": "object"
+      "$ref": "#/definitions/Shared0"
     },
     "hours": {
       "additionalProperties": {

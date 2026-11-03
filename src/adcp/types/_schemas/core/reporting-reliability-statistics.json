@@ -25,12 +25,10 @@
       "additionalProperties": false,
       "properties": {
         "p50": {
-          "minimum": 0,
-          "type": "integer"
+          "$ref": "#/definitions/Shared0"
         },
         "p95": {
-          "minimum": 0,
-          "type": "integer"
+          "$ref": "#/definitions/Shared0"
         }
       },
       "required": [
@@ -43,12 +41,10 @@
       "additionalProperties": false,
       "properties": {
         "end": {
-          "format": "date-time",
-          "type": "string"
+          "$ref": "#/definitions/Shared1"
         },
         "start": {
-          "format": "date-time",
-          "type": "string"
+          "$ref": "#/definitions/Shared1"
         }
       },
       "required": [
@@ -56,6 +52,18 @@
         "end"
       ],
       "type": "object"
+    },
+    "Shared0": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "Shared1": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "Shared2": {
+      "pattern": "^(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+      "type": "string"
     }
   },
   "description": "Observed, evidence-scoped reliability for one atomic reporting offering. Counts are supplied with percentiles so buyers can compare a short, consistently met SLA with a long nominal SLA and can see how often official reports require later adjustments.",
@@ -75,12 +83,10 @@
             "type": "string"
           },
           "p50_absolute_delta": {
-            "pattern": "^(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
-            "type": "string"
+            "$ref": "#/definitions/Shared2"
           },
           "p95_absolute_delta": {
-            "pattern": "^(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
-            "type": "string"
+            "$ref": "#/definitions/Shared2"
           },
           "sample_count": {
             "minimum": 1,
@@ -160,8 +166,7 @@
           "type": "string"
         },
         "generated_at": {
-          "format": "date-time",
-          "type": "string"
+          "$ref": "#/definitions/Shared1"
         }
       },
       "required": [

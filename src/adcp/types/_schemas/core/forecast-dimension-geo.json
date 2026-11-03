@@ -15,24 +15,11 @@
       },
       "then": {
         "not": {
-          "anyOf": [
-            {
-              "required": [
-                "system"
-              ]
-            },
-            {
-              "required": [
-                "country"
-              ]
-            }
-          ]
+          "$ref": "#/definitions/Shared1"
         },
         "properties": {
           "geo_code": {
-            "description": "ISO 3166-1 alpha-2 country code.",
-            "pattern": "^[A-Z]{2}$",
-            "type": "string"
+            "$ref": "#/definitions/Shared0"
           }
         }
       }
@@ -50,18 +37,7 @@
       },
       "then": {
         "not": {
-          "anyOf": [
-            {
-              "required": [
-                "system"
-              ]
-            },
-            {
-              "required": [
-                "country"
-              ]
-            }
-          ]
+          "$ref": "#/definitions/Shared1"
         },
         "properties": {
           "geo_code": {
@@ -85,9 +61,7 @@
       },
       "then": {
         "not": {
-          "required": [
-            "country"
-          ]
+          "$ref": "#/definitions/Shared2"
         },
         "properties": {
           "system": {
@@ -259,9 +233,7 @@
             "description": "Valid country-local postal system pairing. Registered countries only accept their registered local systems; countries without a registered local system use postal_code or custom.",
             "properties": {
               "country": {
-                "description": "ISO 3166-1 alpha-2 country code.",
-                "pattern": "^[A-Z]{2}$",
-                "type": "string"
+                "$ref": "#/definitions/Shared0"
               },
               "system": {
                 "$schema": "http://json-schema.org/draft-07/schema#",
@@ -304,9 +276,7 @@
           },
           {
             "not": {
-              "required": [
-                "country"
-              ]
+              "$ref": "#/definitions/Shared2"
             },
             "properties": {
               "system": {
@@ -338,6 +308,30 @@
       }
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "description": "ISO 3166-1 alpha-2 country code.",
+      "pattern": "^[A-Z]{2}$",
+      "type": "string"
+    },
+    "Shared1": {
+      "anyOf": [
+        {
+          "required": [
+            "system"
+          ]
+        },
+        {
+          "$ref": "#/definitions/Shared2"
+        }
+      ]
+    },
+    "Shared2": {
+      "required": [
+        "country"
+      ]
+    }
+  },
   "description": "A geographic dimension for a ForecastPoint row. Variant of ForecastPoint dimensions; see forecast-point-dimensions.json for dispatch rules.",
   "properties": {
     "country": {

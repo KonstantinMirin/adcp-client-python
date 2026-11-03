@@ -30,18 +30,22 @@
           "type": "number"
         },
         "step_number": {
-          "minimum": 1,
-          "type": "integer"
+          "$ref": "#/definitions/Shared0"
         },
         "total_steps": {
-          "minimum": 1,
-          "type": "integer"
+          "$ref": "#/definitions/Shared0"
         }
       },
       "title": "Compact Task Working",
       "type": "object"
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "minimum": 1,
+      "type": "integer"
+    }
+  },
   "description": "Bounded working progress payload for refine_proposals.",
   "title": "Refine Proposals - Working"
 }

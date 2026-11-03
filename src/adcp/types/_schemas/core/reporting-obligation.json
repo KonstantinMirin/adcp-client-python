@@ -5,15 +5,13 @@
     {
       "else": {
         "not": {
-          "required": [
-            "current_consumer_status_id"
-          ]
+          "$ref": "#/definitions/Shared10"
         }
       },
       "if": {
         "properties": {
           "consumer_status_count": {
-            "minimum": 1
+            "$ref": "#/definitions/Shared14"
           }
         },
         "required": [
@@ -21,19 +19,14 @@
         ]
       },
       "then": {
-        "required": [
-          "current_consumer_status_id"
-        ]
+        "$ref": "#/definitions/Shared10"
       }
     },
     {
       "if": {
         "properties": {
           "health": {
-            "enum": [
-              "healthy",
-              "complete"
-            ]
+            "$ref": "#/definitions/Shared15"
           }
         },
         "required": [
@@ -46,10 +39,10 @@
             "maxItems": 0
           },
           "production_status": {
-            "const": "published"
+            "$ref": "#/definitions/Shared16"
           },
           "revision_count": {
-            "minimum": 1
+            "$ref": "#/definitions/Shared14"
           }
         }
       }
@@ -58,10 +51,10 @@
       "if": {
         "properties": {
           "production_status": {
-            "const": "published"
+            "$ref": "#/definitions/Shared16"
           },
           "reconciliation_mode": {
-            "const": "consumer_receipt"
+            "$ref": "#/definitions/Shared17"
           },
           "reconciliation_status": {
             "const": "pending"
@@ -76,7 +69,7 @@
       "then": {
         "properties": {
           "health": {
-            "const": "action_required"
+            "$ref": "#/definitions/Shared18"
           },
           "issues": {
             "contains": {
@@ -101,10 +94,10 @@
       "if": {
         "properties": {
           "production_status": {
-            "const": "published"
+            "$ref": "#/definitions/Shared16"
           },
           "reconciliation_mode": {
-            "const": "consumer_receipt"
+            "$ref": "#/definitions/Shared17"
           },
           "reconciliation_status": {
             "const": "rejected"
@@ -119,7 +112,7 @@
       "then": {
         "properties": {
           "health": {
-            "const": "action_required"
+            "$ref": "#/definitions/Shared18"
           },
           "issues": {
             "contains": {
@@ -144,10 +137,7 @@
       "if": {
         "properties": {
           "health": {
-            "enum": [
-              "healthy",
-              "complete"
-            ]
+            "$ref": "#/definitions/Shared15"
           }
         },
         "required": [
@@ -158,10 +148,10 @@
       "then": {
         "properties": {
           "materialization_count": {
-            "minimum": 1
+            "$ref": "#/definitions/Shared14"
           },
           "successful_materialization_count": {
-            "minimum": 1
+            "$ref": "#/definitions/Shared14"
           }
         },
         "required": [
@@ -175,7 +165,7 @@
       "if": {
         "properties": {
           "production_status": {
-            "const": "published"
+            "$ref": "#/definitions/Shared16"
           }
         },
         "required": [
@@ -185,7 +175,7 @@
       "then": {
         "properties": {
           "revision_count": {
-            "minimum": 1
+            "$ref": "#/definitions/Shared14"
           }
         }
       }
@@ -213,13 +203,10 @@
       "if": {
         "properties": {
           "health": {
-            "enum": [
-              "healthy",
-              "complete"
-            ]
+            "$ref": "#/definitions/Shared15"
           },
           "reconciliation_mode": {
-            "const": "consumer_receipt"
+            "$ref": "#/definitions/Shared17"
           }
         },
         "required": [
@@ -230,13 +217,13 @@
       "then": {
         "properties": {
           "accepted_receipt_count": {
-            "minimum": 1
+            "$ref": "#/definitions/Shared14"
           },
           "pending_adjustment_count": {
             "const": 0
           },
           "receipt_count": {
-            "minimum": 1
+            "$ref": "#/definitions/Shared14"
           },
           "reconciliation_status": {
             "const": "accepted"
@@ -264,11 +251,7 @@
         ]
       },
       "then": {
-        "properties": {
-          "issues": {
-            "minItems": 1
-          }
-        }
+        "$ref": "#/definitions/Shared11"
       }
     },
     {
@@ -283,14 +266,137 @@
         ]
       },
       "then": {
-        "properties": {
-          "issues": {
-            "minItems": 1
-          }
-        }
+        "$ref": "#/definitions/Shared11"
       }
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "maxLength": 255,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]{1,255}$",
+      "type": "string",
+      "x-entity": "reporting_obligation"
+    },
+    "Shared1": {
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]{1,64}$",
+      "type": "string",
+      "x-entity": "reporting_delivery_config"
+    },
+    "Shared10": {
+      "required": [
+        "current_consumer_status_id"
+      ]
+    },
+    "Shared11": {
+      "properties": {
+        "issues": {
+          "minItems": 1
+        }
+      }
+    },
+    "Shared12": {
+      "enum": [
+        "delayed",
+        "action_required"
+      ],
+      "title": "Reporting Status Severity",
+      "type": "string",
+      "x-adcp-model-context-inline": true
+    },
+    "Shared13": {
+      "items": {
+        "$ref": "#/definitions/Shared6"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "Shared14": {
+      "minimum": 1
+    },
+    "Shared15": {
+      "enum": [
+        "healthy",
+        "complete"
+      ]
+    },
+    "Shared16": {
+      "const": "published"
+    },
+    "Shared17": {
+      "const": "consumer_receipt"
+    },
+    "Shared18": {
+      "const": "action_required"
+    },
+    "Shared19": {
+      "required": [
+        "period_anchor"
+      ]
+    },
+    "Shared2": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "Shared3": {
+      "description": "Operational use of an independently scheduled and reconciled feed. pacing is the fast snapshot path; billing requires official revisions and consumer reconciliation. Event-level exposure is intentionally deferred until a privacy and authorization contract exists.",
+      "enum": [
+        "pacing",
+        "analytics",
+        "billing"
+      ],
+      "title": "Reporting Feed Purpose",
+      "type": "string",
+      "x-adcp-model-context-inline": true
+    },
+    "Shared4": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "Shared5": {
+      "minLength": 1,
+      "title": "Reporting Media Buy ID",
+      "type": "string",
+      "x-adcp-model-context-inline": true,
+      "x-entity": "media_buy"
+    },
+    "Shared6": {
+      "minLength": 1,
+      "title": "Reporting Package ID",
+      "type": "string",
+      "x-adcp-model-context-inline": true,
+      "x-entity": "package"
+    },
+    "Shared7": {
+      "items": {
+        "$ref": "#/definitions/Shared5"
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    "Shared8": {
+      "items": {
+        "$ref": "#/definitions/Shared6"
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    "Shared9": {
+      "description": "Calendar used to establish exact period boundaries. source_timezone is an explicit upstream reporting clock, such as an ad server network timezone, that may differ from the AdCP account timezone. The obligation echoes resolved timestamps and source timezone.",
+      "enum": [
+        "utc",
+        "account_timezone",
+        "source_timezone",
+        "billing_cycle"
+      ],
+      "title": "Reporting Schedule Alignment",
+      "type": "string",
+      "x-adcp-model-context-inline": true
+    }
+  },
   "description": "Period-level status joining what reporting was expected to any produced immutable revisions and delivery materializations. An obligation exists before its first revision or webhook, making missing-first-report detection possible. All nested revisions and materializations MUST match this obligation's authenticated caller/account, configuration generation, report definition, feed, period, and scope.",
   "properties": {
     "accepted_adjustment_receipt_count": {
@@ -328,47 +434,22 @@
       "additionalProperties": false,
       "definitions": {
         "ReportingMediaBuyId": {
-          "minLength": 1,
-          "title": "Reporting Media Buy ID",
-          "type": "string",
-          "x-adcp-model-context-inline": true,
-          "x-entity": "media_buy"
+          "$ref": "#/definitions/Shared5"
         },
         "ReportingPackageId": {
-          "minLength": 1,
-          "title": "Reporting Package ID",
-          "type": "string",
-          "x-adcp-model-context-inline": true,
-          "x-entity": "package"
+          "$ref": "#/definitions/Shared6"
         }
       },
       "description": "Immutable effective coverage of the exact selected offering at this period boundary. Delivery health is evaluated separately over the covered denominator.",
       "properties": {
         "covered_package_ids": {
-          "items": {
-            "minLength": 1,
-            "title": "Reporting Package ID",
-            "type": "string",
-            "x-adcp-model-context-inline": true,
-            "x-entity": "package"
-          },
-          "type": "array",
-          "uniqueItems": true
+          "$ref": "#/definitions/Shared8"
         },
         "evaluated_at": {
-          "format": "date-time",
-          "type": "string"
+          "$ref": "#/definitions/Shared4"
         },
         "fully_covered_media_buy_ids": {
-          "items": {
-            "minLength": 1,
-            "title": "Reporting Media Buy ID",
-            "type": "string",
-            "x-adcp-model-context-inline": true,
-            "x-entity": "media_buy"
-          },
-          "type": "array",
-          "uniqueItems": true
+          "$ref": "#/definitions/Shared7"
         },
         "limitations": {
           "description": "Stable reasons that some requested scope is not covered by the exact selected offering. These are capability facts, not delivery failures.",
@@ -376,23 +457,10 @@
             "additionalProperties": false,
             "properties": {
               "media_buy_id": {
-                "minLength": 1,
-                "title": "Reporting Media Buy ID",
-                "type": "string",
-                "x-adcp-model-context-inline": true,
-                "x-entity": "media_buy"
+                "$ref": "#/definitions/Shared5"
               },
               "package_ids": {
-                "items": {
-                  "minLength": 1,
-                  "title": "Reporting Package ID",
-                  "type": "string",
-                  "x-adcp-model-context-inline": true,
-                  "x-entity": "package"
-                },
-                "minItems": 1,
-                "type": "array",
-                "uniqueItems": true
+                "$ref": "#/definitions/Shared13"
               },
               "reason": {
                 "enum": [
@@ -416,11 +484,7 @@
         "media_buy_ids": {
           "description": "Exact media-buy denominator, including unsupported and unknown buys. An empty array is an explicitly evaluated zero-buy scope.",
           "items": {
-            "minLength": 1,
-            "title": "Reporting Media Buy ID",
-            "type": "string",
-            "x-adcp-model-context-inline": true,
-            "x-entity": "media_buy"
+            "$ref": "#/definitions/Shared5"
           },
           "type": "array",
           "uniqueItems": true
@@ -428,25 +492,13 @@
         "package_ids": {
           "description": "Exact package denominator for the evaluated media buys.",
           "items": {
-            "minLength": 1,
-            "title": "Reporting Package ID",
-            "type": "string",
-            "x-adcp-model-context-inline": true,
-            "x-entity": "package"
+            "$ref": "#/definitions/Shared6"
           },
           "type": "array",
           "uniqueItems": true
         },
         "partially_covered_media_buy_ids": {
-          "items": {
-            "minLength": 1,
-            "title": "Reporting Media Buy ID",
-            "type": "string",
-            "x-adcp-model-context-inline": true,
-            "x-entity": "media_buy"
-          },
-          "type": "array",
-          "uniqueItems": true
+          "$ref": "#/definitions/Shared7"
         },
         "status": {
           "enum": [
@@ -458,48 +510,16 @@
           "type": "string"
         },
         "unknown_media_buy_ids": {
-          "items": {
-            "minLength": 1,
-            "title": "Reporting Media Buy ID",
-            "type": "string",
-            "x-adcp-model-context-inline": true,
-            "x-entity": "media_buy"
-          },
-          "type": "array",
-          "uniqueItems": true
+          "$ref": "#/definitions/Shared7"
         },
         "unknown_package_ids": {
-          "items": {
-            "minLength": 1,
-            "title": "Reporting Package ID",
-            "type": "string",
-            "x-adcp-model-context-inline": true,
-            "x-entity": "package"
-          },
-          "type": "array",
-          "uniqueItems": true
+          "$ref": "#/definitions/Shared8"
         },
         "unsupported_media_buy_ids": {
-          "items": {
-            "minLength": 1,
-            "title": "Reporting Media Buy ID",
-            "type": "string",
-            "x-adcp-model-context-inline": true,
-            "x-entity": "media_buy"
-          },
-          "type": "array",
-          "uniqueItems": true
+          "$ref": "#/definitions/Shared7"
         },
         "unsupported_package_ids": {
-          "items": {
-            "minLength": 1,
-            "title": "Reporting Package ID",
-            "type": "string",
-            "x-adcp-model-context-inline": true,
-            "x-entity": "package"
-          },
-          "type": "array",
-          "uniqueItems": true
+          "$ref": "#/definitions/Shared8"
         }
       },
       "required": [
@@ -534,15 +554,10 @@
       "x-entity": "reporting_consumer_status"
     },
     "delivery_config_id": {
-      "maxLength": 64,
-      "minLength": 1,
-      "pattern": "^[A-Za-z0-9_.:-]{1,64}$",
-      "type": "string",
-      "x-entity": "reporting_delivery_config"
+      "$ref": "#/definitions/Shared1"
     },
     "delivery_config_version": {
-      "minimum": 1,
-      "type": "integer"
+      "$ref": "#/definitions/Shared2"
     },
     "destination_ref": {
       "description": "Immutable caller-owned destination generation selected by this account-authorized obligation. The account/configuration join\u2014not possession of this reusable reference\u2014authorizes disclosure. Present when and only when the obligation\u2019s configuration selects a managed-delivery offering; Core (API-delivered) obligations omit every destination and materialization field.",
@@ -552,19 +567,10 @@
       "x-entity": "reporting_destination"
     },
     "expected_at": {
-      "format": "date-time",
-      "type": "string"
+      "$ref": "#/definitions/Shared4"
     },
     "feed_purpose": {
-      "description": "Operational use of an independently scheduled and reconciled feed. pacing is the fast snapshot path; billing requires official revisions and consumer reconciliation. Event-level exposure is intentionally deferred until a privacy and authorization contract exists.",
-      "enum": [
-        "pacing",
-        "analytics",
-        "billing"
-      ],
-      "title": "Reporting Feed Purpose",
-      "type": "string",
-      "x-adcp-model-context-inline": true
+      "$ref": "#/definitions/Shared3"
     },
     "health": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -656,13 +662,7 @@
         ],
         "definitions": {
           "ReportingStatusSeverity": {
-            "enum": [
-              "delayed",
-              "action_required"
-            ],
-            "title": "Reporting Status Severity",
-            "type": "string",
-            "x-adcp-model-context-inline": true
+            "$ref": "#/definitions/Shared12"
           }
         },
         "description": "Structured reporting condition that explains delayed or action_required health without exposing credentials, provider response bodies, or internal stack traces.",
@@ -688,19 +688,13 @@
             "type": "string"
           },
           "delivery_config_id": {
-            "maxLength": 64,
-            "minLength": 1,
-            "pattern": "^[A-Za-z0-9_.:-]{1,64}$",
-            "type": "string",
-            "x-entity": "reporting_delivery_config"
+            "$ref": "#/definitions/Shared1"
           },
           "delivery_config_version": {
-            "minimum": 1,
-            "type": "integer"
+            "$ref": "#/definitions/Shared2"
           },
           "expected_at": {
-            "format": "date-time",
-            "type": "string"
+            "$ref": "#/definitions/Shared4"
           },
           "external_ref": {
             "description": "Optional opaque, non-secret correlation string for the party's own tracker \u2014 a ticket key, incident ID, or case number. Untrusted display text only. The character class excludes whitespace and the solidus, so the value cannot express a URL or a sentence; receivers compare, store, and display it as inert text and never dereference, resolve, or execute it. It confers no authorization and MUST NOT be used to look up state across accounts or callers.",
@@ -710,15 +704,7 @@
             "type": "string"
           },
           "feed_purpose": {
-            "description": "Operational use of an independently scheduled and reconciled feed. pacing is the fast snapshot path; billing requires official revisions and consumer reconciliation. Event-level exposure is intentionally deferred until a privacy and authorization contract exists.",
-            "enum": [
-              "pacing",
-              "analytics",
-              "billing"
-            ],
-            "title": "Reporting Feed Purpose",
-            "type": "string",
-            "x-adcp-model-context-inline": true
+            "$ref": "#/definitions/Shared3"
           },
           "issue_id": {
             "description": "Seller-issued stable identifier for this logical issue: re-emissions and later polls of the same unresolved condition reuse it, and resolution retires it, so consumers can project AdCP reporting issues into durable work items. A recurrence after resolution receives a new id.",
@@ -739,11 +725,7 @@
           },
           "media_buy_ids": {
             "items": {
-              "minLength": 1,
-              "title": "Reporting Media Buy ID",
-              "type": "string",
-              "x-adcp-model-context-inline": true,
-              "x-entity": "media_buy"
+              "$ref": "#/definitions/Shared5"
             },
             "minItems": 1,
             "type": "array",
@@ -760,24 +742,13 @@
             "type": "string"
           },
           "package_ids": {
-            "items": {
-              "minLength": 1,
-              "title": "Reporting Package ID",
-              "type": "string",
-              "x-adcp-model-context-inline": true,
-              "x-entity": "package"
-            },
-            "minItems": 1,
-            "type": "array",
-            "uniqueItems": true
+            "$ref": "#/definitions/Shared13"
           },
           "period_end": {
-            "format": "date-time",
-            "type": "string"
+            "$ref": "#/definitions/Shared4"
           },
           "period_start": {
-            "format": "date-time",
-            "type": "string"
+            "$ref": "#/definitions/Shared4"
           },
           "recommended_action": {
             "enum": [
@@ -793,11 +764,7 @@
             "type": "string"
           },
           "reporting_obligation_id": {
-            "maxLength": 255,
-            "minLength": 1,
-            "pattern": "^[A-Za-z0-9_.:-]{1,255}$",
-            "type": "string",
-            "x-entity": "reporting_obligation"
+            "$ref": "#/definitions/Shared0"
           },
           "reporting_revision_id": {
             "description": "Published revision this issue concerns. Required when code is REVISION_UNREADABLE.",
@@ -824,13 +791,7 @@
             "type": "string"
           },
           "severity": {
-            "enum": [
-              "delayed",
-              "action_required"
-            ],
-            "title": "Reporting Status Severity",
-            "type": "string",
-            "x-adcp-model-context-inline": true
+            "$ref": "#/definitions/Shared12"
           }
         },
         "required": [
@@ -860,11 +821,7 @@
     "media_buy_ids": {
       "description": "Exact frozen media-buy denominator resolved for this period, including buys with zero rows. An empty array is the definitive zero-buy set; omission is never used to mean all, empty, or unknown.",
       "items": {
-        "minLength": 1,
-        "title": "Reporting Media Buy ID",
-        "type": "string",
-        "x-adcp-model-context-inline": true,
-        "x-entity": "media_buy"
+        "$ref": "#/definitions/Shared5"
       },
       "type": "array",
       "uniqueItems": true
@@ -878,16 +835,14 @@
       "additionalProperties": false,
       "properties": {
         "end": {
-          "format": "date-time",
-          "type": "string"
+          "$ref": "#/definitions/Shared4"
         },
         "source_timezone": {
           "minLength": 1,
           "type": "string"
         },
         "start": {
-          "format": "date-time",
-          "type": "string"
+          "$ref": "#/definitions/Shared4"
         }
       },
       "required": [
@@ -941,11 +896,7 @@
       "x-entity": "reporting_definition"
     },
     "reporting_obligation_id": {
-      "maxLength": 255,
-      "minLength": 1,
-      "pattern": "^[A-Za-z0-9_.:-]{1,255}$",
-      "type": "string",
-      "x-entity": "reporting_obligation"
+      "$ref": "#/definitions/Shared0"
     },
     "reporting_profile": {
       "maxLength": 128,
@@ -986,9 +937,7 @@
               "not": {
                 "anyOf": [
                   {
-                    "required": [
-                      "period_anchor"
-                    ]
+                    "$ref": "#/definitions/Shared19"
                   },
                   {
                     "required": [
@@ -1010,9 +959,7 @@
             },
             "then": {
               "not": {
-                "required": [
-                  "period_anchor"
-                ]
+                "$ref": "#/definitions/Shared19"
               },
               "required": [
                 "period_timezone"
@@ -1039,31 +986,13 @@
       ],
       "definitions": {
         "ReportingScheduleAlignment": {
-          "description": "Calendar used to establish exact period boundaries. source_timezone is an explicit upstream reporting clock, such as an ad server network timezone, that may differ from the AdCP account timezone. The obligation echoes resolved timestamps and source timezone.",
-          "enum": [
-            "utc",
-            "account_timezone",
-            "source_timezone",
-            "billing_cycle"
-          ],
-          "title": "Reporting Schedule Alignment",
-          "type": "string",
-          "x-adcp-model-context-inline": true
+          "$ref": "#/definitions/Shared9"
         }
       },
       "description": "Resolved immutable schedule generation that created this obligation.",
       "properties": {
         "alignment": {
-          "description": "Calendar used to establish exact period boundaries. source_timezone is an explicit upstream reporting clock, such as an ad server network timezone, that may differ from the AdCP account timezone. The obligation echoes resolved timestamps and source timezone.",
-          "enum": [
-            "utc",
-            "account_timezone",
-            "source_timezone",
-            "billing_cycle"
-          ],
-          "title": "Reporting Schedule Alignment",
-          "type": "string",
-          "x-adcp-model-context-inline": true
+          "$ref": "#/definitions/Shared9"
         },
         "delivery_sla": {
           "description": "Non-negative maximum time after period end before the required revision is due. PT0S means due at period close; expected_at equals the resolved period end plus this duration.",

@@ -225,7 +225,7 @@
         "values": {
           "description": "Postal codes within the country and system.",
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/Shared0"
           },
           "minItems": 1,
           "type": "array"
@@ -266,7 +266,7 @@
         "values": {
           "description": "Postal codes within the legacy system.",
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/Shared0"
           },
           "minItems": 1,
           "type": "array"
@@ -280,6 +280,11 @@
       "type": "object"
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "type": "string"
+    }
+  },
   "description": "Postal area values. Prefer the native country + postal system form. Deprecated legacy country-fused postal-system tokens remain accepted for compatibility.",
   "title": "Postal Area"
 }

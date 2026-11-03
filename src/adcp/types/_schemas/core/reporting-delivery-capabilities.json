@@ -47,23 +47,12 @@
     },
     {
       "if": {
-        "properties": {
-          "managed_delivery": {
-            "const": true
-          }
-        },
-        "required": [
-          "managed_delivery"
-        ]
+        "$ref": "#/definitions/Shared0"
       },
       "then": {
         "properties": {
           "offerings": {
-            "contains": {
-              "required": [
-                "method"
-              ]
-            }
+            "$ref": "#/definitions/Shared7"
           }
         },
         "required": [
@@ -74,28 +63,12 @@
     },
     {
       "if": {
-        "properties": {
-          "reconciled_billing": {
-            "const": true
-          }
-        },
-        "required": [
-          "reconciled_billing"
-        ]
+        "$ref": "#/definitions/Shared1"
       },
       "then": {
         "properties": {
           "offerings": {
-            "contains": {
-              "properties": {
-                "reconciliation_mode": {
-                  "const": "consumer_receipt"
-                }
-              },
-              "required": [
-                "reconciliation_mode"
-              ]
-            }
+            "$ref": "#/definitions/Shared8"
           }
         },
         "required": [
@@ -107,11 +80,7 @@
       "if": {
         "properties": {
           "offerings": {
-            "contains": {
-              "required": [
-                "method"
-              ]
-            }
+            "$ref": "#/definitions/Shared7"
           }
         },
         "required": [
@@ -119,30 +88,14 @@
         ]
       },
       "then": {
-        "properties": {
-          "managed_delivery": {
-            "const": true
-          }
-        },
-        "required": [
-          "managed_delivery"
-        ]
+        "$ref": "#/definitions/Shared0"
       }
     },
     {
       "if": {
         "properties": {
           "offerings": {
-            "contains": {
-              "properties": {
-                "reconciliation_mode": {
-                  "const": "consumer_receipt"
-                }
-              },
-              "required": [
-                "reconciliation_mode"
-              ]
-            }
+            "$ref": "#/definitions/Shared8"
           }
         },
         "required": [
@@ -150,14 +103,7 @@
         ]
       },
       "then": {
-        "properties": {
-          "reconciled_billing": {
-            "const": true
-          }
-        },
-        "required": [
-          "reconciled_billing"
-        ]
+        "$ref": "#/definitions/Shared1"
       }
     },
     {
@@ -167,17 +113,157 @@
         ]
       },
       "then": {
-        "properties": {
-          "managed_delivery": {
-            "const": true
-          }
-        },
-        "required": [
-          "managed_delivery"
-        ]
+        "$ref": "#/definitions/Shared0"
       }
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "properties": {
+        "managed_delivery": {
+          "$ref": "#/definitions/Shared6"
+        }
+      },
+      "required": [
+        "managed_delivery"
+      ]
+    },
+    "Shared1": {
+      "properties": {
+        "reconciled_billing": {
+          "$ref": "#/definitions/Shared6"
+        }
+      },
+      "required": [
+        "reconciled_billing"
+      ]
+    },
+    "Shared10": {
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[a-z][a-z0-9_.-]*$",
+      "type": "string"
+    },
+    "Shared11": {
+      "additionalProperties": false,
+      "properties": {
+        "domain": {
+          "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "domain"
+      ],
+      "type": "object"
+    },
+    "Shared12": {
+      "properties": {
+        "reconciliation_mode": {
+          "$ref": "#/definitions/Shared15"
+        }
+      },
+      "required": [
+        "reconciliation_mode"
+      ]
+    },
+    "Shared13": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "Shared14": {
+      "maxLength": 128,
+      "minLength": 1,
+      "type": "string"
+    },
+    "Shared15": {
+      "const": "consumer_receipt"
+    },
+    "Shared16": {
+      "pattern": "^(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+      "type": "string"
+    },
+    "Shared17": {
+      "const": "fixed"
+    },
+    "Shared18": {
+      "required": [
+        "period_anchor_policy"
+      ]
+    },
+    "Shared19": {
+      "required": [
+        "period_anchor"
+      ]
+    },
+    "Shared2": {
+      "description": "Operational use of an independently scheduled and reconciled feed. pacing is the fast snapshot path; billing requires official revisions and consumer reconciliation. Event-level exposure is intentionally deferred until a privacy and authorization contract exists.",
+      "enum": [
+        "pacing",
+        "analytics",
+        "billing"
+      ],
+      "title": "Reporting Feed Purpose",
+      "type": "string",
+      "x-adcp-model-context-inline": true
+    },
+    "Shared20": {
+      "required": [
+        "period_timezone"
+      ]
+    },
+    "Shared3": {
+      "enum": [
+        "file_transfer",
+        "dataset_share",
+        "warehouse_materialization"
+      ],
+      "title": "Reporting Delivery Pattern",
+      "type": "string"
+    },
+    "Shared4": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]{1,128}$",
+      "type": "string",
+      "x-entity": "reporting_offering"
+    },
+    "Shared5": {
+      "additionalProperties": false,
+      "properties": {
+        "end": {
+          "$ref": "#/definitions/Shared9"
+        },
+        "start": {
+          "$ref": "#/definitions/Shared9"
+        }
+      },
+      "required": [
+        "start",
+        "end"
+      ],
+      "type": "object"
+    },
+    "Shared6": {
+      "const": true
+    },
+    "Shared7": {
+      "contains": {
+        "required": [
+          "method"
+        ]
+      }
+    },
+    "Shared8": {
+      "contains": {
+        "$ref": "#/definitions/Shared12"
+      }
+    },
+    "Shared9": {
+      "format": "date-time",
+      "type": "string"
+    }
+  },
   "description": "Reliable Reporting status and durable delivery support, advertised in three tiers over one data model. Core (supported: true) is the required tier: obligations, revisions, post-official adjustments, fixed RFC 8785/JCS revision-binding digests, the five health states, and get_reporting_status seller status. During the published migration window, sellers may additionally advertise sync_reporting_status consumer status over ordinary task transport; it becomes part of required Core only in the next eligible minor after the notice window. Core has no destination, materialization, bespoke webhook, or Managed external-materialization canonicalization machinery. managed_delivery adds file/dataset-share/warehouse delivery and materializations. Reconciled Billing adds canonical digests and consumer receipts for immutable billing-purpose reporting evidence/control totals only; it does not create, approve, modify, or settle invoices, calculate taxes/FX, authorize accounting entries, transfer funds, or determine legal payment obligations. Each offerings entry is an atomic supported combination; buyers MUST NOT construct an unsupported cross-product. Presence requires media_buy.reporting_delivery in experimental_features; RFC 9421 webhook signing is required only when readiness_notification, status_notification, or ledger_notification is declared. Polling get_media_buy_delivery remains the compatibility baseline when this block is absent.",
   "properties": {
     "authorization_revocation_seconds": {
@@ -234,21 +320,14 @@
             "then": {
               "properties": {
                 "reconciliation_mode": {
-                  "const": "consumer_receipt"
+                  "$ref": "#/definitions/Shared15"
                 }
               }
             }
           },
           {
             "if": {
-              "properties": {
-                "reconciliation_mode": {
-                  "const": "consumer_receipt"
-                }
-              },
-              "required": [
-                "reconciliation_mode"
-              ]
+              "$ref": "#/definitions/Shared12"
             },
             "then": {
               "properties": {
@@ -270,38 +349,16 @@
         ],
         "definitions": {
           "ReportingDeliveryPattern": {
-            "enum": [
-              "file_transfer",
-              "dataset_share",
-              "warehouse_materialization"
-            ],
-            "title": "Reporting Delivery Pattern",
-            "type": "string"
+            "$ref": "#/definitions/Shared3"
           },
           "ReportingFeedPurpose": {
-            "description": "Operational use of an independently scheduled and reconciled feed. pacing is the fast snapshot path; billing requires official revisions and consumer reconciliation. Event-level exposure is intentionally deferred until a privacy and authorization contract exists.",
-            "enum": [
-              "pacing",
-              "analytics",
-              "billing"
-            ],
-            "title": "Reporting Feed Purpose",
-            "type": "string",
-            "x-adcp-model-context-inline": true
+            "$ref": "#/definitions/Shared2"
           }
         },
         "description": "One atomic combination a seller can honor. Buyers MUST NOT form a cross-product from separate capability arrays; each installed configuration selects one offering_id and values within that offering. A Core API-delivered offering requires no Managed external-materialization canonicalization code or contract, but every resulting revision still carries the fixed RFC 8785/JCS revision-binding canonicalization and digest.",
         "properties": {
           "feed_purpose": {
-            "description": "Operational use of an independently scheduled and reconciled feed. pacing is the fast snapshot path; billing requires official revisions and consumer reconciliation. Event-level exposure is intentionally deferred until a privacy and authorization contract exists.",
-            "enum": [
-              "pacing",
-              "analytics",
-              "billing"
-            ],
-            "title": "Reporting Feed Purpose",
-            "type": "string",
-            "x-adcp-model-context-inline": true
+            "$ref": "#/definitions/Shared2"
           },
           "method": {
             "additionalProperties": false,
@@ -356,10 +413,7 @@
             "description": "Managed delivery method for this offering. Omit for a Core (API-delivered) offering: rows flow through existing get_media_buy_delivery and reporting_webhook transports and no destination is involved. Present only when the seller advertises managed_delivery.",
             "properties": {
               "access_mode": {
-                "maxLength": 64,
-                "minLength": 1,
-                "pattern": "^[a-z][a-z0-9_.-]*$",
-                "type": "string"
+                "$ref": "#/definitions/Shared10"
               },
               "destination_modes": {
                 "items": {
@@ -394,13 +448,7 @@
                 "x-adcp-model-context-inline": true
               },
               "pattern": {
-                "enum": [
-                  "file_transfer",
-                  "dataset_share",
-                  "warehouse_materialization"
-                ],
-                "title": "Reporting Delivery Pattern",
-                "type": "string"
+                "$ref": "#/definitions/Shared3"
               },
               "producer_identity": {
                 "additionalProperties": false,
@@ -430,22 +478,10 @@
                     "type": "string"
                   },
                   "provider": {
-                    "additionalProperties": false,
-                    "properties": {
-                      "domain": {
-                        "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "domain"
-                    ],
-                    "type": "object"
+                    "$ref": "#/definitions/Shared11"
                   },
                   "region": {
-                    "maxLength": 128,
-                    "minLength": 1,
-                    "type": "string"
+                    "$ref": "#/definitions/Shared14"
                   }
                 },
                 "required": [
@@ -455,17 +491,7 @@
                 "type": "object"
               },
               "provider": {
-                "additionalProperties": false,
-                "properties": {
-                  "domain": {
-                    "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "domain"
-                ],
-                "type": "object"
+                "$ref": "#/definitions/Shared11"
               },
               "reader_compatibility": {
                 "items": {
@@ -479,10 +505,7 @@
                 "uniqueItems": true
               },
               "transport": {
-                "maxLength": 64,
-                "minLength": 1,
-                "pattern": "^[a-z][a-z0-9_.-]*$",
-                "type": "string"
+                "$ref": "#/definitions/Shared10"
               }
             },
             "required": [
@@ -494,11 +517,7 @@
             "type": "object"
           },
           "offering_id": {
-            "maxLength": 128,
-            "minLength": 1,
-            "pattern": "^[A-Za-z0-9_.:-]{1,128}$",
-            "type": "string",
-            "x-entity": "reporting_offering"
+            "$ref": "#/definitions/Shared4"
           },
           "reconciliation_mode": {
             "$schema": "http://json-schema.org/draft-07/schema#",
@@ -632,9 +651,7 @@
                     "not": {
                       "anyOf": [
                         {
-                          "required": [
-                            "period_anchor_policy"
-                          ]
+                          "$ref": "#/definitions/Shared18"
                         },
                         {
                           "required": [
@@ -642,14 +659,10 @@
                           ]
                         },
                         {
-                          "required": [
-                            "period_anchor"
-                          ]
+                          "$ref": "#/definitions/Shared19"
                         },
                         {
-                          "required": [
-                            "period_timezone"
-                          ]
+                          "$ref": "#/definitions/Shared20"
                         }
                       ]
                     }
@@ -669,15 +682,13 @@
                       {
                         "else": {
                           "not": {
-                            "required": [
-                              "period_timezone"
-                            ]
+                            "$ref": "#/definitions/Shared20"
                           }
                         },
                         "if": {
                           "properties": {
                             "period_timezone_policy": {
-                              "const": "fixed"
+                              "$ref": "#/definitions/Shared17"
                             }
                           },
                           "required": [
@@ -685,23 +696,17 @@
                           ]
                         },
                         "then": {
-                          "required": [
-                            "period_timezone"
-                          ]
+                          "$ref": "#/definitions/Shared20"
                         }
                       }
                     ],
                     "not": {
                       "anyOf": [
                         {
-                          "required": [
-                            "period_anchor_policy"
-                          ]
+                          "$ref": "#/definitions/Shared18"
                         },
                         {
-                          "required": [
-                            "period_anchor"
-                          ]
+                          "$ref": "#/definitions/Shared19"
                         }
                       ]
                     },
@@ -727,14 +732,10 @@
                         "not": {
                           "anyOf": [
                             {
-                              "required": [
-                                "period_anchor"
-                              ]
+                              "$ref": "#/definitions/Shared19"
                             },
                             {
-                              "required": [
-                                "period_timezone"
-                              ]
+                              "$ref": "#/definitions/Shared20"
                             }
                           ]
                         }
@@ -742,7 +743,7 @@
                       "if": {
                         "properties": {
                           "period_anchor_policy": {
-                            "const": "fixed"
+                            "$ref": "#/definitions/Shared17"
                           }
                         },
                         "required": [
@@ -782,8 +783,7 @@
                 "type": "string"
               },
               "period_anchor": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/definitions/Shared9"
               },
               "period_anchor_policy": {
                 "description": "For billing_cycle only. fixed requires the advertised anchor and timezone; configurable lets each authorized account configuration select them.",
@@ -934,12 +934,10 @@
             "additionalProperties": false,
             "properties": {
               "p50": {
-                "minimum": 0,
-                "type": "integer"
+                "$ref": "#/definitions/Shared13"
               },
               "p95": {
-                "minimum": 0,
-                "type": "integer"
+                "$ref": "#/definitions/Shared13"
               }
             },
             "required": [
@@ -949,22 +947,7 @@
             "type": "object"
           },
           "ReportingReliabilityMeasurementPeriod": {
-            "additionalProperties": false,
-            "properties": {
-              "end": {
-                "format": "date-time",
-                "type": "string"
-              },
-              "start": {
-                "format": "date-time",
-                "type": "string"
-              }
-            },
-            "required": [
-              "start",
-              "end"
-            ],
-            "type": "object"
+            "$ref": "#/definitions/Shared5"
           }
         },
         "description": "Observed, evidence-scoped reliability for one atomic reporting offering. Counts are supplied with percentiles so buyers can compare a short, consistently met SLA with a long nominal SLA and can see how often official reports require later adjustments.",
@@ -974,12 +957,10 @@
             "description": "Observed seconds from official finalized_at to the first adjustment, required when official_revisions_adjusted is nonzero.",
             "properties": {
               "p50": {
-                "minimum": 0,
-                "type": "integer"
+                "$ref": "#/definitions/Shared13"
               },
               "p95": {
-                "minimum": 0,
-                "type": "integer"
+                "$ref": "#/definitions/Shared13"
               }
             },
             "required": [
@@ -994,17 +975,13 @@
               "additionalProperties": false,
               "properties": {
                 "control_total_name": {
-                  "maxLength": 128,
-                  "minLength": 1,
-                  "type": "string"
+                  "$ref": "#/definitions/Shared14"
                 },
                 "p50_absolute_delta": {
-                  "pattern": "^(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
-                  "type": "string"
+                  "$ref": "#/definitions/Shared16"
                 },
                 "p95_absolute_delta": {
-                  "pattern": "^(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
-                  "type": "string"
+                  "$ref": "#/definitions/Shared16"
                 },
                 "sample_count": {
                   "minimum": 1,
@@ -1084,8 +1061,7 @@
                 "type": "string"
               },
               "generated_at": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/definitions/Shared9"
               }
             },
             "required": [
@@ -1095,22 +1071,7 @@
             "type": "object"
           },
           "measurement_period": {
-            "additionalProperties": false,
-            "properties": {
-              "end": {
-                "format": "date-time",
-                "type": "string"
-              },
-              "start": {
-                "format": "date-time",
-                "type": "string"
-              }
-            },
-            "required": [
-              "start",
-              "end"
-            ],
-            "type": "object"
+            "$ref": "#/definitions/Shared5"
           },
           "obligations_due": {
             "description": "Denominator for on-time performance.",
@@ -1123,11 +1084,7 @@
             "type": "integer"
           },
           "offering_id": {
-            "maxLength": 128,
-            "minLength": 1,
-            "pattern": "^[A-Za-z0-9_.:-]{1,128}$",
-            "type": "string",
-            "x-entity": "reporting_offering"
+            "$ref": "#/definitions/Shared4"
           },
           "official_revisions_adjusted": {
             "description": "Distinct official revisions receiving at least one adjustment. Divide by official_revisions_published for the adjustment rate.",
@@ -1144,12 +1101,10 @@
             "description": "Observed seconds from period.end to publication of the required revision.",
             "properties": {
               "p50": {
-                "minimum": 0,
-                "type": "integer"
+                "$ref": "#/definitions/Shared13"
               },
               "p95": {
-                "minimum": 0,
-                "type": "integer"
+                "$ref": "#/definitions/Shared13"
               }
             },
             "required": [

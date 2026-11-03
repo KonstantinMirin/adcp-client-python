@@ -8,9 +8,7 @@
           "not": {
             "anyOf": [
               {
-                "required": [
-                  "period_anchor"
-                ]
+                "$ref": "#/definitions/Shared0"
               },
               {
                 "required": [
@@ -32,9 +30,7 @@
         },
         "then": {
           "not": {
-            "required": [
-              "period_anchor"
-            ]
+            "$ref": "#/definitions/Shared0"
           },
           "required": [
             "period_timezone"
@@ -71,6 +67,11 @@
       "title": "Reporting Schedule Alignment",
       "type": "string",
       "x-adcp-model-context-inline": true
+    },
+    "Shared0": {
+      "required": [
+        "period_anchor"
+      ]
     }
   },
   "description": "The period and deadline contract from which reporting obligations are created. Every elapsed period produces an obligation even when it has zero rows or production fails, so a consumer can distinguish empty from missing.",

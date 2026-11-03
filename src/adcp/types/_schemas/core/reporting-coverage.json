@@ -15,27 +15,33 @@
       "type": "string",
       "x-adcp-model-context-inline": true,
       "x-entity": "package"
-    }
-  },
-  "description": "Exact reporting-support denominator for one offering at one evaluation boundary. Coverage is independent of freshness, finality, and delivery health. It prevents a covered subset from being represented as a complete media-buy or campaign total.",
-  "properties": {
-    "covered_package_ids": {
+    },
+    "Shared0": {
+      "items": {
+        "$ref": "#/definitions/ReportingMediaBuyId"
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    "Shared1": {
       "items": {
         "$ref": "#/definitions/ReportingPackageId"
       },
       "type": "array",
       "uniqueItems": true
+    }
+  },
+  "description": "Exact reporting-support denominator for one offering at one evaluation boundary. Coverage is independent of freshness, finality, and delivery health. It prevents a covered subset from being represented as a complete media-buy or campaign total.",
+  "properties": {
+    "covered_package_ids": {
+      "$ref": "#/definitions/Shared1"
     },
     "evaluated_at": {
       "format": "date-time",
       "type": "string"
     },
     "fully_covered_media_buy_ids": {
-      "items": {
-        "$ref": "#/definitions/ReportingMediaBuyId"
-      },
-      "type": "array",
-      "uniqueItems": true
+      "$ref": "#/definitions/Shared0"
     },
     "limitations": {
       "description": "Stable reasons that some requested scope is not covered by the exact selected offering. These are capability facts, not delivery failures.",
@@ -89,11 +95,7 @@
       "uniqueItems": true
     },
     "partially_covered_media_buy_ids": {
-      "items": {
-        "$ref": "#/definitions/ReportingMediaBuyId"
-      },
-      "type": "array",
-      "uniqueItems": true
+      "$ref": "#/definitions/Shared0"
     },
     "status": {
       "enum": [
@@ -105,32 +107,16 @@
       "type": "string"
     },
     "unknown_media_buy_ids": {
-      "items": {
-        "$ref": "#/definitions/ReportingMediaBuyId"
-      },
-      "type": "array",
-      "uniqueItems": true
+      "$ref": "#/definitions/Shared0"
     },
     "unknown_package_ids": {
-      "items": {
-        "$ref": "#/definitions/ReportingPackageId"
-      },
-      "type": "array",
-      "uniqueItems": true
+      "$ref": "#/definitions/Shared1"
     },
     "unsupported_media_buy_ids": {
-      "items": {
-        "$ref": "#/definitions/ReportingMediaBuyId"
-      },
-      "type": "array",
-      "uniqueItems": true
+      "$ref": "#/definitions/Shared0"
     },
     "unsupported_package_ids": {
-      "items": {
-        "$ref": "#/definitions/ReportingPackageId"
-      },
-      "type": "array",
-      "uniqueItems": true
+      "$ref": "#/definitions/Shared1"
     }
   },
   "required": [

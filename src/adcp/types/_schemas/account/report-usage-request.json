@@ -29,6 +29,22 @@
       "type": "object"
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "Shared1": {
+      "type": "string"
+    },
+    "Shared2": {
+      "pattern": "^#[0-9a-fA-F]{6}$",
+      "type": "string"
+    }
+  },
   "description": "Reports how a vendor's service was consumed after campaign delivery. Used by orchestrators (DSPs, storefronts) to inform vendor agents (signals, governance, creative, or \u2014 when the receiving agent is the seller of the media buy itself \u2014 a sales agent for buyer-attested or vendor-attested billing reconciliation) what was used so the receiver can track earned revenue and verify billing. Records can span multiple accounts and campaigns in a single request. When the buy's `measurement_terms.billing_measurement.vendor` names a party other than the seller's own ad server, that party (or the buyer on its behalf) pushes final measurements via this task; the seller invoices against those final records. See [Billing authority](/docs/media-buy/advanced-topics/billing-authority) for the end-to-end flow.",
   "examples": [
     {
@@ -96,11 +112,7 @@
       "type": "object"
     },
     "ext": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "additionalProperties": true,
-      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-      "title": "Extension Object",
-      "type": "object"
+      "$ref": "#/definitions/Shared0"
     },
     "idempotency_key": {
       "description": "Client-generated unique key for this request. If a request with the same key has already been accepted, the server returns the original response without re-processing. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request. Prevents duplicate billing on retries.",
@@ -242,16 +254,13 @@
                             "description": "Override brand colors (hex strings).",
                             "properties": {
                               "accent": {
-                                "pattern": "^#[0-9a-fA-F]{6}$",
-                                "type": "string"
+                                "$ref": "#/definitions/Shared2"
                               },
                               "primary": {
-                                "pattern": "^#[0-9a-fA-F]{6}$",
-                                "type": "string"
+                                "$ref": "#/definitions/Shared2"
                               },
                               "secondary": {
-                                "pattern": "^#[0-9a-fA-F]{6}$",
-                                "type": "string"
+                                "$ref": "#/definitions/Shared2"
                               }
                             },
                             "type": "object"
@@ -442,11 +451,7 @@
                                               "minProperties": 1,
                                               "properties": {
                                                 "ext": {
-                                                  "$schema": "http://json-schema.org/draft-07/schema#",
-                                                  "additionalProperties": true,
-                                                  "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                                                  "title": "Extension Object",
-                                                  "type": "object"
+                                                  "$ref": "#/definitions/Shared0"
                                                 },
                                                 "min_duration_ms": {
                                                   "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial \u2014 without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available.",
@@ -576,11 +581,7 @@
                                     "type": "array"
                                   },
                                   "ext": {
-                                    "$schema": "http://json-schema.org/draft-07/schema#",
-                                    "additionalProperties": true,
-                                    "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                                    "title": "Extension Object",
-                                    "type": "object"
+                                    "$ref": "#/definitions/Shared0"
                                   },
                                   "human_oversight": {
                                     "description": "Level of human involvement in the AI-assisted creation process. Independent of `disclosure.required` \u2014 the protocol does not derive disclosure obligations from oversight level. Some regulations include carve-outs for human-edited or human-directed AI output, but those carve-outs have factual prerequisites the schema cannot evaluate. Asserting `edited` or `directed` does not by itself justify `disclosure.required: false`.",
@@ -794,7 +795,7 @@
                           },
                           "languages": {
                             "items": {
-                              "type": "string"
+                              "$ref": "#/definitions/Shared1"
                             },
                             "type": "array"
                           },
@@ -814,7 +815,7 @@
                       "industries": {
                         "description": "Inline override for the brand's industries. Useful when the caller cannot modify the brand's canonical brand.json but needs to declare industries for governance (e.g., Annex III vertical detection). brand.json remains the canonical source; when omitted here, governance agents SHOULD resolve from brand.json.",
                         "items": {
-                          "type": "string"
+                          "$ref": "#/definitions/Shared1"
                         },
                         "type": "array"
                       }

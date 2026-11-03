@@ -1,58 +1,66 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": false,
+  "definitions": {
+    "Shared0": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Content advisory rating using a specified rating system",
+      "properties": {
+        "rating": {
+          "description": "Rating value within the system (e.g., 'TV-PG', 'R', 'explicit')",
+          "type": "string"
+        },
+        "system": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Rating system used",
+          "enum": [
+            "tv_parental",
+            "mpaa",
+            "podcast",
+            "esrb",
+            "bbfc",
+            "fsk",
+            "acb",
+            "chvrs",
+            "csa",
+            "pegi",
+            "custom"
+          ],
+          "enumDescriptions": {
+            "acb": "Australian Classification Board (G, PG, M, MA15+, R18+)",
+            "bbfc": "British Board of Film Classification (U, PG, 12A, 12, 15, 18, R18)",
+            "chvrs": "Canadian Home Video Rating System (G, PG, 14A, 18A, R, A)",
+            "csa": "Conseil superieur de l'audiovisuel / Arcom (-10, -12, -16, -18) \u2014 France",
+            "custom": "Publisher-defined rating system with free-form values",
+            "esrb": "Entertainment Software Rating Board (E, E10+, T, M, AO) \u2014 US/Canada",
+            "fsk": "Freiwillige Selbstkontrolle der Filmwirtschaft (0, 6, 12, 16, 18) \u2014 Germany",
+            "mpaa": "Motion Picture Association film ratings (G, PG, PG-13, R, NC-17)",
+            "pegi": "Pan European Game Information (3, 7, 12, 16, 18) \u2014 pan-European gaming",
+            "podcast": "Podcast content advisories (clean, explicit)",
+            "tv_parental": "US TV Parental Guidelines (TV-Y, TV-Y7, TV-G, TV-PG, TV-14, TV-MA)"
+          },
+          "title": "Content Rating System",
+          "type": "string"
+        }
+      },
+      "required": [
+        "system",
+        "rating"
+      ],
+      "title": "Content Rating",
+      "type": "object"
+    },
+    "Shared1": {
+      "type": "string"
+    }
+  },
   "description": "Filters that dynamically modify a collection list when resolved. Include filters are allowlists (only matching collections pass). Exclude filters are blocklists (matching collections are removed). When both are present for the same dimension, include is applied first, then exclude narrows further.",
   "properties": {
     "content_ratings_exclude": {
       "description": "Exclude collections with any of these content ratings (OR logic). This is a metadata filter on the collection's declared content_rating field \u2014 it does not evaluate episode content.",
       "items": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "additionalProperties": true,
-        "description": "Content advisory rating using a specified rating system",
-        "properties": {
-          "rating": {
-            "description": "Rating value within the system (e.g., 'TV-PG', 'R', 'explicit')",
-            "type": "string"
-          },
-          "system": {
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "description": "Rating system used",
-            "enum": [
-              "tv_parental",
-              "mpaa",
-              "podcast",
-              "esrb",
-              "bbfc",
-              "fsk",
-              "acb",
-              "chvrs",
-              "csa",
-              "pegi",
-              "custom"
-            ],
-            "enumDescriptions": {
-              "acb": "Australian Classification Board (G, PG, M, MA15+, R18+)",
-              "bbfc": "British Board of Film Classification (U, PG, 12A, 12, 15, 18, R18)",
-              "chvrs": "Canadian Home Video Rating System (G, PG, 14A, 18A, R, A)",
-              "csa": "Conseil superieur de l'audiovisuel / Arcom (-10, -12, -16, -18) \u2014 France",
-              "custom": "Publisher-defined rating system with free-form values",
-              "esrb": "Entertainment Software Rating Board (E, E10+, T, M, AO) \u2014 US/Canada",
-              "fsk": "Freiwillige Selbstkontrolle der Filmwirtschaft (0, 6, 12, 16, 18) \u2014 Germany",
-              "mpaa": "Motion Picture Association film ratings (G, PG, PG-13, R, NC-17)",
-              "pegi": "Pan European Game Information (3, 7, 12, 16, 18) \u2014 pan-European gaming",
-              "podcast": "Podcast content advisories (clean, explicit)",
-              "tv_parental": "US TV Parental Guidelines (TV-Y, TV-Y7, TV-G, TV-PG, TV-14, TV-MA)"
-            },
-            "title": "Content Rating System",
-            "type": "string"
-          }
-        },
-        "required": [
-          "system",
-          "rating"
-        ],
-        "title": "Content Rating",
-        "type": "object"
+        "$ref": "#/definitions/Shared0"
       },
       "minItems": 1,
       "type": "array"
@@ -60,53 +68,7 @@
     "content_ratings_include": {
       "description": "Include only collections with any of these content ratings (OR logic). Collections without a declared content_rating are excluded.",
       "items": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "additionalProperties": true,
-        "description": "Content advisory rating using a specified rating system",
-        "properties": {
-          "rating": {
-            "description": "Rating value within the system (e.g., 'TV-PG', 'R', 'explicit')",
-            "type": "string"
-          },
-          "system": {
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "description": "Rating system used",
-            "enum": [
-              "tv_parental",
-              "mpaa",
-              "podcast",
-              "esrb",
-              "bbfc",
-              "fsk",
-              "acb",
-              "chvrs",
-              "csa",
-              "pegi",
-              "custom"
-            ],
-            "enumDescriptions": {
-              "acb": "Australian Classification Board (G, PG, M, MA15+, R18+)",
-              "bbfc": "British Board of Film Classification (U, PG, 12A, 12, 15, 18, R18)",
-              "chvrs": "Canadian Home Video Rating System (G, PG, 14A, 18A, R, A)",
-              "csa": "Conseil superieur de l'audiovisuel / Arcom (-10, -12, -16, -18) \u2014 France",
-              "custom": "Publisher-defined rating system with free-form values",
-              "esrb": "Entertainment Software Rating Board (E, E10+, T, M, AO) \u2014 US/Canada",
-              "fsk": "Freiwillige Selbstkontrolle der Filmwirtschaft (0, 6, 12, 16, 18) \u2014 Germany",
-              "mpaa": "Motion Picture Association film ratings (G, PG, PG-13, R, NC-17)",
-              "pegi": "Pan European Game Information (3, 7, 12, 16, 18) \u2014 pan-European gaming",
-              "podcast": "Podcast content advisories (clean, explicit)",
-              "tv_parental": "US TV Parental Guidelines (TV-Y, TV-Y7, TV-G, TV-PG, TV-14, TV-MA)"
-            },
-            "title": "Content Rating System",
-            "type": "string"
-          }
-        },
-        "required": [
-          "system",
-          "rating"
-        ],
-        "title": "Content Rating",
-        "type": "object"
+        "$ref": "#/definitions/Shared0"
       },
       "minItems": 1,
       "type": "array"
@@ -229,7 +191,7 @@
     "genres_exclude": {
       "description": "Exclude collections tagged with any of these genres (OR logic). Values are interpreted against genre_taxonomy when present.",
       "items": {
-        "type": "string"
+        "$ref": "#/definitions/Shared1"
       },
       "minItems": 1,
       "type": "array"
@@ -237,7 +199,7 @@
     "genres_include": {
       "description": "Include only collections with any of these genres (OR logic). Collections without genre metadata are excluded. Values are interpreted against genre_taxonomy when present.",
       "items": {
-        "type": "string"
+        "$ref": "#/definitions/Shared1"
       },
       "minItems": 1,
       "type": "array"

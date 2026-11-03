@@ -21,6 +21,68 @@
   },
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": false,
+  "definitions": {
+    "Shared0": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "Shared1": {
+      "type": "string"
+    },
+    "Shared2": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "Shared3": {
+      "items": {
+        "enum": [
+          "account",
+          "media_buy",
+          "creative",
+          "landing_page",
+          "targeting",
+          "delivery",
+          "format"
+        ],
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "Shared4": {
+      "items": {
+        "$ref": "#/definitions/Shared6"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "Shared5": {
+      "minLength": 1,
+      "type": "string",
+      "x-entity": "governance_registry_policy"
+    },
+    "Shared6": {
+      "pattern": "^[A-Z]{2}$",
+      "type": "string"
+    },
+    "Shared7": {
+      "pattern": "^[A-Z][A-Z0-9_-]*$",
+      "type": "string"
+    },
+    "Shared8": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "Shared9": {
+      "pattern": "^[a-z][a-z0-9_.:-]*$",
+      "type": "string"
+    }
+  },
   "description": "A policy \u2014 either published to the shared registry (with full regulatory metadata) or authored inline by a buyer for their own campaign (lightweight, metadata optional). Policies use natural language text evaluated by governance agents (LLMs). Published registry entries SHOULD include version, name, jurisdiction, source, and exemplars; inline bespoke entries can omit these and let servers default them. Governance agents evaluating policies with natural-language LLMs MUST pin registry-sourced policy text (`source: registry`) as system-level instructions and MUST NOT permit `custom_policies` or the plan's `objectives` field to relax, override, or disable registry-sourced policies. Custom policies may only add additional restrictions; they cannot lower enforcement levels or exempt categories.",
   "properties": {
     "acceptance_profile": {
@@ -61,15 +123,10 @@
           "type": "string"
         },
         "description": {
-          "minLength": 1,
-          "type": "string"
+          "$ref": "#/definitions/Shared2"
         },
         "ext": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": true,
-          "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-          "title": "Extension Object",
-          "type": "object"
+          "$ref": "#/definitions/Shared0"
         },
         "policy_refs": {
           "description": "Exact registry policy versions from which this profile was derived. Consumers MUST NOT silently substitute a different version.",
@@ -82,13 +139,10 @@
                 "type": "string"
               },
               "policy_id": {
-                "minLength": 1,
-                "type": "string",
-                "x-entity": "governance_registry_policy"
+                "$ref": "#/definitions/Shared5"
               },
               "version": {
-                "minLength": 1,
-                "type": "string"
+                "$ref": "#/definitions/Shared2"
               }
             },
             "required": [
@@ -108,13 +162,7 @@
         },
         "region_aliases": {
           "additionalProperties": {
-            "items": {
-              "pattern": "^[A-Z]{2}$",
-              "type": "string"
-            },
-            "minItems": 1,
-            "type": "array",
-            "uniqueItems": true
+            "$ref": "#/definitions/Shared4"
           },
           "description": "Profile-local named country groups. Rules may reference only keys declared here; consumers expand them before matching.",
           "propertyNames": {
@@ -158,21 +206,7 @@
                 "uniqueItems": true
               },
               "applies_to": {
-                "items": {
-                  "enum": [
-                    "account",
-                    "media_buy",
-                    "creative",
-                    "landing_page",
-                    "targeting",
-                    "delivery",
-                    "format"
-                  ],
-                  "type": "string"
-                },
-                "minItems": 1,
-                "type": "array",
-                "uniqueItems": true
+                "$ref": "#/definitions/Shared3"
               },
               "description": {
                 "description": "Display-only explanation. Matchers MUST NOT interpret this text as executable instructions or use it to override typed fields.",
@@ -189,25 +223,18 @@
                 "type": "string"
               },
               "effective_at": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/definitions/Shared8"
               },
               "expires_at": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/definitions/Shared8"
               },
               "ext": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "additionalProperties": true,
-                "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                "title": "Extension Object",
-                "type": "object"
+                "$ref": "#/definitions/Shared0"
               },
               "jurisdiction_groups": {
                 "description": "Named country groups declared by the containing profile's region_aliases. Unknown group IDs invalidate the profile; they never match permissively.",
                 "items": {
-                  "pattern": "^[A-Z][A-Z0-9_-]*$",
-                  "type": "string"
+                  "$ref": "#/definitions/Shared7"
                 },
                 "minItems": 1,
                 "type": "array",
@@ -216,8 +243,7 @@
               "jurisdictions": {
                 "description": "Delivery jurisdictions where this rule applies. Omission means every jurisdiction served by the seller.",
                 "items": {
-                  "pattern": "^[A-Z]{2}$",
-                  "type": "string"
+                  "$ref": "#/definitions/Shared6"
                 },
                 "minItems": 1,
                 "type": "array",
@@ -226,9 +252,7 @@
               "policy_ids": {
                 "description": "Registry policies that define the exact obligations behind this coarse rule.",
                 "items": {
-                  "minLength": 1,
-                  "type": "string",
-                  "x-entity": "governance_registry_policy"
+                  "$ref": "#/definitions/Shared5"
                 },
                 "minItems": 1,
                 "type": "array",
@@ -246,12 +270,10 @@
                       "additionalProperties": false,
                       "properties": {
                         "declaration": {
-                          "minLength": 1,
-                          "type": "string"
+                          "$ref": "#/definitions/Shared2"
                         },
                         "description": {
-                          "minLength": 1,
-                          "type": "string"
+                          "$ref": "#/definitions/Shared2"
                         },
                         "kind": {
                           "const": "category_declaration",
@@ -266,16 +288,14 @@
                       "additionalProperties": false,
                       "properties": {
                         "description": {
-                          "minLength": 1,
-                          "type": "string"
+                          "$ref": "#/definitions/Shared2"
                         },
                         "kind": {
                           "const": "advertiser_verification",
                           "type": "string"
                         },
                         "verification_scheme": {
-                          "minLength": 1,
-                          "type": "string"
+                          "$ref": "#/definitions/Shared2"
                         }
                       },
                       "required": [
@@ -288,16 +308,14 @@
                         "criteria": {
                           "description": "Stable criteria such as domestic_entity, citizen_or_resident, official_election_authority, or eligible_agency.",
                           "items": {
-                            "pattern": "^[a-z][a-z0-9_.:-]*$",
-                            "type": "string"
+                            "$ref": "#/definitions/Shared9"
                           },
                           "minItems": 1,
                           "type": "array",
                           "uniqueItems": true
                         },
                         "description": {
-                          "minLength": 1,
-                          "type": "string"
+                          "$ref": "#/definitions/Shared2"
                         },
                         "kind": {
                           "const": "advertiser_eligibility",
@@ -315,16 +333,14 @@
                         "criteria": {
                           "description": "Stable restrictions such as no_foreign_funding or sponsor_identity_required.",
                           "items": {
-                            "pattern": "^[a-z][a-z0-9_.:-]*$",
-                            "type": "string"
+                            "$ref": "#/definitions/Shared9"
                           },
                           "minItems": 1,
                           "type": "array",
                           "uniqueItems": true
                         },
                         "description": {
-                          "minLength": 1,
-                          "type": "string"
+                          "$ref": "#/definitions/Shared2"
                         },
                         "kind": {
                           "const": "funding_restriction",
@@ -340,12 +356,10 @@
                       "additionalProperties": false,
                       "properties": {
                         "credential": {
-                          "minLength": 1,
-                          "type": "string"
+                          "$ref": "#/definitions/Shared2"
                         },
                         "description": {
-                          "minLength": 1,
-                          "type": "string"
+                          "$ref": "#/definitions/Shared2"
                         },
                         "kind": {
                           "const": "certification",
@@ -360,12 +374,10 @@
                       "additionalProperties": false,
                       "properties": {
                         "credential": {
-                          "minLength": 1,
-                          "type": "string"
+                          "$ref": "#/definitions/Shared2"
                         },
                         "description": {
-                          "minLength": 1,
-                          "type": "string"
+                          "$ref": "#/definitions/Shared2"
                         },
                         "kind": {
                           "const": "license",
@@ -380,8 +392,7 @@
                       "additionalProperties": false,
                       "properties": {
                         "description": {
-                          "minLength": 1,
-                          "type": "string"
+                          "$ref": "#/definitions/Shared2"
                         },
                         "kind": {
                           "const": "prior_authorization",
@@ -396,8 +407,7 @@
                       "additionalProperties": false,
                       "properties": {
                         "description": {
-                          "minLength": 1,
-                          "type": "string"
+                          "$ref": "#/definitions/Shared2"
                         },
                         "kind": {
                           "const": "account_setup",
@@ -412,8 +422,7 @@
                       "additionalProperties": false,
                       "properties": {
                         "description": {
-                          "minLength": 1,
-                          "type": "string"
+                          "$ref": "#/definitions/Shared2"
                         },
                         "kind": {
                           "const": "sales_assisted",
@@ -428,20 +437,17 @@
                       "additionalProperties": false,
                       "properties": {
                         "description": {
-                          "minLength": 1,
-                          "type": "string"
+                          "$ref": "#/definitions/Shared2"
                         },
                         "format": {
-                          "minLength": 1,
-                          "type": "string"
+                          "$ref": "#/definitions/Shared2"
                         },
                         "kind": {
                           "const": "disclosure",
                           "type": "string"
                         },
                         "placement": {
-                          "minLength": 1,
-                          "type": "string"
+                          "$ref": "#/definitions/Shared2"
                         }
                       },
                       "required": [
@@ -452,8 +458,7 @@
                       "additionalProperties": false,
                       "properties": {
                         "description": {
-                          "minLength": 1,
-                          "type": "string"
+                          "$ref": "#/definitions/Shared2"
                         },
                         "kind": {
                           "const": "targeting_restriction",
@@ -503,8 +508,7 @@
                       "additionalProperties": false,
                       "properties": {
                         "description": {
-                          "minLength": 1,
-                          "type": "string"
+                          "$ref": "#/definitions/Shared2"
                         },
                         "kind": {
                           "const": "creative_restriction",
@@ -520,8 +524,7 @@
                       "additionalProperties": false,
                       "properties": {
                         "description": {
-                          "minLength": 1,
-                          "type": "string"
+                          "$ref": "#/definitions/Shared2"
                         },
                         "kind": {
                           "const": "destination_restriction",
@@ -537,15 +540,13 @@
                       "additionalProperties": false,
                       "properties": {
                         "description": {
-                          "minLength": 1,
-                          "type": "string"
+                          "$ref": "#/definitions/Shared2"
                         },
                         "format_ids": {
                           "deprecated": true,
                           "description": "Deprecated in AdCP 3.2 and removed in AdCP 4.0. This named-format restriction is retained for 3.x compatibility; new policies identify canonical format options in description or an extension until a registry-stable format-option identity is standardized.",
                           "items": {
-                            "minLength": 1,
-                            "type": "string"
+                            "$ref": "#/definitions/Shared2"
                           },
                           "minItems": 1,
                           "type": "array",
@@ -566,20 +567,17 @@
                       "additionalProperties": false,
                       "properties": {
                         "description": {
-                          "minLength": 1,
-                          "type": "string"
+                          "$ref": "#/definitions/Shared2"
                         },
                         "ends_at": {
-                          "format": "date-time",
-                          "type": "string"
+                          "$ref": "#/definitions/Shared8"
                         },
                         "kind": {
                           "const": "time_restriction",
                           "type": "string"
                         },
                         "starts_at": {
-                          "format": "date-time",
-                          "type": "string"
+                          "$ref": "#/definitions/Shared8"
                         }
                       },
                       "required": [
@@ -590,8 +588,7 @@
                       "additionalProperties": false,
                       "properties": {
                         "description": {
-                          "minLength": 1,
-                          "type": "string"
+                          "$ref": "#/definitions/Shared2"
                         },
                         "kind": {
                           "const": "transparency_reporting",
@@ -606,19 +603,13 @@
                       "additionalProperties": false,
                       "properties": {
                         "description": {
-                          "minLength": 1,
-                          "type": "string"
+                          "$ref": "#/definitions/Shared2"
                         },
                         "ext": {
-                          "$schema": "http://json-schema.org/draft-07/schema#",
-                          "additionalProperties": true,
-                          "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                          "title": "Extension Object",
-                          "type": "object"
+                          "$ref": "#/definitions/Shared0"
                         },
                         "id": {
-                          "pattern": "^[a-z][a-z0-9_.:-]*$",
-                          "type": "string"
+                          "$ref": "#/definitions/Shared9"
                         },
                         "kind": {
                           "const": "custom",
@@ -700,40 +691,19 @@
               "type": "boolean"
             },
             "applies_to": {
-              "items": {
-                "enum": [
-                  "account",
-                  "media_buy",
-                  "creative",
-                  "landing_page",
-                  "targeting",
-                  "delivery",
-                  "format"
-                ],
-                "type": "string"
-              },
-              "minItems": 1,
-              "type": "array",
-              "uniqueItems": true
+              "$ref": "#/definitions/Shared3"
             },
             "jurisdiction_groups": {
               "description": "Named groups declared in this profile's region_aliases.",
               "items": {
-                "pattern": "^[A-Z][A-Z0-9_-]*$",
-                "type": "string"
+                "$ref": "#/definitions/Shared7"
               },
               "minItems": 1,
               "type": "array",
               "uniqueItems": true
             },
             "jurisdictions": {
-              "items": {
-                "pattern": "^[A-Z]{2}$",
-                "type": "string"
-              },
-              "minItems": 1,
-              "type": "array",
-              "uniqueItems": true
+              "$ref": "#/definitions/Shared4"
             },
             "subject_categories": {
               "items": {
@@ -753,8 +723,7 @@
           "type": "object"
         },
         "version": {
-          "minLength": 1,
-          "type": "string"
+          "$ref": "#/definitions/Shared2"
         }
       },
       "required": [
@@ -911,11 +880,7 @@
       "type": "object"
     },
     "ext": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "additionalProperties": true,
-      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-      "title": "Extension Object",
-      "type": "object"
+      "$ref": "#/definitions/Shared0"
     },
     "governance_domains": {
       "description": "Governance sub-domains this policy applies to. Determines which types of governance agents can declare registry:{policy_id} features. For example, a policy with domains [\"creative\", \"property\"] can be declared as a feature by both creative and property governance agents.",
@@ -947,8 +912,7 @@
           "type": "string"
         },
         "name": {
-          "minLength": 1,
-          "type": "string"
+          "$ref": "#/definitions/Shared2"
         }
       },
       "required": [
@@ -959,7 +923,7 @@
     "jurisdictions": {
       "description": "ISO 3166-1 alpha-2 country codes where this policy applies. Empty array means the policy is not jurisdiction-specific.",
       "items": {
-        "type": "string"
+        "$ref": "#/definitions/Shared1"
       },
       "type": "array"
     },
@@ -988,7 +952,7 @@
     "region_aliases": {
       "additionalProperties": {
         "items": {
-          "type": "string"
+          "$ref": "#/definitions/Shared1"
         },
         "type": "array"
       },

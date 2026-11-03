@@ -104,16 +104,10 @@
               "type": "number"
             },
             "currency": {
-              "description": "ISO 4217 currency code",
-              "pattern": "^[A-Z]{3}$",
-              "type": "string"
+              "$ref": "#/definitions/Shared0"
             },
             "ext": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": true,
-              "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-              "title": "Extension Object",
-              "type": "object"
+              "$ref": "#/definitions/Shared1"
             },
             "model": {
               "const": "cpm",
@@ -138,11 +132,7 @@
               "type": "string"
             },
             "ext": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": true,
-              "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-              "title": "Extension Object",
-              "type": "object"
+              "$ref": "#/definitions/Shared1"
             },
             "max_cpm": {
               "description": "Optional CPM cap. When set, the effective charge is min(percent \u00d7 media_spend_per_mille, max_cpm).",
@@ -178,16 +168,10 @@
               "type": "number"
             },
             "currency": {
-              "description": "ISO 4217 currency code",
-              "pattern": "^[A-Z]{3}$",
-              "type": "string"
+              "$ref": "#/definitions/Shared0"
             },
             "ext": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": true,
-              "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-              "title": "Extension Object",
-              "type": "object"
+              "$ref": "#/definitions/Shared1"
             },
             "model": {
               "const": "flat_fee",
@@ -218,16 +202,10 @@
           "description": "Fixed price per unit of work. Used for creative transformation (per format), AI generation (per image, per token), and rendering (per variant). The unit field describes what is counted; unit_price is the cost per one unit.",
           "properties": {
             "currency": {
-              "description": "ISO 4217 currency code",
-              "pattern": "^[A-Z]{3}$",
-              "type": "string"
+              "$ref": "#/definitions/Shared0"
             },
             "ext": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": true,
-              "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-              "title": "Extension Object",
-              "type": "object"
+              "$ref": "#/definitions/Shared1"
             },
             "model": {
               "const": "per_unit",
@@ -267,11 +245,7 @@
               "type": "string"
             },
             "ext": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": true,
-              "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-              "title": "Extension Object",
-              "type": "object"
+              "$ref": "#/definitions/Shared1"
             },
             "metadata": {
               "additionalProperties": true,
@@ -304,6 +278,20 @@
       "type": "object"
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "description": "ISO 4217 currency code",
+      "pattern": "^[A-Z]{3}$",
+      "type": "string"
+    },
+    "Shared1": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    }
+  },
   "deprecated": true,
   "description": "Deprecated \u2014 use vendor-pricing-option.json for new implementations. This alias is retained for backward compatibility.",
   "title": "Signal Pricing Option"

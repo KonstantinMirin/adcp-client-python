@@ -29,6 +29,17 @@
       }
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "format": "uri",
+      "pattern": "^https://",
+      "type": "string"
+    },
+    "Shared1": {
+      "minLength": 1,
+      "type": "string"
+    }
+  },
   "description": "A catalog-backed named place target. Values are stable identifiers in the declared system. Entries within geo_places form a union; different geographic inclusion dimensions intersect. value_labels are diagnostic only and MUST NOT be used to resolve targeting.",
   "properties": {
     "country": {
@@ -68,9 +79,7 @@
           "type": "string"
         },
         {
-          "format": "uri",
-          "pattern": "^https://",
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         }
       ],
       "description": "Canonical place classification. Registered tokens have protocol-defined meanings. Catalog-specific classifications without a registered mapping MUST use an absolute HTTPS URI controlled by the vocabulary owner; consumers compare URI types as exact opaque strings.",
@@ -98,9 +107,7 @@
           "type": "string"
         },
         {
-          "format": "uri",
-          "pattern": "^https://",
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         }
       ],
       "description": "Collision-safe identifier namespace for geographic places. Registered tokens have protocol-defined semantics. Unregistered systems MUST use an absolute HTTPS URI controlled by the catalog owner; consumers compare URI systems as exact opaque strings.",
@@ -119,8 +126,7 @@
     },
     "value_labels": {
       "additionalProperties": {
-        "minLength": 1,
-        "type": "string"
+        "$ref": "#/definitions/Shared1"
       },
       "description": "Optional human-readable diagnostic labels keyed by identifiers present in values. Extra keys are a conformance error. Labels are non-authoritative and MUST NOT be used to resolve or apply targeting.",
       "type": "object"
@@ -128,8 +134,7 @@
     "values": {
       "description": "Stable place identifiers in the declared system. Display names are not valid targeting values.",
       "items": {
-        "minLength": 1,
-        "type": "string"
+        "$ref": "#/definitions/Shared1"
       },
       "minItems": 1,
       "type": "array",

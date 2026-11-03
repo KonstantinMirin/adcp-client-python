@@ -1,6 +1,11 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
+  "definitions": {
+    "Shared0": {
+      "type": "string"
+    }
+  },
   "description": "A single bookable unit within a collection \u2014 one episode, issue, event, or rotation period. The parent collection's kind indicates how to interpret each installment: TV/podcast episodes, print issues, live event airings, newsletter editions, or DOOH rotation periods. Installments inherit collection-level fields they don't override: content_rating defaults to the collection's baseline, guest_talent is additive to the collection's recurring talent, and topics add context beyond the collection's genre.",
   "properties": {
     "ad_inventory": {
@@ -21,7 +26,7 @@
         "supported_formats": {
           "description": "Ad format types supported in breaks (e.g., 'video', 'audio', 'display')",
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/Shared0"
           },
           "type": "array"
         },
@@ -390,7 +395,7 @@
     "topics": {
       "description": "Content topics for this installment. Uses the same taxonomy as the collection's genre_taxonomy when present. Enables installment-level brand safety evaluation beyond content_rating.",
       "items": {
-        "type": "string"
+        "$ref": "#/definitions/Shared0"
       },
       "type": "array"
     },

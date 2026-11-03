@@ -2,6 +2,16 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": false,
   "definitions": {
+    "Shared0": {
+      "maximum": 8192,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "Shared1": {
+      "maximum": 8192,
+      "minimum": 0,
+      "type": "integer"
+    },
     "box_decoration": {
       "additionalProperties": false,
       "properties": {
@@ -92,24 +102,16 @@
       "additionalProperties": false,
       "properties": {
         "height": {
-          "maximum": 8192,
-          "minimum": 1,
-          "type": "integer"
+          "$ref": "#/definitions/Shared0"
         },
         "width": {
-          "maximum": 8192,
-          "minimum": 1,
-          "type": "integer"
+          "$ref": "#/definitions/Shared0"
         },
         "x": {
-          "maximum": 8192,
-          "minimum": 0,
-          "type": "integer"
+          "$ref": "#/definitions/Shared1"
         },
         "y": {
-          "maximum": 8192,
-          "minimum": 0,
-          "type": "integer"
+          "$ref": "#/definitions/Shared1"
         }
       },
       "required": [
@@ -167,14 +169,10 @@
           "type": "string"
         },
         "height": {
-          "maximum": 8192,
-          "minimum": 1,
-          "type": "integer"
+          "$ref": "#/definitions/Shared0"
         },
         "width": {
-          "maximum": 8192,
-          "minimum": 1,
-          "type": "integer"
+          "$ref": "#/definitions/Shared0"
         }
       },
       "required": [
@@ -202,24 +200,16 @@
           "type": "string"
         },
         "height": {
-          "maximum": 8192,
-          "minimum": 1,
-          "type": "integer"
+          "$ref": "#/definitions/Shared0"
         },
         "width": {
-          "maximum": 8192,
-          "minimum": 1,
-          "type": "integer"
+          "$ref": "#/definitions/Shared0"
         },
         "x": {
-          "maximum": 8192,
-          "minimum": 0,
-          "type": "integer"
+          "$ref": "#/definitions/Shared1"
         },
         "y": {
-          "maximum": 8192,
-          "minimum": 0,
-          "type": "integer"
+          "$ref": "#/definitions/Shared1"
         }
       },
       "required": [

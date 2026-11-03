@@ -41,17 +41,22 @@
     {
       "properties": {
         "high": {
-          "maximum": 1
+          "$ref": "#/definitions/Shared0"
         },
         "low": {
-          "maximum": 1
+          "$ref": "#/definitions/Shared0"
         },
         "mid": {
-          "maximum": 1
+          "$ref": "#/definitions/Shared0"
         }
       }
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "maximum": 1
+    }
+  },
   "description": "A forecast range whose low, midpoint, and high values are rates in the inclusive interval from 0 to 1.",
   "title": "Forecast Rate Range"
 }

@@ -36,6 +36,26 @@
       "title": "Report Calendar Timezone Basis",
       "type": "string",
       "x-adcp-model-context-inline": true
+    },
+    "Shared0": {
+      "maxLength": 255,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]{1,255}$",
+      "type": "string"
+    },
+    "Shared1": {
+      "maxLength": 128,
+      "minLength": 1,
+      "type": "string"
+    },
+    "Shared2": {
+      "pattern": "^P(?=\\d|T)(?=.*\\d)(?:\\d+Y)?(?:\\d+M)?(?:\\d+D)?(?:T(?=\\d)(?:\\d+H)?(?:\\d+M)?(?:\\d+S)?)?$",
+      "type": "string"
+    },
+    "Shared3": {
+      "required": [
+        "timezone"
+      ]
     }
   },
   "description": "Immutable, inspectable semantic contract for how a reporting feed is produced and finalized. Its exact bytes are pinned by report_definition_sha256.",
@@ -46,9 +66,7 @@
         {
           "else": {
             "not": {
-              "required": [
-                "timezone"
-              ]
+              "$ref": "#/definitions/Shared3"
             }
           },
           "if": {
@@ -62,9 +80,7 @@
             ]
           },
           "then": {
-            "required": [
-              "timezone"
-            ]
+            "$ref": "#/definitions/Shared3"
           }
         }
       ],
@@ -93,9 +109,7 @@
     },
     "dimensions": {
       "items": {
-        "maxLength": 128,
-        "minLength": 1,
-        "type": "string"
+        "$ref": "#/definitions/Shared1"
       },
       "type": "array",
       "uniqueItems": true
@@ -111,10 +125,7 @@
                 "type": "string"
               },
               "finality_policy_id": {
-                "maxLength": 255,
-                "minLength": 1,
-                "pattern": "^[A-Za-z0-9_.:-]{1,255}$",
-                "type": "string"
+                "$ref": "#/definitions/Shared0"
               },
               "source_signal": {
                 "maxLength": 512,
@@ -137,14 +148,10 @@
                 "type": "string"
               },
               "duration_after_period_end": {
-                "pattern": "^P(?=\\d|T)(?=.*\\d)(?:\\d+Y)?(?:\\d+M)?(?:\\d+D)?(?:T(?=\\d)(?:\\d+H)?(?:\\d+M)?(?:\\d+S)?)?$",
-                "type": "string"
+                "$ref": "#/definitions/Shared2"
               },
               "finality_policy_id": {
-                "maxLength": 255,
-                "minLength": 1,
-                "pattern": "^[A-Za-z0-9_.:-]{1,255}$",
-                "type": "string"
+                "$ref": "#/definitions/Shared0"
               }
             },
             "required": [
@@ -162,18 +169,13 @@
                 "type": "string"
               },
               "finality_policy_id": {
-                "maxLength": 255,
-                "minLength": 1,
-                "pattern": "^[A-Za-z0-9_.:-]{1,255}$",
-                "type": "string"
+                "$ref": "#/definitions/Shared0"
               },
               "minimum_age": {
-                "pattern": "^P(?=\\d|T)(?=.*\\d)(?:\\d+Y)?(?:\\d+M)?(?:\\d+D)?(?:T(?=\\d)(?:\\d+H)?(?:\\d+M)?(?:\\d+S)?)?$",
-                "type": "string"
+                "$ref": "#/definitions/Shared2"
               },
               "unchanged_for": {
-                "pattern": "^P(?=\\d|T)(?=.*\\d)(?:\\d+Y)?(?:\\d+M)?(?:\\d+D)?(?:T(?=\\d)(?:\\d+H)?(?:\\d+M)?(?:\\d+S)?)?$",
-                "type": "string"
+                "$ref": "#/definitions/Shared2"
               }
             },
             "required": [
@@ -190,9 +192,7 @@
       "type": "array"
     },
     "grain": {
-      "maxLength": 128,
-      "minLength": 1,
-      "type": "string"
+      "$ref": "#/definitions/Shared1"
     },
     "media_type": {
       "const": "application/vnd.adcp.reporting-definition+json",
@@ -216,9 +216,7 @@
             "type": "string"
           },
           "name": {
-            "maxLength": 128,
-            "minLength": 1,
-            "type": "string"
+            "$ref": "#/definitions/Shared1"
           },
           "source_expression": {
             "maxLength": 2048,
@@ -242,15 +240,10 @@
       "type": "array"
     },
     "report_definition_id": {
-      "maxLength": 255,
-      "minLength": 1,
-      "pattern": "^[A-Za-z0-9_.:-]{1,255}$",
-      "type": "string"
+      "$ref": "#/definitions/Shared0"
     },
     "reporting_profile": {
-      "maxLength": 128,
-      "minLength": 1,
-      "type": "string"
+      "$ref": "#/definitions/Shared1"
     },
     "restatement_policy": {
       "additionalProperties": false,
@@ -265,8 +258,7 @@
           "type": "string"
         },
         "source_requery_duration": {
-          "pattern": "^P(?=\\d|T)(?=.*\\d)(?:\\d+Y)?(?:\\d+M)?(?:\\d+D)?(?:T(?=\\d)(?:\\d+H)?(?:\\d+M)?(?:\\d+S)?)?$",
-          "type": "string"
+          "$ref": "#/definitions/Shared2"
         }
       },
       "required": [
@@ -279,9 +271,7 @@
       "additionalProperties": false,
       "properties": {
         "api_version": {
-          "maxLength": 128,
-          "minLength": 1,
-          "type": "string"
+          "$ref": "#/definitions/Shared1"
         },
         "provider": {
           "additionalProperties": false,
@@ -301,9 +291,7 @@
           "type": "object"
         },
         "system": {
-          "maxLength": 128,
-          "minLength": 1,
-          "type": "string"
+          "$ref": "#/definitions/Shared1"
         }
       },
       "required": [

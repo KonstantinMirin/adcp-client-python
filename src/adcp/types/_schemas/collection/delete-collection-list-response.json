@@ -407,9 +407,7 @@
           "type": "object"
         },
         "replayed": {
-          "default": false,
-          "description": "Set to true when this response was returned from the idempotency cache rather than from a fresh execution. Set to false (or omitted) when the request was executed fresh. Buyers use this to distinguish cached replays from new executions \u2014 matters for billing reconciliation, audit logs, state-machine routing (cached state-tracking fields are historical snapshots, not current state \u2014 re-read via the resource's read endpoint), and any downstream system that assumes exactly-once event semantics. `replayed` appears only when the request actually resolved through the idempotency cache. Pure reads may ignore an optional `idempotency_key`; when a seller voluntarily caches keyed reads, those responses use the same replay indicator and full cache contract.",
-          "type": "boolean"
+          "$ref": "#/definitions/Shared0"
         },
         "status": {
           "$schema": "http://json-schema.org/draft-07/schema#",
@@ -457,6 +455,13 @@
       "type": "object"
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "default": false,
+      "description": "Set to true when this response was returned from the idempotency cache rather than from a fresh execution. Set to false (or omitted) when the request was executed fresh. Buyers use this to distinguish cached replays from new executions \u2014 matters for billing reconciliation, audit logs, state-machine routing (cached state-tracking fields are historical snapshots, not current state \u2014 re-read via the resource's read endpoint), and any downstream system that assumes exactly-once event semantics. `replayed` appears only when the request actually resolved through the idempotency cache. Pure reads may ignore an optional `idempotency_key`; when a seller voluntarily caches keyed reads, those responses use the same replay indicator and full cache contract.",
+      "type": "boolean"
+    }
+  },
   "description": "Response payload for delete_collection_list task",
   "properties": {
     "context": {
@@ -483,9 +488,7 @@
       "x-entity": "collection_list"
     },
     "replayed": {
-      "default": false,
-      "description": "Set to true when this response was returned from the idempotency cache rather than from a fresh execution. Set to false (or omitted) when the request was executed fresh. Buyers use this to distinguish cached replays from new executions \u2014 matters for billing reconciliation, audit logs, state-machine routing (cached state-tracking fields are historical snapshots, not current state \u2014 re-read via the resource's read endpoint), and any downstream system that assumes exactly-once event semantics. `replayed` appears only when the request actually resolved through the idempotency cache. Pure reads may ignore an optional `idempotency_key`; when a seller voluntarily caches keyed reads, those responses use the same replay indicator and full cache contract.",
-      "type": "boolean"
+      "$ref": "#/definitions/Shared0"
     }
   },
   "required": [

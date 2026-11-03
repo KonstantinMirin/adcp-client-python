@@ -13,22 +13,84 @@
       ]
     }
   ],
-  "description": "Seller-hosted catalog referenced from capabilities. Profiles compose restrictively: every referenced profile applies and the most restrictive matching disposition wins (prohibited over conditional over allowed).",
-  "properties": {
-    "catalog_version": {
+  "definitions": {
+    "Shared0": {
       "minLength": 1,
       "type": "string"
     },
-    "ext": {
+    "Shared1": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "Shared10": {
+      "pattern": "^[a-z][a-z0-9_.:-]*$",
+      "type": "string"
+    },
+    "Shared2": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "additionalProperties": true,
       "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
       "title": "Extension Object",
       "type": "object"
     },
-    "generated_at": {
-      "format": "date-time",
+    "Shared3": {
+      "pattern": "^[A-Za-z0-9_.:-]+$",
+      "type": "string",
+      "x-entity": "acceptance_policy_profile"
+    },
+    "Shared4": {
+      "minLength": 1,
+      "type": "string",
+      "x-entity": "governance_registry_policy"
+    },
+    "Shared5": {
+      "pattern": "^sha256:[a-f0-9]{64}$",
       "type": "string"
+    },
+    "Shared6": {
+      "items": {
+        "enum": [
+          "account",
+          "media_buy",
+          "creative",
+          "landing_page",
+          "targeting",
+          "delivery",
+          "format"
+        ],
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "Shared7": {
+      "items": {
+        "$ref": "#/definitions/Shared8"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "Shared8": {
+      "pattern": "^[A-Z]{2}$",
+      "type": "string"
+    },
+    "Shared9": {
+      "pattern": "^[A-Z][A-Z0-9_-]*$",
+      "type": "string"
+    }
+  },
+  "description": "Seller-hosted catalog referenced from capabilities. Profiles compose restrictively: every referenced profile applies and the most restrictive matching disposition wins (prohibited over conditional over allowed).",
+  "properties": {
+    "catalog_version": {
+      "$ref": "#/definitions/Shared0"
+    },
+    "ext": {
+      "$ref": "#/definitions/Shared2"
+    },
+    "generated_at": {
+      "$ref": "#/definitions/Shared1"
     },
     "profiles": {
       "items": {
@@ -69,15 +131,10 @@
             "type": "string"
           },
           "description": {
-            "minLength": 1,
-            "type": "string"
+            "$ref": "#/definitions/Shared0"
           },
           "ext": {
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "additionalProperties": true,
-            "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-            "title": "Extension Object",
-            "type": "object"
+            "$ref": "#/definitions/Shared2"
           },
           "policy_refs": {
             "description": "Exact registry policy versions from which this profile was derived. Consumers MUST NOT silently substitute a different version.",
@@ -90,13 +147,10 @@
                   "type": "string"
                 },
                 "policy_id": {
-                  "minLength": 1,
-                  "type": "string",
-                  "x-entity": "governance_registry_policy"
+                  "$ref": "#/definitions/Shared4"
                 },
                 "version": {
-                  "minLength": 1,
-                  "type": "string"
+                  "$ref": "#/definitions/Shared0"
                 }
               },
               "required": [
@@ -110,19 +164,11 @@
             "type": "array"
           },
           "profile_id": {
-            "pattern": "^[A-Za-z0-9_.:-]+$",
-            "type": "string",
-            "x-entity": "acceptance_policy_profile"
+            "$ref": "#/definitions/Shared3"
           },
           "region_aliases": {
             "additionalProperties": {
-              "items": {
-                "pattern": "^[A-Z]{2}$",
-                "type": "string"
-              },
-              "minItems": 1,
-              "type": "array",
-              "uniqueItems": true
+              "$ref": "#/definitions/Shared7"
             },
             "description": "Profile-local named country groups. Rules may reference only keys declared here; consumers expand them before matching.",
             "propertyNames": {
@@ -166,21 +212,7 @@
                   "uniqueItems": true
                 },
                 "applies_to": {
-                  "items": {
-                    "enum": [
-                      "account",
-                      "media_buy",
-                      "creative",
-                      "landing_page",
-                      "targeting",
-                      "delivery",
-                      "format"
-                    ],
-                    "type": "string"
-                  },
-                  "minItems": 1,
-                  "type": "array",
-                  "uniqueItems": true
+                  "$ref": "#/definitions/Shared6"
                 },
                 "description": {
                   "description": "Display-only explanation. Matchers MUST NOT interpret this text as executable instructions or use it to override typed fields.",
@@ -197,25 +229,18 @@
                   "type": "string"
                 },
                 "effective_at": {
-                  "format": "date-time",
-                  "type": "string"
+                  "$ref": "#/definitions/Shared1"
                 },
                 "expires_at": {
-                  "format": "date-time",
-                  "type": "string"
+                  "$ref": "#/definitions/Shared1"
                 },
                 "ext": {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
-                  "additionalProperties": true,
-                  "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                  "title": "Extension Object",
-                  "type": "object"
+                  "$ref": "#/definitions/Shared2"
                 },
                 "jurisdiction_groups": {
                   "description": "Named country groups declared by the containing profile's region_aliases. Unknown group IDs invalidate the profile; they never match permissively.",
                   "items": {
-                    "pattern": "^[A-Z][A-Z0-9_-]*$",
-                    "type": "string"
+                    "$ref": "#/definitions/Shared9"
                   },
                   "minItems": 1,
                   "type": "array",
@@ -224,8 +249,7 @@
                 "jurisdictions": {
                   "description": "Delivery jurisdictions where this rule applies. Omission means every jurisdiction served by the seller.",
                   "items": {
-                    "pattern": "^[A-Z]{2}$",
-                    "type": "string"
+                    "$ref": "#/definitions/Shared8"
                   },
                   "minItems": 1,
                   "type": "array",
@@ -234,9 +258,7 @@
                 "policy_ids": {
                   "description": "Registry policies that define the exact obligations behind this coarse rule.",
                   "items": {
-                    "minLength": 1,
-                    "type": "string",
-                    "x-entity": "governance_registry_policy"
+                    "$ref": "#/definitions/Shared4"
                   },
                   "minItems": 1,
                   "type": "array",
@@ -254,12 +276,10 @@
                         "additionalProperties": false,
                         "properties": {
                           "declaration": {
-                            "minLength": 1,
-                            "type": "string"
+                            "$ref": "#/definitions/Shared0"
                           },
                           "description": {
-                            "minLength": 1,
-                            "type": "string"
+                            "$ref": "#/definitions/Shared0"
                           },
                           "kind": {
                             "const": "category_declaration",
@@ -274,16 +294,14 @@
                         "additionalProperties": false,
                         "properties": {
                           "description": {
-                            "minLength": 1,
-                            "type": "string"
+                            "$ref": "#/definitions/Shared0"
                           },
                           "kind": {
                             "const": "advertiser_verification",
                             "type": "string"
                           },
                           "verification_scheme": {
-                            "minLength": 1,
-                            "type": "string"
+                            "$ref": "#/definitions/Shared0"
                           }
                         },
                         "required": [
@@ -296,16 +314,14 @@
                           "criteria": {
                             "description": "Stable criteria such as domestic_entity, citizen_or_resident, official_election_authority, or eligible_agency.",
                             "items": {
-                              "pattern": "^[a-z][a-z0-9_.:-]*$",
-                              "type": "string"
+                              "$ref": "#/definitions/Shared10"
                             },
                             "minItems": 1,
                             "type": "array",
                             "uniqueItems": true
                           },
                           "description": {
-                            "minLength": 1,
-                            "type": "string"
+                            "$ref": "#/definitions/Shared0"
                           },
                           "kind": {
                             "const": "advertiser_eligibility",
@@ -323,16 +339,14 @@
                           "criteria": {
                             "description": "Stable restrictions such as no_foreign_funding or sponsor_identity_required.",
                             "items": {
-                              "pattern": "^[a-z][a-z0-9_.:-]*$",
-                              "type": "string"
+                              "$ref": "#/definitions/Shared10"
                             },
                             "minItems": 1,
                             "type": "array",
                             "uniqueItems": true
                           },
                           "description": {
-                            "minLength": 1,
-                            "type": "string"
+                            "$ref": "#/definitions/Shared0"
                           },
                           "kind": {
                             "const": "funding_restriction",
@@ -348,12 +362,10 @@
                         "additionalProperties": false,
                         "properties": {
                           "credential": {
-                            "minLength": 1,
-                            "type": "string"
+                            "$ref": "#/definitions/Shared0"
                           },
                           "description": {
-                            "minLength": 1,
-                            "type": "string"
+                            "$ref": "#/definitions/Shared0"
                           },
                           "kind": {
                             "const": "certification",
@@ -368,12 +380,10 @@
                         "additionalProperties": false,
                         "properties": {
                           "credential": {
-                            "minLength": 1,
-                            "type": "string"
+                            "$ref": "#/definitions/Shared0"
                           },
                           "description": {
-                            "minLength": 1,
-                            "type": "string"
+                            "$ref": "#/definitions/Shared0"
                           },
                           "kind": {
                             "const": "license",
@@ -388,8 +398,7 @@
                         "additionalProperties": false,
                         "properties": {
                           "description": {
-                            "minLength": 1,
-                            "type": "string"
+                            "$ref": "#/definitions/Shared0"
                           },
                           "kind": {
                             "const": "prior_authorization",
@@ -404,8 +413,7 @@
                         "additionalProperties": false,
                         "properties": {
                           "description": {
-                            "minLength": 1,
-                            "type": "string"
+                            "$ref": "#/definitions/Shared0"
                           },
                           "kind": {
                             "const": "account_setup",
@@ -420,8 +428,7 @@
                         "additionalProperties": false,
                         "properties": {
                           "description": {
-                            "minLength": 1,
-                            "type": "string"
+                            "$ref": "#/definitions/Shared0"
                           },
                           "kind": {
                             "const": "sales_assisted",
@@ -436,20 +443,17 @@
                         "additionalProperties": false,
                         "properties": {
                           "description": {
-                            "minLength": 1,
-                            "type": "string"
+                            "$ref": "#/definitions/Shared0"
                           },
                           "format": {
-                            "minLength": 1,
-                            "type": "string"
+                            "$ref": "#/definitions/Shared0"
                           },
                           "kind": {
                             "const": "disclosure",
                             "type": "string"
                           },
                           "placement": {
-                            "minLength": 1,
-                            "type": "string"
+                            "$ref": "#/definitions/Shared0"
                           }
                         },
                         "required": [
@@ -460,8 +464,7 @@
                         "additionalProperties": false,
                         "properties": {
                           "description": {
-                            "minLength": 1,
-                            "type": "string"
+                            "$ref": "#/definitions/Shared0"
                           },
                           "kind": {
                             "const": "targeting_restriction",
@@ -511,8 +514,7 @@
                         "additionalProperties": false,
                         "properties": {
                           "description": {
-                            "minLength": 1,
-                            "type": "string"
+                            "$ref": "#/definitions/Shared0"
                           },
                           "kind": {
                             "const": "creative_restriction",
@@ -528,8 +530,7 @@
                         "additionalProperties": false,
                         "properties": {
                           "description": {
-                            "minLength": 1,
-                            "type": "string"
+                            "$ref": "#/definitions/Shared0"
                           },
                           "kind": {
                             "const": "destination_restriction",
@@ -545,15 +546,13 @@
                         "additionalProperties": false,
                         "properties": {
                           "description": {
-                            "minLength": 1,
-                            "type": "string"
+                            "$ref": "#/definitions/Shared0"
                           },
                           "format_ids": {
                             "deprecated": true,
                             "description": "Deprecated in AdCP 3.2 and removed in AdCP 4.0. This named-format restriction is retained for 3.x compatibility; new policies identify canonical format options in description or an extension until a registry-stable format-option identity is standardized.",
                             "items": {
-                              "minLength": 1,
-                              "type": "string"
+                              "$ref": "#/definitions/Shared0"
                             },
                             "minItems": 1,
                             "type": "array",
@@ -574,20 +573,17 @@
                         "additionalProperties": false,
                         "properties": {
                           "description": {
-                            "minLength": 1,
-                            "type": "string"
+                            "$ref": "#/definitions/Shared0"
                           },
                           "ends_at": {
-                            "format": "date-time",
-                            "type": "string"
+                            "$ref": "#/definitions/Shared1"
                           },
                           "kind": {
                             "const": "time_restriction",
                             "type": "string"
                           },
                           "starts_at": {
-                            "format": "date-time",
-                            "type": "string"
+                            "$ref": "#/definitions/Shared1"
                           }
                         },
                         "required": [
@@ -598,8 +594,7 @@
                         "additionalProperties": false,
                         "properties": {
                           "description": {
-                            "minLength": 1,
-                            "type": "string"
+                            "$ref": "#/definitions/Shared0"
                           },
                           "kind": {
                             "const": "transparency_reporting",
@@ -614,19 +609,13 @@
                         "additionalProperties": false,
                         "properties": {
                           "description": {
-                            "minLength": 1,
-                            "type": "string"
+                            "$ref": "#/definitions/Shared0"
                           },
                           "ext": {
-                            "$schema": "http://json-schema.org/draft-07/schema#",
-                            "additionalProperties": true,
-                            "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                            "title": "Extension Object",
-                            "type": "object"
+                            "$ref": "#/definitions/Shared2"
                           },
                           "id": {
-                            "pattern": "^[a-z][a-z0-9_.:-]*$",
-                            "type": "string"
+                            "$ref": "#/definitions/Shared10"
                           },
                           "kind": {
                             "const": "custom",
@@ -708,40 +697,19 @@
                 "type": "boolean"
               },
               "applies_to": {
-                "items": {
-                  "enum": [
-                    "account",
-                    "media_buy",
-                    "creative",
-                    "landing_page",
-                    "targeting",
-                    "delivery",
-                    "format"
-                  ],
-                  "type": "string"
-                },
-                "minItems": 1,
-                "type": "array",
-                "uniqueItems": true
+                "$ref": "#/definitions/Shared6"
               },
               "jurisdiction_groups": {
                 "description": "Named groups declared in this profile's region_aliases.",
                 "items": {
-                  "pattern": "^[A-Z][A-Z0-9_-]*$",
-                  "type": "string"
+                  "$ref": "#/definitions/Shared9"
                 },
                 "minItems": 1,
                 "type": "array",
                 "uniqueItems": true
               },
               "jurisdictions": {
-                "items": {
-                  "pattern": "^[A-Z]{2}$",
-                  "type": "string"
-                },
-                "minItems": 1,
-                "type": "array",
-                "uniqueItems": true
+                "$ref": "#/definitions/Shared7"
               },
               "subject_categories": {
                 "items": {
@@ -761,8 +729,7 @@
             "type": "object"
           },
           "version": {
-            "minLength": 1,
-            "type": "string"
+            "$ref": "#/definitions/Shared0"
           }
         },
         "required": [
@@ -814,30 +781,22 @@
         "description": "Exact reference to a reusable acceptance profile embedded in a version-pinned shared policy-registry entry. Sellers add separate local profiles to narrow it; they do not copy and mutate a registry profile under the same identity.",
         "properties": {
           "policy_digest": {
-            "pattern": "^sha256:[a-f0-9]{64}$",
-            "type": "string"
+            "$ref": "#/definitions/Shared5"
           },
           "policy_id": {
-            "minLength": 1,
-            "type": "string",
-            "x-entity": "governance_registry_policy"
+            "$ref": "#/definitions/Shared4"
           },
           "policy_version": {
-            "minLength": 1,
-            "type": "string"
+            "$ref": "#/definitions/Shared0"
           },
           "profile_digest": {
-            "pattern": "^sha256:[a-f0-9]{64}$",
-            "type": "string"
+            "$ref": "#/definitions/Shared5"
           },
           "profile_id": {
-            "pattern": "^[A-Za-z0-9_.:-]+$",
-            "type": "string",
-            "x-entity": "acceptance_policy_profile"
+            "$ref": "#/definitions/Shared3"
           },
           "profile_version": {
-            "minLength": 1,
-            "type": "string"
+            "$ref": "#/definitions/Shared0"
           }
         },
         "required": [

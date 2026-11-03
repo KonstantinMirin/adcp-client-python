@@ -295,9 +295,7 @@
                 },
                 "then": {
                   "not": {
-                    "required": [
-                      "max_size_kb"
-                    ]
+                    "$ref": "#/definitions/Shared5"
                   }
                 }
               },
@@ -319,9 +317,7 @@
                 },
                 "then": {
                   "not": {
-                    "required": [
-                      "max_chars"
-                    ]
+                    "$ref": "#/definitions/Shared6"
                   }
                 }
               },
@@ -366,9 +362,7 @@
                         ]
                       },
                       {
-                        "required": [
-                          "required_pixel_ratios"
-                        ]
+                        "$ref": "#/definitions/Shared4"
                       }
                     ]
                   }
@@ -390,9 +384,7 @@
               {
                 "$comment": "A rendition set is representable only by an array-valued image slot. Card media is singular in card-asset.json, so card slots may accept densities but cannot require multiple density renditions.",
                 "if": {
-                  "required": [
-                    "required_pixel_ratios"
-                  ]
+                  "$ref": "#/definitions/Shared4"
                 },
                 "then": {
                   "properties": {
@@ -437,14 +429,10 @@
                   "not": {
                     "anyOf": [
                       {
-                        "required": [
-                          "max_chars"
-                        ]
+                        "$ref": "#/definitions/Shared6"
                       },
                       {
-                        "required": [
-                          "max_size_kb"
-                        ]
+                        "$ref": "#/definitions/Shared5"
                       }
                     ]
                   }
@@ -496,40 +484,7 @@
               "logo_slots": {
                 "description": "When `asset_group_id` is `logo`, renderer-facing brand.json logo slots acceptable for this format slot. Producers selecting from brand.json SHOULD prefer `logos[]` entries whose `slots[]` intersects this list, then apply `visual_guidelines.logo_usage_rules[]`.",
                 "items": {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
-                  "description": "Canonical renderer-facing logo slot. Use when selecting a logo variant from brand.json for a specific UI or creative placement.",
-                  "enum": [
-                    "logo_card_light",
-                    "logo_card_dark",
-                    "profile_mark",
-                    "favicon",
-                    "app_icon",
-                    "social_profile_mark",
-                    "nav_header",
-                    "footer",
-                    "email_header",
-                    "watermark",
-                    "ad_end_card",
-                    "co_brand_lockup",
-                    "marketplace_listing"
-                  ],
-                  "enumDescriptions": {
-                    "ad_end_card": "Advertising end card, especially video or CTV.",
-                    "app_icon": "Application icon or launcher icon.",
-                    "co_brand_lockup": "Co-brand, partner, sponsor, or secondary-mark lockup.",
-                    "email_header": "Email header logo.",
-                    "favicon": "Browser favicon or similarly tiny tab/bookmark icon.",
-                    "footer": "Footer logo.",
-                    "logo_card_dark": "Logo rendered in a card or framed placement on a dark background.",
-                    "logo_card_light": "Logo rendered in a card or framed placement on a light background.",
-                    "marketplace_listing": "Marketplace, catalog, directory, or store listing logo.",
-                    "nav_header": "Primary navigation header logo.",
-                    "profile_mark": "Small square logo mark for profile-style UI. Distinct from brand.json's top-level animated or conversational avatar object.",
-                    "social_profile_mark": "Social profile logo mark or feed identity mark.",
-                    "watermark": "Subtle watermark or bug."
-                  },
-                  "title": "Logo Slot",
-                  "type": "string"
+                  "$ref": "#/definitions/Shared3"
                 },
                 "type": "array",
                 "uniqueItems": true
@@ -557,8 +512,7 @@
               "pixel_ratios": {
                 "description": "Accepted intrinsic-pixel densities for this image-bearing slot. Valid when `asset_type` is `image`, and on a `card` slot where it constrains each card's image media (video media is unaffected). This makes density available to every canonical carrying image assets (native, carousel, responsive, companion images, and image itself), not only `format_kind: image`. When the image canonical also declares top-level `params.pixel_ratios`, the effective set is the intersection; an empty intersection is invalid. One matching asset satisfies the slot unless `required_pixel_ratios` requires rendition coverage.",
                 "items": {
-                  "exclusiveMinimum": 0,
-                  "type": "number"
+                  "$ref": "#/definitions/Shared2"
                 },
                 "minItems": 1,
                 "type": "array",
@@ -572,40 +526,7 @@
               "required_logo_slots": {
                 "description": "Subset of `logo_slots` for which this format expects explicit logo coverage. A manifest or brand-derived logo pool SHOULD include at least one usable logo for each required slot; if coverage is missing, builders SHOULD surface a validation warning or approval mapping instead of guessing from prose.",
                 "items": {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
-                  "description": "Canonical renderer-facing logo slot. Use when selecting a logo variant from brand.json for a specific UI or creative placement.",
-                  "enum": [
-                    "logo_card_light",
-                    "logo_card_dark",
-                    "profile_mark",
-                    "favicon",
-                    "app_icon",
-                    "social_profile_mark",
-                    "nav_header",
-                    "footer",
-                    "email_header",
-                    "watermark",
-                    "ad_end_card",
-                    "co_brand_lockup",
-                    "marketplace_listing"
-                  ],
-                  "enumDescriptions": {
-                    "ad_end_card": "Advertising end card, especially video or CTV.",
-                    "app_icon": "Application icon or launcher icon.",
-                    "co_brand_lockup": "Co-brand, partner, sponsor, or secondary-mark lockup.",
-                    "email_header": "Email header logo.",
-                    "favicon": "Browser favicon or similarly tiny tab/bookmark icon.",
-                    "footer": "Footer logo.",
-                    "logo_card_dark": "Logo rendered in a card or framed placement on a dark background.",
-                    "logo_card_light": "Logo rendered in a card or framed placement on a light background.",
-                    "marketplace_listing": "Marketplace, catalog, directory, or store listing logo.",
-                    "nav_header": "Primary navigation header logo.",
-                    "profile_mark": "Small square logo mark for profile-style UI. Distinct from brand.json's top-level animated or conversational avatar object.",
-                    "social_profile_mark": "Social profile logo mark or feed identity mark.",
-                    "watermark": "Subtle watermark or bug."
-                  },
-                  "title": "Logo Slot",
-                  "type": "string"
+                  "$ref": "#/definitions/Shared3"
                 },
                 "type": "array",
                 "uniqueItems": true
@@ -613,8 +534,7 @@
               "required_pixel_ratios": {
                 "description": "Required density coverage for an image rendition set. Valid only when `asset_type` is `image` and `pixel_ratios` is also declared. Every value MUST appear in the effective accepted set after intersecting any top-level image `params.pixel_ratios`, and the manifest slot value MUST be an array containing exactly one matching image rendition for each required ratio. Other accepted ratios remain optional. For example, `pixel_ratios: [1, 1.5, 2]` with `required_pixel_ratios: [1, 2]` requires the 1x and 2x renditions while making 1.5x optional. SDKs enforce intersection, subset, coverage, and duplicate-ratio rules because JSON Schema draft-07 cannot express them generically.",
                 "items": {
-                  "exclusiveMinimum": 0,
-                  "type": "number"
+                  "$ref": "#/definitions/Shared2"
                 },
                 "minItems": 1,
                 "type": "array",
@@ -646,6 +566,70 @@
       "x-canonical-policy-required-params-not-enforced": "Canonical format schemas intentionally do NOT mark parameter fields as required and use additionalProperties: true. The canonical describes which parameters MAY narrow a declaration; it does not supply hidden technical defaults. When a technical parameter is omitted, its meaning comes only from the enclosing declaration's technical_requirements_complete assertion: true means no constraint at that layer, while false or absence means undeclared. Consumers MUST NOT infer an omitted technical constraint from canonical prose, examples, common practice, or implementation defaults. This is intentional: structural schema validation and product-level technical-contract completeness are separate checks."
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "type": "boolean"
+    },
+    "Shared1": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "Shared2": {
+      "exclusiveMinimum": 0,
+      "type": "number"
+    },
+    "Shared3": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Canonical renderer-facing logo slot. Use when selecting a logo variant from brand.json for a specific UI or creative placement.",
+      "enum": [
+        "logo_card_light",
+        "logo_card_dark",
+        "profile_mark",
+        "favicon",
+        "app_icon",
+        "social_profile_mark",
+        "nav_header",
+        "footer",
+        "email_header",
+        "watermark",
+        "ad_end_card",
+        "co_brand_lockup",
+        "marketplace_listing"
+      ],
+      "enumDescriptions": {
+        "ad_end_card": "Advertising end card, especially video or CTV.",
+        "app_icon": "Application icon or launcher icon.",
+        "co_brand_lockup": "Co-brand, partner, sponsor, or secondary-mark lockup.",
+        "email_header": "Email header logo.",
+        "favicon": "Browser favicon or similarly tiny tab/bookmark icon.",
+        "footer": "Footer logo.",
+        "logo_card_dark": "Logo rendered in a card or framed placement on a dark background.",
+        "logo_card_light": "Logo rendered in a card or framed placement on a light background.",
+        "marketplace_listing": "Marketplace, catalog, directory, or store listing logo.",
+        "nav_header": "Primary navigation header logo.",
+        "profile_mark": "Small square logo mark for profile-style UI. Distinct from brand.json's top-level animated or conversational avatar object.",
+        "social_profile_mark": "Social profile logo mark or feed identity mark.",
+        "watermark": "Subtle watermark or bug."
+      },
+      "title": "Logo Slot",
+      "type": "string"
+    },
+    "Shared4": {
+      "required": [
+        "required_pixel_ratios"
+      ]
+    },
+    "Shared5": {
+      "required": [
+        "max_size_kb"
+      ]
+    },
+    "Shared6": {
+      "required": [
+        "max_chars"
+      ]
+    }
+  },
   "description": "DAAST-tag-delivered audio creative (audio analog of VAST). Slot: `daast_tag` (daast asset, URL or inline XML). Tracking model: DAAST events inherent to the spec \u2014 `impression`, `firstQuartile`, `midpoint`, `thirdQuartile`, `complete`, `start`, `pause`, `resume`, `mute`, `unmute`, `clickTracking`, `error`. Distinct from `audio_hosted` (direct file with external tracking).",
   "not": {
     "required": [
@@ -655,7 +639,7 @@
   },
   "properties": {
     "companion_image_required": {
-      "type": "boolean"
+      "$ref": "#/definitions/Shared0"
     },
     "daast_version": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -692,19 +676,17 @@
     "duration_ms_range": {
       "description": "[min, max] duration in milliseconds. **Precedence**: `duration_ms_exact` takes precedence when both ship. SDKs SHOULD lint a warning when both fields ship.",
       "items": {
-        "minimum": 0,
-        "type": "integer"
+        "$ref": "#/definitions/Shared1"
       },
       "maxItems": 2,
       "minItems": 2,
       "type": "array"
     },
     "linear_required": {
-      "type": "boolean"
+      "$ref": "#/definitions/Shared0"
     },
     "max_wrapper_depth": {
-      "minimum": 0,
-      "type": "integer"
+      "$ref": "#/definitions/Shared1"
     },
     "slots": {
       "default": [
@@ -722,7 +704,7 @@
       "description": "Default slots for audio_daast canonical. Buyer ships a DAAST tag (URL or inline XML, 1.0 or 1.1) plus an optional clickthrough URL. Tracking events are inherent to DAAST and don't require explicit slots."
     },
     "ssl_required": {
-      "type": "boolean"
+      "$ref": "#/definitions/Shared0"
     }
   },
   "title": "Canonical Format: DAAST Audio"

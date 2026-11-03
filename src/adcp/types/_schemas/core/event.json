@@ -23,95 +23,43 @@
                 "description": "Event-specific data for attribution and reporting",
                 "properties": {
                   "content_category": {
-                    "description": "Category of the product or content",
-                    "type": "string"
+                    "$ref": "#/definitions/Shared7"
                   },
                   "content_ids": {
-                    "description": "Item identifiers for catalog attribution. Values are matched against catalog items using the identifier type declared by the catalog's content_id_type field (e.g., SKUs, GTINs, or vertical-specific IDs like job_id).",
-                    "items": {
-                      "type": "string"
-                    },
-                    "type": "array"
+                    "$ref": "#/definitions/Shared4"
                   },
                   "content_name": {
-                    "description": "Name of the product or content",
-                    "type": "string"
+                    "$ref": "#/definitions/Shared6"
                   },
                   "content_type": {
-                    "description": "Category of content associated with the event (e.g., 'product', 'job', 'hotel'). Corresponds to the catalog type when used for catalog attribution.",
-                    "type": "string"
+                    "$ref": "#/definitions/Shared5"
                   },
                   "contents": {
-                    "description": "Per-item details for e-commerce events",
-                    "items": {
-                      "additionalProperties": true,
-                      "properties": {
-                        "brand": {
-                          "description": "Brand name of this item",
-                          "type": "string"
-                        },
-                        "id": {
-                          "description": "Product or content identifier",
-                          "type": "string"
-                        },
-                        "price": {
-                          "description": "Price per unit of this item",
-                          "minimum": 0,
-                          "type": "number"
-                        },
-                        "quantity": {
-                          "description": "Quantity of this item",
-                          "minimum": 1,
-                          "type": "integer"
-                        }
-                      },
-                      "required": [
-                        "id"
-                      ],
-                      "type": "object"
-                    },
-                    "type": "array"
+                    "$ref": "#/definitions/Shared12"
                   },
                   "currency": {
-                    "description": "ISO 4217 currency code. For a source declaring value_currencies, monetary records MUST carry a currency from that list.",
-                    "pattern": "^[A-Z]{3}$",
-                    "type": "string"
+                    "$ref": "#/definitions/Shared2"
                   },
                   "ext": {
-                    "$schema": "http://json-schema.org/draft-07/schema#",
-                    "additionalProperties": true,
-                    "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                    "title": "Extension Object",
-                    "type": "object"
+                    "$ref": "#/definitions/Shared0"
                   },
                   "num_items": {
-                    "description": "Number of items in the event",
-                    "minimum": 0,
-                    "type": "integer"
+                    "$ref": "#/definitions/Shared8"
                   },
                   "order_id": {
-                    "description": "Unique order or transaction identifier",
-                    "type": "string"
+                    "$ref": "#/definitions/Shared3"
                   },
                   "progress_percent": {
-                    "description": "Content progress percentage reached, primarily for `watch_milestone` events. Use 25, 50, 75, or 100 for quartiles, or another publisher-defined threshold. Do not use `value` for non-monetary progress.",
-                    "maximum": 100,
-                    "minimum": 0,
-                    "type": "number"
+                    "$ref": "#/definitions/Shared10"
                   },
                   "progress_seconds": {
-                    "description": "Content progress duration reached in seconds, primarily for `watch_milestone` events. Use when the milestone is time-based rather than percentage-based.",
-                    "minimum": 0,
-                    "type": "number"
+                    "$ref": "#/definitions/Shared11"
                   },
                   "search_string": {
-                    "description": "Search query for search events",
-                    "type": "string"
+                    "$ref": "#/definitions/Shared9"
                   },
                   "value": {
-                    "description": "Monetary value of the event. For an event source that declares value_currencies, currency is required and MUST appear in that list. Legacy sources without the new contract remain schema-compatible but are ineligible for canonical ROAS.",
-                    "minimum": 0,
-                    "type": "number"
+                    "$ref": "#/definitions/Shared1"
                   }
                 },
                 "title": "Event Custom Data",
@@ -140,6 +88,99 @@
       }
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "Shared1": {
+      "description": "Monetary value of the event. For an event source that declares value_currencies, currency is required and MUST appear in that list. Legacy sources without the new contract remain schema-compatible but are ineligible for canonical ROAS.",
+      "minimum": 0,
+      "type": "number"
+    },
+    "Shared10": {
+      "description": "Content progress percentage reached, primarily for `watch_milestone` events. Use 25, 50, 75, or 100 for quartiles, or another publisher-defined threshold. Do not use `value` for non-monetary progress.",
+      "maximum": 100,
+      "minimum": 0,
+      "type": "number"
+    },
+    "Shared11": {
+      "description": "Content progress duration reached in seconds, primarily for `watch_milestone` events. Use when the milestone is time-based rather than percentage-based.",
+      "minimum": 0,
+      "type": "number"
+    },
+    "Shared12": {
+      "description": "Per-item details for e-commerce events",
+      "items": {
+        "additionalProperties": true,
+        "properties": {
+          "brand": {
+            "description": "Brand name of this item",
+            "type": "string"
+          },
+          "id": {
+            "description": "Product or content identifier",
+            "type": "string"
+          },
+          "price": {
+            "description": "Price per unit of this item",
+            "minimum": 0,
+            "type": "number"
+          },
+          "quantity": {
+            "description": "Quantity of this item",
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "Shared2": {
+      "description": "ISO 4217 currency code. For a source declaring value_currencies, monetary records MUST carry a currency from that list.",
+      "pattern": "^[A-Z]{3}$",
+      "type": "string"
+    },
+    "Shared3": {
+      "description": "Unique order or transaction identifier",
+      "type": "string"
+    },
+    "Shared4": {
+      "description": "Item identifiers for catalog attribution. Values are matched against catalog items using the identifier type declared by the catalog's content_id_type field (e.g., SKUs, GTINs, or vertical-specific IDs like job_id).",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "Shared5": {
+      "description": "Category of content associated with the event (e.g., 'product', 'job', 'hotel'). Corresponds to the catalog type when used for catalog attribution.",
+      "type": "string"
+    },
+    "Shared6": {
+      "description": "Name of the product or content",
+      "type": "string"
+    },
+    "Shared7": {
+      "description": "Category of the product or content",
+      "type": "string"
+    },
+    "Shared8": {
+      "description": "Number of items in the event",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "Shared9": {
+      "description": "Search query for search events",
+      "type": "string"
+    }
+  },
   "description": "A marketing event (conversion, engagement, or custom) for attribution and optimization",
   "properties": {
     "action_source": {
@@ -176,95 +217,43 @@
       "description": "Event-specific data (value, currency, items, etc.)",
       "properties": {
         "content_category": {
-          "description": "Category of the product or content",
-          "type": "string"
+          "$ref": "#/definitions/Shared7"
         },
         "content_ids": {
-          "description": "Item identifiers for catalog attribution. Values are matched against catalog items using the identifier type declared by the catalog's content_id_type field (e.g., SKUs, GTINs, or vertical-specific IDs like job_id).",
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
+          "$ref": "#/definitions/Shared4"
         },
         "content_name": {
-          "description": "Name of the product or content",
-          "type": "string"
+          "$ref": "#/definitions/Shared6"
         },
         "content_type": {
-          "description": "Category of content associated with the event (e.g., 'product', 'job', 'hotel'). Corresponds to the catalog type when used for catalog attribution.",
-          "type": "string"
+          "$ref": "#/definitions/Shared5"
         },
         "contents": {
-          "description": "Per-item details for e-commerce events",
-          "items": {
-            "additionalProperties": true,
-            "properties": {
-              "brand": {
-                "description": "Brand name of this item",
-                "type": "string"
-              },
-              "id": {
-                "description": "Product or content identifier",
-                "type": "string"
-              },
-              "price": {
-                "description": "Price per unit of this item",
-                "minimum": 0,
-                "type": "number"
-              },
-              "quantity": {
-                "description": "Quantity of this item",
-                "minimum": 1,
-                "type": "integer"
-              }
-            },
-            "required": [
-              "id"
-            ],
-            "type": "object"
-          },
-          "type": "array"
+          "$ref": "#/definitions/Shared12"
         },
         "currency": {
-          "description": "ISO 4217 currency code. For a source declaring value_currencies, monetary records MUST carry a currency from that list.",
-          "pattern": "^[A-Z]{3}$",
-          "type": "string"
+          "$ref": "#/definitions/Shared2"
         },
         "ext": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": true,
-          "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-          "title": "Extension Object",
-          "type": "object"
+          "$ref": "#/definitions/Shared0"
         },
         "num_items": {
-          "description": "Number of items in the event",
-          "minimum": 0,
-          "type": "integer"
+          "$ref": "#/definitions/Shared8"
         },
         "order_id": {
-          "description": "Unique order or transaction identifier",
-          "type": "string"
+          "$ref": "#/definitions/Shared3"
         },
         "progress_percent": {
-          "description": "Content progress percentage reached, primarily for `watch_milestone` events. Use 25, 50, 75, or 100 for quartiles, or another publisher-defined threshold. Do not use `value` for non-monetary progress.",
-          "maximum": 100,
-          "minimum": 0,
-          "type": "number"
+          "$ref": "#/definitions/Shared10"
         },
         "progress_seconds": {
-          "description": "Content progress duration reached in seconds, primarily for `watch_milestone` events. Use when the milestone is time-based rather than percentage-based.",
-          "minimum": 0,
-          "type": "number"
+          "$ref": "#/definitions/Shared11"
         },
         "search_string": {
-          "description": "Search query for search events",
-          "type": "string"
+          "$ref": "#/definitions/Shared9"
         },
         "value": {
-          "description": "Monetary value of the event. For an event source that declares value_currencies, currency is required and MUST appear in that list. Legacy sources without the new contract remain schema-compatible but are ineligible for canonical ROAS.",
-          "minimum": 0,
-          "type": "number"
+          "$ref": "#/definitions/Shared1"
         }
       },
       "title": "Event Custom Data",
@@ -363,11 +352,7 @@
       "type": "string"
     },
     "ext": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "additionalProperties": true,
-      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-      "title": "Extension Object",
-      "type": "object"
+      "$ref": "#/definitions/Shared0"
     },
     "surface": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -403,11 +388,7 @@
           "type": "string"
         },
         "ext": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": true,
-          "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-          "title": "Extension Object",
-          "type": "object"
+          "$ref": "#/definitions/Shared0"
         },
         "namespace": {
           "description": "Platform, publisher, or system namespace for the property, such as `video_platform`, `short_video_app`, `audio_service`, or a seller-defined namespace. This is intentionally not an enum.",
@@ -485,11 +466,7 @@
           "type": "string"
         },
         "ext": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": true,
-          "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-          "title": "Extension Object",
-          "type": "object"
+          "$ref": "#/definitions/Shared0"
         },
         "hashed_email": {
           "description": "SHA-256 hash of lowercase, trimmed email address. Buyer must normalize before hashing: lowercase, trim whitespace. Pseudonymous PII, not anonymous \u2014 the email namespace is small enough that an unsalted SHA-256 is recoverable via precomputed dictionaries. Treat as PII for retention, consent, and access-control purposes. See docs/reference/privacy-considerations#unsalted-hashed-identifiers-are-pseudonymous-not-anonymous.",

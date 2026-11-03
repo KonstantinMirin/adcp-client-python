@@ -20,6 +20,27 @@
       }
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "Shared1": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "Shared2": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "Shared3": {
+      "pattern": "^[a-z][a-z0-9_.:-]*$",
+      "type": "string"
+    }
+  },
   "description": "A coarse, discoverable seller rule for one policy subject. Discovery is advisory; the seller response to an exact request remains authoritative.",
   "properties": {
     "advertiser_roles": {
@@ -64,19 +85,13 @@
       "type": "string"
     },
     "effective_at": {
-      "format": "date-time",
-      "type": "string"
+      "$ref": "#/definitions/Shared0"
     },
     "expires_at": {
-      "format": "date-time",
-      "type": "string"
+      "$ref": "#/definitions/Shared0"
     },
     "ext": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "additionalProperties": true,
-      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-      "title": "Extension Object",
-      "type": "object"
+      "$ref": "#/definitions/Shared1"
     },
     "jurisdiction_groups": {
       "description": "Named country groups declared by the containing profile's region_aliases. Unknown group IDs invalidate the profile; they never match permissively.",
@@ -121,12 +136,10 @@
             "additionalProperties": false,
             "properties": {
               "declaration": {
-                "minLength": 1,
-                "type": "string"
+                "$ref": "#/definitions/Shared2"
               },
               "description": {
-                "minLength": 1,
-                "type": "string"
+                "$ref": "#/definitions/Shared2"
               },
               "kind": {
                 "const": "category_declaration",
@@ -141,16 +154,14 @@
             "additionalProperties": false,
             "properties": {
               "description": {
-                "minLength": 1,
-                "type": "string"
+                "$ref": "#/definitions/Shared2"
               },
               "kind": {
                 "const": "advertiser_verification",
                 "type": "string"
               },
               "verification_scheme": {
-                "minLength": 1,
-                "type": "string"
+                "$ref": "#/definitions/Shared2"
               }
             },
             "required": [
@@ -163,16 +174,14 @@
               "criteria": {
                 "description": "Stable criteria such as domestic_entity, citizen_or_resident, official_election_authority, or eligible_agency.",
                 "items": {
-                  "pattern": "^[a-z][a-z0-9_.:-]*$",
-                  "type": "string"
+                  "$ref": "#/definitions/Shared3"
                 },
                 "minItems": 1,
                 "type": "array",
                 "uniqueItems": true
               },
               "description": {
-                "minLength": 1,
-                "type": "string"
+                "$ref": "#/definitions/Shared2"
               },
               "kind": {
                 "const": "advertiser_eligibility",
@@ -190,16 +199,14 @@
               "criteria": {
                 "description": "Stable restrictions such as no_foreign_funding or sponsor_identity_required.",
                 "items": {
-                  "pattern": "^[a-z][a-z0-9_.:-]*$",
-                  "type": "string"
+                  "$ref": "#/definitions/Shared3"
                 },
                 "minItems": 1,
                 "type": "array",
                 "uniqueItems": true
               },
               "description": {
-                "minLength": 1,
-                "type": "string"
+                "$ref": "#/definitions/Shared2"
               },
               "kind": {
                 "const": "funding_restriction",
@@ -215,12 +222,10 @@
             "additionalProperties": false,
             "properties": {
               "credential": {
-                "minLength": 1,
-                "type": "string"
+                "$ref": "#/definitions/Shared2"
               },
               "description": {
-                "minLength": 1,
-                "type": "string"
+                "$ref": "#/definitions/Shared2"
               },
               "kind": {
                 "const": "certification",
@@ -235,12 +240,10 @@
             "additionalProperties": false,
             "properties": {
               "credential": {
-                "minLength": 1,
-                "type": "string"
+                "$ref": "#/definitions/Shared2"
               },
               "description": {
-                "minLength": 1,
-                "type": "string"
+                "$ref": "#/definitions/Shared2"
               },
               "kind": {
                 "const": "license",
@@ -255,8 +258,7 @@
             "additionalProperties": false,
             "properties": {
               "description": {
-                "minLength": 1,
-                "type": "string"
+                "$ref": "#/definitions/Shared2"
               },
               "kind": {
                 "const": "prior_authorization",
@@ -271,8 +273,7 @@
             "additionalProperties": false,
             "properties": {
               "description": {
-                "minLength": 1,
-                "type": "string"
+                "$ref": "#/definitions/Shared2"
               },
               "kind": {
                 "const": "account_setup",
@@ -287,8 +288,7 @@
             "additionalProperties": false,
             "properties": {
               "description": {
-                "minLength": 1,
-                "type": "string"
+                "$ref": "#/definitions/Shared2"
               },
               "kind": {
                 "const": "sales_assisted",
@@ -303,20 +303,17 @@
             "additionalProperties": false,
             "properties": {
               "description": {
-                "minLength": 1,
-                "type": "string"
+                "$ref": "#/definitions/Shared2"
               },
               "format": {
-                "minLength": 1,
-                "type": "string"
+                "$ref": "#/definitions/Shared2"
               },
               "kind": {
                 "const": "disclosure",
                 "type": "string"
               },
               "placement": {
-                "minLength": 1,
-                "type": "string"
+                "$ref": "#/definitions/Shared2"
               }
             },
             "required": [
@@ -327,8 +324,7 @@
             "additionalProperties": false,
             "properties": {
               "description": {
-                "minLength": 1,
-                "type": "string"
+                "$ref": "#/definitions/Shared2"
               },
               "kind": {
                 "const": "targeting_restriction",
@@ -378,8 +374,7 @@
             "additionalProperties": false,
             "properties": {
               "description": {
-                "minLength": 1,
-                "type": "string"
+                "$ref": "#/definitions/Shared2"
               },
               "kind": {
                 "const": "creative_restriction",
@@ -395,8 +390,7 @@
             "additionalProperties": false,
             "properties": {
               "description": {
-                "minLength": 1,
-                "type": "string"
+                "$ref": "#/definitions/Shared2"
               },
               "kind": {
                 "const": "destination_restriction",
@@ -412,15 +406,13 @@
             "additionalProperties": false,
             "properties": {
               "description": {
-                "minLength": 1,
-                "type": "string"
+                "$ref": "#/definitions/Shared2"
               },
               "format_ids": {
                 "deprecated": true,
                 "description": "Deprecated in AdCP 3.2 and removed in AdCP 4.0. This named-format restriction is retained for 3.x compatibility; new policies identify canonical format options in description or an extension until a registry-stable format-option identity is standardized.",
                 "items": {
-                  "minLength": 1,
-                  "type": "string"
+                  "$ref": "#/definitions/Shared2"
                 },
                 "minItems": 1,
                 "type": "array",
@@ -441,20 +433,17 @@
             "additionalProperties": false,
             "properties": {
               "description": {
-                "minLength": 1,
-                "type": "string"
+                "$ref": "#/definitions/Shared2"
               },
               "ends_at": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/definitions/Shared0"
               },
               "kind": {
                 "const": "time_restriction",
                 "type": "string"
               },
               "starts_at": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/definitions/Shared0"
               }
             },
             "required": [
@@ -465,8 +454,7 @@
             "additionalProperties": false,
             "properties": {
               "description": {
-                "minLength": 1,
-                "type": "string"
+                "$ref": "#/definitions/Shared2"
               },
               "kind": {
                 "const": "transparency_reporting",
@@ -481,19 +469,13 @@
             "additionalProperties": false,
             "properties": {
               "description": {
-                "minLength": 1,
-                "type": "string"
+                "$ref": "#/definitions/Shared2"
               },
               "ext": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "additionalProperties": true,
-                "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                "title": "Extension Object",
-                "type": "object"
+                "$ref": "#/definitions/Shared1"
               },
               "id": {
-                "pattern": "^[a-z][a-z0-9_.:-]*$",
-                "type": "string"
+                "$ref": "#/definitions/Shared3"
               },
               "kind": {
                 "const": "custom",

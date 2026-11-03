@@ -8,6 +8,24 @@
       "title": "Reporting Primary Key",
       "type": "string",
       "x-adcp-model-context-inline": true
+    },
+    "Shared0": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]{1,128}$",
+      "type": "string"
+    },
+    "Shared1": {
+      "description": "Base64 of the exact expected canonical UTF-8 bytes.",
+      "minLength": 1,
+      "type": "string"
+    },
+    "Shared2": {
+      "pattern": "^[A-Fa-f0-9]{64}$",
+      "type": "string"
+    },
+    "Shared3": {
+      "type": "object"
     }
   },
   "description": "Executable, immutable contract for producing the canonical logical-report bytes hashed by reporting-canonical-content-digest.json. The fetched document uses application/vnd.adcp.reporting-canonicalization+json and is verified by SHA-256 before parsing.",
@@ -29,29 +47,23 @@
             "additionalProperties": false,
             "properties": {
               "canonical_utf8_base64": {
-                "description": "Base64 of the exact expected canonical UTF-8 bytes.",
-                "minLength": 1,
-                "type": "string"
+                "$ref": "#/definitions/Shared1"
               },
               "input_rows": {
                 "items": {
-                  "type": "object"
+                  "$ref": "#/definitions/Shared3"
                 },
                 "type": "array"
               },
               "name": {
-                "maxLength": 128,
-                "minLength": 1,
-                "pattern": "^[A-Za-z0-9_.:-]{1,128}$",
-                "type": "string"
+                "$ref": "#/definitions/Shared0"
               },
               "purpose": {
                 "const": "additional",
                 "type": "string"
               },
               "sha256": {
-                "pattern": "^[A-Fa-f0-9]{64}$",
-                "type": "string"
+                "$ref": "#/definitions/Shared2"
               }
             },
             "required": [
@@ -79,10 +91,7 @@
               "type": "array"
             },
             "name": {
-              "maxLength": 128,
-              "minLength": 1,
-              "pattern": "^[A-Za-z0-9_.:-]{1,128}$",
-              "type": "string"
+              "$ref": "#/definitions/Shared0"
             },
             "purpose": {
               "const": "empty_report",
@@ -107,30 +116,24 @@
           "additionalProperties": false,
           "properties": {
             "canonical_utf8_base64": {
-              "description": "Base64 of the exact expected canonical UTF-8 bytes.",
-              "minLength": 1,
-              "type": "string"
+              "$ref": "#/definitions/Shared1"
             },
             "input_rows": {
               "items": {
-                "type": "object"
+                "$ref": "#/definitions/Shared3"
               },
               "minItems": 2,
               "type": "array"
             },
             "name": {
-              "maxLength": 128,
-              "minLength": 1,
-              "pattern": "^[A-Za-z0-9_.:-]{1,128}$",
-              "type": "string"
+              "$ref": "#/definitions/Shared0"
             },
             "purpose": {
               "const": "ordering_encoding",
               "type": "string"
             },
             "sha256": {
-              "pattern": "^[A-Fa-f0-9]{64}$",
-              "type": "string"
+              "$ref": "#/definitions/Shared2"
             }
           },
           "required": [

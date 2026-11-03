@@ -66,13 +66,43 @@
       }
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "Shared1": {
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "Shared2": {
+      "format": "uri",
+      "pattern": "^https://",
+      "type": "string"
+    },
+    "Shared3": {
+      "type": "string"
+    },
+    "Shared4": {
+      "const": "age"
+    },
+    "Shared5": {
+      "type": "number"
+    },
+    "Shared6": {
+      "type": "boolean"
+    },
+    "Shared7": {
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
   "description": "Compact immutable audience-evidence snapshot for product discovery. Provider identity is a BrandKey; credential and brand-asset graphs are resolved separately.",
   "properties": {
     "attestation_digests": {
       "description": "Portable-attestation reference digests available through the evidence provider; credential bodies are not inlined into product discovery.",
       "items": {
-        "pattern": "^sha256:[a-f0-9]{64}$",
-        "type": "string"
+        "$ref": "#/definitions/Shared1"
       },
       "minItems": 1,
       "type": "array",
@@ -86,7 +116,7 @@
           "if": {
             "properties": {
               "dimension": {
-                "const": "age"
+                "$ref": "#/definitions/Shared4"
               }
             },
             "required": [
@@ -100,12 +130,10 @@
                 "minProperties": 1,
                 "properties": {
                   "max": {
-                    "minimum": 0,
-                    "type": "integer"
+                    "$ref": "#/definitions/Shared7"
                   },
                   "min": {
-                    "minimum": 0,
-                    "type": "integer"
+                    "$ref": "#/definitions/Shared7"
                   }
                 },
                 "type": "object"
@@ -113,13 +141,11 @@
               "value": {
                 "oneOf": [
                   {
-                    "minimum": 0,
-                    "type": "integer"
+                    "$ref": "#/definitions/Shared7"
                   },
                   {
                     "items": {
-                      "minimum": 0,
-                      "type": "integer"
+                      "$ref": "#/definitions/Shared7"
                     },
                     "minItems": 1,
                     "type": "array",
@@ -158,7 +184,7 @@
         "dimension": {
           "anyOf": [
             {
-              "const": "age"
+              "$ref": "#/definitions/Shared4"
             },
             {
               "format": "uri",
@@ -178,10 +204,10 @@
           "minProperties": 1,
           "properties": {
             "max": {
-              "type": "number"
+              "$ref": "#/definitions/Shared5"
             },
             "min": {
-              "type": "number"
+              "$ref": "#/definitions/Shared5"
             }
           },
           "type": "object"
@@ -191,17 +217,13 @@
           "description": "External system that defines the dimension or value. Taxonomy metadata is descriptive and does not create exact demographic targeting semantics.",
           "properties": {
             "system": {
-              "format": "uri",
-              "pattern": "^https://",
-              "type": "string"
+              "$ref": "#/definitions/Shared2"
             },
             "value_id": {
-              "minLength": 1,
-              "type": "string"
+              "$ref": "#/definitions/Shared0"
             },
             "version": {
-              "minLength": 1,
-              "type": "string"
+              "$ref": "#/definitions/Shared0"
             }
           },
           "required": [
@@ -213,25 +235,25 @@
           "description": "Scalar or set value for the dimension.",
           "oneOf": [
             {
-              "type": "string"
+              "$ref": "#/definitions/Shared3"
             },
             {
-              "type": "number"
+              "$ref": "#/definitions/Shared5"
             },
             {
-              "type": "boolean"
+              "$ref": "#/definitions/Shared6"
             },
             {
               "items": {
                 "oneOf": [
                   {
-                    "type": "string"
+                    "$ref": "#/definitions/Shared3"
                   },
                   {
-                    "type": "number"
+                    "$ref": "#/definitions/Shared5"
                   },
                   {
-                    "type": "boolean"
+                    "$ref": "#/definitions/Shared6"
                   }
                 ]
               },
@@ -252,20 +274,16 @@
       "additionalProperties": false,
       "properties": {
         "description": {
-          "type": "string"
+          "$ref": "#/definitions/Shared3"
         },
         "population_id": {
-          "minLength": 1,
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         },
         "system": {
-          "format": "uri",
-          "pattern": "^https://",
-          "type": "string"
+          "$ref": "#/definitions/Shared2"
         },
         "version": {
-          "minLength": 1,
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         }
       },
       "required": [
@@ -281,8 +299,7 @@
       "type": "number"
     },
     "content_digest": {
-      "pattern": "^sha256:[a-f0-9]{64}$",
-      "type": "string"
+      "$ref": "#/definitions/Shared1"
     },
     "evidence_id": {
       "minLength": 1,
@@ -346,9 +363,7 @@
       "type": "string"
     },
     "methodology_url": {
-      "format": "uri",
-      "pattern": "^https://",
-      "type": "string"
+      "$ref": "#/definitions/Shared2"
     },
     "provider": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -449,8 +464,7 @@
       "type": "number"
     },
     "version": {
-      "minLength": 1,
-      "type": "string"
+      "$ref": "#/definitions/Shared0"
     }
   },
   "required": [

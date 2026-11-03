@@ -1,5 +1,19 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "Shared0": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "Shared1": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "Shared2": {
+      "pattern": "^[a-z][a-z0-9_.:-]*$",
+      "type": "string"
+    }
+  },
   "description": "A typed prerequisite or restriction attached to a conditional seller-acceptance rule. The kind is coarse and machine-actionable; exact obligations remain in the referenced registry policies.",
   "discriminator": {
     "propertyName": "kind"
@@ -9,12 +23,10 @@
       "additionalProperties": false,
       "properties": {
         "declaration": {
-          "minLength": 1,
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         },
         "description": {
-          "minLength": 1,
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         },
         "kind": {
           "const": "category_declaration",
@@ -29,16 +41,14 @@
       "additionalProperties": false,
       "properties": {
         "description": {
-          "minLength": 1,
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         },
         "kind": {
           "const": "advertiser_verification",
           "type": "string"
         },
         "verification_scheme": {
-          "minLength": 1,
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         }
       },
       "required": [
@@ -51,16 +61,14 @@
         "criteria": {
           "description": "Stable criteria such as domestic_entity, citizen_or_resident, official_election_authority, or eligible_agency.",
           "items": {
-            "pattern": "^[a-z][a-z0-9_.:-]*$",
-            "type": "string"
+            "$ref": "#/definitions/Shared2"
           },
           "minItems": 1,
           "type": "array",
           "uniqueItems": true
         },
         "description": {
-          "minLength": 1,
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         },
         "kind": {
           "const": "advertiser_eligibility",
@@ -78,16 +86,14 @@
         "criteria": {
           "description": "Stable restrictions such as no_foreign_funding or sponsor_identity_required.",
           "items": {
-            "pattern": "^[a-z][a-z0-9_.:-]*$",
-            "type": "string"
+            "$ref": "#/definitions/Shared2"
           },
           "minItems": 1,
           "type": "array",
           "uniqueItems": true
         },
         "description": {
-          "minLength": 1,
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         },
         "kind": {
           "const": "funding_restriction",
@@ -103,12 +109,10 @@
       "additionalProperties": false,
       "properties": {
         "credential": {
-          "minLength": 1,
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         },
         "description": {
-          "minLength": 1,
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         },
         "kind": {
           "const": "certification",
@@ -123,12 +127,10 @@
       "additionalProperties": false,
       "properties": {
         "credential": {
-          "minLength": 1,
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         },
         "description": {
-          "minLength": 1,
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         },
         "kind": {
           "const": "license",
@@ -143,8 +145,7 @@
       "additionalProperties": false,
       "properties": {
         "description": {
-          "minLength": 1,
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         },
         "kind": {
           "const": "prior_authorization",
@@ -159,8 +160,7 @@
       "additionalProperties": false,
       "properties": {
         "description": {
-          "minLength": 1,
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         },
         "kind": {
           "const": "account_setup",
@@ -175,8 +175,7 @@
       "additionalProperties": false,
       "properties": {
         "description": {
-          "minLength": 1,
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         },
         "kind": {
           "const": "sales_assisted",
@@ -191,20 +190,17 @@
       "additionalProperties": false,
       "properties": {
         "description": {
-          "minLength": 1,
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         },
         "format": {
-          "minLength": 1,
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         },
         "kind": {
           "const": "disclosure",
           "type": "string"
         },
         "placement": {
-          "minLength": 1,
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         }
       },
       "required": [
@@ -215,8 +211,7 @@
       "additionalProperties": false,
       "properties": {
         "description": {
-          "minLength": 1,
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         },
         "kind": {
           "const": "targeting_restriction",
@@ -266,8 +261,7 @@
       "additionalProperties": false,
       "properties": {
         "description": {
-          "minLength": 1,
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         },
         "kind": {
           "const": "creative_restriction",
@@ -283,8 +277,7 @@
       "additionalProperties": false,
       "properties": {
         "description": {
-          "minLength": 1,
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         },
         "kind": {
           "const": "destination_restriction",
@@ -300,15 +293,13 @@
       "additionalProperties": false,
       "properties": {
         "description": {
-          "minLength": 1,
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         },
         "format_ids": {
           "deprecated": true,
           "description": "Deprecated in AdCP 3.2 and removed in AdCP 4.0. This named-format restriction is retained for 3.x compatibility; new policies identify canonical format options in description or an extension until a registry-stable format-option identity is standardized.",
           "items": {
-            "minLength": 1,
-            "type": "string"
+            "$ref": "#/definitions/Shared0"
           },
           "minItems": 1,
           "type": "array",
@@ -329,20 +320,17 @@
       "additionalProperties": false,
       "properties": {
         "description": {
-          "minLength": 1,
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         },
         "ends_at": {
-          "format": "date-time",
-          "type": "string"
+          "$ref": "#/definitions/Shared1"
         },
         "kind": {
           "const": "time_restriction",
           "type": "string"
         },
         "starts_at": {
-          "format": "date-time",
-          "type": "string"
+          "$ref": "#/definitions/Shared1"
         }
       },
       "required": [
@@ -353,8 +341,7 @@
       "additionalProperties": false,
       "properties": {
         "description": {
-          "minLength": 1,
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         },
         "kind": {
           "const": "transparency_reporting",
@@ -369,8 +356,7 @@
       "additionalProperties": false,
       "properties": {
         "description": {
-          "minLength": 1,
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         },
         "ext": {
           "$schema": "http://json-schema.org/draft-07/schema#",
@@ -380,8 +366,7 @@
           "type": "object"
         },
         "id": {
-          "pattern": "^[a-z][a-z0-9_.:-]*$",
-          "type": "string"
+          "$ref": "#/definitions/Shared2"
         },
         "kind": {
           "const": "custom",

@@ -6,10 +6,7 @@
       "if": {
         "properties": {
           "status": {
-            "enum": [
-              "available",
-              "delivered"
-            ]
+            "$ref": "#/definitions/Shared6"
           }
         },
         "required": [
@@ -58,7 +55,7 @@
           "resource": {
             "properties": {
               "kind": {
-                "const": "manifest"
+                "$ref": "#/definitions/Shared7"
               }
             }
           },
@@ -142,10 +139,7 @@
             "const": "billing"
           },
           "status": {
-            "enum": [
-              "available",
-              "delivered"
-            ]
+            "$ref": "#/definitions/Shared6"
           }
         },
         "required": [
@@ -158,7 +152,7 @@
           "verification": {
             "properties": {
               "verification_profile": {
-                "const": "canonical_digest"
+                "$ref": "#/definitions/Shared8"
               }
             },
             "required": [
@@ -170,15 +164,80 @@
       }
     }
   ],
-  "description": "One attempt to expose an immutable reporting revision through a configured durable delivery method. Automated retry creates a new materialization and attempt number while preserving reporting_revision_id. available is a verified producer-hosted pull/share claim; delivered is a verified recipient/destination claim. Existing per-buy inline reporting remains on its existing data API and is outside this v1 managed ledger.",
-  "properties": {
-    "attempt": {
+  "definitions": {
+    "Shared0": {
       "minimum": 1,
       "type": "integer"
     },
-    "created_at": {
+    "Shared1": {
       "format": "date-time",
       "type": "string"
+    },
+    "Shared10": {
+      "description": "Profile-defined unit such as impressions or an ISO 4217 currency code.",
+      "maxLength": 32,
+      "minLength": 1,
+      "type": "string"
+    },
+    "Shared11": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Credential-free, destination-relative reference to one reporting data object. For an object store, this is the decoded object key relative to the configured destination, not an absolute URI and not a URI with a version query parameter. Providers URI-encode this value only when constructing their own storage request. The 1024-character limit accommodates an S3 object key of up to 1024 UTF-8 bytes because every Unicode character occupies at least one UTF-8 byte; JSON Schema maxLength counts characters rather than bytes.",
+      "maxLength": 1024,
+      "minLength": 1,
+      "title": "Reporting File Object Reference",
+      "type": "string",
+      "x-status": "experimental"
+    },
+    "Shared2": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Reporting Reader Compatibility Item",
+      "type": "string",
+      "x-adcp-model-context-inline": true
+    },
+    "Shared3": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Credential-free, decoded provider-native immutable version reference, such as an S3 VersionId, GCS generation, table version, transaction, snapshot, manifest generation, job, or run. This is not URI-encoded or concatenated into an object_ref; URI-encode it only when constructing a provider request. The 1024-character limit accommodates a provider value of up to 1024 UTF-8 bytes because every Unicode character occupies at least one UTF-8 byte; JSON Schema maxLength counts characters rather than bytes.",
+      "maxLength": 1024,
+      "minLength": 1,
+      "title": "Reporting Native Version Reference",
+      "type": "string",
+      "x-status": "experimental"
+    },
+    "Shared4": {
+      "const": "sha256",
+      "type": "string"
+    },
+    "Shared5": {
+      "pattern": "^[A-Fa-f0-9]{64}$",
+      "type": "string"
+    },
+    "Shared6": {
+      "enum": [
+        "available",
+        "delivered"
+      ]
+    },
+    "Shared7": {
+      "const": "manifest"
+    },
+    "Shared8": {
+      "const": "canonical_digest"
+    },
+    "Shared9": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$",
+      "type": "string"
+    }
+  },
+  "description": "One attempt to expose an immutable reporting revision through a configured durable delivery method. Automated retry creates a new materialization and attempt number while preserving reporting_revision_id. available is a verified producer-hosted pull/share claim; delivered is a verified recipient/destination claim. Existing per-buy inline reporting remains on its existing data API and is outside this v1 managed ledger.",
+  "properties": {
+    "attempt": {
+      "$ref": "#/definitions/Shared0"
+    },
+    "created_at": {
+      "$ref": "#/definitions/Shared1"
     },
     "delivery_config_id": {
       "description": "Durable configuration that requested this materialization.",
@@ -189,8 +248,7 @@
       "x-entity": "reporting_delivery_config"
     },
     "delivery_config_version": {
-      "minimum": 1,
-      "type": "integer"
+      "$ref": "#/definitions/Shared0"
     },
     "destination_ref": {
       "description": "Immutable caller-owned destination generation selected by the account-authorized obligation. It may be reused by the same caller across other independently authorized accounts.",
@@ -200,8 +258,7 @@
       "x-entity": "reporting_destination"
     },
     "failed_at": {
-      "format": "date-time",
-      "type": "string"
+      "$ref": "#/definitions/Shared1"
     },
     "failure_code": {
       "description": "Stable safe failure classification. MUST NOT include credentials or provider response bodies.",
@@ -264,7 +321,7 @@
           "if": {
             "properties": {
               "kind": {
-                "const": "manifest"
+                "$ref": "#/definitions/Shared7"
               }
             },
             "required": [
@@ -298,11 +355,7 @@
       ],
       "definitions": {
         "ReportingReaderCompatibilityItem": {
-          "maxLength": 128,
-          "minLength": 1,
-          "title": "Reporting Reader Compatibility Item",
-          "type": "string",
-          "x-adcp-model-context-inline": true
+          "$ref": "#/definitions/Shared2"
         }
       },
       "description": "Secret-free authenticated descriptor for an exact reporting materialization. The descriptor MUST select immutable bytes or a provider-native immutable snapshot/version so an exact older revision never resolves to mutable latest state. Callers resolve access through the previously validated caller/account-bound destination/share binding, never from credentials embedded here. No field, including future extensions, may contain credentials, signed URLs, bearer material, or private keys.",
@@ -346,22 +399,12 @@
           "type": "string"
         },
         "native_version_ref": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "description": "Credential-free, decoded provider-native immutable version reference, such as an S3 VersionId, GCS generation, table version, transaction, snapshot, manifest generation, job, or run. This is not URI-encoded or concatenated into an object_ref; URI-encode it only when constructing a provider request. The 1024-character limit accommodates a provider value of up to 1024 UTF-8 bytes because every Unicode character occupies at least one UTF-8 byte; JSON Schema maxLength counts characters rather than bytes.",
-          "maxLength": 1024,
-          "minLength": 1,
-          "title": "Reporting Native Version Reference",
-          "type": "string",
-          "x-status": "experimental"
+          "$ref": "#/definitions/Shared3"
         },
         "reader_compatibility": {
           "description": "Reader features or format constraints required to consume this resource. Readiness verification MUST use a representative supported reader.",
           "items": {
-            "maxLength": 128,
-            "minLength": 1,
-            "title": "Reporting Reader Compatibility Item",
-            "type": "string",
-            "x-adcp-model-context-inline": true
+            "$ref": "#/definitions/Shared2"
           },
           "type": "array",
           "uniqueItems": true
@@ -447,7 +490,7 @@
           "if": {
             "properties": {
               "verification_profile": {
-                "const": "canonical_digest"
+                "$ref": "#/definitions/Shared8"
               }
             },
             "required": [
@@ -469,8 +512,7 @@
           "description": "Cryptographic digest of logical reporting rows under an immutable canonicalization contract.",
           "properties": {
             "algorithm": {
-              "const": "sha256",
-              "type": "string"
+              "$ref": "#/definitions/Shared4"
             },
             "canonicalization_id": {
               "maxLength": 128,
@@ -478,8 +520,7 @@
               "type": "string"
             },
             "canonicalization_sha256": {
-              "pattern": "^[A-Fa-f0-9]{64}$",
-              "type": "string"
+              "$ref": "#/definitions/Shared5"
             },
             "canonicalization_uri": {
               "description": "Location of the exact immutable canonicalization contract. Consumers verify canonicalization_sha256 before applying it.",
@@ -488,8 +529,7 @@
               "type": "string"
             },
             "value": {
-              "pattern": "^[A-Fa-f0-9]{64}$",
-              "type": "string"
+              "$ref": "#/definitions/Shared5"
             }
           },
           "required": [
@@ -513,16 +553,10 @@
                 "additionalProperties": false,
                 "properties": {
                   "name": {
-                    "maxLength": 128,
-                    "minLength": 1,
-                    "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$",
-                    "type": "string"
+                    "$ref": "#/definitions/Shared9"
                   },
                   "unit": {
-                    "description": "Profile-defined unit such as impressions or an ISO 4217 currency code.",
-                    "maxLength": 32,
-                    "minLength": 1,
-                    "type": "string"
+                    "$ref": "#/definitions/Shared10"
                   },
                   "value": {
                     "description": "Canonical base-10 integer with no exponent, grouping separator, decimal point, or insignificant leading zeroes.",
@@ -546,16 +580,10 @@
                 "additionalProperties": false,
                 "properties": {
                   "name": {
-                    "maxLength": 128,
-                    "minLength": 1,
-                    "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$",
-                    "type": "string"
+                    "$ref": "#/definitions/Shared9"
                   },
                   "unit": {
-                    "description": "Profile-defined unit such as impressions or an ISO 4217 currency code.",
-                    "maxLength": 32,
-                    "minLength": 1,
-                    "type": "string"
+                    "$ref": "#/definitions/Shared10"
                   },
                   "value": {
                     "description": "Canonical base-10 decimal with no exponent, grouping separator, or insignificant leading zeroes.",
@@ -587,13 +615,7 @@
           "description": "Provider-native immutable version evidence observed through the named consumer or destination path.",
           "properties": {
             "native_version_ref": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "description": "Credential-free, decoded provider-native immutable version reference, such as an S3 VersionId, GCS generation, table version, transaction, snapshot, manifest generation, job, or run. This is not URI-encoded or concatenated into an object_ref; URI-encode it only when constructing a provider request. The 1024-character limit accommodates a provider value of up to 1024 UTF-8 bytes because every Unicode character occupies at least one UTF-8 byte; JSON Schema maxLength counts characters rather than bytes.",
-              "maxLength": 1024,
-              "minLength": 1,
-              "title": "Reporting Native Version Reference",
-              "type": "string",
-              "x-status": "experimental"
+              "$ref": "#/definitions/Shared3"
             },
             "observed_through": {
               "enum": [
@@ -617,21 +639,13 @@
                 "additionalProperties": false,
                 "properties": {
                   "algorithm": {
-                    "const": "sha256",
-                    "type": "string"
+                    "$ref": "#/definitions/Shared4"
                   },
                   "object_ref": {
-                    "$schema": "http://json-schema.org/draft-07/schema#",
-                    "description": "Credential-free, destination-relative reference to one reporting data object. For an object store, this is the decoded object key relative to the configured destination, not an absolute URI and not a URI with a version query parameter. Providers URI-encode this value only when constructing their own storage request. The 1024-character limit accommodates an S3 object key of up to 1024 UTF-8 bytes because every Unicode character occupies at least one UTF-8 byte; JSON Schema maxLength counts characters rather than bytes.",
-                    "maxLength": 1024,
-                    "minLength": 1,
-                    "title": "Reporting File Object Reference",
-                    "type": "string",
-                    "x-status": "experimental"
+                    "$ref": "#/definitions/Shared11"
                   },
                   "value": {
-                    "pattern": "^[A-Fa-f0-9]{64}$",
-                    "type": "string"
+                    "$ref": "#/definitions/Shared5"
                   }
                 },
                 "required": [
@@ -650,13 +664,7 @@
                     "type": "string"
                   },
                   "object_ref": {
-                    "$schema": "http://json-schema.org/draft-07/schema#",
-                    "description": "Credential-free, destination-relative reference to one reporting data object. For an object store, this is the decoded object key relative to the configured destination, not an absolute URI and not a URI with a version query parameter. Providers URI-encode this value only when constructing their own storage request. The 1024-character limit accommodates an S3 object key of up to 1024 UTF-8 bytes because every Unicode character occupies at least one UTF-8 byte; JSON Schema maxLength counts characters rather than bytes.",
-                    "maxLength": 1024,
-                    "minLength": 1,
-                    "title": "Reporting File Object Reference",
-                    "type": "string",
-                    "x-status": "experimental"
+                    "$ref": "#/definitions/Shared11"
                   },
                   "value": {
                     "pattern": "^[A-Fa-f0-9]{128}$",

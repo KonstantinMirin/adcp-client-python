@@ -1,83 +1,140 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": false,
+  "definitions": {
+    "Shared0": {
+      "type": "boolean"
+    },
+    "Shared1": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Available frequencies for delivery reports and metrics updates. Weekly and quarterly match audience-currency publication cycles in measured channels (e.g. weekly OOH/radio increments, quarterly circulation updates); post_campaign is a single report after the flight ends. Buy-side agents MUST treat a product's declared frequencies as an optimization-eligibility gate: a buyer MUST NOT make mid-flight optimization decisions against metrics whose declared cadence is quarterly or post_campaign \u2014 such data describes a period that has closed, and optimizing on it means acting on a model of the channel that is false at decision time.",
+      "enum": [
+        "hourly",
+        "daily",
+        "weekly",
+        "monthly",
+        "quarterly",
+        "post_campaign"
+      ],
+      "title": "Reporting Frequency",
+      "type": "string"
+    },
+    "Shared2": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Standard delivery and performance metrics available for reporting. Most values name flat numeric fields of `core/delivery-metrics.json`. Leaf identities address a single numeric value nested inside an object-shaped metric so it can be declared, committed, aggregated, and sorted individually: `quartile_25`/`quartile_50`/`quartile_75`/`quartile_100` resolve to `quartile_data.q1_views`\u2013`q4_views`, and `viewable_rate`/`viewable_impressions`/`measurable_impressions`/`viewed_seconds` resolve to the same-named fields of `viewability`. Structured nested identities `viewed_seconds_percentiles` and `viewed_seconds_histogram` make the corresponding optional distribution carriers discoverable, committable, and requestable, but not aggregatable or sortable. The nested object or array remains the canonical carrier \u2014 nested identities never introduce duplicate flat response fields. Container tokens such as `viewability`, `quartile_data`, `dooh_metrics`, and `time_based_views` declare their documented nested surface. **Container subsumption applies only to numeric leaves**: `viewability` subsumes `viewable_rate`, `viewable_impressions`, `measurable_impressions`, and `viewed_seconds`; `quartile_data` subsumes `quartile_25`, `quartile_50`, `quartile_75`, and `quartile_100`. This rule applies to capability declaration, `required_metrics` filtering, format `reported_metrics` intersection, and `requested_metrics` selection. Optional structured identities MUST be declared explicitly: `viewability` alone does not satisfy `viewed_seconds_percentiles` or `viewed_seconds_histogram`. Requesting any nested identity selects its canonical carrier in the response. A nested identity declaration does not imply sibling values or the carrier's non-metric fields.",
+      "enum": [
+        "impressions",
+        "spend",
+        "clicks",
+        "ctr",
+        "views",
+        "completed_views",
+        "completion_rate",
+        "conversions",
+        "conversion_value",
+        "commissionable_value",
+        "roas",
+        "cost_per_acquisition",
+        "new_to_brand_rate",
+        "leads",
+        "reach",
+        "frequency",
+        "grps",
+        "engagements",
+        "engagement_rate",
+        "follows",
+        "saves",
+        "profile_visits",
+        "viewability",
+        "viewable_rate",
+        "viewable_impressions",
+        "measurable_impressions",
+        "viewed_seconds",
+        "viewed_seconds_percentiles",
+        "viewed_seconds_histogram",
+        "quartile_data",
+        "quartile_25",
+        "quartile_50",
+        "quartile_75",
+        "quartile_100",
+        "time_based_views",
+        "dooh_metrics",
+        "ooh_metrics",
+        "cost_per_click",
+        "cost_per_completed_view",
+        "cpm",
+        "downloads",
+        "units_sold",
+        "new_to_brand_units",
+        "plays",
+        "incremental_sales_lift",
+        "brand_lift",
+        "foot_traffic",
+        "conversion_lift",
+        "brand_search_lift"
+      ],
+      "title": "Available Metric",
+      "type": "string"
+    },
+    "Shared3": {
+      "items": {
+        "const": "plz"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "Shared4": {
+      "deprecated": true,
+      "type": "boolean"
+    },
+    "Shared5": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Audience measurement systems for demographic notation in GRP forecasts and pricing, across video and audio channels. Specifies how demographics are written, not whose panel produced the numbers \u2014 provider identity is measurement_source.",
+      "enum": [
+        "nielsen",
+        "nielsen_audio",
+        "barb",
+        "agf",
+        "oztam",
+        "mediametrie",
+        "custom"
+      ],
+      "enumDescriptions": {
+        "agf": "AGF Videoforschung (Germany). Erwachsene notation + age bands. Examples: E 14-49, E 14+",
+        "barb": "BARB (UK). NRS social grade + age bands. Examples: ABC1 Adults, 16-34, Adults",
+        "custom": "Publisher-defined demographic notation",
+        "mediametrie": "Mediametrie (France). Named segments + age bands",
+        "nielsen": "Nielsen notation. Prefix: P(ersons), M(en), W(omen), A(dults), C(hildren), T(eens) + age range. Examples: P18-49, M25-54, W35+",
+        "nielsen_audio": "Nielsen Audio (US radio, formerly Arbitron). Same P/M/W/A prefix + age-range notation as Nielsen TV, measured on the PPM/diary radio panel. Examples: P25-54, A18+, W25-54",
+        "oztam": "OzTAM (Australia). Age/gender bands, 4+ measurement universe"
+      },
+      "title": "Demographic System",
+      "type": "string"
+    },
+    "Shared6": {
+      "required": [
+        "demographic"
+      ]
+    },
+    "Shared7": {
+      "required": [
+        "demographic_system"
+      ]
+    }
+  },
   "description": "Compact product reporting contract. Vendor metrics use identity-only BrandKey references and do not inline brand or creative assets.",
   "properties": {
     "available_metrics": {
       "items": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "description": "Standard delivery and performance metrics available for reporting. Most values name flat numeric fields of `core/delivery-metrics.json`. Leaf identities address a single numeric value nested inside an object-shaped metric so it can be declared, committed, aggregated, and sorted individually: `quartile_25`/`quartile_50`/`quartile_75`/`quartile_100` resolve to `quartile_data.q1_views`\u2013`q4_views`, and `viewable_rate`/`viewable_impressions`/`measurable_impressions`/`viewed_seconds` resolve to the same-named fields of `viewability`. Structured nested identities `viewed_seconds_percentiles` and `viewed_seconds_histogram` make the corresponding optional distribution carriers discoverable, committable, and requestable, but not aggregatable or sortable. The nested object or array remains the canonical carrier \u2014 nested identities never introduce duplicate flat response fields. Container tokens such as `viewability`, `quartile_data`, `dooh_metrics`, and `time_based_views` declare their documented nested surface. **Container subsumption applies only to numeric leaves**: `viewability` subsumes `viewable_rate`, `viewable_impressions`, `measurable_impressions`, and `viewed_seconds`; `quartile_data` subsumes `quartile_25`, `quartile_50`, `quartile_75`, and `quartile_100`. This rule applies to capability declaration, `required_metrics` filtering, format `reported_metrics` intersection, and `requested_metrics` selection. Optional structured identities MUST be declared explicitly: `viewability` alone does not satisfy `viewed_seconds_percentiles` or `viewed_seconds_histogram`. Requesting any nested identity selects its canonical carrier in the response. A nested identity declaration does not imply sibling values or the carrier's non-metric fields.",
-        "enum": [
-          "impressions",
-          "spend",
-          "clicks",
-          "ctr",
-          "views",
-          "completed_views",
-          "completion_rate",
-          "conversions",
-          "conversion_value",
-          "commissionable_value",
-          "roas",
-          "cost_per_acquisition",
-          "new_to_brand_rate",
-          "leads",
-          "reach",
-          "frequency",
-          "grps",
-          "engagements",
-          "engagement_rate",
-          "follows",
-          "saves",
-          "profile_visits",
-          "viewability",
-          "viewable_rate",
-          "viewable_impressions",
-          "measurable_impressions",
-          "viewed_seconds",
-          "viewed_seconds_percentiles",
-          "viewed_seconds_histogram",
-          "quartile_data",
-          "quartile_25",
-          "quartile_50",
-          "quartile_75",
-          "quartile_100",
-          "time_based_views",
-          "dooh_metrics",
-          "ooh_metrics",
-          "cost_per_click",
-          "cost_per_completed_view",
-          "cpm",
-          "downloads",
-          "units_sold",
-          "new_to_brand_units",
-          "plays",
-          "incremental_sales_lift",
-          "brand_lift",
-          "foot_traffic",
-          "conversion_lift",
-          "brand_search_lift"
-        ],
-        "title": "Available Metric",
-        "type": "string"
+        "$ref": "#/definitions/Shared2"
       },
       "type": "array",
       "uniqueItems": true
     },
     "available_reporting_frequencies": {
       "items": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "description": "Available frequencies for delivery reports and metrics updates. Weekly and quarterly match audience-currency publication cycles in measured channels (e.g. weekly OOH/radio increments, quarterly circulation updates); post_campaign is a single report after the flight ends. Buy-side agents MUST treat a product's declared frequencies as an optimization-eligibility gate: a buyer MUST NOT make mid-flight optimization decisions against metrics whose declared cadence is quarterly or post_campaign \u2014 such data describes a period that has closed, and optimizing on it means acting on a model of the channel that is false at decision time.",
-        "enum": [
-          "hourly",
-          "daily",
-          "weekly",
-          "monthly",
-          "quarterly",
-          "post_campaign"
-        ],
-        "title": "Reporting Frequency",
-        "type": "string"
+        "$ref": "#/definitions/Shared1"
       },
       "minItems": 1,
       "type": "array",
@@ -168,16 +225,16 @@
       "uniqueItems": true
     },
     "supports_audience_breakdown": {
-      "type": "boolean"
+      "$ref": "#/definitions/Shared0"
     },
     "supports_collection_breakdown": {
-      "type": "boolean"
+      "$ref": "#/definitions/Shared0"
     },
     "supports_collection_property_breakdown": {
-      "type": "boolean"
+      "$ref": "#/definitions/Shared0"
     },
     "supports_creative_breakdown": {
-      "type": "boolean"
+      "$ref": "#/definitions/Shared0"
     },
     "supports_demographic_breakdown": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -250,26 +307,18 @@
                 "allOf": [
                   {
                     "if": {
-                      "required": [
-                        "demographic"
-                      ]
+                      "$ref": "#/definitions/Shared6"
                     },
                     "then": {
-                      "required": [
-                        "demographic_system"
-                      ]
+                      "$ref": "#/definitions/Shared7"
                     }
                   },
                   {
                     "if": {
-                      "required": [
-                        "demographic_system"
-                      ]
+                      "$ref": "#/definitions/Shared7"
                     },
                     "then": {
-                      "required": [
-                        "demographic"
-                      ]
+                      "$ref": "#/definitions/Shared6"
                     }
                   }
                 ],
@@ -321,28 +370,7 @@
                     "type": "string"
                   },
                   "demographic_system": {
-                    "$schema": "http://json-schema.org/draft-07/schema#",
-                    "description": "Audience measurement systems for demographic notation in GRP forecasts and pricing, across video and audio channels. Specifies how demographics are written, not whose panel produced the numbers \u2014 provider identity is measurement_source.",
-                    "enum": [
-                      "nielsen",
-                      "nielsen_audio",
-                      "barb",
-                      "agf",
-                      "oztam",
-                      "mediametrie",
-                      "custom"
-                    ],
-                    "enumDescriptions": {
-                      "agf": "AGF Videoforschung (Germany). Erwachsene notation + age bands. Examples: E 14-49, E 14+",
-                      "barb": "BARB (UK). NRS social grade + age bands. Examples: ABC1 Adults, 16-34, Adults",
-                      "custom": "Publisher-defined demographic notation",
-                      "mediametrie": "Mediametrie (France). Named segments + age bands",
-                      "nielsen": "Nielsen notation. Prefix: P(ersons), M(en), W(omen), A(dults), C(hildren), T(eens) + age range. Examples: P18-49, M25-54, W35+",
-                      "nielsen_audio": "Nielsen Audio (US radio, formerly Arbitron). Same P/M/W/A prefix + age-range notation as Nielsen TV, measured on the PPM/diary radio panel. Examples: P25-54, A18+, W25-54",
-                      "oztam": "OzTAM (Australia). Age/gender bands, 4+ measurement universe"
-                    },
-                    "title": "Demographic System",
-                    "type": "string"
+                    "$ref": "#/definitions/Shared5"
                   }
                 },
                 "required": [
@@ -396,28 +424,7 @@
         "demographic_systems": {
           "description": "Measurement-system notations this product may return. A code remains opaque unless its capability interval and response row also carry a canonical age predicate.",
           "items": {
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "description": "Audience measurement systems for demographic notation in GRP forecasts and pricing, across video and audio channels. Specifies how demographics are written, not whose panel produced the numbers \u2014 provider identity is measurement_source.",
-            "enum": [
-              "nielsen",
-              "nielsen_audio",
-              "barb",
-              "agf",
-              "oztam",
-              "mediametrie",
-              "custom"
-            ],
-            "enumDescriptions": {
-              "agf": "AGF Videoforschung (Germany). Erwachsene notation + age bands. Examples: E 14-49, E 14+",
-              "barb": "BARB (UK). NRS social grade + age bands. Examples: ABC1 Adults, 16-34, Adults",
-              "custom": "Publisher-defined demographic notation",
-              "mediametrie": "Mediametrie (France). Named segments + age bands",
-              "nielsen": "Nielsen notation. Prefix: P(ersons), M(en), W(omen), A(dults), C(hildren), T(eens) + age range. Examples: P18-49, M25-54, W35+",
-              "nielsen_audio": "Nielsen Audio (US radio, formerly Arbitron). Same P/M/W/A prefix + age-range notation as Nielsen TV, measured on the PPM/diary radio panel. Examples: P25-54, A18+, W25-54",
-              "oztam": "OzTAM (Australia). Age/gender bands, 4+ measurement universe"
-            },
-            "title": "Demographic System",
-            "type": "string"
+            "$ref": "#/definitions/Shared5"
           },
           "minItems": 1,
           "type": "array",
@@ -435,13 +442,13 @@
       "type": "object"
     },
     "supports_device_platform_breakdown": {
-      "type": "boolean"
+      "$ref": "#/definitions/Shared0"
     },
     "supports_device_type_breakdown": {
-      "type": "boolean"
+      "$ref": "#/definitions/Shared0"
     },
     "supports_format_breakdown": {
-      "type": "boolean"
+      "$ref": "#/definitions/Shared0"
     },
     "supports_geo_breakdown": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -454,7 +461,7 @@
         },
         "metro": {
           "additionalProperties": {
-            "type": "boolean"
+            "$ref": "#/definitions/Shared0"
           },
           "description": "Metro area breakdown support. Keys are metro-system enum values; true means supported.",
           "propertyNames": {
@@ -488,12 +495,7 @@
           "description": "Postal area breakdown support. Prefer the native country-keyed map where each ISO 3166-1 alpha-2 country lists supported country-local postal systems. Deprecated legacy country-fused postal-system boolean maps remain accepted for compatibility.",
           "properties": {
             "AT": {
-              "items": {
-                "const": "plz"
-              },
-              "minItems": 1,
-              "type": "array",
-              "uniqueItems": true
+              "$ref": "#/definitions/Shared3"
             },
             "AU": {
               "items": {
@@ -523,20 +525,10 @@
               "uniqueItems": true
             },
             "CH": {
-              "items": {
-                "const": "plz"
-              },
-              "minItems": 1,
-              "type": "array",
-              "uniqueItems": true
+              "$ref": "#/definitions/Shared3"
             },
             "DE": {
-              "items": {
-                "const": "plz"
-              },
-              "minItems": 1,
-              "type": "array",
-              "uniqueItems": true
+              "$ref": "#/definitions/Shared3"
             },
             "FR": {
               "items": {
@@ -585,48 +577,37 @@
               "uniqueItems": true
             },
             "at_plz": {
-              "deprecated": true,
-              "type": "boolean"
+              "$ref": "#/definitions/Shared4"
             },
             "au_postcode": {
-              "deprecated": true,
-              "type": "boolean"
+              "$ref": "#/definitions/Shared4"
             },
             "ca_fsa": {
-              "deprecated": true,
-              "type": "boolean"
+              "$ref": "#/definitions/Shared4"
             },
             "ca_full": {
-              "deprecated": true,
-              "type": "boolean"
+              "$ref": "#/definitions/Shared4"
             },
             "ch_plz": {
-              "deprecated": true,
-              "type": "boolean"
+              "$ref": "#/definitions/Shared4"
             },
             "de_plz": {
-              "deprecated": true,
-              "type": "boolean"
+              "$ref": "#/definitions/Shared4"
             },
             "fr_code_postal": {
-              "deprecated": true,
-              "type": "boolean"
+              "$ref": "#/definitions/Shared4"
             },
             "gb_full": {
-              "deprecated": true,
-              "type": "boolean"
+              "$ref": "#/definitions/Shared4"
             },
             "gb_outward": {
-              "deprecated": true,
-              "type": "boolean"
+              "$ref": "#/definitions/Shared4"
             },
             "us_zip": {
-              "deprecated": true,
-              "type": "boolean"
+              "$ref": "#/definitions/Shared4"
             },
             "us_zip_plus_four": {
-              "deprecated": true,
-              "type": "boolean"
+              "$ref": "#/definitions/Shared4"
             }
           },
           "propertyNames": {
@@ -668,22 +649,22 @@
       "type": "object"
     },
     "supports_installment_breakdown": {
-      "type": "boolean"
+      "$ref": "#/definitions/Shared0"
     },
     "supports_installment_property_breakdown": {
-      "type": "boolean"
+      "$ref": "#/definitions/Shared0"
     },
     "supports_keyword_breakdown": {
-      "type": "boolean"
+      "$ref": "#/definitions/Shared0"
     },
     "supports_placement_breakdown": {
-      "type": "boolean"
+      "$ref": "#/definitions/Shared0"
     },
     "supports_placement_property_breakdown": {
-      "type": "boolean"
+      "$ref": "#/definitions/Shared0"
     },
     "supports_property_breakdown": {
-      "type": "boolean"
+      "$ref": "#/definitions/Shared0"
     },
     "supports_spot_breakdown": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -693,61 +674,7 @@
         "available_metrics": {
           "description": "Metrics available at spot grain. A declared metric may be absent from a provisional measurement window and appear when a later window supersedes it. A metric omitted from this declaration is not promised at spot grain even when it is available at package grain.",
           "items": {
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "description": "Standard delivery and performance metrics available for reporting. Most values name flat numeric fields of `core/delivery-metrics.json`. Leaf identities address a single numeric value nested inside an object-shaped metric so it can be declared, committed, aggregated, and sorted individually: `quartile_25`/`quartile_50`/`quartile_75`/`quartile_100` resolve to `quartile_data.q1_views`\u2013`q4_views`, and `viewable_rate`/`viewable_impressions`/`measurable_impressions`/`viewed_seconds` resolve to the same-named fields of `viewability`. Structured nested identities `viewed_seconds_percentiles` and `viewed_seconds_histogram` make the corresponding optional distribution carriers discoverable, committable, and requestable, but not aggregatable or sortable. The nested object or array remains the canonical carrier \u2014 nested identities never introduce duplicate flat response fields. Container tokens such as `viewability`, `quartile_data`, `dooh_metrics`, and `time_based_views` declare their documented nested surface. **Container subsumption applies only to numeric leaves**: `viewability` subsumes `viewable_rate`, `viewable_impressions`, `measurable_impressions`, and `viewed_seconds`; `quartile_data` subsumes `quartile_25`, `quartile_50`, `quartile_75`, and `quartile_100`. This rule applies to capability declaration, `required_metrics` filtering, format `reported_metrics` intersection, and `requested_metrics` selection. Optional structured identities MUST be declared explicitly: `viewability` alone does not satisfy `viewed_seconds_percentiles` or `viewed_seconds_histogram`. Requesting any nested identity selects its canonical carrier in the response. A nested identity declaration does not imply sibling values or the carrier's non-metric fields.",
-            "enum": [
-              "impressions",
-              "spend",
-              "clicks",
-              "ctr",
-              "views",
-              "completed_views",
-              "completion_rate",
-              "conversions",
-              "conversion_value",
-              "commissionable_value",
-              "roas",
-              "cost_per_acquisition",
-              "new_to_brand_rate",
-              "leads",
-              "reach",
-              "frequency",
-              "grps",
-              "engagements",
-              "engagement_rate",
-              "follows",
-              "saves",
-              "profile_visits",
-              "viewability",
-              "viewable_rate",
-              "viewable_impressions",
-              "measurable_impressions",
-              "viewed_seconds",
-              "viewed_seconds_percentiles",
-              "viewed_seconds_histogram",
-              "quartile_data",
-              "quartile_25",
-              "quartile_50",
-              "quartile_75",
-              "quartile_100",
-              "time_based_views",
-              "dooh_metrics",
-              "ooh_metrics",
-              "cost_per_click",
-              "cost_per_completed_view",
-              "cpm",
-              "downloads",
-              "units_sold",
-              "new_to_brand_units",
-              "plays",
-              "incremental_sales_lift",
-              "brand_lift",
-              "foot_traffic",
-              "conversion_lift",
-              "brand_search_lift"
-            ],
-            "title": "Available Metric",
-            "type": "string"
+            "$ref": "#/definitions/Shared2"
           },
           "type": "array",
           "uniqueItems": true
@@ -760,7 +687,7 @@
       "type": "object"
     },
     "supports_webhooks": {
-      "type": "boolean"
+      "$ref": "#/definitions/Shared0"
     },
     "timezone": {
       "description": "Explicit reporting-period timezone for this product. It may equal Account.timezone or differ when the upstream platform reports on a separate boundary.",
@@ -840,18 +767,7 @@
     },
     "windowed_pull_granularities": {
       "items": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "description": "Available frequencies for delivery reports and metrics updates. Weekly and quarterly match audience-currency publication cycles in measured channels (e.g. weekly OOH/radio increments, quarterly circulation updates); post_campaign is a single report after the flight ends. Buy-side agents MUST treat a product's declared frequencies as an optimization-eligibility gate: a buyer MUST NOT make mid-flight optimization decisions against metrics whose declared cadence is quarterly or post_campaign \u2014 such data describes a period that has closed, and optimizing on it means acting on a model of the channel that is false at decision time.",
-        "enum": [
-          "hourly",
-          "daily",
-          "weekly",
-          "monthly",
-          "quarterly",
-          "post_campaign"
-        ],
-        "title": "Reporting Frequency",
-        "type": "string"
+        "$ref": "#/definitions/Shared1"
       },
       "type": "array",
       "uniqueItems": true

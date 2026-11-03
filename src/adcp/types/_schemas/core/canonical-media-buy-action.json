@@ -1,5 +1,110 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "Shared0": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "description": "Shared closed field set for task-discriminated canonical MediaBuy actions.",
+      "properties": {
+        "action": {
+          "type": "string"
+        },
+        "applicable_package_ids": {
+          "description": "Exact eligible packages for a package-scoped action; omission means all relevant packages.",
+          "items": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "A package identifier to which a package-scoped media-buy action currently applies.",
+            "minLength": 1,
+            "title": "Applicable Package ID",
+            "type": "string",
+            "x-entity": "package"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "change_term_id": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "The accepted proposal change_terms[].term_id from which this current-state action projection was derived.",
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Media Buy Change Term ID",
+          "type": "string",
+          "x-entity": "media_buy_change_term"
+        },
+        "mode": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "How a seller honors a routed compact-lifecycle action.",
+          "enum": [
+            "self_serve",
+            "conditional_self_serve",
+            "seller_managed",
+            "requires_approval"
+          ],
+          "enumDescriptions": {
+            "conditional_self_serve": "The declared task completes synchronously inside seller tolerances and may become asynchronous outside them.",
+            "requires_approval": "Legacy 3.x mode indicating an approval-dependent async path. New proposal-bound terms SHOULD use seller_managed so they do not expose an internal implementation.",
+            "self_serve": "The declared task completes synchronously without approval.",
+            "seller_managed": "The seller processes the action through the standard async lifecycle. The internal use of people, models, queues, or other controls is intentionally opaque."
+          },
+          "title": "Canonical Media Buy Action Mode",
+          "type": "string"
+        },
+        "sla": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": false,
+          "description": "Service-level commitment a seller declares for a given action. Optional throughout: absence means no commitment, not zero commitment \u2014 buyers querying SLA fields via #4425's `requires` predicate grammar MUST compose with `present` to avoid silently matching sellers who never declared one. Durations are ISO 8601 duration strings (e.g., `PT4H`, `PT24H`, `P1D`). Predicate evaluators that compare durations MUST normalize before comparison; `P1D` and `PT24H` are equal.",
+          "properties": {
+            "completion_max": {
+              "description": "Maximum elapsed time from buyer issuing the action to the seller completing it (mutation applied, proposal finalized, or seller-managed decision resolved). Sellers include weekends and non-working periods in the maximum. ISO 8601 duration.",
+              "examples": [
+                "PT1H",
+                "PT24H",
+                "P2D"
+              ],
+              "pattern": "^P(?!$)(\\d+Y)?(\\d+M)?(\\d+D)?(T(\\d+H)?(\\d+M)?(\\d+S)?)?$",
+              "type": "string"
+            },
+            "response_max": {
+              "description": "Maximum elapsed time from when the buyer issues the action to when the seller acknowledges receipt (mode-appropriate: synchronous response for self_serve, tolerance decision for conditional_self_serve, or queue acknowledgement for seller_managed and legacy requires_approval). Sellers include weekends and non-working periods in the maximum. ISO 8601 duration.",
+              "examples": [
+                "PT5M",
+                "PT4H",
+                "P1D"
+              ],
+              "pattern": "^P(?!$)(\\d+Y)?(\\d+M)?(\\d+D)?(T(\\d+H)?(\\d+M)?(\\d+S)?)?$",
+              "type": "string"
+            }
+          },
+          "title": "SLA Window",
+          "type": "object"
+        },
+        "task": {
+          "enum": [
+            "control_media_buy",
+            "refine_proposals",
+            "sync_creatives"
+          ],
+          "type": "string"
+        },
+        "terms_ref": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "deprecated": true,
+          "description": "Deprecated 3.1 opaque commercial-terms pointer. A 3.2 compatibility projection MAY echo change_term_id here for older buyers, but new buyers MUST prefer change_term_id and MUST NOT assume an arbitrary 3.1 value identifies an accepted change term.",
+          "title": "Media Buy Terms Reference",
+          "type": "string",
+          "x-deprecated-in": "3.2.0",
+          "x-removed-in": "4.0.0"
+        }
+      },
+      "required": [
+        "task",
+        "action",
+        "mode"
+      ],
+      "title": "Canonical Media Buy Action Fields",
+      "type": "object"
+    }
+  },
   "description": "A currently available MediaBuy action with the compact-lifecycle task an SDK calls to exercise it. Deprecated coarse action values are absent.",
   "discriminator": {
     "propertyName": "task"
@@ -8,107 +113,7 @@
     {
       "allOf": [
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
-          "description": "Shared closed field set for task-discriminated canonical MediaBuy actions.",
-          "properties": {
-            "action": {
-              "type": "string"
-            },
-            "applicable_package_ids": {
-              "description": "Exact eligible packages for a package-scoped action; omission means all relevant packages.",
-              "items": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "description": "A package identifier to which a package-scoped media-buy action currently applies.",
-                "minLength": 1,
-                "title": "Applicable Package ID",
-                "type": "string",
-                "x-entity": "package"
-              },
-              "minItems": 1,
-              "type": "array",
-              "uniqueItems": true
-            },
-            "change_term_id": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "description": "The accepted proposal change_terms[].term_id from which this current-state action projection was derived.",
-              "pattern": "^[A-Za-z0-9_.:-]+$",
-              "title": "Media Buy Change Term ID",
-              "type": "string",
-              "x-entity": "media_buy_change_term"
-            },
-            "mode": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "description": "How a seller honors a routed compact-lifecycle action.",
-              "enum": [
-                "self_serve",
-                "conditional_self_serve",
-                "seller_managed",
-                "requires_approval"
-              ],
-              "enumDescriptions": {
-                "conditional_self_serve": "The declared task completes synchronously inside seller tolerances and may become asynchronous outside them.",
-                "requires_approval": "Legacy 3.x mode indicating an approval-dependent async path. New proposal-bound terms SHOULD use seller_managed so they do not expose an internal implementation.",
-                "self_serve": "The declared task completes synchronously without approval.",
-                "seller_managed": "The seller processes the action through the standard async lifecycle. The internal use of people, models, queues, or other controls is intentionally opaque."
-              },
-              "title": "Canonical Media Buy Action Mode",
-              "type": "string"
-            },
-            "sla": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": false,
-              "description": "Service-level commitment a seller declares for a given action. Optional throughout: absence means no commitment, not zero commitment \u2014 buyers querying SLA fields via #4425's `requires` predicate grammar MUST compose with `present` to avoid silently matching sellers who never declared one. Durations are ISO 8601 duration strings (e.g., `PT4H`, `PT24H`, `P1D`). Predicate evaluators that compare durations MUST normalize before comparison; `P1D` and `PT24H` are equal.",
-              "properties": {
-                "completion_max": {
-                  "description": "Maximum elapsed time from buyer issuing the action to the seller completing it (mutation applied, proposal finalized, or seller-managed decision resolved). Sellers include weekends and non-working periods in the maximum. ISO 8601 duration.",
-                  "examples": [
-                    "PT1H",
-                    "PT24H",
-                    "P2D"
-                  ],
-                  "pattern": "^P(?!$)(\\d+Y)?(\\d+M)?(\\d+D)?(T(\\d+H)?(\\d+M)?(\\d+S)?)?$",
-                  "type": "string"
-                },
-                "response_max": {
-                  "description": "Maximum elapsed time from when the buyer issues the action to when the seller acknowledges receipt (mode-appropriate: synchronous response for self_serve, tolerance decision for conditional_self_serve, or queue acknowledgement for seller_managed and legacy requires_approval). Sellers include weekends and non-working periods in the maximum. ISO 8601 duration.",
-                  "examples": [
-                    "PT5M",
-                    "PT4H",
-                    "P1D"
-                  ],
-                  "pattern": "^P(?!$)(\\d+Y)?(\\d+M)?(\\d+D)?(T(\\d+H)?(\\d+M)?(\\d+S)?)?$",
-                  "type": "string"
-                }
-              },
-              "title": "SLA Window",
-              "type": "object"
-            },
-            "task": {
-              "enum": [
-                "control_media_buy",
-                "refine_proposals",
-                "sync_creatives"
-              ],
-              "type": "string"
-            },
-            "terms_ref": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "deprecated": true,
-              "description": "Deprecated 3.1 opaque commercial-terms pointer. A 3.2 compatibility projection MAY echo change_term_id here for older buyers, but new buyers MUST prefer change_term_id and MUST NOT assume an arbitrary 3.1 value identifies an accepted change term.",
-              "title": "Media Buy Terms Reference",
-              "type": "string",
-              "x-deprecated-in": "3.2.0",
-              "x-removed-in": "4.0.0"
-            }
-          },
-          "required": [
-            "task",
-            "action",
-            "mode"
-          ],
-          "title": "Canonical Media Buy Action Fields",
-          "type": "object"
+          "$ref": "#/definitions/Shared0"
         }
       ],
       "properties": {
@@ -147,107 +152,7 @@
     {
       "allOf": [
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
-          "description": "Shared closed field set for task-discriminated canonical MediaBuy actions.",
-          "properties": {
-            "action": {
-              "type": "string"
-            },
-            "applicable_package_ids": {
-              "description": "Exact eligible packages for a package-scoped action; omission means all relevant packages.",
-              "items": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "description": "A package identifier to which a package-scoped media-buy action currently applies.",
-                "minLength": 1,
-                "title": "Applicable Package ID",
-                "type": "string",
-                "x-entity": "package"
-              },
-              "minItems": 1,
-              "type": "array",
-              "uniqueItems": true
-            },
-            "change_term_id": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "description": "The accepted proposal change_terms[].term_id from which this current-state action projection was derived.",
-              "pattern": "^[A-Za-z0-9_.:-]+$",
-              "title": "Media Buy Change Term ID",
-              "type": "string",
-              "x-entity": "media_buy_change_term"
-            },
-            "mode": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "description": "How a seller honors a routed compact-lifecycle action.",
-              "enum": [
-                "self_serve",
-                "conditional_self_serve",
-                "seller_managed",
-                "requires_approval"
-              ],
-              "enumDescriptions": {
-                "conditional_self_serve": "The declared task completes synchronously inside seller tolerances and may become asynchronous outside them.",
-                "requires_approval": "Legacy 3.x mode indicating an approval-dependent async path. New proposal-bound terms SHOULD use seller_managed so they do not expose an internal implementation.",
-                "self_serve": "The declared task completes synchronously without approval.",
-                "seller_managed": "The seller processes the action through the standard async lifecycle. The internal use of people, models, queues, or other controls is intentionally opaque."
-              },
-              "title": "Canonical Media Buy Action Mode",
-              "type": "string"
-            },
-            "sla": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": false,
-              "description": "Service-level commitment a seller declares for a given action. Optional throughout: absence means no commitment, not zero commitment \u2014 buyers querying SLA fields via #4425's `requires` predicate grammar MUST compose with `present` to avoid silently matching sellers who never declared one. Durations are ISO 8601 duration strings (e.g., `PT4H`, `PT24H`, `P1D`). Predicate evaluators that compare durations MUST normalize before comparison; `P1D` and `PT24H` are equal.",
-              "properties": {
-                "completion_max": {
-                  "description": "Maximum elapsed time from buyer issuing the action to the seller completing it (mutation applied, proposal finalized, or seller-managed decision resolved). Sellers include weekends and non-working periods in the maximum. ISO 8601 duration.",
-                  "examples": [
-                    "PT1H",
-                    "PT24H",
-                    "P2D"
-                  ],
-                  "pattern": "^P(?!$)(\\d+Y)?(\\d+M)?(\\d+D)?(T(\\d+H)?(\\d+M)?(\\d+S)?)?$",
-                  "type": "string"
-                },
-                "response_max": {
-                  "description": "Maximum elapsed time from when the buyer issues the action to when the seller acknowledges receipt (mode-appropriate: synchronous response for self_serve, tolerance decision for conditional_self_serve, or queue acknowledgement for seller_managed and legacy requires_approval). Sellers include weekends and non-working periods in the maximum. ISO 8601 duration.",
-                  "examples": [
-                    "PT5M",
-                    "PT4H",
-                    "P1D"
-                  ],
-                  "pattern": "^P(?!$)(\\d+Y)?(\\d+M)?(\\d+D)?(T(\\d+H)?(\\d+M)?(\\d+S)?)?$",
-                  "type": "string"
-                }
-              },
-              "title": "SLA Window",
-              "type": "object"
-            },
-            "task": {
-              "enum": [
-                "control_media_buy",
-                "refine_proposals",
-                "sync_creatives"
-              ],
-              "type": "string"
-            },
-            "terms_ref": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "deprecated": true,
-              "description": "Deprecated 3.1 opaque commercial-terms pointer. A 3.2 compatibility projection MAY echo change_term_id here for older buyers, but new buyers MUST prefer change_term_id and MUST NOT assume an arbitrary 3.1 value identifies an accepted change term.",
-              "title": "Media Buy Terms Reference",
-              "type": "string",
-              "x-deprecated-in": "3.2.0",
-              "x-removed-in": "4.0.0"
-            }
-          },
-          "required": [
-            "task",
-            "action",
-            "mode"
-          ],
-          "title": "Canonical Media Buy Action Fields",
-          "type": "object"
+          "$ref": "#/definitions/Shared0"
         }
       ],
       "properties": {
@@ -281,107 +186,7 @@
     {
       "allOf": [
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
-          "description": "Shared closed field set for task-discriminated canonical MediaBuy actions.",
-          "properties": {
-            "action": {
-              "type": "string"
-            },
-            "applicable_package_ids": {
-              "description": "Exact eligible packages for a package-scoped action; omission means all relevant packages.",
-              "items": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "description": "A package identifier to which a package-scoped media-buy action currently applies.",
-                "minLength": 1,
-                "title": "Applicable Package ID",
-                "type": "string",
-                "x-entity": "package"
-              },
-              "minItems": 1,
-              "type": "array",
-              "uniqueItems": true
-            },
-            "change_term_id": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "description": "The accepted proposal change_terms[].term_id from which this current-state action projection was derived.",
-              "pattern": "^[A-Za-z0-9_.:-]+$",
-              "title": "Media Buy Change Term ID",
-              "type": "string",
-              "x-entity": "media_buy_change_term"
-            },
-            "mode": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "description": "How a seller honors a routed compact-lifecycle action.",
-              "enum": [
-                "self_serve",
-                "conditional_self_serve",
-                "seller_managed",
-                "requires_approval"
-              ],
-              "enumDescriptions": {
-                "conditional_self_serve": "The declared task completes synchronously inside seller tolerances and may become asynchronous outside them.",
-                "requires_approval": "Legacy 3.x mode indicating an approval-dependent async path. New proposal-bound terms SHOULD use seller_managed so they do not expose an internal implementation.",
-                "self_serve": "The declared task completes synchronously without approval.",
-                "seller_managed": "The seller processes the action through the standard async lifecycle. The internal use of people, models, queues, or other controls is intentionally opaque."
-              },
-              "title": "Canonical Media Buy Action Mode",
-              "type": "string"
-            },
-            "sla": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": false,
-              "description": "Service-level commitment a seller declares for a given action. Optional throughout: absence means no commitment, not zero commitment \u2014 buyers querying SLA fields via #4425's `requires` predicate grammar MUST compose with `present` to avoid silently matching sellers who never declared one. Durations are ISO 8601 duration strings (e.g., `PT4H`, `PT24H`, `P1D`). Predicate evaluators that compare durations MUST normalize before comparison; `P1D` and `PT24H` are equal.",
-              "properties": {
-                "completion_max": {
-                  "description": "Maximum elapsed time from buyer issuing the action to the seller completing it (mutation applied, proposal finalized, or seller-managed decision resolved). Sellers include weekends and non-working periods in the maximum. ISO 8601 duration.",
-                  "examples": [
-                    "PT1H",
-                    "PT24H",
-                    "P2D"
-                  ],
-                  "pattern": "^P(?!$)(\\d+Y)?(\\d+M)?(\\d+D)?(T(\\d+H)?(\\d+M)?(\\d+S)?)?$",
-                  "type": "string"
-                },
-                "response_max": {
-                  "description": "Maximum elapsed time from when the buyer issues the action to when the seller acknowledges receipt (mode-appropriate: synchronous response for self_serve, tolerance decision for conditional_self_serve, or queue acknowledgement for seller_managed and legacy requires_approval). Sellers include weekends and non-working periods in the maximum. ISO 8601 duration.",
-                  "examples": [
-                    "PT5M",
-                    "PT4H",
-                    "P1D"
-                  ],
-                  "pattern": "^P(?!$)(\\d+Y)?(\\d+M)?(\\d+D)?(T(\\d+H)?(\\d+M)?(\\d+S)?)?$",
-                  "type": "string"
-                }
-              },
-              "title": "SLA Window",
-              "type": "object"
-            },
-            "task": {
-              "enum": [
-                "control_media_buy",
-                "refine_proposals",
-                "sync_creatives"
-              ],
-              "type": "string"
-            },
-            "terms_ref": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "deprecated": true,
-              "description": "Deprecated 3.1 opaque commercial-terms pointer. A 3.2 compatibility projection MAY echo change_term_id here for older buyers, but new buyers MUST prefer change_term_id and MUST NOT assume an arbitrary 3.1 value identifies an accepted change term.",
-              "title": "Media Buy Terms Reference",
-              "type": "string",
-              "x-deprecated-in": "3.2.0",
-              "x-removed-in": "4.0.0"
-            }
-          },
-          "required": [
-            "task",
-            "action",
-            "mode"
-          ],
-          "title": "Canonical Media Buy Action Fields",
-          "type": "object"
+          "$ref": "#/definitions/Shared0"
         }
       ],
       "properties": {

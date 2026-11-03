@@ -21,6 +21,371 @@
       }
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "type": "boolean"
+    },
+    "Shared1": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "Shared10": {
+      "format": "uri",
+      "type": "string"
+    },
+    "Shared11": {
+      "additionalProperties": false,
+      "properties": {
+        "cost_per_strengths": {
+          "description": "cost_per strengths supported when combined with max_bid.",
+          "items": {
+            "$ref": "#/definitions/Shared27"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "kind": {
+          "const": "max_bid_with_cost_per",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "cost_per_strengths"
+      ],
+      "type": "object"
+    },
+    "Shared12": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "max_bid_with_roas",
+          "type": "string"
+        },
+        "roas_strengths": {
+          "description": "roas strengths supported when combined with max_bid.",
+          "items": {
+            "$ref": "#/definitions/Shared28"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "kind",
+        "roas_strengths"
+      ],
+      "type": "object"
+    },
+    "Shared13": {
+      "type": "string"
+    },
+    "Shared14": {
+      "required": [
+        "radius"
+      ]
+    },
+    "Shared15": {
+      "required": [
+        "geometry"
+      ]
+    },
+    "Shared16": {
+      "required": [
+        "travel_time"
+      ]
+    },
+    "Shared17": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/Shared25"
+        },
+        {
+          "$ref": "#/definitions/Shared26"
+        }
+      ],
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Shared23"
+        },
+        {
+          "$ref": "#/definitions/Shared24"
+        }
+      ],
+      "description": "Policies supported when budget allocation is fixed or omitted.",
+      "properties": {
+        "cost_per_strengths": {
+          "$ref": "#/definitions/Shared20"
+        },
+        "modes": {
+          "$ref": "#/definitions/Shared19"
+        },
+        "roas_strengths": {
+          "$ref": "#/definitions/Shared21"
+        },
+        "supported_combinations": {
+          "$ref": "#/definitions/Shared22"
+        }
+      },
+      "type": "object"
+    },
+    "Shared18": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/Shared25"
+        },
+        {
+          "$ref": "#/definitions/Shared26"
+        }
+      ],
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Shared23"
+        },
+        {
+          "$ref": "#/definitions/Shared24"
+        }
+      ],
+      "description": "Policies supported when budget_allocation.mode is seller_optimized.",
+      "properties": {
+        "cost_per_strengths": {
+          "$ref": "#/definitions/Shared20"
+        },
+        "modes": {
+          "$ref": "#/definitions/Shared19"
+        },
+        "roas_strengths": {
+          "$ref": "#/definitions/Shared21"
+        },
+        "supported_combinations": {
+          "$ref": "#/definitions/Shared22"
+        }
+      },
+      "type": "object"
+    },
+    "Shared19": {
+      "description": "Standalone policy modes accepted in this exact scope and allocation context. Combination-only components belong only in supported_combinations and need not appear here. `automatic` means the seller accepts and preserves an explicit `{automatic:true}` authored block; omission only invokes inheritance/default behavior.",
+      "items": {
+        "enum": [
+          "automatic",
+          "bid_amount",
+          "max_bid",
+          "cost_per",
+          "roas"
+        ],
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "Shared2": {
+      "pattern": "^[A-Z]{3}$",
+      "type": "string"
+    },
+    "Shared20": {
+      "description": "Supported standalone cost_per strengths in this profile. Required exactly when modes includes cost_per.",
+      "items": {
+        "$ref": "#/definitions/Shared27"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "Shared21": {
+      "description": "Supported standalone roas strengths in this profile. Required exactly when modes includes roas.",
+      "items": {
+        "$ref": "#/definitions/Shared28"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "Shared22": {
+      "description": "Multi-field policies supported in this exact scope and allocation context. Each entry independently qualifies the strengths supported in that combination; standalone strength support does not imply combination support. Absence means no multi-field combination is claimed.",
+      "items": {
+        "oneOf": [
+          {
+            "$ref": "#/definitions/Shared11"
+          },
+          {
+            "$ref": "#/definitions/Shared12"
+          }
+        ]
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "Shared23": {
+      "required": [
+        "modes"
+      ]
+    },
+    "Shared24": {
+      "required": [
+        "supported_combinations"
+      ]
+    },
+    "Shared25": {
+      "else": {
+        "not": {
+          "$ref": "#/definitions/Shared29"
+        }
+      },
+      "if": {
+        "properties": {
+          "modes": {
+            "contains": {
+              "const": "cost_per"
+            }
+          }
+        },
+        "required": [
+          "modes"
+        ]
+      },
+      "then": {
+        "$ref": "#/definitions/Shared29"
+      }
+    },
+    "Shared26": {
+      "else": {
+        "not": {
+          "$ref": "#/definitions/Shared30"
+        }
+      },
+      "if": {
+        "properties": {
+          "modes": {
+            "contains": {
+              "const": "roas"
+            }
+          }
+        },
+        "required": [
+          "modes"
+        ]
+      },
+      "then": {
+        "$ref": "#/definitions/Shared30"
+      }
+    },
+    "Shared27": {
+      "enum": [
+        "cap",
+        "target"
+      ],
+      "type": "string"
+    },
+    "Shared28": {
+      "enum": [
+        "floor",
+        "target"
+      ],
+      "type": "string"
+    },
+    "Shared29": {
+      "required": [
+        "cost_per_strengths"
+      ]
+    },
+    "Shared3": {
+      "minimum": 0,
+      "type": "number"
+    },
+    "Shared30": {
+      "required": [
+        "roas_strengths"
+      ]
+    },
+    "Shared4": {
+      "pattern": "^[A-Z]{2}$",
+      "type": "string"
+    },
+    "Shared5": {
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "How a population-level audience-evidence estimate was produced. This vocabulary is intentionally separate from signal-definition methodology: `projected` describes expansion of a sample or panel to a reference population and does not become a user-level signal-membership method.",
+        "enum": [
+          "observed",
+          "declared",
+          "derived",
+          "inferred",
+          "modeled",
+          "projected"
+        ],
+        "title": "Audience Evidence Methodology",
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "Shared6": {
+      "items": {
+        "$ref": "#/definitions/Shared9"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "Shared7": {
+      "maximum": 1,
+      "minimum": 0,
+      "type": "number"
+    },
+    "Shared8": {
+      "default": false,
+      "type": "boolean"
+    },
+    "Shared9": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "description": "Stable brand identity used to resolve the canonical brand manifest, optionally qualified by the countries of a commercial advertiser entity. The manifest URL is derived from domain; callers do not send brand assets or per-call brand overrides. Countries do not target delivery.",
+      "properties": {
+        "brand_id": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Brand within a house-of-brands manifest. Omit for a single-brand domain.",
+          "examples": [
+            "tide",
+            "cheerios",
+            "air_jordan",
+            "nike",
+            "pampers"
+          ],
+          "pattern": "^[a-z0-9_]+$",
+          "title": "Brand ID",
+          "type": "string",
+          "x-entity": "advertiser_brand"
+        },
+        "countries": {
+          "description": "Canonical set of ISO 3166-1 alpha-2 countries for this advertiser identity. Omit when the identity is global or the house does not split the brand geographically. Array order is not meaningful; producers MUST sort codes lexicographically before computing keys or signatures. This qualifies account and proposal identity and is not delivery targeting.",
+          "items": {
+            "$ref": "#/definitions/Shared4"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "domain": {
+          "description": "Domain that hosts /.well-known/brand.json or is registered for the brand.",
+          "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "domain"
+      ],
+      "title": "Brand Key",
+      "type": "object"
+    }
+  },
   "description": "Offer, commercial-fit, availability, and reporting filters for product discovery. This compact schema is independent of the legacy delivery-targeting filter graph. Brand and issuer selectors are stable keys; callers do not send brand assets or content provenance.",
   "properties": {
     "audience_evidence_requirements": {
@@ -49,8 +414,7 @@
       "properties": {
         "accepted_attestation_claim_types": {
           "items": {
-            "format": "uri",
-            "type": "string"
+            "$ref": "#/definitions/Shared10"
           },
           "minItems": 1,
           "type": "array",
@@ -66,53 +430,10 @@
                 "additionalProperties": false,
                 "properties": {
                   "brand": {
-                    "$schema": "http://json-schema.org/draft-07/schema#",
-                    "additionalProperties": false,
-                    "description": "Stable brand identity used to resolve the canonical brand manifest, optionally qualified by the countries of a commercial advertiser entity. The manifest URL is derived from domain; callers do not send brand assets or per-call brand overrides. Countries do not target delivery.",
-                    "properties": {
-                      "brand_id": {
-                        "$schema": "http://json-schema.org/draft-07/schema#",
-                        "description": "Brand within a house-of-brands manifest. Omit for a single-brand domain.",
-                        "examples": [
-                          "tide",
-                          "cheerios",
-                          "air_jordan",
-                          "nike",
-                          "pampers"
-                        ],
-                        "pattern": "^[a-z0-9_]+$",
-                        "title": "Brand ID",
-                        "type": "string",
-                        "x-entity": "advertiser_brand"
-                      },
-                      "countries": {
-                        "description": "Canonical set of ISO 3166-1 alpha-2 countries for this advertiser identity. Omit when the identity is global or the house does not split the brand geographically. Array order is not meaningful; producers MUST sort codes lexicographically before computing keys or signatures. This qualifies account and proposal identity and is not delivery targeting.",
-                        "items": {
-                          "pattern": "^[A-Z]{2}$",
-                          "type": "string"
-                        },
-                        "minItems": 1,
-                        "type": "array",
-                        "uniqueItems": true
-                      },
-                      "domain": {
-                        "description": "Domain that hosts /.well-known/brand.json or is registered for the brand.",
-                        "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "domain"
-                    ],
-                    "title": "Brand Key",
-                    "type": "object"
+                    "$ref": "#/definitions/Shared9"
                   },
                   "ext": {
-                    "$schema": "http://json-schema.org/draft-07/schema#",
-                    "additionalProperties": true,
-                    "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                    "title": "Extension Object",
-                    "type": "object"
+                    "$ref": "#/definitions/Shared1"
                   },
                   "type": {
                     "const": "brand",
@@ -134,11 +455,7 @@
                     "type": "string"
                   },
                   "ext": {
-                    "$schema": "http://json-schema.org/draft-07/schema#",
-                    "additionalProperties": true,
-                    "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                    "title": "Extension Object",
-                    "type": "object"
+                    "$ref": "#/definitions/Shared1"
                   },
                   "type": {
                     "const": "agent",
@@ -155,11 +472,7 @@
                 "additionalProperties": false,
                 "properties": {
                   "ext": {
-                    "$schema": "http://json-schema.org/draft-07/schema#",
-                    "additionalProperties": true,
-                    "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                    "title": "Extension Object",
-                    "type": "object"
+                    "$ref": "#/definitions/Shared1"
                   },
                   "origin": {
                     "format": "uri",
@@ -197,69 +510,10 @@
           "uniqueItems": true
         },
         "accepted_methodologies": {
-          "items": {
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "description": "How a population-level audience-evidence estimate was produced. This vocabulary is intentionally separate from signal-definition methodology: `projected` describes expansion of a sample or panel to a reference population and does not become a user-level signal-membership method.",
-            "enum": [
-              "observed",
-              "declared",
-              "derived",
-              "inferred",
-              "modeled",
-              "projected"
-            ],
-            "title": "Audience Evidence Methodology",
-            "type": "string"
-          },
-          "minItems": 1,
-          "type": "array",
-          "uniqueItems": true
+          "$ref": "#/definitions/Shared5"
         },
         "accepted_providers": {
-          "items": {
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "additionalProperties": false,
-            "description": "Stable brand identity used to resolve the canonical brand manifest, optionally qualified by the countries of a commercial advertiser entity. The manifest URL is derived from domain; callers do not send brand assets or per-call brand overrides. Countries do not target delivery.",
-            "properties": {
-              "brand_id": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "description": "Brand within a house-of-brands manifest. Omit for a single-brand domain.",
-                "examples": [
-                  "tide",
-                  "cheerios",
-                  "air_jordan",
-                  "nike",
-                  "pampers"
-                ],
-                "pattern": "^[a-z0-9_]+$",
-                "title": "Brand ID",
-                "type": "string",
-                "x-entity": "advertiser_brand"
-              },
-              "countries": {
-                "description": "Canonical set of ISO 3166-1 alpha-2 countries for this advertiser identity. Omit when the identity is global or the house does not split the brand geographically. Array order is not meaningful; producers MUST sort codes lexicographically before computing keys or signatures. This qualifies account and proposal identity and is not delivery targeting.",
-                "items": {
-                  "pattern": "^[A-Z]{2}$",
-                  "type": "string"
-                },
-                "minItems": 1,
-                "type": "array",
-                "uniqueItems": true
-              },
-              "domain": {
-                "description": "Domain that hosts /.well-known/brand.json or is registered for the brand.",
-                "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-                "type": "string"
-              }
-            },
-            "required": [
-              "domain"
-            ],
-            "title": "Brand Key",
-            "type": "object"
-          },
-          "minItems": 1,
-          "type": "array"
+          "$ref": "#/definitions/Shared6"
         },
         "accepted_resolution_methods": {
           "items": {
@@ -306,80 +560,16 @@
           "type": "string"
         },
         "excluded_methodologies": {
-          "items": {
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "description": "How a population-level audience-evidence estimate was produced. This vocabulary is intentionally separate from signal-definition methodology: `projected` describes expansion of a sample or panel to a reference population and does not become a user-level signal-membership method.",
-            "enum": [
-              "observed",
-              "declared",
-              "derived",
-              "inferred",
-              "modeled",
-              "projected"
-            ],
-            "title": "Audience Evidence Methodology",
-            "type": "string"
-          },
-          "minItems": 1,
-          "type": "array",
-          "uniqueItems": true
+          "$ref": "#/definitions/Shared5"
         },
         "excluded_providers": {
-          "items": {
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "additionalProperties": false,
-            "description": "Stable brand identity used to resolve the canonical brand manifest, optionally qualified by the countries of a commercial advertiser entity. The manifest URL is derived from domain; callers do not send brand assets or per-call brand overrides. Countries do not target delivery.",
-            "properties": {
-              "brand_id": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "description": "Brand within a house-of-brands manifest. Omit for a single-brand domain.",
-                "examples": [
-                  "tide",
-                  "cheerios",
-                  "air_jordan",
-                  "nike",
-                  "pampers"
-                ],
-                "pattern": "^[a-z0-9_]+$",
-                "title": "Brand ID",
-                "type": "string",
-                "x-entity": "advertiser_brand"
-              },
-              "countries": {
-                "description": "Canonical set of ISO 3166-1 alpha-2 countries for this advertiser identity. Omit when the identity is global or the house does not split the brand geographically. Array order is not meaningful; producers MUST sort codes lexicographically before computing keys or signatures. This qualifies account and proposal identity and is not delivery targeting.",
-                "items": {
-                  "pattern": "^[A-Z]{2}$",
-                  "type": "string"
-                },
-                "minItems": 1,
-                "type": "array",
-                "uniqueItems": true
-              },
-              "domain": {
-                "description": "Domain that hosts /.well-known/brand.json or is registered for the brand.",
-                "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-                "type": "string"
-              }
-            },
-            "required": [
-              "domain"
-            ],
-            "title": "Brand Key",
-            "type": "object"
-          },
-          "minItems": 1,
-          "type": "array"
+          "$ref": "#/definitions/Shared6"
         },
         "ext": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": true,
-          "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-          "title": "Extension Object",
-          "type": "object"
+          "$ref": "#/definitions/Shared1"
         },
         "independent_attestation_required": {
-          "default": false,
-          "type": "boolean"
+          "$ref": "#/definitions/Shared8"
         },
         "maximum_age": {
           "allOf": [
@@ -427,13 +617,10 @@
           ]
         },
         "methodology_documentation_required": {
-          "default": false,
-          "type": "boolean"
+          "$ref": "#/definitions/Shared8"
         },
         "minimum_confidence": {
-          "maximum": 1,
-          "minimum": 0,
-          "type": "number"
+          "$ref": "#/definitions/Shared7"
         },
         "requirement_mode": {
           "enum": [
@@ -519,16 +706,13 @@
       "description": "Extension-tolerant inclusive currency bounds used by legacy discovery filters. At least one bound is required; min MUST be less than or equal to max. The strict negotiation peer that rejects unknown members is media-buy/proposal-budget-constraint.json.",
       "properties": {
         "currency": {
-          "pattern": "^[A-Z]{3}$",
-          "type": "string"
+          "$ref": "#/definitions/Shared2"
         },
         "max": {
-          "minimum": 0,
-          "type": "number"
+          "$ref": "#/definitions/Shared3"
         },
         "min": {
-          "minimum": 0,
-          "type": "number"
+          "$ref": "#/definitions/Shared3"
         }
       },
       "required": [
@@ -594,8 +778,7 @@
     "countries": {
       "description": "Filter by country coverage using ISO 3166-1 alpha-2 codes (e.g., ['US', 'CA', 'GB']). Returns products whose geographic coverage includes at least one of the specified countries. This is a product attribute filter, not a delivery-targeting instruction.",
       "items": {
-        "pattern": "^[A-Z]{2}$",
-        "type": "string"
+        "$ref": "#/definitions/Shared4"
       },
       "minItems": 1,
       "type": "array"
@@ -636,11 +819,7 @@
       "type": "string"
     },
     "ext": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "additionalProperties": true,
-      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-      "title": "Extension Object",
-      "type": "object"
+      "$ref": "#/definitions/Shared1"
     },
     "format_kinds": {
       "items": {
@@ -748,14 +927,10 @@
             "not": {
               "anyOf": [
                 {
-                  "required": [
-                    "radius"
-                  ]
+                  "$ref": "#/definitions/Shared14"
                 },
                 {
-                  "required": [
-                    "geometry"
-                  ]
+                  "$ref": "#/definitions/Shared15"
                 }
               ]
             },
@@ -770,14 +945,10 @@
             "not": {
               "anyOf": [
                 {
-                  "required": [
-                    "travel_time"
-                  ]
+                  "$ref": "#/definitions/Shared16"
                 },
                 {
-                  "required": [
-                    "geometry"
-                  ]
+                  "$ref": "#/definitions/Shared15"
                 }
               ]
             },
@@ -791,14 +962,10 @@
             "not": {
               "anyOf": [
                 {
-                  "required": [
-                    "travel_time"
-                  ]
+                  "$ref": "#/definitions/Shared16"
                 },
                 {
-                  "required": [
-                    "radius"
-                  ]
+                  "$ref": "#/definitions/Shared14"
                 }
               ]
             },
@@ -809,11 +976,7 @@
         ],
         "properties": {
           "ext": {
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "additionalProperties": true,
-            "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-            "title": "Extension Object",
-            "type": "object"
+            "$ref": "#/definitions/Shared1"
           },
           "geometry": {
             "additionalProperties": false,
@@ -1209,7 +1372,7 @@
               "values": {
                 "description": "Postal codes within the country and system.",
                 "items": {
-                  "type": "string"
+                  "$ref": "#/definitions/Shared13"
                 },
                 "minItems": 1,
                 "type": "array"
@@ -1250,7 +1413,7 @@
               "values": {
                 "description": "Postal codes within the legacy system.",
                 "items": {
-                  "type": "string"
+                  "$ref": "#/definitions/Shared13"
                 },
                 "minItems": 1,
                 "type": "array"
@@ -1272,8 +1435,7 @@
     },
     "pricing_currencies": {
       "items": {
-        "pattern": "^[A-Z]{3}$",
-        "type": "string"
+        "$ref": "#/definitions/Shared2"
       },
       "minItems": 1,
       "type": "array",
@@ -1344,7 +1506,7 @@
         {
           "$schema": "http://json-schema.org/draft-07/schema#",
           "additionalProperties": {
-            "type": "boolean"
+            "$ref": "#/definitions/Shared0"
           },
           "description": "Compact seller features relevant to canonical product purchase. Legacy inline-creative capabilities are absent.",
           "properties": {
@@ -1353,232 +1515,41 @@
               "additionalProperties": false,
               "definitions": {
                 "max_bid_with_cost_per": {
-                  "additionalProperties": false,
-                  "properties": {
-                    "cost_per_strengths": {
-                      "description": "cost_per strengths supported when combined with max_bid.",
-                      "items": {
-                        "enum": [
-                          "cap",
-                          "target"
-                        ],
-                        "type": "string"
-                      },
-                      "minItems": 1,
-                      "type": "array",
-                      "uniqueItems": true
-                    },
-                    "kind": {
-                      "const": "max_bid_with_cost_per",
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "kind",
-                    "cost_per_strengths"
-                  ],
-                  "type": "object"
+                  "$ref": "#/definitions/Shared11"
                 },
                 "max_bid_with_roas": {
-                  "additionalProperties": false,
-                  "properties": {
-                    "kind": {
-                      "const": "max_bid_with_roas",
-                      "type": "string"
-                    },
-                    "roas_strengths": {
-                      "description": "roas strengths supported when combined with max_bid.",
-                      "items": {
-                        "enum": [
-                          "floor",
-                          "target"
-                        ],
-                        "type": "string"
-                      },
-                      "minItems": 1,
-                      "type": "array",
-                      "uniqueItems": true
-                    }
-                  },
-                  "required": [
-                    "kind",
-                    "roas_strengths"
-                  ],
-                  "type": "object"
+                  "$ref": "#/definitions/Shared12"
                 },
                 "policy_profile": {
                   "additionalProperties": false,
                   "allOf": [
                     {
-                      "else": {
-                        "not": {
-                          "required": [
-                            "cost_per_strengths"
-                          ]
-                        }
-                      },
-                      "if": {
-                        "properties": {
-                          "modes": {
-                            "contains": {
-                              "const": "cost_per"
-                            }
-                          }
-                        },
-                        "required": [
-                          "modes"
-                        ]
-                      },
-                      "then": {
-                        "required": [
-                          "cost_per_strengths"
-                        ]
-                      }
+                      "$ref": "#/definitions/Shared25"
                     },
                     {
-                      "else": {
-                        "not": {
-                          "required": [
-                            "roas_strengths"
-                          ]
-                        }
-                      },
-                      "if": {
-                        "properties": {
-                          "modes": {
-                            "contains": {
-                              "const": "roas"
-                            }
-                          }
-                        },
-                        "required": [
-                          "modes"
-                        ]
-                      },
-                      "then": {
-                        "required": [
-                          "roas_strengths"
-                        ]
-                      }
+                      "$ref": "#/definitions/Shared26"
                     }
                   ],
                   "anyOf": [
                     {
-                      "required": [
-                        "modes"
-                      ]
+                      "$ref": "#/definitions/Shared23"
                     },
                     {
-                      "required": [
-                        "supported_combinations"
-                      ]
+                      "$ref": "#/definitions/Shared24"
                     }
                   ],
                   "properties": {
                     "cost_per_strengths": {
-                      "description": "Supported standalone cost_per strengths in this profile. Required exactly when modes includes cost_per.",
-                      "items": {
-                        "enum": [
-                          "cap",
-                          "target"
-                        ],
-                        "type": "string"
-                      },
-                      "minItems": 1,
-                      "type": "array",
-                      "uniqueItems": true
+                      "$ref": "#/definitions/Shared20"
                     },
                     "modes": {
-                      "description": "Standalone policy modes accepted in this exact scope and allocation context. Combination-only components belong only in supported_combinations and need not appear here. `automatic` means the seller accepts and preserves an explicit `{automatic:true}` authored block; omission only invokes inheritance/default behavior.",
-                      "items": {
-                        "enum": [
-                          "automatic",
-                          "bid_amount",
-                          "max_bid",
-                          "cost_per",
-                          "roas"
-                        ],
-                        "type": "string"
-                      },
-                      "minItems": 1,
-                      "type": "array",
-                      "uniqueItems": true
+                      "$ref": "#/definitions/Shared19"
                     },
                     "roas_strengths": {
-                      "description": "Supported standalone roas strengths in this profile. Required exactly when modes includes roas.",
-                      "items": {
-                        "enum": [
-                          "floor",
-                          "target"
-                        ],
-                        "type": "string"
-                      },
-                      "minItems": 1,
-                      "type": "array",
-                      "uniqueItems": true
+                      "$ref": "#/definitions/Shared21"
                     },
                     "supported_combinations": {
-                      "description": "Multi-field policies supported in this exact scope and allocation context. Each entry independently qualifies the strengths supported in that combination; standalone strength support does not imply combination support. Absence means no multi-field combination is claimed.",
-                      "items": {
-                        "oneOf": [
-                          {
-                            "additionalProperties": false,
-                            "properties": {
-                              "cost_per_strengths": {
-                                "description": "cost_per strengths supported when combined with max_bid.",
-                                "items": {
-                                  "enum": [
-                                    "cap",
-                                    "target"
-                                  ],
-                                  "type": "string"
-                                },
-                                "minItems": 1,
-                                "type": "array",
-                                "uniqueItems": true
-                              },
-                              "kind": {
-                                "const": "max_bid_with_cost_per",
-                                "type": "string"
-                              }
-                            },
-                            "required": [
-                              "kind",
-                              "cost_per_strengths"
-                            ],
-                            "type": "object"
-                          },
-                          {
-                            "additionalProperties": false,
-                            "properties": {
-                              "kind": {
-                                "const": "max_bid_with_roas",
-                                "type": "string"
-                              },
-                              "roas_strengths": {
-                                "description": "roas strengths supported when combined with max_bid.",
-                                "items": {
-                                  "enum": [
-                                    "floor",
-                                    "target"
-                                  ],
-                                  "type": "string"
-                                },
-                                "minItems": 1,
-                                "type": "array",
-                                "uniqueItems": true
-                              }
-                            },
-                            "required": [
-                              "kind",
-                              "roas_strengths"
-                            ],
-                            "type": "object"
-                          }
-                        ]
-                      },
-                      "minItems": 1,
-                      "type": "array"
+                      "$ref": "#/definitions/Shared22"
                     }
                   },
                   "type": "object"
@@ -1589,360 +1560,10 @@
                   "minProperties": 1,
                   "properties": {
                     "fixed": {
-                      "additionalProperties": false,
-                      "allOf": [
-                        {
-                          "else": {
-                            "not": {
-                              "required": [
-                                "cost_per_strengths"
-                              ]
-                            }
-                          },
-                          "if": {
-                            "properties": {
-                              "modes": {
-                                "contains": {
-                                  "const": "cost_per"
-                                }
-                              }
-                            },
-                            "required": [
-                              "modes"
-                            ]
-                          },
-                          "then": {
-                            "required": [
-                              "cost_per_strengths"
-                            ]
-                          }
-                        },
-                        {
-                          "else": {
-                            "not": {
-                              "required": [
-                                "roas_strengths"
-                              ]
-                            }
-                          },
-                          "if": {
-                            "properties": {
-                              "modes": {
-                                "contains": {
-                                  "const": "roas"
-                                }
-                              }
-                            },
-                            "required": [
-                              "modes"
-                            ]
-                          },
-                          "then": {
-                            "required": [
-                              "roas_strengths"
-                            ]
-                          }
-                        }
-                      ],
-                      "anyOf": [
-                        {
-                          "required": [
-                            "modes"
-                          ]
-                        },
-                        {
-                          "required": [
-                            "supported_combinations"
-                          ]
-                        }
-                      ],
-                      "description": "Policies supported when budget allocation is fixed or omitted.",
-                      "properties": {
-                        "cost_per_strengths": {
-                          "description": "Supported standalone cost_per strengths in this profile. Required exactly when modes includes cost_per.",
-                          "items": {
-                            "enum": [
-                              "cap",
-                              "target"
-                            ],
-                            "type": "string"
-                          },
-                          "minItems": 1,
-                          "type": "array",
-                          "uniqueItems": true
-                        },
-                        "modes": {
-                          "description": "Standalone policy modes accepted in this exact scope and allocation context. Combination-only components belong only in supported_combinations and need not appear here. `automatic` means the seller accepts and preserves an explicit `{automatic:true}` authored block; omission only invokes inheritance/default behavior.",
-                          "items": {
-                            "enum": [
-                              "automatic",
-                              "bid_amount",
-                              "max_bid",
-                              "cost_per",
-                              "roas"
-                            ],
-                            "type": "string"
-                          },
-                          "minItems": 1,
-                          "type": "array",
-                          "uniqueItems": true
-                        },
-                        "roas_strengths": {
-                          "description": "Supported standalone roas strengths in this profile. Required exactly when modes includes roas.",
-                          "items": {
-                            "enum": [
-                              "floor",
-                              "target"
-                            ],
-                            "type": "string"
-                          },
-                          "minItems": 1,
-                          "type": "array",
-                          "uniqueItems": true
-                        },
-                        "supported_combinations": {
-                          "description": "Multi-field policies supported in this exact scope and allocation context. Each entry independently qualifies the strengths supported in that combination; standalone strength support does not imply combination support. Absence means no multi-field combination is claimed.",
-                          "items": {
-                            "oneOf": [
-                              {
-                                "additionalProperties": false,
-                                "properties": {
-                                  "cost_per_strengths": {
-                                    "description": "cost_per strengths supported when combined with max_bid.",
-                                    "items": {
-                                      "enum": [
-                                        "cap",
-                                        "target"
-                                      ],
-                                      "type": "string"
-                                    },
-                                    "minItems": 1,
-                                    "type": "array",
-                                    "uniqueItems": true
-                                  },
-                                  "kind": {
-                                    "const": "max_bid_with_cost_per",
-                                    "type": "string"
-                                  }
-                                },
-                                "required": [
-                                  "kind",
-                                  "cost_per_strengths"
-                                ],
-                                "type": "object"
-                              },
-                              {
-                                "additionalProperties": false,
-                                "properties": {
-                                  "kind": {
-                                    "const": "max_bid_with_roas",
-                                    "type": "string"
-                                  },
-                                  "roas_strengths": {
-                                    "description": "roas strengths supported when combined with max_bid.",
-                                    "items": {
-                                      "enum": [
-                                        "floor",
-                                        "target"
-                                      ],
-                                      "type": "string"
-                                    },
-                                    "minItems": 1,
-                                    "type": "array",
-                                    "uniqueItems": true
-                                  }
-                                },
-                                "required": [
-                                  "kind",
-                                  "roas_strengths"
-                                ],
-                                "type": "object"
-                              }
-                            ]
-                          },
-                          "minItems": 1,
-                          "type": "array"
-                        }
-                      },
-                      "type": "object"
+                      "$ref": "#/definitions/Shared17"
                     },
                     "seller_optimized": {
-                      "additionalProperties": false,
-                      "allOf": [
-                        {
-                          "else": {
-                            "not": {
-                              "required": [
-                                "cost_per_strengths"
-                              ]
-                            }
-                          },
-                          "if": {
-                            "properties": {
-                              "modes": {
-                                "contains": {
-                                  "const": "cost_per"
-                                }
-                              }
-                            },
-                            "required": [
-                              "modes"
-                            ]
-                          },
-                          "then": {
-                            "required": [
-                              "cost_per_strengths"
-                            ]
-                          }
-                        },
-                        {
-                          "else": {
-                            "not": {
-                              "required": [
-                                "roas_strengths"
-                              ]
-                            }
-                          },
-                          "if": {
-                            "properties": {
-                              "modes": {
-                                "contains": {
-                                  "const": "roas"
-                                }
-                              }
-                            },
-                            "required": [
-                              "modes"
-                            ]
-                          },
-                          "then": {
-                            "required": [
-                              "roas_strengths"
-                            ]
-                          }
-                        }
-                      ],
-                      "anyOf": [
-                        {
-                          "required": [
-                            "modes"
-                          ]
-                        },
-                        {
-                          "required": [
-                            "supported_combinations"
-                          ]
-                        }
-                      ],
-                      "description": "Policies supported when budget_allocation.mode is seller_optimized.",
-                      "properties": {
-                        "cost_per_strengths": {
-                          "description": "Supported standalone cost_per strengths in this profile. Required exactly when modes includes cost_per.",
-                          "items": {
-                            "enum": [
-                              "cap",
-                              "target"
-                            ],
-                            "type": "string"
-                          },
-                          "minItems": 1,
-                          "type": "array",
-                          "uniqueItems": true
-                        },
-                        "modes": {
-                          "description": "Standalone policy modes accepted in this exact scope and allocation context. Combination-only components belong only in supported_combinations and need not appear here. `automatic` means the seller accepts and preserves an explicit `{automatic:true}` authored block; omission only invokes inheritance/default behavior.",
-                          "items": {
-                            "enum": [
-                              "automatic",
-                              "bid_amount",
-                              "max_bid",
-                              "cost_per",
-                              "roas"
-                            ],
-                            "type": "string"
-                          },
-                          "minItems": 1,
-                          "type": "array",
-                          "uniqueItems": true
-                        },
-                        "roas_strengths": {
-                          "description": "Supported standalone roas strengths in this profile. Required exactly when modes includes roas.",
-                          "items": {
-                            "enum": [
-                              "floor",
-                              "target"
-                            ],
-                            "type": "string"
-                          },
-                          "minItems": 1,
-                          "type": "array",
-                          "uniqueItems": true
-                        },
-                        "supported_combinations": {
-                          "description": "Multi-field policies supported in this exact scope and allocation context. Each entry independently qualifies the strengths supported in that combination; standalone strength support does not imply combination support. Absence means no multi-field combination is claimed.",
-                          "items": {
-                            "oneOf": [
-                              {
-                                "additionalProperties": false,
-                                "properties": {
-                                  "cost_per_strengths": {
-                                    "description": "cost_per strengths supported when combined with max_bid.",
-                                    "items": {
-                                      "enum": [
-                                        "cap",
-                                        "target"
-                                      ],
-                                      "type": "string"
-                                    },
-                                    "minItems": 1,
-                                    "type": "array",
-                                    "uniqueItems": true
-                                  },
-                                  "kind": {
-                                    "const": "max_bid_with_cost_per",
-                                    "type": "string"
-                                  }
-                                },
-                                "required": [
-                                  "kind",
-                                  "cost_per_strengths"
-                                ],
-                                "type": "object"
-                              },
-                              {
-                                "additionalProperties": false,
-                                "properties": {
-                                  "kind": {
-                                    "const": "max_bid_with_roas",
-                                    "type": "string"
-                                  },
-                                  "roas_strengths": {
-                                    "description": "roas strengths supported when combined with max_bid.",
-                                    "items": {
-                                      "enum": [
-                                        "floor",
-                                        "target"
-                                      ],
-                                      "type": "string"
-                                    },
-                                    "minItems": 1,
-                                    "type": "array",
-                                    "uniqueItems": true
-                                  }
-                                },
-                                "required": [
-                                  "kind",
-                                  "roas_strengths"
-                                ],
-                                "type": "object"
-                              }
-                            ]
-                          },
-                          "minItems": 1,
-                          "type": "array"
-                        }
-                      },
-                      "type": "object"
+                      "$ref": "#/definitions/Shared18"
                     }
                   },
                   "type": "object"
@@ -1957,360 +1578,10 @@
                   "minProperties": 1,
                   "properties": {
                     "fixed": {
-                      "additionalProperties": false,
-                      "allOf": [
-                        {
-                          "else": {
-                            "not": {
-                              "required": [
-                                "cost_per_strengths"
-                              ]
-                            }
-                          },
-                          "if": {
-                            "properties": {
-                              "modes": {
-                                "contains": {
-                                  "const": "cost_per"
-                                }
-                              }
-                            },
-                            "required": [
-                              "modes"
-                            ]
-                          },
-                          "then": {
-                            "required": [
-                              "cost_per_strengths"
-                            ]
-                          }
-                        },
-                        {
-                          "else": {
-                            "not": {
-                              "required": [
-                                "roas_strengths"
-                              ]
-                            }
-                          },
-                          "if": {
-                            "properties": {
-                              "modes": {
-                                "contains": {
-                                  "const": "roas"
-                                }
-                              }
-                            },
-                            "required": [
-                              "modes"
-                            ]
-                          },
-                          "then": {
-                            "required": [
-                              "roas_strengths"
-                            ]
-                          }
-                        }
-                      ],
-                      "anyOf": [
-                        {
-                          "required": [
-                            "modes"
-                          ]
-                        },
-                        {
-                          "required": [
-                            "supported_combinations"
-                          ]
-                        }
-                      ],
-                      "description": "Policies supported when budget allocation is fixed or omitted.",
-                      "properties": {
-                        "cost_per_strengths": {
-                          "description": "Supported standalone cost_per strengths in this profile. Required exactly when modes includes cost_per.",
-                          "items": {
-                            "enum": [
-                              "cap",
-                              "target"
-                            ],
-                            "type": "string"
-                          },
-                          "minItems": 1,
-                          "type": "array",
-                          "uniqueItems": true
-                        },
-                        "modes": {
-                          "description": "Standalone policy modes accepted in this exact scope and allocation context. Combination-only components belong only in supported_combinations and need not appear here. `automatic` means the seller accepts and preserves an explicit `{automatic:true}` authored block; omission only invokes inheritance/default behavior.",
-                          "items": {
-                            "enum": [
-                              "automatic",
-                              "bid_amount",
-                              "max_bid",
-                              "cost_per",
-                              "roas"
-                            ],
-                            "type": "string"
-                          },
-                          "minItems": 1,
-                          "type": "array",
-                          "uniqueItems": true
-                        },
-                        "roas_strengths": {
-                          "description": "Supported standalone roas strengths in this profile. Required exactly when modes includes roas.",
-                          "items": {
-                            "enum": [
-                              "floor",
-                              "target"
-                            ],
-                            "type": "string"
-                          },
-                          "minItems": 1,
-                          "type": "array",
-                          "uniqueItems": true
-                        },
-                        "supported_combinations": {
-                          "description": "Multi-field policies supported in this exact scope and allocation context. Each entry independently qualifies the strengths supported in that combination; standalone strength support does not imply combination support. Absence means no multi-field combination is claimed.",
-                          "items": {
-                            "oneOf": [
-                              {
-                                "additionalProperties": false,
-                                "properties": {
-                                  "cost_per_strengths": {
-                                    "description": "cost_per strengths supported when combined with max_bid.",
-                                    "items": {
-                                      "enum": [
-                                        "cap",
-                                        "target"
-                                      ],
-                                      "type": "string"
-                                    },
-                                    "minItems": 1,
-                                    "type": "array",
-                                    "uniqueItems": true
-                                  },
-                                  "kind": {
-                                    "const": "max_bid_with_cost_per",
-                                    "type": "string"
-                                  }
-                                },
-                                "required": [
-                                  "kind",
-                                  "cost_per_strengths"
-                                ],
-                                "type": "object"
-                              },
-                              {
-                                "additionalProperties": false,
-                                "properties": {
-                                  "kind": {
-                                    "const": "max_bid_with_roas",
-                                    "type": "string"
-                                  },
-                                  "roas_strengths": {
-                                    "description": "roas strengths supported when combined with max_bid.",
-                                    "items": {
-                                      "enum": [
-                                        "floor",
-                                        "target"
-                                      ],
-                                      "type": "string"
-                                    },
-                                    "minItems": 1,
-                                    "type": "array",
-                                    "uniqueItems": true
-                                  }
-                                },
-                                "required": [
-                                  "kind",
-                                  "roas_strengths"
-                                ],
-                                "type": "object"
-                              }
-                            ]
-                          },
-                          "minItems": 1,
-                          "type": "array"
-                        }
-                      },
-                      "type": "object"
+                      "$ref": "#/definitions/Shared17"
                     },
                     "seller_optimized": {
-                      "additionalProperties": false,
-                      "allOf": [
-                        {
-                          "else": {
-                            "not": {
-                              "required": [
-                                "cost_per_strengths"
-                              ]
-                            }
-                          },
-                          "if": {
-                            "properties": {
-                              "modes": {
-                                "contains": {
-                                  "const": "cost_per"
-                                }
-                              }
-                            },
-                            "required": [
-                              "modes"
-                            ]
-                          },
-                          "then": {
-                            "required": [
-                              "cost_per_strengths"
-                            ]
-                          }
-                        },
-                        {
-                          "else": {
-                            "not": {
-                              "required": [
-                                "roas_strengths"
-                              ]
-                            }
-                          },
-                          "if": {
-                            "properties": {
-                              "modes": {
-                                "contains": {
-                                  "const": "roas"
-                                }
-                              }
-                            },
-                            "required": [
-                              "modes"
-                            ]
-                          },
-                          "then": {
-                            "required": [
-                              "roas_strengths"
-                            ]
-                          }
-                        }
-                      ],
-                      "anyOf": [
-                        {
-                          "required": [
-                            "modes"
-                          ]
-                        },
-                        {
-                          "required": [
-                            "supported_combinations"
-                          ]
-                        }
-                      ],
-                      "description": "Policies supported when budget_allocation.mode is seller_optimized.",
-                      "properties": {
-                        "cost_per_strengths": {
-                          "description": "Supported standalone cost_per strengths in this profile. Required exactly when modes includes cost_per.",
-                          "items": {
-                            "enum": [
-                              "cap",
-                              "target"
-                            ],
-                            "type": "string"
-                          },
-                          "minItems": 1,
-                          "type": "array",
-                          "uniqueItems": true
-                        },
-                        "modes": {
-                          "description": "Standalone policy modes accepted in this exact scope and allocation context. Combination-only components belong only in supported_combinations and need not appear here. `automatic` means the seller accepts and preserves an explicit `{automatic:true}` authored block; omission only invokes inheritance/default behavior.",
-                          "items": {
-                            "enum": [
-                              "automatic",
-                              "bid_amount",
-                              "max_bid",
-                              "cost_per",
-                              "roas"
-                            ],
-                            "type": "string"
-                          },
-                          "minItems": 1,
-                          "type": "array",
-                          "uniqueItems": true
-                        },
-                        "roas_strengths": {
-                          "description": "Supported standalone roas strengths in this profile. Required exactly when modes includes roas.",
-                          "items": {
-                            "enum": [
-                              "floor",
-                              "target"
-                            ],
-                            "type": "string"
-                          },
-                          "minItems": 1,
-                          "type": "array",
-                          "uniqueItems": true
-                        },
-                        "supported_combinations": {
-                          "description": "Multi-field policies supported in this exact scope and allocation context. Each entry independently qualifies the strengths supported in that combination; standalone strength support does not imply combination support. Absence means no multi-field combination is claimed.",
-                          "items": {
-                            "oneOf": [
-                              {
-                                "additionalProperties": false,
-                                "properties": {
-                                  "cost_per_strengths": {
-                                    "description": "cost_per strengths supported when combined with max_bid.",
-                                    "items": {
-                                      "enum": [
-                                        "cap",
-                                        "target"
-                                      ],
-                                      "type": "string"
-                                    },
-                                    "minItems": 1,
-                                    "type": "array",
-                                    "uniqueItems": true
-                                  },
-                                  "kind": {
-                                    "const": "max_bid_with_cost_per",
-                                    "type": "string"
-                                  }
-                                },
-                                "required": [
-                                  "kind",
-                                  "cost_per_strengths"
-                                ],
-                                "type": "object"
-                              },
-                              {
-                                "additionalProperties": false,
-                                "properties": {
-                                  "kind": {
-                                    "const": "max_bid_with_roas",
-                                    "type": "string"
-                                  },
-                                  "roas_strengths": {
-                                    "description": "roas strengths supported when combined with max_bid.",
-                                    "items": {
-                                      "enum": [
-                                        "floor",
-                                        "target"
-                                      ],
-                                      "type": "string"
-                                    },
-                                    "minItems": 1,
-                                    "type": "array",
-                                    "uniqueItems": true
-                                  }
-                                },
-                                "required": [
-                                  "kind",
-                                  "roas_strengths"
-                                ],
-                                "type": "object"
-                              }
-                            ]
-                          },
-                          "minItems": 1,
-                          "type": "array"
-                        }
-                      },
-                      "type": "object"
+                      "$ref": "#/definitions/Shared18"
                     }
                   },
                   "type": "object"
@@ -2321,360 +1592,10 @@
                   "minProperties": 1,
                   "properties": {
                     "fixed": {
-                      "additionalProperties": false,
-                      "allOf": [
-                        {
-                          "else": {
-                            "not": {
-                              "required": [
-                                "cost_per_strengths"
-                              ]
-                            }
-                          },
-                          "if": {
-                            "properties": {
-                              "modes": {
-                                "contains": {
-                                  "const": "cost_per"
-                                }
-                              }
-                            },
-                            "required": [
-                              "modes"
-                            ]
-                          },
-                          "then": {
-                            "required": [
-                              "cost_per_strengths"
-                            ]
-                          }
-                        },
-                        {
-                          "else": {
-                            "not": {
-                              "required": [
-                                "roas_strengths"
-                              ]
-                            }
-                          },
-                          "if": {
-                            "properties": {
-                              "modes": {
-                                "contains": {
-                                  "const": "roas"
-                                }
-                              }
-                            },
-                            "required": [
-                              "modes"
-                            ]
-                          },
-                          "then": {
-                            "required": [
-                              "roas_strengths"
-                            ]
-                          }
-                        }
-                      ],
-                      "anyOf": [
-                        {
-                          "required": [
-                            "modes"
-                          ]
-                        },
-                        {
-                          "required": [
-                            "supported_combinations"
-                          ]
-                        }
-                      ],
-                      "description": "Policies supported when budget allocation is fixed or omitted.",
-                      "properties": {
-                        "cost_per_strengths": {
-                          "description": "Supported standalone cost_per strengths in this profile. Required exactly when modes includes cost_per.",
-                          "items": {
-                            "enum": [
-                              "cap",
-                              "target"
-                            ],
-                            "type": "string"
-                          },
-                          "minItems": 1,
-                          "type": "array",
-                          "uniqueItems": true
-                        },
-                        "modes": {
-                          "description": "Standalone policy modes accepted in this exact scope and allocation context. Combination-only components belong only in supported_combinations and need not appear here. `automatic` means the seller accepts and preserves an explicit `{automatic:true}` authored block; omission only invokes inheritance/default behavior.",
-                          "items": {
-                            "enum": [
-                              "automatic",
-                              "bid_amount",
-                              "max_bid",
-                              "cost_per",
-                              "roas"
-                            ],
-                            "type": "string"
-                          },
-                          "minItems": 1,
-                          "type": "array",
-                          "uniqueItems": true
-                        },
-                        "roas_strengths": {
-                          "description": "Supported standalone roas strengths in this profile. Required exactly when modes includes roas.",
-                          "items": {
-                            "enum": [
-                              "floor",
-                              "target"
-                            ],
-                            "type": "string"
-                          },
-                          "minItems": 1,
-                          "type": "array",
-                          "uniqueItems": true
-                        },
-                        "supported_combinations": {
-                          "description": "Multi-field policies supported in this exact scope and allocation context. Each entry independently qualifies the strengths supported in that combination; standalone strength support does not imply combination support. Absence means no multi-field combination is claimed.",
-                          "items": {
-                            "oneOf": [
-                              {
-                                "additionalProperties": false,
-                                "properties": {
-                                  "cost_per_strengths": {
-                                    "description": "cost_per strengths supported when combined with max_bid.",
-                                    "items": {
-                                      "enum": [
-                                        "cap",
-                                        "target"
-                                      ],
-                                      "type": "string"
-                                    },
-                                    "minItems": 1,
-                                    "type": "array",
-                                    "uniqueItems": true
-                                  },
-                                  "kind": {
-                                    "const": "max_bid_with_cost_per",
-                                    "type": "string"
-                                  }
-                                },
-                                "required": [
-                                  "kind",
-                                  "cost_per_strengths"
-                                ],
-                                "type": "object"
-                              },
-                              {
-                                "additionalProperties": false,
-                                "properties": {
-                                  "kind": {
-                                    "const": "max_bid_with_roas",
-                                    "type": "string"
-                                  },
-                                  "roas_strengths": {
-                                    "description": "roas strengths supported when combined with max_bid.",
-                                    "items": {
-                                      "enum": [
-                                        "floor",
-                                        "target"
-                                      ],
-                                      "type": "string"
-                                    },
-                                    "minItems": 1,
-                                    "type": "array",
-                                    "uniqueItems": true
-                                  }
-                                },
-                                "required": [
-                                  "kind",
-                                  "roas_strengths"
-                                ],
-                                "type": "object"
-                              }
-                            ]
-                          },
-                          "minItems": 1,
-                          "type": "array"
-                        }
-                      },
-                      "type": "object"
+                      "$ref": "#/definitions/Shared17"
                     },
                     "seller_optimized": {
-                      "additionalProperties": false,
-                      "allOf": [
-                        {
-                          "else": {
-                            "not": {
-                              "required": [
-                                "cost_per_strengths"
-                              ]
-                            }
-                          },
-                          "if": {
-                            "properties": {
-                              "modes": {
-                                "contains": {
-                                  "const": "cost_per"
-                                }
-                              }
-                            },
-                            "required": [
-                              "modes"
-                            ]
-                          },
-                          "then": {
-                            "required": [
-                              "cost_per_strengths"
-                            ]
-                          }
-                        },
-                        {
-                          "else": {
-                            "not": {
-                              "required": [
-                                "roas_strengths"
-                              ]
-                            }
-                          },
-                          "if": {
-                            "properties": {
-                              "modes": {
-                                "contains": {
-                                  "const": "roas"
-                                }
-                              }
-                            },
-                            "required": [
-                              "modes"
-                            ]
-                          },
-                          "then": {
-                            "required": [
-                              "roas_strengths"
-                            ]
-                          }
-                        }
-                      ],
-                      "anyOf": [
-                        {
-                          "required": [
-                            "modes"
-                          ]
-                        },
-                        {
-                          "required": [
-                            "supported_combinations"
-                          ]
-                        }
-                      ],
-                      "description": "Policies supported when budget_allocation.mode is seller_optimized.",
-                      "properties": {
-                        "cost_per_strengths": {
-                          "description": "Supported standalone cost_per strengths in this profile. Required exactly when modes includes cost_per.",
-                          "items": {
-                            "enum": [
-                              "cap",
-                              "target"
-                            ],
-                            "type": "string"
-                          },
-                          "minItems": 1,
-                          "type": "array",
-                          "uniqueItems": true
-                        },
-                        "modes": {
-                          "description": "Standalone policy modes accepted in this exact scope and allocation context. Combination-only components belong only in supported_combinations and need not appear here. `automatic` means the seller accepts and preserves an explicit `{automatic:true}` authored block; omission only invokes inheritance/default behavior.",
-                          "items": {
-                            "enum": [
-                              "automatic",
-                              "bid_amount",
-                              "max_bid",
-                              "cost_per",
-                              "roas"
-                            ],
-                            "type": "string"
-                          },
-                          "minItems": 1,
-                          "type": "array",
-                          "uniqueItems": true
-                        },
-                        "roas_strengths": {
-                          "description": "Supported standalone roas strengths in this profile. Required exactly when modes includes roas.",
-                          "items": {
-                            "enum": [
-                              "floor",
-                              "target"
-                            ],
-                            "type": "string"
-                          },
-                          "minItems": 1,
-                          "type": "array",
-                          "uniqueItems": true
-                        },
-                        "supported_combinations": {
-                          "description": "Multi-field policies supported in this exact scope and allocation context. Each entry independently qualifies the strengths supported in that combination; standalone strength support does not imply combination support. Absence means no multi-field combination is claimed.",
-                          "items": {
-                            "oneOf": [
-                              {
-                                "additionalProperties": false,
-                                "properties": {
-                                  "cost_per_strengths": {
-                                    "description": "cost_per strengths supported when combined with max_bid.",
-                                    "items": {
-                                      "enum": [
-                                        "cap",
-                                        "target"
-                                      ],
-                                      "type": "string"
-                                    },
-                                    "minItems": 1,
-                                    "type": "array",
-                                    "uniqueItems": true
-                                  },
-                                  "kind": {
-                                    "const": "max_bid_with_cost_per",
-                                    "type": "string"
-                                  }
-                                },
-                                "required": [
-                                  "kind",
-                                  "cost_per_strengths"
-                                ],
-                                "type": "object"
-                              },
-                              {
-                                "additionalProperties": false,
-                                "properties": {
-                                  "kind": {
-                                    "const": "max_bid_with_roas",
-                                    "type": "string"
-                                  },
-                                  "roas_strengths": {
-                                    "description": "roas strengths supported when combined with max_bid.",
-                                    "items": {
-                                      "enum": [
-                                        "floor",
-                                        "target"
-                                      ],
-                                      "type": "string"
-                                    },
-                                    "minItems": 1,
-                                    "type": "array",
-                                    "uniqueItems": true
-                                  }
-                                },
-                                "required": [
-                                  "kind",
-                                  "roas_strengths"
-                                ],
-                                "type": "object"
-                              }
-                            ]
-                          },
-                          "minItems": 1,
-                          "type": "array"
-                        }
-                      },
-                      "type": "object"
+                      "$ref": "#/definitions/Shared18"
                     }
                   },
                   "type": "object"
@@ -2685,10 +1606,10 @@
               "x-adcp-hoist": true
             },
             "catalog_management": {
-              "type": "boolean"
+              "$ref": "#/definitions/Shared0"
             },
             "property_filtering": {
-              "type": "boolean"
+              "$ref": "#/definitions/Shared0"
             },
             "reporting_commitment_snapshots": {
               "description": "Seller preserves the accepted per-purchase reporting contract and exposes it on proposal and MediaBuy readback.",
@@ -2819,51 +1740,10 @@
             "type": "string"
           },
           "threshold": {
-            "maximum": 1,
-            "minimum": 0,
-            "type": "number"
+            "$ref": "#/definitions/Shared7"
           },
           "vendor": {
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "additionalProperties": false,
-            "description": "Stable brand identity used to resolve the canonical brand manifest, optionally qualified by the countries of a commercial advertiser entity. The manifest URL is derived from domain; callers do not send brand assets or per-call brand overrides. Countries do not target delivery.",
-            "properties": {
-              "brand_id": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "description": "Brand within a house-of-brands manifest. Omit for a single-brand domain.",
-                "examples": [
-                  "tide",
-                  "cheerios",
-                  "air_jordan",
-                  "nike",
-                  "pampers"
-                ],
-                "pattern": "^[a-z0-9_]+$",
-                "title": "Brand ID",
-                "type": "string",
-                "x-entity": "advertiser_brand"
-              },
-              "countries": {
-                "description": "Canonical set of ISO 3166-1 alpha-2 countries for this advertiser identity. Omit when the identity is global or the house does not split the brand geographically. Array order is not meaningful; producers MUST sort codes lexicographically before computing keys or signatures. This qualifies account and proposal identity and is not delivery targeting.",
-                "items": {
-                  "pattern": "^[A-Z]{2}$",
-                  "type": "string"
-                },
-                "minItems": 1,
-                "type": "array",
-                "uniqueItems": true
-              },
-              "domain": {
-                "description": "Domain that hosts /.well-known/brand.json or is registered for the brand.",
-                "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-                "type": "string"
-              }
-            },
-            "required": [
-              "domain"
-            ],
-            "title": "Brand Key",
-            "type": "object"
+            "$ref": "#/definitions/Shared9"
           }
         },
         "required": [
@@ -2910,46 +1790,7 @@
             "x-entity": "vendor_metric"
           },
           "vendor": {
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "additionalProperties": false,
-            "description": "Stable brand identity used to resolve the canonical brand manifest, optionally qualified by the countries of a commercial advertiser entity. The manifest URL is derived from domain; callers do not send brand assets or per-call brand overrides. Countries do not target delivery.",
-            "properties": {
-              "brand_id": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "description": "Brand within a house-of-brands manifest. Omit for a single-brand domain.",
-                "examples": [
-                  "tide",
-                  "cheerios",
-                  "air_jordan",
-                  "nike",
-                  "pampers"
-                ],
-                "pattern": "^[a-z0-9_]+$",
-                "title": "Brand ID",
-                "type": "string",
-                "x-entity": "advertiser_brand"
-              },
-              "countries": {
-                "description": "Canonical set of ISO 3166-1 alpha-2 countries for this advertiser identity. Omit when the identity is global or the house does not split the brand geographically. Array order is not meaningful; producers MUST sort codes lexicographically before computing keys or signatures. This qualifies account and proposal identity and is not delivery targeting.",
-                "items": {
-                  "pattern": "^[A-Z]{2}$",
-                  "type": "string"
-                },
-                "minItems": 1,
-                "type": "array",
-                "uniqueItems": true
-              },
-              "domain": {
-                "description": "Domain that hosts /.well-known/brand.json or is registered for the brand.",
-                "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-                "type": "string"
-              }
-            },
-            "required": [
-              "domain"
-            ],
-            "title": "Brand Key",
-            "type": "object"
+            "$ref": "#/definitions/Shared9"
           }
         },
         "type": "object"
@@ -3006,7 +1847,7 @@
       "x-canonicalization": "set"
     },
     "standard_formats_only": {
-      "type": "boolean"
+      "$ref": "#/definitions/Shared0"
     },
     "start_date": {
       "description": "Fixed-flight availability filter: with end_date, declares the exact flight the buyer intends to run. Returned products MUST be able to serve that flight, and pricing and forecasts are scoped to it. Mutually exclusive with availability_horizon.",
@@ -3021,14 +1862,13 @@
             "additionalProperties": true,
             "properties": {
               "agent_url": {
-                "format": "uri",
-                "type": "string"
+                "$ref": "#/definitions/Shared10"
               },
               "context_match": {
-                "type": "boolean"
+                "$ref": "#/definitions/Shared0"
               },
               "identity_match": {
-                "type": "boolean"
+                "$ref": "#/definitions/Shared0"
               }
             },
             "required": [

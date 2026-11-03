@@ -1,6 +1,13 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": false,
+  "definitions": {
+    "Shared0": {
+      "required": [
+        "credential_fingerprint"
+      ]
+    }
+  },
   "description": "Proof-of-control challenge payload sent by a seller to an account-level notification_configs[] URL before activating a new or changed active subscriber. The seller sends this payload as an HTTPS POST after URL normalization and SSRF validation, and before treating the subscriber as active. The challenge POST itself MUST be signed with the seller's RFC 9421 webhook profile key even when the candidate config selects legacy delivery auth; new signers use `adcp_use: \"request-signing\"` and deprecated `webhook-signing` keys remain accepted during the compatibility window. `delivery_auth` describes the future webhook delivery mode, not the challenge's own signing mode.",
   "examples": [
     {
@@ -51,9 +58,7 @@
           },
           "then": {
             "not": {
-              "required": [
-                "credential_fingerprint"
-              ]
+              "$ref": "#/definitions/Shared0"
             }
           }
         },
@@ -73,9 +78,7 @@
             ]
           },
           "then": {
-            "required": [
-              "credential_fingerprint"
-            ]
+            "$ref": "#/definitions/Shared0"
           }
         }
       ],

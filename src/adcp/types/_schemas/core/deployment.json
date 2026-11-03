@@ -1,5 +1,77 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "Shared0": {
+      "description": "Account identifier if applicable",
+      "type": "string"
+    },
+    "Shared1": {
+      "description": "Whether signal is currently active on this deployment",
+      "type": "boolean"
+    },
+    "Shared2": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "The key to use for targeting. Only present if is_live=true AND requester has access to this deployment.",
+      "discriminator": {
+        "propertyName": "type"
+      },
+      "oneOf": [
+        {
+          "additionalProperties": true,
+          "properties": {
+            "segment_id": {
+              "description": "The platform-specific segment identifier to use in campaign targeting",
+              "type": "string"
+            },
+            "type": {
+              "const": "segment_id",
+              "description": "Segment ID based targeting",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "segment_id"
+          ]
+        },
+        {
+          "additionalProperties": true,
+          "properties": {
+            "key": {
+              "description": "The targeting parameter key",
+              "type": "string"
+            },
+            "type": {
+              "const": "key_value",
+              "description": "Key-value pair based targeting",
+              "type": "string"
+            },
+            "value": {
+              "description": "The targeting parameter value",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "key",
+            "value"
+          ]
+        }
+      ],
+      "title": "Activation Key",
+      "type": "object"
+    },
+    "Shared3": {
+      "description": "Estimated time to activate if not live, or to complete activation if in progress",
+      "minimum": 0,
+      "type": "number"
+    },
+    "Shared4": {
+      "description": "Timestamp when activation completed (if is_live=true)",
+      "format": "date-time",
+      "type": "string"
+    }
+  },
   "description": "A signal deployment to a specific deployment target with activation status and key",
   "discriminator": {
     "propertyName": "type"
@@ -9,74 +81,19 @@
       "additionalProperties": true,
       "properties": {
         "account": {
-          "description": "Account identifier if applicable",
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         },
         "activation_key": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "description": "The key to use for targeting. Only present if is_live=true AND requester has access to this deployment.",
-          "discriminator": {
-            "propertyName": "type"
-          },
-          "oneOf": [
-            {
-              "additionalProperties": true,
-              "properties": {
-                "segment_id": {
-                  "description": "The platform-specific segment identifier to use in campaign targeting",
-                  "type": "string"
-                },
-                "type": {
-                  "const": "segment_id",
-                  "description": "Segment ID based targeting",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "type",
-                "segment_id"
-              ]
-            },
-            {
-              "additionalProperties": true,
-              "properties": {
-                "key": {
-                  "description": "The targeting parameter key",
-                  "type": "string"
-                },
-                "type": {
-                  "const": "key_value",
-                  "description": "Key-value pair based targeting",
-                  "type": "string"
-                },
-                "value": {
-                  "description": "The targeting parameter value",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "type",
-                "key",
-                "value"
-              ]
-            }
-          ],
-          "title": "Activation Key",
-          "type": "object"
+          "$ref": "#/definitions/Shared2"
         },
         "deployed_at": {
-          "description": "Timestamp when activation completed (if is_live=true)",
-          "format": "date-time",
-          "type": "string"
+          "$ref": "#/definitions/Shared4"
         },
         "estimated_activation_duration_minutes": {
-          "description": "Estimated time to activate if not live, or to complete activation if in progress",
-          "minimum": 0,
-          "type": "number"
+          "$ref": "#/definitions/Shared3"
         },
         "is_live": {
-          "description": "Whether signal is currently active on this deployment",
-          "type": "boolean"
+          "$ref": "#/definitions/Shared1"
         },
         "platform": {
           "description": "Platform identifier for DSPs",
@@ -99,60 +116,10 @@
       "additionalProperties": true,
       "properties": {
         "account": {
-          "description": "Account identifier if applicable",
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         },
         "activation_key": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "description": "The key to use for targeting. Only present if is_live=true AND requester has access to this deployment.",
-          "discriminator": {
-            "propertyName": "type"
-          },
-          "oneOf": [
-            {
-              "additionalProperties": true,
-              "properties": {
-                "segment_id": {
-                  "description": "The platform-specific segment identifier to use in campaign targeting",
-                  "type": "string"
-                },
-                "type": {
-                  "const": "segment_id",
-                  "description": "Segment ID based targeting",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "type",
-                "segment_id"
-              ]
-            },
-            {
-              "additionalProperties": true,
-              "properties": {
-                "key": {
-                  "description": "The targeting parameter key",
-                  "type": "string"
-                },
-                "type": {
-                  "const": "key_value",
-                  "description": "Key-value pair based targeting",
-                  "type": "string"
-                },
-                "value": {
-                  "description": "The targeting parameter value",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "type",
-                "key",
-                "value"
-              ]
-            }
-          ],
-          "title": "Activation Key",
-          "type": "object"
+          "$ref": "#/definitions/Shared2"
         },
         "agent_url": {
           "description": "URL identifying the deployment agent",
@@ -160,18 +127,13 @@
           "type": "string"
         },
         "deployed_at": {
-          "description": "Timestamp when activation completed (if is_live=true)",
-          "format": "date-time",
-          "type": "string"
+          "$ref": "#/definitions/Shared4"
         },
         "estimated_activation_duration_minutes": {
-          "description": "Estimated time to activate if not live, or to complete activation if in progress",
-          "minimum": 0,
-          "type": "number"
+          "$ref": "#/definitions/Shared3"
         },
         "is_live": {
-          "description": "Whether signal is currently active on this deployment",
-          "type": "boolean"
+          "$ref": "#/definitions/Shared1"
         },
         "type": {
           "const": "agent",

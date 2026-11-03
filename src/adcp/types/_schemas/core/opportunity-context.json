@@ -7,14 +7,10 @@
         "not": {
           "anyOf": [
             {
-              "required": [
-                "close_reason"
-              ]
+              "$ref": "#/definitions/Shared0"
             },
             {
-              "required": [
-                "close_detail"
-              ]
+              "$ref": "#/definitions/Shared1"
             }
           ]
         }
@@ -30,9 +26,7 @@
         ]
       },
       "then": {
-        "required": [
-          "close_reason"
-        ]
+        "$ref": "#/definitions/Shared0"
       }
     },
     {
@@ -47,12 +41,22 @@
         ]
       },
       "then": {
-        "required": [
-          "close_detail"
-        ]
+        "$ref": "#/definitions/Shared1"
       }
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "required": [
+        "close_reason"
+      ]
+    },
+    "Shared1": {
+      "required": [
+        "close_detail"
+      ]
+    }
+  },
   "description": "Buyer-supplied context for one planning cycle across proposal request, decline, and media-buy creation. The opaque opportunity_id is stable within the seller and account scope; sellers associate it with proposals without treating it as proposal identity.",
   "properties": {
     "close_detail": {

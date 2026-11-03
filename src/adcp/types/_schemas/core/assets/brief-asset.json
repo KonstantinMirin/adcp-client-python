@@ -17,7 +17,7 @@
             "prohibited_claims": {
               "description": "Claims that must not appear in creatives for this campaign. Creative agents should ensure generated content avoids these claims.",
               "items": {
-                "type": "string"
+                "$ref": "#/definitions/Shared0"
               },
               "minItems": 1,
               "type": "array"
@@ -112,7 +112,7 @@
             "key_messages": {
               "description": "Key messages to communicate in priority order",
               "items": {
-                "type": "string"
+                "$ref": "#/definitions/Shared0"
               },
               "type": "array"
             },
@@ -193,6 +193,11 @@
       "type": "object"
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "type": "string"
+    }
+  },
   "description": "Campaign-level creative context as an asset. Carries the creative brief through the manifest so it travels with the creative through regeneration, resizing, and auditing.",
   "properties": {
     "asset_type": {

@@ -1,6 +1,21 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": false,
+  "definitions": {
+    "Shared0": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "A duration unit supported for a frequency-cap window or suppression period.",
+      "enum": [
+        "seconds",
+        "minutes",
+        "hours",
+        "days",
+        "campaign"
+      ],
+      "title": "Frequency Cap Duration Unit",
+      "type": "string"
+    }
+  },
   "dependencies": {
     "frequency_cap_constraints": [
       "frequency_cap"
@@ -86,17 +101,7 @@
             "supported_suppression_units": {
               "description": "Require each listed unit to be a supported suppress unit after seller-wide inheritance.",
               "items": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "description": "A duration unit supported for a frequency-cap window or suppression period.",
-                "enum": [
-                  "seconds",
-                  "minutes",
-                  "hours",
-                  "days",
-                  "campaign"
-                ],
-                "title": "Frequency Cap Duration Unit",
-                "type": "string"
+                "$ref": "#/definitions/Shared0"
               },
               "minItems": 1,
               "type": "array",
@@ -105,17 +110,7 @@
             "supported_window_units": {
               "description": "Require each listed unit to be a supported max_impressions.window unit after seller-wide inheritance.",
               "items": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "description": "A duration unit supported for a frequency-cap window or suppression period.",
-                "enum": [
-                  "seconds",
-                  "minutes",
-                  "hours",
-                  "days",
-                  "campaign"
-                ],
-                "title": "Frequency Cap Duration Unit",
-                "type": "string"
+                "$ref": "#/definitions/Shared0"
               },
               "minItems": 1,
               "type": "array",

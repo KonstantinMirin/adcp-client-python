@@ -1,6 +1,20 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": false,
+  "definitions": {
+    "Shared0": {
+      "items": {
+        "const": "plz"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "Shared1": {
+      "deprecated": true,
+      "type": "boolean"
+    }
+  },
   "description": "Declares which geographic levels and classification systems are available for by_geo reporting breakdowns in product-level reporting_capabilities.",
   "properties": {
     "country": {
@@ -43,12 +57,7 @@
       "description": "Postal area breakdown support. Prefer the native country-keyed map where each ISO 3166-1 alpha-2 country lists supported country-local postal systems. Deprecated legacy country-fused postal-system boolean maps remain accepted for compatibility.",
       "properties": {
         "AT": {
-          "items": {
-            "const": "plz"
-          },
-          "minItems": 1,
-          "type": "array",
-          "uniqueItems": true
+          "$ref": "#/definitions/Shared0"
         },
         "AU": {
           "items": {
@@ -78,20 +87,10 @@
           "uniqueItems": true
         },
         "CH": {
-          "items": {
-            "const": "plz"
-          },
-          "minItems": 1,
-          "type": "array",
-          "uniqueItems": true
+          "$ref": "#/definitions/Shared0"
         },
         "DE": {
-          "items": {
-            "const": "plz"
-          },
-          "minItems": 1,
-          "type": "array",
-          "uniqueItems": true
+          "$ref": "#/definitions/Shared0"
         },
         "FR": {
           "items": {
@@ -140,48 +139,37 @@
           "uniqueItems": true
         },
         "at_plz": {
-          "deprecated": true,
-          "type": "boolean"
+          "$ref": "#/definitions/Shared1"
         },
         "au_postcode": {
-          "deprecated": true,
-          "type": "boolean"
+          "$ref": "#/definitions/Shared1"
         },
         "ca_fsa": {
-          "deprecated": true,
-          "type": "boolean"
+          "$ref": "#/definitions/Shared1"
         },
         "ca_full": {
-          "deprecated": true,
-          "type": "boolean"
+          "$ref": "#/definitions/Shared1"
         },
         "ch_plz": {
-          "deprecated": true,
-          "type": "boolean"
+          "$ref": "#/definitions/Shared1"
         },
         "de_plz": {
-          "deprecated": true,
-          "type": "boolean"
+          "$ref": "#/definitions/Shared1"
         },
         "fr_code_postal": {
-          "deprecated": true,
-          "type": "boolean"
+          "$ref": "#/definitions/Shared1"
         },
         "gb_full": {
-          "deprecated": true,
-          "type": "boolean"
+          "$ref": "#/definitions/Shared1"
         },
         "gb_outward": {
-          "deprecated": true,
-          "type": "boolean"
+          "$ref": "#/definitions/Shared1"
         },
         "us_zip": {
-          "deprecated": true,
-          "type": "boolean"
+          "$ref": "#/definitions/Shared1"
         },
         "us_zip_plus_four": {
-          "deprecated": true,
-          "type": "boolean"
+          "$ref": "#/definitions/Shared1"
         }
       },
       "propertyNames": {

@@ -30,6 +30,13 @@
     }
   ],
   "definitions": {
+    "Shared0": {
+      "maxLength": 100,
+      "type": "string"
+    },
+    "Shared1": {
+      "type": "string"
+    },
     "claim_entry": {
       "description": "One verification claim. Shape mirrors the single-target `verify_brand_claim` request body (minus the version envelope, which lives on the batch).",
       "discriminator": {
@@ -124,10 +131,10 @@
                   "description": "Shape matches brand.json properties[] entry.",
                   "properties": {
                     "identifier": {
-                      "type": "string"
+                      "$ref": "#/definitions/Shared1"
                     },
                     "region": {
-                      "type": "string"
+                      "$ref": "#/definitions/Shared1"
                     },
                     "store": {
                       "enum": [
@@ -223,16 +230,14 @@
                   "type": "string"
                 },
                 "number": {
-                  "maxLength": 100,
-                  "type": "string"
+                  "$ref": "#/definitions/Shared0"
                 },
                 "registry": {
                   "maxLength": 50,
                   "type": "string"
                 },
                 "use_case": {
-                  "maxLength": 100,
-                  "type": "string"
+                  "$ref": "#/definitions/Shared0"
                 }
               },
               "required": [

@@ -28,6 +28,15 @@
       "type": "object"
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "maxLength": 100,
+      "type": "string"
+    },
+    "Shared1": {
+      "type": "string"
+    }
+  },
   "description": "Ask a brand-agent a verification question \u2014 does the brand's own data confirm or reject a specific claim about a facet of its identity? The unified replacement for the per-dimension verify_* tools. claim_type discriminates the kind of question (subsidiary / parent / property / trademark); the claim payload carries the question. Read-only; naturally idempotent \u2014 the brand's internal bookkeeping deduplicates per {caller_identity, claim_type, claim-target}.",
   "discriminator": {
     "propertyName": "claim_type"
@@ -121,10 +130,10 @@
               "description": "Shape matches brand.json properties[] entry.",
               "properties": {
                 "identifier": {
-                  "type": "string"
+                  "$ref": "#/definitions/Shared1"
                 },
                 "region": {
-                  "type": "string"
+                  "$ref": "#/definitions/Shared1"
                 },
                 "store": {
                   "enum": [
@@ -220,16 +229,14 @@
               "type": "string"
             },
             "number": {
-              "maxLength": 100,
-              "type": "string"
+              "$ref": "#/definitions/Shared0"
             },
             "registry": {
               "maxLength": 50,
               "type": "string"
             },
             "use_case": {
-              "maxLength": 100,
-              "type": "string"
+              "$ref": "#/definitions/Shared0"
             }
           },
           "required": [

@@ -5,9 +5,7 @@
     {
       "else": {
         "not": {
-          "required": [
-            "rejection_codes"
-          ]
+          "$ref": "#/definitions/Shared0"
         }
       },
       "if": {
@@ -21,9 +19,7 @@
         ]
       },
       "then": {
-        "required": [
-          "rejection_codes"
-        ]
+        "$ref": "#/definitions/Shared0"
       }
     }
   ],
@@ -33,6 +29,11 @@
       "minLength": 1,
       "pattern": "^[A-Z][A-Z0-9_]*$",
       "type": "string"
+    },
+    "Shared0": {
+      "required": [
+        "rejection_codes"
+      ]
     }
   },
   "description": "Authenticated consumer acceptance or rejection of one exact post-official adjustment. It does not alter the original official revision or its receipt.",

@@ -1,6 +1,199 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": false,
+  "definitions": {
+    "Shared0": {
+      "description": "Stable identifier unique within the materialized execution contract.",
+      "minLength": 1,
+      "type": "string",
+      "x-entity": "tracker_execution_selector"
+    },
+    "Shared1": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Actor responsible for initiating a buyer-supplied tracker under a seller-authored execution contract. This v1 vocabulary is intentionally narrower than the macro resolver actor vocabulary.",
+      "enum": [
+        "seller",
+        "request_executor"
+      ],
+      "title": "Tracker Execution Actor",
+      "type": "string"
+    },
+    "Shared10": {
+      "required": [
+        "custom_event_name"
+      ]
+    },
+    "Shared11": {
+      "anyOf": [
+        {
+          "not": {
+            "required": [
+              "target"
+            ]
+          }
+        },
+        {
+          "properties": {
+            "target": {
+              "const": "linear"
+            }
+          },
+          "required": [
+            "target"
+          ]
+        }
+      ]
+    },
+    "Shared12": {
+      "properties": {
+        "target": {
+          "const": "companion"
+        }
+      },
+      "required": [
+        "target"
+      ]
+    },
+    "Shared13": {
+      "required": [
+        "offset"
+      ]
+    },
+    "Shared14": {
+      "not": {
+        "$ref": "#/definitions/Shared13"
+      }
+    },
+    "Shared15": {
+      "const": "creativeView"
+    },
+    "Shared16": {
+      "const": "progress"
+    },
+    "Shared2": {
+      "description": "Complete set of permitted initiation environments. Exactly one path is selected for each logical event occurrence.",
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Environment in which the responsible actor initiates a tracker. A selector may permit both values, but exactly one path is used for each logical event occurrence.",
+        "enum": [
+          "client",
+          "server"
+        ],
+        "title": "Tracker Firing Path",
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "Shared3": {
+      "items": {
+        "$comment": "VAST 4.3 ships no XSD of its own: IAB's `vast_4.2.xsd` remains the authoritative schema for 4.3 documents, so a validator MUST NOT reject a tag declaring `version=\"4.3\"` for want of a 4.3 schema. VAST 4.4 is deliberately absent because `vast_4.4.xsd` is annotated 'DRAFT for working group discussion' and is not a published specification; add it once IAB publishes it, not before. This file is the single source of truth for the roster, per the Enum Consolidation rule in docs/spec-guidelines.md, and other schemas `$ref` it rather than restating the list.",
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Supported VAST (Video Ad Serving Template) specification versions. Covers every version published by IAB Tech Lab, through VAST 4.3 (released December 2022). The value mirrors the `version` attribute a VAST document declares on its root element.",
+        "enum": [
+          "2.0",
+          "3.0",
+          "4.0",
+          "4.1",
+          "4.2",
+          "4.3"
+        ],
+        "title": "VAST Version",
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "Shared4": {
+      "enum": [
+        "creativeView",
+        "loaded",
+        "start",
+        "firstQuartile",
+        "midpoint",
+        "thirdQuartile",
+        "complete",
+        "mute",
+        "unmute",
+        "pause",
+        "resume",
+        "rewind",
+        "skip",
+        "playerExpand",
+        "playerCollapse",
+        "fullscreen",
+        "exitFullscreen",
+        "progress",
+        "acceptInvitation",
+        "adExpand",
+        "adCollapse",
+        "minimize",
+        "overlayViewDuration",
+        "otherAdInteraction",
+        "interactiveStart",
+        "close",
+        "closeLinear"
+      ],
+      "type": "string"
+    },
+    "Shared5": {
+      "default": "linear",
+      "enum": [
+        "linear",
+        "non_linear",
+        "companion"
+      ],
+      "type": "string"
+    },
+    "Shared6": {
+      "pattern": "^(\\d{2}:[0-5]\\d:[0-5]\\d(\\.\\d{3})?|(100|\\d{1,2})%)$",
+      "type": "string"
+    },
+    "Shared7": {
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Supported DAAST (Digital Audio Ad Serving Template) specification versions",
+        "enum": [
+          "1.0",
+          "1.1"
+        ],
+        "title": "DAAST Version",
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "Shared8": {
+      "enum": [
+        "creativeView",
+        "start",
+        "firstQuartile",
+        "midpoint",
+        "thirdQuartile",
+        "complete",
+        "mute",
+        "unmute",
+        "pause",
+        "resume",
+        "rewind",
+        "skip",
+        "progress",
+        "close"
+      ],
+      "type": "string"
+    },
+    "Shared9": {
+      "default": "linear",
+      "enum": [
+        "linear",
+        "companion"
+      ],
+      "type": "string"
+    }
+  },
   "description": "Seller-authored production commitment for first-class buyer-supplied tracker occurrences accepted by one effective product format option. Listed selectors are affirmative commitments. When complete is true, every unlisted combination is explicitly unsupported; when false, omissions are undeclared.",
   "properties": {
     "complete": {
@@ -22,9 +215,7 @@
               {
                 "else": {
                   "not": {
-                    "required": [
-                      "custom_event_name"
-                    ]
+                    "$ref": "#/definitions/Shared10"
                   }
                 },
                 "if": {
@@ -38,9 +229,7 @@
                   ]
                 },
                 "then": {
-                  "required": [
-                    "custom_event_name"
-                  ]
+                  "$ref": "#/definitions/Shared10"
                 }
               }
             ],
@@ -70,30 +259,10 @@
                 "type": "string"
               },
               "execution_actor": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "description": "Actor responsible for initiating a buyer-supplied tracker under a seller-authored execution contract. This v1 vocabulary is intentionally narrower than the macro resolver actor vocabulary.",
-                "enum": [
-                  "seller",
-                  "request_executor"
-                ],
-                "title": "Tracker Execution Actor",
-                "type": "string"
+                "$ref": "#/definitions/Shared1"
               },
               "firing_paths": {
-                "description": "Complete set of permitted initiation environments. Exactly one path is selected for each logical event occurrence.",
-                "items": {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
-                  "description": "Environment in which the responsible actor initiates a tracker. A selector may permit both values, but exactly one path is used for each logical event occurrence.",
-                  "enum": [
-                    "client",
-                    "server"
-                  ],
-                  "title": "Tracker Firing Path",
-                  "type": "string"
-                },
-                "minItems": 1,
-                "type": "array",
-                "uniqueItems": true
+                "$ref": "#/definitions/Shared2"
               },
               "method": {
                 "const": "img",
@@ -101,10 +270,7 @@
                 "type": "string"
               },
               "selector_id": {
-                "description": "Stable identifier unique within the materialized execution contract.",
-                "minLength": 1,
-                "type": "string",
-                "x-entity": "tracker_execution_selector"
+                "$ref": "#/definitions/Shared0"
               }
             },
             "required": [
@@ -125,25 +291,7 @@
                 "allOf": [
                   {
                     "if": {
-                      "anyOf": [
-                        {
-                          "not": {
-                            "required": [
-                              "target"
-                            ]
-                          }
-                        },
-                        {
-                          "properties": {
-                            "target": {
-                              "const": "linear"
-                            }
-                          },
-                          "required": [
-                            "target"
-                          ]
-                        }
-                      ]
+                      "$ref": "#/definitions/Shared11"
                     },
                     "then": {
                       "properties": {
@@ -205,35 +353,24 @@
                   },
                   {
                     "if": {
-                      "properties": {
-                        "target": {
-                          "const": "companion"
-                        }
-                      },
-                      "required": [
-                        "target"
-                      ]
+                      "$ref": "#/definitions/Shared12"
                     },
                     "then": {
                       "properties": {
                         "vast_event": {
-                          "const": "creativeView"
+                          "$ref": "#/definitions/Shared15"
                         }
                       }
                     }
                   },
                   {
                     "else": {
-                      "not": {
-                        "required": [
-                          "offset"
-                        ]
-                      }
+                      "$ref": "#/definitions/Shared14"
                     },
                     "if": {
                       "properties": {
                         "vast_event": {
-                          "const": "progress"
+                          "$ref": "#/definitions/Shared16"
                         }
                       },
                       "required": [
@@ -241,9 +378,7 @@
                       ]
                     },
                     "then": {
-                      "required": [
-                        "offset"
-                      ]
+                      "$ref": "#/definitions/Shared13"
                     }
                   },
                   {
@@ -434,137 +569,31 @@
                 ],
                 "definitions": {
                   "vast_event": {
-                    "enum": [
-                      "creativeView",
-                      "loaded",
-                      "start",
-                      "firstQuartile",
-                      "midpoint",
-                      "thirdQuartile",
-                      "complete",
-                      "mute",
-                      "unmute",
-                      "pause",
-                      "resume",
-                      "rewind",
-                      "skip",
-                      "playerExpand",
-                      "playerCollapse",
-                      "fullscreen",
-                      "exitFullscreen",
-                      "progress",
-                      "acceptInvitation",
-                      "adExpand",
-                      "adCollapse",
-                      "minimize",
-                      "overlayViewDuration",
-                      "otherAdInteraction",
-                      "interactiveStart",
-                      "close",
-                      "closeLinear"
-                    ],
-                    "type": "string"
+                    "$ref": "#/definitions/Shared4"
                   },
                   "vast_offset": {
-                    "pattern": "^(\\d{2}:[0-5]\\d:[0-5]\\d(\\.\\d{3})?|(100|\\d{1,2})%)$",
-                    "type": "string"
+                    "$ref": "#/definitions/Shared6"
                   },
                   "vast_target": {
-                    "default": "linear",
-                    "enum": [
-                      "linear",
-                      "non_linear",
-                      "companion"
-                    ],
-                    "type": "string"
+                    "$ref": "#/definitions/Shared5"
                   },
                   "vast_versions": {
-                    "items": {
-                      "$comment": "VAST 4.3 ships no XSD of its own: IAB's `vast_4.2.xsd` remains the authoritative schema for 4.3 documents, so a validator MUST NOT reject a tag declaring `version=\"4.3\"` for want of a 4.3 schema. VAST 4.4 is deliberately absent because `vast_4.4.xsd` is annotated 'DRAFT for working group discussion' and is not a published specification; add it once IAB publishes it, not before. This file is the single source of truth for the roster, per the Enum Consolidation rule in docs/spec-guidelines.md, and other schemas `$ref` it rather than restating the list.",
-                      "$schema": "http://json-schema.org/draft-07/schema#",
-                      "description": "Supported VAST (Video Ad Serving Template) specification versions. Covers every version published by IAB Tech Lab, through VAST 4.3 (released December 2022). The value mirrors the `version` attribute a VAST document declares on its root element.",
-                      "enum": [
-                        "2.0",
-                        "3.0",
-                        "4.0",
-                        "4.1",
-                        "4.2",
-                        "4.3"
-                      ],
-                      "title": "VAST Version",
-                      "type": "string"
-                    },
-                    "minItems": 1,
-                    "type": "array",
-                    "uniqueItems": true
+                    "$ref": "#/definitions/Shared3"
                   }
                 },
                 "description": "Shared VAST TrackingEvents constraints used by tracker assets and production execution selectors. The target/event matrix is closed, progress alone carries offset, and selector version arrays may contain only versions in which the event exists.",
                 "properties": {
                   "offset": {
-                    "pattern": "^(\\d{2}:[0-5]\\d:[0-5]\\d(\\.\\d{3})?|(100|\\d{1,2})%)$",
-                    "type": "string"
+                    "$ref": "#/definitions/Shared6"
                   },
                   "target": {
-                    "default": "linear",
-                    "enum": [
-                      "linear",
-                      "non_linear",
-                      "companion"
-                    ],
-                    "type": "string"
+                    "$ref": "#/definitions/Shared5"
                   },
                   "vast_event": {
-                    "enum": [
-                      "creativeView",
-                      "loaded",
-                      "start",
-                      "firstQuartile",
-                      "midpoint",
-                      "thirdQuartile",
-                      "complete",
-                      "mute",
-                      "unmute",
-                      "pause",
-                      "resume",
-                      "rewind",
-                      "skip",
-                      "playerExpand",
-                      "playerCollapse",
-                      "fullscreen",
-                      "exitFullscreen",
-                      "progress",
-                      "acceptInvitation",
-                      "adExpand",
-                      "adCollapse",
-                      "minimize",
-                      "overlayViewDuration",
-                      "otherAdInteraction",
-                      "interactiveStart",
-                      "close",
-                      "closeLinear"
-                    ],
-                    "type": "string"
+                    "$ref": "#/definitions/Shared4"
                   },
                   "vast_versions": {
-                    "items": {
-                      "$comment": "VAST 4.3 ships no XSD of its own: IAB's `vast_4.2.xsd` remains the authoritative schema for 4.3 documents, so a validator MUST NOT reject a tag declaring `version=\"4.3\"` for want of a 4.3 schema. VAST 4.4 is deliberately absent because `vast_4.4.xsd` is annotated 'DRAFT for working group discussion' and is not a published specification; add it once IAB publishes it, not before. This file is the single source of truth for the roster, per the Enum Consolidation rule in docs/spec-guidelines.md, and other schemas `$ref` it rather than restating the list.",
-                      "$schema": "http://json-schema.org/draft-07/schema#",
-                      "description": "Supported VAST (Video Ad Serving Template) specification versions. Covers every version published by IAB Tech Lab, through VAST 4.3 (released December 2022). The value mirrors the `version` attribute a VAST document declares on its root element.",
-                      "enum": [
-                        "2.0",
-                        "3.0",
-                        "4.0",
-                        "4.1",
-                        "4.2",
-                        "4.3"
-                      ],
-                      "title": "VAST Version",
-                      "type": "string"
-                    },
-                    "minItems": 1,
-                    "type": "array",
-                    "uniqueItems": true
+                    "$ref": "#/definitions/Shared3"
                   }
                 },
                 "title": "VAST Tracker Constraints",
@@ -577,101 +606,25 @@
                 "type": "string"
               },
               "execution_actor": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "description": "Actor responsible for initiating a buyer-supplied tracker under a seller-authored execution contract. This v1 vocabulary is intentionally narrower than the macro resolver actor vocabulary.",
-                "enum": [
-                  "seller",
-                  "request_executor"
-                ],
-                "title": "Tracker Execution Actor",
-                "type": "string"
+                "$ref": "#/definitions/Shared1"
               },
               "firing_paths": {
-                "description": "Complete set of permitted initiation environments. Exactly one path is selected for each logical event occurrence.",
-                "items": {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
-                  "description": "Environment in which the responsible actor initiates a tracker. A selector may permit both values, but exactly one path is used for each logical event occurrence.",
-                  "enum": [
-                    "client",
-                    "server"
-                  ],
-                  "title": "Tracker Firing Path",
-                  "type": "string"
-                },
-                "minItems": 1,
-                "type": "array",
-                "uniqueItems": true
+                "$ref": "#/definitions/Shared2"
               },
               "offset": {
-                "pattern": "^(\\d{2}:[0-5]\\d:[0-5]\\d(\\.\\d{3})?|(100|\\d{1,2})%)$",
-                "type": "string"
+                "$ref": "#/definitions/Shared6"
               },
               "selector_id": {
-                "description": "Stable identifier unique within the materialized execution contract.",
-                "minLength": 1,
-                "type": "string",
-                "x-entity": "tracker_execution_selector"
+                "$ref": "#/definitions/Shared0"
               },
               "target": {
-                "default": "linear",
-                "enum": [
-                  "linear",
-                  "non_linear",
-                  "companion"
-                ],
-                "type": "string"
+                "$ref": "#/definitions/Shared5"
               },
               "vast_event": {
-                "enum": [
-                  "creativeView",
-                  "loaded",
-                  "start",
-                  "firstQuartile",
-                  "midpoint",
-                  "thirdQuartile",
-                  "complete",
-                  "mute",
-                  "unmute",
-                  "pause",
-                  "resume",
-                  "rewind",
-                  "skip",
-                  "playerExpand",
-                  "playerCollapse",
-                  "fullscreen",
-                  "exitFullscreen",
-                  "progress",
-                  "acceptInvitation",
-                  "adExpand",
-                  "adCollapse",
-                  "minimize",
-                  "overlayViewDuration",
-                  "otherAdInteraction",
-                  "interactiveStart",
-                  "close",
-                  "closeLinear"
-                ],
-                "type": "string"
+                "$ref": "#/definitions/Shared4"
               },
               "vast_versions": {
-                "items": {
-                  "$comment": "VAST 4.3 ships no XSD of its own: IAB's `vast_4.2.xsd` remains the authoritative schema for 4.3 documents, so a validator MUST NOT reject a tag declaring `version=\"4.3\"` for want of a 4.3 schema. VAST 4.4 is deliberately absent because `vast_4.4.xsd` is annotated 'DRAFT for working group discussion' and is not a published specification; add it once IAB publishes it, not before. This file is the single source of truth for the roster, per the Enum Consolidation rule in docs/spec-guidelines.md, and other schemas `$ref` it rather than restating the list.",
-                  "$schema": "http://json-schema.org/draft-07/schema#",
-                  "description": "Supported VAST (Video Ad Serving Template) specification versions. Covers every version published by IAB Tech Lab, through VAST 4.3 (released December 2022). The value mirrors the `version` attribute a VAST document declares on its root element.",
-                  "enum": [
-                    "2.0",
-                    "3.0",
-                    "4.0",
-                    "4.1",
-                    "4.2",
-                    "4.3"
-                  ],
-                  "title": "VAST Version",
-                  "type": "string"
-                },
-                "minItems": 1,
-                "type": "array",
-                "uniqueItems": true
+                "$ref": "#/definitions/Shared3"
               }
             },
             "required": [
@@ -693,25 +646,7 @@
                 "allOf": [
                   {
                     "if": {
-                      "anyOf": [
-                        {
-                          "not": {
-                            "required": [
-                              "target"
-                            ]
-                          }
-                        },
-                        {
-                          "properties": {
-                            "target": {
-                              "const": "linear"
-                            }
-                          },
-                          "required": [
-                            "target"
-                          ]
-                        }
-                      ]
+                      "$ref": "#/definitions/Shared11"
                     },
                     "then": {
                       "properties": {
@@ -737,35 +672,24 @@
                   },
                   {
                     "if": {
-                      "properties": {
-                        "target": {
-                          "const": "companion"
-                        }
-                      },
-                      "required": [
-                        "target"
-                      ]
+                      "$ref": "#/definitions/Shared12"
                     },
                     "then": {
                       "properties": {
                         "daast_event": {
-                          "const": "creativeView"
+                          "$ref": "#/definitions/Shared15"
                         }
                       }
                     }
                   },
                   {
                     "else": {
-                      "not": {
-                        "required": [
-                          "offset"
-                        ]
-                      }
+                      "$ref": "#/definitions/Shared14"
                     },
                     "if": {
                       "properties": {
                         "daast_event": {
-                          "const": "progress"
+                          "$ref": "#/definitions/Shared16"
                         }
                       },
                       "required": [
@@ -773,107 +697,37 @@
                       ]
                     },
                     "then": {
-                      "required": [
-                        "offset"
-                      ]
+                      "$ref": "#/definitions/Shared13"
                     }
                   }
                 ],
                 "definitions": {
                   "daast_event": {
-                    "enum": [
-                      "creativeView",
-                      "start",
-                      "firstQuartile",
-                      "midpoint",
-                      "thirdQuartile",
-                      "complete",
-                      "mute",
-                      "unmute",
-                      "pause",
-                      "resume",
-                      "rewind",
-                      "skip",
-                      "progress",
-                      "close"
-                    ],
-                    "type": "string"
+                    "$ref": "#/definitions/Shared8"
                   },
                   "daast_offset": {
-                    "pattern": "^(\\d{2}:[0-5]\\d:[0-5]\\d(\\.\\d{3})?|(100|\\d{1,2})%)$",
-                    "type": "string"
+                    "$ref": "#/definitions/Shared6"
                   },
                   "daast_target": {
-                    "default": "linear",
-                    "enum": [
-                      "linear",
-                      "companion"
-                    ],
-                    "type": "string"
+                    "$ref": "#/definitions/Shared9"
                   },
                   "daast_versions": {
-                    "items": {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
-                      "description": "Supported DAAST (Digital Audio Ad Serving Template) specification versions",
-                      "enum": [
-                        "1.0",
-                        "1.1"
-                      ],
-                      "title": "DAAST Version",
-                      "type": "string"
-                    },
-                    "minItems": 1,
-                    "type": "array",
-                    "uniqueItems": true
+                    "$ref": "#/definitions/Shared7"
                   }
                 },
                 "description": "Shared DAAST tracker vocabulary and execution-selector constraints. The legacy asset vocabulary retains AdCP's historical close extension, while the closed standards selector matrix excludes it. Progress alone carries offset in selectors.",
                 "properties": {
                   "daast_event": {
-                    "enum": [
-                      "creativeView",
-                      "start",
-                      "firstQuartile",
-                      "midpoint",
-                      "thirdQuartile",
-                      "complete",
-                      "mute",
-                      "unmute",
-                      "pause",
-                      "resume",
-                      "rewind",
-                      "skip",
-                      "progress",
-                      "close"
-                    ],
-                    "type": "string"
+                    "$ref": "#/definitions/Shared8"
                   },
                   "daast_versions": {
-                    "items": {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
-                      "description": "Supported DAAST (Digital Audio Ad Serving Template) specification versions",
-                      "enum": [
-                        "1.0",
-                        "1.1"
-                      ],
-                      "title": "DAAST Version",
-                      "type": "string"
-                    },
-                    "minItems": 1,
-                    "type": "array",
-                    "uniqueItems": true
+                    "$ref": "#/definitions/Shared7"
                   },
                   "offset": {
-                    "pattern": "^(\\d{2}:[0-5]\\d:[0-5]\\d(\\.\\d{3})?|(100|\\d{1,2})%)$",
-                    "type": "string"
+                    "$ref": "#/definitions/Shared6"
                   },
                   "target": {
-                    "default": "linear",
-                    "enum": [
-                      "linear",
-                      "companion"
-                    ],
-                    "type": "string"
+                    "$ref": "#/definitions/Shared9"
                   }
                 },
                 "title": "DAAST Tracker Constraints",
@@ -886,82 +740,25 @@
                 "type": "string"
               },
               "daast_event": {
-                "enum": [
-                  "creativeView",
-                  "start",
-                  "firstQuartile",
-                  "midpoint",
-                  "thirdQuartile",
-                  "complete",
-                  "mute",
-                  "unmute",
-                  "pause",
-                  "resume",
-                  "rewind",
-                  "skip",
-                  "progress",
-                  "close"
-                ],
-                "type": "string"
+                "$ref": "#/definitions/Shared8"
               },
               "daast_versions": {
-                "items": {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
-                  "description": "Supported DAAST (Digital Audio Ad Serving Template) specification versions",
-                  "enum": [
-                    "1.0",
-                    "1.1"
-                  ],
-                  "title": "DAAST Version",
-                  "type": "string"
-                },
-                "minItems": 1,
-                "type": "array",
-                "uniqueItems": true
+                "$ref": "#/definitions/Shared7"
               },
               "execution_actor": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "description": "Actor responsible for initiating a buyer-supplied tracker under a seller-authored execution contract. This v1 vocabulary is intentionally narrower than the macro resolver actor vocabulary.",
-                "enum": [
-                  "seller",
-                  "request_executor"
-                ],
-                "title": "Tracker Execution Actor",
-                "type": "string"
+                "$ref": "#/definitions/Shared1"
               },
               "firing_paths": {
-                "description": "Complete set of permitted initiation environments. Exactly one path is selected for each logical event occurrence.",
-                "items": {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
-                  "description": "Environment in which the responsible actor initiates a tracker. A selector may permit both values, but exactly one path is used for each logical event occurrence.",
-                  "enum": [
-                    "client",
-                    "server"
-                  ],
-                  "title": "Tracker Firing Path",
-                  "type": "string"
-                },
-                "minItems": 1,
-                "type": "array",
-                "uniqueItems": true
+                "$ref": "#/definitions/Shared2"
               },
               "offset": {
-                "pattern": "^(\\d{2}:[0-5]\\d:[0-5]\\d(\\.\\d{3})?|(100|\\d{1,2})%)$",
-                "type": "string"
+                "$ref": "#/definitions/Shared6"
               },
               "selector_id": {
-                "description": "Stable identifier unique within the materialized execution contract.",
-                "minLength": 1,
-                "type": "string",
-                "x-entity": "tracker_execution_selector"
+                "$ref": "#/definitions/Shared0"
               },
               "target": {
-                "default": "linear",
-                "enum": [
-                  "linear",
-                  "companion"
-                ],
-                "type": "string"
+                "$ref": "#/definitions/Shared9"
               }
             },
             "required": [

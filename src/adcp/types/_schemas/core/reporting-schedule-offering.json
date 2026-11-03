@@ -8,9 +8,7 @@
           "not": {
             "anyOf": [
               {
-                "required": [
-                  "period_anchor_policy"
-                ]
+                "$ref": "#/definitions/Shared1"
               },
               {
                 "required": [
@@ -18,14 +16,10 @@
                 ]
               },
               {
-                "required": [
-                  "period_anchor"
-                ]
+                "$ref": "#/definitions/Shared2"
               },
               {
-                "required": [
-                  "period_timezone"
-                ]
+                "$ref": "#/definitions/Shared3"
               }
             ]
           }
@@ -45,15 +39,13 @@
             {
               "else": {
                 "not": {
-                  "required": [
-                    "period_timezone"
-                  ]
+                  "$ref": "#/definitions/Shared3"
                 }
               },
               "if": {
                 "properties": {
                   "period_timezone_policy": {
-                    "const": "fixed"
+                    "$ref": "#/definitions/Shared0"
                   }
                 },
                 "required": [
@@ -61,23 +53,17 @@
                 ]
               },
               "then": {
-                "required": [
-                  "period_timezone"
-                ]
+                "$ref": "#/definitions/Shared3"
               }
             }
           ],
           "not": {
             "anyOf": [
               {
-                "required": [
-                  "period_anchor_policy"
-                ]
+                "$ref": "#/definitions/Shared1"
               },
               {
-                "required": [
-                  "period_anchor"
-                ]
+                "$ref": "#/definitions/Shared2"
               }
             ]
           },
@@ -103,14 +89,10 @@
               "not": {
                 "anyOf": [
                   {
-                    "required": [
-                      "period_anchor"
-                    ]
+                    "$ref": "#/definitions/Shared2"
                   },
                   {
-                    "required": [
-                      "period_timezone"
-                    ]
+                    "$ref": "#/definitions/Shared3"
                   }
                 ]
               }
@@ -118,7 +100,7 @@
             "if": {
               "properties": {
                 "period_anchor_policy": {
-                  "const": "fixed"
+                  "$ref": "#/definitions/Shared0"
                 }
               },
               "required": [
@@ -139,6 +121,26 @@
       }
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "const": "fixed"
+    },
+    "Shared1": {
+      "required": [
+        "period_anchor_policy"
+      ]
+    },
+    "Shared2": {
+      "required": [
+        "period_anchor"
+      ]
+    },
+    "Shared3": {
+      "required": [
+        "period_timezone"
+      ]
+    }
+  },
   "description": "Schedule constraint advertised by a seller. Unlike an installed reporting-schedule, an offering may resolve an account-specific upstream source timezone or let a billing-cycle configuration select its own anchor and IANA timezone.",
   "properties": {
     "alignment": {

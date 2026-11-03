@@ -2,6 +2,17 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "definitions": {
+    "Shared0": {
+      "format": "uri",
+      "type": "string"
+    },
+    "Shared1": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "Shared2": {
+      "type": "string"
+    },
     "VerificationTokenGradingProfile": {
       "enum": [
         "legacy",
@@ -24,16 +35,14 @@
       "type": "string"
     },
     "agent_url": {
-      "format": "uri",
-      "type": "string"
+      "$ref": "#/definitions/Shared0"
     },
     "aud": {
       "const": "aao-verification",
       "type": "string"
     },
     "exp": {
-      "minimum": 0,
-      "type": "integer"
+      "$ref": "#/definitions/Shared1"
     },
     "first_failing_spec_at": {
       "description": "Start of the current Strict Spec failure episode. Omitted when no Strict Spec failure clock is active. The registry remains authoritative for real-time status.",
@@ -45,8 +54,7 @@
       "description": "Grading policy that produced the badge. Absence on a historical token means Legacy; verification_modes remains an independent evidence axis."
     },
     "iat": {
-      "minimum": 0,
-      "type": "integer"
+      "$ref": "#/definitions/Shared1"
     },
     "iss": {
       "const": "https://aao.org",
@@ -57,7 +65,7 @@
       "type": "string"
     },
     "protocol_version": {
-      "type": "string"
+      "$ref": "#/definitions/Shared2"
     },
     "role": {
       "enum": [
@@ -71,8 +79,7 @@
       "type": "string"
     },
     "sub": {
-      "format": "uri",
-      "type": "string"
+      "$ref": "#/definitions/Shared0"
     },
     "verification_modes": {
       "items": {
@@ -84,7 +91,7 @@
     },
     "verified_specialisms": {
       "items": {
-        "type": "string"
+        "$ref": "#/definitions/Shared2"
       },
       "minItems": 1,
       "type": "array",

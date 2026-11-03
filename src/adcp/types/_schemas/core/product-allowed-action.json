@@ -1,6 +1,41 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": false,
+  "definitions": {
+    "Shared0": {
+      "required": [
+        "minimum_notice"
+      ]
+    },
+    "Shared1": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "Shared2": {
+      "minimum": 0,
+      "type": "number"
+    },
+    "Shared3": {
+      "pattern": "^[A-Z]{3}$",
+      "type": "string"
+    },
+    "Shared4": {
+      "description": "Number of time units. Must be 1 when unit is 'campaign'.",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "Shared5": {
+      "description": "Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.",
+      "enum": [
+        "seconds",
+        "minutes",
+        "hours",
+        "days",
+        "campaign"
+      ],
+      "type": "string"
+    }
+  },
   "description": "An action a seller declares as allowed on buys created against this product, scoped to the buy statuses where the action is permitted and the modes available. Advisory template only \u2014 the authoritative per-buy resolution lives in `available_actions[]` on the buy response (which may diverge from the product template based on negotiated terms, account tier, or buy-level overrides). The containing `allowed_actions[]` array is uniquely keyed by `action`; sellers MUST NOT emit two entries with the same `action` value. JSON Schema `uniqueItems` only catches structurally identical objects, so validators MUST enforce action-uniqueness separately.",
   "properties": {
     "action": {
@@ -293,12 +328,10 @@
           "additionalProperties": false,
           "properties": {
             "amount": {
-              "minimum": 0,
-              "type": "number"
+              "$ref": "#/definitions/Shared2"
             },
             "currency": {
-              "pattern": "^[A-Z]{3}$",
-              "type": "string"
+              "$ref": "#/definitions/Shared3"
             }
           },
           "required": [
@@ -347,12 +380,10 @@
               "description": "Maximum absolute amount by which the affected budget may change in the direction named by the action.",
               "properties": {
                 "amount": {
-                  "minimum": 0,
-                  "type": "number"
+                  "$ref": "#/definitions/Shared2"
                 },
                 "currency": {
-                  "pattern": "^[A-Z]{3}$",
-                  "type": "string"
+                  "$ref": "#/definitions/Shared3"
                 }
               },
               "required": [
@@ -371,12 +402,10 @@
               "description": "Maximum resulting committed value after the change.",
               "properties": {
                 "amount": {
-                  "minimum": 0,
-                  "type": "number"
+                  "$ref": "#/definitions/Shared2"
                 },
                 "currency": {
-                  "pattern": "^[A-Z]{3}$",
-                  "type": "string"
+                  "$ref": "#/definitions/Shared3"
                 }
               },
               "required": [
@@ -390,12 +419,10 @@
               "description": "Minimum resulting committed value after the change.",
               "properties": {
                 "amount": {
-                  "minimum": 0,
-                  "type": "number"
+                  "$ref": "#/definitions/Shared2"
                 },
                 "currency": {
-                  "pattern": "^[A-Z]{3}$",
-                  "type": "string"
+                  "$ref": "#/definitions/Shared3"
                 }
               },
               "required": [
@@ -430,9 +457,7 @@
               ]
             },
             {
-              "required": [
-                "minimum_notice"
-              ]
+              "$ref": "#/definitions/Shared0"
             }
           ],
           "properties": {
@@ -456,20 +481,10 @@
               "description": "Maximum extension, shortening, or shift in the direction named by the action.",
               "properties": {
                 "interval": {
-                  "description": "Number of time units. Must be 1 when unit is 'campaign'.",
-                  "minimum": 1,
-                  "type": "integer"
+                  "$ref": "#/definitions/Shared4"
                 },
                 "unit": {
-                  "description": "Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.",
-                  "enum": [
-                    "seconds",
-                    "minutes",
-                    "hours",
-                    "days",
-                    "campaign"
-                  ],
-                  "type": "string"
+                  "$ref": "#/definitions/Shared5"
                 }
               },
               "required": [
@@ -485,20 +500,10 @@
               "description": "Minimum elapsed notice before the requested flight change may take effect.",
               "properties": {
                 "interval": {
-                  "description": "Number of time units. Must be 1 when unit is 'campaign'.",
-                  "minimum": 1,
-                  "type": "integer"
+                  "$ref": "#/definitions/Shared4"
                 },
                 "unit": {
-                  "description": "Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.",
-                  "enum": [
-                    "seconds",
-                    "minutes",
-                    "hours",
-                    "days",
-                    "campaign"
-                  ],
-                  "type": "string"
+                  "$ref": "#/definitions/Shared5"
                 }
               },
               "required": [
@@ -565,9 +570,7 @@
           "additionalProperties": false,
           "anyOf": [
             {
-              "required": [
-                "minimum_notice"
-              ]
+              "$ref": "#/definitions/Shared0"
             },
             {
               "required": [
@@ -582,16 +585,14 @@
           ],
           "properties": {
             "earliest_effective_at": {
-              "format": "date-time",
-              "type": "string"
+              "$ref": "#/definitions/Shared1"
             },
             "kind": {
               "const": "effective_timing",
               "type": "string"
             },
             "latest_effective_at": {
-              "format": "date-time",
-              "type": "string"
+              "$ref": "#/definitions/Shared1"
             },
             "minimum_notice": {
               "$schema": "http://json-schema.org/draft-07/schema#",
@@ -599,20 +600,10 @@
               "description": "Minimum elapsed notice before pause, resume, cancellation, or another operational action may take effect.",
               "properties": {
                 "interval": {
-                  "description": "Number of time units. Must be 1 when unit is 'campaign'.",
-                  "minimum": 1,
-                  "type": "integer"
+                  "$ref": "#/definitions/Shared4"
                 },
                 "unit": {
-                  "description": "Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.",
-                  "enum": [
-                    "seconds",
-                    "minutes",
-                    "hours",
-                    "days",
-                    "campaign"
-                  ],
-                  "type": "string"
+                  "$ref": "#/definitions/Shared5"
                 }
               },
               "required": [

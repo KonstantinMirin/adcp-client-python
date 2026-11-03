@@ -1,6 +1,15 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": false,
+  "definitions": {
+    "Shared0": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "Shared1": {
+      "const": 1
+    }
+  },
   "description": "Exact supported intervals for one duration unit, declared as either an exhaustive preset list or an inclusive integer range. The two forms are mutually exclusive.",
   "if": {
     "properties": {
@@ -47,8 +56,7 @@
   "properties": {
     "allowed_intervals": {
       "items": {
-        "minimum": 1,
-        "type": "integer"
+        "$ref": "#/definitions/Shared0"
       },
       "minItems": 1,
       "type": "array",
@@ -62,12 +70,10 @@
       "type": "object"
     },
     "maximum_interval": {
-      "minimum": 1,
-      "type": "integer"
+      "$ref": "#/definitions/Shared0"
     },
     "minimum_interval": {
-      "minimum": 1,
-      "type": "integer"
+      "$ref": "#/definitions/Shared0"
     },
     "unit": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -90,14 +96,14 @@
     "properties": {
       "allowed_intervals": {
         "items": {
-          "const": 1
+          "$ref": "#/definitions/Shared1"
         }
       },
       "maximum_interval": {
-        "const": 1
+        "$ref": "#/definitions/Shared1"
       },
       "minimum_interval": {
-        "const": 1
+        "$ref": "#/definitions/Shared1"
       }
     }
   },

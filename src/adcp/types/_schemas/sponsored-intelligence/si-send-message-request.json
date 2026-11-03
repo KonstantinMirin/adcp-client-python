@@ -41,6 +41,44 @@
       ]
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "Shared1": {
+      "properties": {
+        "status": {
+          "$ref": "#/definitions/Shared2"
+        }
+      },
+      "required": [
+        "status"
+      ]
+    },
+    "Shared2": {
+      "const": "accepted"
+    },
+    "Shared3": {
+      "const": "presentation_only"
+    },
+    "Shared4": {
+      "const": "comparison_set"
+    },
+    "Shared5": {
+      "const": "reasoning_context"
+    },
+    "Shared6": {
+      "type": "string"
+    },
+    "Shared7": {
+      "pattern": "^#[0-9a-fA-F]{6}$",
+      "type": "string"
+    }
+  },
   "description": "Send a message to the brand agent within an active session",
   "properties": {
     "action_response": {
@@ -66,11 +104,7 @@
       "type": "object"
     },
     "ext": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "additionalProperties": true,
-      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-      "title": "Extension Object",
-      "type": "object"
+      "$ref": "#/definitions/Shared0"
     },
     "idempotency_key": {
       "description": "Client-generated unique key for at-most-once execution. Each conversational turn is a distinct mutation of session transcript \u2014 without this key, a timeout-and-retry produces a duplicate turn and a duplicate model response. MUST be unique per (seller, request) pair. Use a fresh UUID v4 for each user turn.",
@@ -96,19 +130,12 @@
           "if": {
             "properties": {
               "host_receipt": {
-                "properties": {
-                  "status": {
-                    "const": "accepted"
-                  }
-                },
-                "required": [
-                  "status"
-                ]
+                "$ref": "#/definitions/Shared1"
               },
               "sponsored_context": {
                 "properties": {
                   "context_use": {
-                    "const": "presentation_only"
+                    "$ref": "#/definitions/Shared3"
                   }
                 },
                 "required": [
@@ -126,7 +153,7 @@
               "host_receipt": {
                 "properties": {
                   "accepted_context_use": {
-                    "const": "presentation_only"
+                    "$ref": "#/definitions/Shared3"
                   }
                 }
               }
@@ -137,19 +164,12 @@
           "if": {
             "properties": {
               "host_receipt": {
-                "properties": {
-                  "status": {
-                    "const": "accepted"
-                  }
-                },
-                "required": [
-                  "status"
-                ]
+                "$ref": "#/definitions/Shared1"
               },
               "sponsored_context": {
                 "properties": {
                   "context_use": {
-                    "const": "comparison_set"
+                    "$ref": "#/definitions/Shared4"
                   }
                 },
                 "required": [
@@ -167,7 +187,7 @@
               "host_receipt": {
                 "properties": {
                   "accepted_context_use": {
-                    "const": "comparison_set"
+                    "$ref": "#/definitions/Shared4"
                   }
                 }
               }
@@ -178,19 +198,12 @@
           "if": {
             "properties": {
               "host_receipt": {
-                "properties": {
-                  "status": {
-                    "const": "accepted"
-                  }
-                },
-                "required": [
-                  "status"
-                ]
+                "$ref": "#/definitions/Shared1"
               },
               "sponsored_context": {
                 "properties": {
                   "context_use": {
-                    "const": "reasoning_context"
+                    "$ref": "#/definitions/Shared5"
                   }
                 },
                 "required": [
@@ -208,7 +221,7 @@
               "host_receipt": {
                 "properties": {
                   "accepted_context_use": {
-                    "const": "reasoning_context"
+                    "$ref": "#/definitions/Shared5"
                   }
                 }
               }
@@ -219,14 +232,7 @@
           "if": {
             "properties": {
               "host_receipt": {
-                "properties": {
-                  "status": {
-                    "const": "accepted"
-                  }
-                },
-                "required": [
-                  "status"
-                ]
+                "$ref": "#/definitions/Shared1"
               },
               "sponsored_context": {
                 "properties": {
@@ -258,7 +264,7 @@
                   "disclosure_commitment": {
                     "properties": {
                       "status": {
-                        "const": "accepted"
+                        "$ref": "#/definitions/Shared2"
                       }
                     }
                   }
@@ -271,25 +277,14 @@
       "description": "Host receipt for sponsored context accepted from a prior SI response in this session. This gives the brand/seller an audit-visible record of the host's accepted use mode and disclosure commitment for that context.",
       "properties": {
         "ext": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": true,
-          "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-          "title": "Extension Object",
-          "type": "object"
+          "$ref": "#/definitions/Shared0"
         },
         "host_receipt": {
           "additionalProperties": true,
           "allOf": [
             {
               "if": {
-                "properties": {
-                  "status": {
-                    "const": "accepted"
-                  }
-                },
-                "required": [
-                  "status"
-                ]
+                "$ref": "#/definitions/Shared1"
               },
               "then": {
                 "required": [
@@ -527,11 +522,7 @@
               "type": "object"
             },
             "ext": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": true,
-              "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-              "title": "Extension Object",
-              "type": "object"
+              "$ref": "#/definitions/Shared0"
             },
             "paying_principal": {
               "additionalProperties": true,
@@ -600,16 +591,13 @@
                           "description": "Override brand colors (hex strings).",
                           "properties": {
                             "accent": {
-                              "pattern": "^#[0-9a-fA-F]{6}$",
-                              "type": "string"
+                              "$ref": "#/definitions/Shared7"
                             },
                             "primary": {
-                              "pattern": "^#[0-9a-fA-F]{6}$",
-                              "type": "string"
+                              "$ref": "#/definitions/Shared7"
                             },
                             "secondary": {
-                              "pattern": "^#[0-9a-fA-F]{6}$",
-                              "type": "string"
+                              "$ref": "#/definitions/Shared7"
                             }
                           },
                           "type": "object"
@@ -800,11 +788,7 @@
                                             "minProperties": 1,
                                             "properties": {
                                               "ext": {
-                                                "$schema": "http://json-schema.org/draft-07/schema#",
-                                                "additionalProperties": true,
-                                                "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                                                "title": "Extension Object",
-                                                "type": "object"
+                                                "$ref": "#/definitions/Shared0"
                                               },
                                               "min_duration_ms": {
                                                 "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial \u2014 without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available.",
@@ -934,11 +918,7 @@
                                   "type": "array"
                                 },
                                 "ext": {
-                                  "$schema": "http://json-schema.org/draft-07/schema#",
-                                  "additionalProperties": true,
-                                  "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                                  "title": "Extension Object",
-                                  "type": "object"
+                                  "$ref": "#/definitions/Shared0"
                                 },
                                 "human_oversight": {
                                   "description": "Level of human involvement in the AI-assisted creation process. Independent of `disclosure.required` \u2014 the protocol does not derive disclosure obligations from oversight level. Some regulations include carve-outs for human-edited or human-directed AI output, but those carve-outs have factual prerequisites the schema cannot evaluate. Asserting `edited` or `directed` does not by itself justify `disclosure.required: false`.",
@@ -1152,7 +1132,7 @@
                         },
                         "languages": {
                           "items": {
-                            "type": "string"
+                            "$ref": "#/definitions/Shared6"
                           },
                           "type": "array"
                         },
@@ -1172,7 +1152,7 @@
                     "industries": {
                       "description": "Inline override for the brand's industries. Useful when the caller cannot modify the brand's canonical brand.json but needs to declare industries for governance (e.g., Annex III vertical detection). brand.json remains the canonical source; when omitted here, governance agents SHOULD resolve from brand.json.",
                       "items": {
-                        "type": "string"
+                        "$ref": "#/definitions/Shared6"
                       },
                       "type": "array"
                     }

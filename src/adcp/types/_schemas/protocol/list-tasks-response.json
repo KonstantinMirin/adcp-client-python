@@ -457,6 +457,11 @@
       "type": "object"
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "type": "string"
+    }
+  },
   "description": "Response from the list_tasks AdCP tool, a 3.x protocol-namespace alias for legacy AdCP tasks/list. Contains filtered AdCP application-layer task results and reconciliation data while preserving the legacy 3.x domain field shape; distinct from transport-native MCP/A2A task responses.",
   "properties": {
     "context": {
@@ -527,7 +532,7 @@
         "filters_applied": {
           "description": "List of filters that were applied to the query",
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/Shared0"
           },
           "type": "array"
         },
@@ -548,7 +553,7 @@
               "type": "string"
             },
             "field": {
-              "type": "string"
+              "$ref": "#/definitions/Shared0"
             }
           },
           "required": [

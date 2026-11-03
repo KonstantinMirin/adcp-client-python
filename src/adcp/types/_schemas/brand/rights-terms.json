@@ -1,19 +1,30 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
+  "definitions": {
+    "Shared0": {
+      "type": "string"
+    },
+    "Shared1": {
+      "minimum": 0,
+      "type": "number"
+    },
+    "Shared2": {
+      "format": "date",
+      "type": "string"
+    }
+  },
   "description": "Contractual terms for a rights grant. Shared between acquire_rights and update_rights responses.",
   "properties": {
     "amount": {
-      "minimum": 0,
-      "type": "number"
+      "$ref": "#/definitions/Shared1"
     },
     "currency": {
       "pattern": "^[A-Z]{3}$",
       "type": "string"
     },
     "end_date": {
-      "format": "date",
-      "type": "string"
+      "$ref": "#/definitions/Shared2"
     },
     "exclusivity": {
       "additionalProperties": true,
@@ -27,7 +38,7 @@
           "type": "array"
         },
         "scope": {
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         }
       },
       "type": "object"
@@ -37,8 +48,7 @@
       "type": "integer"
     },
     "overage_cpm": {
-      "minimum": 0,
-      "type": "number"
+      "$ref": "#/definitions/Shared1"
     },
     "period": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -55,11 +65,10 @@
       "type": "string"
     },
     "pricing_option_id": {
-      "type": "string"
+      "$ref": "#/definitions/Shared0"
     },
     "start_date": {
-      "format": "date",
-      "type": "string"
+      "$ref": "#/definitions/Shared2"
     },
     "uses": {
       "items": {

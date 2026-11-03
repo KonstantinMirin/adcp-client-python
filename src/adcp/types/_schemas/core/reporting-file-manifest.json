@@ -1,6 +1,28 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": false,
+  "definitions": {
+    "Shared0": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "Shared1": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "Shared2": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$",
+      "type": "string"
+    },
+    "Shared3": {
+      "description": "Profile-defined unit such as impressions or an ISO 4217 currency code.",
+      "maxLength": 32,
+      "minLength": 1,
+      "type": "string"
+    }
+  },
   "description": "Normative manifest for one completed file-transfer materialization. Producers write every data object first and publish this manifest last. Its appearance is the commit point: consumers MUST ignore unlisted objects and MUST NOT process the materialization before a digest-valid complete manifest is visible.",
   "properties": {
     "complete": {
@@ -29,16 +51,10 @@
             "additionalProperties": false,
             "properties": {
               "name": {
-                "maxLength": 128,
-                "minLength": 1,
-                "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$",
-                "type": "string"
+                "$ref": "#/definitions/Shared2"
               },
               "unit": {
-                "description": "Profile-defined unit such as impressions or an ISO 4217 currency code.",
-                "maxLength": 32,
-                "minLength": 1,
-                "type": "string"
+                "$ref": "#/definitions/Shared3"
               },
               "value": {
                 "description": "Canonical base-10 integer with no exponent, grouping separator, decimal point, or insignificant leading zeroes.",
@@ -62,16 +78,10 @@
             "additionalProperties": false,
             "properties": {
               "name": {
-                "maxLength": 128,
-                "minLength": 1,
-                "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$",
-                "type": "string"
+                "$ref": "#/definitions/Shared2"
               },
               "unit": {
-                "description": "Profile-defined unit such as impressions or an ISO 4217 currency code.",
-                "maxLength": 32,
-                "minLength": 1,
-                "type": "string"
+                "$ref": "#/definitions/Shared3"
               },
               "value": {
                 "description": "Canonical base-10 decimal with no exponent, grouping separator, or insignificant leading zeroes.",
@@ -99,8 +109,7 @@
       "uniqueItems": true
     },
     "created_at": {
-      "format": "date-time",
-      "type": "string"
+      "$ref": "#/definitions/Shared1"
     },
     "files": {
       "items": {
@@ -135,16 +144,14 @@
             "type": "object"
           },
           "row_count": {
-            "minimum": 0,
-            "type": "integer"
+            "$ref": "#/definitions/Shared0"
           },
           "sha256": {
             "pattern": "^[A-Fa-f0-9]{64}$",
             "type": "string"
           },
           "size_bytes": {
-            "minimum": 0,
-            "type": "integer"
+            "$ref": "#/definitions/Shared0"
           }
         },
         "required": [
@@ -178,16 +185,14 @@
       "additionalProperties": false,
       "properties": {
         "end": {
-          "format": "date-time",
-          "type": "string"
+          "$ref": "#/definitions/Shared1"
         },
         "source_timezone": {
           "minLength": 1,
           "type": "string"
         },
         "start": {
-          "format": "date-time",
-          "type": "string"
+          "$ref": "#/definitions/Shared1"
         }
       },
       "required": [
@@ -219,12 +224,10 @@
       "x-entity": "reporting_revision"
     },
     "row_count": {
-      "minimum": 0,
-      "type": "integer"
+      "$ref": "#/definitions/Shared0"
     },
     "total_size_bytes": {
-      "minimum": 0,
-      "type": "integer"
+      "$ref": "#/definitions/Shared0"
     }
   },
   "required": [

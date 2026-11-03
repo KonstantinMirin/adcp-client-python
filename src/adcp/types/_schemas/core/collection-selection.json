@@ -1,5 +1,14 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "Shared0": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    }
+  },
   "description": "Complete purchased collection set within a product. Mode selected names the complete required set (partial selection requires product collection_targeting_allowed: true; exactly restating the full bundle is an inherent match); mode default accepts the product's full bundle. Package readback MUST echo the committed selection here as concrete selectors, materializing any collection_list composition; a purchase made with mode default therefore reads back as mode selected naming the product's complete bundle. Rejection of a schema-valid selector that references an unknown collection_id or publisher_domain uses REFERENCE_NOT_FOUND per the error-code registry (INVALID_REQUEST applies only to schema-invalid shapes such as a selected-mode item omitting collection_ids). Sellers reject unknown, duplicate, or partially applicable selectors rather than silently changing the selection.",
   "discriminator": {
     "propertyName": "mode"
@@ -50,11 +59,7 @@
           "uniqueItems": true
         },
         "ext": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": true,
-          "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-          "title": "Extension Object",
-          "type": "object"
+          "$ref": "#/definitions/Shared0"
         },
         "mode": {
           "const": "selected",
@@ -72,11 +77,7 @@
       "additionalProperties": false,
       "properties": {
         "ext": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": true,
-          "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-          "title": "Extension Object",
-          "type": "object"
+          "$ref": "#/definitions/Shared0"
         },
         "mode": {
           "const": "default",

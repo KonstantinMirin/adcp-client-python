@@ -295,9 +295,7 @@
                 },
                 "then": {
                   "not": {
-                    "required": [
-                      "max_size_kb"
-                    ]
+                    "$ref": "#/definitions/Shared11"
                   }
                 }
               },
@@ -319,9 +317,7 @@
                 },
                 "then": {
                   "not": {
-                    "required": [
-                      "max_chars"
-                    ]
+                    "$ref": "#/definitions/Shared12"
                   }
                 }
               },
@@ -366,9 +362,7 @@
                         ]
                       },
                       {
-                        "required": [
-                          "required_pixel_ratios"
-                        ]
+                        "$ref": "#/definitions/Shared10"
                       }
                     ]
                   }
@@ -390,9 +384,7 @@
               {
                 "$comment": "A rendition set is representable only by an array-valued image slot. Card media is singular in card-asset.json, so card slots may accept densities but cannot require multiple density renditions.",
                 "if": {
-                  "required": [
-                    "required_pixel_ratios"
-                  ]
+                  "$ref": "#/definitions/Shared10"
                 },
                 "then": {
                   "properties": {
@@ -437,14 +429,10 @@
                   "not": {
                     "anyOf": [
                       {
-                        "required": [
-                          "max_chars"
-                        ]
+                        "$ref": "#/definitions/Shared12"
                       },
                       {
-                        "required": [
-                          "max_size_kb"
-                        ]
+                        "$ref": "#/definitions/Shared11"
                       }
                     ]
                   }
@@ -496,40 +484,7 @@
               "logo_slots": {
                 "description": "When `asset_group_id` is `logo`, renderer-facing brand.json logo slots acceptable for this format slot. Producers selecting from brand.json SHOULD prefer `logos[]` entries whose `slots[]` intersects this list, then apply `visual_guidelines.logo_usage_rules[]`.",
                 "items": {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
-                  "description": "Canonical renderer-facing logo slot. Use when selecting a logo variant from brand.json for a specific UI or creative placement.",
-                  "enum": [
-                    "logo_card_light",
-                    "logo_card_dark",
-                    "profile_mark",
-                    "favicon",
-                    "app_icon",
-                    "social_profile_mark",
-                    "nav_header",
-                    "footer",
-                    "email_header",
-                    "watermark",
-                    "ad_end_card",
-                    "co_brand_lockup",
-                    "marketplace_listing"
-                  ],
-                  "enumDescriptions": {
-                    "ad_end_card": "Advertising end card, especially video or CTV.",
-                    "app_icon": "Application icon or launcher icon.",
-                    "co_brand_lockup": "Co-brand, partner, sponsor, or secondary-mark lockup.",
-                    "email_header": "Email header logo.",
-                    "favicon": "Browser favicon or similarly tiny tab/bookmark icon.",
-                    "footer": "Footer logo.",
-                    "logo_card_dark": "Logo rendered in a card or framed placement on a dark background.",
-                    "logo_card_light": "Logo rendered in a card or framed placement on a light background.",
-                    "marketplace_listing": "Marketplace, catalog, directory, or store listing logo.",
-                    "nav_header": "Primary navigation header logo.",
-                    "profile_mark": "Small square logo mark for profile-style UI. Distinct from brand.json's top-level animated or conversational avatar object.",
-                    "social_profile_mark": "Social profile logo mark or feed identity mark.",
-                    "watermark": "Subtle watermark or bug."
-                  },
-                  "title": "Logo Slot",
-                  "type": "string"
+                  "$ref": "#/definitions/Shared9"
                 },
                 "type": "array",
                 "uniqueItems": true
@@ -557,8 +512,7 @@
               "pixel_ratios": {
                 "description": "Accepted intrinsic-pixel densities for this image-bearing slot. Valid when `asset_type` is `image`, and on a `card` slot where it constrains each card's image media (video media is unaffected). This makes density available to every canonical carrying image assets (native, carousel, responsive, companion images, and image itself), not only `format_kind: image`. When the image canonical also declares top-level `params.pixel_ratios`, the effective set is the intersection; an empty intersection is invalid. One matching asset satisfies the slot unless `required_pixel_ratios` requires rendition coverage.",
                 "items": {
-                  "exclusiveMinimum": 0,
-                  "type": "number"
+                  "$ref": "#/definitions/Shared8"
                 },
                 "minItems": 1,
                 "type": "array",
@@ -572,40 +526,7 @@
               "required_logo_slots": {
                 "description": "Subset of `logo_slots` for which this format expects explicit logo coverage. A manifest or brand-derived logo pool SHOULD include at least one usable logo for each required slot; if coverage is missing, builders SHOULD surface a validation warning or approval mapping instead of guessing from prose.",
                 "items": {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
-                  "description": "Canonical renderer-facing logo slot. Use when selecting a logo variant from brand.json for a specific UI or creative placement.",
-                  "enum": [
-                    "logo_card_light",
-                    "logo_card_dark",
-                    "profile_mark",
-                    "favicon",
-                    "app_icon",
-                    "social_profile_mark",
-                    "nav_header",
-                    "footer",
-                    "email_header",
-                    "watermark",
-                    "ad_end_card",
-                    "co_brand_lockup",
-                    "marketplace_listing"
-                  ],
-                  "enumDescriptions": {
-                    "ad_end_card": "Advertising end card, especially video or CTV.",
-                    "app_icon": "Application icon or launcher icon.",
-                    "co_brand_lockup": "Co-brand, partner, sponsor, or secondary-mark lockup.",
-                    "email_header": "Email header logo.",
-                    "favicon": "Browser favicon or similarly tiny tab/bookmark icon.",
-                    "footer": "Footer logo.",
-                    "logo_card_dark": "Logo rendered in a card or framed placement on a dark background.",
-                    "logo_card_light": "Logo rendered in a card or framed placement on a light background.",
-                    "marketplace_listing": "Marketplace, catalog, directory, or store listing logo.",
-                    "nav_header": "Primary navigation header logo.",
-                    "profile_mark": "Small square logo mark for profile-style UI. Distinct from brand.json's top-level animated or conversational avatar object.",
-                    "social_profile_mark": "Social profile logo mark or feed identity mark.",
-                    "watermark": "Subtle watermark or bug."
-                  },
-                  "title": "Logo Slot",
-                  "type": "string"
+                  "$ref": "#/definitions/Shared9"
                 },
                 "type": "array",
                 "uniqueItems": true
@@ -613,8 +534,7 @@
               "required_pixel_ratios": {
                 "description": "Required density coverage for an image rendition set. Valid only when `asset_type` is `image` and `pixel_ratios` is also declared. Every value MUST appear in the effective accepted set after intersecting any top-level image `params.pixel_ratios`, and the manifest slot value MUST be an array containing exactly one matching image rendition for each required ratio. Other accepted ratios remain optional. For example, `pixel_ratios: [1, 1.5, 2]` with `required_pixel_ratios: [1, 2]` requires the 1x and 2x renditions while making 1.5x optional. SDKs enforce intersection, subset, coverage, and duplicate-ratio rules because JSON Schema draft-07 cannot express them generically.",
                 "items": {
-                  "exclusiveMinimum": 0,
-                  "type": "number"
+                  "$ref": "#/definitions/Shared8"
                 },
                 "minItems": 1,
                 "type": "array",
@@ -652,29 +572,19 @@
           "not": {
             "anyOf": [
               {
-                "required": [
-                  "sizes"
-                ]
+                "$ref": "#/definitions/Shared5"
               },
               {
-                "required": [
-                  "min_width"
-                ]
+                "$ref": "#/definitions/Shared0"
               },
               {
-                "required": [
-                  "max_width"
-                ]
+                "$ref": "#/definitions/Shared1"
               },
               {
-                "required": [
-                  "min_height"
-                ]
+                "$ref": "#/definitions/Shared2"
               },
               {
-                "required": [
-                  "max_height"
-                ]
+                "$ref": "#/definitions/Shared3"
               }
             ]
           },
@@ -688,34 +598,22 @@
           "not": {
             "anyOf": [
               {
-                "required": [
-                  "width"
-                ]
+                "$ref": "#/definitions/Shared6"
               },
               {
-                "required": [
-                  "height"
-                ]
+                "$ref": "#/definitions/Shared7"
               },
               {
-                "required": [
-                  "min_width"
-                ]
+                "$ref": "#/definitions/Shared0"
               },
               {
-                "required": [
-                  "max_width"
-                ]
+                "$ref": "#/definitions/Shared1"
               },
               {
-                "required": [
-                  "min_height"
-                ]
+                "$ref": "#/definitions/Shared2"
               },
               {
-                "required": [
-                  "max_height"
-                ]
+                "$ref": "#/definitions/Shared3"
               }
             ]
           },
@@ -727,42 +625,28 @@
         {
           "anyOf": [
             {
-              "required": [
-                "min_width"
-              ]
+              "$ref": "#/definitions/Shared0"
             },
             {
-              "required": [
-                "max_width"
-              ]
+              "$ref": "#/definitions/Shared1"
             },
             {
-              "required": [
-                "min_height"
-              ]
+              "$ref": "#/definitions/Shared2"
             },
             {
-              "required": [
-                "max_height"
-              ]
+              "$ref": "#/definitions/Shared3"
             }
           ],
           "not": {
             "anyOf": [
               {
-                "required": [
-                  "width"
-                ]
+                "$ref": "#/definitions/Shared6"
               },
               {
-                "required": [
-                  "height"
-                ]
+                "$ref": "#/definitions/Shared7"
               },
               {
-                "required": [
-                  "sizes"
-                ]
+                "$ref": "#/definitions/Shared5"
               }
             ]
           },
@@ -772,39 +656,25 @@
           "not": {
             "anyOf": [
               {
-                "required": [
-                  "width"
-                ]
+                "$ref": "#/definitions/Shared6"
               },
               {
-                "required": [
-                  "height"
-                ]
+                "$ref": "#/definitions/Shared7"
               },
               {
-                "required": [
-                  "sizes"
-                ]
+                "$ref": "#/definitions/Shared5"
               },
               {
-                "required": [
-                  "min_width"
-                ]
+                "$ref": "#/definitions/Shared0"
               },
               {
-                "required": [
-                  "max_width"
-                ]
+                "$ref": "#/definitions/Shared1"
               },
               {
-                "required": [
-                  "min_height"
-                ]
+                "$ref": "#/definitions/Shared2"
               },
               {
-                "required": [
-                  "max_height"
-                ]
+                "$ref": "#/definitions/Shared3"
               }
             ]
           },
@@ -814,6 +684,102 @@
       "title": "Size-mode mutex"
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "required": [
+        "min_width"
+      ]
+    },
+    "Shared1": {
+      "required": [
+        "max_width"
+      ]
+    },
+    "Shared10": {
+      "required": [
+        "required_pixel_ratios"
+      ]
+    },
+    "Shared11": {
+      "required": [
+        "max_size_kb"
+      ]
+    },
+    "Shared12": {
+      "required": [
+        "max_chars"
+      ]
+    },
+    "Shared2": {
+      "required": [
+        "min_height"
+      ]
+    },
+    "Shared3": {
+      "required": [
+        "max_height"
+      ]
+    },
+    "Shared4": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "Shared5": {
+      "required": [
+        "sizes"
+      ]
+    },
+    "Shared6": {
+      "required": [
+        "width"
+      ]
+    },
+    "Shared7": {
+      "required": [
+        "height"
+      ]
+    },
+    "Shared8": {
+      "exclusiveMinimum": 0,
+      "type": "number"
+    },
+    "Shared9": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Canonical renderer-facing logo slot. Use when selecting a logo variant from brand.json for a specific UI or creative placement.",
+      "enum": [
+        "logo_card_light",
+        "logo_card_dark",
+        "profile_mark",
+        "favicon",
+        "app_icon",
+        "social_profile_mark",
+        "nav_header",
+        "footer",
+        "email_header",
+        "watermark",
+        "ad_end_card",
+        "co_brand_lockup",
+        "marketplace_listing"
+      ],
+      "enumDescriptions": {
+        "ad_end_card": "Advertising end card, especially video or CTV.",
+        "app_icon": "Application icon or launcher icon.",
+        "co_brand_lockup": "Co-brand, partner, sponsor, or secondary-mark lockup.",
+        "email_header": "Email header logo.",
+        "favicon": "Browser favicon or similarly tiny tab/bookmark icon.",
+        "footer": "Footer logo.",
+        "logo_card_dark": "Logo rendered in a card or framed placement on a dark background.",
+        "logo_card_light": "Logo rendered in a card or framed placement on a light background.",
+        "marketplace_listing": "Marketplace, catalog, directory, or store listing logo.",
+        "nav_header": "Primary navigation header logo.",
+        "profile_mark": "Small square logo mark for profile-style UI. Distinct from brand.json's top-level animated or conversational avatar object.",
+        "social_profile_mark": "Social profile logo mark or feed identity mark.",
+        "watermark": "Subtle watermark or bug."
+      },
+      "title": "Logo Slot",
+      "type": "string"
+    }
+  },
   "description": "Interactive HTML5 banner delivered as a zip archive. Slot: `html5_bundle` (zip asset). Tracking model: MRAID + IAB Open Measurement (OM-SDK) + click-tag macro substitution + backup image fallback. Receivers unpack the zip, validate internal structure, and serve from CDN. Distinct from `image` (static, non-interactive) and `display_tag` (third-party served). The zip's entry point is typically `index.html`; click handling uses `clickTag` (or `clickTAG`) macro substitution.",
   "properties": {
     "backup_image_max_size_kb": {
@@ -905,12 +871,10 @@
         "additionalProperties": false,
         "properties": {
           "height": {
-            "minimum": 1,
-            "type": "integer"
+            "$ref": "#/definitions/Shared4"
           },
           "width": {
-            "minimum": 1,
-            "type": "integer"
+            "$ref": "#/definitions/Shared4"
           }
         },
         "required": [

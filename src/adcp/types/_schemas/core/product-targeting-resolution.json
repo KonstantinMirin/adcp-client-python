@@ -1,6 +1,24 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": false,
+  "definitions": {
+    "Shared0": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "Shared1": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "Shared2": {
+      "required": [
+        "selector"
+      ]
+    }
+  },
   "description": "Discovery-only targeting resolution bound to a configured Product. modifications sparsely disclose product-specific differences from get_products.targeting_overlay. Request-level brief interpretation and package execution details are not valid here.",
   "properties": {
     "effective_targeting_digest": {
@@ -9,11 +27,7 @@
       "type": "string"
     },
     "ext": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "additionalProperties": true,
-      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-      "title": "Extension Object",
-      "type": "object"
+      "$ref": "#/definitions/Shared0"
     },
     "modifications": {
       "description": "Ordered changes applied to the requested targeting_overlay. Sellers apply entries in array order and MUST validate the complete resulting overlay before returning the product.",
@@ -31,11 +45,7 @@
                 "description": "Complete replacement value. It MUST validate against targeting.json at path; the seller then validates the complete effective overlay. This operation may narrow or broaden only as an explicit buyer-visible proposal."
               },
               "ext": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "additionalProperties": true,
-                "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                "title": "Extension Object",
-                "type": "object"
+                "$ref": "#/definitions/Shared0"
               },
               "operation": {
                 "const": "replace",
@@ -47,8 +57,7 @@
                 "type": "string"
               },
               "reason": {
-                "minLength": 1,
-                "type": "string"
+                "$ref": "#/definitions/Shared1"
               }
             },
             "required": [
@@ -66,9 +75,7 @@
               {
                 "else": {
                   "not": {
-                    "required": [
-                      "selector"
-                    ]
+                    "$ref": "#/definitions/Shared2"
                   }
                 },
                 "if": {
@@ -85,19 +92,13 @@
                   ]
                 },
                 "then": {
-                  "required": [
-                    "selector"
-                  ]
+                  "$ref": "#/definitions/Shared2"
                 }
               }
             ],
             "properties": {
               "ext": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "additionalProperties": true,
-                "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                "title": "Extension Object",
-                "type": "object"
+                "$ref": "#/definitions/Shared0"
               },
               "operation": {
                 "const": "remove_values",
@@ -125,8 +126,7 @@
                 "type": "string"
               },
               "reason": {
-                "minLength": 1,
-                "type": "string"
+                "$ref": "#/definitions/Shared1"
               },
               "selector": {
                 "additionalProperties": false,
@@ -137,8 +137,7 @@
                     "type": "string"
                   },
                   "system": {
-                    "minLength": 1,
-                    "type": "string"
+                    "$ref": "#/definitions/Shared1"
                   }
                 },
                 "required": [

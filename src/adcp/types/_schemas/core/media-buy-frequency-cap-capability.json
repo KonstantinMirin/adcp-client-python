@@ -31,19 +31,13 @@
           ]
         },
         {
-          "required": [
-            "suppression_constraints"
-          ]
+          "$ref": "#/definitions/Shared1"
         }
       ],
       "description": "Structured frequency-cap constraints. Count and duration declarations are exact: each uses either an exhaustive preset list or an inclusive range, never a unit-only promise. At product scope, omitted fields inherit the applicable seller-wide capability and never broaden it. Product mutability describes implementation capability; MediaBuy.available_actions remains authoritative for a live buy.",
       "properties": {
         "ext": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": true,
-          "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-          "title": "Extension Object",
-          "type": "object"
+          "$ref": "#/definitions/Shared0"
         },
         "max_impressions_constraints": {
           "$schema": "http://json-schema.org/draft-07/schema#",
@@ -83,28 +77,16 @@
           ],
           "properties": {
             "allowed_values": {
-              "items": {
-                "minimum": 1,
-                "type": "integer"
-              },
-              "minItems": 1,
-              "type": "array",
-              "uniqueItems": true
+              "$ref": "#/definitions/Shared3"
             },
             "ext": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": true,
-              "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-              "title": "Extension Object",
-              "type": "object"
+              "$ref": "#/definitions/Shared0"
             },
             "maximum": {
-              "minimum": 1,
-              "type": "integer"
+              "$ref": "#/definitions/Shared2"
             },
             "minimum": {
-              "minimum": 1,
-              "type": "integer"
+              "$ref": "#/definitions/Shared2"
             }
           },
           "title": "Frequency Cap Impression Constraints",
@@ -178,114 +160,7 @@
         "suppression_constraints": {
           "description": "Exact supported suppress cooldown intervals, one entry per duration unit.",
           "items": {
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "additionalProperties": false,
-            "description": "Exact supported intervals for one duration unit, declared as either an exhaustive preset list or an inclusive integer range. The two forms are mutually exclusive.",
-            "if": {
-              "properties": {
-                "unit": {
-                  "const": "campaign"
-                }
-              },
-              "required": [
-                "unit"
-              ]
-            },
-            "oneOf": [
-              {
-                "not": {
-                  "anyOf": [
-                    {
-                      "required": [
-                        "minimum_interval"
-                      ]
-                    },
-                    {
-                      "required": [
-                        "maximum_interval"
-                      ]
-                    }
-                  ]
-                },
-                "required": [
-                  "allowed_intervals"
-                ]
-              },
-              {
-                "not": {
-                  "required": [
-                    "allowed_intervals"
-                  ]
-                },
-                "required": [
-                  "minimum_interval",
-                  "maximum_interval"
-                ]
-              }
-            ],
-            "properties": {
-              "allowed_intervals": {
-                "items": {
-                  "minimum": 1,
-                  "type": "integer"
-                },
-                "minItems": 1,
-                "type": "array",
-                "uniqueItems": true
-              },
-              "ext": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "additionalProperties": true,
-                "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                "title": "Extension Object",
-                "type": "object"
-              },
-              "maximum_interval": {
-                "minimum": 1,
-                "type": "integer"
-              },
-              "minimum_interval": {
-                "minimum": 1,
-                "type": "integer"
-              },
-              "unit": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "description": "A duration unit supported for a frequency-cap window or suppression period.",
-                "enum": [
-                  "seconds",
-                  "minutes",
-                  "hours",
-                  "days",
-                  "campaign"
-                ],
-                "title": "Frequency Cap Duration Unit",
-                "type": "string"
-              }
-            },
-            "required": [
-              "unit"
-            ],
-            "then": {
-              "properties": {
-                "allowed_intervals": {
-                  "items": {
-                    "const": 1
-                  }
-                },
-                "maximum_interval": {
-                  "const": 1
-                },
-                "minimum_interval": {
-                  "const": 1
-                }
-              }
-            },
-            "title": "Frequency Cap Interval Constraints",
-            "type": "object",
-            "x-adcp-hoist": true,
-            "x-adcp-validation": {
-              "ordered_bounds": "minimum_interval MUST be less than or equal to maximum_interval."
-            }
+            "$ref": "#/definitions/Shared4"
           },
           "minItems": 1,
           "type": "array",
@@ -294,114 +169,7 @@
         "window_constraints": {
           "description": "Exact supported max_impressions.window intervals, one entry per duration unit.",
           "items": {
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "additionalProperties": false,
-            "description": "Exact supported intervals for one duration unit, declared as either an exhaustive preset list or an inclusive integer range. The two forms are mutually exclusive.",
-            "if": {
-              "properties": {
-                "unit": {
-                  "const": "campaign"
-                }
-              },
-              "required": [
-                "unit"
-              ]
-            },
-            "oneOf": [
-              {
-                "not": {
-                  "anyOf": [
-                    {
-                      "required": [
-                        "minimum_interval"
-                      ]
-                    },
-                    {
-                      "required": [
-                        "maximum_interval"
-                      ]
-                    }
-                  ]
-                },
-                "required": [
-                  "allowed_intervals"
-                ]
-              },
-              {
-                "not": {
-                  "required": [
-                    "allowed_intervals"
-                  ]
-                },
-                "required": [
-                  "minimum_interval",
-                  "maximum_interval"
-                ]
-              }
-            ],
-            "properties": {
-              "allowed_intervals": {
-                "items": {
-                  "minimum": 1,
-                  "type": "integer"
-                },
-                "minItems": 1,
-                "type": "array",
-                "uniqueItems": true
-              },
-              "ext": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "additionalProperties": true,
-                "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                "title": "Extension Object",
-                "type": "object"
-              },
-              "maximum_interval": {
-                "minimum": 1,
-                "type": "integer"
-              },
-              "minimum_interval": {
-                "minimum": 1,
-                "type": "integer"
-              },
-              "unit": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "description": "A duration unit supported for a frequency-cap window or suppression period.",
-                "enum": [
-                  "seconds",
-                  "minutes",
-                  "hours",
-                  "days",
-                  "campaign"
-                ],
-                "title": "Frequency Cap Duration Unit",
-                "type": "string"
-              }
-            },
-            "required": [
-              "unit"
-            ],
-            "then": {
-              "properties": {
-                "allowed_intervals": {
-                  "items": {
-                    "const": 1
-                  }
-                },
-                "maximum_interval": {
-                  "const": 1
-                },
-                "minimum_interval": {
-                  "const": 1
-                }
-              }
-            },
-            "title": "Frequency Cap Interval Constraints",
-            "type": "object",
-            "x-adcp-hoist": true,
-            "x-adcp-validation": {
-              "ordered_bounds": "minimum_interval MUST be less than or equal to maximum_interval."
-            }
+            "$ref": "#/definitions/Shared4"
           },
           "minItems": 1,
           "type": "array",
@@ -418,9 +186,7 @@
     },
     {
       "not": {
-        "required": [
-          "suppression_constraints"
-        ]
+        "$ref": "#/definitions/Shared1"
       },
       "properties": {
         "supported_control_modes": {
@@ -447,6 +213,133 @@
       "type": "object"
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "Shared1": {
+      "required": [
+        "suppression_constraints"
+      ]
+    },
+    "Shared2": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "Shared3": {
+      "items": {
+        "$ref": "#/definitions/Shared2"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "Shared4": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "description": "Exact supported intervals for one duration unit, declared as either an exhaustive preset list or an inclusive integer range. The two forms are mutually exclusive.",
+      "if": {
+        "properties": {
+          "unit": {
+            "const": "campaign"
+          }
+        },
+        "required": [
+          "unit"
+        ]
+      },
+      "oneOf": [
+        {
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "minimum_interval"
+                ]
+              },
+              {
+                "required": [
+                  "maximum_interval"
+                ]
+              }
+            ]
+          },
+          "required": [
+            "allowed_intervals"
+          ]
+        },
+        {
+          "not": {
+            "required": [
+              "allowed_intervals"
+            ]
+          },
+          "required": [
+            "minimum_interval",
+            "maximum_interval"
+          ]
+        }
+      ],
+      "properties": {
+        "allowed_intervals": {
+          "$ref": "#/definitions/Shared3"
+        },
+        "ext": {
+          "$ref": "#/definitions/Shared0"
+        },
+        "maximum_interval": {
+          "$ref": "#/definitions/Shared2"
+        },
+        "minimum_interval": {
+          "$ref": "#/definitions/Shared2"
+        },
+        "unit": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "A duration unit supported for a frequency-cap window or suppression period.",
+          "enum": [
+            "seconds",
+            "minutes",
+            "hours",
+            "days",
+            "campaign"
+          ],
+          "title": "Frequency Cap Duration Unit",
+          "type": "string"
+        }
+      },
+      "required": [
+        "unit"
+      ],
+      "then": {
+        "properties": {
+          "allowed_intervals": {
+            "items": {
+              "$ref": "#/definitions/Shared5"
+            }
+          },
+          "maximum_interval": {
+            "$ref": "#/definitions/Shared5"
+          },
+          "minimum_interval": {
+            "$ref": "#/definitions/Shared5"
+          }
+        }
+      },
+      "title": "Frequency Cap Interval Constraints",
+      "type": "object",
+      "x-adcp-hoist": true,
+      "x-adcp-validation": {
+        "ordered_bounds": "minimum_interval MUST be less than or equal to maximum_interval."
+      }
+    },
+    "Shared5": {
+      "const": 1
+    }
+  },
   "description": "Complete seller-wide executable domain for aggregate MediaBuy frequency caps. Unlike product detail, this root capability cannot inherit omitted values: it declares the supported max-impression mode, entity units, impression limits, and exact window intervals. Product constraints may only narrow this domain.",
   "title": "Media Buy Frequency Cap Capability"
 }

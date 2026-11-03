@@ -1,5 +1,15 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "Shared0": {
+      "description": "Domain where publisher's adagents.json is hosted",
+      "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+      "type": "string"
+    },
+    "Shared1": {
+      "type": "string"
+    }
+  },
   "description": "A source of collections for a collection list. Supports three selection patterns: distribution identifiers (cross-publisher), publisher-specific collection IDs, or publisher-specific genres.",
   "discriminator": {
     "propertyName": "selection_type"
@@ -116,15 +126,13 @@
         "collection_ids": {
           "description": "Specific collection IDs from the publisher's adagents.json",
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/Shared1"
           },
           "minItems": 1,
           "type": "array"
         },
         "publisher_domain": {
-          "description": "Domain where publisher's adagents.json is hosted",
-          "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         },
         "selection_type": {
           "const": "publisher_collections",
@@ -175,15 +183,13 @@
         "genres": {
           "description": "Genre values to match against the publisher's collections",
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/Shared1"
           },
           "minItems": 1,
           "type": "array"
         },
         "publisher_domain": {
-          "description": "Domain where publisher's adagents.json is hosted",
-          "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         },
         "selection_type": {
           "const": "publisher_genres",

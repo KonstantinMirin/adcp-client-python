@@ -1,6 +1,22 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": false,
+  "definitions": {
+    "Shared0": {
+      "type": "string"
+    },
+    "Shared1": {
+      "pattern": "^#[0-9a-fA-F]{6}$",
+      "type": "string"
+    },
+    "Shared2": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    }
+  },
   "description": "A reported value for a vendor-defined metric, emitted in `delivery-metrics.json` `vendor_metric_values` parallel to standard scalars. Identifies the vendor (BrandRef), the metric name within that vendor's vocabulary, the value, and the coverage denominator (`measurable_impressions`) \u2014 vendor measurement is rarely 100% coverage. Channels whose atomic observation unit is a play or screen-second rather than an impression (DOOH, cinema, place-based) use the sibling denominators `measurable_plays` / `measurable_play_seconds`. `vendor_relationship` optionally echoes the seller's declared relationship to the vendor (`first_party` / `affiliated` / `third_party`) so a row is self-describing without a discovery hop. The `breakdown` slot accommodates vendors that emit structured payloads beyond a single scalar (panel demographic breakouts, co-view ratios, incremental decompositions). To add fields beyond what this schema defines, vendors place them inside `breakdown` rather than alongside the standard envelope.",
   "examples": [
     {
@@ -252,16 +268,13 @@
               "description": "Override brand colors (hex strings).",
               "properties": {
                 "accent": {
-                  "pattern": "^#[0-9a-fA-F]{6}$",
-                  "type": "string"
+                  "$ref": "#/definitions/Shared1"
                 },
                 "primary": {
-                  "pattern": "^#[0-9a-fA-F]{6}$",
-                  "type": "string"
+                  "$ref": "#/definitions/Shared1"
                 },
                 "secondary": {
-                  "pattern": "^#[0-9a-fA-F]{6}$",
-                  "type": "string"
+                  "$ref": "#/definitions/Shared1"
                 }
               },
               "type": "object"
@@ -452,11 +465,7 @@
                                 "minProperties": 1,
                                 "properties": {
                                   "ext": {
-                                    "$schema": "http://json-schema.org/draft-07/schema#",
-                                    "additionalProperties": true,
-                                    "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                                    "title": "Extension Object",
-                                    "type": "object"
+                                    "$ref": "#/definitions/Shared2"
                                   },
                                   "min_duration_ms": {
                                     "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial \u2014 without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available.",
@@ -586,11 +595,7 @@
                       "type": "array"
                     },
                     "ext": {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
-                      "additionalProperties": true,
-                      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                      "title": "Extension Object",
-                      "type": "object"
+                      "$ref": "#/definitions/Shared2"
                     },
                     "human_oversight": {
                       "description": "Level of human involvement in the AI-assisted creation process. Independent of `disclosure.required` \u2014 the protocol does not derive disclosure obligations from oversight level. Some regulations include carve-outs for human-edited or human-directed AI output, but those carve-outs have factual prerequisites the schema cannot evaluate. Asserting `edited` or `directed` does not by itself justify `disclosure.required: false`.",
@@ -804,7 +809,7 @@
             },
             "languages": {
               "items": {
-                "type": "string"
+                "$ref": "#/definitions/Shared0"
               },
               "type": "array"
             },
@@ -824,7 +829,7 @@
         "industries": {
           "description": "Inline override for the brand's industries. Useful when the caller cannot modify the brand's canonical brand.json but needs to declare industries for governance (e.g., Annex III vertical detection). brand.json remains the canonical source; when omitted here, governance agents SHOULD resolve from brand.json.",
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/Shared0"
           },
           "type": "array"
         }

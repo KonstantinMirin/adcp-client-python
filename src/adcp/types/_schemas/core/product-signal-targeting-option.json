@@ -279,29 +279,19 @@
               "not": {
                 "anyOf": [
                   {
-                    "required": [
-                      "data_provider_domain"
-                    ]
+                    "$ref": "#/definitions/Shared0"
                   },
                   {
-                    "required": [
-                      "signal_source_url"
-                    ]
+                    "$ref": "#/definitions/Shared1"
                   },
                   {
-                    "required": [
-                      "agent_url"
-                    ]
+                    "$ref": "#/definitions/Shared2"
                   },
                   {
-                    "required": [
-                      "source"
-                    ]
+                    "$ref": "#/definitions/Shared3"
                   },
                   {
-                    "required": [
-                      "id"
-                    ]
+                    "$ref": "#/definitions/Shared4"
                   }
                 ]
               },
@@ -329,24 +319,16 @@
               "not": {
                 "anyOf": [
                   {
-                    "required": [
-                      "agent_url"
-                    ]
+                    "$ref": "#/definitions/Shared2"
                   },
                   {
-                    "required": [
-                      "signal_source_url"
-                    ]
+                    "$ref": "#/definitions/Shared1"
                   },
                   {
-                    "required": [
-                      "source"
-                    ]
+                    "$ref": "#/definitions/Shared3"
                   },
                   {
-                    "required": [
-                      "id"
-                    ]
+                    "$ref": "#/definitions/Shared4"
                   }
                 ]
               },
@@ -380,24 +362,16 @@
               "not": {
                 "anyOf": [
                   {
-                    "required": [
-                      "data_provider_domain"
-                    ]
+                    "$ref": "#/definitions/Shared0"
                   },
                   {
-                    "required": [
-                      "agent_url"
-                    ]
+                    "$ref": "#/definitions/Shared2"
                   },
                   {
-                    "required": [
-                      "source"
-                    ]
+                    "$ref": "#/definitions/Shared3"
                   },
                   {
-                    "required": [
-                      "id"
-                    ]
+                    "$ref": "#/definitions/Shared4"
                   }
                 ]
               },
@@ -468,6 +442,45 @@
       }
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "required": [
+        "data_provider_domain"
+      ]
+    },
+    "Shared1": {
+      "required": [
+        "signal_source_url"
+      ]
+    },
+    "Shared2": {
+      "required": [
+        "agent_url"
+      ]
+    },
+    "Shared3": {
+      "required": [
+        "source"
+      ]
+    },
+    "Shared4": {
+      "required": [
+        "id"
+      ]
+    },
+    "Shared5": {
+      "description": "ISO 4217 currency code",
+      "pattern": "^[A-Z]{3}$",
+      "type": "string"
+    },
+    "Shared6": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    }
+  },
   "description": "A signal the seller makes available inline for package-level signal composition on this product. Product.signal_targeting_options is used when the product needs product-scoped pricing, activation handles, defaults, grouping hints, a brief/refine-selected subset, or a curated inline menu. Wholesale products can instead omit inline options when the selectable menu is the broader get_signals feed. Product-local signals define their name and value_type inline through the shared signal-listing fields; data-provider and signal-source refs may omit those definition fields when the referenced definition or source is authoritative.",
   "properties": {
     "activation_status": {
@@ -608,16 +621,10 @@
                     "type": "number"
                   },
                   "currency": {
-                    "description": "ISO 4217 currency code",
-                    "pattern": "^[A-Z]{3}$",
-                    "type": "string"
+                    "$ref": "#/definitions/Shared5"
                   },
                   "ext": {
-                    "$schema": "http://json-schema.org/draft-07/schema#",
-                    "additionalProperties": true,
-                    "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                    "title": "Extension Object",
-                    "type": "object"
+                    "$ref": "#/definitions/Shared6"
                   },
                   "model": {
                     "const": "cpm",
@@ -642,11 +649,7 @@
                     "type": "string"
                   },
                   "ext": {
-                    "$schema": "http://json-schema.org/draft-07/schema#",
-                    "additionalProperties": true,
-                    "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                    "title": "Extension Object",
-                    "type": "object"
+                    "$ref": "#/definitions/Shared6"
                   },
                   "max_cpm": {
                     "description": "Optional CPM cap. When set, the effective charge is min(percent \u00d7 media_spend_per_mille, max_cpm).",
@@ -682,16 +685,10 @@
                     "type": "number"
                   },
                   "currency": {
-                    "description": "ISO 4217 currency code",
-                    "pattern": "^[A-Z]{3}$",
-                    "type": "string"
+                    "$ref": "#/definitions/Shared5"
                   },
                   "ext": {
-                    "$schema": "http://json-schema.org/draft-07/schema#",
-                    "additionalProperties": true,
-                    "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                    "title": "Extension Object",
-                    "type": "object"
+                    "$ref": "#/definitions/Shared6"
                   },
                   "model": {
                     "const": "flat_fee",
@@ -722,16 +719,10 @@
                 "description": "Fixed price per unit of work. Used for creative transformation (per format), AI generation (per image, per token), and rendering (per variant). The unit field describes what is counted; unit_price is the cost per one unit.",
                 "properties": {
                   "currency": {
-                    "description": "ISO 4217 currency code",
-                    "pattern": "^[A-Z]{3}$",
-                    "type": "string"
+                    "$ref": "#/definitions/Shared5"
                   },
                   "ext": {
-                    "$schema": "http://json-schema.org/draft-07/schema#",
-                    "additionalProperties": true,
-                    "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                    "title": "Extension Object",
-                    "type": "object"
+                    "$ref": "#/definitions/Shared6"
                   },
                   "model": {
                     "const": "per_unit",
@@ -771,11 +762,7 @@
                     "type": "string"
                   },
                   "ext": {
-                    "$schema": "http://json-schema.org/draft-07/schema#",
-                    "additionalProperties": true,
-                    "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                    "title": "Extension Object",
-                    "type": "object"
+                    "$ref": "#/definitions/Shared6"
                   },
                   "metadata": {
                     "additionalProperties": true,

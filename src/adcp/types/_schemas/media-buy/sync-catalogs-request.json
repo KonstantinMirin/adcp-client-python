@@ -33,7 +33,7 @@
       "not": {
         "properties": {
           "dry_run": {
-            "const": true
+            "$ref": "#/definitions/Shared1"
           }
         },
         "required": [
@@ -43,6 +43,35 @@
       }
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "Shared1": {
+      "const": true
+    },
+    "Shared2": {
+      "description": "Exact canonical item key used by Catalog.ids. For typed catalogs this is the type-specific identifier field; for product, inventory, and promotion catalogs it is the stable normalized source identifier retained during ingestion.",
+      "maxLength": 255,
+      "minLength": 1,
+      "type": "string",
+      "x-entity": "catalog_item"
+    },
+    "Shared3": {
+      "type": "string"
+    },
+    "Shared4": {
+      "const": "suppress"
+    },
+    "Shared5": {
+      "pattern": "^#[0-9a-fA-F]{6}$",
+      "type": "string"
+    }
+  },
   "description": "Request parameters for syncing buyer-managed catalog feeds, pushing immediate item availability overrides, and reading current availability state. Supports bulk operations across multiple catalog types. Existing catalogs matched by catalog_id are updated, new ones are created. When catalogs, item_availability_updates, and item_availability_queries are all omitted, the call is discovery-only.",
   "examples": [
     {
@@ -144,7 +173,7 @@
   "if": {
     "properties": {
       "delete_missing": {
-        "const": true
+        "$ref": "#/definitions/Shared1"
       }
     },
     "required": [
@@ -260,16 +289,13 @@
                       "description": "Override brand colors (hex strings).",
                       "properties": {
                         "accent": {
-                          "pattern": "^#[0-9a-fA-F]{6}$",
-                          "type": "string"
+                          "$ref": "#/definitions/Shared5"
                         },
                         "primary": {
-                          "pattern": "^#[0-9a-fA-F]{6}$",
-                          "type": "string"
+                          "$ref": "#/definitions/Shared5"
                         },
                         "secondary": {
-                          "pattern": "^#[0-9a-fA-F]{6}$",
-                          "type": "string"
+                          "$ref": "#/definitions/Shared5"
                         }
                       },
                       "type": "object"
@@ -460,11 +486,7 @@
                                         "minProperties": 1,
                                         "properties": {
                                           "ext": {
-                                            "$schema": "http://json-schema.org/draft-07/schema#",
-                                            "additionalProperties": true,
-                                            "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                                            "title": "Extension Object",
-                                            "type": "object"
+                                            "$ref": "#/definitions/Shared0"
                                           },
                                           "min_duration_ms": {
                                             "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial \u2014 without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available.",
@@ -594,11 +616,7 @@
                               "type": "array"
                             },
                             "ext": {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
-                              "additionalProperties": true,
-                              "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                              "title": "Extension Object",
-                              "type": "object"
+                              "$ref": "#/definitions/Shared0"
                             },
                             "human_oversight": {
                               "description": "Level of human involvement in the AI-assisted creation process. Independent of `disclosure.required` \u2014 the protocol does not derive disclosure obligations from oversight level. Some regulations include carve-outs for human-edited or human-directed AI output, but those carve-outs have factual prerequisites the schema cannot evaluate. Asserting `edited` or `directed` does not by itself justify `disclosure.required: false`.",
@@ -812,7 +830,7 @@
                     },
                     "languages": {
                       "items": {
-                        "type": "string"
+                        "$ref": "#/definitions/Shared3"
                       },
                       "type": "array"
                     },
@@ -832,7 +850,7 @@
                 "industries": {
                   "description": "Inline override for the brand's industries. Useful when the caller cannot modify the brand's canonical brand.json but needs to declare industries for governance (e.g., Annex III vertical detection). brand.json remains the canonical source; when omitted here, governance agents SHOULD resolve from brand.json.",
                   "items": {
-                    "type": "string"
+                    "$ref": "#/definitions/Shared3"
                   },
                   "type": "array"
                 }
@@ -1264,11 +1282,7 @@
                   "description": "Fallback value to use when feed_field is absent, null, or empty. Applied after any transform would have been applied. Allows optional feed fields to have a guaranteed baseline value."
                 },
                 "ext": {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
-                  "additionalProperties": true,
-                  "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                  "title": "Extension Object",
-                  "type": "object"
+                  "$ref": "#/definitions/Shared0"
                 },
                 "feed_field": {
                   "description": "Field name in the external feed record. Omit when injecting a static literal value (use the value property instead).",
@@ -1345,7 +1359,7 @@
           "ids": {
             "description": "Filter catalog to exact canonical item keys. The key field is offering_id for offering, store_id for store, hotel_id for hotel, flight_id for flight, job_id for job, vehicle_id for vehicle, listing_id for real_estate, program_id for education, destination_id for destination, and app_id for app. Product, inventory, and promotion catalogs use the stable normalized source identifier retained during ingestion (for example a retailer SKU). The same canonical key is used by catalog availability item_id.",
             "items": {
-              "type": "string"
+              "$ref": "#/definitions/Shared3"
             },
             "minItems": 1,
             "type": "array"
@@ -1369,7 +1383,7 @@
           "tags": {
             "description": "Filter catalog to items with these tags. Tags are matched using OR logic \u2014 items matching any tag are included.",
             "items": {
-              "type": "string"
+              "$ref": "#/definitions/Shared3"
             },
             "minItems": 1,
             "type": "array"
@@ -1441,11 +1455,7 @@
       "type": "boolean"
     },
     "ext": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "additionalProperties": true,
-      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-      "title": "Extension Object",
-      "type": "object"
+      "$ref": "#/definitions/Shared0"
     },
     "idempotency_key": {
       "description": "Client-generated unique key for at-most-once execution. Catalog upserts and item availability transitions can emit audit events or trigger platform work \u2014 this key prevents those side effects from firing twice on retry. Also serves as a request ID on discovery-only calls. MUST be unique per (seller, request) pair. Use a fresh UUID v4 for each request.",
@@ -1476,11 +1486,7 @@
             "x-entity": "catalog"
           },
           "item_id": {
-            "description": "Exact canonical item key used by Catalog.ids. For typed catalogs this is the type-specific identifier field; for product, inventory, and promotion catalogs it is the stable normalized source identifier retained during ingestion.",
-            "maxLength": 255,
-            "minLength": 1,
-            "type": "string",
-            "x-entity": "catalog_item"
+            "$ref": "#/definitions/Shared2"
           }
         },
         "required": [
@@ -1519,7 +1525,7 @@
             "if": {
               "properties": {
                 "action": {
-                  "const": "suppress"
+                  "$ref": "#/definitions/Shared4"
                 }
               },
               "required": [
@@ -1550,7 +1556,7 @@
             "then": {
               "properties": {
                 "action": {
-                  "const": "suppress"
+                  "$ref": "#/definitions/Shared4"
                 }
               }
             }
@@ -1601,18 +1607,10 @@
             "type": "string"
           },
           "ext": {
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "additionalProperties": true,
-            "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-            "title": "Extension Object",
-            "type": "object"
+            "$ref": "#/definitions/Shared0"
           },
           "item_id": {
-            "description": "Exact canonical item key used by Catalog.ids. For typed catalogs this is the type-specific identifier field; for product, inventory, and promotion catalogs it is the stable normalized source identifier retained during ingestion.",
-            "maxLength": 255,
-            "minLength": 1,
-            "type": "string",
-            "x-entity": "catalog_item"
+            "$ref": "#/definitions/Shared2"
           },
           "reason": {
             "description": "Machine-readable reason for the transition. Use other only when no standard reason applies and explain the condition in reason_detail.",

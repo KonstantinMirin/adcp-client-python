@@ -1,13 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": false,
-  "description": "Compact forecasted vendor metric with a BrandKey vendor pointer and no embedded brand assets.",
-  "properties": {
-    "breakdown": {
-      "additionalProperties": true,
-      "type": "object"
-    },
-    "measurable_impressions": {
+  "definitions": {
+    "Shared0": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "additionalProperties": true,
       "anyOf": [
@@ -43,6 +38,16 @@
       },
       "title": "Forecast Range",
       "type": "object"
+    }
+  },
+  "description": "Compact forecasted vendor metric with a BrandKey vendor pointer and no embedded brand assets.",
+  "properties": {
+    "breakdown": {
+      "additionalProperties": true,
+      "type": "object"
+    },
+    "measurable_impressions": {
+      "$ref": "#/definitions/Shared0"
     },
     "metric_id": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -65,41 +70,7 @@
       "type": "string"
     },
     "value": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "additionalProperties": true,
-      "anyOf": [
-        {
-          "required": [
-            "mid"
-          ]
-        },
-        {
-          "required": [
-            "low",
-            "high"
-          ]
-        }
-      ],
-      "description": "A forecast value with optional confidence bounds. Either mid (point estimate) or both low and high (range) must be provided. mid represents the most likely outcome. low and high represent conservative and optimistic estimates. All three can be provided together.",
-      "properties": {
-        "high": {
-          "description": "Optimistic (high-end) forecast value",
-          "minimum": 0,
-          "type": "number"
-        },
-        "low": {
-          "description": "Conservative (low-end) forecast value",
-          "minimum": 0,
-          "type": "number"
-        },
-        "mid": {
-          "description": "Expected (most likely) forecast value",
-          "minimum": 0,
-          "type": "number"
-        }
-      },
-      "title": "Forecast Range",
-      "type": "object"
+      "$ref": "#/definitions/Shared0"
     },
     "vendor": {
       "$schema": "http://json-schema.org/draft-07/schema#",

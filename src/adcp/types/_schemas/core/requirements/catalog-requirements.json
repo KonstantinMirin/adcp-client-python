@@ -1,6 +1,106 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
+  "definitions": {
+    "Shared0": {
+      "type": "string"
+    },
+    "Shared1": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "Shared10": {
+      "format": "hostname",
+      "type": "string"
+    },
+    "Shared11": {
+      "minimum": 0,
+      "type": "number"
+    },
+    "Shared2": {
+      "additionalProperties": true,
+      "description": "Maps an individual format asset to a catalog item field via dot-notation path.",
+      "properties": {
+        "asset_id": {
+          "$ref": "#/definitions/Shared4"
+        },
+        "catalog_field": {
+          "description": "Dot-notation path to the field on the catalog item (e.g., 'name', 'price.amount', 'location.city').",
+          "type": "string"
+        },
+        "ext": {
+          "$ref": "#/definitions/Shared1"
+        },
+        "kind": {
+          "const": "scalar",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "asset_id",
+        "catalog_field"
+      ],
+      "type": "object"
+    },
+    "Shared3": {
+      "additionalProperties": true,
+      "description": "Maps an individual format asset to a typed asset pool on the catalog item (e.g., images_landscape, images_vertical, logo). The format slot receives the first item in the pool.",
+      "properties": {
+        "asset_group_id": {
+          "description": "The asset_group_id on the catalog item's assets array to pull from (e.g., 'images_landscape', 'images_vertical', 'logo').",
+          "type": "string"
+        },
+        "asset_id": {
+          "$ref": "#/definitions/Shared4"
+        },
+        "ext": {
+          "$ref": "#/definitions/Shared1"
+        },
+        "kind": {
+          "const": "asset_pool",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "asset_id",
+        "asset_group_id"
+      ],
+      "type": "object"
+    },
+    "Shared4": {
+      "description": "The asset_id from the format's assets array. Identifies which individual template slot this binding applies to.",
+      "type": "string"
+    },
+    "Shared5": {
+      "description": "Maximum file size in kilobytes",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "Shared6": {
+      "description": "Minimum duration in milliseconds",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "Shared7": {
+      "description": "Maximum duration in milliseconds",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "Shared8": {
+      "description": "Maximum character length",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "Shared9": {
+      "minimum": 1,
+      "type": "integer"
+    }
+  },
   "description": "Format-level declaration of what catalog feeds a creative needs. Formats that render product listings, store locators, or promotional content declare which catalog types must be synced and what fields each catalog must provide. Buyers use this to ensure the right catalogs are synced before submitting creatives.",
   "properties": {
     "catalog_type": {
@@ -62,66 +162,10 @@
         "$schema": "http://json-schema.org/draft-07/schema#",
         "definitions": {
           "AssetPoolBinding": {
-            "additionalProperties": true,
-            "description": "Maps an individual format asset to a typed asset pool on the catalog item (e.g., images_landscape, images_vertical, logo). The format slot receives the first item in the pool.",
-            "properties": {
-              "asset_group_id": {
-                "description": "The asset_group_id on the catalog item's assets array to pull from (e.g., 'images_landscape', 'images_vertical', 'logo').",
-                "type": "string"
-              },
-              "asset_id": {
-                "description": "The asset_id from the format's assets array. Identifies which individual template slot this binding applies to.",
-                "type": "string"
-              },
-              "ext": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "additionalProperties": true,
-                "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                "title": "Extension Object",
-                "type": "object"
-              },
-              "kind": {
-                "const": "asset_pool",
-                "type": "string"
-              }
-            },
-            "required": [
-              "kind",
-              "asset_id",
-              "asset_group_id"
-            ],
-            "type": "object"
+            "$ref": "#/definitions/Shared3"
           },
           "ScalarBinding": {
-            "additionalProperties": true,
-            "description": "Maps an individual format asset to a catalog item field via dot-notation path.",
-            "properties": {
-              "asset_id": {
-                "description": "The asset_id from the format's assets array. Identifies which individual template slot this binding applies to.",
-                "type": "string"
-              },
-              "catalog_field": {
-                "description": "Dot-notation path to the field on the catalog item (e.g., 'name', 'price.amount', 'location.city').",
-                "type": "string"
-              },
-              "ext": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "additionalProperties": true,
-                "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                "title": "Extension Object",
-                "type": "object"
-              },
-              "kind": {
-                "const": "scalar",
-                "type": "string"
-              }
-            },
-            "required": [
-              "kind",
-              "asset_id",
-              "catalog_field"
-            ],
-            "type": "object"
+            "$ref": "#/definitions/Shared2"
           }
         },
         "description": "Maps a format template slot to a catalog item field or typed asset pool. The 'kind' field identifies the binding variant. All bindings are optional \u2014 agents can still infer mappings without them.",
@@ -189,66 +233,10 @@
         ],
         "oneOf": [
           {
-            "additionalProperties": true,
-            "description": "Maps an individual format asset to a catalog item field via dot-notation path.",
-            "properties": {
-              "asset_id": {
-                "description": "The asset_id from the format's assets array. Identifies which individual template slot this binding applies to.",
-                "type": "string"
-              },
-              "catalog_field": {
-                "description": "Dot-notation path to the field on the catalog item (e.g., 'name', 'price.amount', 'location.city').",
-                "type": "string"
-              },
-              "ext": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "additionalProperties": true,
-                "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                "title": "Extension Object",
-                "type": "object"
-              },
-              "kind": {
-                "const": "scalar",
-                "type": "string"
-              }
-            },
-            "required": [
-              "kind",
-              "asset_id",
-              "catalog_field"
-            ],
-            "type": "object"
+            "$ref": "#/definitions/Shared2"
           },
           {
-            "additionalProperties": true,
-            "description": "Maps an individual format asset to a typed asset pool on the catalog item (e.g., images_landscape, images_vertical, logo). The format slot receives the first item in the pool.",
-            "properties": {
-              "asset_group_id": {
-                "description": "The asset_group_id on the catalog item's assets array to pull from (e.g., 'images_landscape', 'images_vertical', 'logo').",
-                "type": "string"
-              },
-              "asset_id": {
-                "description": "The asset_id from the format's assets array. Identifies which individual template slot this binding applies to.",
-                "type": "string"
-              },
-              "ext": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "additionalProperties": true,
-                "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                "title": "Extension Object",
-                "type": "object"
-              },
-              "kind": {
-                "const": "asset_pool",
-                "type": "string"
-              }
-            },
-            "required": [
-              "kind",
-              "asset_id",
-              "asset_group_id"
-            ],
-            "type": "object"
+            "$ref": "#/definitions/Shared3"
           },
           {
             "additionalProperties": true,
@@ -260,11 +248,7 @@
                 "type": "boolean"
               },
               "ext": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "additionalProperties": true,
-                "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                "title": "Extension Object",
-                "type": "object"
+                "$ref": "#/definitions/Shared1"
               },
               "format_group_id": {
                 "description": "The asset_group_id of a repeatable_group in the format's assets array.",
@@ -282,66 +266,10 @@
                   },
                   "oneOf": [
                     {
-                      "additionalProperties": true,
-                      "description": "Maps an individual format asset to a catalog item field via dot-notation path.",
-                      "properties": {
-                        "asset_id": {
-                          "description": "The asset_id from the format's assets array. Identifies which individual template slot this binding applies to.",
-                          "type": "string"
-                        },
-                        "catalog_field": {
-                          "description": "Dot-notation path to the field on the catalog item (e.g., 'name', 'price.amount', 'location.city').",
-                          "type": "string"
-                        },
-                        "ext": {
-                          "$schema": "http://json-schema.org/draft-07/schema#",
-                          "additionalProperties": true,
-                          "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                          "title": "Extension Object",
-                          "type": "object"
-                        },
-                        "kind": {
-                          "const": "scalar",
-                          "type": "string"
-                        }
-                      },
-                      "required": [
-                        "kind",
-                        "asset_id",
-                        "catalog_field"
-                      ],
-                      "type": "object"
+                      "$ref": "#/definitions/Shared2"
                     },
                     {
-                      "additionalProperties": true,
-                      "description": "Maps an individual format asset to a typed asset pool on the catalog item (e.g., images_landscape, images_vertical, logo). The format slot receives the first item in the pool.",
-                      "properties": {
-                        "asset_group_id": {
-                          "description": "The asset_group_id on the catalog item's assets array to pull from (e.g., 'images_landscape', 'images_vertical', 'logo').",
-                          "type": "string"
-                        },
-                        "asset_id": {
-                          "description": "The asset_id from the format's assets array. Identifies which individual template slot this binding applies to.",
-                          "type": "string"
-                        },
-                        "ext": {
-                          "$schema": "http://json-schema.org/draft-07/schema#",
-                          "additionalProperties": true,
-                          "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                          "title": "Extension Object",
-                          "type": "object"
-                        },
-                        "kind": {
-                          "const": "asset_pool",
-                          "type": "string"
-                        }
-                      },
-                      "required": [
-                        "kind",
-                        "asset_id",
-                        "asset_group_id"
-                      ],
-                      "type": "object"
+                      "$ref": "#/definitions/Shared3"
                     }
                   ]
                 },
@@ -448,20 +376,16 @@
                         "additionalProperties": false,
                         "properties": {
                           "bottom": {
-                            "minimum": 0,
-                            "type": "number"
+                            "$ref": "#/definitions/Shared11"
                           },
                           "left": {
-                            "minimum": 0,
-                            "type": "number"
+                            "$ref": "#/definitions/Shared11"
                           },
                           "right": {
-                            "minimum": 0,
-                            "type": "number"
+                            "$ref": "#/definitions/Shared11"
                           },
                           "top": {
-                            "minimum": 0,
-                            "type": "number"
+                            "$ref": "#/definitions/Shared11"
                           }
                         },
                         "required": [
@@ -508,9 +432,7 @@
                     "type": "integer"
                   },
                   "max_file_size_kb": {
-                    "description": "Maximum file size in kilobytes",
-                    "minimum": 1,
-                    "type": "integer"
+                    "$ref": "#/definitions/Shared5"
                   },
                   "max_height": {
                     "description": "Maximum height. Interpretation depends on unit (default: pixels). For exact dimensions, set min_height = max_height.",
@@ -633,8 +555,7 @@
                   "audio_sample_rates": {
                     "description": "Accepted audio sample rates in Hz (e.g., [44100, 48000])",
                     "items": {
-                      "minimum": 1,
-                      "type": "integer"
+                      "$ref": "#/definitions/Shared9"
                     },
                     "type": "array"
                   },
@@ -718,9 +639,7 @@
                     "type": "integer"
                   },
                   "max_duration_ms": {
-                    "description": "Maximum duration in milliseconds",
-                    "minimum": 1,
-                    "type": "integer"
+                    "$ref": "#/definitions/Shared7"
                   },
                   "max_file_size_kb": {
                     "description": "Maximum file size, where 1 KB is exactly 1,000 bytes",
@@ -748,9 +667,7 @@
                     "type": "integer"
                   },
                   "min_duration_ms": {
-                    "description": "Minimum duration in milliseconds",
-                    "minimum": 1,
-                    "type": "integer"
+                    "$ref": "#/definitions/Shared6"
                   },
                   "min_gop_interval_seconds": {
                     "description": "Minimum keyframe interval in seconds",
@@ -848,14 +765,10 @@
                     "type": "integer"
                   },
                   "max_duration_ms": {
-                    "description": "Maximum duration in milliseconds",
-                    "minimum": 1,
-                    "type": "integer"
+                    "$ref": "#/definitions/Shared7"
                   },
                   "max_file_size_kb": {
-                    "description": "Maximum file size in kilobytes",
-                    "minimum": 1,
-                    "type": "integer"
+                    "$ref": "#/definitions/Shared5"
                   },
                   "min_bitrate_kbps": {
                     "description": "Minimum audio bitrate in kilobits per second",
@@ -863,15 +776,12 @@
                     "type": "integer"
                   },
                   "min_duration_ms": {
-                    "description": "Minimum duration in milliseconds",
-                    "minimum": 1,
-                    "type": "integer"
+                    "$ref": "#/definitions/Shared6"
                   },
                   "sample_rates": {
                     "description": "Accepted sample rates in Hz (e.g., [44100, 48000])",
                     "items": {
-                      "minimum": 1,
-                      "type": "integer"
+                      "$ref": "#/definitions/Shared9"
                     },
                     "type": "array"
                   },
@@ -891,7 +801,7 @@
                   "allowed_values": {
                     "description": "Closed set of permitted string values for this text slot. When present, a conformant implementation MUST reject any submitted content not in this list with `CREATIVE_VALUE_NOT_ALLOWED` (echoing the offending field path in `error.field` and the allowed list in `error.details.allowed_values`). Matching is case-sensitive; producers MUST supply exact casing. If the submitted value contains unresolved template tokens (e.g., {{product_name}}), validation against allowed_values MUST be deferred until interpolation is complete. All declared constraints (allowed_values, character_pattern, max_length, etc.) are conjunctive \u2014 submitted content must satisfy every applicable constraint simultaneously.",
                     "items": {
-                      "type": "string"
+                      "$ref": "#/definitions/Shared0"
                     },
                     "minItems": 1,
                     "type": "array",
@@ -902,9 +812,7 @@
                     "type": "string"
                   },
                   "max_length": {
-                    "description": "Maximum character length",
-                    "minimum": 1,
-                    "type": "integer"
+                    "$ref": "#/definitions/Shared8"
                   },
                   "max_lines": {
                     "description": "Maximum number of lines",
@@ -924,7 +832,7 @@
                   "prohibited_terms": {
                     "description": "List of prohibited words or phrases",
                     "items": {
-                      "type": "string"
+                      "$ref": "#/definitions/Shared0"
                     },
                     "type": "array"
                   }
@@ -938,9 +846,7 @@
                 "description": "Requirements for markdown creative assets.",
                 "properties": {
                   "max_length": {
-                    "description": "Maximum character length",
-                    "minimum": 1,
-                    "type": "integer"
+                    "$ref": "#/definitions/Shared8"
                   }
                 },
                 "title": "Markdown Asset Requirements",
@@ -954,8 +860,7 @@
                   "allowed_external_domains": {
                     "description": "List of domains the HTML creative may reference for external resources. Only applicable when external_resources_allowed is true.",
                     "items": {
-                      "format": "hostname",
-                      "type": "string"
+                      "$ref": "#/definitions/Shared10"
                     },
                     "type": "array"
                   },
@@ -989,9 +894,7 @@
                 "description": "Requirements for CSS creative assets.",
                 "properties": {
                   "max_file_size_kb": {
-                    "description": "Maximum file size in kilobytes",
-                    "minimum": 1,
-                    "type": "integer"
+                    "$ref": "#/definitions/Shared5"
                   }
                 },
                 "title": "CSS Asset Requirements",
@@ -1005,8 +908,7 @@
                   "allowed_external_domains": {
                     "description": "List of domains the JavaScript may reference for external resources. Only applicable when external_resources_allowed is true.",
                     "items": {
-                      "format": "hostname",
-                      "type": "string"
+                      "$ref": "#/definitions/Shared10"
                     },
                     "type": "array"
                   },
@@ -1236,8 +1138,7 @@
                   "allowed_domains": {
                     "description": "List of allowed domains for the URL",
                     "items": {
-                      "format": "hostname",
-                      "type": "string"
+                      "$ref": "#/definitions/Shared10"
                     },
                     "type": "array"
                   },
@@ -1326,11 +1227,7 @@
             "type": "string"
           },
           "ext": {
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "additionalProperties": true,
-            "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-            "title": "Extension Object",
-            "type": "object"
+            "$ref": "#/definitions/Shared1"
           },
           "max_count": {
             "description": "Maximum number of items allowed in this group.",
@@ -1367,7 +1264,7 @@
     "required_fields": {
       "description": "Fields that must be present and non-empty on every item in the catalog. Field names are catalog-type-specific (e.g., 'title', 'price', 'image_url' for product catalogs; 'store_id', 'quantity' for inventory feeds).",
       "items": {
-        "type": "string"
+        "$ref": "#/definitions/Shared0"
       },
       "minItems": 1,
       "type": "array",

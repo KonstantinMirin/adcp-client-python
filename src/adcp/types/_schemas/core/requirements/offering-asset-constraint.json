@@ -1,6 +1,43 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
+  "definitions": {
+    "Shared0": {
+      "description": "Maximum file size in kilobytes",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "Shared1": {
+      "description": "Minimum duration in milliseconds",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "Shared2": {
+      "description": "Maximum duration in milliseconds",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "Shared3": {
+      "description": "Maximum character length",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "Shared4": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "Shared5": {
+      "type": "string"
+    },
+    "Shared6": {
+      "format": "hostname",
+      "type": "string"
+    },
+    "Shared7": {
+      "minimum": 0,
+      "type": "number"
+    }
+  },
   "description": "Declares per-group creative requirements that each offering must satisfy. Allows formats to specify what asset groups (headlines, images, videos) offerings must provide, along with count and per-asset technical constraints.",
   "examples": [
     {
@@ -71,20 +108,16 @@
                   "additionalProperties": false,
                   "properties": {
                     "bottom": {
-                      "minimum": 0,
-                      "type": "number"
+                      "$ref": "#/definitions/Shared7"
                     },
                     "left": {
-                      "minimum": 0,
-                      "type": "number"
+                      "$ref": "#/definitions/Shared7"
                     },
                     "right": {
-                      "minimum": 0,
-                      "type": "number"
+                      "$ref": "#/definitions/Shared7"
                     },
                     "top": {
-                      "minimum": 0,
-                      "type": "number"
+                      "$ref": "#/definitions/Shared7"
                     }
                   },
                   "required": [
@@ -131,9 +164,7 @@
               "type": "integer"
             },
             "max_file_size_kb": {
-              "description": "Maximum file size in kilobytes",
-              "minimum": 1,
-              "type": "integer"
+              "$ref": "#/definitions/Shared0"
             },
             "max_height": {
               "description": "Maximum height. Interpretation depends on unit (default: pixels). For exact dimensions, set min_height = max_height.",
@@ -256,8 +287,7 @@
             "audio_sample_rates": {
               "description": "Accepted audio sample rates in Hz (e.g., [44100, 48000])",
               "items": {
-                "minimum": 1,
-                "type": "integer"
+                "$ref": "#/definitions/Shared4"
               },
               "type": "array"
             },
@@ -341,9 +371,7 @@
               "type": "integer"
             },
             "max_duration_ms": {
-              "description": "Maximum duration in milliseconds",
-              "minimum": 1,
-              "type": "integer"
+              "$ref": "#/definitions/Shared2"
             },
             "max_file_size_kb": {
               "description": "Maximum file size, where 1 KB is exactly 1,000 bytes",
@@ -371,9 +399,7 @@
               "type": "integer"
             },
             "min_duration_ms": {
-              "description": "Minimum duration in milliseconds",
-              "minimum": 1,
-              "type": "integer"
+              "$ref": "#/definitions/Shared1"
             },
             "min_gop_interval_seconds": {
               "description": "Minimum keyframe interval in seconds",
@@ -471,14 +497,10 @@
               "type": "integer"
             },
             "max_duration_ms": {
-              "description": "Maximum duration in milliseconds",
-              "minimum": 1,
-              "type": "integer"
+              "$ref": "#/definitions/Shared2"
             },
             "max_file_size_kb": {
-              "description": "Maximum file size in kilobytes",
-              "minimum": 1,
-              "type": "integer"
+              "$ref": "#/definitions/Shared0"
             },
             "min_bitrate_kbps": {
               "description": "Minimum audio bitrate in kilobits per second",
@@ -486,15 +508,12 @@
               "type": "integer"
             },
             "min_duration_ms": {
-              "description": "Minimum duration in milliseconds",
-              "minimum": 1,
-              "type": "integer"
+              "$ref": "#/definitions/Shared1"
             },
             "sample_rates": {
               "description": "Accepted sample rates in Hz (e.g., [44100, 48000])",
               "items": {
-                "minimum": 1,
-                "type": "integer"
+                "$ref": "#/definitions/Shared4"
               },
               "type": "array"
             },
@@ -514,7 +533,7 @@
             "allowed_values": {
               "description": "Closed set of permitted string values for this text slot. When present, a conformant implementation MUST reject any submitted content not in this list with `CREATIVE_VALUE_NOT_ALLOWED` (echoing the offending field path in `error.field` and the allowed list in `error.details.allowed_values`). Matching is case-sensitive; producers MUST supply exact casing. If the submitted value contains unresolved template tokens (e.g., {{product_name}}), validation against allowed_values MUST be deferred until interpolation is complete. All declared constraints (allowed_values, character_pattern, max_length, etc.) are conjunctive \u2014 submitted content must satisfy every applicable constraint simultaneously.",
               "items": {
-                "type": "string"
+                "$ref": "#/definitions/Shared5"
               },
               "minItems": 1,
               "type": "array",
@@ -525,9 +544,7 @@
               "type": "string"
             },
             "max_length": {
-              "description": "Maximum character length",
-              "minimum": 1,
-              "type": "integer"
+              "$ref": "#/definitions/Shared3"
             },
             "max_lines": {
               "description": "Maximum number of lines",
@@ -547,7 +564,7 @@
             "prohibited_terms": {
               "description": "List of prohibited words or phrases",
               "items": {
-                "type": "string"
+                "$ref": "#/definitions/Shared5"
               },
               "type": "array"
             }
@@ -561,9 +578,7 @@
           "description": "Requirements for markdown creative assets.",
           "properties": {
             "max_length": {
-              "description": "Maximum character length",
-              "minimum": 1,
-              "type": "integer"
+              "$ref": "#/definitions/Shared3"
             }
           },
           "title": "Markdown Asset Requirements",
@@ -577,8 +592,7 @@
             "allowed_external_domains": {
               "description": "List of domains the HTML creative may reference for external resources. Only applicable when external_resources_allowed is true.",
               "items": {
-                "format": "hostname",
-                "type": "string"
+                "$ref": "#/definitions/Shared6"
               },
               "type": "array"
             },
@@ -612,9 +626,7 @@
           "description": "Requirements for CSS creative assets.",
           "properties": {
             "max_file_size_kb": {
-              "description": "Maximum file size in kilobytes",
-              "minimum": 1,
-              "type": "integer"
+              "$ref": "#/definitions/Shared0"
             }
           },
           "title": "CSS Asset Requirements",
@@ -628,8 +640,7 @@
             "allowed_external_domains": {
               "description": "List of domains the JavaScript may reference for external resources. Only applicable when external_resources_allowed is true.",
               "items": {
-                "format": "hostname",
-                "type": "string"
+                "$ref": "#/definitions/Shared6"
               },
               "type": "array"
             },
@@ -859,8 +870,7 @@
             "allowed_domains": {
               "description": "List of allowed domains for the URL",
               "items": {
-                "format": "hostname",
-                "type": "string"
+                "$ref": "#/definitions/Shared6"
               },
               "type": "array"
             },

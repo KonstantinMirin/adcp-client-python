@@ -43,12 +43,16 @@ import jsonschema
 import pytest
 from pydantic import ValidationError
 
+from adcp.types import _base
+from adcp.types._base import applied_schema
+
 from codegen import bundle, compiler, emit
 from codegen.keywords import Position
 from codegen.refusal import Kind, Refusal
 from compiled import compiled
 import fresh
 import populations
+import compared
 from conftest import refusal_from
 
 from tests.nodeset import claimed, partitions
@@ -301,6 +305,16 @@ def test_a_local_reference_is_left_in_the_record_exactly_as_the_document_writes_
     Asserted in both directions over every document whose references are all local: the
     record's local references are the document's own, pointer for pointer and URI for
     URI, and it holds no cross-document reference at all.
+
+    **READ THROUGH THE RECORD'S OWN STORAGE** (``docs/plan/architecture.md``, "THE
+    RECORD'S TEXT IS A DAG; ITS POINTERS ARE NOT").  A record stores each distinct
+    subtree once and writes a local reference of its own at every occurrence, so the
+    record's reference list is the document's PLUS the storage's -- and 11 of these 13
+    documents have a repeated subtree.  The claim this test makes is about the
+    document's own references, so it is asked of the record with the storage put back:
+    that is the text §4's rule is about, and ``bundle.expanded`` is the inverse that
+    produces it.  The storage's own references are asserted separately, as the only
+    others the record holds.
     """
     local = [
         d
@@ -320,7 +334,21 @@ def test_a_local_reference_is_left_in_the_record_exactly_as_the_document_writes_
         raw = bundle.read(BUNDLE, document)
         record = bundle.record(BUNDLE, document, known)
         assert not isinstance(record, Refusal), (document, record)
-        assert bundle.references(record) == bundle.references(raw), document
+        assert bundle.references(bundle.expanded(record, record)) == bundle.references(raw), (
+            document
+        )
+        # Every reference the STORED text holds is one the document STATES or one the
+        # storage wrote, which is what makes the comparison above the whole reading.
+        # Compared by URI and not by pointer, because a reference inside a subtree the
+        # storage stored is at the entry's pointer and not at its own -- which is the
+        # storage's whole mechanism and is exactly what the expansion above undoes.
+        spelled = {u for _, u, _ in bundle.references(raw)}
+        foreign = [
+            (p, u)
+            for p, u, _ in bundle.references(record)
+            if u not in spelled and not _base.is_a_store_entry(u.rsplit("/", 1)[-1])
+        ]
+        assert foreign == [], (document, foreign[:5])
         assert bundle.undecidable_references(
             record, bundle.named_nodes(BUNDLE).get(document, frozenset())
         ) == [], document
@@ -328,6 +356,177 @@ def test_a_local_reference_is_left_in_the_record_exactly_as_the_document_writes_
     # named here so a reading that started inlining a local reference again reddens
     # with the documents it cannot finish on.
     claimed("locally-referencing documents with a recursive chain", recursive, inside=set(local))
+
+
+# --------------------------------------------------------------------------- #
+# the record's TEXT: a DAG, with its pointers unmoved
+# --------------------------------------------------------------------------- #
+@functools.cache
+def carried() -> dict[str, dict]:
+    """What the emitter writes beside every module: the record, or the document itself.
+
+    ``emit.emit``'s own condition, read here so the pointer check below asks its question
+    of the text the PACKAGE carries rather than of a second rendering of it.
+    """
+    return {
+        document: records().get(document) or bundle.read(BUNDLE, document)
+        for document in bundle.portable(BUNDLE)
+    }
+
+
+@functools.cache
+def records() -> dict[str, dict]:
+    """The RECORD of every portable document that states a reference.
+
+    **``emit.emit``'s own condition and not a second one**, which is also the set the
+    three checks below are stated over: the emitter takes the record of a document that
+    STATES a reference and writes the document ITSELF otherwise, so a reference-free
+    document records as itself and nothing of :func:`bundle.stored` reaches it.  The
+    duplication such a document's own text holds is UPSTREAM's -- 21 of the 364 have some
+    -- and reading 5 is already satisfied there, the record being the source byte for
+    byte.  Including them would state a property of the bundle's authors as a property of
+    this inliner.
+    """
+    known = set(bundle.portable(BUNDLE))
+    out = {}
+    for document in bundle.portable(BUNDLE):
+        raw = bundle.read(BUNDLE, document)
+        if not bundle.references(raw):
+            continue
+        record = bundle.record(BUNDLE, document, known)
+        assert not isinstance(record, Refusal), (document, record)
+        out[document] = record
+    return out
+
+
+def test_a_record_states_each_distinct_subtree_once() -> None:
+    """``docs/plan/final-state.md`` reading 5, as a property of every record's TEXT.
+
+    ``docs/plan/architecture.md``, "THE RECORD'S TEXT IS A DAG; ITS POINTERS ARE NOT":
+    "The record stores each distinct subtree once under its own ``definitions`` with a
+    local reference at each occurrence."  So no two schema positions of one record hold
+    equal content -- which is the reading stated exactly, with no byte figure in it.
+    Asserted as the property rather than as a size: a ratio is one bundle's reading of
+    a quantity the next upstream release moves, and the property is what the storage
+    guarantees.
+
+    **The one admitted repetition is a BARE REFERENCE**, which is
+    ``bundle.stored``'s second exclusion and not a threshold: storing a node that is
+    already a reference writes a reference to a reference, which is longer than the
+    node it replaces and states the same thing.  So the storage's own reference nodes
+    repeat, and so do a document's.
+
+    It reads the stored text AS WRITTEN -- one pointer per occurrence, which is what
+    ``bundle.nodes`` answers -- and takes no position on whether that walk should
+    follow a reference.  That is the fork the architecture section defers and this
+    check does not need: the question here is what the TEXT states, and the text is
+    what the walk reads.
+
+    The measured before/after of this property on the 3.2 bundle is on
+    ``adcp-client-python-82m.25``: 835,864,437 bytes of record became 67,638,592, and
+    ``core/mcp-webhook-payload.json``'s 112,920,473 became 2,272,167.
+    """
+    every = records()
+    claimed("records of documents that state a reference", every, inside=bundle.portable(BUNDLE))
+    for document, record in sorted(every.items()):
+        seen: dict[str, str] = {}
+        twice: list[tuple[str, str]] = []
+        for pointer, node in bundle.nodes(record):
+            if len(node) == 1 and "$ref" in node:
+                continue
+            key = json.dumps(node, sort_keys=True, default=str)
+            if key in seen:
+                twice.append((seen[key], pointer))
+            else:
+                seen[key] = pointer
+        assert not twice, (document, len(twice), twice[:3])
+
+
+def test_the_storage_states_what_the_inlined_record_states() -> None:
+    """``bundle.stored`` and ``bundle.expanded`` are inverses, over every record.
+
+    The architecture section calls the hoisting "a storage representation ... not a
+    renaming", and this is that sentence as a property: putting the storage back gives
+    the inlined text, and storing the inlined text again gives exactly the record the
+    package carries.  Both directions, because each catches a different defect -- a
+    storage that dropped a keyword fails the first, and one whose entry names moved with
+    something other than the content fails the second.
+
+    One consequence is asserted by name because a reader will ask about it: a document
+    that states an empty section and also has a subtree stored comes back from the
+    expansion with no section at all.  Draft-07 gives a ``definitions`` section no
+    assertion behaviour, so the two state the same thing; 0 documents of this bundle
+    state an empty one, which is why the round trip is exact here.
+    """
+    every = records()
+    claimed("records of documents that state a reference", every, inside=bundle.portable(BUNDLE))
+    empty_sections = {
+        d
+        for d, raw in ((d, bundle.read(BUNDLE, d)) for d in bundle.portable(BUNDLE))
+        for _, node in bundle.nodes(raw)
+        for kw in bundle.DEFINITIONS
+        if isinstance(node.get(kw), dict) and not node[kw]
+    }
+    assert empty_sections == set(), sorted(empty_sections)
+    stored_at_all = []
+    for document, record in sorted(every.items()):
+        inlined = bundle.expanded(record, record)
+        assert bundle.stored(inlined) == record, document
+        assert bundle.expanded(bundle.stored(inlined), record) == inlined, document
+        if inlined != record:
+            stored_at_all.append(document)
+    claimed("records the storage changes", stored_at_all, inside=set(every))
+
+
+def test_the_storage_moves_no_pointer_any_reader_spells() -> None:
+    """**THE HARD CONSTRAINT of the architecture section**, over every declared pointer.
+
+    "Every pointer any reader SPELLS keeps the spelling it has today ... a declared
+    pointer that stops resolving is a defect of the hoisting rather than a consequence
+    of it."  ``harness.corpus_key`` hashes the document's raw bytes and the POINTER, so
+    a respelled pointer misses every committed corpus entry and redraws its pair at the
+    cold cost; the storage is therefore invisible to the pointer, and this is the check
+    that says so.
+
+    Asked of the SchemaRef every class and alias of the tree declares, through the one
+    function that resolves one -- ``_base.schema_at``, which is what ``strict_validate``
+    and the harness both reach the schema half through.  Two answers per pointer: it
+    resolves, and it resolves to the node the INLINED text gives at the same pointer.
+    The second is the one that matters: a pointer that resolves to a bare reference
+    would resolve and would state nothing, because draft-07 ignores every sibling of a
+    ``$ref``.
+
+    The four pointers that do not resolve are a DIFFERENT defect and are named rather
+    than skipped: each names a node under a conjunct that is a document's OWN local
+    reference, which ``applied_schema`` does not follow and which the storage does not
+    touch (``adcp-client-python-82m.26``).  They fail identically with the storage and
+    without it, which is what the inlined half of this check reads.
+    """
+    every = carried()
+    refs = claimed(
+        "the SchemaRefs the tree declares",
+        {ref for ref, *_ in compared.pairs()},
+    )
+    inlined = {d: bundle.expanded(r, r) for d, r in every.items()}
+
+    def answer(root: dict, pointer: str) -> Any:
+        try:
+            return applied_schema(root, pointer)
+        except Exception as e:  # noqa: BLE001 -- the failure is the answer being compared
+            return f"{type(e).__name__}: {e}"
+
+    unresolved, moved = [], []
+    for ref in sorted(refs):
+        was = answer(inlined[ref.document], ref.pointer)
+        now = answer(every[ref.document], ref.pointer)
+        if isinstance(now, str):
+            if not isinstance(was, str):
+                unresolved.append(f"{ref.document}{ref.pointer}: {now}")
+            continue
+        if bundle.expanded(now, every[ref.document]) != was:
+            moved.append(f"{ref.document}{ref.pointer}")
+    assert unresolved == [], unresolved[:10]
+    assert moved == [], moved[:10]
 
 
 # --------------------------------------------------------------------------- #
@@ -1864,7 +2063,14 @@ def test_a_property_named_definitions_is_a_property_and_not_a_section(tmp_path: 
     root = write_bundle(tmp_path, {"a2ui/odd.json": doc, "core/target.json": TARGET})
     out = emit.emit(root, ["a2ui/odd.json"])
     assert "a2ui/odd.json" in out.emitted, out.refusals
-    carried = json.loads(out.files["a2ui/odd.json"])
+    # The carried document READ THROUGH ITS OWN STORAGE: the record stores each distinct
+    # subtree once and references it at every occurrence
+    # (``docs/plan/architecture.md``, "THE RECORD'S TEXT IS A DAG; ITS POINTERS ARE NOT"),
+    # and this document's inlined target repeats ``{"type": "string"}``.  The claim here
+    # is that the CROSS-DOCUMENT reference at a property named ``definitions`` was
+    # reached and inlined, so the text that claim is about is the inlined one.
+    stored_text = json.loads(out.files["a2ui/odd.json"])
+    carried = bundle.expanded(stored_text, stored_text)
     assert bundle.references(carried) == [], bundle.references(carried)
     body = carried["properties"]["definitions"]["properties"]["body"]
     assert "$ref" not in body, body

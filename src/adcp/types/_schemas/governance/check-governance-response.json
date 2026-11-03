@@ -38,19 +38,12 @@
           },
           {
             "if": {
-              "properties": {
-                "verdict": {
-                  "const": "conditions"
-                }
-              },
-              "required": [
-                "verdict"
-              ]
+              "$ref": "#/definitions/Shared4"
             },
             "then": {
               "properties": {
                 "conditions": {
-                  "minItems": 1
+                  "$ref": "#/definitions/Shared7"
                 }
               },
               "required": [
@@ -59,26 +52,7 @@
             }
           },
           {
-            "if": {
-              "properties": {
-                "verdict": {
-                  "const": "denied"
-                }
-              },
-              "required": [
-                "verdict"
-              ]
-            },
-            "then": {
-              "properties": {
-                "findings": {
-                  "minItems": 1
-                }
-              },
-              "required": [
-                "findings"
-              ]
-            }
+            "$ref": "#/definitions/Shared3"
           },
           {
             "if": {
@@ -95,9 +69,7 @@
               ]
             },
             "then": {
-              "required": [
-                "expires_at"
-              ]
+              "$ref": "#/definitions/Shared5"
             }
           }
         ]
@@ -127,36 +99,18 @@
               }
             },
             "if": {
-              "properties": {
-                "verdict": {
-                  "const": "conditions"
-                }
-              },
-              "required": [
-                "verdict"
-              ]
+              "$ref": "#/definitions/Shared4"
             },
             "then": {
               "not": {
-                "anyOf": [
-                  {
-                    "required": [
-                      "governance_context"
-                    ]
-                  },
-                  {
-                    "required": [
-                      "expires_at"
-                    ]
-                  }
-                ]
+                "$ref": "#/definitions/Shared6"
               },
               "properties": {
                 "check_type": {
                   "const": "intent"
                 },
                 "conditions": {
-                  "minItems": 1
+                  "$ref": "#/definitions/Shared7"
                 }
               },
               "required": [
@@ -166,42 +120,12 @@
             }
           },
           {
-            "if": {
-              "properties": {
-                "verdict": {
-                  "const": "denied"
-                }
-              },
-              "required": [
-                "verdict"
-              ]
-            },
-            "then": {
-              "properties": {
-                "findings": {
-                  "minItems": 1
-                }
-              },
-              "required": [
-                "findings"
-              ]
-            }
+            "$ref": "#/definitions/Shared3"
           },
           {
             "else": {
               "not": {
-                "anyOf": [
-                  {
-                    "required": [
-                      "governance_context"
-                    ]
-                  },
-                  {
-                    "required": [
-                      "expires_at"
-                    ]
-                  }
-                ]
+                "$ref": "#/definitions/Shared6"
               }
             },
             "if": {
@@ -237,12 +161,80 @@
       }
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "Shared1": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "Shared2": {
+      "type": "string"
+    },
+    "Shared3": {
+      "if": {
+        "properties": {
+          "verdict": {
+            "const": "denied"
+          }
+        },
+        "required": [
+          "verdict"
+        ]
+      },
+      "then": {
+        "properties": {
+          "findings": {
+            "$ref": "#/definitions/Shared7"
+          }
+        },
+        "required": [
+          "findings"
+        ]
+      }
+    },
+    "Shared4": {
+      "properties": {
+        "verdict": {
+          "const": "conditions"
+        }
+      },
+      "required": [
+        "verdict"
+      ]
+    },
+    "Shared5": {
+      "required": [
+        "expires_at"
+      ]
+    },
+    "Shared6": {
+      "anyOf": [
+        {
+          "required": [
+            "governance_context"
+          ]
+        },
+        {
+          "$ref": "#/definitions/Shared5"
+        }
+      ]
+    },
+    "Shared7": {
+      "minItems": 1
+    }
+  },
   "description": "Governance agent's response to a check request. Only an approved verdict authorizes execution. Conditions are an intent-phase counterproposal and never carry authorization context; the caller must adjust and re-check.",
   "properties": {
     "categories_evaluated": {
       "description": "Governance categories evaluated during this check. Each value is an **agent-internal** label (e.g., `budget_authority`, `regulatory_compliance`, or any internal-reviewer key the agent's policy model defines) \u2014 not a protocol-level enum. Since one governance agent per account composes all specialist review behind its single endpoint, `categories_evaluated` is how that internal decomposition surfaces to auditors. Consumers MUST treat values as opaque labels for display and audit, not as a machine-level contract.",
       "items": {
-        "type": "string"
+        "$ref": "#/definitions/Shared2"
       },
       "type": "array"
     },
@@ -311,7 +303,7 @@
               "type": "object"
             },
             "seller_reference": {
-              "type": "string"
+              "$ref": "#/definitions/Shared2"
             }
           },
           "required": [
@@ -329,19 +321,16 @@
           "type": "string"
         },
         "issued_at": {
-          "format": "date-time",
-          "type": "string"
+          "$ref": "#/definitions/Shared1"
         },
         "reporting_period": {
           "additionalProperties": false,
           "properties": {
             "end": {
-              "format": "date-time",
-              "type": "string"
+              "$ref": "#/definitions/Shared1"
             },
             "start": {
-              "format": "date-time",
-              "type": "string"
+              "$ref": "#/definitions/Shared1"
             }
           },
           "required": [
@@ -351,7 +340,7 @@
           "type": "object"
         },
         "seller_reference": {
-          "type": "string"
+          "$ref": "#/definitions/Shared2"
         },
         "sequence": {
           "minimum": 1,
@@ -389,11 +378,7 @@
       "type": "string"
     },
     "ext": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "additionalProperties": true,
-      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-      "title": "Extension Object",
-      "type": "object"
+      "$ref": "#/definitions/Shared0"
     },
     "findings": {
       "description": "Specific issues found during the governance check. Present when verdict is 'denied' or 'conditions'. MAY also be present on 'approved' for informational findings (e.g., budget approaching limit).",
@@ -501,7 +486,7 @@
     "policies_evaluated": {
       "description": "Policy IDs evaluated during this check. Includes registry policy IDs (resolved via the policy registry) and any inline `policy_id`s declared in the plan's `custom_policies`.",
       "items": {
-        "type": "string"
+        "$ref": "#/definitions/Shared2"
       },
       "type": "array"
     },
@@ -624,8 +609,7 @@
                 "type": "string"
               },
               "evaluated_at": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/definitions/Shared1"
               },
               "evaluated_by": {
                 "description": "Canonical agent URL of the evaluator-of-record that produced this result, even when it delegated proof checking to an accepted verifier.",
@@ -634,11 +618,7 @@
                 "type": "string"
               },
               "ext": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "additionalProperties": true,
-                "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                "title": "Extension Object",
-                "type": "object"
+                "$ref": "#/definitions/Shared0"
               },
               "outcome": {
                 "description": "Stable evaluation outcome. verified means all required issuer, signature, claim type, subject, consuming-action scope, validity, revocation, and digest checks passed under evaluator policy. subject_mismatch covers either a credential/presentation subject mismatch or a presentation/consuming-action subject mismatch. Other values are non-authoritative failures and MUST NOT be treated as verified.",

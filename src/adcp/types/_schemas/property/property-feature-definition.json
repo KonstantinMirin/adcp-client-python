@@ -1,12 +1,17 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": false,
+  "definitions": {
+    "Shared0": {
+      "type": "string"
+    }
+  },
   "description": "Defines a feature that a governance agent can evaluate for properties. Used in get_adcp_capabilities to advertise agent capabilities.",
   "properties": {
     "allowed_values": {
       "description": "For categorical features, the set of valid values",
       "items": {
-        "type": "string"
+        "$ref": "#/definitions/Shared0"
       },
       "type": "array"
     },
@@ -17,14 +22,14 @@
         "countries": {
           "description": "Countries where this feature is available",
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/Shared0"
           },
           "type": "array"
         },
         "property_types": {
           "description": "Property types this feature applies to",
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/Shared0"
           },
           "type": "array"
         }
