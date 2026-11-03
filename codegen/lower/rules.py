@@ -596,19 +596,36 @@ def _count(node: Mapping[str, Any], out: Lowered, extra_stated: bool) -> None:
         # would otherwise be -- and the maximum rides on the smaller count, which
         # under-refuses.  Both are declared at the node's own pointer.
         if lo is not None:
-            # **NOT DECLARED, and ``adcp-client-python-6oe`` is the bead that owns it.**
-            # The fact IS dropped and reading 2 does ask for a declaration, and the
-            # measurement is what stops this line from writing one: over the 1,054
-            # portable documents the gate withholds the minimum at **5,220 pointers in
-            # 209 documents**, because the record inlines one shared node at every
-            # referring path.  §8 forbids a declaration set of that shape outright -- "an
-            # approximation nothing can demonstrate does not belong in the set", and §9
-            # "do not pin the approximation count" is written about a figure one cell
-            # reaches at eighty positions, not at five thousand.  The faithful answer is
-            # not a declaration either: it is for the class to KEEP the keys the document
-            # counts, which is D8's ``absent -> ignore`` and a sentence only the design
-            # documents can move.  So the drop is a filed bead with its measurement and
-            # not a silence, and not 5,220 entries in a set a reader is meant to audit.
+            # **NOT DECLARED, AND NOW ALSO ALL BUT UNREACHABLE** --
+            # ``adcp-client-python-gbo``, whose own figure is what kept it reachable.
+            #
+            # **THE FIGURE THAT STOOD HERE WAS WRONG BY THREE ORDERS OF MAGNITUDE AND IT
+            # WAS THE WHOLE ARGUMENT.**  It read "the gate withholds the minimum at
+            # **5,220 pointers in 209 documents**, because the record inlines one shared
+            # node at every referring path", and concluded that §8 forbids a declaration
+            # set of that shape and that the faithful fix -- the class KEEPING the keys the
+            # document counts -- was a sentence only the design documents could move.  The
+            # count was over the INLINED record and **the walk does not inline**: it
+            # compiles each shared node once and imports the symbol.  Re-measured over the
+            # same 1,054 portable documents by recording every call at which this gate
+            # fires: **5 calls at 4 distinct (document, pointer)**, zero declarations on
+            # either count keyword, and the minimum arm reaches three of the five.  Five is
+            # well inside the regime ``tests/test_the_declared_backlog.py`` already pins,
+            # so the cardinality objection does not survive its own denominator.
+            #
+            # **AND THE DESIGN DOCUMENTS DID MOVE IT**: §8 sentence 4's second consequence
+            # (2026-11-03) decides that such a count "is answered by the class KEEPING the
+            # keys the document counts.  Declaring it would be declaring a difference the
+            # walk created."  ``compiler.declare_object`` takes that reversal at exactly
+            # the nodes a count rides over, so ``extra_stated`` is now true wherever a
+            # class carries one and this arm is reached by no class of this bundle.
+            #
+            # It is KEPT rather than deleted because the reversal is the caller's and this
+            # is the reduction: a node reaching ``lower`` from a path that does not resolve
+            # an extra policy still must not write a minimum over a smaller key set, which
+            # would be a rule refusing what the document accepts and the narrowing §2
+            # forbids outright.  Withheld and not declared, for the reason the sentence
+            # gives: the difference would be the walk's own and not the document's.
             lo = None
         if hi is not None:
             out.dropped.append(("maxProperties", node["maxProperties"]))
