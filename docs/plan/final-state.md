@@ -73,18 +73,37 @@ its presence in every instance it admits — pinning a key is not determining it
 **Decided by** constructing every union base's dispatch over the whole tree and requiring that none
 raises, plus: no union dispatches on a key its document lets an instance omit.
 
-## 4. Each distinct vocabulary is one type
+## 4. Each distinct TYPE is one type, at every layer the catalogue has
 
-A set of values stated at more than one position is written once and referenced, never restated.
-The named type is constructed from that one value list, and the entry lives in the narrowest
-namespace containing every position that references it.
+**A type stated at more than one position is written once and referenced, never restated — and
+this reading ranges over ALL FOUR of the catalogue's layers**, not the first: enum vocabularies,
+constrained scalars, object types, and array types. The named type is constructed from that one
+definition, and the entry lives in the narrowest namespace containing every position that
+references it.
 
-Two positions stating the same values are not automatically the same concept: where they are
-judged distinct they keep separate types over the one value list, and where the only candidate name
-comes from a description they get none — a description states what a thing IS, not what it is
-CALLED.
+**This reading was written as "each distinct VOCABULARY is one type" and that was too narrow.** A
+vocabulary is a set of values, so the sentence asked for one layer while the design specifies four
+— and when the value-list gate went green the other three were neither built nor asked for. A
+reading narrower than the rule it is named for does not merely miss work: it makes this file lie
+about what done means.
 
-**Decided by** the catalogue's own gate: no value list appears twice in the emitted tree.
+**Two positions stating the same thing are not automatically the same concept.** The three-way
+split is the rule at every layer, not only the first: one named type where the bundle names the
+subject; separate types over one definition where the positions are genuinely different subjects;
+and separate types pending a name where nothing in the bundle names it, which is an upstream ask
+and not a local answer. A description states what a thing IS, not what it is CALLED, so it mints
+no name.
+
+**And the split is decided before the collapse, never by the collapse.** Two classes with one
+field set is a hypothesis. Whether the bundle REFERENCES one node from the others or RESTATES it
+is the question that tells our defect from the schema's own duplication — the first is ours to
+fix, the second is faithful emission and an ask stated over a set of the bundle.
+
+**Decided by** one census per layer, each over the emitted tree and each keyed on that layer's own
+identity — the value list, the constraint set, the field set, the element type. The key is what
+makes a census a census: a gate keyed on a name, an export path or a constraint set cannot see a
+repeated object type, which is how three layers stayed invisible while their own measurements sat
+in the design.
 
 ## 5. The record states each distinct subtree once
 
