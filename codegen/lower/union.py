@@ -168,7 +168,7 @@ from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass, replace
 from typing import Any
 
-from codegen import bundle, compiler, ir, keywords
+from codegen import bundle, compiler, intersect, ir, keywords
 from codegen.keywords import Position
 from codegen.lower import approximate, names
 from codegen.refusal import Kind, Refusal
@@ -1671,13 +1671,13 @@ def lower_union(
             # required, so the class admitted ``{"task_id": "0"}`` and the document
             # refuses it.
             #
-            # ``compiler.intersected_at_a_branch`` is the SAME reading §5's distribution
+            # ``intersect.intersected_at_a_branch`` is the SAME reading §5's distribution
             # makes of the same arrangement -- the node's class first, the target second
             # -- and its docstring carries the measurement.  It is called with the base's
             # property map as what the node ASSERTS, because that map is exactly what the
             # MRO will hand this branch, and with the base's ``required`` as the
             # requiredness the shadowing field carries.
-            own = compiler.intersected_at_a_branch(
+            own = intersect.intersected_at_a_branch(
                 {key: [node] for key, node in base_shape.properties.items()},
                 plan.inherits.shape,
                 plan.inherits.symbol,
@@ -2448,7 +2448,7 @@ def _plan(node: nodes.Union, i: int, mod: compiler.Module) -> Branch | Refusal:
             f"a branch is {type(branch).__name__}, not a schema",
             kind=Kind.VERDICT,
         )
-    live = set(compiler.declaring(branch, Position.BRANCH))
+    live = set(intersect.declaring(branch, Position.BRANCH))
     if live == {"$ref"}:
         # **§4's two bases.**  The branch is a class at its OWN pointer whose bases are
         # the union's base and the ``$ref`` target: the target supplies the fields and

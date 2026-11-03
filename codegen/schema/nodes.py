@@ -112,7 +112,7 @@ class Base:
     #: refuse on -- a key with no row, or a lowering cell the kind's
     #: handler does not claim.  Names only and no values, because that is all the screen
     #: reads; a key that annotates without constraining is in :attr:`annotations`
-    #: instead.  ``compiler.check_keywords`` and ``compiler.declaring``'s callers read
+    #: instead.  ``compiler.check_keywords`` and ``intersect.declaring``'s callers read
     #: this, so the screen is a reader of the node and of the table and of nothing else.
     declares: tuple[str, ...] = ()
     #: The keys in the ``x-`` namespace with no row in §6, sorted: admitted by the prefix

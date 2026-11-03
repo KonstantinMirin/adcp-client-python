@@ -44,7 +44,7 @@ from compiled import compiled
 from conftest import refusal_from
 
 from adcp.types import _base, constraints
-from codegen import bundle, compiler, emit, ir, keywords, refusal, render, store
+from codegen import bundle, compiler, emit, intersect, ir, keywords, refusal, render, store
 from codegen import constraints as constraints_module
 from codegen.harness import Pair, check_pair, violated_keywords
 from codegen.lower import names
@@ -205,7 +205,7 @@ def test_a_required_only_conjunct_has_no_population_so_the_arm_is_not_built() ->
         for i, c in enumerate(bundle.read(BUNDLE, d).get("allOf") or []):
             conjuncts.add(f"{d}#/allOf/{i}")
             if isinstance(c, dict) and set(
-                compiler.declaring(c, keywords.Position.CONJ)
+                intersect.declaring(c, keywords.Position.CONJ)
             ) == {"required"}:
                 found.append(f"{d}#/allOf/{i}")
     # The set this ranges over is named NON-EMPTY first: "no conjunct states only
@@ -901,7 +901,7 @@ def test_a_restatement_contradicting_the_base_still_refuses_rather_than_merging(
     ``_restatement`` is asked first: a declaration that says something at a keyword the
     base also states which is NOT at least as tight is ``None``, and the document
     refuses by the keyword the two disagree about.  Only a restatement at least as tight
-    everywhere the two overlap reaches :func:`compiler._intersection`, so there is no
+    everywhere the two overlap reaches :func:`intersect._intersection`, so there is no
     reading on which a disagreement is merged away.
 
     **The bound DROPPED is no longer here, and that is D7 rather than a relaxation.**
@@ -1122,7 +1122,7 @@ def test_the_wrong_text_at_that_pointer_shows_on_both_sides(
     so the reach is this probe's: ``docs/plan/rebuild-plan.md`` §8 assigns the
     population-wide claim to the annotation COVERAGE obligation, which is not built.
     """
-    monkeypatch.setattr(compiler, "_annotates_differently", lambda child, base: False)
+    monkeypatch.setattr(intersect, "_annotates_differently", lambda child, base: False)
     cls, text, schema = _emit_probe(
         tmp_path,
         monkeypatch,
@@ -1332,7 +1332,7 @@ def test_the_rule_is_symmetric_so_the_order_the_declarations_are_read_in_cannot_
     A generator that let the later conjunct win made its accepted set a function
     of member order, which is invisible in the output.  Asserted on the decision
     itself, over every outcome it has to distinguish, and then on the OUTPUT -- because
-    under D7 the decision's answer is one half and :func:`compiler._intersection` is the
+    under D7 the decision's answer is one half and :func:`intersect._intersection` is the
     other, and it is the pair that has to be order-independent.
 
     **A TIGHTER bound narrows and a looser one refuses, which is D7 in its own words:**
@@ -1346,21 +1346,21 @@ def test_the_rule_is_symmetric_so_the_order_the_declarations_are_read_in_cannot_
     """
     typed = {"type": "integer", "minimum": 1}
     tighter = {"type": "integer", "minimum": 2}
-    assert compiler._restatement({"default": 1}, typed) is False  # annotation-only: inherited
-    assert compiler._restatement(dict(typed), typed) is False  # identical: inherited
-    assert compiler._restatement({**typed, "maximum": 9}, typed) is True  # adds a keyword
-    assert compiler._restatement(tighter, typed) is True  # D7: a bound is the tighter one
-    assert compiler._restatement({"type": "string"}, typed) is None  # a different type
+    assert intersect._restatement({"default": 1}, typed) is False  # annotation-only: inherited
+    assert intersect._restatement(dict(typed), typed) is False  # identical: inherited
+    assert intersect._restatement({**typed, "maximum": 9}, typed) is True  # adds a keyword
+    assert intersect._restatement(tighter, typed) is True  # D7: a bound is the tighter one
+    assert intersect._restatement({"type": "string"}, typed) is None  # a different type
     # The asymmetry is the rule working, not the rule disagreeing with itself: exactly
     # one direction of a narrowing is a narrowing.  The LOOSER direction refuses -- a
     # KNOWN CEILING D7 would have carry the base's bound, measured at 0 sites -- and a
     # restatement that says less and the same is inherited.
-    assert compiler._restatement(typed, tighter) is None
-    assert compiler._restatement(typed, {**typed, "maximum": 9}) is False
+    assert intersect._restatement(typed, tighter) is None
+    assert intersect._restatement(typed, {**typed, "maximum": 9}) is False
     # And the OUTPUT does not depend on which view was read first.
     both = {"type": "integer", "minimum": 2, "maximum": 9}
-    assert compiler._intersection(tighter, {**typed, "maximum": 9}) == both
-    assert compiler._intersection({**typed, "maximum": 9}, tighter) == both
+    assert intersect._intersection(tighter, {**typed, "maximum": 9}) == both
+    assert intersect._intersection({**typed, "maximum": 9}, tighter) == both
 
 
 @pytest.mark.parametrize(

@@ -258,7 +258,7 @@ def test_no_widening_is_declared_where_the_complement_lowers() -> None:
 def test_the_position_the_reduction_is_asked_at_is_the_one_the_table_assigns() -> None:
     """A ``not`` under an ``if`` is at RULE, and the reduction reads its keys there.
 
-    ``rules._keys`` is ``compiler.declaring`` at :data:`Position.RULE`, so an annotation
+    ``rules._keys`` is ``intersect.declaring`` at :data:`Position.RULE`, so an annotation
     beside the ``not`` does not stop the arm from being taken -- a key that annotates
     without constraining is not part of what a rule TESTS.  The bundle states exactly
     that: the site of record carries a ``$comment`` on the enclosing node.

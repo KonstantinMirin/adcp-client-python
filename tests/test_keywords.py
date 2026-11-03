@@ -404,7 +404,7 @@ def test_the_descent_column_is_the_one_the_bundles_walk_descends_by() -> None:
 #: **Ten sites left the census on this row and the removals are listed on the bead**: the
 #: verifier's three descent tuples, its combinator arm and its value-class arms now read
 #: the descent column; the ordering keywords are :data:`keywords.RANGES`, read by both
-#: halves; ``compiler._CONTAINER_KEYWORDS`` is
+#: halves; ``intersect._CONTAINER_KEYWORDS`` is
 #: :func:`keywords.constrains_container`; and the root-sibling tuple is written once.
 _SURVIVING_SITES: dict[tuple[str, tuple[str, ...]], str] = {
     ("codegen.compiler", ("additionalProperties", "properties", "propertyNames", "required", "type")):
@@ -634,7 +634,7 @@ def test_the_census_is_blind_to_a_collection_naming_an_unlisted_keyword() -> Non
     or ``contentEncoding``.  Measured on this tree, two sites are invisible for that reason
     (``codegen.ir:FACTS``, whose own comment already admits §11 wants it derived, and
     ``harness._PAD_FORBIDS``), and a third was at the base of this row
-    (``compiler._CONTAINER_KEYWORDS``'s array set, which named ``additionalItems``).
+    (``intersect._CONTAINER_KEYWORDS``'s array set, which named ``additionalItems``).
 
     Completing ``DRAFT07`` would move the census number every lane reads off that command,
     so it is not done here: this test is the blind spot WRITTEN DOWN, and it reddens if the

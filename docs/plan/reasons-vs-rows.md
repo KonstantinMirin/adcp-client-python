@@ -584,7 +584,7 @@ These are requests, not edits. Neither `rebuild-plan.md` nor `architecture.md` w
   in process. The sentence test `detail.startswith("its target ")` reproduces it exactly.
 * the production site of every refusal: `Refusal.__init__` wrapped to capture a stack summary
   filtered to `codegen/`, keyed by `(keyword, pointer, detail)`.
-* the `_restatement` clause census: `compiler._restatement` wrapped to re-derive, on a `None`
+* the `_restatement` clause census: `intersect._restatement` wrapped to re-derive, on a `None`
   return, whether the `"$ref" in b` clause fired and which shared keywords fail
   `_at_least_as_tight`.
 * cascades: `bundle.edges(Path("schemas/cache/3.2"))`, reversed into a referrer map, transitively

@@ -91,7 +91,7 @@ from adcp.types._base import (
     schema_at,
 )
 from adcp.types._runtime import Dependencies, Rule, RuleBound, UniqueItems, bound_rules
-from codegen import bundle, compiler, emit, harness, ir, keywords, render
+from codegen import bundle, compiler, emit, harness, intersect, ir, keywords, render
 from codegen import constraints as constraints_module
 from codegen import refusal as refusal_module
 from codegen.harness import (
@@ -3070,7 +3070,7 @@ def test_a_union_root_emits_a_base_plus_one_subclass_per_branch() -> None:
         conjuncts = [
             c
             for c in (doc.get("allOf") or [])
-            if isinstance(c, dict) and set(compiler.declaring(c, keywords.Position.CONJ)) == {"$ref"}
+            if isinstance(c, dict) and set(intersect.declaring(c, keywords.Position.CONJ)) == {"$ref"}
         ]
         assert bases[0] == "BranchDispatchMixin", (document, bases)
         assert len(bases) == 1 + (len(conjuncts) or 1), (document, bases, len(conjuncts))
@@ -3798,7 +3798,7 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
         # ``core/assets/display-tag-asset.json``'s line went at ``97w``'s sixth.**  All
         # three spell one composition -- the branch's element overlay over the root's
         # ``{"items": {"$ref": core/macro-declaration.json}}`` -- and display-tag spells
-        # it in full in its own branch text, which ``compiler._conjoins`` reads.  These
+        # it in full in its own branch text, which ``intersect._conjoins`` reads.  These
         # two spell it as a bare overlay: §2's intersection rule writes the composition
         # at ``items`` now, the base's reference survives it as a ``$ref`` CONJUNCT, and
         # §8's pairing carries the enclosing statement DOWN by key so that the composed
@@ -6919,7 +6919,7 @@ VALUE_RULE_CARRIERS: dict[str, list[tuple[str, str]]] = {
     #: ``NotValue`` carries TWO rows because its two positions are two different
     #: readings of §2's second half.  ROOT is a root alias: the node's own ``not`` beside
     #: its own type.  **CONJ is one conjunct stating the TYPE and another the RULE**
-    #: (``adcp-client-python-10l.21``, ``compiler._the_conjuncts_own_type``), so §2's
+    #: (``adcp-client-python-10l.21``, ``intersect._the_conjuncts_own_type``), so §2's
     #: intersection has to compose the two before either reaches an ``ir.TypeRef`` -- and
     #: that reading was the unwritten half, which is why 9 nodes refused there.
     "NotValue": [
@@ -7298,7 +7298,7 @@ def test_the_uniqueItems_step_grades_an_emitted_class_and_its_rule_holds_it() ->
             conjunct = unread.pop(0)
             if not isinstance(conjunct, dict):
                 continue
-            keys = set(compiler.declaring(conjunct, keywords.Position.CONJ))
+            keys = set(intersect.declaring(conjunct, keywords.Position.CONJ))
             if keys == {"$ref"}:
                 continue
             unread.extend(conjunct.get("allOf") or [])
@@ -9453,7 +9453,7 @@ def test_every_conjunct_contributes_every_part_of_itself() -> None:
                         (f"{where}/allOf/{j}", c) for j, c in enumerate(conjunct["allOf"])
                     )
                 sites.add(f"{document} {where}")
-                keys = set(compiler.declaring(conjunct, keywords.Position.CONJ))
+                keys = set(intersect.declaring(conjunct, keywords.Position.CONJ))
                 # Clause 5.  The name is dropped, the drop is on the record at this
                 # conjunct's own pointer, and nothing on the class answers to it.  A
                 # dropped name is one whose CELL says the drop is REPORTED -- §7's row,

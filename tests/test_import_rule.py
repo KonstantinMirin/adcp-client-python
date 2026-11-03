@@ -646,7 +646,7 @@ def test_the_python_text_rule_catches_the_four_texts_it_replaced(tmp_path: Path)
 #: * ``codegen/lower/union.py`` -- §4 "Names"'s three branch rules and §4's dispatch
 #:   derivation are readings of a branch's own DECLARATION (its title, its ``const`` pin,
 #:   its ``required`` set), which ``nodes.Union.branch_raw`` is the carrier for;
-#: * ``codegen/compiler.py`` -- §6 keeps ``restatement``, ``intersection`` and
+#: * ``codegen/intersect.py`` -- §6 keeps ``restatement``, ``intersection`` and
 #:   ``at_least_as_tight`` as pure functions over DECLARATIONS, because §2's intersection
 #:   rule merges two declarations of one property and hands the merged one back to
 #:   ``parse``.  ``nodes.Conjunct.raw``, ``nodes.Base.declared`` and
@@ -664,13 +664,23 @@ def test_the_python_text_rule_catches_the_four_texts_it_replaced(tmp_path: Path)
 #:
 #:   **AND IT IS ``compiler.py``'s ENTRY FOLLOWING THE CODE, NOT A FIFTH PERMISSION.**
 #:   The two mappings :func:`codegen.lower.normalise.pins_a_member` reads are the two the
-#:   entry above already covers, handed to it at its one call site
-#:   (``compiler._inherited_narrowings``): ``own[key]`` is §2's intersection of the two
+#:   entry above already covers, handed to it at its one call site -- the PASS B loop of
+#:   ``lower.composition.lower_composition``: ``own[key]`` is §2's intersection of the two
 #:   declarations and ``inherited[key]`` is the base's own, dereferenced.  So the set
 #:   gains an entry and admits no new READING -- the restatement ``adcp-client-python-7ko``
 #:   asks this data for, and the same move ``adcp-client-python-g4z`` made when the set
 #:   went from four entries to six.  ``adcp-client-python-d54`` is this entry; the
 #:   detector's name-based blind spot is still ``adcp-client-python-7ko``.
+=======
+#: * ``codegen/compiler.py`` -- TWO readings, and naming them separately is the point:
+#:   ``lower_composition`` reads a ``$ref`` conjunct's own declaration for §5's ``$ref``
+#:   row at CONJ, and ``local_reference`` reads a local target's ``default`` so that
+#:   draft-07's replacement of a ``$ref`` node by its target reaches the referring field
+#:   (``adcp-client-python-10l.26``).  **This entry is the one the set's own ratchet does
+#:   not cover**, and the reason is measurable rather than a judgement: the §6 entry above
+#:   USED to be this module's, one permitted module became two when
+#:   ``adcp-client-python-g4z`` moved §2's pure rule into a module of its own, and the
+#:   permission is unchanged -- 5 entries to 6 with no new reading admitted.
 #: ``codegen/emit.py`` is NOT in this set and §14 step 7 is what removed it.  It held
 #: ``_composed_nodes``, the pointers a document's root ``allOf`` NAMES -- a fact about the
 #: bundle's reference GRAPH, which §11 puts in the source layer.  It is ``bundle.composed``
@@ -683,6 +693,7 @@ MAY_READ_A_DECLARATION = frozenset(
         "lower/rules.py",
         "lower/union.py",
         "lower/normalise.py",
+        "intersect.py",
         "compiler.py",
     }
 )
@@ -1168,7 +1179,7 @@ def test_the_parser_is_the_only_entry_that_reads_a_raw_mapping() -> None:
         # a ``definitions`` entry at DEF, parsed when a ``$ref`` names it (§5)
         ("compiler.py", "decide"),
         # the MERGED declaration §2's intersection rule hands back (§6)
-        ("compiler.py", "_parsed_property"),
+        ("intersect.py", "_parsed_property"),
         # a ``$ref`` CONJUNCT, for the DOCUMENT HALF that says which resolution it is (§5's
         # ``$ref`` row at CONJ; ``adcp-client-python-10l.43``)
         ("compiler.py", "_conjunct_base"),
@@ -1185,7 +1196,7 @@ A_MAPPING = frozenset({"doc", "declaration", "conjunct", "branch", "sub", "raw",
 #: The decision layer, which is where §4's rule bites.  ``bundle.py`` owns every file read
 #: and every fact derived from a document (§4), and ``harness.py`` reads the document of
 #: record because that is what a verifier does (§9), so neither is in scope here.
-DECIDES = ("compiler.py", "emit.py", "lower/", "schema/")
+DECIDES = ("compiler.py", "intersect.py", "emit.py", "lower/", "schema/")
 
 
 def _declaration_reads(path: Path) -> set[str]:

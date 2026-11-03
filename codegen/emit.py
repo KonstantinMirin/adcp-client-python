@@ -112,7 +112,7 @@ from pathlib import Path
 from typing import Any
 
 from adcp.types._base import Approximation
-from codegen import bundle, catalogue, compiler, harness, ir, keywords, refusal, render, store
+from codegen import bundle, catalogue, compiler, harness, intersect, ir, keywords, refusal, render, store
 from codegen import constraints as constraints_module
 from codegen.compiler import (
     Module,
@@ -154,7 +154,7 @@ EMITTED_SUFFIXES = frozenset({".py", ".json"})
 #: inherits (``inherited_sites``).  ``CONJ`` is the ``allOf`` conjunct §5's row is
 #: written for; the other two are §2's intersection rule read one level down, and they
 #: are DERIVED from the same declaration the rule's recursion is --
-#: :data:`compiler.HOLDS`, whose keywords' subschemas sit at ``ELEM`` (``items``) and
+#: :data:`intersect.HOLDS`, whose keywords' subschemas sit at ``ELEM`` (``items``) and
 #: ``PROP`` (``properties``).  A restatement composing a base's declaration of a
 #: property or of an element composes whatever that declaration names, so the target it
 #: names is a base of the composed class exactly as a conjunct's target is.
@@ -164,7 +164,7 @@ EMITTED_SUFFIXES = frozenset({".py", ".json"})
 #: disagree with the rule whose recursion produced the site.
 BASE_POSITIONS: frozenset[Position] = frozenset({Position.CONJ}) | frozenset(
     answer.descends
-    for keyword in compiler.HOLDS
+    for keyword in intersect.HOLDS
     if (answer := keywords.cell(keyword, Position.PROP)) is not None
     and answer.descends is not None
 )
@@ -1895,7 +1895,7 @@ def emit(
         # local edge by construction, and the composed node needs the answer: §5's
         # ``properties`` row composes two object declarations as an ``allOf`` of the two,
         # so where the base spells its half as a pointer into its own text,
-        # ``compiler._intersection`` plants that very pointer as a conjunct of a node
+        # ``intersect._intersection`` plants that very pointer as a conjunct of a node
         # belonging to THIS document.  Asked LAST, so a URI either the document or a
         # base's absolute text spells keeps the answer it already has.
         for uri, (edge, _node) in sorted(based_edges(document).items(), key=lambda kv: kv[0]):

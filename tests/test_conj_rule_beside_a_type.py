@@ -72,7 +72,7 @@ from adcp.types._runtime import (
     RequiredGroups,
     ValueRule,
 )
-from codegen import bundle, compiler, emit, ir, render, store
+from codegen import bundle, compiler, emit, intersect, ir, render, store
 from codegen.keywords import Position
 from codegen.lower import rules as lower_rules
 from codegen.refusal import Refusal
@@ -149,7 +149,7 @@ def _reaching() -> tuple[Site, ...]:
     it to one per process, which is why the return is a tuple.
     """
     seen: list[Site] = []
-    original = compiler._the_conjuncts_own_type  # the test is the caller
+    original = intersect._the_conjuncts_own_type  # the test is the caller
 
     # **The spy FORWARDS the call rather than restating the signature**, which is the
     # correction ``adcp-client-python-10l.109`` makes.  It used to name each keyword
@@ -194,7 +194,7 @@ def _reaching() -> tuple[Site, ...]:
         )
         return answer
 
-    compiler._the_conjuncts_own_type = spy
+    intersect._the_conjuncts_own_type = spy
     try:
         # ``emit.emit`` and NOT ``compiled``: this installs a SPY, so the walk has to
         # RUN.  ``tests/compiled.py``'s key is a digest of ``codegen/``'s source and
@@ -210,7 +210,7 @@ def _reaching() -> tuple[Site, ...]:
         with store.perturbed():
             emit.emit(BUNDLE, sorted(bundle.portable(BUNDLE)))
     finally:
-        compiler._the_conjuncts_own_type = original
+        intersect._the_conjuncts_own_type = original
     return tuple(seen)
 
 
@@ -269,7 +269,7 @@ def test_the_three_shapes_of_not_beside_a_conjoined_type_partition_the_populatio
     **AND AT ``adcp-client-python-10l.109``, which is the first re-measurement this file
     has had since the spy went stale: 56 calls, 40 distinct sites, 32 with one target and
     no fields -- 20 with no rule and 12 with one, splitting 10 / 0 / 2.**  Nothing here was
-    read between ``10l.63`` and this row, because ``compiler._the_conjuncts_own_type``
+    read between ``10l.63`` and this row, because ``intersect._the_conjuncts_own_type``
     gained a fourth keyword argument (``facts``, the ``allOf``'s own sibling bounds) and
     the spy restated its parameter list, so every call raised ``TypeError`` and the whole
     file was one of the seven failures the down gate was hiding.  Two parts moved and both
@@ -303,7 +303,7 @@ def test_the_three_shapes_of_not_beside_a_conjoined_type_partition_the_populatio
     # ``core/package-signal-targeting.json`` at ``/allOf/0`` and
     # ``core/product-filters.json`` at ``/properties/signal_targeting/items/allOf/0`` --
     # and the two that refuse carry theirs in a sibling conjunct, which is
-    # ``compiler._distributes``' two screens.
+    # ``intersect._distributes``' two screens.
     a_class = [s for s in sites if s.targets == 1 and s.a_class_as_well]
     partitions(
         claimed("sites at a node that is a class as well", {(s.at, s.symbol) for s in a_class}),
@@ -632,7 +632,7 @@ def test_a_rule_kind_that_is_no_callable_on_the_value_refuses_and_names_itself()
         position=Position.PROP,
         source=schema_parse.Source(document="probe.json"),
     )
-    answer = compiler._the_conjuncts_own_type(  # the arm's only caller
+    answer = intersect._the_conjuncts_own_type(  # the arm's only caller
         node,
         [("/properties/kind/allOf/0", _AN_ANNOTATION, _THE_REFERENCE)],
         fields_declared=(),
@@ -678,7 +678,7 @@ def test_two_conjuncts_stating_one_rule_keyword_refuse_rather_than_drop_one() ->
     # probe uses the one a ``$ref`` to an enumeration resolves to: ``_AN_ANNOTATION``,
     # the kind that makes §5's row give the node the target as its own TYPE.
     target = _AN_ANNOTATION
-    answer = compiler._the_conjuncts_own_type(  # the arm's only caller
+    answer = intersect._the_conjuncts_own_type(  # the arm's only caller
         node,
         [("/properties/kind/allOf/0", target, _THE_REFERENCE)],
         fields_declared=(),
@@ -698,7 +698,7 @@ def test_two_conjuncts_stating_one_rule_keyword_refuse_rather_than_drop_one() ->
     assert "two conjuncts state 'not'" in answer.detail, answer.detail
     # And ONE ``not`` beside the same target is decided, so the refusal above is about the
     # second statement and not about the position.
-    one = compiler._the_conjuncts_own_type(
+    one = intersect._the_conjuncts_own_type(
         node,
         [("/properties/kind/allOf/0", target, _THE_REFERENCE)],
         fields_declared=(),

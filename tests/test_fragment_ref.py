@@ -50,7 +50,7 @@ from pydantic import ValidationError
 
 from adcp.types import _base
 from adcp.types._base import applied_schema
-from codegen import bundle, compiler, emit
+from codegen import bundle, compiler, emit, intersect
 from codegen.keywords import Position
 from codegen.refusal import Refusal
 from tests.nodeset import claimed, partitions
@@ -2274,14 +2274,14 @@ BARE_REF_ROOT = {
 def bare_ref_roots() -> list[str]:
     """The portable documents whose root states a ``$ref`` and nothing constraining.
 
-    ``compiler.declaring`` at ROOT is the one reading of "which keys does this node
+    ``intersect.declaring`` at ROOT is the one reading of "which keys does this node
     state about an instance", so the population is the screen's own answer and not a
     second list of annotation keys.
     """
     return sorted(
         document
         for document in bundle.portable(BUNDLE)
-        if set(compiler.declaring(bundle.read(BUNDLE, document), Position.ROOT)) == {"$ref"}
+        if set(intersect.declaring(bundle.read(BUNDLE, document), Position.ROOT)) == {"$ref"}
     )
 
 
