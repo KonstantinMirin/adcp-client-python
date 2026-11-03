@@ -432,7 +432,34 @@ target-version = "py311"
 # attributed there.  Deleting this line pulls 1,089 modules back under the
 # linter automatically, which is what distinguishes an exclusion from an
 # omission.
-extend-exclude = ["src/adcp/types/_schemas"]
+#
+# **AND THE EMITTER WRITES 25 MORE MODULES BESIDE THAT TREE, which the first
+# line misses.**  ``emit.write`` puts ``out.files`` under ``_schemas/`` and
+# ``out.beside`` directly in ``src/adcp/types/``: ``constraints.py``,
+# ``envelopes.py`` and one module per domain.  They are as generated as the
+# 1,089, and a finding in one is the same statement about ``codegen/render.py``.
+#
+# **The pattern is the package's own convention, not a list that goes stale:
+# under ``adcp.types`` the GENERATED half is the PUBLIC surface and the
+# hand-written half is PRIVATE.**  ``__init__.py``, ``_base.py`` and
+# ``_runtime.py`` are the hand-written three (``tests/fresh.py`` states that
+# split and it is what a fresh emit does not write), and every public name
+# there is rendered.  So the exclusion is every top-level module whose name
+# does not begin with an underscore, and the three that do stay IN scope --
+# they are hand-written code in the shipped package, which is what every
+# reading is about.
+#
+# **WHY A STYLE FINDING IS EXCLUDED HERE AND A TYPE ERROR IS NOT**, which is
+# the asymmetry with ``[tool.mypy]`` above and is deliberate: ``I001`` import
+# order and ``F401`` in a generated module are the RENDERER'S OWN DECISIONS
+# about its output, and a fix in the file is undone by the next run.  A type
+# error in generated code is a correctness fact worth seeing even though its
+# fix is also in the renderer -- so mypy keeps these 25 while it is clean over
+# them, and the day it is not, the error is a rendering defect and the row is
+# ``codegen/render.py``'s.  Excluding a tool from a file is a statement about
+# WHOSE decision the finding reports, never about whether the finding is
+# acceptable.
+extend-exclude = ["src/adcp/types/_schemas", "src/adcp/types/[a-z]*.py"]
 
 [tool.ruff.lint]
 # ``select`` and never ``extend-select``, for the ``required-version`` reason.
