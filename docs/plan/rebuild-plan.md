@@ -35,8 +35,30 @@ There is **one import path per class**, and never a second way to reach the same
 spellings for one class is two things to keep in agreement, and it makes a reader unable to tell
 from the import which document a class came from. The one path is the domain surface's. A second
 name bound to a class by identity (§4, two nodes of identical content) is that class and not a
-second one: `X is Y` holds, and the surface exports it once. **That carve-out reaches across
-modules as well as inside one (2026-10-26)**, because a document that is a bare `$ref` to another
+second one: `X is Y` holds, and the surface exports it once.
+
+**"ONCE" MEANS ONE NAME ON THE WHOLE SURFACE, NOT ONE PER DOMAIN (decided 2026-11-03).** The
+clause above makes it unambiguous — *never a second way to reach the same class* — and the reason
+it gives is the one that settles it: two spellings is two things to keep in agreement, and a reader
+cannot tell from the import which document the class came from. **A per-domain reading preserves
+exactly the defect the sentence names**, because the two spellings sit in different domains and a
+reader comparing them has no way to know they are one object. So an object reachable at two domain
+paths violates this rule even though both names are legitimate derivations.
+
+**AND THE NAME THE SURFACE KEEPS IS THE ONE DERIVED AT THE CLASS'S OWN DECLARING POSITION** — the
+document and pointer its `__adcp_schema__` names, which is where §4 derived it from the bundle. The
+other spellings are the names of positions that REFERENCE it, and a position that references a
+class does not name it. That rule is derivable, unique per class, and needs no judgement; the
+alternative — picking among equally legitimate derivations — would be a decision per object with
+nothing deciding it.
+
+**A gate on this must count OBJECTS, not names.** A check asking whether every export resolves at
+exactly one path is answered `yes` by two names for one object, each resolving cleanly, so it is
+green while the rule is false. The reading is that the number of export paths equals the number of
+distinct objects behind them.
+
+**That carve-out reaches across modules as well as inside one (2026-10-26)**, because a document
+that is a bare `$ref` to another
 document states the same node, and §4's rule for the same node stated twice does not change at a
 file boundary. Where the target is a class the root is a subclass of it instead, which is one
 class per name and needs no carve-out at all; the identity binding is for a target that is an
