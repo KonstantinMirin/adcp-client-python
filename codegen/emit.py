@@ -715,6 +715,12 @@ def lower_document(
         local={p: n for p, n in bundle.nodes(doc) if p in named},
 
         object_constrained=bundle.constrained_to_object(doc),
+        # **The DOCUMENT OF RECORD itself**, for §8's sentence 3a: a storage reference
+        # resolves against the document ROOT, so §5's ``if`` row needs the root and not a
+        # node.  The same object ``local`` and ``object_constrained`` are read off, handed
+        # in rather than re-read, so there is one record per module and the walk sees the
+        # text the package carries beside it (:attr:`compiler.Module.record`).
+        record=doc,
     )
     # **§7's REPORTED DROPS, at every position the document states one at.**  "The drop is
     # reported at every position the keyword occupies, and not only where a conjunct

@@ -1043,6 +1043,23 @@ class Module:
     #: ``lower_document`` states its own ``type`` or is refused, which is exactly what
     #: :func:`lower_object` did before this set existed.
     object_constrained: frozenset[str] = frozenset()
+    #: **THE DOCUMENT OF RECORD this module is lowered from**, for the one reader that
+    #: needs a pointer's ROOT rather than its node: §5's ``if`` row, which reads a
+    #: condition through the local reference ``bundle.stored`` minted when it stored the
+    #: subtree once (§8's sentence 3a, ``lower.rules.through_the_storage``).
+    #:
+    #: A storage reference resolves against the document ROOT, so no node and no
+    #: enclosing node carries the answer -- which is why this is the record and not a
+    #: second per-pointer map beside :attr:`local`.  It is the same object
+    #: ``emit.lower_document`` is handed and already reads twice (:attr:`local`,
+    #: :attr:`object_constrained`), so holding it costs nothing and nothing here copies
+    #: the document.
+    #:
+    #: Empty by default, which is the arm that reads a reference AS WRITTEN: a document
+    #: lowered outside a run has no storage to see through, so the condition behind one
+    #: is unreadable and DECLARES -- the same refusing default :attr:`named` and
+    #: :attr:`local` have, and for the same reason.
+    record: Mapping[str, Any] = field(default_factory=dict)
     #: **What the MODEL LAYER carries**, so a property key spelling one of pydantic's
     #: own attributes is carried under an alias rather than shadowing it
     #: (``lower.names.field_name``).  DERIVED in ``codegen/render.py`` (``RESERVED``) and
@@ -1480,6 +1497,7 @@ def rules_at(
     resolve: "Resolver" = None,
     at: Sequence[str] = (),
     keeps_every_key: bool | None = None,
+    root: Mapping[str, Any] | None = None,
 ) -> Rules:
     """D6's reading of a node, for a lowering that cannot import the rules module.
 
@@ -1540,6 +1558,13 @@ def rules_at(
     property of the class and not of whichever view stated the keyword.  ``None`` keeps
     each view's own reading, which is what every caller but :func:`declare_object` has to
     offer -- and :func:`declare_object` is the one that writes the tuple onto a class.
+
+    **``root`` is the DOCUMENT OF RECORD this node belongs to**, for §8's sentence 3a:
+    §5's ``if`` row reads a condition through the local reference the record minted when
+    it stored the subtree once (``lower.rules.through_the_storage``).  Threaded for the
+    same reason ``resolve`` is -- the record is a fact of the RUN and this function is a
+    pure reading of a node -- and ``None`` is the arm that reads a reference as written,
+    which is what a caller with no run in hand gets.
     """
     from codegen.lower import rules
 
@@ -1551,9 +1576,12 @@ def rules_at(
             if keeps_every_key is None
             else keeps_every_key,
             resolve=resolve,
+            root=root,
         ),
         *(
-            rules.lower_declaration(c, position, resolve=resolve, extra_stated=keeps_every_key)
+            rules.lower_declaration(
+                c, position, resolve=resolve, extra_stated=keeps_every_key, root=root
+            )
             for c in also
         ),
     ]
@@ -2258,6 +2286,7 @@ def declare_object(
         resolve=mod.resolve_node,
         at=tuple(rule_sites),
         keeps_every_key=resolved_extra is not None,
+        root=mod.record,
     )
     # **Every fact a rule source states and this class does not carry is DECLARED here**
     # (``docs/plan/final-state.md`` reading 2; ``adcp-client-python-3bb``, ``-6oe``).  §5
@@ -2390,7 +2419,7 @@ def lower_object(
     # (:func:`declare_object`) -- so this row and the ``allOf`` row and a union branch
     # all admit the same keywords and all write the same rule.
     pointer, position = node.pointer, node.position
-    stated = rules_at(node, position=position, resolve=mod.resolve_node)
+    stated = rules_at(node, position=position, resolve=mod.resolve_node, root=mod.record)
     refused = check_keywords(
         node,
         # The cells an OBJECT node consumes, which is what is left of a ``handled``
@@ -2926,6 +2955,7 @@ def _the_conjuncts_own_type(
     bases: Sequence[ir.TypeRef],
     rule_nodes: Sequence[Mapping[str, Any]],
     facts: Mapping[str, Any],
+    record: Mapping[str, Any] | None = None,
 ) -> ir.Decided | Refusal | TargetBranches:
     """§5's ``$ref`` row at CONJ where the target is NOT a class: the node's own TYPE.
 
@@ -3161,7 +3191,7 @@ def _the_conjuncts_own_type(
         # ``/properties/publisher_properties/items/allOf/0``, each now carrying
         # ``ForbiddenGroups((('publisher_domains',),))`` on ``PublisherPropertySelector``.
         at_the_value = lower_rules.as_the_object(
-            rules_at(node, *rule_nodes, position=node.position).rules
+            rules_at(node, *rule_nodes, position=node.position, root=record).rules
         )
         if at_the_value.declined:
             # A kind that is NOT a callable on the value: it reads the keys an instance
@@ -3688,7 +3718,7 @@ def lower_composition(
             f"an allOf of type {word!r} composes no object",
             kind=Kind.VERDICT,
         )
-    stated = rules_at(node, position=position, resolve=mod.resolve_node)
+    stated = rules_at(node, position=position, resolve=mod.resolve_node, root=mod.record)
     if union is None:
         # A node that composes AND carries a combinator of shapes, where nobody is
         # declaring the branches: the conjunction of a conjunct list with a branch list
@@ -4410,6 +4440,10 @@ def lower_composition(
             # carriers §2 already keeps apart -- :attr:`ir.TypeRef.validators` and
             # :attr:`codegen.ir.Decided.constraints` -- rather than in one list the callee splits.
             facts=facts,
+            # The document of record, for §8's sentence 3a -- the ``if`` row's reading
+            # through the storage.  Passed rather than read off a module here because this
+            # callee takes no module (§11: a pure reading of a node).
+            record=mod.record,
         )
         if isinstance(answered, ir.Decided) and conjunct_values:
             # **§5's ``enum`` row at CONJ, applied to the type the row above decided.**
@@ -4472,6 +4506,7 @@ def lower_composition(
         position=position,
         resolve=mod.resolve_node,
         at=tuple(conjunct_sites),
+        root=mod.record,
     )
 
     own: dict[str, dict] = {}
