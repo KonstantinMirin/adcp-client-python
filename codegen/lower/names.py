@@ -103,7 +103,7 @@ from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Any
 
 from codegen import ir
-from codegen.refusal import Kind, Refusal
+from codegen.refusal import BuildFailure, Kind, Refusal
 from codegen.schema import nodes
 
 if TYPE_CHECKING:  # pragma: no cover -- the annotation only; see :func:`assign`
@@ -1266,6 +1266,14 @@ def _bound(declaration: ir.Declaration, symbols: Mapping[str, str]) -> ir.Declar
         )
     if isinstance(declaration, ir.EnumDecl):
         return replace(declaration, name=symbols[declaration.name])
+    if isinstance(declaration, ir.ValuesDecl):
+        # **A value list binds no POINTER**, so there is no symbol slot to bind: §3a's
+        # constant is named from its own members (``lower.enum.values_name``) and is
+        # created by :func:`the_value_lists` AFTER this rewrite, so this arm is reached by
+        # no declaration of this bundle.  It is written rather than left to the fall
+        # through below for the reason that fall through states: a kind with no arm takes
+        # another kind's rewrite silently.
+        return declaration
     if isinstance(declaration, ir.AliasDecl):
         return replace(
             declaration,
@@ -1312,6 +1320,123 @@ def _bound(declaration: ir.Declaration, symbols: Mapping[str, str]) -> ir.Declar
         base=resolved(declaration.base, symbols),
         branches=tuple(resolved(b, symbols) for b in declaration.branches),
     )
+
+
+def _enumeration(declaration: ir.Declaration) -> ir.EnumDecl | None:
+    """The ENUMERATION one declaration holds, or ``None``.
+
+    Two declarations hold one: an :class:`codegen.ir.EnumDecl` is itself, and a
+    :class:`codegen.ir.RootBinding` wraps one where the enumeration is a document's root
+    (that class's own docstring says why a root enum needs the wrapper).  A reader asking
+    "what does this module declare over this value list" has to see both, and the root is
+    exactly the position §3a's two title conflicts sit at -- ``enums/catalog-action.json``
+    and ``enums/creative-action.json`` are both roots of their own documents.
+    """
+    if isinstance(declaration, ir.EnumDecl):
+        return declaration
+    if isinstance(declaration, ir.RootBinding) and isinstance(
+        declaration.declaration, ir.EnumDecl
+    ):
+        return declaration.declaration
+    return None
+
+
+def _constructed(
+    declaration: ir.Declaration, found: ir.EnumDecl, values: str
+) -> ir.Declaration:
+    """``declaration`` with its enumeration CONSTRUCTED from the value list ``values``.
+
+    ``found`` is :func:`_enumeration`'s answer for ``declaration``, handed in rather than
+    read again: a :class:`codegen.ir.RootBinding` wraps an ``AliasDecl`` or an
+    ``EnumDecl``, only one of those has a value list to construct from, and the caller has
+    already asked which.  So the ROOT arm rewraps and the other arm IS ``found`` -- which
+    is why nothing here has to narrow ``declaration`` a second time.
+    """
+    built = replace(found, values=values)
+    return replace(declaration, declaration=built) if isinstance(
+        declaration, ir.RootBinding
+    ) else built
+
+
+def the_value_lists(
+    declarations: tuple[ir.Declaration, ...],
+) -> tuple[ir.Declaration, ...]:
+    """§3a's value list written ONCE, for two types of one module over one value list.
+
+    ``docs/plan/architecture.md`` §3a: "the **VALUE LIST** is a module-level constant in
+    the catalogue layer, written once per distinct member set; the **NAMED TYPE** is
+    constructed from it at each position that needs one, keeping the name §4 derives and
+    keeping the types distinct."
+
+    **This is the SAME-MODULE case and the catalogue does not reach it** (§3a's scope
+    rule: "referenced from one document -> that document's module").  The cross-document
+    case is ``compiler.Module.value_lists``, filled by the run from the catalogue; this
+    one is decided here because only here is the answer knowable without predicting it:
+
+        §4's content dedup keys on NODE EQUALITY and compares a node's ``annotations``, so
+        two positions of one document stating one value list under different descriptions
+        are two classes to it -- and two positions stating the identical node are ONE.
+        Which of the two a group is cannot be read off the bundle: ``catalogue.identity``
+        ignores annotations by §3a's own rule, so a reading there says "two classes" of
+        groups §4 collapses to one.  Measured over this bundle's 21 single-document
+        groups: §4 keeps 5 apart and collapses or ``Literal``-renders the other 16, and a
+        prediction from the catalogue would have written 16 constants nothing uses.
+
+    So the population is the module's OWN finished declarations, which is exact, is a
+    function of the document alone -- §9's "a document's output may not depend on which
+    other documents the run includes" -- and leaves nothing to invalidate.
+
+    A declaration already CONSTRUCTED from a value list is passed over: the run's table
+    answered it first, which is the cross-document case, and a second constant for the
+    same members would be the restatement this function removes.
+
+    The constant is inserted immediately BEFORE the first declaration that uses it, so a
+    reader meets the value list where the first type over it is written and the module
+    needs no forward reference.
+    """
+    # **INSIDE the function, which is ``compiler.py``'s own answer to the same cycle**
+    # (``from codegen.lower.decide import decide``, and two more beside it): the member
+    # naming belongs to D2's enumeration row, that row's module imports ``compiler`` for
+    # §4's rules, and ``compiler`` imports this pass -- so a module-level import here
+    # closes a three-module ring.  One call per MODULE, not per node, so the deferral is
+    # not the per-node cost §11 objected to elsewhere.
+    from codegen.lower.enum import values_name
+
+    held: dict[tuple[Any, ...], list[int]] = {}
+    for i, declaration in enumerate(declarations):
+        found = _enumeration(declaration)
+        if found is None or found.values is not None:
+            continue
+        held.setdefault(tuple(m.value for m in found.members), []).append(i)
+    shared = {members: at for members, at in held.items() if len(at) > 1}
+    named: dict[str, tuple[Any, ...]] = {}
+    for members in shared:
+        spelled = values_name(members)
+        if spelled in named:
+            raise BuildFailure(
+                f"{spelled!r} is the name both {list(named[spelled])!r} and "
+                f"{list(members)!r} spell for their value list: the separator is a "
+                "character a member name can hold, so the two are not told apart -- which "
+                "is a defect in this compiler and not an outcome of any document"
+            )
+        named[spelled] = members
+    out: list[ir.Declaration] = []
+    written: set[str] = set()
+    for i, declaration in enumerate(declarations):
+        found = _enumeration(declaration)
+        if found is None or found.values is not None:
+            out.append(declaration)
+            continue
+        members = tuple(m.value for m in found.members)
+        if members not in shared:
+            out.append(declaration)
+            continue
+        spelled = values_name(members)
+        if spelled not in written:
+            written.add(spelled)
+            out.append(ir.ValuesDecl(name=spelled, kind=found.kind, values=members))
+        out.append(_constructed(declaration, found, spelled))
+    return tuple(out)
 
 
 def _at(declaration: ir.Declaration) -> str | None:
@@ -1493,10 +1618,17 @@ def assign(
     return ir.Module(
         document=mod.document,
         root=symbols.get("", ""),
-        declarations=tuple(
-            _bound(d, symbols)
-            for i, d in enumerate(mod.declarations)
-            if i not in degenerate
+        # §3a's value list written once, for two types of this module over one value
+        # list (:func:`the_value_lists`).  AFTER the binding, because the constant is
+        # named from its MEMBERS and the enumerations it serves are named from their
+        # positions -- two derivations that do not interact, so the order is the one that
+        # lets each read a finished input.
+        declarations=the_value_lists(
+            tuple(
+                _bound(d, symbols)
+                for i, d in enumerate(mod.declarations)
+                if i not in degenerate
+            )
         ),
         imports=frozenset(mod.imports),
         symbols=symbols,

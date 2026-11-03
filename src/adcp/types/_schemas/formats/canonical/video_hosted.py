@@ -9,6 +9,7 @@ from pydantic import ConfigDict, Field, NonNegativeInt, TypeAdapter
 from adcp.types._base import SchemaRef
 from adcp.types.constraints import IntMin1, StrMatchingF601B9EB
 
+from ...common._vocabularies import _VALUES_ACCEPTED_REJECTED
 from ...core.canonical_projection_ref import AssetSource
 from ...core.requirements.video_asset_requirements import VideoCodec
 from ...enums.ctv_ad_experience import CTVAdExperience
@@ -42,8 +43,8 @@ class BuyerAssetAcceptance(StrEnum):
     """
     Whether the product accepts buyer-uploaded video. When `rejected`, the buyer cannot ship a video asset directly — they must use build_creative, sync_creatives with brief inputs, or sync_creatives with an accepted reference asset so the seller produces or resolves the video.
     """
-    ACCEPTED = 'accepted'
-    REJECTED = 'rejected'
+    ACCEPTED = _VALUES_ACCEPTED_REJECTED[0]
+    REJECTED = _VALUES_ACCEPTED_REJECTED[1]
 
 
 class CanonicalFormatHostedVideo(CanonicalFormatBase):

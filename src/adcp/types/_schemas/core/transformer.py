@@ -10,6 +10,7 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, RequiredGroups, Rule, UniqueItems
 from adcp.types.constraints import HttpUrl, IntMin1, StrMatchingA828669D
 
+from ..common._vocabularies import _VALUES_VOICE_THEME_BEST_OF_N_TRANSFORMER_CONFIG_CUSTOM
 from .format_id import FormatReferenceStructuredObject
 from .product_format_declaration import ProductFormatDeclaration
 from .transformer_param import TransformerParam
@@ -39,11 +40,11 @@ class VoiceSynthesisRefItem(AdCPBaseModel):
 
 
 class VariantDimensionsItem(StrEnum):
-    VOICE = 'voice'
-    THEME = 'theme'
-    BEST_OF_N = 'best_of_n'
-    TRANSFORMER_CONFIG = 'transformer_config'
-    CUSTOM = 'custom'
+    VOICE = _VALUES_VOICE_THEME_BEST_OF_N_TRANSFORMER_CONFIG_CUSTOM[0]
+    THEME = _VALUES_VOICE_THEME_BEST_OF_N_TRANSFORMER_CONFIG_CUSTOM[1]
+    BEST_OF_N = _VALUES_VOICE_THEME_BEST_OF_N_TRANSFORMER_CONFIG_CUSTOM[2]
+    TRANSFORMER_CONFIG = _VALUES_VOICE_THEME_BEST_OF_N_TRANSFORMER_CONFIG_CUSTOM[3]
+    CUSTOM = _VALUES_VOICE_THEME_BEST_OF_N_TRANSFORMER_CONFIG_CUSTOM[4]
 
 
 class Multiplicity(AdCPBaseModel):

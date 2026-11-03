@@ -9,13 +9,14 @@ from pydantic import ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 
+from ..common._vocabularies import _VALUES_COST_PER_THRESHOLD_RATE
 from .brand_ref import BrandReference
 from .vendor_metric_id import VendorMetricID
 
 
 class SupportedTargetsItem(StrEnum):
-    COST_PER = 'cost_per'
-    THRESHOLD_RATE = 'threshold_rate'
+    COST_PER = _VALUES_COST_PER_THRESHOLD_RATE[0]
+    THRESHOLD_RATE = _VALUES_COST_PER_THRESHOLD_RATE[1]
 
 
 class VendorMetricOptimizationSupportedMetric(AdCPBaseModel):

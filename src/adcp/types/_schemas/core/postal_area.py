@@ -12,8 +12,9 @@ from adcp.types.constraints import StrMatchingEFC12812
 
 from ..enums.legacy_postal_system import CountryFusedPostalCodeSystem
 from ..enums.postal_system import PostalCodeSystem
+from ._vocabularies import _VALUES_POSTAL_CODE_CUSTOM
 from .postal_area_support import CaPostalCodeSystem, GBPostalCodeSystem, USPostalCodeSystem
-from .postal_country_system import PostalCountrySystem, PostalCountrySystemAUPostcode, PostalCountrySystemBRCep, PostalCountrySystemBranch9, PostalCountrySystemCA, PostalCountrySystemFRCodePostal, PostalCountrySystemGB, PostalCountrySystemINPin, PostalCountrySystemPlz, PostalCountrySystemUS, PostalCountrySystemZAPostalCode
+from .postal_country_system import Country, PostalCountrySystem, PostalCountrySystemAUPostcode, PostalCountrySystemBRCep, PostalCountrySystemBranch9, PostalCountrySystemCA, PostalCountrySystemFRCodePostal, PostalCountrySystemGB, PostalCountrySystemINPin, PostalCountrySystemPlz, PostalCountrySystemUS, PostalCountrySystemZAPostalCode
 
 
 class PostalArea(BranchDispatchMixin, AdCPBaseModel):
@@ -70,15 +71,6 @@ class PostalAreaCA(PostalAreaCountrySystemValues, PostalCountrySystemCA):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/postal-area.json', pointer='#/anyOf/0/allOf/0/anyOf/2')
     country: Annotated[Literal['CA'], Field(description='ISO 3166-1 alpha-2 country code.')]
     system: Annotated[CaPostalCodeSystem, Field(description='Country-local postal code system.')]
-
-
-class Country(StrEnum):
-    """
-    ISO 3166-1 alpha-2 country code.
-    """
-    DE = 'DE'
-    CH = 'CH'
-    AT = 'AT'
 
 
 class PostalAreaPlz(PostalAreaCountrySystemValues, PostalCountrySystemPlz):
@@ -139,8 +131,8 @@ class System(StrEnum):
     """
     Country-local postal code system.
     """
-    POSTAL_CODE = 'postal_code'
-    CUSTOM = 'custom'
+    POSTAL_CODE = _VALUES_POSTAL_CODE_CUSTOM[0]
+    CUSTOM = _VALUES_POSTAL_CODE_CUSTOM[1]
 
 
 class PostalAreaBranch9(PostalAreaCountrySystemValues, PostalCountrySystemBranch9):

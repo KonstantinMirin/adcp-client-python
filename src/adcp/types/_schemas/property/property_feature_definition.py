@@ -9,6 +9,7 @@ from pydantic import ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types.constraints import HttpUrl
 
+from ..common._vocabularies import _VALUES_BINARY_QUANTITATIVE_CATEGORICAL
 from ..core.ext import ExtensionObject
 
 
@@ -16,9 +17,9 @@ class PropertyFeatureDefinitionType(StrEnum):
     """
     The type of values this feature produces: binary (true/false), quantitative (numeric range), categorical (enumerated values)
     """
-    BINARY = 'binary'
-    QUANTITATIVE = 'quantitative'
-    CATEGORICAL = 'categorical'
+    BINARY = _VALUES_BINARY_QUANTITATIVE_CATEGORICAL[0]
+    QUANTITATIVE = _VALUES_BINARY_QUANTITATIVE_CATEGORICAL[1]
+    CATEGORICAL = _VALUES_BINARY_QUANTITATIVE_CATEGORICAL[2]
 
 
 class Range(AdCPBaseModel):

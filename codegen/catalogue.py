@@ -379,6 +379,56 @@ class Entry:
 
 
 @dataclass(frozen=True)
+class Shared:
+    """One VALUE LIST more than one TYPE is emitted over: §3a's other local state.
+
+    §3a gives a value list three local answers and this is the second and the third of
+    them together, because what they share is exactly what this carries:
+
+        * **separate types, one value list** -- the positions are genuinely different
+          subjects;
+        * **separate types pending a name** -- the positions are plausibly one subject
+          and nothing in the bundle names it.
+
+    and §3a's title-conflict rule reaches the same outcome from the other side: "where
+    the bundle states two concepts, both names are right and merging types one subject
+    with the other's name ... In neither case is there a third name to collapse to."
+
+    So the TYPES are per position and the VALUE LIST is one: "the VALUE LIST is a
+    module-level constant in the catalogue layer, written once per distinct member set;
+    the NAMED TYPE is constructed from it at each position that needs one."  This names
+    the constant's content and where it lives; :class:`Entry` beside it is the one-type
+    answer and names a class.
+
+    **It is a VIEW over the collection's partition and not a fifth part of it.**  Every
+    entry here is also in :attr:`Catalogue.untitled` or :attr:`Catalogue.conflicting`,
+    which is where §3a's own naming split puts it; what this adds is the one fact the
+    walk needs about it and neither of those carries -- that one value list serves more
+    than one type, so it is written once somewhere both can reach.
+    """
+
+    vocabulary: Vocabulary
+    #: The members in the bundle's own order, which every position states alike: the
+    #: value list IS the key (:func:`value_list`), so there is one order to carry.
+    members: tuple[object, ...]
+    #: ``"string"`` or ``"integer"``, in JSON Schema's words.
+    kind: str
+    #: Every position that states this value list, in bundle order.
+    positions: tuple[Stated, ...]
+    #: The titles the bundle gives it: empty for ``codegen/vocabularies.py``'s judged
+    #: rows, and two for a conflict §3a leaves alone.
+    titles: tuple[str, ...] = ()
+
+    @property
+    def documents(self) -> frozenset[str]:
+        return frozenset(p.document for p in self.positions)
+
+    @property
+    def domains(self) -> frozenset[str]:
+        return frozenset(domain(p.document) for p in self.positions)
+
+
+@dataclass(frozen=True)
 class Conflict:
     """A vocabulary the bundle gives MORE THAN ONE title: §3a's third naming case.
 
@@ -432,6 +482,26 @@ class Catalogue:
     restated: tuple[tuple[Stated, ...], ...]
     #: Every stating position, which is the set every count above partitions.
     positions: tuple[Stated, ...] = field(default=())
+    #: value list -> §3a's SHARED value list (:class:`Shared`), for the value lists more
+    #: than one type is emitted over.  A VIEW over the partition and not a part of it.
+    shared: Mapping[Vocabulary, Shared] = field(default_factory=dict)
+    #: value list -> the one position that states it, for a value list the bundle states
+    #: at EXACTLY ONE position.
+    #:
+    #: Not a group and not a naming question -- one position states it, so §3a's
+    #: three-way split has nothing to decide and :func:`collect`'s partition passes it
+    #: over.  **It is carried because a position that STATES a value list is not the only
+    #: position that DECLARES a class over one**: §2's intersection rule hands a base's
+    #: node back to a composing document, which lowers it again, and a second class over
+    #: one value list is exactly what reading 4 forbids.  Measured over this bundle: of
+    #: the 643 value lists stated at one position, **1** carries two classes in the
+    #: emitted tree -- ``core/postal-country-system.json``'s ``["DE", "CH", "AT"]``,
+    #: re-lowered by ``core/postal-area.json`` -- and ``codegen/vocabularies.py``'s own
+    #: docstring records the row that was written for it and refused: "the bundle states
+    #: it at ONE position ... which is a restatement §4 and §5 own and this layer never
+    #: sees."  It sees it here, as a HOME and not as a judgement: one position, so there
+    #: is nothing to judge and nothing to name.
+    alone: Mapping[Vocabulary, Stated] = field(default_factory=dict)
 
     def entry_at(self, document: str, pointer: str) -> Entry | None:
         """The entry the position at ``(document, pointer)`` states, or ``None``.
@@ -740,22 +810,33 @@ def the_name(positions: Collection[Stated], stated: Collection[str]) -> str | No
     return next(iter(rooted)) if len(rooted) == 1 else None
 
 
-def home(entry: Entry) -> str:
-    """The NARROWEST namespace containing every position that states ``entry`` (§3a).
+def namespace(documents: Collection[str]) -> str:
+    """The NARROWEST namespace containing every one of ``documents`` (§3a).
 
     One document → that document, as a bundle-relative path, which is the module the walk
     writes today.  One domain → that domain's name.  More than one → :data:`SHARED`.
+
+    One derivation, read by both of §3a's local answers: :func:`home` asks it of an
+    :class:`Entry`'s positions and ``emit.vocabularies_modules`` asks it of a
+    :class:`Shared`'s, and §3a states the rule once -- "an entry lives in the NARROWEST
+    namespace that contains every position referencing it".
+    """
+    held = frozenset(documents)
+    if len(held) == 1:
+        return next(iter(held))
+    domains = frozenset(domain(d) for d in held)
+    return next(iter(domains)) if len(domains) == 1 else SHARED
+
+
+def home(entry: Entry) -> str:
+    """The NARROWEST namespace containing every position that states ``entry`` (§3a).
 
     **It answers by §3a's rule even where :attr:`Entry.rooted` is non-empty**, and the
     module docstring states why that is reported rather than resolved here: for 13 of the
     15 entries §3a's rule and §4's root rule give different homes, and choosing between
     them moves -- or declines to move -- a name the domain surface exports today.
     """
-    documents = entry.documents
-    if len(documents) == 1:
-        return next(iter(documents))
-    domains = entry.domains
-    return next(iter(domains)) if len(domains) == 1 else SHARED
+    return namespace(entry.documents)
 
 
 def collect(bundle_dir: Path, documents: Collection[str] | None = None) -> Catalogue:
@@ -783,8 +864,22 @@ def collect(bundle_dir: Path, documents: Collection[str] | None = None) -> Catal
     untitled: list[tuple[Stated, ...]] = []
     conflicting: list[Conflict] = []
     restated: list[tuple[Stated, ...]] = []
+    shared: dict[Vocabulary, Shared] = {}
+    alone: dict[Vocabulary, Stated] = {}
+
+    def more_than_one_type(key: Vocabulary, group: list[Stated], titles: tuple[str, ...]) -> None:
+        """Record §3a's second and third local states, which agree on the value list."""
+        shared[key] = Shared(
+            vocabulary=key,
+            members=group[0].members,
+            kind=KIND[type(group[0].members[0])],
+            positions=tuple(group),
+            titles=titles,
+        )
+
     for key, group in grouped.items():
         if len(group) < 2:
+            (alone[key],) = group
             continue
         if len({p.document for p in group}) == 1:
             restated.append(tuple(group))
@@ -798,6 +893,15 @@ def collect(bundle_dir: Path, documents: Collection[str] | None = None) -> Catal
             # exactly as every untitled one did before the rows existed.
             if not vocabularies.one_subject(key):
                 untitled.append(tuple(group))
+                # §3a's "separate types, one value list" and "separate types pending a
+                # name": where the judgement declares one of those, the VALUE LIST is one
+                # and the types are per position.  An UN-ROWED untitled group is neither
+                # -- §3a's default leaves it exactly as it was before this layer existed,
+                # which is what measurement says it should be: of this bundle's 24
+                # un-rowed groups, 17 emit no class at all and 7 emit one, so there is no
+                # value list to write twice and a constant for one would have no user.
+                if vocabularies.separate(key):
+                    more_than_one_type(key, group, ())
                 continue
             at = declared_at(group, None, reaches)
             entries[key] = Entry(
@@ -812,7 +916,14 @@ def collect(bundle_dir: Path, documents: Collection[str] | None = None) -> Catal
             continue
         title = the_name(group, stated_titles)
         if title is None:
-            conflicting.append(Conflict(key, tuple(sorted(stated_titles)), tuple(group)))
+            titled = tuple(sorted(stated_titles))
+            conflicting.append(Conflict(key, titled, tuple(group)))
+            # §3a's conflict rule reaches the same place from the other side: "a
+            # conflicting title is not a question about which name wins ... In neither
+            # case is there a third name to collapse to, and minting one is what §4
+            # refuses."  Both names stand, so two types stand, and the value list under
+            # them is one.
+            more_than_one_type(key, group, titled)
             continue
         # The entry's member order is the NAMING position's: §3a derives the name from the
         # bundle, so the document that names the concept is the one whose spelling of it
@@ -832,4 +943,6 @@ def collect(bundle_dir: Path, documents: Collection[str] | None = None) -> Catal
         conflicting=tuple(conflicting),
         restated=tuple(restated),
         positions=tuple(every),
+        shared=shared,
+        alone=alone,
     )

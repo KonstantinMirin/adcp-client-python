@@ -700,7 +700,7 @@ def alias(decl: ir.AliasDecl) -> Rendered:
 _ENUM_BASES: dict[str, type[DmcgEnum]] = {"string": StrEnum, "integer": IntEnum}
 
 
-def _member(member: ir.Member) -> DataModelFieldBase:
+def _member(member: ir.Member, values: str | None = None, at: int = 0) -> DataModelFieldBase:
     """One member as the model layer's field.
 
     ``EnumMemberValue`` is the generator's own carrier for a string member, and it is
@@ -711,14 +711,59 @@ def _member(member: ir.Member) -> DataModelFieldBase:
     ``use_inline_field_description`` is what puts the description in the class
     body: a single-line one becomes ``\"\"\"text\"\"\"`` under the member, and a
     multi-line one an indented triple-quoted block.
+
+    **``values`` is §3a's module-level value list this member's VALUE is read out of**
+    (:attr:`ir.EnumDecl.values`), and ``at`` is the member's own position in it.  The
+    carrier is then ``PythonCode``, which is the generator's own carrier for a rendered
+    EXPRESSION -- the same mechanism ``EnumMemberValue`` is for a literal, selected here
+    rather than by concatenating text, so the escaping and the indexing go through one
+    template and not two.
+
+    The NAME is unchanged either way, which is the whole point: a class-body statement
+    binding a name is what a consumer's type checker reads, and only the value moves.
     """
     return DataModelFieldBase(
         name=member.name,
         data_type=DataType(),
-        default=EnumMemberValue(member.value) if isinstance(member.value, str) else member.value,
+        default=(
+            PythonCode(f"{values}[{at}]")
+            if values is not None
+            else EnumMemberValue(member.value)
+            if isinstance(member.value, str)
+            else member.value
+        ),
         required=True,
         extras={"description": member.description} if member.description else {},
         use_inline_field_description=True,
+    )
+
+
+#: The Python type word for each kind's MEMBER VALUE, for the annotation a value list
+#: carries.  ``lower.enum.BASES`` is the same mapping read from the other side.
+_VALUE_TYPES = {"string": "str", "integer": "int"}
+
+
+def values(decl: ir.ValuesDecl) -> Rendered:
+    """§3a's module-level VALUE LIST: ``<name>: tuple[<base>, ...] = (…)``.
+
+    "The **VALUE LIST** is a module-level constant in the catalogue layer, written once
+    per distinct member set; the **NAMED TYPE** is constructed from it at each position
+    that needs one, keeping the name §4 derives and keeping the types distinct."
+
+    The VALUES alone, which is :class:`ir.ValuesDecl`'s own reason: the member NAME is a
+    class-body statement at each type over the list, so the list is the value list the
+    reading is worded on and carries nothing a type decides.
+
+    ``repr`` is the escaping, and it is the language's own rather than this module's: the
+    repr of a ``str`` or an ``int`` is by definition a Python literal for that value, so
+    a member containing a quote, a backslash or a newline round-trips without this
+    function knowing which characters those are.  The class body reaches the same
+    guarantee through the model layer's ``EnumMemberValue`` (:func:`_member`); there is no
+    second escaping rule here, only a second expression of one.
+    """
+    held = "\n".join(f"    {value!r}," for value in decl.values)
+    return Rendered(
+        text=f"{decl.name}: tuple[{_VALUE_TYPES[decl.kind]}, ...] = (\n{held}\n)"
     )
 
 
@@ -728,10 +773,20 @@ def enum(decl: ir.EnumDecl) -> Rendered:
     The members' NAMES are rendered verbatim (``{{ field.name }}``): this module names
     nothing here, which is why ``codegen.lower.enum`` owns the naming and why the
     injectivity check binds to its function.
+
+    **ONE FORM, and :attr:`ir.EnumDecl.values` moves the member's VALUE and not its
+    name.**  §3a's "the NAMED TYPE is constructed from it at each position" is satisfied
+    by a class statement whose members are read out of the one list, and the functional
+    ``StrEnum('<Name>', …)`` call -- which §3a's correction of 2026-11-02 named as one way
+    to do it -- is not usable here: a consumer's type checker cannot see a functionally
+    built enum's members (``error: "type[CatalogAction]" has no attribute "CREATED"
+    [attr-defined]``, measured against a wheel), which is a regression in reading 7.  So
+    the two docstring slots the correction was willing to give up are kept as well, and
+    nothing about this function differs between a value list of its own and a shared one.
     """
     model = _ENUM_BASES[decl.kind](
         reference=Reference(path=f"#/{decl.name}", original_name=decl.name, name=decl.name),
-        fields=[_member(m) for m in decl.members],
+        fields=[_member(m, decl.values, at) for at, m in enumerate(decl.members)],
         description=decl.description or None,
     )
     out = Rendered(text=model.render().rstrip("\n"))
@@ -1064,6 +1119,8 @@ def declaration(
         return klass(decl, () if decl.ref is None else declared_at(approximations, decl.ref))
     if isinstance(decl, ir.EnumDecl):
         return enum(decl)
+    if isinstance(decl, ir.ValuesDecl):
+        return values(decl)
     if isinstance(decl, ir.AliasDecl):
         return alias(decl)
     if isinstance(decl, ir.RootBinding):
@@ -1235,7 +1292,64 @@ def module(mod: ir.Module, exports: Sequence[str]) -> str:
 #: The same first line every emitted module carries, less the document name: the two
 #: outputs written BESIDE the tree -- the constraints module and the envelope bases --
 #: are the ones that belong to no document, so there is no path for the header to name.
+#:
+#: §3a's CATALOGUE module takes it too, and that is the point of the line rather than a
+#: reuse of it: "**A pseudo-document path is refused**: it names a file the bundle does
+#: not contain, and every reader that resolves a record from a key would then be lying
+#: about where the schema came from."  A header naming a document would be the same lie
+#: one line further in.
 BESIDE_HEADER = "# Generated by codegen.emit. Do not edit."
+
+VOCABULARIES_DOCSTRING = '''"""Value lists the bundle states under more than one name, written once.
+
+GENERATED by ``codegen.emit``; see ``docs/plan/architecture.md`` §3a, which decides both
+that these lists are written once and that the types over them stay distinct.  Edit
+nothing -- the tree is ``f(bundle, emitter, pinned compiler)`` and a hand edit here is a
+fact no input states.
+
+**This module belongs to NO document**, which is why it carries no header path, no
+``__adcp_schema__`` and no ``strict_validate``: §3a's catalogue is a reading of the
+bundle, and a value list the bundle states at six positions in four documents has no one
+document to be reached through.  It sits in the narrowest namespace that contains every
+position referencing it -- a domain's where every reference is within one domain, the
+shared one otherwise.
+
+**Nothing here is a type.**  Each name is a list of VALUES, and the enumerations that
+read their members out of it are declared in the modules of the documents that state
+them -- as class statements, each keeping the name §4 derives for it: "a conflicting
+title is not a question about which name wins ... where the bundle states two concepts,
+both names are right and merging types one subject with the other's name."
+"""'''
+
+
+def vocabularies_module(declarations: Sequence[ir.ValuesDecl]) -> str:
+    """The text of one namespace's ``_vocabularies.py``: §3a's value lists, written once.
+
+    A module of CONSTANTS, so there is no ``__all__``: every name here is private by its
+    own leading underscore and is reached by the modules that build a type from it, never
+    by a consumer.  §1's export set is about types a consumer writes, and a value list is
+    not one.
+
+    The header is :data:`BESIDE_HEADER` for the reason that constant now carries: this
+    module has no document, and naming one would be the pseudo-document path §3a refuses.
+    """
+    rendered = [values(decl) for decl in declarations]
+    imports: set[tuple[str, str]] = set()
+    for one in rendered:
+        imports |= one.imports
+    return "\n".join(
+        [
+            BESIDE_HEADER,
+            VOCABULARIES_DOCSTRING,
+            "",
+            "from __future__ import annotations",
+            "",
+            *_import_block(imports),
+            "",
+            "\n\n\n".join(one.text for one in rendered),
+            "",
+        ]
+    )
 
 ENVELOPES_DOCSTRING = '''"""Consumer-facing bases for a repeated envelope the bundle spells more than one way.
 

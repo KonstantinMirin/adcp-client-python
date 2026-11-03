@@ -20,13 +20,20 @@ class Canvas(AdCPBaseModel):
     background_color: StrMatchingF01B4765 | None = '#ffffff'
 
 
+_VALUES_CONTAIN_COVER_STRETCH: tuple[str, ...] = (
+    'contain',
+    'cover',
+    'stretch',
+)
+
+
 class CreativeSlotFit(StrEnum):
     """
     How the creative render is scaled into the slot. contain preserves the whole render, cover fills and crops, and stretch fills without preserving aspect ratio.
     """
-    CONTAIN = 'contain'
-    COVER = 'cover'
-    STRETCH = 'stretch'
+    CONTAIN = _VALUES_CONTAIN_COVER_STRETCH[0]
+    COVER = _VALUES_CONTAIN_COVER_STRETCH[1]
+    STRETCH = _VALUES_CONTAIN_COVER_STRETCH[2]
 
 
 class CreativeSlot(AdCPBaseModel):
@@ -98,9 +105,9 @@ class ImageRef(AdCPBaseModel):
 
 
 class ImageDecorationFit(StrEnum):
-    CONTAIN = 'contain'
-    COVER = 'cover'
-    STRETCH = 'stretch'
+    CONTAIN = _VALUES_CONTAIN_COVER_STRETCH[0]
+    COVER = _VALUES_CONTAIN_COVER_STRETCH[1]
+    STRETCH = _VALUES_CONTAIN_COVER_STRETCH[2]
 
 
 class ImageDecoration(AdCPBaseModel):

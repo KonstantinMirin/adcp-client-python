@@ -12,6 +12,7 @@ from adcp.types.constraints import StrMatching38E7F7CC
 
 from ...enums.macro_value_context import MacroValueContext
 from ...enums.vast_tracking_event import VASTTrackingEvent
+from .._vocabularies import _VALUES_LINEAR_NON_LINEAR_COMPANION
 from ..macro_bearing_url import MacroBearingURL
 from ..macro_declaration import MacroDeclaration
 from ..provenance import Provenance
@@ -42,9 +43,9 @@ class Target(StrEnum):
     """
     Which VAST creative element this tracker scopes to — `linear` for `<Linear>/<TrackingEvents>`, `non_linear` for `<NonLinearAds>/<TrackingEvents>`, `companion` for `<CompanionAds>/<Companion>/<TrackingEvents>`. Defaults to `linear`. Existing 3.x assets remain structurally permissive; a tracker execution contract applies the standards-valid event/target matrix when matching a creative to a product.
     """
-    LINEAR = 'linear'
-    NON_LINEAR = 'non_linear'
-    COMPANION = 'companion'
+    LINEAR = _VALUES_LINEAR_NON_LINEAR_COMPANION[0]
+    NON_LINEAR = _VALUES_LINEAR_NON_LINEAR_COMPANION[1]
+    COMPANION = _VALUES_LINEAR_NON_LINEAR_COMPANION[2]
 
 
 class VASTTrackerAsset(AdCPBaseModel):

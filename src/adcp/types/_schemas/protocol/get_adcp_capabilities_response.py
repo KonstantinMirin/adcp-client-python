@@ -11,6 +11,7 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import AtLeastOne, ConditionalRequired, ForbiddenGroups, Match, NotValue, Rule, UniqueItems
 from adcp.types.constraints import AdCPUrl, HttpUrl, IntMin0Max50, IntMin0Max86400, IntMin1, IntMin1Max365, IntMin1Max604800, IntMin1Max64, IntMin1Max86400, IntMin2Max10, IntMin3600Max604800, IntMin60Max604800, IntMin86400Max604800, IntMin90, StrMatching071A974C, StrMatching32F5291C, StrMatching3A976806, StrMatching3CBDBB74, StrMatching4D6E1599, StrMatching611F08F3, StrMatching6C40A8AC, StrMatchingA828669D, StrMatchingEFC12812, StrMaxLen10000, StrMaxLen256MatchingF7F39876, StrMaxLen5000, StrMinLen1, StrMinLen1MaxLen100Matching85112285, StrMinLen1MaxLen255, StrMinLen1MaxLen64Matching5CDAE669
 
+from ..common._vocabularies import _VALUES_BINARY_QUANTITATIVE_CATEGORICAL, _VALUES_CAPABILITIES_CHANGED, _VALUES_COST_PER_THRESHOLD_RATE, _VALUES_VOICE_THEME_BEST_OF_N_TRANSFORMER_CONFIG_CUSTOM
 from ..core.account_timezone_capability import AccountTimezoneCapability
 from ..core.attestation_capabilities import AttestationCapabilities
 from ..core.audience_activation_method import AudienceActivationMethod
@@ -149,7 +150,7 @@ class RegistrationTask(StrEnum):
 
 
 class CapabilityChangeNotificationsSupportedEventTypesItem(StrEnum):
-    CAPABILITIES_CHANGED = 'capabilities.changed'
+    CAPABILITIES_CHANGED = _VALUES_CAPABILITIES_CHANGED[0]
 
 
 class CapabilityChangeNotificationsSupported(AdCPBaseModel):
@@ -738,12 +739,18 @@ class AudienceEvidence(AdCPBaseModel):
     supports_attestation_evaluation: Annotated[bool, Field(description='Whether the seller evaluates audience-evidence attestation_refs under its core adcp.attestations policy and returns the exact reference and AttestationEvaluation in package readback.')]
 
 
+_VALUES_OPTIONAL_REQUIRED: tuple[str, ...] = (
+    'optional',
+    'required',
+)
+
+
 class RightsAttestationsRequirement(StrEnum):
     """
     required means every applicable rights constraint needs at least one current verified attestation evaluation before the creative is eligible to serve. optional permits independent legacy contractual policy, but unattested constraints remain machine-unverified and verification_url is never a downgrade path.
     """
-    OPTIONAL = 'optional'
-    REQUIRED = 'required'
+    OPTIONAL = _VALUES_OPTIONAL_REQUIRED[0]
+    REQUIRED = _VALUES_OPTIONAL_REQUIRED[1]
 
 
 class RightsAttestations(AdCPBaseModel):
@@ -791,8 +798,8 @@ class AudienceTargeting(AdCPBaseModel):
 
 
 class SupportedTargetsItem(StrEnum):
-    COST_PER = 'cost_per'
-    THRESHOLD_RATE = 'threshold_rate'
+    COST_PER = _VALUES_COST_PER_THRESHOLD_RATE[0]
+    THRESHOLD_RATE = _VALUES_COST_PER_THRESHOLD_RATE[1]
 
 
 class VendorMetricOptimization(AdCPBaseModel):
@@ -1001,8 +1008,8 @@ class SignalActivationRequirement(StrEnum):
     """
     Whether an activate_signal activation check may omit runtime_attestations. When required, missing evidence fails an activation check. Deactivation and privacy-removal checks never require signal-quality evidence and remain available without it.
     """
-    OPTIONAL = 'optional'
-    REQUIRED = 'required'
+    OPTIONAL = _VALUES_OPTIONAL_REQUIRED[0]
+    REQUIRED = _VALUES_OPTIONAL_REQUIRED[1]
 
 
 class SignalActivation(AdCPBaseModel):
@@ -1032,9 +1039,9 @@ class PropertyFeaturesItemType(StrEnum):
     """
     Data type: 'binary' for yes/no, 'quantitative' for numeric scores, 'categorical' for enum values
     """
-    BINARY = 'binary'
-    QUANTITATIVE = 'quantitative'
-    CATEGORICAL = 'categorical'
+    BINARY = _VALUES_BINARY_QUANTITATIVE_CATEGORICAL[0]
+    QUANTITATIVE = _VALUES_BINARY_QUANTITATIVE_CATEGORICAL[1]
+    CATEGORICAL = _VALUES_BINARY_QUANTITATIVE_CATEGORICAL[2]
 
 
 class PropertyFeaturesItemRange(AdCPBaseModel):
@@ -1150,11 +1157,11 @@ class RepresentationResolution(AdCPBaseModel):
 
 
 class VariantDimensionsItem(StrEnum):
-    VOICE = 'voice'
-    THEME = 'theme'
-    BEST_OF_N = 'best_of_n'
-    TRANSFORMER_CONFIG = 'transformer_config'
-    CUSTOM = 'custom'
+    VOICE = _VALUES_VOICE_THEME_BEST_OF_N_TRANSFORMER_CONFIG_CUSTOM[0]
+    THEME = _VALUES_VOICE_THEME_BEST_OF_N_TRANSFORMER_CONFIG_CUSTOM[1]
+    BEST_OF_N = _VALUES_VOICE_THEME_BEST_OF_N_TRANSFORMER_CONFIG_CUSTOM[2]
+    TRANSFORMER_CONFIG = _VALUES_VOICE_THEME_BEST_OF_N_TRANSFORMER_CONFIG_CUSTOM[3]
+    CUSTOM = _VALUES_VOICE_THEME_BEST_OF_N_TRANSFORMER_CONFIG_CUSTOM[4]
 
 
 class Multiplicity(AdCPBaseModel):

@@ -10,6 +10,7 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import StrMatching5E987613, StrMinLen16MaxLen255Matching1E5CF9EB, StrMinLen1MaxLen128MatchingE43B025C, StrMinLen1MaxLen255Matching67860854, StrMinLen1MaxLen512
 
+from ..common._vocabularies import _VALUES_ACCEPTED_REJECTED
 from .reporting_canonical_content_digest import ReportingCanonicalContentDigest
 from .reporting_control_total import ReportingControlTotal
 from .reporting_native_version_ref import ReportingNativeVersionReference
@@ -17,8 +18,8 @@ from .reporting_verification_profile import ReportingVerificationProfile
 
 
 class Status(StrEnum):
-    ACCEPTED = 'accepted'
-    REJECTED = 'rejected'
+    ACCEPTED = _VALUES_ACCEPTED_REJECTED[0]
+    REJECTED = _VALUES_ACCEPTED_REJECTED[1]
 
 
 class ReportingReceipt(AdCPBaseModel):

@@ -28,6 +28,7 @@ from ..enums.sponsored_placement_type import SponsoredPlacementType
 from ..enums.transport_mode import TransportMode
 from ..enums.travel_time_unit import TravelTimeUnit
 from ..enums.video_placement_type import VideoPlacementType
+from ._vocabularies import _VALUES_INCLUDE_EXCLUDE
 from .audience_activation_method import DirectionsItem
 from .audience_evidence_requirements import AudienceEvidenceRequirements
 from .brand_ref import BrandReference
@@ -198,8 +199,8 @@ class TargetingMode(StrEnum):
     """
     Desired use of this signal on the product. 'include' requires the product option to allow use in an any group. 'exclude' requires the product option to allow use in a none group.
     """
-    INCLUDE = 'include'
-    EXCLUDE = 'exclude'
+    INCLUDE = _VALUES_INCLUDE_EXCLUDE[0]
+    EXCLUDE = _VALUES_INCLUDE_EXCLUDE[1]
 
 
 class SignalTargetingItem(BranchDispatchMixin, AdCPBaseModel):

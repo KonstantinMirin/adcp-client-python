@@ -9,6 +9,8 @@ from pydantic import ConfigDict, Field, TypeAdapter
 from adcp.types._base import AdCPBaseModel, AdCPRootModel, SchemaRef
 from adcp.types.constraints import StrMinLen1
 
+from ._vocabularies import _VALUES_INCLUDE_OMIT_FINALIZE, _VALUES_INCLUDE_OMIT_MORE_LIKE_THIS
+
 
 class ProductRefinementRequestsItemRequest(AdCPBaseModel):
     model_config = ConfigDict(
@@ -23,9 +25,9 @@ class ProductRefinementRequestsItemProductAction(StrEnum):
     """
     Requested product-level action.
     """
-    INCLUDE = 'include'
-    OMIT = 'omit'
-    MORE_LIKE_THIS = 'more_like_this'
+    INCLUDE = _VALUES_INCLUDE_OMIT_MORE_LIKE_THIS[0]
+    OMIT = _VALUES_INCLUDE_OMIT_MORE_LIKE_THIS[1]
+    MORE_LIKE_THIS = _VALUES_INCLUDE_OMIT_MORE_LIKE_THIS[2]
 
 
 class ProductRefinementRequestsItemProduct(AdCPBaseModel):
@@ -43,9 +45,9 @@ class ProductRefinementRequestsItemProposalAction(StrEnum):
     """
     Requested proposal-level action.
     """
-    INCLUDE = 'include'
-    OMIT = 'omit'
-    FINALIZE = 'finalize'
+    INCLUDE = _VALUES_INCLUDE_OMIT_FINALIZE[0]
+    OMIT = _VALUES_INCLUDE_OMIT_FINALIZE[1]
+    FINALIZE = _VALUES_INCLUDE_OMIT_FINALIZE[2]
 
 
 class ProductRefinementRequestsItemProposal(AdCPBaseModel):

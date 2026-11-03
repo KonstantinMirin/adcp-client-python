@@ -10,6 +10,7 @@ from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, 
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Presence, PresenceGroups, Rule, UniqueItems
 from adcp.types.constraints import IntMin1, StrMatching43E30B32, StrMatchingA828669D, StrMinLen16MaxLen255Matching1E5CF9EB, StrMinLen1MaxLen4096MatchingB34ADF3C
 
+from ..common._vocabularies import _VALUES_VOICE_THEME_BEST_OF_N_TRANSFORMER_CONFIG_CUSTOM
 from ..core.account_ref import AccountReference
 from ..core.brand_ref import BrandReference
 from ..core.context import ContextObject
@@ -97,11 +98,11 @@ class Dimension(StrEnum):
     """
     What varies across variants. `transformer_config` varies a named config param (name it in `field`); `best_of_n` lets the agent explore and rank; `custom` is agent-defined (describe in `label`).
     """
-    VOICE = 'voice'
-    THEME = 'theme'
-    BEST_OF_N = 'best_of_n'
-    TRANSFORMER_CONFIG = 'transformer_config'
-    CUSTOM = 'custom'
+    VOICE = _VALUES_VOICE_THEME_BEST_OF_N_TRANSFORMER_CONFIG_CUSTOM[0]
+    THEME = _VALUES_VOICE_THEME_BEST_OF_N_TRANSFORMER_CONFIG_CUSTOM[1]
+    BEST_OF_N = _VALUES_VOICE_THEME_BEST_OF_N_TRANSFORMER_CONFIG_CUSTOM[2]
+    TRANSFORMER_CONFIG = _VALUES_VOICE_THEME_BEST_OF_N_TRANSFORMER_CONFIG_CUSTOM[3]
+    CUSTOM = _VALUES_VOICE_THEME_BEST_OF_N_TRANSFORMER_CONFIG_CUSTOM[4]
 
 
 class VariantAxis(AdCPBaseModel):

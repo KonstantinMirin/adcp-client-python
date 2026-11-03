@@ -11,6 +11,7 @@ from adcp.types._runtime import NotValue
 from adcp.types.constraints import StrMatchingEFC12812
 
 from ..enums.postal_system import PostalCodeSystem
+from ._vocabularies import _VALUES_POSTAL_CODE_CUSTOM
 from .postal_area_support import CaPostalCodeSystem, GBPostalCodeSystem, USPostalCodeSystem
 
 
@@ -96,8 +97,8 @@ class System(StrEnum):
     """
     Country-local postal code system.
     """
-    POSTAL_CODE = 'postal_code'
-    CUSTOM = 'custom'
+    POSTAL_CODE = _VALUES_POSTAL_CODE_CUSTOM[0]
+    CUSTOM = _VALUES_POSTAL_CODE_CUSTOM[1]
 
 
 class PostalCountrySystemBranch9(PostalCountrySystem):

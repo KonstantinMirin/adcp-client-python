@@ -9,13 +9,15 @@ from pydantic import ConfigDict, Field, NonNegativeInt
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types.constraints import IntMin1
 
+from ._vocabularies import _VALUES_INCLUDE_EXCLUDE
+
 
 class TargetingMode(StrEnum):
     """
     How options in this selection_group are intended to be used in signal_targeting_groups. 'include' maps to child groups with operator 'any'. 'exclude' maps to child groups with operator 'none'. Omit when options in the group may be used according to each option's allowed_targeting_modes.
     """
-    INCLUDE = 'include'
-    EXCLUDE = 'exclude'
+    INCLUDE = _VALUES_INCLUDE_EXCLUDE[0]
+    EXCLUDE = _VALUES_INCLUDE_EXCLUDE[1]
 
 
 class SelectionMode(StrEnum):

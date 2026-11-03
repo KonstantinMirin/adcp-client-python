@@ -10,6 +10,7 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, PropertyCount, RequiredGroups, Rule, UniqueItems
 from adcp.types.constraints import AdCPUrl, FloatGt0, HttpUrl, IntMin1, StrMatchingEE2029C8, StrMatchingEFC12812, StrMaxLen200, StrMaxLen2000, StrMaxLen25, StrMaxLen30, StrMaxLen60
 
+from ..common._vocabularies import _VALUES_COST_PER_THRESHOLD_RATE
 from ..enums.action_source import ActionSource
 from ..enums.audio_distribution_type import AudioDistributionType
 from ..enums.catalog_type import CatalogType
@@ -73,8 +74,8 @@ class DeliveryMeasurement(AdCPBaseModel):
 
 
 class MetricOptimizationSupportedTargetsItem(StrEnum):
-    COST_PER = 'cost_per'
-    THRESHOLD_RATE = 'threshold_rate'
+    COST_PER = _VALUES_COST_PER_THRESHOLD_RATE[0]
+    THRESHOLD_RATE = _VALUES_COST_PER_THRESHOLD_RATE[1]
 
 
 class MetricOptimization(AdCPBaseModel):

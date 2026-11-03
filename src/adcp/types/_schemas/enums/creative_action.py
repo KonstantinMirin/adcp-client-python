@@ -5,6 +5,8 @@ from enum import StrEnum
 
 from adcp.types._base import SchemaRef, strict_alias
 
+from ._vocabularies import _VALUES_CREATED_UPDATED_UNCHANGED_FAILED_DELETED
+
 
 __adcp_schema__ = SchemaRef(document='enums/creative-action.json', pointer='#')
 
@@ -12,11 +14,11 @@ class CreativeAction(StrEnum):
     """
     Action taken on a creative during sync operation
     """
-    CREATED = 'created'
-    UPDATED = 'updated'
-    UNCHANGED = 'unchanged'
-    FAILED = 'failed'
-    DELETED = 'deleted'
+    CREATED = _VALUES_CREATED_UPDATED_UNCHANGED_FAILED_DELETED[0]
+    UPDATED = _VALUES_CREATED_UPDATED_UNCHANGED_FAILED_DELETED[1]
+    UNCHANGED = _VALUES_CREATED_UPDATED_UNCHANGED_FAILED_DELETED[2]
+    FAILED = _VALUES_CREATED_UPDATED_UNCHANGED_FAILED_DELETED[3]
+    DELETED = _VALUES_CREATED_UPDATED_UNCHANGED_FAILED_DELETED[4]
 
 
 strict_validate = strict_alias(__adcp_schema__, "CreativeAction", CreativeAction)

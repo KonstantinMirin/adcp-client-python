@@ -8,6 +8,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 
+from ..common._vocabularies import _VALUES_OPEN_CLOSED
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
 from ..core.version_envelope import AdCPVersionEnvelope
@@ -27,8 +28,8 @@ class DeliveryPeriodState(StrEnum):
     """
     Operational state of the governance reporting period. Closure freezes governance evidence for that period but is not billing settlement.
     """
-    OPEN = 'open'
-    CLOSED = 'closed'
+    OPEN = _VALUES_OPEN_CLOSED[0]
+    CLOSED = _VALUES_OPEN_CLOSED[1]
 
 
 class FindingsItem(AdCPBaseModel):

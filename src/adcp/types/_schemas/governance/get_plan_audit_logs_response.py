@@ -10,6 +10,7 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import FloatGt0, FloatMin0Max1, HttpUrl, IntMin1, StrMatching3CBDBB74, StrMatching43E30B32, StrMatchingE9418C71, StrMinLen1MaxLen255
 
+from ..common._vocabularies import _VALUES_OPEN_CLOSED
 from ..core.attestation_evaluation import AttestationEvaluation
 from ..core.attestation_reference import AttestationReference
 from ..core.context import ContextObject
@@ -25,13 +26,20 @@ from .check_governance_response import CheckType
 from .reported_outcome_error import ReportedOutcomeError
 
 
+_VALUES_ACTIVE_SUSPENDED_COMPLETED: tuple[str, ...] = (
+    'active',
+    'suspended',
+    'completed',
+)
+
+
 class PlansItemStatus(StrEnum):
     """
     Plan lifecycle status.
     """
-    ACTIVE = 'active'
-    SUSPENDED = 'suspended'
-    COMPLETED = 'completed'
+    ACTIVE = _VALUES_ACTIVE_SUSPENDED_COMPLETED[0]
+    SUSPENDED = _VALUES_ACTIVE_SUSPENDED_COMPLETED[1]
+    COMPLETED = _VALUES_ACTIVE_SUSPENDED_COMPLETED[2]
 
 
 class AccountingMode(StrEnum):
@@ -300,8 +308,8 @@ class EntriesItemDeliveryPeriodState(StrEnum):
     """
     Operational governance-window state for this delivery observation.
     """
-    OPEN = 'open'
-    CLOSED = 'closed'
+    OPEN = _VALUES_OPEN_CLOSED[0]
+    CLOSED = _VALUES_OPEN_CLOSED[1]
 
 
 class AdjustmentState(StrEnum):
@@ -383,9 +391,9 @@ class GovernedActionsItemStatus(StrEnum):
     """
     Action status.
     """
-    ACTIVE = 'active'
-    SUSPENDED = 'suspended'
-    COMPLETED = 'completed'
+    ACTIVE = _VALUES_ACTIVE_SUSPENDED_COMPLETED[0]
+    SUSPENDED = _VALUES_ACTIVE_SUSPENDED_COMPLETED[1]
+    COMPLETED = _VALUES_ACTIVE_SUSPENDED_COMPLETED[2]
 
 
 class GovernedActionsItemDeliveryReportingPeriod(AdCPBaseModel):
@@ -407,8 +415,8 @@ class GovernedActionsItemDeliveryPeriodState(StrEnum):
     """
     Whether the current governance reporting period remains actionable. Closure is not final billing.
     """
-    OPEN = 'open'
-    CLOSED = 'closed'
+    OPEN = _VALUES_OPEN_CLOSED[0]
+    CLOSED = _VALUES_OPEN_CLOSED[1]
 
 
 class GovernedActionsItem(AdCPBaseModel):

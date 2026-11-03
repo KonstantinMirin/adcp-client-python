@@ -11,6 +11,7 @@ from adcp.types._runtime import ConditionalRequired, Distinct, Match, NegatedCon
 from adcp.types.constraints import StrMatching38E7F7CC
 
 from ..enums.vast_version import VASTVersion
+from ._vocabularies import _VALUES_LINEAR_NON_LINEAR_COMPANION
 
 
 class VastEvent(StrEnum):
@@ -44,9 +45,9 @@ class VastEvent(StrEnum):
 
 
 class VastTarget(StrEnum):
-    LINEAR = 'linear'
-    NON_LINEAR = 'non_linear'
-    COMPANION = 'companion'
+    LINEAR = _VALUES_LINEAR_NON_LINEAR_COMPANION[0]
+    NON_LINEAR = _VALUES_LINEAR_NON_LINEAR_COMPANION[1]
+    COMPANION = _VALUES_LINEAR_NON_LINEAR_COMPANION[2]
 
 
 VastOffset = StrMatching38E7F7CC

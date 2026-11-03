@@ -15,6 +15,7 @@ from ..enums.audience_subject_type import AudienceSubjectType
 from ..enums.consent_basis import ConsentBasis
 from ..enums.restricted_attribute import RestrictedAttribute
 from ..enums.signal_value_type import SignalValueType
+from ._vocabularies import _VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY
 from .demographic_predicate import DemographicPredicate
 from .signal_definition_enrichment import AiActRiskClass, Art9Basis, DataSourcesItem, MatchKeysItem, Method, Methodology, ParentMatchBehavior, PreOnboardingPrecisionLevel, RightsItem, SeedSourceType
 from .signal_modeling_disclosure import SignalModelingDisclosure
@@ -75,28 +76,28 @@ class RefreshCadence(StrEnum):
     """
     Cadence at which the signal definition's underlying segment membership is refreshed.
     """
-    INTRA_DAY = 'intra_day'
-    DAILY = 'daily'
-    WEEKLY = 'weekly'
-    MONTHLY = 'monthly'
-    BI_MONTHLY = 'bi_monthly'
-    QUARTERLY = 'quarterly'
-    BI_ANNUALLY = 'bi_annually'
-    ANNUALLY = 'annually'
+    INTRA_DAY = _VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY[0]
+    DAILY = _VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY[1]
+    WEEKLY = _VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY[2]
+    MONTHLY = _VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY[3]
+    BI_MONTHLY = _VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY[4]
+    QUARTERLY = _VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY[5]
+    BI_ANNUALLY = _VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY[6]
+    ANNUALLY = _VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY[7]
 
 
 class LookbackWindow(StrEnum):
     """
     Time window in which a qualifying event can occur for inclusion.
     """
-    INTRA_DAY = 'intra_day'
-    DAILY = 'daily'
-    WEEKLY = 'weekly'
-    MONTHLY = 'monthly'
-    BI_MONTHLY = 'bi_monthly'
-    QUARTERLY = 'quarterly'
-    BI_ANNUALLY = 'bi_annually'
-    ANNUALLY = 'annually'
+    INTRA_DAY = _VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY[0]
+    DAILY = _VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY[1]
+    WEEKLY = _VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY[2]
+    MONTHLY = _VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY[3]
+    BI_MONTHLY = _VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY[4]
+    QUARTERLY = _VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY[5]
+    BI_ANNUALLY = _VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY[6]
+    ANNUALLY = _VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY[7]
 
 
 class Onboarder(AdCPBaseModel):

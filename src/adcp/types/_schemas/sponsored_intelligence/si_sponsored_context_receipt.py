@@ -9,6 +9,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 
+from ..common._vocabularies import _VALUES_ACCEPTED_REJECTED
 from ..core.ext import ExtensionObject
 from .si_context_use import SIContextUse
 from .si_sponsored_context import SISponsoredContext
@@ -18,8 +19,8 @@ class HostReceiptStatus(StrEnum):
     """
     Whether the host accepted the declared sponsored context for use.
     """
-    ACCEPTED = 'accepted'
-    REJECTED = 'rejected'
+    ACCEPTED = _VALUES_ACCEPTED_REJECTED[0]
+    REJECTED = _VALUES_ACCEPTED_REJECTED[1]
 
 
 class DisclosureCommitmentStatus(StrEnum):

@@ -10,6 +10,7 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import IntMin1
 
+from ...common._vocabularies import _VALUES_ACCEPTED_REJECTED
 from ...enums.activation_method import CreativeActivationMethod
 from ...enums.ctv_ad_experience import CTVAdExperience
 from ...enums.motion_level import CreativeMotionLevel
@@ -77,8 +78,8 @@ class BuyerAssetAcceptance(StrEnum):
     """
     Whether the product accepts buyer-uploaded native assets. When `rejected`, the buyer cannot ship pre-rendered title/image/body — they must use `build_creative`, `sync_creatives` with brief inputs, or an accepted `published_post` reference so the seller produces or resolves the native bundle.
     """
-    ACCEPTED = 'accepted'
-    REJECTED = 'rejected'
+    ACCEPTED = _VALUES_ACCEPTED_REJECTED[0]
+    REJECTED = _VALUES_ACCEPTED_REJECTED[1]
 
 
 class CanonicalFormatNativeInFeed(CanonicalFormatBase):

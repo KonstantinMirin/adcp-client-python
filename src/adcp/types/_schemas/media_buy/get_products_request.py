@@ -26,6 +26,7 @@ from ..core.targeting import TargetingOverlay
 from ..core.targeting_overlay_requirements import TargetingOverlayRequirements
 from ..core.version_envelope import AdCPVersionEnvelope
 from ..enums.delivery_type import DeliveryType
+from ._vocabularies import _VALUES_INCLUDE_OMIT_FINALIZE, _VALUES_INCLUDE_OMIT_MORE_LIKE_THIS
 from .acceptance_context import AcceptanceContext
 from .product_fields import ProductResponseFieldsItem
 
@@ -52,9 +53,9 @@ class RefineItemProductAction(StrEnum):
     """
     'include' (default): return this product with updated pricing and data. 'omit': exclude this product from the response. 'more_like_this': find additional products similar to this one (the original is also returned). Optional — when omitted, the seller treats the entry as action: 'include'.
     """
-    INCLUDE = 'include'
-    OMIT = 'omit'
-    MORE_LIKE_THIS = 'more_like_this'
+    INCLUDE = _VALUES_INCLUDE_OMIT_MORE_LIKE_THIS[0]
+    OMIT = _VALUES_INCLUDE_OMIT_MORE_LIKE_THIS[1]
+    MORE_LIKE_THIS = _VALUES_INCLUDE_OMIT_MORE_LIKE_THIS[2]
 
 
 class RefineItemProduct(AdCPBaseModel):
@@ -74,9 +75,9 @@ class RefineItemProposalAction(StrEnum):
 
     Legacy finalize is exclusive within the parent `refine[]` array: see the array-level description for the finalize-exclusivity rule (mixing finalize with non-finalize entries is rejected) and multi-finalize atomicity contract.
     """
-    INCLUDE = 'include'
-    OMIT = 'omit'
-    FINALIZE = 'finalize'
+    INCLUDE = _VALUES_INCLUDE_OMIT_FINALIZE[0]
+    OMIT = _VALUES_INCLUDE_OMIT_FINALIZE[1]
+    FINALIZE = _VALUES_INCLUDE_OMIT_FINALIZE[2]
 
 
 class RefineItemProposal(AdCPBaseModel):
