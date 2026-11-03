@@ -77,6 +77,7 @@ import json
 from collections.abc import Callable, Mapping
 from importlib import resources
 from typing import (
+    TYPE_CHECKING,
     Annotated,
     Any,
     ClassVar,
@@ -93,6 +94,9 @@ from pydantic import BaseModel, ConfigDict, Field, RootModel, TypeAdapter
 from pydantic_core import InitErrorDetails, PydanticCustomError, ValidationError, core_schema
 
 from adcp.types._runtime import RuleBound, refuse
+
+if TYPE_CHECKING:
+    from pydantic_core import SchemaValidator
 
 #: The package the emitter writes both the modules and the documents into.  One
 #: JSON file per document, at the document's own bundle-relative path, so
@@ -1051,7 +1055,24 @@ class AdCPRootModel(SchemaBound, RootModel[Any]):
 _TAG_ERRORS = frozenset({"union_tag_not_found", "union_tag_invalid"})
 
 
-class BranchDispatchMixin:
+#: What :class:`BranchDispatchMixin` inherits, and the two spellings are the SAME CLASS
+#: at runtime: a bare ``class X:`` already has ``object`` as its one base, so the
+#: ``else`` arm is the declaration this file carried before the shipped package entered
+#: the checker's scope and the MRO of every generated union root is unchanged.
+#:
+#: **To the CHECKER it says the thing the mixin's own docstring says**: the mixin is
+#: never used alone -- the emitter writes ``class Root(BranchDispatchMixin,
+#: AdCPBaseModel)`` and part 2 below reads ``__pydantic_validator__``, which belongs to
+#: the model it is mixed into.  Declaring that attribute on the mixin instead would state
+#: a DIFFERENT type for it than ``BaseModel`` does and make every generated union root an
+#: incompatible-base error (measured: 345 of them); naming the base states the same one.
+if TYPE_CHECKING:
+    _MixedInto = BaseModel
+else:
+    _MixedInto = object
+
+
+class BranchDispatchMixin(_MixedInto):
     """A union root's base: receiving a payload resolves it to the branch it satisfies.
 
     D2 makes a ``oneOf``/``anyOf`` root a base plus one subclass per branch, and the
@@ -1153,6 +1174,14 @@ class BranchDispatchMixin:
     #: so a branch added upstream moves it.  Empty where the branches pin none, and the
     #: union is then undiscriminated: see :meth:`_branch_adapter`.
     _BRANCH_DISCRIMINATOR: ClassVar[str] = ""
+    #: :meth:`_branch_adapter`'s memo, declared rather than only assigned, because the
+    #: shipped package is under the checker (``[tool.mypy] files``) and an undeclared
+    #: attribute there is an error §14 step 6 does not let an inline suppression answer.
+    #: The DEFAULT is what the read at :meth:`_branch_adapter` actually relies on being
+    #: absent from a subclass's own ``__dict__``, and a class-body default lands in the
+    #: DECLARING class's ``__dict__`` alone -- so a branch still misses the base's memo
+    #: and builds nothing of its own, exactly as before this line existed.
+    _branch_adapter_cache: ClassVar[TypeAdapter[Any] | None] = None
 
     @classmethod
     def _branch_combinator(cls) -> str:
@@ -1187,13 +1216,19 @@ class BranchDispatchMixin:
         """
         got = cls.__dict__.get("_branch_adapter_cache")
         if got is None:
-            union = Union[cls._branch_models]  # noqa: UP007 -- a runtime subscript
+            # ``Union.__getitem__`` and not ``Union[...]``, because the SUBSCRIPT is a
+            # type expression to a checker -- it reads ``cls._branch_models`` as the
+            # name of a type and reports ``Name "cls._branch_models" is not defined``
+            # -- while what is wanted here is the runtime call the subscript compiles
+            # to.  ``typing``'s ``_tp_cache`` makes the two the identical object, so
+            # this is the same union by identity and not merely an equal one.
+            union = Union.__getitem__(cls._branch_models)  # noqa: UP007 -- at runtime
             got = TypeAdapter(
                 Annotated[union, Field(discriminator=cls._BRANCH_DISCRIMINATOR)]
                 if cls._BRANCH_DISCRIMINATOR
                 else union
             )
-            cls._branch_adapter_cache = got  # type: ignore[attr-defined]
+            cls._branch_adapter_cache = got
         return got
 
     @classmethod
@@ -1326,5 +1361,5 @@ class BranchDispatchMixin:
 
     def __new__(cls, *args: Any, **data: Any) -> Any:
         if data and cls._dispatching():
-            return cls.__pydantic_validator__.validate_python(data)  # type: ignore[attr-defined]
+            return cls.__pydantic_validator__.validate_python(data)
         return super().__new__(cls)

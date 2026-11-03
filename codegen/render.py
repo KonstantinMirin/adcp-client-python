@@ -577,7 +577,7 @@ def _clause(clause: Match) -> str:
     )
 
 
-def _rule(rule: Rule) -> str:
+def _rule(rule: Any) -> str:
     """One rule as a constructor expression, from its own dataclass fields.
 
     The kinds are ``adcp.types._runtime``'s frozen dataclasses, so the field names, their
@@ -585,6 +585,19 @@ def _rule(rule: Rule) -> str:
     what a rule is".  A tuple of :func:`_clause`\\ s is written without the spaces a
     tuple's ``repr`` puts in, because it is one condition rather than a sequence of
     values.
+
+    **``Any``, and the reason is §2's two places rather than laziness.**  This is called
+    with a :class:`~adcp.types._runtime.Rule` (:attr:`ir.ClassDecl.rules`) AND with a
+    :class:`~adcp.types._runtime.ValueRule` (:attr:`ir.TypeRef.validators`), and those
+    two are SIBLINGS -- ``_runtime`` says so in as many words, "``Rule``'s sibling and
+    NOT a narrower version of it" -- so neither annotates both.  What this function
+    actually requires is orthogonal to both: that the kind be a frozen dataclass, which
+    is ``_typeshed.DataclassInstance`` and intersects with neither protocol in a type
+    system without intersections.  Annotating one of the two siblings states something
+    false about the other and was reported as such the moment the shipped package
+    entered the checker's scope (``Argument 1 to "_rule" has incompatible type
+    "ValueRule"``); ``Any`` states the truth, which is that the read is STRUCTURAL.
+    :func:`_named_by` below takes the same argument the same way.
     """
     args: list[str] = []
     for spec in dataclasses.fields(rule):
