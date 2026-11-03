@@ -374,3 +374,253 @@ def test_no_two_classes_carry_one_named_vocabulary(
         if count != 1
     }
     assert not scattered, json.dumps(scattered, indent=2)
+
+
+# ---------------------------------------------------------------------------
+# §3a's L2 and L3, under the key decided 2026-11-03.
+#
+# Reading 4 "ranges over ALL FOUR of the catalogue's layers, not the first", and its
+# ``Decided by`` names two halves that this section holds separately: **one census per
+# layer, each keyed on that layer's own identity**, and **not every layer has a class
+# population** -- an array type renders as ``list[X]`` inside an annotation and declares no
+# class, so the array layer is read off the bundle's own stating positions while the object
+# layer can be read off either.
+#
+# The KEY is ``catalogue.Admitted`` and its own docstring is the argument for what it
+# contains.  What is checked here is the three things a docstring cannot be: that the
+# census PARTITIONS the repeated structures, that the collapse happens wherever §3a's
+# split licenses it and nowhere else, and that the L3 layer's emptiness is a derivation
+# rather than a scope.
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="module")
+def admitted() -> catalogue.Admitted:
+    """The decided key over the whole bundle, built once for this module.
+
+    The bundle and nothing else, which is §9's rule held by the call -- the same rule
+    :func:`l0` is built under.
+    """
+    return catalogue.Admitted(BUNDLE)
+
+
+@pytest.fixture(scope="module")
+def l2(admitted: catalogue.Admitted) -> catalogue.Shapes:
+    """§3a's layer L2: the OBJECT TYPES the bundle states."""
+    return catalogue.collect_shapes(admitted, "L2")
+
+
+@pytest.fixture(scope="module")
+def l3(admitted: catalogue.Admitted) -> catalogue.Shapes:
+    """§3a's layer L3: the ARRAY TYPES the bundle states."""
+    return catalogue.collect_shapes(admitted, "L3")
+
+
+@pytest.mark.parametrize("layer", ["L2", "L3"])
+def test_each_structural_layer_partitions_every_structure_stated_more_than_once(
+    layer: str, l2: catalogue.Shapes, l3: catalogue.Shapes
+) -> None:
+    """§3a's cases account for every repeated STRUCTURE of the layer, each exactly once.
+
+    **One census per layer, which is reading 4's own ``Decided by``**, and the five parts
+    are §3a's three-way split with the two cases that split has no members in at L0: a
+    structure stated in one document is §4's content dedup's, and a structure stated at
+    nothing but document ROOTS is §1's -- both obliged to declare, so there is nothing for
+    this layer to stop minting.
+
+    The arithmetic alone is not the property: two parts whose sizes sum correctly can both
+    miss a structure and double-count another, which is why ``partitions`` reports the
+    unaccounted and the double-claimed by name.
+    """
+    shapes = {"L2": l2, "L3": l3}[layer]
+    stated: dict[str, int] = Counter(position.key for position in shapes.positions)
+    repeated = claimed(
+        f"{layer} structures the bundle states at more than one position",
+        [key for key, n in stated.items() if n > 1],
+        inside=stated,
+    )
+    partitions(
+        repeated,
+        one_document=[group[0].key for group in shapes.restated],
+        named=list(shapes.entries),
+        untitled=[group[0].key for group in shapes.untitled],
+        conflicting=[conflict.key for conflict in shapes.conflicting],
+        every_position_a_root=[group[0].key for group in shapes.duplicated],
+    )
+
+
+@pytest.mark.parametrize("layer", ["L2", "L3"])
+def test_a_structural_layers_naming_split_is_the_bundles_own(
+    layer: str, l2: catalogue.Shapes, l3: catalogue.Shapes
+) -> None:
+    """§3a's three-way split, each case read off the bundle and never minted here.
+
+    * a NAMED entry carries exactly one title, or several of which exactly one belongs to
+      a document ROOT -- ``catalogue.the_name``'s rule, which §3a's correction of
+      2026-11-02 states;
+    * an UNTITLED group carries no title at any position.  **A ``description`` is not a
+      title**, which is §3a's own sentence -- "a description states what a thing IS, not
+      what it is CALLED, so it mints no name" -- and is checked here because an untitled
+      structure with a description is the commonest shape in this population and the one a
+      lane is most tempted to name from;
+    * a CONFLICTING group carries two or more titles and no single rooted one, and no name
+      is picked for it.
+    """
+    shapes = {"L2": l2, "L3": l3}[layer]
+    for entry in claimed(f"{layer} entries the bundle names", shapes.entries.values()):
+        titles = {p.title for p in entry.positions if p.title is not None}
+        assert entry.title in titles, (entry.title, sorted(titles))
+        if len(titles) > 1:
+            rooted = {p.title for p in entry.positions if p.is_a_root and p.title}
+            assert rooted == {entry.title}, (sorted(titles), sorted(rooted))
+    for group in claimed(f"{layer} groups the bundle titles nowhere", shapes.untitled):
+        assert not [p.title for p in group if p.title is not None], group[0].key
+    for conflict in shapes.conflicting:
+        assert len(conflict.titles) > 1, conflict.titles
+        rooted = {p.title for p in conflict.positions if p.is_a_root and p.title}
+        assert len(rooted) != 1, (conflict.titles, sorted(rooted))
+
+
+def test_no_two_classes_carry_one_named_object_type(l2: catalogue.Shapes) -> None:
+    """**THE L2 GATE**: an object type the bundle NAMES is written once and referenced.
+
+    Reading 4: "a type stated at more than one position is written once and referenced,
+    never restated -- and this reading ranges over ALL FOUR of the catalogue's layers".
+    So for every entry the bundle names, the position that DECLARES it carries a class and
+    every restating position carries none.
+
+    **Read off the CLASS STATEMENTS of a fresh emission and keyed on the pointer each one
+    carries**, not off the tree's text by name and not off a rendered annotation: a class
+    binds its own ``__adcp_schema__`` to the ``(document, pointer)`` it was lowered from,
+    so "is there a second class over this structure" is asked of the position rather than
+    of a name two modules might spell alike.  §3a's own sentence about the rendered
+    annotation is why: a figure that moves when the renderer changes cannot be this gate.
+
+    **The separate-type decisions are ENUMERATED and not counted**, which is reading 4's
+    requirement of them.  They are ``Shapes.withheld``, each carrying the rule that
+    withholds it -- ``of_a_root_union`` is §3's and §4's union rows, and
+    ``keeps_a_named_node`` is §5's -- and this check asserts the enumeration is exactly
+    what it says: every withheld position DOES still carry a class, so a reason that
+    stopped applying reddens here rather than silently covering a collapse that now works.
+    """
+    import ast
+
+    from compiled import compiled
+
+    out = compiled(BUNDLE, sorted(bundle.portable(BUNDLE)))
+    claimed("modules a fresh run emits", out.files)
+    declaring: dict[tuple[str, str], list[str]] = {}
+    for text in out.files.values():
+        for node in ast.parse(text).body:
+            if not isinstance(node, ast.ClassDef):
+                continue
+            for statement in node.body:
+                if not (
+                    isinstance(statement, ast.AnnAssign)
+                    and getattr(statement.target, "id", None) == "__adcp_schema__"
+                    and isinstance(statement.value, ast.Call)
+                ):
+                    continue
+                said = {k.arg: k.value for k in statement.value.keywords}
+                document, pointer = said.get("document"), said.get("pointer")
+                if isinstance(document, ast.Constant) and isinstance(pointer, ast.Constant):
+                    key = (document.value, pointer.value.lstrip("#"))
+                    declaring.setdefault(key, []).append(node.name)
+
+    entries = claimed("L2 entries the bundle names", l2.entries.values())
+    homeless = {
+        entry.title: f"{entry.at.document}{entry.at.pointer or ' /'}"
+        for entry in entries
+        if not declaring.get((entry.at.document, entry.at.pointer))
+    }
+    assert not homeless, json.dumps(homeless, indent=2)
+
+    restated = {
+        f"{entry.title} @ {p.document}{p.pointer}": declaring[(p.document, p.pointer)]
+        for entry in entries
+        for p in entry.restating
+        if (p.document, p.pointer) in declaring
+    }
+    assert not restated, json.dumps(restated, indent=2)
+
+    # The other direction: a withheld position is withheld because it MUST declare, so one
+    # that stopped declaring means the reason has gone stale and the collapse is available.
+    stale = {
+        f"{title} @ {p.document}{p.pointer}": {
+            "of_a_root_union": p.of_a_root_union,
+            "keeps_a_named_node": p.keeps_a_named_node,
+        }
+        for title, p in claimed("L2 positions the collapse is withheld at", l2.withheld)
+        if (p.document, p.pointer) not in declaring
+    }
+    assert not stale, json.dumps(stale, indent=2)
+
+
+def test_every_repeated_array_type_is_owned_by_a_layer_beneath_it(
+    admitted: catalogue.Admitted, l3: catalogue.Shapes, l2: catalogue.Shapes
+) -> None:
+    """**Why L3 collects nothing of its own, as a derivation rather than as a scope.**
+
+    Reading 4's ``Decided by``: an array type "renders as ``list[X]`` inside an annotation
+    and declares no class".  ``list[X]`` is written once in Python by construction, so the
+    only thing an array position can write twice is its ELEMENT -- and this check is that
+    every cross-document array group of this bundle has an element some layer BENEATH L3
+    owns:
+
+    * a ``$ref`` element is already written once and referenced (§5's ``$ref`` row);
+    * an inline OBJECT element is an L2 stating position, asserted by key equality against
+      L2's own population rather than by inspection;
+    * an ``enum`` element is L0's, a constrained scalar is L1's, a composition is the union
+      row's, and a bare scalar has no type to write at all.
+
+    **If an array group ever appears whose element is none of those, this reddens** -- and
+    that is the case where L3 would need a collection of its own.  The sentence in
+    ``emit`` that says L3 is censused and not collected is only true while this is green.
+    """
+    import collections as _collections
+
+    groups: dict[str, list[catalogue.Shaped]] = {}
+    for position in l3.positions:
+        groups.setdefault(position.key, []).append(position)
+    cross = claimed(
+        "array types the bundle states in more than one document",
+        {
+            key: group
+            for key, group in groups.items()
+            if len(group) > 1 and len({p.document for p in group}) > 1
+        },
+        inside=groups,
+    )
+    l2_keys = {position.key for position in l2.positions}
+    owners: _collections.Counter[str] = _collections.Counter()
+    unowned = {}
+    for key in cross:
+        position = groups[key][0]
+        element = bundle.node_at(
+            admitted.document(position.document), position.pointer
+        )["items"]
+        if "$ref" in element:
+            owners["a reference (§5)"] += 1
+        elif isinstance(element.get("properties"), dict) and element["properties"]:
+            owners["an object (L2)"] += 1
+            if admitted.key(position.document, element) not in l2_keys:
+                unowned[f"{position.document}{position.pointer}"] = "object, not an L2 position"
+        elif "enum" in element:
+            owners["an enumeration (L0)"] += 1
+        elif any(word in element for word in bundle.COMPOSITION + bundle.CONDITIONAL):
+            owners["a composition (§4's union row)"] += 1
+        elif [
+            word
+            for word in element
+            if word not in catalogue.ANNOTATIONS and word != "type"
+        ]:
+            owners["a constrained scalar (L1)"] += 1
+        elif "type" in element or not element:
+            # An EMPTY element schema admits every instance, so the array is ``list[Any]``
+            # and there is no element type to write even once:
+            # ``core/feature-requirement.json``'s ``allowed_values`` is this bundle's one.
+            owners["a bare or empty scalar (no type to write)"] += 1
+        else:
+            unowned[f"{position.document}{position.pointer}"] = sorted(element)
+    assert not unowned, json.dumps(unowned, indent=2)
+    assert sum(owners.values()) == len(cross), (dict(owners), len(cross))

@@ -12,6 +12,7 @@ from adcp.types.constraints import FloatMin0Max1, HttpUrl
 from ..enums.audience_evidence_methodology import AudienceEvidenceMethodology
 from ..enums.audience_resolution_method import AudienceResolutionMethod
 from ..enums.audience_subject_type import AudienceSubjectType
+from .attestation_issuer import AttestationOriginIssuer
 from .audience_evidence_requirements import EvidencePresence, EvidenceType, RequirementMode, Unit
 from .brand_key import BrandKey
 from .duration import Duration
@@ -49,16 +50,6 @@ class AcceptedAttestationIssuersItemAgent(AdCPBaseModel):
     ext: ExtensionObject | None = None
 
 
-class AcceptedAttestationIssuersItemOrigin(AdCPBaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-audience-evidence-requirements.json', pointer='#/properties/accepted_attestation_issuers/items/oneOf/2')
-    type: Literal['origin']
-    origin: HttpUrl
-    ext: ExtensionObject | None = None
-
-
 class ProductAudienceEvidenceRequirements(AdCPBaseModel):
     """
     Buyer-authored evidence policy for compact product discovery. Organization selectors are stable keys and never carry brand assets or content provenance.
@@ -90,7 +81,7 @@ class ProductAudienceEvidenceRequirements(AdCPBaseModel):
     maximum_age: MaximumAge | None = None
     methodology_documentation_required: bool | None = False
     independent_attestation_required: bool | None = False
-    accepted_attestation_issuers: Annotated[list[AcceptedAttestationIssuersItemBrand | AcceptedAttestationIssuersItemAgent | AcceptedAttestationIssuersItemOrigin] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    accepted_attestation_issuers: Annotated[list[AcceptedAttestationIssuersItemBrand | AcceptedAttestationIssuersItemAgent | AttestationOriginIssuer] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     accepted_attestation_claim_types: Annotated[list[HttpUrl] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     ext: ExtensionObject | None = None
 

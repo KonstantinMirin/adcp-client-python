@@ -7,13 +7,9 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 
-from ..enums.attribution_methodology import AttributionMethodology
 from ..enums.available_metric import AvailableMetric
-from ..enums.completion_source import CompletionSource
-from ..enums.lift_dimension import LiftDimension
-from ..enums.viewability_standard import ViewabilityStandard
 from .brand_ref import BrandReference
-from .duration import Duration
+from .canonical_metric_qualifier import CanonicalMetricQualifier
 from .vendor_metric_id import VendorMetricID
 
 
@@ -30,21 +26,6 @@ class PerformanceFeedbackMetric(BranchDispatchMixin, AdCPBaseModel):
         return "oneOf"
 
 
-class PerformanceFeedbackMetricStandardQualifier(AdCPBaseModel):
-    """
-    Identity-affecting metric qualifiers. Statistical evidence and feedback-producer identity do not belong here.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/performance-feedback-metric.json', pointer='#/oneOf/0/properties/qualifier')
-    viewability_standard: ViewabilityStandard | None = None
-    completion_source: CompletionSource | None = None
-    attribution_methodology: AttributionMethodology | None = None
-    attribution_window: Duration | None = None
-    lift_dimension: LiftDimension | None = None
-
-
 class PerformanceFeedbackMetricStandard(PerformanceFeedbackMetric):
     model_config = ConfigDict(
         extra='forbid',
@@ -52,22 +33,7 @@ class PerformanceFeedbackMetricStandard(PerformanceFeedbackMetric):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/performance-feedback-metric.json', pointer='#/oneOf/0')
     scope: Literal['standard']
     metric_id: AvailableMetric
-    qualifier: Annotated[PerformanceFeedbackMetricStandardQualifier | None, Field(description='Identity-affecting metric qualifiers. Statistical evidence and feedback-producer identity do not belong here.')] = None
-
-
-class PerformanceFeedbackMetricVendorQualifier(AdCPBaseModel):
-    """
-    Optional disambiguator mirroring the vendor-scope qualifier on `committed_metrics` — same closed key set as standard-scope entries.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/performance-feedback-metric.json', pointer='#/oneOf/1/properties/qualifier')
-    viewability_standard: ViewabilityStandard | None = None
-    completion_source: CompletionSource | None = None
-    attribution_methodology: AttributionMethodology | None = None
-    attribution_window: Duration | None = None
-    lift_dimension: LiftDimension | None = None
+    qualifier: Annotated[CanonicalMetricQualifier | None, Field(description='Identity-affecting metric qualifiers. Statistical evidence and feedback-producer identity do not belong here.')] = None
 
 
 class PerformanceFeedbackMetricVendor(PerformanceFeedbackMetric):
@@ -78,7 +44,7 @@ class PerformanceFeedbackMetricVendor(PerformanceFeedbackMetric):
     scope: Literal['vendor']
     vendor: Annotated[BrandReference, Field(description='Vendor that defines this metric. This can differ from the producer of the feedback assertion.')]
     metric_id: VendorMetricID
-    qualifier: Annotated[PerformanceFeedbackMetricVendorQualifier | None, Field(description='Optional disambiguator mirroring the vendor-scope qualifier on `committed_metrics` — same closed key set as standard-scope entries.')] = None
+    qualifier: Annotated[CanonicalMetricQualifier | None, Field(description='Optional disambiguator mirroring the vendor-scope qualifier on `committed_metrics` — same closed key set as standard-scope entries.')] = None
 
 
 PerformanceFeedbackMetric._branch_models = (PerformanceFeedbackMetricStandard, PerformanceFeedbackMetricVendor,)

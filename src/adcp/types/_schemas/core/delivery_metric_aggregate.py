@@ -8,13 +8,9 @@ from pydantic import AfterValidator, ConfigDict, Field, NonNegativeFloat
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import NotValue
 
-from ..enums.attribution_methodology import AttributionMethodology
 from ..enums.available_metric import AvailableMetric
-from ..enums.completion_source import CompletionSource
-from ..enums.lift_dimension import LiftDimension
-from ..enums.viewability_standard import ViewabilityStandard
 from .brand_ref import BrandReference
-from .duration import Duration
+from .canonical_metric_qualifier import CanonicalMetricQualifier
 from .vendor_metric_id import VendorMetricID
 
 
@@ -31,21 +27,6 @@ class DeliveryMetricAggregate(BranchDispatchMixin, AdCPBaseModel):
         return "oneOf"
 
 
-class DeliveryMetricAggregateStandardQualifier(AdCPBaseModel):
-    """
-    Qualifier keys disambiguating this row from sibling rows under the same `metric_id`. Symmetric with `committed_metrics.qualifier` today; expected to diverge in future minors as transparency disclosures buyers don't commit to ship delivery-only. Closed (`additionalProperties: false`) — new qualifier keys ship explicitly.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/delivery-metric-aggregate.json', pointer='#/oneOf/0/properties/qualifier')
-    viewability_standard: Annotated[ViewabilityStandard | None, Field(description='Viewability standard under which this row was measured. MRC and GroupM define materially different thresholds; never sum across standards.')] = None
-    completion_source: Annotated[CompletionSource | None, Field(description='Source of `completion_rate` attestation for this row — `seller_attested` from player/ad server, `vendor_attested` from a third-party measurement vendor. The two paths can yield different rates; never sum across sources.')] = None
-    attribution_methodology: Annotated[AttributionMethodology | None, Field(description='Attribution methodology under which this outcome row was computed (`deterministic_purchase`, `probabilistic`, `panel_based`, `modeled`). Outcome metrics measured under different methodologies represent materially different numbers; never sum across methodologies.')] = None
-    attribution_window: Annotated[Duration | None, Field(description="Attribution window for this outcome row. Object-valued duration (`{interval, unit}`), not a shorthand string. Outcome metrics measured over different windows represent the same metric over different time periods; the partition keeps them as separate rows so buyers don't accidentally aggregate.")] = None
-    lift_dimension: Annotated[LiftDimension | None, Field(description='Brand-lift dimension this row represents (awareness, consideration, favorability, purchase intent, or ad recall). Required when `metric_id` is `brand_lift`. Each dimension is a separate surveyed outcome with its own sample size and confidence interval; never sum across dimensions.')] = None
-
-
 class DeliveryMetricAggregateStandard(DeliveryMetricAggregate):
     model_config = ConfigDict(
         extra='forbid',
@@ -53,7 +34,7 @@ class DeliveryMetricAggregateStandard(DeliveryMetricAggregate):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/delivery-metric-aggregate.json', pointer='#/oneOf/0')
     scope: Annotated[Literal['standard'], Field(description='Standard metric from the closed `available-metric.json` enum.')]
     metric_id: Annotated[Annotated[AvailableMetric, AfterValidator(NotValue(('viewability', 'viewed_seconds_percentiles', 'viewed_seconds_histogram', 'quartile_data', 'time_based_views', 'dooh_metrics')))], Field(description='Identifier for a scalar standard metric. Container tokens and structured distribution identities are committed and selected through their canonical carriers, not represented as numeric aggregate rows.')]
-    qualifier: Annotated[DeliveryMetricAggregateStandardQualifier | None, Field(description="Qualifier keys disambiguating this row from sibling rows under the same `metric_id`. Symmetric with `committed_metrics.qualifier` today; expected to diverge in future minors as transparency disclosures buyers don't commit to ship delivery-only. Closed (`additionalProperties: false`) — new qualifier keys ship explicitly.")] = None
+    qualifier: Annotated[CanonicalMetricQualifier | None, Field(description="Qualifier keys disambiguating this row from sibling rows under the same `metric_id`. Symmetric with `committed_metrics.qualifier` today; expected to diverge in future minors as transparency disclosures buyers don't commit to ship delivery-only. Closed (`additionalProperties: false`) — new qualifier keys ship explicitly.")] = None
     value: Annotated[float, Field(description='Aggregated metric value for this `(metric_id, qualifier)` partition. Heterogeneous by `metric_id` — rate metrics (`viewable_rate`, `completion_rate`) are 0.0–1.0; cost-per metrics (`cost_per_acquisition`, `cost_per_completed_view`) are currency amounts; count metrics (`impressions`, `clicks`) are non-negative integers as numbers; ratio metrics (`roas`) are non-negative numbers. Buyer agents MUST inspect `metric_id` before doing arithmetic — same dispatch convention as `committed_metrics`.')]
     measurable_impressions: Annotated[NonNegativeFloat | None, Field(description='Coverage denominator for verification metrics (e.g., `viewable_rate`). Buyers compute coverage as `measurable_impressions / impressions` from the partition.')] = None
     viewable_impressions: Annotated[NonNegativeFloat | None, Field(description='Component for `viewable_rate` (numerator).')] = None
@@ -65,21 +46,6 @@ class DeliveryMetricAggregateStandard(DeliveryMetricAggregate):
     clicks: Annotated[NonNegativeFloat | None, Field(description='Component for `cost_per_click` and click-rate metrics.')] = None
 
 
-class DeliveryMetricAggregateVendorQualifier(AdCPBaseModel):
-    """
-    Optional qualifier keys disambiguating this vendor-metric row from sibling rows under the same (vendor, metric_id) — e.g., attribution_window on a vendor outcome metric. Same closed key set as the standard branch; new keys ship explicitly.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/delivery-metric-aggregate.json', pointer='#/oneOf/1/properties/qualifier')
-    viewability_standard: Annotated[ViewabilityStandard | None, Field(description='Viewability standard under which this row was measured. MRC and GroupM define materially different thresholds; never sum across standards.')] = None
-    completion_source: Annotated[CompletionSource | None, Field(description='Attestation source for a vendor completion-style metric — seller_attested from player/ad server, vendor_attested from an independent measurement path. Applicability is defined by the vendor metric; never sum across sources.')] = None
-    attribution_methodology: Annotated[AttributionMethodology | None, Field(description='Attribution methodology under which this outcome row was computed (`deterministic_purchase`, `probabilistic`, `panel_based`, `modeled`). Outcome metrics measured under different methodologies represent materially different numbers; never sum across methodologies.')] = None
-    attribution_window: Annotated[Duration | None, Field(description="Attribution window for this outcome row. Object-valued duration (`{interval, unit}`), not a shorthand string. Outcome metrics measured over different windows represent the same metric over different time periods; the partition keeps them as separate rows so buyers don't accidentally aggregate.")] = None
-    lift_dimension: Annotated[LiftDimension | None, Field(description='Lift dimension this row represents (awareness, consideration, favorability, purchase intent, or ad recall) for vendor lift-style metrics. Applicability is defined by the vendor metric; each dimension is a separate surveyed outcome and rows under different dimensions must not be summed.')] = None
-
-
 class DeliveryMetricAggregateVendor(DeliveryMetricAggregate):
     model_config = ConfigDict(
         extra='forbid',
@@ -88,7 +54,7 @@ class DeliveryMetricAggregateVendor(DeliveryMetricAggregate):
     scope: Annotated[Literal['vendor'], Field(description='Vendor-defined metric, identified by the tuple `(vendor, metric_id)`.')]
     vendor: Annotated[BrandReference, Field(description="Vendor that defines and computes this metric. The vendor's `brand.json` `agents[type='measurement']` is the canonical anchor; metric definitions live on `get_adcp_capabilities.measurement.metrics[]`.")]
     metric_id: Annotated[VendorMetricID, Field(description="Identifier for the metric within the vendor's vocabulary.")]
-    qualifier: Annotated[DeliveryMetricAggregateVendorQualifier | None, Field(description='Optional qualifier keys disambiguating this vendor-metric row from sibling rows under the same (vendor, metric_id) — e.g., attribution_window on a vendor outcome metric. Same closed key set as the standard branch; new keys ship explicitly.')] = None
+    qualifier: Annotated[CanonicalMetricQualifier | None, Field(description='Optional qualifier keys disambiguating this vendor-metric row from sibling rows under the same (vendor, metric_id) — e.g., attribution_window on a vendor outcome metric. Same closed key set as the standard branch; new keys ship explicitly.')] = None
     value: Annotated[float, Field(description="Aggregated vendor-attested value. Unit semantics defined by the vendor — see the vendor's measurement-agent metric definition.")]
     measurable_impressions: Annotated[NonNegativeFloat | None, Field(description="Coverage denominator — vendor measurement is rarely 100% of delivery (only impressions where the vendor's SDK fired or panel matched). Buyers compute coverage as `measurable_impressions / impressions`. Same convention as `vendor_metric_value.measurable_impressions`.")] = None
 
@@ -97,4 +63,4 @@ DeliveryMetricAggregate._branch_models = (DeliveryMetricAggregateStandard, Deliv
 DeliveryMetricAggregate.model_rebuild(force=True)
 
 
-__all__ = ["DeliveryMetricAggregate", "DeliveryMetricAggregateStandard", "DeliveryMetricAggregateStandardQualifier"]
+__all__ = ["DeliveryMetricAggregate", "DeliveryMetricAggregateStandard"]

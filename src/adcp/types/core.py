@@ -619,6 +619,7 @@ from ._schemas.core.committed_metric import (
     CommittedMetric as CommittedMetric,
     CommittedMetricStandard as CommittedMetricStandard,
     CommittedMetricVendor as CommittedMetricVendor,
+    Qualifier as Qualifier,
 )
 from ._schemas.core.compact_task_input_required import (
     CompactTaskInputRequired as CompactTaskInputRequired,
@@ -1359,7 +1360,6 @@ from ._schemas.core.product_allowed_action import (
 from ._schemas.core.product_audience_evidence_requirements import (
     AcceptedAttestationIssuersItemAgent as AcceptedAttestationIssuersItemAgent,
     AcceptedAttestationIssuersItemBrand as AcceptedAttestationIssuersItemBrand,
-    AcceptedAttestationIssuersItemOrigin as AcceptedAttestationIssuersItemOrigin,
     ProductAudienceEvidenceRequirements as ProductAudienceEvidenceRequirements,
 )
 from ._schemas.core.product_card_reference_asset import (
@@ -1379,7 +1379,6 @@ from ._schemas.core.product_filters import (
     AudienceActivationMethodsItemDatasetQuery as AudienceActivationMethodsItemDatasetQuery,
     AudienceActivationMethodsItemFileTransfer as AudienceActivationMethodsItemFileTransfer,
     AudienceActivationMethodsItemPlatformDistribution as AudienceActivationMethodsItemPlatformDistribution,
-    AudienceActivationMethodsItemSyncAudiences as AudienceActivationMethodsItemSyncAudiences,
     AudienceActivationMethodsItemTmpIdentityMatch as AudienceActivationMethodsItemTmpIdentityMatch,
     PricingCurrenciesItem as PricingCurrenciesItem,
     ProductFilters as ProductFilters,
@@ -1986,7 +1985,6 @@ __all__ = [
     'AcceptancePolicyProfileIDs',
     'AcceptedAttestationIssuersItemAgent',
     'AcceptedAttestationIssuersItemBrand',
-    'AcceptedAttestationIssuersItemOrigin',
     'Account',
     'AccountAuthorization',
     'AccountChange',
@@ -2105,7 +2103,6 @@ __all__ = [
     'AudienceActivationMethodsItemDatasetQuery',
     'AudienceActivationMethodsItemFileTransfer',
     'AudienceActivationMethodsItemPlatformDistribution',
-    'AudienceActivationMethodsItemSyncAudiences',
     'AudienceActivationMethodsItemTmpIdentityMatch',
     'AudienceCharacteristic',
     'AudienceEvidence',
@@ -2702,6 +2699,7 @@ __all__ = [
     'PublisherPropertySelectorById',
     'PublisherPropertySelectorByTag',
     'PushNotificationConfig',
+    'Qualifier',
     'Query',
     'RealEstateItem',
     'ReferenceAsset',

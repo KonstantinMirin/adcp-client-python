@@ -3,17 +3,17 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, NonNegativeFloat
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import NonEmptyList, StrMinLen1
+from adcp.types.constraints import NonEmptyList
 
-from ..enums.match_type import MatchType
 from .collection_list_ref import CollectionListReference
 from .collection_selection import CollectionSelection
 from .demographic_targeting_intent import DemographicTargetingIntent
 from .frequency_cap import FrequencyCap
 from .geo_metro import GeoMetro
+from .keyword_target import KeywordTarget
 from .locale_tag import LanguageTag
 from .negative_keyword import NegativeKeyword
 from .package_signal_targeting_groups import PackageSignalTargetingGroups
@@ -23,16 +23,6 @@ from .signal_targeting import SignalTargeting
 from .targeting import AgeRestriction, AudienceExclude, AudienceInclude, AxeExcludeSegment, AxeIncludeSegment, Browser, BrowserExclude, DaypartTargets, DevicePlatformExclude, DeviceTypeExclude, GeoCountries, GeoCountriesExclude, GeoMetrosExclude, GeoPlaces, GeoPlacesExclude, GeoPostalAreas, GeoPostalAreasExclude, GeoRegions, GeoRegionsExclude, StoreCatchments, TargetingOverlayDevicePlatform, TargetingOverlayDeviceType, TargetingOverlayGeoProximity
 from .targeting_unknown_age_eligibility_constraint import TargetingUnknownAgeEligibilityConstraint
 from .targeting_verified_age_basis_constraint import TargetingVerifiedAgeBasisConstraint
-
-
-class KeywordTargetsItem(AdCPBaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/targeting-input.json', pointer='#/properties/keyword_targets/items')
-    keyword: Annotated[StrMinLen1, Field(description='The keyword to target')]
-    match_type: MatchType
-    bid_price: Annotated[NonNegativeFloat | None, Field(description="Per-keyword bid price, denominated in the same currency as the package's pricing option. Overrides the package-level bid_price for this keyword. Inherits the max_bid interpretation from the pricing option: when max_bid is true, this is the keyword's bid ceiling; when false, this is the exact bid. If omitted, the package bid_price applies.")] = None
 
 
 class TargetingOverlayInput(AdCPBaseModel):
@@ -78,7 +68,7 @@ class TargetingOverlayInput(AdCPBaseModel):
     store_catchments: StoreCatchments | None = None
     geo_proximity: TargetingOverlayGeoProximity | None = None
     language: Annotated[NonEmptyList[LanguageTag] | None, Field(description="Restrict to users with specific language preferences using canonical BCP 47 language ranges. Each buyer range is evaluated against a user's language-preference tag with RFC 4647 section 3.3.1 Basic Filtering: 'fr' matches 'fr', 'fr-CA', and 'fr-FR', while 'fr-CA' matches 'fr-CA' and more-specific descendants but not 'fr' or 'fr-FR'. Values use OR logic.")] = None
-    keyword_targets: Annotated[NonEmptyList[KeywordTargetsItem] | None, Field(description='Keyword targeting for search and retail media platforms. Restricts delivery to queries matching the specified keywords. Each keyword is identified by the tuple (keyword, match_type) — the same keyword string with different match types are distinct targets. Sellers SHOULD reject duplicate (keyword, match_type) pairs within a single request. Seller must declare support in get_adcp_capabilities.')] = None
+    keyword_targets: Annotated[NonEmptyList[KeywordTarget] | None, Field(description='Keyword targeting for search and retail media platforms. Restricts delivery to queries matching the specified keywords. Each keyword is identified by the tuple (keyword, match_type) — the same keyword string with different match types are distinct targets. Sellers SHOULD reject duplicate (keyword, match_type) pairs within a single request. Seller must declare support in get_adcp_capabilities.')] = None
     negative_keywords: Annotated[NonEmptyList[NegativeKeyword] | None, Field(description='Keywords to exclude from delivery. Queries matching these keywords will not trigger the ad. Each negative keyword is identified by the tuple (keyword, match_type). Seller must declare support in get_adcp_capabilities.')] = None
 
 

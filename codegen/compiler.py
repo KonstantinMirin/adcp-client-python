@@ -957,6 +957,27 @@ class Module:
     #: its own class bodies -- the same refusing default :attr:`vocabularies` has, and for
     #: the same reason.
     value_lists: Mapping[tuple[Any, ...], ValuesImport | str] = field(default_factory=dict)
+    #: **§3a's catalogue layer L2, as this document's own rows**: ``pointer -> the home of
+    #: the OBJECT TYPE this position restates``.
+    #:
+    #: :attr:`vocabularies` is the same table at L0 and the two differ in exactly one
+    #: field.  An enumeration is :attr:`TargetKind.ANNOTATION` -- §4 makes it an
+    #: ``Annotated`` alias and never a class -- and an object type is
+    #: :attr:`TargetKind.CLASS`, which is what reading 4 ranges over at this layer: "a type
+    #: stated at more than one position is written once and referenced, never restated --
+    #: and this reading ranges over ALL FOUR of the catalogue's layers, not the first".
+    #:
+    #: A pointer in this map is §3a's "a REFERENCE to a catalogue entry" and every other
+    #: object position is "a fresh type where the node is genuinely unique".  The key is
+    #: ``codegen/catalogue.Admitted``'s -- the decided key, which holds the property names,
+    #: ``required``, ``additionalProperties`` and every narrowing keyword, resolves
+    #: references before keying, and holds no ``title``, ``description``, ``examples`` or
+    #: order -- so **a group whose members differ in a keyword that NARROWS is two entries
+    #: and never one**, which is §3a's guard held by the key rather than by a check.
+    #:
+    #: Empty by default, for :attr:`vocabularies`' own reason: §9 forbids a reading of the
+    #: run, and a walk with no table minted no reference to invent.
+    objects: Mapping[str, Target] = field(default_factory=dict)
     #: **The reference sites this document's walk ASKED about**, written by
     #: :meth:`target` and read by the run.  It is what decides which documents the run
     #: WRITES, and §10's own sentence is the reason: "a module cannot import from a

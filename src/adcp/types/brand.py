@@ -106,10 +106,10 @@ from ._schemas.brand.verification_status import (
 )
 from ._schemas.brand.verify_brand_claim_request import (
     VerifyBrandClaimRequest as VerifyBrandClaimRequest,
-    VerifyBrandClaimRequestParent as VerifyBrandClaimRequestParent,
-    VerifyBrandClaimRequestProperty as VerifyBrandClaimRequestProperty,
-    VerifyBrandClaimRequestSubsidiary as VerifyBrandClaimRequestSubsidiary,
-    VerifyBrandClaimRequestTrademark as VerifyBrandClaimRequestTrademark,
+    VerifyParentClaim as VerifyParentClaim,
+    VerifyPropertyClaim as VerifyPropertyClaim,
+    VerifySubsidiaryClaim as VerifySubsidiaryClaim,
+    VerifyTrademarkClaim as VerifyTrademarkClaim,
 )
 from ._schemas.brand.verify_brand_claim_response import (
     VerifyBrandClaimError as VerifyBrandClaimError,
@@ -118,10 +118,6 @@ from ._schemas.brand.verify_brand_claim_response import (
 )
 from ._schemas.brand.verify_brand_claims_request import (
     ClaimEntry as ClaimEntry,
-    ClaimEntryParent as ClaimEntryParent,
-    ClaimEntryProperty as ClaimEntryProperty,
-    ClaimEntrySubsidiary as ClaimEntrySubsidiary,
-    ClaimEntryTrademark as ClaimEntryTrademark,
     VerifyBrandClaimsRequestBulk as VerifyBrandClaimsRequestBulk,
 )
 from ._schemas.brand.verify_brand_claims_response import (
@@ -149,10 +145,6 @@ __all__ = [
     'BrandDiscoveryFontRoleFamily',
     'BrandId',
     'ClaimEntry',
-    'ClaimEntryParent',
-    'ClaimEntryProperty',
-    'ClaimEntrySubsidiary',
-    'ClaimEntryTrademark',
     'ColorRefName',
     'ColorRefSurface',
     'ColorRefValue',
@@ -199,10 +191,6 @@ __all__ = [
     'VerificationStatus',
     'VerifyBrandClaimError',
     'VerifyBrandClaimRequest',
-    'VerifyBrandClaimRequestParent',
-    'VerifyBrandClaimRequestProperty',
-    'VerifyBrandClaimRequestSubsidiary',
-    'VerifyBrandClaimRequestTrademark',
     'VerifyBrandClaimResponse',
     'VerifyBrandClaimSuccess',
     'VerifyBrandClaimsError',
@@ -211,4 +199,8 @@ __all__ = [
     'VerifyBrandClaimsResultError',
     'VerifyBrandClaimsResultSuccess',
     'VerifyBrandClaimsSuccess',
+    'VerifyParentClaim',
+    'VerifyPropertyClaim',
+    'VerifySubsidiaryClaim',
+    'VerifyTrademarkClaim',
 ]

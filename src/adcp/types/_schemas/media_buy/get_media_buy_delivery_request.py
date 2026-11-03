@@ -10,14 +10,13 @@ from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import IntMin1, NonEmptyList, StrMatchingDD5BDFFC, StrMatchingEFC12812, StrMinLen1MaxLen255Matching67860854
 
 from ..core.account_ref import AccountReference
+from ..core.attribution_window import AttributionWindow
 from ..core.context import ContextObject
 from ..core.delivery_breakdown_controls import DeliveryBreakdownControls
 from ..core.demographic_age_range import DemographicAgeRange
-from ..core.duration import Duration
 from ..core.ext import ExtensionObject
 from ..core.pagination_request import PaginationRequest
 from ..core.version_envelope import AdCPVersionEnvelope
-from ..enums.attribution_model import AttributionModel
 from ..enums.available_metric import AvailableMetric
 from ..enums.geo_level import GeographicTargetingLevel
 from ..enums.legacy_postal_system import CountryFusedPostalCodeSystem
@@ -27,78 +26,6 @@ from ..enums.postal_system import PostalCodeSystem
 from ..enums.reporting_frequency import ReportingFrequency
 from ..enums.sort_direction import SortDirection
 from ..enums.sort_metric import SortMetric
-
-
-class PostClick(Duration):
-    """
-    Post-click attribution window to apply.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buy-delivery-request.json', pointer='#/properties/attribution_window/properties/post_click')
-
-
-class PostView(Duration):
-    """
-    Post-view attribution window to apply.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buy-delivery-request.json', pointer='#/properties/attribution_window/properties/post_view')
-
-
-class AttributionWindow(AdCPBaseModel):
-    """
-    Attribution window to apply for conversion metrics. When provided, the seller returns conversion data using the requested lookback windows instead of their platform default. The seller echoes the applied window in the response. Sellers that do not support configurable windows ignore this field and return their default. Check get_adcp_capabilities conversion_tracking.attribution_windows for available options.
-    """
-    model_config = ConfigDict(
-        extra='allow',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buy-delivery-request.json', pointer='#/properties/attribution_window')
-    post_click: Annotated[PostClick | None, Field(description='Post-click attribution window to apply.')] = None
-    post_view: Annotated[PostView | None, Field(description='Post-view attribution window to apply.')] = None
-    model: Annotated[AttributionModel | None, Field(description='Attribution model to use. When omitted, the seller applies their default model.')] = None
-
-
-class CatalogItem(AdCPBaseModel):
-    """
-    Request a negotiated catalog_item breakdown. Omitting this key preserves the automatic behavior — sellers return catalog_item rows at their discretion with no truncation contract. Including it (even as {}) makes the truncation disclosure and applied-sort echo binding.
-    """
-    model_config = ConfigDict(
-        extra='allow',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buy-delivery-request.json', pointer='#/properties/reporting_dimensions/properties/catalog_item')
-    limit: Annotated[IntMin1 | None, Field(description='Maximum number of catalog_item entries to return. When omitted, the seller returns its automatic default set.')] = None
-    sort_by: Annotated[SortMetric | None, Field(default_factory=lambda: TypeAdapter(SortMetric).validate_python('spend'), description="Metric to sort breakdown rows by, in `sort_direction` order (descending by default). Falls back to 'spend' when the seller does not report the requested metric at this breakdown's row grain; on fallback the sort direction resets to 'desc'. Rows lacking a value for the applied sort metric order last regardless of direction. The applied sort is echoed in the response.", json_schema_extra={'default': 'spend'})]
-    sort_direction: Annotated[SortDirection | None, Field(default_factory=lambda: TypeAdapter(SortDirection).validate_python('desc'), description="Direction for sort_by ordering. Defaults to 'desc' (largest first). 'asc' enables bottom-N queries (e.g., the 25 worst placements by viewable_rate) that cannot be recovered from a truncated descending pull. Sellers MUST apply the requested direction to the applied sort metric — direction has no availability fallback.", json_schema_extra={'default': 'desc'})]
-
-
-class Creative(AdCPBaseModel):
-    """
-    Request a negotiated creative breakdown. Omitting this key preserves the automatic behavior — sellers return creative rows at their discretion with no truncation contract. Including it (even as {}) makes the truncation disclosure and applied-sort echo binding.
-    """
-    model_config = ConfigDict(
-        extra='allow',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buy-delivery-request.json', pointer='#/properties/reporting_dimensions/properties/creative')
-    limit: Annotated[IntMin1 | None, Field(description='Maximum number of creative entries to return. When omitted, the seller returns its automatic default set.')] = None
-    sort_by: Annotated[SortMetric | None, Field(default_factory=lambda: TypeAdapter(SortMetric).validate_python('spend'), description="Metric to sort breakdown rows by, in `sort_direction` order (descending by default). Falls back to 'spend' when the seller does not report the requested metric at this breakdown's row grain; on fallback the sort direction resets to 'desc'. Rows lacking a value for the applied sort metric order last regardless of direction. The applied sort is echoed in the response.", json_schema_extra={'default': 'spend'})]
-    sort_direction: Annotated[SortDirection | None, Field(default_factory=lambda: TypeAdapter(SortDirection).validate_python('desc'), description="Direction for sort_by ordering. Defaults to 'desc' (largest first). 'asc' enables bottom-N queries (e.g., the 25 worst placements by viewable_rate) that cannot be recovered from a truncated descending pull. Sellers MUST apply the requested direction to the applied sort metric — direction has no availability fallback.", json_schema_extra={'default': 'desc'})]
-
-
-class Keyword(AdCPBaseModel):
-    """
-    Request a negotiated keyword breakdown. Omitting this key preserves the automatic behavior — sellers return keyword rows at their discretion with no truncation contract. Including it (even as {}) makes the truncation disclosure and applied-sort echo binding.
-    """
-    model_config = ConfigDict(
-        extra='allow',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buy-delivery-request.json', pointer='#/properties/reporting_dimensions/properties/keyword')
-    limit: Annotated[IntMin1 | None, Field(description='Maximum number of keyword entries to return. When omitted, the seller returns its automatic default set.')] = None
-    sort_by: Annotated[SortMetric | None, Field(default_factory=lambda: TypeAdapter(SortMetric).validate_python('spend'), description="Metric to sort breakdown rows by, in `sort_direction` order (descending by default). Falls back to 'spend' when the seller does not report the requested metric at this breakdown's row grain; on fallback the sort direction resets to 'desc'. Rows lacking a value for the applied sort metric order last regardless of direction. The applied sort is echoed in the response.", json_schema_extra={'default': 'spend'})]
-    sort_direction: Annotated[SortDirection | None, Field(default_factory=lambda: TypeAdapter(SortDirection).validate_python('desc'), description="Direction for sort_by ordering. Defaults to 'desc' (largest first). 'asc' enables bottom-N queries (e.g., the 25 worst placements by viewable_rate) that cannot be recovered from a truncated descending pull. Sellers MUST apply the requested direction to the applied sort metric — direction has no availability fallback.", json_schema_extra={'default': 'desc'})]
 
 
 class Geo(AdCPBaseModel):
@@ -147,19 +74,6 @@ class DevicePlatform(AdCPBaseModel):
     sort_by: Annotated[SortMetric | None, Field(default_factory=lambda: TypeAdapter(SortMetric).validate_python('spend'), description="Metric to sort breakdown rows by, in `sort_direction` order (descending by default). Falls back to 'spend' when the seller does not report the requested metric at this breakdown's row grain; on fallback the sort direction resets to 'desc'. Rows lacking a value for the applied sort metric order last regardless of direction. The applied sort is echoed in the response.", json_schema_extra={'default': 'spend'})]
     sort_direction: Annotated[SortDirection | None, Field(default_factory=lambda: TypeAdapter(SortDirection).validate_python('desc'), description="Direction for sort_by ordering. Defaults to 'desc' (largest first). 'asc' enables bottom-N queries (e.g., the 25 worst placements by viewable_rate) that cannot be recovered from a truncated descending pull. Sellers MUST apply the requested direction to the applied sort metric — direction has no availability fallback.", json_schema_extra={'default': 'desc'})]
     cursor: Annotated[str | None, Field(description="Opaque cursor from a previous response's by_device_platform_pagination to fetch the next page of a truncated by_device_platform breakdown. Omit for the first page. limit, sort_by, and sort_direction MUST be repeated unchanged across paged requests for the same logical query.")] = None
-
-
-class Format(AdCPBaseModel):
-    """
-    Request delivery broken down by canonical creative format kind. This dimension is negotiated on the GET path. Reporting webhook configuration does not negotiate or guarantee dimensional breakdowns, although a webhook payload may carry the same fields as an extension.
-    """
-    model_config = ConfigDict(
-        extra='allow',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buy-delivery-request.json', pointer='#/properties/reporting_dimensions/properties/format')
-    limit: Annotated[IntMin1 | None, Field(description='Maximum number of format rows to return. When omitted, all rows are returned because the canonical format-kind vocabulary is small and bounded.')] = None
-    sort_by: Annotated[SortMetric | None, Field(default_factory=lambda: TypeAdapter(SortMetric).validate_python('spend'), description="Metric to sort breakdown rows by, in `sort_direction` order (descending by default). Falls back to 'spend' when the seller does not report the requested metric at this breakdown's row grain; on fallback the sort direction resets to 'desc'. Rows lacking a value for the applied sort metric order last regardless of direction. The applied sort is echoed in the response.", json_schema_extra={'default': 'spend'})]
-    sort_direction: Annotated[SortDirection | None, Field(default_factory=lambda: TypeAdapter(SortDirection).validate_python('desc'), description="Direction for sort_by ordering. Defaults to 'desc' (largest first). 'asc' enables bottom-N queries (e.g., the 25 worst placements by viewable_rate) that cannot be recovered from a truncated descending pull. Sellers MUST apply the requested direction to the applied sort metric — direction has no availability fallback.", json_schema_extra={'default': 'desc'})]
 
 
 class Audience(AdCPBaseModel):
@@ -226,13 +140,13 @@ class ReportingDimensions(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buy-delivery-request.json', pointer='#/properties/reporting_dimensions')
-    catalog_item: Annotated[CatalogItem | None, Field(description='Request a negotiated catalog_item breakdown. Omitting this key preserves the automatic behavior — sellers return catalog_item rows at their discretion with no truncation contract. Including it (even as {}) makes the truncation disclosure and applied-sort echo binding.')] = None
-    creative: Annotated[Creative | None, Field(description='Request a negotiated creative breakdown. Omitting this key preserves the automatic behavior — sellers return creative rows at their discretion with no truncation contract. Including it (even as {}) makes the truncation disclosure and applied-sort echo binding.')] = None
-    keyword: Annotated[Keyword | None, Field(description='Request a negotiated keyword breakdown. Omitting this key preserves the automatic behavior — sellers return keyword rows at their discretion with no truncation contract. Including it (even as {}) makes the truncation disclosure and applied-sort echo binding.')] = None
+    catalog_item: Annotated[DeliveryBreakdownControls | None, Field(description='Request a negotiated catalog_item breakdown. Omitting this key preserves the automatic behavior — sellers return catalog_item rows at their discretion with no truncation contract. Including it (even as {}) makes the truncation disclosure and applied-sort echo binding.')] = None
+    creative: Annotated[DeliveryBreakdownControls | None, Field(description='Request a negotiated creative breakdown. Omitting this key preserves the automatic behavior — sellers return creative rows at their discretion with no truncation contract. Including it (even as {}) makes the truncation disclosure and applied-sort echo binding.')] = None
+    keyword: Annotated[DeliveryBreakdownControls | None, Field(description='Request a negotiated keyword breakdown. Omitting this key preserves the automatic behavior — sellers return keyword rows at their discretion with no truncation contract. Including it (even as {}) makes the truncation disclosure and applied-sort echo binding.')] = None
     geo: Annotated[Geo | None, Field(description='Request geographic breakdown. Check reporting_capabilities.supports_geo_breakdown for available levels and systems.')] = None
     device_type: Annotated[DeviceType | None, Field(description='Request device type breakdown.')] = None
     device_platform: Annotated[DevicePlatform | None, Field(description='Request device platform breakdown.')] = None
-    format: Annotated[Format | None, Field(description='Request delivery broken down by canonical creative format kind. This dimension is negotiated on the GET path. Reporting webhook configuration does not negotiate or guarantee dimensional breakdowns, although a webhook payload may carry the same fields as an extension.')] = None
+    format: Annotated[DeliveryBreakdownControls | None, Field(description='Request delivery broken down by canonical creative format kind. This dimension is negotiated on the GET path. Reporting webhook configuration does not negotiate or guarantee dimensional breakdowns, although a webhook payload may carry the same fields as an extension.')] = None
     audience: Annotated[Audience | None, Field(description='Request audience segment breakdown.')] = None
     demographic: Annotated[Demographic | None, Field(description="Request delivery broken down by demographic. Check the product's reporting_capabilities.supports_demographic_breakdown independently from demographic_targeting. When age_ranges is present, every requested range MUST be exactly supported by exact_predicates or equal one of the declared enumerated_intervals; sellers MUST reject unsupported ranges with UNSUPPORTED_FEATURE rather than silently widen or narrow them.")] = None
     spot: Annotated[Spot | None, Field(description='Request a spot-level as-run airing log for broadcast TV, radio, or other scheduled inventory. Rows are ordered by aired_at ascending. When limit is omitted, sellers SHOULD return the complete log for the requested reporting period.')] = None
