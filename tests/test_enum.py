@@ -832,16 +832,26 @@ def test_an_integer_enum_becomes_an_int_enum_at_the_three_nodes_that_carry_one()
         module = importlib.import_module(
             f"{emit.PACKAGE}.{emit.module_path(document).replace('/', '.')}"
         )
-        tree = ast.parse((TREE / f"{emit.module_file(document, PACKAGES)}.py").read_text())
+        # **The module's NAMESPACE and not its class statements**, which is §3a's own
+        # correction of 2026-11-02: "a collision guard exists to answer what a consumer
+        # meets when importing the module, and a consumer meets the module's namespace,
+        # not its syntax."  The same reading is what this half needs, and §3a's catalogue
+        # is what made the difference visible: ``{16, 24, 32}`` is one vocabulary stated
+        # at ``core/assets/audio-asset.json``'s ``bit_depth`` and at
+        # ``core/assets/video-asset.json``'s ``audio_bit_depth``, so the second module
+        # IMPORTS ``AudioBitDepth`` instead of declaring a second class over the same
+        # three values.  Selecting over class statements asserted which of those two
+        # §3a decides, which is not what this test is about; the base and the members at
+        # the node are, and both are read off the object a consumer reaches.
         at_this_node = [
-            cls
-            for cls in ast.walk(tree)
-            if isinstance(cls, ast.ClassDef)
-            if {b.id for b in cls.bases if isinstance(b, ast.Name)} == {"IntEnum"}
-            if [v for _, v in _members(cls)] == node["enum"]
+            held
+            for held in vars(module).values()
+            if isinstance(held, type)
+            if issubclass(held, pyenum.IntEnum)
+            if [m.value for m in held] == node["enum"]
         ]
-        assert len(at_this_node) == 1, (document, pointer, [c.name for c in at_this_node])
-        cls = getattr(module, at_this_node[0].name)
+        assert len(at_this_node) == 1, (document, pointer, [c.__name__ for c in at_this_node])
+        cls = at_this_node[0]
         assert issubclass(cls, pyenum.IntEnum), (document, pointer)
         assert [m.value for m in cls] == node["enum"], (document, pointer)
 
