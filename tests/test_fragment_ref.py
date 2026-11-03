@@ -1465,9 +1465,25 @@ def test_a_local_entry_that_is_a_class_names_its_own_pointer_and_not_the_roots(
     # The pointer LANDS in the document the run writes beside the module, which is what
     # ``strict_validate`` reads: a ref naming a node the package cannot resolve would
     # be a class that raises on every validation instead of grading.
+    #
+    # **Read the way :func:`adcp.types._base.schema_at` reads it, which is
+    # ``store_expanded(applied_schema(root, pointer), root)``, and not off the record's
+    # raw text.**  The record states each distinct subtree ONCE and references it at
+    # every occurrence (``docs/plan/architecture.md``, "THE RECORD'S TEXT IS A DAG; ITS
+    # POINTERS ARE NOT"), so ``{"type": "string"}`` -- stated twice in this fixture, at
+    # ``/definitions/slot/properties/a`` and at ``/properties/plain`` -- is hoisted and
+    # the raw text holds ``{"$ref": "#/definitions/Shared0"}`` at both.  A text read
+    # here asserted the absence of a storage the architecture section requires, and the
+    # section makes the hoisting INVISIBLE to every pointer a reader spells: so the
+    # claim is about what the accessor hands a grader, and that is where it is asked.
     written = json.loads(out.files["core/catalog.json"])
     assert node_at(written, "/definitions/slot") is not NOTHING
-    assert node_at(written, "/definitions/slot")["properties"] == {"a": {"type": "string"}}
+    through = _base.store_expanded(applied_schema(written, "#/definitions/slot"), written)
+    assert through["properties"] == {"a": {"type": "string"}}
+    # And the storage is what stands between the two readings, so the raw text at that
+    # pointer is NOT the expansion -- which is what keeps the line above a dereference
+    # rather than a longer spelling of ``node_at``.
+    assert node_at(written, "/definitions/slot") != through
 
 
 def test_an_entry_nothing_references_is_not_declared(tmp_path: Path) -> None:
