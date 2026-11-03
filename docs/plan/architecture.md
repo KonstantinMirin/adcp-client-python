@@ -654,15 +654,36 @@ distinguishes them. **So the conflict rule applies only where NEITHER title is a
 Where one is, that root is the home and the rest reference it. A restated title that a consumer
 needs is an alias at its position, never a second class.
 
-**ONE TYPE IS A CLASS STATEMENT; THE FUNCTIONAL FORM IS FOR TWO TYPES SHARING ONE VALUE LIST.**
+**EVERY NAMED TYPE IS A CLASS STATEMENT. THE FUNCTIONAL FORM IS WITHDRAWN ENTIRELY (2026-11-03),
+including for two types sharing one value list, which is the case it was kept for.**
+
 §3a's *"the value list is written once per distinct member set and the named type is constructed
-from it"* was read as mandating `StrEnum('<Name>', …)` everywhere, which costs two things that were
-measured rather than argued: a functionally-built enum has no slot for the class docstring pydantic
-renders as `description`, and a name bound by assignment is invisible to a guard that reads class
-statements. **Where the vocabulary is one type, its members ARE the value list and a normal class
-statement writes it once** — the rule is satisfied with nothing lost. The functional form is needed
-only where the bundle states one member set under names judged genuinely distinct, which is the
-narrow case, and there the docstring is written as its own statement.
+from it"* was read as mandating `StrEnum('<Name>', …)`. **It mandates no such thing: the functional
+call is one way to construct a type from a list and it is not the only one.** A class statement
+whose member VALUES are read out of the shared list satisfies the rule exactly — the strings appear
+in one place and only the member's own index is repeated, and the index is its position in the
+document's own order:
+
+```python
+_VALUES_… = ("created", "updated", "unchanged", "failed", "deleted")   # written ONCE
+
+class CatalogAction(StrEnum):
+    """Action taken on a catalog during sync operation"""
+    CREATED = _VALUES_…[0]
+    UPDATED = _VALUES_…[1]
+```
+
+**Three costs are measured against the functional call, and the third is why the form is
+withdrawn rather than narrowed.** A functionally-built enum has no slot for the class docstring
+pydantic renders as `description`; a name bound by assignment is invisible to a guard that reads
+class statements; and **a member access on it is an attribute error to a CONSUMER's type checker** —
+a checker cannot execute the call, so it never learns the member names. That third one is a
+regression in the reading that says the package's annotations reach a consumer's checker, and it
+reached the public surface before a derived gate caught it.
+
+**The class-statement form gives up none of the three and satisfies the rule, so there is no case
+left where the functional call is the right answer.** Where two types are judged distinct over one
+value list, each is its own class statement reading the same list, and each keeps its own docstring.
 
 **AND A GUARD THAT READS CLASS STATEMENTS GOES BLIND TO AN ASSIGNMENT, so it reads the NAMESPACE.**
 A collision guard exists to answer what a consumer meets when importing the module, and a consumer
