@@ -159,6 +159,39 @@ def member_name(value: Any) -> str:
     return name if name and not name[0].isdigit() else f"{PREFIX}{name}"
 
 
+#: What §3a's module-level value list is named under, before its members.  PRIVATE by its
+#: leading underscore, which is the whole of why §4 does not govern it: §4 refuses to mint
+#: a PUBLIC name no document states, and a consumer never writes this one -- the types
+#: built over it keep the names the bundle gives them.
+VALUES = "_VALUES"
+
+
+def values_name(members: tuple[Any, ...]) -> str:
+    """The module-level name §3a's VALUE LIST is written under.
+
+    **A function of the VALUE LIST and of nothing else**, which is the property §3a's
+    naming correction asks of every catalogue name: "the name is a function of which
+    position a walk happened to visit" is the defect, and a name spelled from the members
+    cannot be one.  It is not a MINT either -- the name is the value list, spelled as an
+    identifier, and it names no concept the bundle does not: "a ``description`` states
+    what a thing IS; it does not state what it is CALLED" is about a public type name, and
+    this is a private constant a consumer never writes.
+
+    ``member_name`` and no second spelling function, for the reason that function's own
+    module docstring gives: it is the one place a value becomes an identifier, so the
+    constant's name and the members it carries cannot come to disagree about a value.
+
+    **NOT INJECTIVE on its own, and the guard is where the constants are collected**: the
+    separator is also a character ``member_name`` produces, so ``('a', 'b')`` and
+    ``('a_b',)`` spell one name.  Two value lists of one module spelling one name is a
+    :class:`codegen.refusal.BuildFailure` -- a defect of this compiler and not of any
+    document -- raised where a module's constants are gathered
+    (``lower/names.py``'s ``the_value_lists``, ``emit.vocabularies_modules``).  Measured
+    over this bundle: 0 collisions.
+    """
+    return "_".join((VALUES, *(member_name(value) for value in members)))
+
+
 #: The two combinator keywords, as a POSITION test.  A node under one of them shares
 #: its parent's instance and is a BRANCH, which is the one position where D3 resolves
 #: no name for an enum node -- see :func:`resolves_no_name`.
@@ -275,10 +308,28 @@ def lower(
         # and never re-exported from a third.
         mod.importing(entry.symbol, compiler.Importable(entry.module, entry.document))
         return ir.Decided(ir.TypeRef(entry.symbol))
+    # **§3a's OTHER half, for a value list the bundle states under two names it judges
+    # DISTINCT** (:attr:`compiler.Module.value_lists`): "the VALUE LIST is a module-level
+    # constant in the catalogue layer, written once per distinct member set; the NAMED TYPE
+    # is constructed from it at each position that needs one, keeping the name §4 derives
+    # and keeping the types distinct."
+    #
+    # So this position still DECLARES -- the arms above are the ones that import a type --
+    # and what it takes from the catalogue is the values.  Asked after them for the same
+    # reason they are ordered among themselves: a position that is the same type as another
+    # imports it and has no second type to build.
+    shared = mod.value_lists.get(node.members)
+    spelled = (
+        shared
+        if isinstance(shared, str)
+        else None
+        if shared is None
+        else mod.needs_values(shared)
+    )
     # **Declared at the node's POINTER, with no name of its own** (§7): the enumeration
     # the walk builds carries the pointer in its name slot and ``lower/names.py`` binds
     # §4's derived name onto it in one pass over the finished module.
-    declared = decide(node, node.pointer)
+    declared = decide(node, node.pointer, value_list=spelled)
     if isinstance(declared, Refusal):
         return declared
     collision = mod.declare(node.pointer, declared)
@@ -450,8 +501,17 @@ def literal(node: nodes.Enumeration) -> ir.Decided | Refusal:
     return ir.Decided(ir.TypeRef(literals=tuple(m.value for m in enumerated.members)))
 
 
-def decide(node: nodes.Enumeration, name: str) -> ir.EnumDecl | Refusal:
+def decide(
+    node: nodes.Enumeration, name: str, *, value_list: str | None = None
+) -> ir.EnumDecl | Refusal:
     """What one ``enum`` node IS: a named enumeration over its own members.
+
+    ``value_list`` is §3a's module-level value list this enumeration is CONSTRUCTED from,
+    where the bundle states that value list under two names it judges distinct, and
+    ``None`` -- which is every other position -- where the members are written in the
+    class body.  An input like ``name`` and for the same reason: which of the two forms a
+    position takes is §3a's decision and not this function's, and the MEMBERS are derived
+    here either way, so nothing about what the node admits depends on it.
 
     ``name`` is an input (D3).  The base comes from the members' own type and not
     from ``type``, which is what admits the 164 typeless enum nodes and which the
@@ -538,5 +598,9 @@ def decide(node: nodes.Enumeration, name: str) -> ir.EnumDecl | Refusal:
         )
 
     return ir.EnumDecl(
-        name=name, kind=kind, members=tuple(members), description=node.description
+        name=name,
+        kind=kind,
+        members=tuple(members),
+        description=node.description,
+        values=value_list,
     )

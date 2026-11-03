@@ -101,6 +101,7 @@ from adcp.types._runtime import Distinct, Match, Rule, UniqueItems
 from codegen import constraints as constraint_names
 from codegen import ir
 from codegen.ir import MISSING
+from codegen.refusal import BuildFailure
 
 #: The runtime base §8 of the architecture document gives a root model, named here and
 #: imported by no emitted module until a handler declares one (§14 step 9).  A NAME and
@@ -722,13 +723,106 @@ def _member(member: ir.Member) -> DataModelFieldBase:
     )
 
 
+#: The two enumeration bases by the name the emitted module IMPORTS them under, which
+#: the functional form has to spell and the class form gets from the model layer.  Keyed
+#: by :attr:`ir.EnumDecl.kind`, like :data:`_ENUM_BASES` beside it, so the two cannot
+#: disagree about which base a kind takes.
+_ENUM_BASE_NAMES = {"string": "StrEnum", "integer": "IntEnum"}
+
+#: The Python type word for each kind's MEMBER VALUE, for the annotation a value list
+#: carries.  ``lower.enum.BASES`` is the same mapping read from the other side.
+_VALUE_TYPES = {"string": "str", "integer": "int"}
+
+
+def values(decl: ir.ValuesDecl) -> Rendered:
+    """§3a's module-level VALUE LIST: ``<name> = ((<member>, <value>), ...)``.
+
+    "The **VALUE LIST** is a module-level constant in the catalogue layer, written once
+    per distinct member set; the **NAMED TYPE** is constructed from it at each position
+    that needs one, keeping the name §4 derives and keeping the types distinct."
+
+    The pairs carry the MEMBER NAME beside the value, for :class:`ir.ValuesDecl`'s own
+    reason: ``codegen.lower.enum.member_name`` is the one function an emitted member name
+    comes from, and a list of bare values would let ``enum`` name the members itself.
+
+    ``repr`` is the escaping, and it is the language's own rather than this module's: the
+    repr of a ``str`` or an ``int`` is by definition a Python literal for that value, so
+    a member containing a quote, a backslash or a newline round-trips without this
+    function knowing which characters those are.  The class form reaches the same
+    guarantee through the model layer's ``EnumMemberValue`` (:func:`_member`); there is no
+    second escaping rule here, only a second expression of one.
+    """
+    pairs = "\n".join(f"    ({member.name!r}, {member.value!r})," for member in decl.members)
+    return Rendered(
+        text=(
+            f"{decl.name}: tuple[tuple[str, {_VALUE_TYPES[decl.kind]}], ...] = (\n"
+            f"{pairs}\n)"
+        )
+    )
+
+
+def _functional_enum(decl: ir.EnumDecl) -> Rendered:
+    """§3a's FUNCTIONAL form: one of two types over a value list written somewhere else.
+
+    §3a's correction of 2026-11-02 states both halves of this -- when it is used and what
+    it costs:
+
+        "**ONE TYPE IS A CLASS STATEMENT; THE FUNCTIONAL FORM IS FOR TWO TYPES SHARING ONE
+        VALUE LIST** ... a functionally-built enum has no slot for the class docstring
+        pydantic renders as ``description`` ... The functional form is needed only where
+        the bundle states one member set under names judged genuinely distinct, which is
+        the narrow case, **and there the docstring is written as its own statement**."
+
+    So the docstring is a statement and not a slot, and the MEMBER docstrings are
+    statements too -- a block ``enumDescriptions`` reaches the class form through the
+    model layer's inline field description and has nowhere to go here.  Measured over the
+    bundle's shared value lists: 2 positions carry the block, both of them
+    *Canonical Media Buy Action Mode* and *Media Buy Action Mode*, whose descriptions
+    DIFFER per type over one value list -- which is why the statements are per
+    declaration and the value list carries no description of its own.
+
+    ``__doc__`` is assigned the same text the class form puts in its body, and pydantic
+    cleans both the same way, so the ``description`` in the rendered JSON Schema is
+    byte-identical between the two forms.  Asserted rather than assumed
+    (``tests/test_enum.py``).
+
+    **The ceiling is the class form's own**: a description containing ``\"\"\"`` emits a
+    module that does not parse.  It is the same ceiling because it is the same
+    insertion -- ``codegen/lower/enum.py``'s docstring measures it at 0 of the bundle's
+    1,151 member descriptions and 0 of its class descriptions -- and it is named here so
+    the second insertion site is not an unrecorded one.
+    """
+    if decl.values is None:
+        raise BuildFailure(
+            f"{decl.name}: the functional form was asked for an enumeration with no value "
+            "list to construct from, so there is nothing for it to name"
+        )
+    base = _ENUM_BASE_NAMES[decl.kind]
+    lines = [f"{decl.name} = {base}({decl.name!r}, {decl.values})"]
+    if decl.description:
+        lines.append(f'{decl.name}.__doc__ = """\n{decl.description}\n"""')
+    for member in decl.members:
+        if member.description:
+            lines.append(f'{decl.name}.{member.name}.__doc__ = """{member.description}"""')
+    out = Rendered(text="\n".join(lines))
+    out.imports.add(("enum", base))
+    return out
+
+
 def enum(decl: ir.EnumDecl) -> Rendered:
     """The Python for one decided enumeration, and the imports it needs.
 
     The members' NAMES are rendered verbatim (``{{ field.name }}``): this module names
     nothing here, which is why ``codegen.lower.enum`` owns the naming and why the
     injectivity check binds to its function.
+
+    **Two forms, and §3a decides between them rather than this function**
+    (:attr:`ir.EnumDecl.values`): the members are written in the class body where this
+    enumeration is the one type over its value list, and constructed from a module-level
+    constant where the bundle states that value list under two names judged distinct.
     """
+    if decl.values is not None:
+        return _functional_enum(decl)
     model = _ENUM_BASES[decl.kind](
         reference=Reference(path=f"#/{decl.name}", original_name=decl.name, name=decl.name),
         fields=[_member(m) for m in decl.members],
@@ -1064,6 +1158,8 @@ def declaration(
         return klass(decl, () if decl.ref is None else declared_at(approximations, decl.ref))
     if isinstance(decl, ir.EnumDecl):
         return enum(decl)
+    if isinstance(decl, ir.ValuesDecl):
+        return values(decl)
     if isinstance(decl, ir.AliasDecl):
         return alias(decl)
     if isinstance(decl, ir.RootBinding):
@@ -1235,7 +1331,64 @@ def module(mod: ir.Module, exports: Sequence[str]) -> str:
 #: The same first line every emitted module carries, less the document name: the two
 #: outputs written BESIDE the tree -- the constraints module and the envelope bases --
 #: are the ones that belong to no document, so there is no path for the header to name.
+#:
+#: §3a's CATALOGUE module takes it too, and that is the point of the line rather than a
+#: reuse of it: "**A pseudo-document path is refused**: it names a file the bundle does
+#: not contain, and every reader that resolves a record from a key would then be lying
+#: about where the schema came from."  A header naming a document would be the same lie
+#: one line further in.
 BESIDE_HEADER = "# Generated by codegen.emit. Do not edit."
+
+VOCABULARIES_DOCSTRING = '''"""Value lists the bundle states under more than one name, written once.
+
+GENERATED by ``codegen.emit``; see ``docs/plan/architecture.md`` §3a, which decides both
+that these lists are written once and that the types over them stay distinct.  Edit
+nothing -- the tree is ``f(bundle, emitter, pinned compiler)`` and a hand edit here is a
+fact no input states.
+
+**This module belongs to NO document**, which is why it carries no header path, no
+``__adcp_schema__`` and no ``strict_validate``: §3a's catalogue is a reading of the
+bundle, and a value list the bundle states at six positions in four documents has no one
+document to be reached through.  It sits in the narrowest namespace that contains every
+position referencing it -- a domain's where every reference is within one domain, the
+shared one otherwise.
+
+**Nothing here is a type.**  Each name is a list of ``(member, value)`` pairs, and the
+enumerations built from it are declared in the modules of the documents that state them,
+each keeping the name §4 derives for it: "a conflicting title is not a question about
+which name wins ... where the bundle states two concepts, both names are right and
+merging types one subject with the other's name."
+"""'''
+
+
+def vocabularies_module(declarations: Sequence[ir.ValuesDecl]) -> str:
+    """The text of one namespace's ``_vocabularies.py``: §3a's value lists, written once.
+
+    A module of CONSTANTS, so there is no ``__all__``: every name here is private by its
+    own leading underscore and is reached by the modules that build a type from it, never
+    by a consumer.  §1's export set is about types a consumer writes, and a value list is
+    not one.
+
+    The header is :data:`BESIDE_HEADER` for the reason that constant now carries: this
+    module has no document, and naming one would be the pseudo-document path §3a refuses.
+    """
+    rendered = [values(decl) for decl in declarations]
+    imports: set[tuple[str, str]] = set()
+    for one in rendered:
+        imports |= one.imports
+    return "\n".join(
+        [
+            BESIDE_HEADER,
+            VOCABULARIES_DOCSTRING,
+            "",
+            "from __future__ import annotations",
+            "",
+            *_import_block(imports),
+            "",
+            "\n\n\n".join(one.text for one in rendered),
+            "",
+        ]
+    )
 
 ENVELOPES_DOCSTRING = '''"""Consumer-facing bases for a repeated envelope the bundle spells more than one way.
 

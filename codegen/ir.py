@@ -487,6 +487,51 @@ class EnumDecl:
     kind: str
     members: tuple[Member, ...]
     description: str | None = None
+    #: The module-level VALUE LIST this enumeration is constructed FROM, as the
+    #: expression that names it, or ``None`` where the members are written in the class
+    #: body.
+    #:
+    #: ``docs/plan/architecture.md`` §3a's correction of 2026-11-02: "**ONE TYPE IS A
+    #: CLASS STATEMENT; THE FUNCTIONAL FORM IS FOR TWO TYPES SHARING ONE VALUE LIST** ...
+    #: Where the vocabulary is one type, its members ARE the value list and a normal class
+    #: statement writes it once -- the rule is satisfied with nothing lost.  The functional
+    #: form is needed only where the bundle states one member set under names judged
+    #: genuinely distinct, which is the narrow case, and there the docstring is written as
+    #: its own statement."
+    #:
+    #: So this is ``None`` for all but the narrow case, and :attr:`members` is what the
+    #: renderer writes.  Where it is set the renderer writes
+    #: ``<name> = StrEnum('<name>', <values>)`` and :attr:`members` is still carried --
+    #: unread by the rendering, and read by every check that asks what the class admits.
+    values: str | None = None
+
+
+@dataclass(frozen=True)
+class ValuesDecl:
+    """``<name>: tuple[tuple[str, <base>], ...] = ((...), ...)``: ONE value list, written
+    once.
+
+    §3a: "the **VALUE LIST** is a module-level constant in the catalogue layer, written
+    once per distinct member set; the **NAMED TYPE** is constructed from it at each
+    position that needs one, keeping the name §4 derives and keeping the types distinct."
+
+    The pairs are ``(member name, value)`` and not the values alone, because the member
+    NAME is what a consumer writes: ``StrEnum('X', ['a', 'b'])`` would name the members
+    ``a`` and ``b``, and ``codegen.lower.enum.member_name`` is the one function the
+    emitted member names come from whichever rendering a position takes.  So one list
+    carries both halves and two types over it cannot spell one value's member two ways.
+
+    It declares a NAME and is not a type, which is why it is a declaration of its own
+    rather than a slot on :class:`EnumDecl`: the constant is written once and the
+    enumerations that reference it are written per position, and a slot would make the
+    first position's declaration carry the others' shared text.
+    """
+
+    name: str
+    #: ``"string"`` or ``"integer"``, in JSON Schema's words -- :attr:`EnumDecl.kind`'s
+    #: own spelling, because the two always agree and the annotation is written from it.
+    kind: str
+    members: tuple[Member, ...]
 
 
 @dataclass(frozen=True)
@@ -610,7 +655,9 @@ class UnionInstall:
 
 
 #: Every declaration a module can hold, which is what ``render.py`` dispatches on.
-Declaration = ClassDecl | EnumDecl | AliasDecl | RootBinding | RootModelDecl | UnionInstall
+Declaration = (
+    ClassDecl | EnumDecl | ValuesDecl | AliasDecl | RootBinding | RootModelDecl | UnionInstall
+)
 
 
 @dataclass(frozen=True)

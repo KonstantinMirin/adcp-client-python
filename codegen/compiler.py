@@ -402,6 +402,22 @@ class Importable(NamedTuple):
     document: str
 
 
+class ValuesImport(NamedTuple):
+    """Where §3a's module-level VALUE LIST is importable from, for the position that is
+    about to build a type over it.
+
+    It is NOT an :class:`Importable`, and the difference is the second field that one
+    carries: a DOCUMENT.  §3a's catalogue module has none -- "**A pseudo-document path is
+    refused**: it names a file the bundle does not contain" -- and nothing downstream
+    wants one, because a value list is not a symbol a third module can compose or
+    re-export.  It is private to the modules that build a type from it, so the only fact
+    that crosses is the spelling and the name.
+    """
+
+    module: str
+    symbol: str
+
+
 class TargetKind(StrEnum):
     """What a resolved ``$ref``'s target IS, which is the one question every row that
     wants it as a BASE asks of it.
@@ -919,6 +935,28 @@ class Module:
     #: bundle that reaches that case is
     #: ``core/postal-country-system.json#/anyOf/3/properties/country``.
     restatements: Mapping[tuple[Any, ...], Target | str] = field(default_factory=dict)
+    #: **§3a's SHARED VALUE LIST, keyed on the members**: ``members -> the module-level
+    #: constant the value list is written under``, as a ``str`` where the constant is
+    #: declared in this module and a :class:`ValuesImport` where it is declared in the
+    #: namespace's catalogue module.
+    #:
+    #: The OTHER half of §3a's split, and it is the half :attr:`restatements` cannot be:
+    #:
+    #:     "the **VALUE LIST** is a module-level constant in the catalogue layer, written
+    #:     once per distinct member set; the **NAMED TYPE** is constructed from it at each
+    #:     position that needs one, keeping the name §4 derives and keeping the types
+    #:     distinct."
+    #:
+    #: :attr:`restatements` answers "this position is the SAME TYPE as one declared
+    #: elsewhere, so import it".  This answers "this position is a DIFFERENT TYPE over the
+    #: same value list, so declare it and take the values from one place" -- which is
+    #: ``codegen/vocabularies.py``'s ``DISTINCT`` and ``PENDING_A_NAME``, and §3a's two
+    #: title conflicts where §1 obliges both documents to export a symbol.
+    #:
+    #: Empty by default, so a document lowered outside a run writes every value list in
+    #: its own class bodies -- the same refusing default :attr:`vocabularies` has, and for
+    #: the same reason.
+    value_lists: Mapping[tuple[Any, ...], ValuesImport | str] = field(default_factory=dict)
     #: **The reference sites this document's walk ASKED about**, written by
     #: :meth:`target` and read by the run.  It is what decides which documents the run
     #: WRITES, and §10's own sentence is the reason: "a module cannot import from a
@@ -1273,6 +1311,20 @@ class Module:
         self.imports.add((where.module, symbol))
         self.imported[symbol] = where.document
         return symbol
+
+    def needs_values(self, where: ValuesImport) -> str:
+        """Record that this module imports §3a's value list from ``where``, and name it.
+
+        **ONE half and not two, where :meth:`importing` writes both, and the asymmetry is
+        the thing it says.**  :attr:`imported` exists so that a third module composing
+        this one takes a symbol from its DECLARER rather than from here, which is §1's
+        one-import-path rule across a chain.  A value list is private to the modules that
+        build a type over it -- never a base, never a field's type, never re-exported --
+        so there is no chain for a declarer to be named in, and the catalogue module it
+        comes from has no document to name anyway (:class:`ValuesImport`).
+        """
+        self.imports.add((where.module, where.symbol))
+        return where.symbol
 
     def declare(self, pointer: str, declaration: ir.Declaration) -> Refusal | None:
         """Record one declaration at its POINTER, or say why not.

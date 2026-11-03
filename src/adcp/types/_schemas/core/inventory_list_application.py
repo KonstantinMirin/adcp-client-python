@@ -23,12 +23,16 @@ class InventoryListApplication(BranchDispatchMixin, AdCPBaseModel):
         return "oneOf"
 
 
-class PropertyListApplicationEffect(StrEnum):
-    """
-    Whether matching properties were retained as an allowlist or removed as a blocklist.
-    """
-    INCLUDE = 'include'
-    EXCLUDE = 'exclude'
+_VALUES_INCLUDE_EXCLUDE: tuple[tuple[str, str], ...] = (
+    ('INCLUDE', 'include'),
+    ('EXCLUDE', 'exclude'),
+)
+
+
+PropertyListApplicationEffect = StrEnum('PropertyListApplicationEffect', _VALUES_INCLUDE_EXCLUDE)
+PropertyListApplicationEffect.__doc__ = """
+Whether matching properties were retained as an allowlist or removed as a blocklist.
+"""
 
 
 class PropertyListApplicationSummary(AdCPBaseModel):
@@ -57,12 +61,10 @@ class PropertyListApplication(InventoryListApplication):
     summary: Annotated[PropertyListApplicationSummary, Field(description="Partition of every entry in the resolved list snapshot against this product's common pre-list inventory baseline.")]
 
 
-class CollectionListApplicationEffect(StrEnum):
-    """
-    Whether matching collections were retained as an allowlist or removed as a blocklist.
-    """
-    INCLUDE = 'include'
-    EXCLUDE = 'exclude'
+CollectionListApplicationEffect = StrEnum('CollectionListApplicationEffect', _VALUES_INCLUDE_EXCLUDE)
+CollectionListApplicationEffect.__doc__ = """
+Whether matching collections were retained as an allowlist or removed as a blocklist.
+"""
 
 
 class CollectionListApplicationSummary(AdCPBaseModel):

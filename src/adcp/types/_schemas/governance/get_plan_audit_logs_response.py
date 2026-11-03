@@ -25,13 +25,17 @@ from .check_governance_response import CheckType
 from .reported_outcome_error import ReportedOutcomeError
 
 
-class PlansItemStatus(StrEnum):
-    """
-    Plan lifecycle status.
-    """
-    ACTIVE = 'active'
-    SUSPENDED = 'suspended'
-    COMPLETED = 'completed'
+_VALUES_ACTIVE_SUSPENDED_COMPLETED: tuple[tuple[str, str], ...] = (
+    ('ACTIVE', 'active'),
+    ('SUSPENDED', 'suspended'),
+    ('COMPLETED', 'completed'),
+)
+
+
+PlansItemStatus = StrEnum('PlansItemStatus', _VALUES_ACTIVE_SUSPENDED_COMPLETED)
+PlansItemStatus.__doc__ = """
+Plan lifecycle status.
+"""
 
 
 class AccountingMode(StrEnum):
@@ -296,12 +300,16 @@ class DeliveryReconciliationStatus(StrEnum):
     CLOSED_UNRESOLVED = 'closed_unresolved'
 
 
-class EntriesItemDeliveryPeriodState(StrEnum):
-    """
-    Operational governance-window state for this delivery observation.
-    """
-    OPEN = 'open'
-    CLOSED = 'closed'
+_VALUES_OPEN_CLOSED: tuple[tuple[str, str], ...] = (
+    ('OPEN', 'open'),
+    ('CLOSED', 'closed'),
+)
+
+
+EntriesItemDeliveryPeriodState = StrEnum('EntriesItemDeliveryPeriodState', _VALUES_OPEN_CLOSED)
+EntriesItemDeliveryPeriodState.__doc__ = """
+Operational governance-window state for this delivery observation.
+"""
 
 
 class AdjustmentState(StrEnum):
@@ -379,13 +387,10 @@ class EntriesItem(AdCPBaseModel):
     review_reason: str | None = None
 
 
-class GovernedActionsItemStatus(StrEnum):
-    """
-    Action status.
-    """
-    ACTIVE = 'active'
-    SUSPENDED = 'suspended'
-    COMPLETED = 'completed'
+GovernedActionsItemStatus = StrEnum('GovernedActionsItemStatus', _VALUES_ACTIVE_SUSPENDED_COMPLETED)
+GovernedActionsItemStatus.__doc__ = """
+Action status.
+"""
 
 
 class GovernedActionsItemDeliveryReportingPeriod(AdCPBaseModel):
@@ -403,12 +408,10 @@ class GovernedActionsItemDeliveryReportingPeriod(AdCPBaseModel):
 GovernedActionsItemDeliveryReconciliationStatus = DeliveryReconciliationStatus
 
 
-class GovernedActionsItemDeliveryPeriodState(StrEnum):
-    """
-    Whether the current governance reporting period remains actionable. Closure is not final billing.
-    """
-    OPEN = 'open'
-    CLOSED = 'closed'
+GovernedActionsItemDeliveryPeriodState = StrEnum('GovernedActionsItemDeliveryPeriodState', _VALUES_OPEN_CLOSED)
+GovernedActionsItemDeliveryPeriodState.__doc__ = """
+Whether the current governance reporting period remains actionable. Closure is not final billing.
+"""
 
 
 class GovernedActionsItem(AdCPBaseModel):

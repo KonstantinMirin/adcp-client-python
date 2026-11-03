@@ -572,13 +572,17 @@ class ColorTemperature(StrEnum):
     COOL = 'cool'
 
 
-class Contrast(StrEnum):
-    """
-    Contrast level in photography
-    """
-    LOW = 'low'
-    MEDIUM = 'medium'
-    HIGH = 'high'
+_VALUES_LOW_MEDIUM_HIGH: tuple[tuple[str, str], ...] = (
+    ('LOW', 'low'),
+    ('MEDIUM', 'medium'),
+    ('HIGH', 'high'),
+)
+
+
+Contrast = StrEnum('Contrast', _VALUES_LOW_MEDIUM_HIGH)
+Contrast.__doc__ = """
+Contrast level in photography
+"""
 
 
 class DepthOfField(StrEnum):
@@ -805,13 +809,10 @@ class TextureStyle(StrEnum):
     CONCRETE = 'concrete'
 
 
-class Intensity(StrEnum):
-    """
-    Texture intensity
-    """
-    LOW = 'low'
-    MEDIUM = 'medium'
-    HIGH = 'high'
+Intensity = StrEnum('Intensity', _VALUES_LOW_MEDIUM_HIGH)
+Intensity.__doc__ = """
+Texture intensity
+"""
 
 
 class Texture(AdCPBaseModel):
@@ -1083,19 +1084,23 @@ class Kind(StrEnum):
     SURFACE = 'surface'
 
 
-class Surface(StrEnum):
-    """
-    Usage surface rather than a specific color value.
-    """
-    BACKGROUND = 'background'
-    FOREGROUND = 'foreground'
-    TEXT = 'text'
-    LOGO_BACKGROUND = 'logo_background'
-    CTA = 'cta'
-    ACCENT = 'accent'
-    BORDER = 'border'
-    ICON = 'icon'
-    GRAPHIC_ELEMENT = 'graphic_element'
+_VALUES_BACKGROUND_FOREGROUND_TEXT_LOGO_BACKGROUND_CTA_ACCENT_BORDER_ICON_GRAPHIC_ELEMENT: tuple[tuple[str, str], ...] = (
+    ('BACKGROUND', 'background'),
+    ('FOREGROUND', 'foreground'),
+    ('TEXT', 'text'),
+    ('LOGO_BACKGROUND', 'logo_background'),
+    ('CTA', 'cta'),
+    ('ACCENT', 'accent'),
+    ('BORDER', 'border'),
+    ('ICON', 'icon'),
+    ('GRAPHIC_ELEMENT', 'graphic_element'),
+)
+
+
+Surface = StrEnum('Surface', _VALUES_BACKGROUND_FOREGROUND_TEXT_LOGO_BACKGROUND_CTA_ACCENT_BORDER_ICON_GRAPHIC_ELEMENT)
+Surface.__doc__ = """
+Usage surface rather than a specific color value.
+"""
 
 
 class ColorRef(BranchDispatchMixin, AdCPBaseModel):
@@ -1149,16 +1154,7 @@ ColorRef._branch_models = (ColorRefName, ColorRefValue, ColorRefSurface,)
 ColorRef.model_rebuild(force=True)
 
 
-class AppliesToItem(StrEnum):
-    BACKGROUND = 'background'
-    FOREGROUND = 'foreground'
-    TEXT = 'text'
-    LOGO_BACKGROUND = 'logo_background'
-    CTA = 'cta'
-    ACCENT = 'accent'
-    BORDER = 'border'
-    ICON = 'icon'
-    GRAPHIC_ELEMENT = 'graphic_element'
+AppliesToItem = StrEnum('AppliesToItem', _VALUES_BACKGROUND_FOREGROUND_TEXT_LOGO_BACKGROUND_CTA_ACCENT_BORDER_ICON_GRAPHIC_ELEMENT)
 
 
 class GuidelineSeverity(StrEnum):

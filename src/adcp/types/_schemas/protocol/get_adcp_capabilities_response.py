@@ -738,12 +738,16 @@ class AudienceEvidence(AdCPBaseModel):
     supports_attestation_evaluation: Annotated[bool, Field(description='Whether the seller evaluates audience-evidence attestation_refs under its core adcp.attestations policy and returns the exact reference and AttestationEvaluation in package readback.')]
 
 
-class RightsAttestationsRequirement(StrEnum):
-    """
-    required means every applicable rights constraint needs at least one current verified attestation evaluation before the creative is eligible to serve. optional permits independent legacy contractual policy, but unattested constraints remain machine-unverified and verification_url is never a downgrade path.
-    """
-    OPTIONAL = 'optional'
-    REQUIRED = 'required'
+_VALUES_OPTIONAL_REQUIRED: tuple[tuple[str, str], ...] = (
+    ('OPTIONAL', 'optional'),
+    ('REQUIRED', 'required'),
+)
+
+
+RightsAttestationsRequirement = StrEnum('RightsAttestationsRequirement', _VALUES_OPTIONAL_REQUIRED)
+RightsAttestationsRequirement.__doc__ = """
+required means every applicable rights constraint needs at least one current verified attestation evaluation before the creative is eligible to serve. optional permits independent legacy contractual policy, but unattested constraints remain machine-unverified and verification_url is never a downgrade path.
+"""
 
 
 class RightsAttestations(AdCPBaseModel):
@@ -997,12 +1001,10 @@ class Signals(AdCPBaseModel):
     features: Annotated[SignalsFeatures | None, Field(description='Optional signals features supported')] = None
 
 
-class SignalActivationRequirement(StrEnum):
-    """
-    Whether an activate_signal activation check may omit runtime_attestations. When required, missing evidence fails an activation check. Deactivation and privacy-removal checks never require signal-quality evidence and remain available without it.
-    """
-    OPTIONAL = 'optional'
-    REQUIRED = 'required'
+SignalActivationRequirement = StrEnum('SignalActivationRequirement', _VALUES_OPTIONAL_REQUIRED)
+SignalActivationRequirement.__doc__ = """
+Whether an activate_signal activation check may omit runtime_attestations. When required, missing evidence fails an activation check. Deactivation and privacy-removal checks never require signal-quality evidence and remain available without it.
+"""
 
 
 class SignalActivation(AdCPBaseModel):

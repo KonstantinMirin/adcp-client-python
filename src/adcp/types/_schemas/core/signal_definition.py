@@ -71,32 +71,28 @@ class Taxonomy(AdCPBaseModel):
     parent_match_behavior: Annotated[ParentMatchBehavior | None, Field(description="Whether this signal definition supports treating a parent taxonomy node as matching descendant nodes for discovery/filtering or seller-side expansion. 'exact_only' means only explicitly listed node ids match. 'descendants_supported' means the seller can expand known, version-pinned parent nodes to descendants internally, typically by ORing the children in its execution system. 'unknown' means the provider has not declared parent-node behavior. This field is metadata about discovery/translation behavior, not a package targeting operator.")] = None
 
 
-class RefreshCadence(StrEnum):
-    """
-    Cadence at which the signal definition's underlying segment membership is refreshed.
-    """
-    INTRA_DAY = 'intra_day'
-    DAILY = 'daily'
-    WEEKLY = 'weekly'
-    MONTHLY = 'monthly'
-    BI_MONTHLY = 'bi_monthly'
-    QUARTERLY = 'quarterly'
-    BI_ANNUALLY = 'bi_annually'
-    ANNUALLY = 'annually'
+_VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY: tuple[tuple[str, str], ...] = (
+    ('INTRA_DAY', 'intra_day'),
+    ('DAILY', 'daily'),
+    ('WEEKLY', 'weekly'),
+    ('MONTHLY', 'monthly'),
+    ('BI_MONTHLY', 'bi_monthly'),
+    ('QUARTERLY', 'quarterly'),
+    ('BI_ANNUALLY', 'bi_annually'),
+    ('ANNUALLY', 'annually'),
+)
 
 
-class LookbackWindow(StrEnum):
-    """
-    Time window in which a qualifying event can occur for inclusion.
-    """
-    INTRA_DAY = 'intra_day'
-    DAILY = 'daily'
-    WEEKLY = 'weekly'
-    MONTHLY = 'monthly'
-    BI_MONTHLY = 'bi_monthly'
-    QUARTERLY = 'quarterly'
-    BI_ANNUALLY = 'bi_annually'
-    ANNUALLY = 'annually'
+RefreshCadence = StrEnum('RefreshCadence', _VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY)
+RefreshCadence.__doc__ = """
+Cadence at which the signal definition's underlying segment membership is refreshed.
+"""
+
+
+LookbackWindow = StrEnum('LookbackWindow', _VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY)
+LookbackWindow.__doc__ = """
+Time window in which a qualifying event can occur for inclusion.
+"""
 
 
 class Onboarder(AdCPBaseModel):
