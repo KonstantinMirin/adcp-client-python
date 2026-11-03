@@ -106,33 +106,27 @@ from __future__ import annotations
 import functools
 import json
 from collections.abc import Collection, Mapping, Sequence
-from dataclasses import dataclass, field, replace as dataclasses_replace
+from dataclasses import dataclass, field
+from dataclasses import replace as dataclasses_replace
 from pathlib import Path
 from typing import Any
 
 from adcp.types._base import Approximation
-from codegen import bundle, catalogue, compiler, harness, ir, keywords, render, store
-from codegen.keywords import Position
+from codegen import bundle, catalogue, compiler, harness, ir, keywords, refusal, render, store
 from codegen import constraints as constraints_module
 from codegen.compiler import (
-    SCALAR,
     Module,
     Target,
     ValuesImport,
-    check_keywords,
     class_name,
     declare_alias,
 )
-from codegen.lower import const as lower_const
+from codegen.keywords import Position
+from codegen.lower import enum as lower_enum
 from codegen.lower import envelope as lower_envelope
 from codegen.lower import names as lower_names
-from codegen.lower import enum as lower_enum
-from codegen.lower import containers as lower_containers
-from codegen.lower import rules as lower_rules
-from codegen.lower import union as lower_union
-from codegen import refusal
 from codegen.refusal import BuildFailure, Kind, Refusal
-from codegen.schema import nodes, parse as schema
+from codegen.schema import parse as schema
 
 #: Where a document's module lands, relative to the repository root.
 TREE = Path("src") / "adcp" / "types" / "_schemas"
@@ -275,7 +269,7 @@ def module_domain(module: str) -> str:
     return module.split("/")[0]
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def domain_roots(bundle_dir: Path) -> dict[str, frozenset[str]]:
     """Per §1 DOMAIN, the ROOT symbol of every portable document in it.
 
@@ -326,7 +320,7 @@ def domain_roots(bundle_dir: Path) -> dict[str, frozenset[str]]:
     return {known: frozenset(symbols) for known, symbols in out.items()}
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def domain_exports(
     bundle_dir: Path, domains: frozenset[str]
 ) -> dict[str, dict[str, frozenset[str]]]:

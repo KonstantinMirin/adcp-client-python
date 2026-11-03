@@ -39,22 +39,20 @@ import sys
 from pathlib import Path
 from typing import Any
 
+import compared
+import fresh
 import jsonschema
+import populations
 import pytest
+from compiled import compiled
+from conftest import refusal_from
 from pydantic import ValidationError
 
 from adcp.types import _base
 from adcp.types._base import applied_schema
-
 from codegen import bundle, compiler, emit
 from codegen.keywords import Position
-from codegen.refusal import Kind, Refusal
-from compiled import compiled
-import fresh
-import populations
-import compared
-from conftest import refusal_from
-
+from codegen.refusal import Refusal
 from tests.nodeset import claimed, partitions
 
 REPO = Path(__file__).resolve().parents[1]
@@ -690,7 +688,7 @@ def test_the_storage_moves_no_pointer_any_reader_spells() -> None:
     def answer(root: dict, pointer: str) -> Any:
         try:
             return applied_schema(root, pointer)
-        except Exception as e:  # noqa: BLE001 -- the failure is the answer being compared
+        except Exception as e:  # the failure is the answer being compared
             return f"{type(e).__name__}: {e}"
 
     unresolved, moved = [], []

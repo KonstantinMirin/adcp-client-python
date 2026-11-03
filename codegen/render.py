@@ -186,8 +186,9 @@ def _data_type(decided: ir.TypeRef) -> Any:
         # with only the text, the module names a symbol it does not import.
         holder = _data_type(dataclasses.replace(decided, members=()))
         return _TYPES.data_type(
-            type="Literal[%s]"
-            % ", ".join(f"{holder.type_hint}.{member}" for member in decided.members),
+            type="Literal[{}]".format(
+                ", ".join(f"{holder.type_hint}.{member}" for member in decided.members)
+            ),
             import_=_TYPES.get_data_type_from_full_path(
                 "typing.Literal", is_custom_type=False
             ).import_,
@@ -880,7 +881,7 @@ def klass(decl: ir.ClassDecl, declared: Sequence[Approximation] = ()) -> Rendere
     approximation_lines = _approximation_lines(declared)
     class_body = (*body, *_union_base_lines(decl), *rule_lines, *approximation_lines)
     for line in class_body:
-        model._append_internal_template_data("class_body_lines", line)  # noqa: SLF001 -- the generator's own channel; see the module docstring
+        model._append_internal_template_data("class_body_lines", line)  # the generator's own channel; see the module docstring
     out = Rendered(text=model.render().rstrip("\n"), imports=set(rule_imports))
     if approximation_lines:
         out.imports.add((ir.BASE_MODULE, Approximation.__name__))

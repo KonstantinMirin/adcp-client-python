@@ -168,12 +168,12 @@ from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass, replace
 from typing import Any
 
-from codegen import compiler, ir, keywords
+from codegen import bundle, compiler, ir, keywords
+from codegen.keywords import Position
 from codegen.lower import approximate, names
+from codegen.refusal import Kind, Refusal
 from codegen.schema import nodes
 from codegen.schema import parse as schema
-from codegen.keywords import Position
-from codegen.refusal import Kind, Refusal, first_refusal
 
 #: The cells the ROOT of a union document CONSUMES -- this row's own coverage, not an
 #: admission list.  ``discriminator`` is gone from it: §6 admits the keyword by name at
@@ -420,30 +420,11 @@ def value_sets(props: Any) -> dict[str, ValueSet]:
         for node, complement in ((declaration, False), (declaration.get("not"), True)):
             if not isinstance(node, dict):
                 continue
-            named = _named_values(node)
+            named = bundle.named_values(node)
             if named is not None:
                 out[key] = ValueSet(named, complement)
                 break
     return out
-
-
-def _named_values(node: Mapping[str, Any]) -> frozenset | None:
-    """``node``'s ``const`` or ``enum`` as a set of scalars, or ``None`` where it names none.
-
-    One reading for both spellings, which is draft-07's own: a ``const`` is a one-member
-    ``enum``.  ``None`` and not the empty set, because "this node names no values" and
-    "this node admits nothing" are different statements and only the first is what an
-    absent keyword says.
-    """
-    if "const" in node:
-        value = node["const"]
-        return frozenset({value}) if isinstance(value, (str, bool, int)) else None
-    members = node.get("enum")
-    if not isinstance(members, list) or not members:
-        return None
-    if not all(isinstance(member, (str, bool, int)) for member in members):
-        return None
-    return frozenset(members)
 
 
 def _spell(one: ValueSet) -> str:
@@ -526,7 +507,7 @@ def _const_pins(props: Any) -> tuple[Any, ...]:
     return tuple(pins(props).values())
 
 
-def _naming_facts(branch: Any, props: Any, inherits: "Inherited | None" = None) -> Any:
+def _naming_facts(branch: Any, props: Any, inherits: Inherited | None = None) -> Any:
     """The four DECLARED facts §4 "Names"'s branch rules read, off one branch's
     declaration.
 
@@ -557,7 +538,7 @@ def _naming_facts(branch: Any, props: Any, inherits: "Inherited | None" = None) 
     )
 
 
-def dispatch_key(node: "nodes.Union") -> str | None:
+def dispatch_key(node: nodes.Union) -> str | None:
     """``discriminator.propertyName`` where the union declares one, read ONCE.
 
     The keyword CONSTRAINS NOTHING (§6: "Nothing on the class.  It names a branch where
@@ -676,7 +657,7 @@ class Branch:
     node: Any
     #: The branch as the PARSED node the class rows take, at BRANCH, already told what
     #: its enclosing union knows about it (:attr:`nodes.Union.branches`).
-    parsed: "nodes.Node"
+    parsed: nodes.Node
     inherits: Inherited | None = None
     #: The names this branch forbids ONE AT A TIME (:func:`forbidden_names`, over
     #: ``compiler.Rules.forbids``), which is §4's third dispatch source read in the idiom
@@ -806,7 +787,7 @@ def discriminator(
     return ""
 
 
-def applied_type(node: "nodes.Union", i: int) -> Any:
+def applied_type(node: nodes.Union, i: int) -> Any:
     """The ``type`` the document applies to branch ``i``, which is not always its own.
 
     ``_base.applied_schema`` is the one reading of that, and it is the reading the
@@ -831,7 +812,7 @@ def applied_type(node: "nodes.Union", i: int) -> Any:
     return node.branches[i].applied
 
 
-def states_a_scalar_instance(node: "nodes.Union") -> bool:
+def states_a_scalar_instance(node: nodes.Union) -> bool:
     """Does the document say its instance is a SCALAR?  That is what makes a union root
     an alias rather than a base plus subclasses.
 
@@ -856,7 +837,7 @@ def states_a_scalar_instance(node: "nodes.Union") -> bool:
     )
 
 
-def declares_a_class(node: "nodes.Union", i: int) -> bool:
+def declares_a_class(node: nodes.Union, i: int) -> bool:
     """Can this branch be a CLASS?
 
     Two clauses, and each is a clause of :func:`_plan`'s own reading rather than a
@@ -880,7 +861,7 @@ def declares_a_class(node: "nodes.Union", i: int) -> bool:
     return "properties" in branch or "allOf" in branch
 
 
-def _alias(node: "nodes.Union", mod: compiler.Module) -> str | Refusal:
+def _alias(node: nodes.Union, mod: compiler.Module) -> str | Refusal:
     """D2's module-level alias for a union root whose branches are all annotations.
 
     The root's name binds an ``Annotated`` alias over the branches' own union, and the
@@ -1029,7 +1010,7 @@ def closures_of(plan: Branch) -> tuple[frozenset[str], ...]:
     return schema.closed_maps(plan.node, Position.BRANCH)
 
 
-def forbidden_names(parsed: "nodes.Node", raw: Any) -> frozenset[str]:
+def forbidden_names(parsed: nodes.Node, raw: Any) -> frozenset[str]:
     """The names this branch forbids ONE AT A TIME, over the branch AND its conjuncts.
 
     ``compiler.rules_at`` is the one reduction of a ``not`` over ``required`` into
@@ -1292,7 +1273,7 @@ def separates(
     return None
 
 
-def overlapping(planned: Sequence[Branch], node: "nodes.Union") -> list[str]:
+def overlapping(planned: Sequence[Branch], node: nodes.Union) -> list[str]:
     """Every PAIR of branches §4's third source cannot separate, named.
 
     Pairwise and not globally, because that is what the section says: "Where the
@@ -1326,10 +1307,10 @@ def overlapping(planned: Sequence[Branch], node: "nodes.Union") -> list[str]:
 
 
 def lower_union(
-    node: "nodes.Union",
+    node: nodes.Union,
     mod: compiler.Module,
     *,
-    enclosing: "Enclosing | None" = None,
+    enclosing: Enclosing | None = None,
 ) -> str | Refusal:
     """Emit the base, the branches and the module trailer; return the base's symbol.
 
@@ -1369,7 +1350,7 @@ def lower_union(
     refused = compiler.check_keywords(node, ROOT_CLAIMS | {kw} | stated.screen, mod=mod)
     if refused is not None:
         return refused
-    if len(node.branches) < 2:  # noqa: PLR2004 -- a union of one is not a union
+    if len(node.branches) < 2:  # a union of one is not a union
         return Refusal(
             kw,
             pointer,
@@ -2012,7 +1993,7 @@ _NESTED_SIBLING = (
 
 
 
-def carried_by_a_class(node: "nodes.Union") -> frozenset[str]:
+def carried_by_a_class(node: nodes.Union) -> frozenset[str]:
     """The siblings of this union a composed CLASS consumes, DERIVED (§8).
 
     Two readings and neither is retyped here.  :data:`compiler.COMPOSING` is the one
@@ -2033,7 +2014,7 @@ def carried_by_a_class(node: "nodes.Union") -> frozenset[str]:
     return frozenset(claimed) - {node.combinator, "type"}
 
 
-def composes_its_siblings(node: "nodes.Union") -> bool:
+def composes_its_siblings(node: nodes.Union) -> bool:
     """Does this union state a sibling that a CLASS carries?  §8's composition rule.
 
     **"A sibling beside a union lowers by COMPOSITION, and nothing is approximated"**
@@ -2054,7 +2035,7 @@ def composes_its_siblings(node: "nodes.Union") -> bool:
     return bool(frozenset(node.declares) & carried_by_a_class(node))
 
 
-def lower(node: "nodes.Union", mod: compiler.Module) -> ir.Decided | Refusal:
+def lower(node: nodes.Union, mod: compiler.Module) -> ir.Decided | Refusal:
     """§4's union row, at the node's own POSITION: a base plus one class per branch at a
     document ROOT, and one ``A | B`` type below it.
 
@@ -2086,7 +2067,7 @@ def lower(node: "nodes.Union", mod: compiler.Module) -> ir.Decided | Refusal:
     return nested(node, mod)
 
 
-def nested(node: "nodes.Union", mod: compiler.Module) -> ir.Decided | Refusal:
+def nested(node: nodes.Union, mod: compiler.Module) -> ir.Decided | Refusal:
     """``A | B`` for a ``oneOf``/``anyOf`` at a pointer that is NOT a document root AND
     that states nothing beside the combinator.
 
@@ -2204,7 +2185,7 @@ def _targeted(raw: Mapping[str, Any], at: str, mod: compiler.Module) -> Inherite
     return Inherited(symbol=target.symbol, shape=target.declares)
 
 
-def _undetermined(node: "nodes.Union", mod: compiler.Module) -> None:
+def _undetermined(node: nodes.Union, mod: compiler.Module) -> None:
     """§4's UNDERDETERMINED row at a NESTED union, which is the ROOT's own answer here.
 
     "A union matching none of the three emits a plain ``A | B`` over its branches and
@@ -2243,7 +2224,7 @@ def _undetermined(node: "nodes.Union", mod: compiler.Module) -> None:
     the document with it and the declaration goes with the module nobody emits.
     """
     kw = node.combinator
-    if len(node.branches) < 2 or not all(isinstance(b, Mapping) for b in node.branch_raw):  # noqa: PLR2004
+    if len(node.branches) < 2 or not all(isinstance(b, Mapping) for b in node.branch_raw):
         return
     planned = [
         Branch(
@@ -2288,7 +2269,7 @@ def _undetermined(node: "nodes.Union", mod: compiler.Module) -> None:
     )
 
 
-def _arms(node: "nodes.Union", mod: compiler.Module) -> ir.Decided | Refusal:
+def _arms(node: nodes.Union, mod: compiler.Module) -> ir.Decided | Refusal:
     """The ``A | B`` itself, with no sibling screen: the two callers differ in that alone.
 
     :func:`nested` screens the node's siblings and :func:`_alias` does not, because a
@@ -2298,14 +2279,13 @@ def _arms(node: "nodes.Union", mod: compiler.Module) -> ir.Decided | Refusal:
     so the two positions cannot come to disagree about one branch list.
     """
     kw, pointer = node.combinator, node.pointer
-    if len(node.branches) < 2:  # noqa: PLR2004 -- a union of one is not a union
+    if len(node.branches) < 2:  # a union of one is not a union
         return Refusal(
             kw,
             pointer,
             f"{len(node.branches)} branch: a union of one is the branch itself, not a union",
             kind=Kind.VERDICT,
         )
-    named = dispatch_key(node)
     arms: list[ir.TypeRef] = []
     for i, parsed in enumerate(node.branches):
         at = parsed.pointer
@@ -2368,7 +2348,7 @@ def _arms(node: "nodes.Union", mod: compiler.Module) -> ir.Decided | Refusal:
     return ir.Decided(ir.TypeRef(container="union", of=unique))
 
 
-def _inherited(parsed: "nodes.Node", mod: compiler.Module) -> Inherited | Refusal:
+def _inherited(parsed: nodes.Node, mod: compiler.Module) -> Inherited | Refusal:
     """Resolve a bare ``$ref`` branch's target: the class it subclasses and its fields.
 
     §4: a ``$ref`` branch is a class with TWO BASES, and the target is the one that
@@ -2452,7 +2432,7 @@ def _inherited(parsed: "nodes.Node", mod: compiler.Module) -> Inherited | Refusa
     return Inherited(symbol=symbol, shape=bound.declares)
 
 
-def _plan(node: "nodes.Union", i: int, mod: compiler.Module) -> Branch | Refusal:
+def _plan(node: nodes.Union, i: int, mod: compiler.Module) -> Branch | Refusal:
     """What one branch becomes, or the refusal that says why it becomes nothing.
 
     The branch's DECLARATION decides which shape it is -- §4 "Names" and §4's dispatch

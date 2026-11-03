@@ -23,11 +23,10 @@ import ast
 import collections
 from pathlib import Path
 
-from codegen import emit
+import fresh
+
 from codegen.lower import names
 from codegen.refusal import Refusal
-
-import fresh
 from tests.nodeset import claimed, ratchet
 
 REPO = Path(__file__).resolve().parents[1]

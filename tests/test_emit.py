@@ -64,61 +64,57 @@ import types
 from dataclasses import replace
 from pathlib import Path
 from typing import Annotated, Any, ClassVar, Literal, NamedTuple
-from unittest import mock
 
+import compared
+import corpus
+import fresh
 import jsonschema
+import populations
 import pytest
+from compiled import compiled
+from conftest import refusal_from
 from datamodel_code_generator.types import DataType
-from hypothesis import given, HealthCheck, Phase, settings
+from hypothesis import HealthCheck, Phase, given, settings
 from hypothesis import strategies as st
-from unittest.mock import patch
-
-from pydantic import BaseModel, ConfigDict, Field, RootModel, TypeAdapter, ValidationError
+from nodeset import claimed, partitions, ratchet
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
 from pydantic_core import PydanticCustomError
 
 from adcp.types._base import (
+    REGEX_ENGINE,
     WIDENED,
     AdCPBaseModel,
     AdCPRootModel,
-    applied_schema,
     BranchDispatchMixin,
-    REGEX_ENGINE,
     SchemaRef,
+    applied_schema,
     schema_at,
 )
 from adcp.types._runtime import Dependencies, Rule, RuleBound, UniqueItems, bound_rules
 from codegen import bundle, compiler, emit, harness, ir, keywords, render
-from codegen.keywords import Rung
 from codegen import constraints as constraints_module
 from codegen import refusal as refusal_module
-from codegen.lower import names, scalars
-from codegen.schema import nodes, parse as schema_parse
-from codegen.lower import const as lower_const
-from codegen.lower import enum as lower_enum
-from codegen.lower import union as lower_union
-from codegen.refusal import Refusal
 from codegen.harness import (
     AcceptsResult,
-    check_accepts,
-    check_liveness,
     LivenessResult,
     Pair,
     PairReport,
-    _composed,  # noqa: PLC2701 -- the harness's own folding of an allOf conjunct's facts
+    _composed,  # the harness's own folding of an allOf conjunct's facts
+    check_accepts,
+    check_liveness,
     check_pair,
     conforms,
     refusing_payload,
     violated_keywords,
 )
-from codegen.lower import rules
-import compared
-import corpus
-from compiled import compiled
-import fresh
-import populations
-from conftest import refusal_from
-
-from nodeset import claimed, partitions, ratchet
+from codegen.keywords import Rung
+from codegen.lower import const as lower_const
+from codegen.lower import enum as lower_enum
+from codegen.lower import names, rules, scalars
+from codegen.lower import union as lower_union
+from codegen.refusal import Refusal
+from codegen.schema import nodes
+from codegen.schema import parse as schema_parse
 
 REPO = Path(__file__).resolve().parents[1]
 
@@ -1311,7 +1307,7 @@ def test_a_refused_payload_is_derived_for_every_pair_an_instance_was_drawn_for()
             validator.is_valid(value) for value in (42, "x", None, True, {}, [])
         ), (g.ref, node)
         causes["refuses_nothing"].add(name)
-    partitions(set(NO_PAYLOAD_PAIRS), **{k: v for k, v in causes.items()})
+    partitions(set(NO_PAYLOAD_PAIRS), **causes)
     assert causes["refuses_nothing"] == {
         "core/targeting-unknown-age-eligibility-constraint.json#",
         "core/targeting-verified-age-basis-constraint.json#",
@@ -1493,7 +1489,7 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
                 continue
             seen[fmt] = seen.get(fmt, 0) + 1
             # **A MULTI-TYPE node carries a format too, and this used to RAISE on
-            # one.**  ``node["type"] in emit.SCALAR`` hashes the value, and a list is
+            # one.**  ``node["type"] in compiler.SCALAR`` hashes the value, and a list is
             # unhashable, so the site died with a ``TypeError`` rather than failing an
             # assertion -- latent until a document declaring ``["string", "null"]``
             # beside a ``format`` emitted (``salesagent-j3k2l.21``).  D5's rule is
@@ -1512,7 +1508,7 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
             applied = applied_schema(bundle.read(BUNDLE, document), pointer).get("type")
             kinds = applied if isinstance(applied, list) else [applied]
             assert [k for k in kinds if k != "null"], (document, pointer, kinds)
-            assert all(k in emit.SCALAR or k == "null" for k in kinds), (
+            assert all(k in compiler.SCALAR or k == "null" for k in kinds), (
                 document,
                 pointer,
                 kinds,
@@ -1709,7 +1705,7 @@ def _unwrap(node: dict, defs: dict) -> dict:
     branches = node.get("anyOf")
     if isinstance(branches, list):
         live = [b for b in branches if isinstance(b, dict) and b.get("type") != "null"]
-        if len(live) == 1 and len(branches) == 2:  # noqa: PLR2004 -- T | None only
+        if len(live) == 1 and len(branches) == 2:  # T | None only
             return {**_unwrap(live[0], defs), **{k: v for k, v in node.items() if k != "anyOf"}}
     return node
 
@@ -1953,7 +1949,7 @@ def test_a_root_scalar_alias_is_compiled_with_the_same_engine_as_a_class() -> No
     claimed("graded aliases that state a pattern", with_pattern, inside=aliases)
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def _pattern_model(pattern: str, engine: str | None) -> type[BaseModel]:
     """A one-field carrier for ``pattern`` under ``engine``.
 
@@ -2421,7 +2417,7 @@ def test_extra_follows_the_schema_and_a_silent_document_takes_the_base_default()
         # same argument ``_composed`` is read here for.
         root = schema_at(SchemaRef(row.ref.document, "#"))
         declared = _composed(
-            harness._normalize(schema_at(row.ref), root, declared_null=True),  # noqa: SLF001
+            harness._normalize(schema_at(row.ref), root, declared_null=True),
             root,
         ).get("additionalProperties", "silent")
         # The four forms, named: a schema here is the TYPED row, graded in full by
@@ -2521,7 +2517,7 @@ def test_a_class_pointed_at_another_document_grades_red() -> None:
 
     class Misaimed(AdCPBaseModel):
         __adcp_schema__ = SchemaRef(other, "#")
-        model_config = {"extra": "forbid"}
+        model_config = ConfigDict(extra="forbid")
         max_results: int | None = 50
         cursor: str | None = None
 
@@ -2652,7 +2648,7 @@ def _source(document: str) -> str:
     return (TREE / f"{emit.module_file(document, PACKAGES)}.py").read_text()
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def _symbol(document: str) -> str:
     """The name the emitted module exports, read off the module itself.
 
@@ -3220,7 +3216,7 @@ def _an_instance(schema: dict, document: dict | None = None) -> Any:
     if document is not None:
         try:
             schema = harness.resolve(schema, store={}, referrer=document)
-        except Exception:  # noqa: BLE001 -- any resolution failure falls back to the node
+        except Exception:  # any resolution failure falls back to the node
             pass
     drawn: list[Any] = []
 
@@ -4165,7 +4161,7 @@ def _constructed(doc: dict, *, binds: dict[str, Any] | None = None) -> tuple[Any
     assert not isinstance(bound, Refusal), bound
     text = render.module(bound, emit.exported(mod, bound))
     module = types.ModuleType("_constructed_fixture")
-    module.__dict__.update({name: type_ for name, type_ in held.values()})
+    module.__dict__.update(dict(held.values()))
     # D5's aliases are reached by an ABSOLUTE import, so they survive the strip
     # below -- and a constructed document can derive a shape the INSTALLED module
     # has no site for, which is an ``ImportError`` here rather than a test failure
@@ -4174,14 +4170,14 @@ def _constructed(doc: dict, *, binds: dict[str, Any] | None = None) -> tuple[Any
     # a ``$ref`` target gets, for the same reason, and the annotation stays the
     # compiler's.
     if mod.aliases:
-        exec(render.constraints_module(mod.aliases), module.__dict__)  # noqa: S102
+        exec(render.constraints_module(mod.aliases), module.__dict__)
     alias_import = f"from {constraints_module.MODULE} import"
     # Registered, because ``from __future__ import annotations`` makes every
     # annotation a string and pydantic resolves it against the defining module's
     # globals -- a bare ``exec`` dict has no module to be found through.
     sys.modules[module.__name__] = module
     try:
-        exec(  # noqa: S102 -- executing the compiler's own output is the point
+        exec(  # executing the compiler's own output is the point
             "\n".join(
                 line
                 for line in text.splitlines()
@@ -4559,7 +4555,7 @@ def test_a_root_array_is_a_root_model_carrying_its_bound_and_its_uniqueItems_rul
         "r.json", {"title": "R", "type": "array", "items": {"type": "string"}}
     )
     assert not isinstance(built, Refusal), built
-    module, symbol = built
+    module, _symbol = built
     (declared,) = [d for d in module.declarations if isinstance(d, ir.RootModelDecl)]
     assert declared.type.container == "list", declared
     assert [of.path for of in declared.type.of] == ["str"], declared
@@ -4812,7 +4808,7 @@ def test_a_mapping_is_a_dict_whose_key_comes_from_the_document() -> None:
         # the assertion is the declaration rather than a key alias -- a key alias here
         # would be a model narrower than its document, which is the direction §2 forbids.
         if node.get("additionalProperties") is not False and "patternProperties" in node:
-            assert f"dict[str," in _source(path), document
+            assert "dict[str," in _source(path), document
             # **The declaration is looked for on the MODULE AND on every class the module
             # defines, and what is asserted is that the POINTER is declared**
             # (``adcp-client-python-10l.55``).  §7 puts an approximation on the object
@@ -5561,7 +5557,7 @@ def test_every_module_of_the_tree_imports_and_every_class_of_it_is_defined() -> 
             ):
                 try:
                     value.model_json_schema()
-                except Exception as why:  # noqa: BLE001 -- the failure is the finding
+                except Exception as why:  # the failure is the finding
                     unresolved.append((f"{name}.{value.__name__}", str(why)[:200]))
     assert unresolved == [], unresolved
 
@@ -5633,7 +5629,7 @@ def test_a_multi_type_property_applies_each_keyword_to_its_own_branch() -> None:
     # unreadable, and the four ways a model can be wrong about it are each asserted
     # below.  ``harness._type_list`` is the lift and ``keywords.ARM`` is what says which
     # arm a key belongs to.
-    normalize = harness._normalize  # noqa: SLF001 -- the normalization under test
+    normalize = harness._normalize  # the normalization under test
     assert normalize(
         {"anyOf": [{"type": "string", "minLength": 2}, {"type": "integer"}]}, {}
     ) == {"type": ["string", "integer"], "minLength": 2}
@@ -5703,7 +5699,7 @@ def test_a_multi_type_property_applies_each_keyword_to_its_own_branch() -> None:
     # the integer arm takes no string bound.  Built from the alias the emitter uses,
     # which the walk's own rendering is asserted against below.
     arm_alias = {"StrMinLen4": None}
-    exec(render.constraints_module({named: ("string", {"minLength": 4}, None)}), arm_alias)  # noqa: S102
+    exec(render.constraints_module({named: ("string", {"minLength": 4}, None)}), arm_alias)
 
     class Armed(AdCPBaseModel):
         v: arm_alias[named] | int  # type: ignore[name-defined,valid-type]
@@ -6870,7 +6866,7 @@ def test_each_rule_kind_refuses_on_two_plain_arguments() -> None:
     ]
     seen: set[str] = set()
     for rule, keys, keyword in cases:
-        values = {k: "p" for k in keys}
+        values = dict.fromkeys(keys, "p")
         got = [e[0] for e in rule.errors(frozenset(keys), values)]
         assert got == ([keyword] if keyword else []), (rule, keys, got)
         seen.add(type(rule).__name__)
@@ -7416,7 +7412,7 @@ def test_a_const_node_is_a_literal_over_the_value_it_pins() -> None:
     # anything else out.
     accept = _accept_of(doc, model)
     assert accept({"typed": "collection_list_changed", "typeless": "asap", "flag": True})
-    with pytest.raises(Exception):  # noqa: B017, PT011 -- either half may refuse first
+    with pytest.raises(Exception):  # noqa: B017 -- either half may refuse first
         accept({"typed": "something_else", "typeless": "asap", "flag": True})
 
 

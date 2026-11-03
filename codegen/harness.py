@@ -80,19 +80,19 @@ import importlib
 import json
 import pkgutil
 import traceback
-from contextlib import contextmanager
 from collections import Counter
-from collections.abc import Callable, Iterator, Mapping, Sequence
+from collections.abc import Callable, Collection, Iterator, Mapping, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import Any, NamedTuple
 
 import hypothesis
+import hypothesis_jsonschema
 import jsonschema
 from hypothesis import HealthCheck, Phase, given, settings
 from hypothesis import strategies as st
 from hypothesis.errors import HypothesisException
 from hypothesis.internal.conjecture.engine import BUFFER_SIZE as _HYPOTHESIS_BUFFER_SIZE
-import hypothesis_jsonschema
 from hypothesis_jsonschema import _canonicalise as _hjs_canon
 from hypothesis_jsonschema import from_schema
 from hypothesis_jsonschema._canonicalise import HypothesisRefResolutionError
@@ -1006,7 +1006,7 @@ def undrawable_formats(
         try:
             run = given(instance=strategy(node, dict(custom_formats)))(_drawing_this_node)
             settings(max_examples=examples, phases=[Phase.generate], **_SETTINGS)(run)()
-        except Exception as e:  # noqa: BLE001 -- any failure to draw names the position
+        except Exception as e:  # any failure to draw names the position
             out.append(
                 f"{pointer}: format {node['format']!r} beside pattern"
                 f" {node['pattern']!r} [{_why(e)}]"
@@ -1273,9 +1273,9 @@ class LivenessResult:
 # --------------------------------------------------------------------------- #
 # the two directions
 # --------------------------------------------------------------------------- #
-_SETTINGS = dict(
-    deadline=None,
-    database=None,
+_SETTINGS = {
+    "deadline": None,
+    "database": None,
     # **What this buys and what it does NOT, measured rather than assumed.**  It fixes the
     # SEED, so the same strategy yields the same stream; it does not make the drawn
     # instance a function of the schema.  Over two full passes of the same 1,664 pairs at
@@ -1285,9 +1285,10 @@ _SETTINGS = dict(
     # ``hypothesis`` whose lifetime garbage collection governs.  ``corpus_key`` and the
     # store behind it are what make the witness reproducible; this makes it cheap to
     # reproduce once held.
-    derandomize=True,  # one seed per call; see above for what that does and does not fix
-    suppress_health_check=list(HealthCheck),
-)
+    # one seed per call; see above for what that does and does not fix
+    "derandomize": True,
+    "suppress_health_check": list(HealthCheck),
+}
 
 
 def check_format_strategy(
@@ -2262,7 +2263,7 @@ class _Draws:
         self.drawn += 1
         try:
             return [one_instance(schema, custom_formats)]
-        except Exception as e:  # noqa: BLE001 -- an undrawable position is unproved
+        except Exception as e:  # an undrawable position is unproved
             #: A cut that ``hypothesis`` swallowed and replaced with its own exception is
             #: not an undrawable position; :func:`budget_expired` says which this is.
             if budget_expired():
@@ -2520,7 +2521,7 @@ def _mapping_key(node: Any, expression: str | None) -> Any:
         return _ALIEN_KEY
     try:
         return one_instance(key, {})
-    except Exception:  # noqa: BLE001 -- an undrawable key constraint has no location
+    except Exception:  # an undrawable key constraint has no location
         return None
 
 
@@ -2629,7 +2630,7 @@ def _steps(
             i += 1
         elif word in _MAPPING_VALUE and i + _MAPPING_VALUE[word] <= len(segments):
             spent = _MAPPING_VALUE[word]
-            expression = bundle.unescape_key(segments[i + 1]) if spent == 2 else None  # noqa: PLR2004
+            expression = bundle.unescape_key(segments[i + 1]) if spent == 2 else None
             key = _mapping_key(node, expression)
             if key is None:
                 return None
@@ -2656,7 +2657,7 @@ def _reached(
     pointer: str,
     instance: Any,
     custom_formats: Mapping[str, Any],
-    draws: "_Draws",
+    draws: _Draws,
 ) -> Any:
     """``instance`` with every node on the way to ``pointer``'s location PRESENT.
 
@@ -2807,7 +2808,7 @@ def _bases(
     instances: Sequence[Any],
     cf: Mapping[str, Any],
     memo: list[Any],
-    draws: "_Draws",
+    draws: _Draws,
 ) -> Iterator[Any]:
     """The base payloads §8's obligation may place a drawn value into, cheapest first.
 
@@ -3072,7 +3073,7 @@ def check_widening(
                     f"approximated at rung {one.rung}, {one.attribution}"
                 )
                 continue
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:
                 res.unproved.append(
                     f"{one.pointer}/{one.keyword}: {label} raised "
                     f"{type(e).__name__}: {e}"[:300]
@@ -3087,7 +3088,7 @@ def at_or_none(doc: Any, pointer: str) -> Any:
     """:func:`at`, answering ``None`` for a pointer the document does not hold."""
     try:
         return at(doc, pointer)
-    except Exception:  # noqa: BLE001 -- a pointer the document does not hold
+    except Exception:  # a pointer the document does not hold
         return None
 
 
@@ -4546,26 +4547,6 @@ def _pins(node: Mapping[str, Any]) -> dict[str, Any]:
     return out
 
 
-def _named_values(node: Mapping[str, Any]) -> frozenset | None:
-    """``node``'s ``const`` or ``enum`` as a set of scalars, or ``None`` for neither.
-
-    Draft-07's own reading: a ``const`` is a one-member ``enum``.  ``None`` rather than
-    the empty set, because "names no values" and "admits nothing" are different
-    statements.  Scalars only, and a list with one non-scalar member contributes NOTHING
-    rather than its scalar part -- a partial set would claim a disjointness the document
-    does not state.
-    """
-    if "const" in node:
-        value = node["const"]
-        return frozenset({value}) if isinstance(value, (str, bool, int)) else None
-    members = node.get("enum")
-    if not isinstance(members, list) or not members:
-        return None
-    if not all(isinstance(member, (str, bool, int)) for member in members):
-        return None
-    return frozenset(members)
-
-
 def _value_sets(node: Mapping[str, Any]) -> dict[str, tuple[frozenset, bool]]:
     """For each key this branch constrains to a value set, that set and whether it is a
     COMPLEMENT.
@@ -4590,7 +4571,7 @@ def _value_sets(node: Mapping[str, Any]) -> dict[str, tuple[frozenset, bool]]:
         for sub, complement in ((declaration, False), (declaration.get("not"), True)):
             if not isinstance(sub, Mapping):
                 continue
-            named = _named_values(sub)
+            named = bundle.named_values(sub)
             if named is not None:
                 out[key] = (named, complement)
                 break
@@ -5016,7 +4997,7 @@ def _inseparable(
     for pointer, node in _rule_free_nodes(record):
         for kw in _COMBINATORS:
             branches = node.get(kw)
-            if not isinstance(branches, list) or len(branches) < 2:  # noqa: PLR2004
+            if not isinstance(branches, list) or len(branches) < 2:
                 continue
             if not all(isinstance(b, Mapping) for b in branches):
                 continue
@@ -5073,7 +5054,7 @@ def _inseparable(
                     or ((view.get("type") or t) is None and view.get("properties"))
                     for view in _views(b)
                 )
-                for t, b in zip(applied, branches)
+                for t, b in zip(applied, branches, strict=True)
             ):
                 continue
             base = "" if pointer == "/" else pointer
@@ -5228,7 +5209,7 @@ def check_pair(
     #: passing blind.
     try:
         drawn_from = resolve(pair.schema, store={}, referrer=pair.document)
-    except Exception:  # noqa: BLE001 -- any resolution failure falls back to the node
+    except Exception:  # any resolution failure falls back to the node
         drawn_from = pair.schema
     #: **§8's FIXTURE RULE, and it is a change to the DRAW and to nothing else.**  "A
     #: referenced document is graded by its own pair, so at a referring position it is a
@@ -5746,7 +5727,7 @@ def pairs(package: Any, path: Sequence[str] | None = None) -> tuple[list[Paired]
     for info in sorted(walked, key=lambda i: i.name):
         try:
             module = importlib.import_module(info.name)
-        except Exception:  # noqa: BLE001 -- recorded, never raised; see the docstring
+        except Exception:  # recorded, never raised; see the docstring
             unimportable[info.name] = traceback.format_exc(limit=3)[-600:]
             continue
         taken: set[int] = set()  # by IDENTITY: one class, one pair, whatever it is called

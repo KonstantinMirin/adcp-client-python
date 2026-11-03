@@ -64,11 +64,6 @@ from __future__ import annotations
 import functools
 from typing import Any
 
-import pytest
-
-from codegen import keywords
-from codegen.keywords import Position
-
 from cells import (
     AT,
     NODES,
@@ -81,7 +76,9 @@ from cells import (
 )
 from nodeset import claimed, partitions
 from pydantic import TypeAdapter
-from codegen import harness
+
+from codegen import harness, keywords
+from codegen.keywords import Position
 
 #: **THE FOUR PINNED COUNTS THAT STOOD HERE ARE GONE** (2026-11-04,
 #: ``adcp-client-python-99m``).  They were ``ROWS = 98``, ``POSITIONS = 9``,
@@ -379,7 +376,7 @@ def test_every_live_cell_has_a_probe_and_every_probe_names_a_live_cell() -> None
 
     # Backwards: every keyword the probe table carries has a live cell, and every
     # position override names a live cell of its own keyword.
-    assert {k for k in NODES} == {k for k, _ in live()}
+    assert set(NODES) == {k for k, _ in live()}
     assert claimed("position overrides", set(AT)) <= live()
 
 
@@ -443,7 +440,7 @@ def _prove(document: dict, witnesses: tuple, *, widens: bool = False) -> None:
         try:
             adapter.validate_python(witness)
             by_class = True
-        except Exception:  # noqa: BLE001 -- any refusal is a refusal
+        except Exception:  # any refusal is a refusal
             by_class = False
         by_document = harness.conforms(resolved, witness)
         verdicts.append(by_document)
@@ -580,7 +577,7 @@ def test_the_premise_that_the_positions_are_closed_under_descent() -> None:
     every position it assigns comes from ``keywords.descends_at``, so the closure is the
     column's and not a second reading of it.
     """
-    assigned = {position for position in bundle_positions()}
+    assigned = set(bundle_positions())
     assert assigned <= set(Position)
     # Every position a keyword descends INTO is one of the nine, and the column assigns
     # at least one keyword to each of the eight that are not ROOT.

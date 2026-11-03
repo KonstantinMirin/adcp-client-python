@@ -41,16 +41,14 @@ from pathlib import Path
 
 import jsonschema
 import pytest
-
+from compiled import compiled
+from conftest import refusal_from
 from pydantic import ValidationError
 
 from adcp.types import _base
 from adcp.types._base import AdCPBaseModel, SchemaRef, applied_schema, schema_at
-from compiled import compiled
 from codegen import bundle, emit, keywords
 from codegen import refusal as refusal_module
-from conftest import refusal_from
-
 from tests.nodeset import claimed, partitions, ratchet
 
 #: A FLOOR over the WHOLE portable set, which is not the count the committed tree holds
@@ -976,7 +974,7 @@ def test_a_nested_nodes_schema_resolves_a_local_ref_against_its_document() -> No
     schema accepts every payload and is indistinguishable from this one until a
     constraint BEHIND the reference is asked to bite.
     """
-    import test_emit  # the tree reader, one reading for the whole suite  # noqa: PLC0415
+    import test_emit  # the tree reader, one reading for the whole suite
 
     document, pointer, accepted = THROUGH_A_LOCAL_REF
     (cls,) = [
@@ -1031,11 +1029,11 @@ def test_the_population_of_document_side_local_refs_is_not_empty() -> None:
     Counted as (pair, reference) sites and reported per document, so a shrink is
     readable rather than a number going down.
     """
-    import collections  # noqa: PLC0415
-    import sys  # noqa: PLC0415
+    import collections
+    import sys
 
     sys.path.insert(0, str(Path(__file__).parent))
-    from test_emit import graded  # noqa: PLC0415
+    from test_emit import graded
 
     def local_refs(node: object) -> list[str]:
         if isinstance(node, dict):

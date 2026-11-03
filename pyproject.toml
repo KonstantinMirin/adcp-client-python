@@ -494,6 +494,7 @@ target-version = "py311"
 # written against a linter that did not exist -- so the code already documented
 # those decisions and now a tool reads them.
 select = ["ALL"]
+allowed-confusables = ["\u00d7", "\u2013", "\u2019", "\u2018"]
 ignore = [
     # The prose in this repository is load-bearing and long by design -- the
     # comment block above ``[tool.mypy]`` runs past 100 lines.  This is a
@@ -501,19 +502,12 @@ ignore = [
     # formatter is configured here to own it.  In the generated tree the long
     # lines are schema ``description`` text carried verbatim, which is DATA.
     "E501",
-    # Ambiguous-unicode: it fires on DATA and not on code.  149 of its findings
-    # are in generated docstrings, where the character came from the schema's
-    # own ``description`` -- an en dash, a curly quote, a ``×`` -- and the rest
-    # are this repository's prose.  The rule is about a homoglyph in an
-    # identifier being mistaken for its ASCII twin; nothing here is at risk of
-    # that, and rewriting the protocol's own text to satisfy it would make the
-    # emitted docstring differ from the document it quotes.  A rule declined is
-    # declined by NAME and in one place, which is how this differs from an
-    # exclusion: it says the rule does not apply anywhere, not that some files
-    # are not the subject.
-    "RUF001",
-    "RUF002",
-    "RUF003",
+    # ``RUF001``-``RUF003`` ARE NOT DECLINED.  They are PARAMETERISED below, by
+    # ``allowed-confusables``, which a lane proposed against an earlier form of
+    # this section that ignored them outright -- and the lane was right: naming
+    # the three characters that occur keeps every OTHER confusable reporting,
+    # where ignoring the rules says nothing is at risk anywhere.  That is the
+    # difference between parameterising a rule and turning it off.
     # Mutable class default: every instance of it in this repository is a
     # PYDANTIC FIELD or a ``model_config``, and the semantics document's §5
     # already carries the measurement -- "pydantic deep-copies a plain mutable
@@ -620,5 +614,18 @@ ignore = [
 # rule beside ``emit.write``), so a docstring rule has nothing to attach to.
 "src/adcp/types/_schemas/**/__init__.py" = ["D104"]
 
+# **THE THREE CONFUSABLES THAT OCCUR, each typed on purpose.**  The rules stay
+# SELECTED, so a character typed by ACCIDENT where its ASCII twin was meant --
+# which is what they exist to catch -- still reports.
+#
+#   ``×``  is this repository's own multiplication sign.  "keyword × position"
+#          is the name of the central declaration in both deciding documents,
+#          and two code comments cite it by that name; spelling those ``x``
+#          would make the code disagree with the documents it quotes.
+#   ``–``  the en dash, and almost every instance is in a GENERATED docstring,
+#          carried verbatim from a schema ``description``.  Rewriting it would
+#          make the emitted docstring differ from the document it quotes, which
+#          is a rendering defect and not a fix.
+#   ``’``  the curly apostrophe, same provenance, four instances.
 [tool.ruff.lint.isort]
 known-first-party = ["adcp", "codegen"]

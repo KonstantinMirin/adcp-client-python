@@ -65,16 +65,16 @@ import time
 from pathlib import Path
 from typing import Any, ClassVar
 
+import corpus as corpus_module
 import pytest
 from hypothesis import strategies as st
+from nodeset import claimed
 
-import corpus as corpus_module
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from codegen import harness
 from codegen.harness import check_widening, corpus_key
 from codegen.keywords import Position
 from codegen.lower.approximate import approximate
-from nodeset import claimed
 
 REPO = Path(__file__).resolve().parents[1]
 
@@ -408,12 +408,12 @@ def test_a_failed_draw_is_held_with_its_reason_so_a_replayed_run_reports_it() ->
     #: raises rather than returning something.  The whole budget is what that costs.
     empty = {"allOf": [{"type": "string"}, {"type": "integer"}]}
     store = Held()
-    draws = harness._Draws(corpus=store, identity=DOC)  # noqa: SLF001
+    draws = harness._Draws(corpus=store, identity=DOC)
     answer = draws.one(empty, ("class", AT, "uniqueItems", "2 distinct members"), {})
     assert len(answer) == 2 and answer[0] is None, answer
     assert isinstance(answer[1], str) and answer[1], "a held failure carries no reason"
     assert (draws.drawn, draws.replayed) == (1, 0)
-    assert harness._Draws(corpus=store, identity=DOC).one(  # noqa: SLF001
+    assert harness._Draws(corpus=store, identity=DOC).one(
         empty, ("class", AT, "uniqueItems", "2 distinct members"), {}
     ) == answer, "the failed draw was paid again"
     held = claimed("held widening answers", store.entries)
@@ -494,7 +494,7 @@ def test_a_draw_the_budget_cut_is_not_held_because_a_cut_is_not_an_answer() -> N
     ``one`` exactly as a timed one was, so the injection fails over the same defect.
     """
     store = Held()
-    draws = harness._Draws(corpus=store, identity=DOC)  # noqa: SLF001
+    draws = harness._Draws(corpus=store, identity=DOC)
     position = ("class", AT, "uniqueItems", "a cut injected where a real one arrives")
     cut = harness.OverBudget("injected where the draw would raise one")
     drawn = harness.one_instance
@@ -538,7 +538,7 @@ def test_an_answer_RECORDING_a_cut_is_returned_to_the_caller_and_held_by_nothing
         """The spelling a stale entry carries, and the class before ``pjc`` landed."""
 
     store = Held()
-    draws = harness._Draws(corpus=store, identity=DOC)  # noqa: SLF001
+    draws = harness._Draws(corpus=store, identity=DOC)
     position = ("class", AT, "uniqueItems", "an answer recording a cut")
     drawn = harness.one_instance
     harness.one_instance = lambda *a, **k: (_ for _ in ()).throw(
@@ -574,7 +574,7 @@ def test_the_real_alarm_cuts_a_draw_that_cannot_END_and_holds_nothing() -> None:
     form of the same check, propagating in 2.01 s every time.
     """
     store = Held()
-    draws = harness._Draws(corpus=store, identity=DOC)  # noqa: SLF001
+    draws = harness._Draws(corpus=store, identity=DOC)
     position = ("class", AT, "uniqueItems", "a draw that does not finish")
     started = time.monotonic()
     with pytest.raises(harness.OverBudget):

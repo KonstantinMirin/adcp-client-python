@@ -45,7 +45,6 @@ from pydantic import BaseModel, ValidationError
 import adcp.types._schemas as schemas_pkg
 from adcp.types._base import BranchDispatchMixin, through_the_store
 from codegen import bundle
-
 from tests.nodeset import claimed
 
 REPO = Path(__file__).resolve().parents[1]
@@ -189,7 +188,7 @@ def test_every_union_bases_dispatch_constructs() -> None:
     for name in sorted(population):
         try:
             classes[name]._branch_adapter()
-        except Exception as why:  # noqa: BLE001 -- the failure IS the finding
+        except Exception as why:  # the failure IS the finding
             raised[name] = f"{type(why).__name__}: {why}"
     assert raised == {}, raised
 

@@ -45,7 +45,7 @@ def main() -> int:
     for name in names:
         try:
             module = importlib.import_module(name)
-        except Exception:  # noqa: BLE001 -- the failure is the finding
+        except Exception:  # the failure is the finding
             failures.append((name, traceback.format_exc(limit=3)[-600:]))
             continue
         for value in vars(module).values():
@@ -63,7 +63,7 @@ def main() -> int:
                     # forward reference survives the import and fails only when pydantic
                     # is asked to build the schema.
                     value.model_json_schema()
-                except Exception as why:  # noqa: BLE001 -- the failure is the finding
+                except Exception as why:  # the failure is the finding
                     failures.append((f"{name}.{value.__name__}", str(why)[:400]))
     json.dump({"modules": len(names), "classes": classes, "failures": failures}, sys.stdout)
     return 0

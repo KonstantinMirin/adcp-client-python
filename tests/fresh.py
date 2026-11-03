@@ -64,9 +64,9 @@ import time
 import traceback
 from pathlib import Path
 
-from codegen import bundle, emit
-
 from compiled import CACHE_ROOT, compiled, digest
+
+from codegen import bundle, emit
 
 REPO = Path(__file__).resolve().parents[1]
 BUNDLE = REPO / "schemas" / "cache" / "3.2"
@@ -242,7 +242,7 @@ def _bound() -> Path:
 
     try:
         types = _materialised()
-    except BaseException:  # noqa: BLE001 -- the failure is the finding, see FAILURE
+    except BaseException:  # the failure is the finding, see FAILURE
         FAILURE = traceback.format_exc()
         # **NOT a fall-through to ``src/``, and this is the one decision here worth
         # arguing with.**  A compiler that did not run leaves the suite with no tree.
@@ -311,5 +311,5 @@ def schemas():
     """
     try:
         return importlib.import_module(emit.PACKAGE)
-    except Exception:  # noqa: BLE001 -- FAILURE and the named test carry the reason
+    except Exception:  # FAILURE and the named test carry the reason
         return None

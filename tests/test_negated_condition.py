@@ -51,7 +51,6 @@ from pathlib import Path
 from typing import Any
 
 from adcp.types._runtime import Match
-
 from codegen import bundle
 from codegen.keywords import Position
 from codegen.lower import rules
@@ -203,12 +202,12 @@ def test_the_class_refuses_what_its_document_refuses_at_the_site_the_bundle_stat
         try:
             SlotsItem.strict_validate(payload)
             document_admits = True
-        except Exception:  # noqa: BLE001 -- the VERDICT is the reading, not the exception
+        except Exception:  # the VERDICT is the reading, not the exception
             document_admits = False
         try:
             SlotsItem.model_validate(payload)
             class_admits = True
-        except Exception:  # noqa: BLE001 -- as above
+        except Exception:  # as above
             class_admits = False
         if document_admits != class_admits:
             disagreed[label] = {"document": document_admits, "class": class_admits}
@@ -221,7 +220,7 @@ def test_the_class_refuses_what_its_document_refuses_at_the_site_the_bundle_stat
     assert SlotsItem.model_validate(pinned) is not None
     try:
         SlotsItem.model_validate(differing)
-    except Exception as refused:  # noqa: BLE001
+    except Exception as refused:
         assert A_FORBIDDEN_KEY in str(refused), str(refused)
     else:
         raise AssertionError(

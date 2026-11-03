@@ -47,10 +47,10 @@ def stated() -> dict[catalogue.Vocabulary, list[catalogue.Stated]]:
 def every_row() -> dict[catalogue.Vocabulary, str]:
     """Each row of the register, with the collection it is declared in."""
     return {
-        **{key: "AGREED" for key in vocabularies.AGREED},
-        **{key: "JUDGED" for key in vocabularies.JUDGED},
-        **{key: "PENDING_A_NAME" for key in vocabularies.PENDING_A_NAME},
-        **{key: "DISTINCT" for key in vocabularies.DISTINCT},
+        **dict.fromkeys(vocabularies.AGREED, "AGREED"),
+        **dict.fromkeys(vocabularies.JUDGED, "JUDGED"),
+        **dict.fromkeys(vocabularies.PENDING_A_NAME, "PENDING_A_NAME"),
+        **dict.fromkeys(vocabularies.DISTINCT, "DISTINCT"),
     }
 
 

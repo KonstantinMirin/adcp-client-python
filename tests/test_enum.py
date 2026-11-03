@@ -29,22 +29,23 @@ import json
 from pathlib import Path
 from typing import Any
 
+import populations
 import pytest
+from compiled import compiled
+from conftest import refusal_from
 from pydantic import TypeAdapter, ValidationError
 
 from adcp.types._base import SchemaRef, schema_at
 from codegen import bundle, compiler, emit, ir, keywords, render, store
+from codegen import refusal as refusal_module
 from codegen.keywords import Position
 from codegen.lower import enum as lower_enum
 from codegen.lower import names
 from codegen.schema import nodes as schema_nodes
 from codegen.schema import parse as schema_parse
-from codegen import refusal as refusal_module
-from compiled import compiled
-import populations
-from conftest import refusal_from
-from tests.test_emit import BUNDLE, graded, PACKAGES, population, TREE
 from tests.nodeset import claimed, partitions
+from tests.test_emit import BUNDLE, PACKAGES, TREE, graded, population
+
 
 def _probe(raw: dict, pointer: str = "", position: Position = Position.PROP) -> schema_nodes.Base:
     """One hand-written declaration as the NODE the parser decides it is.
@@ -180,7 +181,7 @@ def test_every_root_enum_is_emitted_or_refused_by_name_pointer_and_keyword() -> 
     )
     claimed("documents referring to enums/task-type.json", referrers, inside=known)
     in_population = claimed(
-        "those referrers inside the step's population", 
+        "those referrers inside the step's population",
         [d for d in referrers if d in population()],
         inside=referrers,
     )
@@ -247,7 +248,7 @@ def test_the_root_populations_are_disjoint_because_a_root_is_exactly_one_kind() 
     assert [i for i, n in enumerate(claims) if n == 1], "no document is counted at all"
 
     def scalar_without_the_exclusion(doc: dict) -> bool:
-        return isinstance(doc.get("type"), str) and doc["type"] in emit.SCALAR
+        return isinstance(doc.get("type"), str) and doc["type"] in compiler.SCALAR
 
     overlap = [
         d
@@ -731,12 +732,12 @@ def test_the_accepts_and_liveness_checks_are_blind_to_this_row() -> None:
     document = next(d for d in root_enums() if d in compiled(BUNDLE, population()).emitted)
     doc = schema_at(SchemaRef(document, "#"))
 
-    from codegen.harness import check_accepts, check_pair, Pair
+    from codegen.harness import Pair, check_accepts, check_pair
 
     adapter = TypeAdapter(str)
 
     def wide_accept(payload: Any) -> Any:
-        from adcp.types._base import _refuse  # noqa: PLC0415,SLF001
+        from adcp.types._base import _refuse
 
         _refuse(doc, payload, "Wide")
         return adapter.validate_python(payload)
@@ -973,7 +974,7 @@ def test_an_integer_enum_becomes_an_int_enum_at_the_three_nodes_that_carry_one()
     text = render.enum(decided).text
     assert text.startswith("class BitDepth(IntEnum):"), text
     scope: dict[str, Any] = {"IntEnum": pyenum.IntEnum}
-    exec(compile(text, "<probe>", "exec"), scope)  # noqa: S102 -- the compiler's own output
+    exec(compile(text, "<probe>", "exec"), scope)  # the compiler's own output
     assert [m.value for m in scope["BitDepth"]] == [16, 24, 32]
     assert TypeAdapter(scope["BitDepth"]).json_schema()["type"] == "integer"
 

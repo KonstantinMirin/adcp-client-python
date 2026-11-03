@@ -69,14 +69,14 @@ from pathlib import Path
 from typing import Any
 from unittest import mock
 
+import corpus as corpus_module
 import pytest
+from nodeset import claimed
 from pydantic import BaseModel, ConfigDict
 
-import corpus as corpus_module
-from adcp.types._base import PACKAGE, SchemaRef, schema_at
+from adcp.types._base import PACKAGE, SchemaRef
 from codegen import bundle, harness
 from codegen.harness import Pair, check_accepts, check_pair, corpus_defect, corpus_key
-from nodeset import claimed
 
 REPO = Path(__file__).resolve().parents[1]
 BUNDLE = REPO / "schemas" / "cache" / "3.2"
@@ -476,7 +476,7 @@ def test_our_own_inlining_moves_the_record_and_moves_no_key() -> None:
     import test_emit
 
     sample = (*INLINED, *NOT_INLINED)
-    unperturbed = bundle._beside  # noqa: SLF001 -- the seam the perturbation replaces
+    unperturbed = bundle._beside  # the seam the perturbation replaces
 
     def differently(placed: dict, referring: Any, position: Any) -> dict:
         return {**unperturbed(placed, referring, position), "$comment": "spelled otherwise"}
@@ -756,7 +756,7 @@ def test_an_unreadable_entry_is_a_miss_and_a_parsed_one_is_the_harnesss_business
     store = corpus_module.Store(tmp_path)
     key = "c" * 64
     store.put(key, [{"ok": 1}])
-    path = store._path(key)  # noqa: SLF001 -- the test is about this file's bytes
+    path = store._path(key)  # the test is about this file's bytes
     path.write_text("{not json")
     assert store.get(key) is None
     path.write_text(json.dumps([{"wrong": True}]))
@@ -995,7 +995,7 @@ def test_every_graded_pair_has_a_committed_entry_under_the_current_key(pytestcon
         wrote, absent = corpus_module.STORE.promote(set(keys.values()))
         stale = corpus_module.FLOOR.keys() - set(keys.values())
         for key in sorted(stale):
-            corpus_module.FLOOR._path(key).unlink(missing_ok=True)  # noqa: SLF001
+            corpus_module.FLOOR._path(key).unlink(missing_ok=True)
         print(
             f"--write-corpus: promoted {wrote}, pruned {len(stale)}, "
             f"{len(absent)} of {len(names)} pair keys answered by neither store"

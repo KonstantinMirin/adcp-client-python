@@ -116,15 +116,15 @@ from codegen.held import (
     COMMITTED,
     DIRECTORY,
     FLOOR,
-    Layered,
     ROOT,
     STORE,
-    Store,
     WIDENING_CACHE,
     WIDENING_COMMITTED,
     WIDENING_DIRECTORY,
     WIDENING_FLOOR,
     WIDENING_STORE,
+    Layered,
+    Store,
 )
 
 __all__ = [
@@ -133,13 +133,13 @@ __all__ = [
     "COMMITTED",
     "DIRECTORY",
     "FLOOR",
-    "Layered",
     "ROOT",
     "STORE",
-    "Store",
     "WIDENING_CACHE",
     "WIDENING_COMMITTED",
     "WIDENING_DIRECTORY",
     "WIDENING_FLOOR",
     "WIDENING_STORE",
+    "Layered",
+    "Store",
 ]

@@ -34,7 +34,7 @@ from typing import Any
 import pytest
 from pydantic import BaseModel, ConfigDict
 
-from adcp.types._base import _refuse  # noqa: PLC2701 -- the production schema half
+from adcp.types._base import _refuse  # the production schema half
 from codegen import harness
 
 #: One object document that demands both of its keys and admits no others, so each
@@ -340,13 +340,13 @@ def test_a_budget_cut_reaches_the_caller_as_itself_and_never_as_a_verdict() -> N
     """
     cut = harness.OverBudget("injected where the draw machinery would raise one")
 
-    def reaches_the_caller(where: str, call) -> None:  # noqa: ANN001
+    def reaches_the_caller(where: str, call) -> None:
         swallowed: Exception | None = None
         verdict: Any = None
         with pytest.raises(harness.OverBudget) as raised:
             try:
                 verdict = call()
-            except Exception as e:  # noqa: BLE001 -- the handler under judgement
+            except Exception as e:  # the handler under judgement
                 swallowed = e
         assert raised.value is cut, (
             f"the cut injected at {where} did not reach the caller as itself: "
@@ -404,7 +404,7 @@ def test_the_real_alarm_cuts_a_draw_that_cannot_END_and_the_cut_is_still_a_cut()
         try:
             with harness.within(2):
                 harness.check_accepts(DOC, _an_entry_point_that_does_not_finish(), examples=1)
-        except Exception as e:  # noqa: BLE001 -- the handler under judgement
+        except Exception as e:  # the handler under judgement
             swallowed = e
     assert swallowed is None, (
         f"a budget cut was caught by an `except Exception` and would have been reported as "
@@ -500,7 +500,7 @@ def test_the_sharing_is_installed_for_one_call_and_restored_even_on_a_raise() ->
     which pushed a run into a kernel kill.  The only thing keeping this from being that
     is its LIFETIME, so the lifetime is what is asserted, in both exits.
     """
-    import hypothesis_jsonschema._canonicalise as canon  # noqa: PLC2701 -- the patched name
+    import hypothesis_jsonschema._canonicalise as canon  # the patched name
 
     before = canon.canonicalish
     with harness.canonicalisation_shared_within_one_call() as memo:
@@ -523,7 +523,7 @@ def test_a_hit_hands_back_a_copy_because_the_library_mutates_what_it_is_given() 
     object would let one call's rewrite reach the next one's.  Graded by mutating the
     first result and asking for the same key again.
     """
-    import hypothesis_jsonschema._canonicalise as canon  # noqa: PLC2701 -- the patched name
+    import hypothesis_jsonschema._canonicalise as canon  # the patched name
 
     with harness.canonicalisation_shared_within_one_call():
         first = canon.canonicalish({"type": "string", "minLength": 2})

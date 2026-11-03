@@ -82,12 +82,12 @@ from typing import Any
 
 from adcp.types._runtime import UniqueItems
 from codegen import bundle, compiler, ir
+from codegen.compiler import Module
+from codegen.keywords import Position, declares
 from codegen.lower import approximate, names, rules
+from codegen.refusal import Kind, Refusal
 from codegen.schema import nodes
 from codegen.schema import parse as nodes_parse
-from codegen.keywords import Position, declares
-from codegen.compiler import Module
-from codegen.refusal import Kind, Refusal
 
 #: An ARRAY's own bounds, in the document's spelling, and the ones a field holding
 #: the array can carry.  ``uniqueItems`` is deliberately absent, and the reason is
@@ -780,7 +780,6 @@ def _key(node: nodes.Node | None, mod: Module) -> ir.TypeRef | Refusal:
     """
     if node is None:
         return ir.TypeRef("str")
-    pointer = node.pointer
     # **§5's propertyNames row names FIVE answers at KEY and an OBJECT node is none of
     # them, so it refuses BY NAME rather than reaching the walk**
     # (``adcp-client-python-zxf``).  §4 derives NO name at this position
@@ -918,7 +917,7 @@ def multi_type(node: nodes.MultiType, mod: Module) -> ir.Decided | Refusal:
     ``core/error.json`` and ``core/webhook-activity-record.json`` -- and
     ``["string", "null"]`` is ``str | None``, the most ordinary thing pydantic has.
     """
-    pointer, position = node.pointer, node.position
+    pointer = node.pointer
     kinds = list(node.words)
     if not kinds or len(set(kinds)) != len(kinds) or not all(isinstance(k, str) for k in kinds):
         return Refusal("type", pointer, f"not a set of type names: {kinds!r}", kind=Kind.VERDICT)

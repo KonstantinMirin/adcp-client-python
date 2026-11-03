@@ -104,7 +104,6 @@ from typing import Any
 from codegen import bundle, keywords
 from codegen.keywords import Position
 from codegen.schema import nodes
-from codegen.schema.nodes import SCALAR
 
 #: The two combinator keywords, read off the descent column rather than named: they are
 #: the keywords whose subschemas occupy a BRANCH, which is what a combinator IS.

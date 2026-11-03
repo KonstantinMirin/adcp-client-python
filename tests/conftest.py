@@ -41,6 +41,7 @@ root ``conftest``, and a test module declaring one is not read in time.
 
 from __future__ import annotations
 
+import importlib
 import os
 import tempfile
 from pathlib import Path
@@ -139,8 +140,16 @@ def pytest_sessionstart(session) -> None:
 
     Run in each xdist worker as well as in the session process, because each is its own
     interpreter with its own ``adcp.types``.
+
+    **IMPORTED FOR ITS EFFECT, and spelled as one** (``adcp-client-python-4te``).
+    ``fresh.PACKAGE = _bound()`` runs at that module's scope, so the import IS the
+    binding and nothing here reads a name out of it.  Written ``import fresh`` it looked
+    like an unused import to every reader including a linter -- which proposed deleting
+    it, leaving this hook a docstring and the suite grading the COMMITTED tree with
+    nothing saying so.  ``import_module`` states the effect in the code instead of in a
+    comment beside it.  Deferred on purpose: the window above is the whole point.
     """
-    import fresh  # noqa: PLC0415 -- deferred on purpose; see above
+    importlib.import_module("fresh")
 
 
 def pytest_addoption(parser) -> None:

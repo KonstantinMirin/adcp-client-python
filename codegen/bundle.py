@@ -18,11 +18,10 @@ import hashlib
 import json
 from collections.abc import Callable, Collection, Iterator, Mapping
 from pathlib import Path, PurePosixPath
-from typing import NamedTuple
+from typing import Any, NamedTuple
 
 from adcp.types import _base
 from adcp.types._base import applied_schema
-
 from codegen import keywords
 from codegen.refusal import BuildFailure, Kind, Refusal
 
@@ -305,6 +304,26 @@ def nodes(node: object, pointer: str = "") -> Iterator[tuple[str, dict]]:
 def schema_keywords(node: object) -> set[str]:
     """Every key appearing at a SCHEMA POSITION anywhere in the document."""
     return {k for _, n in nodes(node) for k in n}
+
+
+def named_values(node: Mapping[str, Any]) -> frozenset | None:
+    """``node``'s ``const`` or ``enum`` as a set of scalars, or ``None`` for neither.
+
+    Draft-07's own reading: a ``const`` is a one-member ``enum``.  ``None`` rather than
+    the empty set, because "names no values" and "admits nothing" are different
+    statements.  Scalars only, and a list with one non-scalar member contributes NOTHING
+    rather than its scalar part -- a partial set would claim a disjointness the document
+    does not state.
+    """
+    if "const" in node:
+        value = node["const"]
+        return frozenset({value}) if isinstance(value, (str, bool, int)) else None
+    members = node.get("enum")
+    if not isinstance(members, list) or not members:
+        return None
+    if not all(isinstance(member, (str, bool, int)) for member in members):
+        return None
+    return frozenset(members)
 
 
 def references(node: object) -> list[tuple[str, str, keywords.Position]]:
@@ -871,6 +890,15 @@ class _Where(NamedTuple):
     anchors: tuple[tuple[str, str], ...]
 
 
+#: The walk's starting point, as a module-level singleton rather than a call in a
+#: parameter default.  ``_Where`` is a ``NamedTuple``, so one instance is shared with no
+#: risk a mutable default carries -- but a default that is a CALL is evaluated once at
+#: import whatever its type, which is a fact about the shape and not about this class, and
+#: a reader of the signature cannot tell the two apart.  Named here so the signature reads
+#: a value.
+_NOWHERE = _Where((), ())
+
+
 class _Reached(NamedTuple):
     """One inlined node, beside WHAT THE TWO CYCLE GUARDS WERE CONSULTED FOR under it.
 
@@ -1251,7 +1279,7 @@ def recorded(
         home: str,
         scope: dict | None,
         position: keywords.Position = keywords.Position.ROOT,
-        where: _Where = _Where((), ()),
+        where: _Where = _NOWHERE,
         stated: str = "",
     ) -> _Reached | Refusal:
         """``node`` with every reference under it inlined, or the first refusal reached.

@@ -204,7 +204,7 @@ def _suffixed(chain: tuple[str, ...], suffix: str) -> tuple[str, ...]:
     (:class:`Unnamed`), and the suffix is then the whole chain -- which is what the fold
     produced there before this pass had segments.
     """
-    return (chain[:-1] + (chain[-1] + suffix,)) if chain else (suffix,)
+    return (*chain[:-1], chain[-1] + suffix) if chain else (suffix,)
 
 
 #: One WORD of a derived symbol: an acronym run, a capitalised word, or a lowercase run.
@@ -1422,7 +1422,7 @@ def the_value_lists(
         named[spelled] = members
     out: list[ir.Declaration] = []
     written: set[str] = set()
-    for i, declaration in enumerate(declarations):
+    for declaration in declarations:
         found = _enumeration(declaration)
         if found is None or found.values is not None:
             out.append(declaration)

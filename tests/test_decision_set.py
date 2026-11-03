@@ -54,16 +54,14 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
+from cells import grade, live  # §5's table, graded one cell at a time
+from compiled import compiled  # the run's own declarations
 
 from codegen import attribution, bundle, narrowings
 from codegen.attribution import Issue
 from codegen.keywords import Position
 from codegen.narrowings import ADMITTED, Narrowing, Taken
 from tests.nodeset import claimed
-
-from cells import grade, live  # noqa: E402  -- §5's table, graded one cell at a time
-from compiled import compiled  # noqa: E402  -- the run's own declarations
 
 BUNDLE = Path(__file__).resolve().parents[1] / "schemas" / "cache" / "3.2"
 

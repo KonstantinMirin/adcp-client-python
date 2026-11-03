@@ -36,16 +36,14 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-
+from compiled import compiled
+from nodeset import claimed, partitions
 from pydantic import ValidationError
 
 from adcp.types._base import BranchDispatchMixin
-from compiled import compiled
 from codegen import bundle, compiler, emit
 from codegen.lower import union as lower_union
 from codegen.refusal import Kind
-
-from nodeset import claimed, partitions
 
 REPO = Path(__file__).resolve().parents[1]
 BUNDLE = REPO / "schemas" / "cache" / "3.2"

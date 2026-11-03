@@ -138,7 +138,7 @@ def census_equalities(path: pathlib.Path) -> list[tuple[int, list[int]]]:
     for node in ast.walk(tree):
         if not isinstance(node, ast.Assert) or not isinstance(node.test, ast.Compare):
             continue
-        for op, comparator in zip(node.test.ops, node.test.comparators):
+        for op, comparator in zip(node.test.ops, node.test.comparators, strict=True):
             if isinstance(op, ast.Eq) and (ints := _census_ints(comparator, consts)):
                 found.append((node.lineno, ints))
     return found

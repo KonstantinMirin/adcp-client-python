@@ -30,33 +30,32 @@ does not have.
 from __future__ import annotations
 
 import importlib
-from unittest import mock
 import json
 import shutil
 import sys
 from pathlib import Path
 from typing import Any
+from unittest import mock
 
+import populations
 import pydantic
 import pytest
+from compiled import compiled
+from conftest import refusal_from
 
 from adcp.types import _base, constraints
 from codegen import bundle, compiler, emit, ir, keywords, refusal, render, store
 from codegen import constraints as constraints_module
 from codegen.harness import Pair, check_pair, violated_keywords
-from codegen.lower import names, union
+from codegen.lower import names
 from codegen.refusal import Kind, Refusal
-from codegen.schema import nodes, parse as schema_parse
-from compiled import compiled
-import populations
-from conftest import refusal_from
-
-from tests.nodeset import claimed, partitions, ratchet
+from codegen.schema import nodes
 from codegen.schema import nodes as schema_nodes
 from codegen.schema import parse as schema_parse
+from tests.nodeset import claimed, partitions, ratchet
 
 
-def _probe_node(doc: dict, mod: "compiler.Module", pointer: str = "") -> "schema_nodes.Base":
+def _probe_node(doc: dict, mod: compiler.Module, pointer: str = "") -> schema_nodes.Base:
     """One hand-written declaration as the NODE the parser decides it is, at ROOT.
 
     The ``Source`` is the module's own, so the applied word and the ``carries_nothing``
@@ -259,7 +258,7 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     # assertion is for, and it is what caught the stale target.
     composing_at_a_root = compiler.lower_composition
 
-    def without_the_root_arm(node, mod, *rest, **kw):  # noqa: ANN001,ANN202
+    def without_the_root_arm(node, mod, *rest, **kw):
         # The POSITION and the POINTER are the node's own fields: §14 step 7 took the
         # name argument off every handler, so a stub standing in for one takes the node
         # and the module and nothing else.
@@ -372,7 +371,7 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     # exists for: on this lane's own branch the delta was 0 and the row's value was the
     # attribution alone.  Its size moved at every row that unblocked a conjunct's
     # target (228, 233, 237), each move enumerated at the time and each one correct.
-    delta = claimed(
+    claimed(
         "documents that emit only with this row",
         set(with_row.emitted) - set(without.emitted),
         inside=set(with_row.emitted),
@@ -750,7 +749,7 @@ def install_run_aliases(out: emit.Emitted, monkeypatch) -> list[str]:
     removes them when the test ends.
     """
     namespace: dict[str, Any] = {}
-    exec(out.beside["constraints.py"], namespace)  # noqa: S102 -- the emitter's own output
+    exec(out.beside["constraints.py"], namespace)  # the emitter's own output
     added = []
     for symbol, value in namespace.items():
         if symbol.startswith("_") or not symbol[:1].isupper() or hasattr(constraints, symbol):
@@ -1855,7 +1854,7 @@ def test_breaking_the_inner_annotation_carrier_drops_the_fact_at_both_positions(
     so the reach is this probe's: ``docs/plan/rebuild-plan.md`` §8 assigns the
     population-wide claim to the annotation COVERAGE obligation.
     """
-    from codegen.lower import containers  # noqa: PLC0415
+    from codegen.lower import containers
 
     monkeypatch.setattr(
         containers,

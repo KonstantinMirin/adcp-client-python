@@ -267,7 +267,7 @@ def _model(document: str, out: emit.Emitted, tag: str) -> Any:
     module = types.ModuleType(f"_admits_nothing_{tag}")
     sys.modules[module.__name__] = module
     try:
-        exec(  # noqa: S102 -- executing the compiler's own output is the point
+        exec(  # executing the compiler's own output is the point
             "\n".join(x for x in text.splitlines() if not x.startswith("from .")),
             module.__dict__,
         )
