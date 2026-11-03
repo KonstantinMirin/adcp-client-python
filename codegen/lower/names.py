@@ -1563,6 +1563,14 @@ def the_surface_exports(
     is not a declaration of this pass at all, and §1's own reason stands: a domain name
     cannot stand for 241 functions and a caller reaches one through its class.
 
+    **IT ANSWERS FOR THE POSITION AND NOT FOR THE DECLARATION, which is why the answer is
+    not the export set on its own** (§1, 2026-11-03).  A position can be one of these
+    three kinds and still declare nothing -- an identity binding is an ``AliasDecl``, so
+    the third arm says ``alias`` for it -- and §1's one-path rule is about declarations.
+    :func:`assign` relocates such an export onto the position that DECLARES the class,
+    reading :func:`names_a_declaration`; the split is here because a kind is a property of
+    one position and a relocation needs the module's whole set.
+
     **Here rather than in ``emit`` because the facts are here.**  §1's set is stated over
     positions and the only place a position's hop and its declaration are both in hand is
     this pass; ``emit`` holds the DOMAIN's half of the question (which names other modules

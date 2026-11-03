@@ -276,8 +276,15 @@ def test_a_consumer_can_name_a_member_of_every_public_enum_the_wheel_exports(tmp
     excludes the generated tree by name (§5: the tree is an artifact and a defect in it is
     fixed in ``render.py``), and the consumer-side reading next door was hand-written over
     a handful of names and so was blind to the other 1,951.  So the population here is
-    DERIVED from each domain module's ``__all__``: 242 public enum exports over 11 domains
-    today, and a new one joins with nothing edited.
+    DERIVED from each domain module's ``__all__``: **232 public enum exports over 11
+    domains** today, and a new one joins with nothing edited.
+
+    It read 242 until §1's one-path rule landed (``adcp-client-python-82m.41``), and the
+    10 it lost are the measurement that matters to this test: every one was a name BOUND
+    to an enumeration another position declares, and the declaring position's own export
+    carries the same members -- so a name leaving the surface left no public enum member
+    unnameable by a consumer's checker, which is the one way that repair could have
+    broken this one.
 
     Three directions, because the first alone can pass for the wrong reason:
 

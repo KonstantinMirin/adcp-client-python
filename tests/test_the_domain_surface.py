@@ -13,8 +13,8 @@ and §1's amendment of 2026-10-30 states the other direction of the same rule, w
 the one a surface actually breaches: **no ``adcp.types.<domain>.<Name>`` may name two
 declarations.**
 
-So the obligation has two halves and they fail differently, which is why there are two
-tests and not one:
+So the obligation has THREE halves and they fail differently, which is why there are
+three tests and not one:
 
 * **EXACTLY ONE.**  Every name the surface exports resolves at exactly one
   ``adcp.types.<domain>.<Name>``.  Two failure shapes live under that one sentence and
@@ -27,6 +27,14 @@ tests and not one:
   satisfy the first by MINTING a second class of the same name, and a consumer's
   ``isinstance`` would then be false against the class the runtime actually built --
   the defect §1's one-path rule exists to make unrepresentable.
+* **ONE DECLARATION PER PATH.**  Reading 6's own sentence -- "the number of export paths
+  equals the number of distinct objects behind them" -- and the one the first half cannot
+  ask: "a check that resolves every export and requires exactly one path each is answered
+  ``yes`` by two names for one object, each resolving cleanly, so it reads green while
+  this reading is false.  **Both checks belong; the per-name one is incomplete, not
+  wrong.**"  Measured before this landed: **1,945 export paths over 1,927 distinct
+  declarations**, with 13 declarations reached at 31 paths and 16 objects at 40.  §1
+  settles the COUNTING there and it is not ``id()``: see :func:`declaring`.
 
 **WHAT THE SURFACE EXPORTS is §1's decision of 2026-10-30 and is DERIVED here, never
 listed**: every document **ROOT**, every union **BRANCH**, and every D2 type **ALIAS**.
@@ -41,10 +49,17 @@ and the second derivation was WRONG, which is the whole reason it reads the reco
 reading over the emitted TEXT has to spell "branch" as "a class one of whose bases this
 module declares", and that **misses every arm of a nested ``A | B`` union**, which
 subclasses nothing local.  Measured, the text-reading answered 1,755 declarations with 613
-branches and 115 aliases where the run's record answers **1,951 with 756 branches and 141
+branches and 115 aliases where the run's record answered **1,951 with 756 branches and 141
 aliases** -- 196 declarations invisible, and four of the collisions below among them.  A
 module's own text cannot say which of its class statements a union declared, so no reader
 of the text can ask §1's question.
+
+**AND THE RECORD IS WHERE §1's ONE-PATH RULE IS APPLIED, not only where it is read**
+(2026-11-03): a position that merely NAMES a declaration made somewhere else is not an
+export of it, so the pass relocates the export to the declaring position and the record
+answers **1,927** -- 1,054 roots, 743 branches and 130 aliases.  23 names left the surface
+and 5 joined it, because for five objects the name §1 keeps was not exported at all: the
+surface assigns no kind to a declaration at a property or element position.
 
 Identity is the opposite question and only the RUNTIME can answer it, so the second test
 imports.  The two agree because ``tests/fresh.py`` materialises the tree from the same
@@ -68,18 +83,15 @@ derivation lives, and the first to go stale.  The derivation answers **23** scop
 §1 confirms: ``adagents.json`` sits at the tree's root with no directory beside it, so its
 classes are a domain of one module.
 
-**THIS FILE IS RED ON ONE THING ONLY: the surface does not exist yet.**  All 23 domains
-have no public module, and that is what the first test names.  **The collision blocker is
-closed** -- the export set is **1,951 declarations (1,054 roots, 756 union branches, 141
-further aliases) over 1,951 DISTINCT ``(domain, name)`` pairs, so §1's "no
-``adcp.types.<domain>.<Name>`` may name two declarations" holds with nothing left over**
+**THE COLLISION BLOCKER IS CLOSED** -- every export set this file has measured sits over
+as many DISTINCT ``(domain, name)`` pairs as it has members, so §1's "no
+``adcp.types.<domain>.<Name>`` may name two declarations" holds with nothing left over
 (``adcp-client-python-82m.9``).  It was 26 collisions; §4's collision rule at domain scope
 closed every one, 8 of them off the bundle-wide ROOT symbols (``emit.domain_roots``, 0.23 s
 and no lowering) and the other 18 off ``emit.domain_exports``, which repeats §4's step
-until no two documents of one domain export one name.
-
-The second and third tests pass against a generated surface over this set, so what is left
-is emitting it.
+until no two documents of one domain export one name.  Dropping 23 names and adding 5
+moved the set the rule ranges over and un-lengthened nothing: measured, no retained name
+changed its spelling.
 """
 
 from __future__ import annotations
@@ -115,21 +127,22 @@ def surface() -> dict[tuple[str, str], list[tuple[str, str]]]:
     take the module instead, which is what they were always asking about."  This file was
     one of the two readers and spelled ``emit.module_path(document)`` to get exactly this.
 
-    Measured over the record, before the catalogue module and after:
+    Measured over the record, before the catalogue module and after -- the row that moved
+    the KEY, so the figures are that row's and the pair count is the one it read:
 
-    ============================  =====  =====
+    ============================  ======  =====
     the record                    before  after
-    ============================  =====  =====
-    modules                       1,054  1,058
-    ... of those exporting none       0      4
-    exported ``(domain, name)``   1,950  1,950
-    domains ON the record            23     24
-    domains that export a name       23     23
-    ============================  =====  =====
+    ============================  ======  =====
+    modules                        1,054  1,058
+    ... of those exporting none        0      4
+    exported ``(domain, name)``    1,950  1,950
+    domains ON the record             23     24
+    domains that export a name        23     23
+    ============================  ======  =====
 
     The four are §3a's catalogue modules, one per namespace its scope rule names, and
     they export nothing because "nothing here is a type" -- a value list is private to
-    the modules that build a type over it.  So the 1,950 pairs do not move and the
+    the modules that build a type over it.  So the exported pairs did not move and the
     24th domain, ``common``, has no public module: §1's surface is stated over what is
     EXPORTED, and ``emit.domain_modules`` reads that rather than being told.
 

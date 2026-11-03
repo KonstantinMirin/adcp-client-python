@@ -740,6 +740,11 @@ class Module:
     #: Keyed by SYMBOL and not by pointer, because what §1 forbids two of is a NAME and
     #: the surface re-exports names; the pointer is in :attr:`symbols` for a reader who
     #: wants the node.
+    #:
+    #: **Every member of it is a DECLARATION** (§1, 2026-11-03): where one of §1's three
+    #: kinds falls on a position that only NAMES a class another position declares, the
+    #: export is relocated onto the declaring position, because "a position that references
+    #: a class does not name it".  :attr:`binds` is the record that reading is made on.
     exports: Mapping[str, str] = field(default_factory=dict)
     #: **§1's BINDINGS**: every symbol this module binds to a declaration made somewhere
     #: else -> the symbol it names.  ``X = Y`` and nothing more: §4's identity binding at
