@@ -12,7 +12,7 @@ from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import FloatMin0Max100, StrMatching43E30B32, StrMaxLen128, StrMaxLen2000, StrMinLen1, StrMinLen1MaxLen1000, StrMinLen1MaxLen2000, StrMinLen1MaxLen255, StrMinLen1MaxLen255Matching67860854
 
 from ..core.brand_ref import BrandReference
-from ..core.committed_metric import CommittedMetricVendorQualifier
+from ..core.committed_metric import Qualifier
 from ..core.context import ContextObject
 from ..core.delivery_metrics import DoohMetrics, Kind, Viewability
 from ..core.duration import Duration
@@ -128,7 +128,7 @@ class NotYetMeasurableVendorMetricsItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='compliance/comply-test-controller-request.json', pointer='#/properties/params/properties/not_yet_measurable_vendor_metrics/items')
     vendor: BrandReference
     metric_id: VendorMetricID
-    qualifier: Annotated[CommittedMetricVendorQualifier | None, Field(description='Qualifier for the exact committed vendor-metric row whose measurement is deferred.')] = None
+    qualifier: Annotated[Qualifier | None, Field(description='Qualifier for the exact committed vendor-metric row whose measurement is deferred.')] = None
 
 
 NotYetMeasurableVendorMetricsByPackageValueItem = NotYetMeasurableVendorMetricsItem

@@ -1621,10 +1621,19 @@ def emit(
     restating = l0.restating()
     #: The two reference kinds as one reading (:func:`needs`), so the closure and the
     #: order range over §3a's catalogue edge exactly as they range over a ``$ref``'s.
-    reaches = needs(
-        lowering,
-        {d: {home.document for home in rows.values()} for d, rows in restating.items()},
-    )
+    #: **BOTH catalogue layers' edges, as one map.**  §3a's edge is the same fact at L0
+    #: and at L2 -- a position that restates an entry imports the symbol the entry's home
+    #: declares, so the importing module cannot be written before that one -- and
+    #: :func:`needs` reads one ``homes`` argument, so the two layers are unioned here
+    #: rather than threaded separately.  **A CYCLE IS A VERDICT for every document on it**
+    #: (:func:`order`), which is why this is merged into the order at all and not left to
+    #: ``lowered`` returning ``None``: a home not yet written is silently a second class,
+    #: and a home that cannot be written is a refusal that names itself.
+    catalogue_homes: dict[str, set[str]] = {}
+    for rows in (restating, restating_objects):
+        for d, row in rows.items():
+            catalogue_homes.setdefault(d, set()).update(home.document for home in row.values())
+    reaches = needs(lowering, catalogue_homes)
     ordered, refused = order(closure(documents, reaches), reaches)
     #: §1's domain-scope collision rule, PASS ONE's answer, per domain: symbol -> the
     #: documents of that domain whose surface wants it (:func:`domain_exports`).  The

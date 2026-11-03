@@ -5,7 +5,7 @@ from datetime import date
 from enum import StrEnum
 from typing import Annotated, Any, ClassVar, Literal
 
-from pydantic import ConfigDict, Field, NonNegativeFloat, TypeAdapter
+from pydantic import ConfigDict, Field, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Presence, PresenceGroups, RequiredGroups, Rule, UniqueItems
@@ -32,6 +32,7 @@ from ._vocabularies import _VALUES_INCLUDE_EXCLUDE
 from .audience_activation_method import AdCPAudienceSync, DirectionsItem
 from .audience_evidence_requirements import AudienceEvidenceRequirements
 from .brand_ref import BrandReference
+from .budget_range import BudgetRange
 from .canonical_format_kind import CanonicalFormatKind
 from .catchment import GeometryType
 from .ext import ExtensionObject
@@ -45,22 +46,6 @@ from .vendor_metric_id import VendorMetricID
 
 
 PricingCurrenciesItem = Annotated[StrMatching43E30B32, Field(description="ISO 4217 currency code (e.g., 'USD', 'EUR', 'GBP')")]
-
-
-class BudgetRange(AdCPBaseModel):
-    """
-    Budget range to filter appropriate products
-    """
-    model_config = ConfigDict(
-        extra='allow',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-filters.json', pointer='#/properties/budget_range')
-    _adcp_rules: ClassVar[tuple[Rule, ...]] = (
-        RequiredGroups((('min',), ('max',)), 'anyOf'),
-    )
-    min: Annotated[NonNegativeFloat | None, Field(description='Minimum budget amount')] = None
-    max: Annotated[NonNegativeFloat | None, Field(description='Maximum budget amount')] = None
-    currency: Annotated[StrMatching43E30B32, Field(description="ISO 4217 currency code (e.g., 'USD', 'EUR', 'GBP')")]
 
 
 class MetrosItem(AdCPBaseModel):

@@ -619,6 +619,7 @@ from ._schemas.core.committed_metric import (
     CommittedMetric as CommittedMetric,
     CommittedMetricStandard as CommittedMetricStandard,
     CommittedMetricVendor as CommittedMetricVendor,
+    Qualifier as Qualifier,
 )
 from ._schemas.core.compact_task_input_required import (
     CompactTaskInputRequired as CompactTaskInputRequired,
@@ -2698,6 +2699,7 @@ __all__ = [
     'PublisherPropertySelectorById',
     'PublisherPropertySelectorByTag',
     'PushNotificationConfig',
+    'Qualifier',
     'Query',
     'RealEstateItem',
     'ReferenceAsset',

@@ -1005,6 +1005,47 @@ class Shaped:
     #: else -- "a description states what a thing IS, not what it is CALLED, so it mints no
     #: name".
     title: str | None
+    #: **Is this position the walk's path to a node ANOTHER document names?**  A ``$ref``
+    #: naming a ``definitions`` entry of this document is what makes that entry lowered at
+    #: all -- §5's own sentence is that "17 of the bundle's 76 named nodes are
+    #: ``definitions`` entries, which no row descends", and those are REFUSED for exactly
+    #: this reason.  So where a restating position's subtree carries the local ``$ref``
+    #: that reaches a named entry, collapsing the position would take the walk's only path
+    #: to that entry with it: the entry declares no symbol, and the document that names it
+    #: by ``$ref`` is refused for a defect in neither of them.
+    #:
+    #: **Measured, this screens exactly one position** --
+    #: ``core/reporting-dataset-share-destination.json#/oneOf/1/properties/recipient``,
+    #: whose ``cloud`` property spells ``#/definitions/ReportingCloud`` and whose class
+    #: body is the one thing that binds the alias ``ReportingCloud =
+    #: DeliveryRecipientCloud``.  ``core/reporting-delivery-offering.json`` names that
+    #: pointer directly, and collapsing the position refused it and 25 documents behind it.
+    #: The collapse is not WRONG there -- the two nodes admit the same instances, which is
+    #: what the key says -- so this is a fact about where a named node gets lowered and not
+    #: about the entry, and the position declares its own class exactly as it does today.
+    keeps_a_named_node: bool = False
+    #: **Is this position a BRANCH of the document's own ROOT union?**  §5 gives a root
+    #: union "a base plus one class per branch", so such a branch's class carries the
+    #: union's dispatch base and its INSTANCE is one of the union's branches -- which a
+    #: plain reference to another module's class cannot be.  §4's union row is the shape
+    #: the bundle gets when it writes a ``$ref`` there instead: "a class with two bases:
+    #: the target, which supplies the fields, and the union's base, which supplies the
+    #: dispatch".
+    #:
+    #: **So the collapse is WITHHELD here and the position is reported, not fixed**
+    #: (:attr:`Shapes.of_a_root_union`).  Inheritance is the available answer and it is a
+    #: second type: ``Declarer -> Branch`` does not type-check where ``Branch -> Declarer``
+    #: does, so reading 4's "written once" and §3's "every union root dispatches" give
+    #: different answers and the one that settles it is the union-dispatch design's, not
+    #: this layer's.  That is the same question the 127 raw stating sites carrying more than
+    #: one emitted class ask, and this is its L2 face.
+    #:
+    #: Read off the pointer's DEPTH beside the position this layer already carries, and
+    #: that is not §6's forbidden recovery of a position from a pointer string: the
+    #: POSITION is :attr:`position`, assigned by the descent column, and what the depth
+    #: adds is only whether the node the combinator belongs to is the document's own root.
+    #: Measured, it selects exactly two positions of this bundle.
+    of_a_root_union: bool = False
 
     @property
     def is_a_root(self) -> bool:
@@ -1035,10 +1076,11 @@ class ShapeEntry:
         """Every position that states this structure and is not the one that DECLARES it.
 
         §3a's whole job for a catalogue layer: "to stop every other position minting a
-        copy".  The three exclusions are :attr:`Entry.restating`'s, verbatim and for the
-        same three reasons -- a document ROOT must declare because §1 says every portable
-        document contributes a symbol; a position in the home's own document is §4's
-        content dedup's and not this layer's; and the home itself declares.
+        copy".  The first three exclusions are :attr:`Entry.restating`'s, verbatim and for
+        the same three reasons -- a document ROOT must declare because §1 says every
+        portable document contributes a symbol; a position in the home's own document is
+        §4's content dedup's and not this layer's; and the home itself declares.  The
+        fourth is :attr:`Shaped.keeps_a_named_node` and is this layer's own.
         """
         home = (self.at.document, self.at.pointer)
         return tuple(
@@ -1047,6 +1089,27 @@ class ShapeEntry:
             if (p.document, p.pointer) != home
             and not p.is_a_root
             and p.document != self.at.document
+            and not p.keeps_a_named_node
+            and not p.of_a_root_union
+        )
+
+    @property
+    def withheld(self) -> tuple[Shaped, ...]:
+        """The positions this entry does NOT answer at, with the reason each carries.
+
+        **Enumerated and never counted**, which is reading 4's own requirement of a
+        separate-type decision.  Two reasons, and each is a standing rule of another
+        section rather than a judgement of this one: :attr:`Shaped.of_a_root_union` is §3's
+        and §4's union rows, and :attr:`Shaped.keeps_a_named_node` is §5's.
+        """
+        home = (self.at.document, self.at.pointer)
+        return tuple(
+            p
+            for p in self.positions
+            if (p.document, p.pointer) != home
+            and not p.is_a_root
+            and p.document != self.at.document
+            and (p.keeps_a_named_node or p.of_a_root_union)
         )
 
 
@@ -1102,6 +1165,11 @@ class Shapes:
     #: The structures whose every stating position is a document ROOT.  See the class
     #: docstring: §1 and reading 4 give different answers and the key settles neither.
     duplicated: tuple[tuple[Shaped, ...], ...]
+    #: The positions of an ENTRY this layer withholds the collapse at, as
+    #: ``(entry title, position)`` -- :attr:`ShapeEntry.withheld`, flattened so a report
+    #: and a check range over one list.  **Enumerated, never counted**, which is reading
+    #: 4's requirement of every separate-type decision.
+    withheld: tuple[tuple[str, Shaped], ...]
     #: Every stating position, which is the set every count above partitions.
     positions: tuple[Shaped, ...]
 
@@ -1172,6 +1240,15 @@ def shape_states(
                 position=position,
                 key=admitted.key(document, node),
                 title=title if isinstance(title, str) and title.strip() else None,
+                keeps_a_named_node=any(
+                    bundle.split_ref(spelled) == ("", named)
+                    for _, sub in bundle.nodes(node)
+                    if isinstance(spelled := sub.get("$ref"), str)
+                    for named in names.get(document, frozenset())
+                ),
+                of_a_root_union=(
+                    position is keywords.Position.BRANCH and pointer.count("/") == 2
+                ),
             )
 
 
@@ -1243,7 +1320,7 @@ def collect_shapes(
         entry = ShapeEntry(key=key, title=title, positions=tuple(group), at=at)
         # Every position a ROOT: §1 obliges each to declare, so the entry has nothing to
         # stop minting and the question the key cannot settle is reported instead.
-        if not entry.restating:
+        if not entry.restating and not entry.withheld:
             duplicated.append(tuple(group))
             continue
         entries[key] = entry
@@ -1254,6 +1331,11 @@ def collect_shapes(
         conflicting=tuple(conflicting),
         restated=tuple(restated),
         duplicated=tuple(duplicated),
+        withheld=tuple(
+            (entry.title, position)
+            for entry in entries.values()
+            for position in entry.withheld
+        ),
         positions=tuple(every),
     )
 

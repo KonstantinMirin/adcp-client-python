@@ -7,29 +7,10 @@ from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 
-from ..enums.attribution_methodology import AttributionMethodology
-from ..enums.completion_source import CompletionSource
-from ..enums.lift_dimension import LiftDimension
 from ..enums.vendor_relationship import VendorRelationship
-from ..enums.viewability_standard import ViewabilityStandard
 from .brand_ref import BrandReference
-from .duration import Duration
+from .canonical_metric_qualifier import CanonicalMetricQualifier
 from .vendor_metric_id import VendorMetricID
-
-
-class Qualifier(AdCPBaseModel):
-    """
-    Optional qualifier disambiguating this row from sibling rows for the same (vendor, metric_id) — e.g., the same vendor outcome metric reported under 7-day and 30-day attribution windows. Same closed key set as `committed-metric`. When the matching `committed_metrics` entry carries a qualifier, this row MUST carry the identical qualifier so reconciliation joins on `(vendor, metric_id, qualifier)`.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/vendor-metric-value.json', pointer='#/properties/qualifier')
-    viewability_standard: ViewabilityStandard | None = None
-    completion_source: CompletionSource | None = None
-    attribution_methodology: AttributionMethodology | None = None
-    attribution_window: Duration | None = None
-    lift_dimension: LiftDimension | None = None
 
 
 class VendorMetricValue(AdCPBaseModel):
@@ -48,7 +29,7 @@ class VendorMetricValue(AdCPBaseModel):
     measurable_plays: Annotated[NonNegativeFloat | None, Field(description='Number of plays (loop plays / spots aired) in this reporting period that the vendor was able to measure. Coverage denominator for channels where a play, not an impression, is the atomic observation unit — DOOH, cinema, place-based audio. Buyers compute coverage as `measurable_plays / plays` (top-level `plays` on `delivery-metrics.json`). Same absence semantics as `measurable_impressions`: absent means coverage is unspecified and buyers MUST NOT compute a rate; 0 means the vendor is integrated but measured nothing. A row SHOULD carry exactly one coverage denominator — the one matching the unit the vendor actually observes.')] = None
     measurable_play_seconds: Annotated[NonNegativeFloat | None, Field(description="Play-seconds — seconds of creative playout summed across endpoints (screens, speakers, players) — in this reporting period that the vendor was able to measure. Medium-neutral on purpose: place-based audio has plays and duration but no screen. Coverage denominator when the vendor meters exposure duration rather than discrete plays. On screen networks buyers compute coverage as `measurable_play_seconds / dooh_metrics.screen_time_seconds`; on other place-based media, against the seller's reported playout seconds for the period. Same absence semantics as `measurable_impressions`.")] = None
     vendor_relationship: Annotated[VendorRelationship | None, Field(description="Optional echo of the product's `reporting_capabilities.vendor_metrics[].vendor_relationship` for this `(vendor, metric_id)`, so the delivery row is self-describing without joining back to the product (same reasoning as `viewability.vendor`). When present it MUST equal the declared value; buyers MAY resolve from the product declaration when absent. Absence on the row is *undeclared*, never `third_party`. A relationship disposition, not a trust ranking. Deliberately not a `qualifier` key: the relationship is constant across every row for a (seller, vendor) pair and does not partition rows, so it stays out of the `(vendor, metric_id, qualifier)` reconciliation join.")] = None
-    qualifier: Annotated[Qualifier | None, Field(description='Optional qualifier disambiguating this row from sibling rows for the same (vendor, metric_id) — e.g., the same vendor outcome metric reported under 7-day and 30-day attribution windows. Same closed key set as `committed-metric`. When the matching `committed_metrics` entry carries a qualifier, this row MUST carry the identical qualifier so reconciliation joins on `(vendor, metric_id, qualifier)`.')] = None
+    qualifier: Annotated[CanonicalMetricQualifier | None, Field(description='Optional qualifier disambiguating this row from sibling rows for the same (vendor, metric_id) — e.g., the same vendor outcome metric reported under 7-day and 30-day attribution windows. Same closed key set as `committed-metric`. When the matching `committed_metrics` entry carries a qualifier, this row MUST carry the identical qualifier so reconciliation joins on `(vendor, metric_id, qualifier)`.')] = None
     breakdown: Annotated[dict[str, Any] | None, Field(description="Optional structured payload for vendor metrics that don't fit a single scalar — panel demographic breakouts, co-view audience composition, incremental reach + frequency + lift decompositions. Free-form; the keys and value semantics are defined by the vendor (see the vendor's `brand.json` measurement-agent docs). Buyers MUST treat this object as opaque without consulting the vendor's documentation. Vendors place any fields beyond the standard envelope (e.g., confidence intervals, panel sizes) inside this object rather than at the top level.")] = None
 
 
