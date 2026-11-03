@@ -194,6 +194,8 @@ class RequestProposalsResponseSubmitted(RequestProposalsResponse, CompactTaskSub
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/request-proposals-response.json', pointer='#/anyOf/3')
+    task_id: Annotated[StrMinLen1, Field(description='Unique identifier for tracking asynchronous operations. Present when a task requires extended processing time. Used to query task status and retrieve results when complete.')]
+    status: Annotated[Literal['submitted'], Field(description='Current AdCP task state or structured outcome. Indicates whether the task completed, is in progress, was submitted for async processing, failed, requires user input, or returned a typed business rejection. REQUIRED on every task response envelope. Synchronous tasks (including read-only metadata calls like `get_adcp_capabilities`) normally emit `status: "completed"`; a task-specific rejection arm emits `status: "rejected"` without turning the transport into a failure. Async tasks emit `submitted`, `working`, `input-required`, etc. per their lifecycle. Agents MUST NOT emit the legacy task_status or response_status fields alongside this field — the status field is the single authoritative AdCP response state.')]
 
 
 RequestProposalsResponse._branch_models = (RequestProposalsResponseProposedCompleted, RequestProposalsResponseProductsAvailableCompleted, RequestProposalsResponseRejectedCompleted, RequestProposalsResponseSubmitted,)

@@ -1676,11 +1676,39 @@ def lower_union(
             # the annotation siblings (§4's node table), so once ``schema/parse.py``
             # lands the merge is the parser's one reading rather than this rewrite.
             inherited = plan.inherits.shape.description
+            # **§2's restatement rule at §4's TWO BASES, which is the one thing this
+            # branch does declare of its own** (``adcp-client-python-82m.23``,
+            # direction 2).  The comment below says "no fields of its own: the target
+            # supplies them", and that is true of every key only ONE of the two bases
+            # declares.  A key BOTH declare is a restatement, and the MRO decides it the
+            # wrong way round: the base is first, so the ROOT's declaration is what the
+            # branch gets and the target's is shadowed -- which is what left
+            # ``RefineProposalsResponseSubmitted.status`` as the root's bare
+            # ``Status | None`` where its target states ``Literal['submitted']``,
+            # required, so the class admitted ``{"task_id": "0"}`` and the document
+            # refuses it.
+            #
+            # ``compiler.intersected_at_a_branch`` is the SAME reading §5's distribution
+            # makes of the same arrangement -- the node's class first, the target second
+            # -- and its docstring carries the measurement.  It is called with the base's
+            # property map as what the node ASSERTS, because that map is exactly what the
+            # MRO will hand this branch, and with the base's ``required`` as the
+            # requiredness the shadowing field carries.
+            own = compiler.intersected_at_a_branch(
+                {key: [node] for key, node in base_shape.properties.items()},
+                plan.inherits.shape,
+                plan.inherits.symbol,
+                plan.pointer,
+                base_shape.required,
+                mod,
+            )
+            if isinstance(own, Refusal):
+                return own
             declared = compiler.declare_object(
                 plan.parsed,
                 plan.pointer,
                 mod,
-                (),
+                own,
                 # **BOTH bases' shapes, and the base's first**: §4 gives this branch two
                 # bases -- the union base, which supplies the root's own fields, and the
                 # target, which supplies its own -- so what the branch INHERITS is the
