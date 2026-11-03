@@ -32,14 +32,13 @@ because ``isinstance`` in an ``if`` IS the branch the design asks for and only a
 from __future__ import annotations
 
 import ast
+import os
 import re
 import subprocess
 import sys
 import tokenize
 import tomllib
 from pathlib import Path
-
-import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -61,13 +60,36 @@ def _graded() -> list[Path]:
 
     Read rather than restated, so the checker's population and this test's cannot come
     apart: a row that adds a module to the gate adds it in one place.
+
+    ``exclude`` is applied for the same reason ``files`` is read: it is the other half of
+    the one statement of what the checker ranges over, and a population computed from
+    ``files`` alone would report the emitted tree as graded when the checker does not
+    crawl it.
     """
-    config = tomllib.loads((ROOT / "pyproject.toml").read_text())["tool"]["mypy"]["files"]
+    config = tomllib.loads((ROOT / "pyproject.toml").read_text())["tool"]["mypy"]
+    excluded = re.compile(config["exclude"]) if "exclude" in config else None
     out: list[Path] = []
-    for entry in config:
+    for entry in config["files"]:
         path = ROOT / entry
         out.extend(sorted(path.rglob("*.py")) if path.is_dir() else [path])
-    return [p for p in out if "__pycache__" not in p.parts]
+    return [
+        p
+        for p in out
+        if "__pycache__" not in p.parts
+        and not (excluded and excluded.search(p.relative_to(ROOT).as_posix()))
+    ]
+
+
+#: The documented invocation's environment, and it is LOAD-BEARING rather than a
+#: convenience.  mypy builds its search path from ``sys.path``, so ``src`` on
+#: ``PYTHONPATH`` is what makes ``adcp.*`` resolve to this checkout -- and this is a
+#: worktree whose ``.venv`` carries an editable install pointing at a DIFFERENT one, so
+#: without it the package the gate reads is not the package in the tree.  Measured both
+#: ways on the same commit: with it, clean over 60 files; without it, 216 errors, all of
+#: them in the emitted tree that ``exclude`` keeps out of the crawl.  Set here rather than
+#: inherited from however pytest was launched, so the gate's verdict is a function of the
+#: tree and not of the shell.
+INVOCATION = {"PYTHONPATH": f".{os.pathsep}src"}
 
 
 def test_the_decision_layer_type_checks_clean() -> None:
@@ -75,6 +97,16 @@ def test_the_decision_layer_type_checks_clean() -> None:
 
     The invocation takes no arguments: ``[tool.mypy]`` carries the file list, so the
     command here is the command a reader runs and there is no second population.
+
+    **An absent checker is an ERROR and not a skip**, and the sentence is
+    ``docs/plan/final-state.md``'s: no check is marked expected-to-fail, skipped, or
+    scoped away from the code it is about.  ``mypy`` is still not a dependency and is
+    still not pinned -- the artifact is a function of the bundle and of a PINNED compiler
+    (D10), and a checker is in neither argument -- but a gate that disappears together
+    with its own instrument REPORTS GREEN, which is the one failure mode this project
+    bans everywhere else.  The two statements are compatible: the checker is not needed
+    to BUILD the artifact and is needed to GRADE it, so its absence is a missing
+    instrument rather than a passing run.
     """
     mypy = subprocess.run(
         [sys.executable, "-m", "mypy", "--no-incremental"],
@@ -82,10 +114,41 @@ def test_the_decision_layer_type_checks_clean() -> None:
         capture_output=True,
         text=True,
         check=False,
+        env={**os.environ, **INVOCATION},
     )
-    if "No module named mypy" in mypy.stderr:
-        pytest.skip("no type checker installed; §14 step 6's gate is the checker itself")
+    assert "No module named mypy" not in mypy.stderr, (
+        "no type checker installed, and §14 step 6's gate IS the checker: "
+        "`pip install mypy` and run `PYTHONPATH=.:src python -m mypy --no-incremental`"
+    )
     assert mypy.returncode == 0, mypy.stdout + mypy.stderr
+
+
+def test_the_package_declares_its_types_to_a_consumer() -> None:
+    """Reading 7: "The package declares its types to a consumer's type checker."
+
+    PEP 561 is a two-part promise and BOTH parts are read here, because either one alone
+    is worse than neither: a marker in the tree that packaging drops makes the promise to
+    every reader of the repository and keeps it for no consumer, and a ``package-data``
+    entry naming a file that does not exist builds a wheel with nothing in it.
+
+    What the absence cost was measured against the INSTALLED package and not the source
+    tree, which is the only place it is visible: ``Skipping analyzing
+    "adcp.types.core": module is installed, but missing library stubs or py.typed
+    marker``, then ``Revealed type is "Any"``, and a consumer file misusing a field and
+    an enum member passing silently.  The source tree is readable with or without the
+    marker, which is exactly why the gap survived every check this suite already had.
+    """
+    assert (ROOT / "src" / "adcp" / "py.typed").is_file(), (
+        "PEP 561's marker is absent, so a consumer's checker resolves every annotation "
+        "this compiler derives to `Any`"
+    )
+    declared = tomllib.loads((ROOT / "pyproject.toml").read_text())["tool"]["setuptools"][
+        "package-data"
+    ]
+    assert "py.typed" in declared.get("adcp", ()), (
+        "`py.typed` is in the tree and not in [tool.setuptools.package-data], so the "
+        "wheel is built without it and the promise is made to readers alone"
+    )
 
 
 def test_the_decision_layer_holds_no_suppression_the_gate_would_hide() -> None:
@@ -175,4 +238,38 @@ def test_the_gate_ranges_over_the_decision_layer_and_not_a_corner_of_it() -> Non
             )
         ),
     }
+    assert required <= graded, sorted(required - graded)
+
+
+def test_the_gate_ranges_over_the_shipped_PACKAGE_and_cannot_be_narrowed_back() -> None:
+    """The third control, and it is the one the configuration failed.
+
+    ``[tool.mypy] files`` omitted ``src/adcp`` ENTIRELY while the test above asserted a
+    required set naming only ``codegen`` paths -- so a guard written against exactly this
+    evasion left the shipped package free to sit outside the gate, which it did.  **The
+    shipped package is in scope by definition: it is the artifact every reading is
+    about**, and an annotation a consumer's checker cannot be shown to read is not a
+    derived type, it is a comment.
+
+    Computed from the TREE and not restated, for the reason the ``codegen`` set gives and
+    one more: a domain module per bundle domain is a closed set the bundle decides, so a
+    list here would go stale the first time upstream adds a domain, and the module would
+    enter the package OUTSIDE the gate -- which is the same hole one level down.
+
+    ``src/adcp/types/_schemas`` is the one subtraction and it is not a corner of the
+    package, it is the EMITTED TREE: ``architecture.md``'s "The subject of grading is a
+    FRESH EMIT, never the committed tree" -- "The committed tree is an ARTIFACT, verified
+    by one byte-compare, and is never the subject."  A type error in a generated module is
+    a defect of ``codegen/render.py``, which IS graded here, and ``pyproject.toml``
+    carries the count, the breakdown and the row that owns it rather than treating the
+    exclusion as free.
+    """
+    graded = {str(p.relative_to(ROOT)) for p in _graded()}
+    emitted = ROOT / "src" / "adcp" / "types" / "_schemas"
+    required = {
+        str(p.relative_to(ROOT))
+        for p in (ROOT / "src" / "adcp").rglob("*.py")
+        if "__pycache__" not in p.parts and emitted not in p.parents
+    }
+    assert required, "src/adcp holds no hand-written module, which cannot be right"
     assert required <= graded, sorted(required - graded)

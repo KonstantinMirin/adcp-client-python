@@ -69,7 +69,20 @@ where = ["src"]
 # which is the one failure mode a test run from the source tree cannot see. One
 # file per document, named by the document's own bundle-relative path, so the
 # read is of that document and never of a table.
+#
+# ``py.typed`` is PEP 561's marker and it is listed BESIDE the documents rather
+# than left to a default, for the same reason: a marker that packaging drops
+# makes the promise and does not keep it.  Without the file in the wheel a
+# consumer's checker reports `Skipping analyzing "adcp.types.core": module is
+# installed, but missing library stubs or py.typed marker` and then `Revealed
+# type is "Any"`, so every annotation this compiler derives -- 14,570 fields,
+# 991 ``Literal``s, 244 ``StrEnum``s, 582 union arms -- is invisible at the one
+# boundary it was built for.  ``final-state.md`` reading 7 is the decision, and
+# ``tests/test_type_checker.py::test_the_package_declares_its_types_to_a_consumer``
+# reads this declaration back so the marker cannot be shipped by accident or
+# dropped by one.
 [tool.setuptools.package-data]
+"adcp" = ["py.typed"]
 "adcp.types._schemas" = ["*.json", "**/*.json"]
 
 [tool.pytest.ini_options]
@@ -239,23 +252,65 @@ addopts = "-n auto --maxprocesses=10 --dist=loadgroup"
 # which is the mechanical form of the semantics document's section 9 rule that a crash
 # is not an outcome."  So the gate is a checker running CLEAN over the decision layer,
 # and this section is what makes "clean" reproducible -- the files it ranges over and
-# the two things it is allowed not to know.
+# the one thing it is allowed not to know.
 #
-# ``files`` is the DECISION LAYER and the two ends section 2 puts the effects at, and it
-# is listed rather than left to default to ``codegen/`` for one reason: ``harness.py``
-# is the VERIFIER, which section 9 keeps separate from the walk, and it carries 29
-# pre-existing errors against ``hypothesis.settings`` and ``jsonschema``'s untyped
-# surface that are not this layer's and would make the gate unreadable.  A row that
-# brings the verifier under the checker adds it here; the list may GROW and may not
-# shrink.
+# ``files`` is the DECISION LAYER, the two ends section 2 puts the effects at, AND THE
+# SHIPPED PACKAGE, and it is listed rather than left to default to ``codegen/`` for one
+# reason: ``harness.py`` is the VERIFIER, which section 9 keeps separate from the walk,
+# and it carries 29 pre-existing errors against ``hypothesis.settings`` and
+# ``jsonschema``'s untyped surface that are not this layer's and would make the gate
+# unreadable.  A row that brings the verifier under the checker adds it here; the list
+# may GROW and may not shrink.
+#
+# **``src/adcp`` IS IN THE LIST, because it is the artifact every reading is about.**  It
+# was absent, and what that cost was measured rather than argued: with the package out of
+# scope the only error in the shipped hand-written code was
+# ``src/adcp/types/_base.py:1190: Name "cls._branch_models" is not defined``, sitting
+# inside ``_branch_adapter`` -- the same function behind the union-root dispatch defect --
+# and nothing was reading it.  Two more appeared the moment ``adcp.*`` resolved to real
+# types instead of ``Any``: ``codegen/render.py``'s ``_rule`` was annotated with one of
+# ``Rule``/``ValueRule`` and is called with both.  All three are fixed; none was fixed by
+# a suppression.
+#
+# **``exclude`` names the EMITTED TREE, and it is not this gate's subject by a decision
+# already recorded.**  ``docs/plan/architecture.md``, "The subject of grading is a FRESH
+# EMIT, never the committed tree": "The committed tree is an ARTIFACT, verified by one
+# byte-compare, and is never the subject."  ``src/adcp/types/_schemas`` is 2,138 generated
+# modules whose annotations are a function of the bundle and of the pinned compiler, so a
+# type error there is a RENDERING defect and is fixed in ``codegen/render.py``, never in
+# the file that reports it -- which is also why this is an exclusion and not an
+# ``ignore_errors``: nothing here says the errors are acceptable, and they are counted and
+# attributed instead.  Measured with the invocation below on 2026-11-03: **175 errors in
+# 59 of those modules -- 159 ``[assignment]``, 12 ``[misc]``, 4 ``[valid-type]``** --
+# against the 440 (362 ``[assignment]``, 78 ``[list-item]``) ``docs/plan/rebuild-plan.md``
+# records for the same tree, so the set is shrinking under the row that owns it
+# (rebuild-plan's "TWO RENDERINGS THAT DO NOT TYPE-CHECK, and both are cells").  That row
+# removes this exclusion.  Until then, re-derive the figure with
+#
+#     PYTHONPATH=.:src python -m mypy --no-incremental --config-file=/dev/null \
+#         src/adcp/types/_schemas
+#
+# -- ``--config-file`` and not ``--exclude``, because a CLI ``--exclude`` ADDS to the one
+# below rather than replacing it, and the directory then reports "no .py[i] files".
+#
+# **And note that ``exclude`` does not hide them by import either**: mypy applies it to
+# files it CRAWLS, not to modules an explicit source imports, so every one of the 2,138 is
+# still read for the types the domain modules re-export -- which is what makes the
+# consumer-facing promise ``py.typed`` carries a real one.
 #
 # ``mypy`` is not a dependency of this project and is not pinned: a checker is an
-# instrument and the artifact does not depend on it, so ``tests/test_type_checker.py``
-# skips where it is absent and GRADES where it is present.  Run it directly with
+# instrument and the artifact does not depend on it.  **But a gate that disappears with
+# its own instrument reports green**, which ``docs/plan/final-state.md`` forbids in those
+# words, so ``tests/test_type_checker.py`` ERRORS where the checker is absent rather than
+# skipping.  Run it directly with
 #
-#     PYTHONPATH=.:src uv run --no-sync python -m mypy
+#     PYTHONPATH=.:src python -m mypy --no-incremental
 #
-# which reads this section and needs no arguments.
+# which reads this section and needs no arguments.  **``PYTHONPATH=.:src`` is not
+# optional**: mypy's search path is built from ``sys.path``, so without it ``adcp.*``
+# resolves to nothing, the override below cannot apply to a package that is in ``files``,
+# and the run reports ~43 errors in ``codegen/harness.py`` that are an artifact of the
+# invocation and not defects.  One wrong P1 was filed off exactly that.
 [tool.mypy]
 files = [
     "codegen/refusal.py",
@@ -273,20 +328,24 @@ files = [
     "codegen/render.py",
     "codegen/dump_exemptions.py",
     "codegen/__main__.py",
+    "src/adcp",
 ]
+exclude = "^src/adcp/types/_schemas/"
 
-# The two things the checker is allowed not to know, both of them a MISSING TYPE
-# SURFACE and neither a silenced error of ours.  Per module and never blanket, so a
-# genuine unresolved import inside ``codegen`` is still an error: an inline
-# ``type: ignore`` is what step 6 forbids, and a scoped statement about a third party's
-# stubs is not one.
+# The one thing the checker is allowed not to know, and it is a MISSING TYPE SURFACE
+# rather than a silenced error of ours.  Per module and never blanket, so a genuine
+# unresolved import inside ``codegen`` is still an error: an inline ``type: ignore`` is
+# what step 6 forbids, and a scoped statement about a third party's stubs is not one.
 #
-# * ``adcp.*`` is this project's own runtime package and ships no ``py.typed``.  Adding
-#   one is a change to the WHEEL's public surface -- it promises every annotation in
-#   ``src/adcp`` to every consumer's checker -- so it is a decision for the row that
-#   owns the shipped package and not a side effect of this one.
-# * ``jsonschema`` ships no stubs (``types-jsonschema`` is a separate distribution).
+# ``jsonschema`` ships no stubs (``types-jsonschema`` is a separate distribution).
+#
+# **``adcp.*`` WAS here and is gone.**  It read "this project's own runtime package and
+# ships no ``py.typed``.  Adding one is a change to the WHEEL's public surface ... a
+# decision for the row that owns the shipped package" -- this is that row, the marker is
+# at ``src/adcp/py.typed`` and declared in ``[tool.setuptools.package-data]`` above, and
+# an override that resolved our own package to ``Any`` would now hide the package from the
+# gate that just took it in.
 [[tool.mypy.overrides]]
-module = ["adcp.*", "jsonschema.*"]
+module = ["jsonschema.*"]
 ignore_missing_imports = true
 follow_untyped_imports = false

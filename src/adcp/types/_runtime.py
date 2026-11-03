@@ -69,7 +69,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, ClassVar, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, ClassVar, Protocol, runtime_checkable
 
 from pydantic import BaseModel, model_validator
 from pydantic_core import InitErrorDetails, PydanticCustomError, ValidationError
@@ -175,14 +175,23 @@ class TheValueIsTheObject:
     makes a value rule's refusal read the same as a class rule's.
     """
 
+    if TYPE_CHECKING:
+        # ``self.errors`` is the kind's own: this class is mixed into a :class:`Rule`
+        # and defines no ``errors`` of its own, because a stub here would SHADOW the
+        # reading on a kind that forgot to write one and refuse nothing in silence.
+        # So the requirement is DECLARED to the checker and never defined -- under
+        # ``TYPE_CHECKING`` there is no attribute at runtime, so a kind without its own
+        # ``errors`` still raises rather than inheriting a lie, and §14 step 6's ban on
+        # an inline suppression is kept rather than answered with one.
+        def errors(
+            self, keys: frozenset[str], values: Mapping[str, Any]
+        ) -> Iterator[Error]: ...
+
     def __call__(self, value: Any) -> Any:
         members = _members(value)
         if members is None:
             return value
-        # ``self.errors`` is the kind's own: this class is mixed into a :class:`Rule` and
-        # declares no ``errors`` of its own, because a stub here would SHADOW the
-        # reading on a kind that forgot to write one and refuse nothing in silence.
-        for keyword, _loc, detail, _given in self.errors(*members):  # type: ignore[attr-defined]
+        for keyword, _loc, detail, _given in self.errors(*members):
             raise _violation(keyword, detail)
         return value
 
