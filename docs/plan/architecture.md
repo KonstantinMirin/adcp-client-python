@@ -605,6 +605,34 @@ The cost of the prohibition is that the compiler reproduces the defect it was bu
 
 ### §3a's ENTRY KEY IS THE VALUE LIST, AND AN UNTITLED ENTRY IS NAMED FROM ITS HOME (2026-11-03)
 
+**THREE CONSEQUENCES OF THAT TEST THAT THE SENTENCE DOES NOT SPELL (2026-11-03), each from a lane
+applying it.**
+
+**A RULE POSITION MINTS NO TYPE, so a node inside an `if`, `then`, `else` or `not` is not a stating
+position of any layer.** A large minority of this bundle's property-bearing nodes sit there, and
+counting them is what made the layer figures in the table above unreachable. A conditional states a
+RULE on the nearest class; it does not state a type.
+
+**A `definitions` SECTION IS OUT OF THE KEY.** An entry no reference names admits nothing, so it is
+not a stating position at all; an entry that is named is already in the key at every referring
+site, so carrying the section too would make two nodes admitting the same set differ on a side-car.
+The same reasoning takes ORDER out wherever it appears — a `required` list's order, and a
+combinator's branch order, because an instance reads those as sets. An enumeration's member order
+stays in, for the reason the value-list rule already records.
+
+**AND THE ARRAY LAYER COLLECTS NOTHING, BY DERIVATION RATHER THAN BY MEASUREMENT.** `list[X]` is
+written once in Python by construction, so the only thing an array position can write twice is its
+ELEMENT — and an element is owned by a layer beneath: a reference, an object, a constrained scalar,
+an enumeration, a composition, or a scalar with no type to write. **So the array layer's obligation
+is a check and not a collection**: it reddens if a repeated array type ever appears whose element
+belongs to none of those, which is exactly the case where it would need one.
+
+Its titled groups confirm the untitled rule rather than contradicting it: one array of non-empty
+strings is restated at two dozen positions for two dozen unrelated subjects. **What tells a shared
+subject from a coincidental overlap is that an object's key holds the property NAMES, while an
+array's key over a scalar element holds no name at all** — which is why the object layer can
+collapse on identity and the array layer must not.
+
 **A LAYER'S KEY CONTAINS EXACTLY WHAT CHANGES THE SET OF ADMITTED INSTANCES, AND NOTHING ELSE
 (decided 2026-11-03).** §3a settles the recursion and the order — an object's identity is the
 identity of its property types, collected L0 upward — but not what the key CONTAINS, and the gap is
