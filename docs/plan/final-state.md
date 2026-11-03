@@ -99,7 +99,11 @@ field set is a hypothesis. Whether the bundle REFERENCES one node from the other
 is the question that tells our defect from the schema's own duplication — the first is ours to
 fix, the second is faithful emission and an ask stated over a set of the bundle.
 
-**Decided by** one census per layer, each over the emitted tree and each keyed on that layer's own
+**Decided by** one census per layer, each keyed on that layer's own
+identity — and **not every layer has a class population to census over the tree**: an array type
+renders as `list[X]` inside an annotation and declares no class, so the array layer is read off the
+bundle's own stating positions while the object layer can be read off either. A census that assumes
+every layer appears as a class silently skips one. The key is that layer's
 identity — the value list, the constraint set, the field set, the element type. The key is what
 makes a census a census: a gate keyed on a name, an export path or a constraint set cannot see a
 repeated object type, which is how three layers stayed invisible while their own measurements sat

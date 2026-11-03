@@ -605,6 +605,32 @@ The cost of the prohibition is that the compiler reproduces the defect it was bu
 
 ### §3a's ENTRY KEY IS THE VALUE LIST, AND AN UNTITLED ENTRY IS NAMED FROM ITS HOME (2026-11-03)
 
+**A LAYER'S KEY CONTAINS EXACTLY WHAT CHANGES THE SET OF ADMITTED INSTANCES, AND NOTHING ELSE
+(decided 2026-11-03).** §3a settles the recursion and the order — an object's identity is the
+identity of its property types, collected L0 upward — but not what the key CONTAINS, and the gap is
+worth a third of the population: the letter of the sentence, types alone, and the strictest reading
+differ by tens of structures and hundreds of positions.
+
+**The test is admission-equivalence, and it is the one L0 already used.** Two nodes are one entry
+exactly when no instance distinguishes them. So the key holds the property NAMES (a different name
+admits different instances), `required`, `additionalProperties`, and every narrowing keyword — each
+changes what is admitted. It does not hold a `title`, a `description`, an `examples`, or the ORDER
+of the properties — none changes what is admitted, and order is the axis a census must be explicitly
+blind to or it reports a difference no payload can see.
+
+**And this reconciles the two precedents that look opposed.** L0 left `type: "string"` out of its
+key beside an all-string enum because it *"admits not one value more"*. The narrowing keywords go
+IN because they admit strictly less. **Both are the same rule**: in the key if and only if some
+instance turns on it. Nothing here is a judgement about which keywords matter — the question is
+always whether a payload can tell.
+
+**A key read off the RENDERED ANNOTATION is not this key**, and must not be mistaken for it: a
+rendered annotation carries a `description`, so a census over it moves when the renderer does, and
+a figure that moves when the renderer changes cannot be a layer's identity. The key is computed
+over the catalogue entries beneath, which is what §3a's "rather than over raw JSON" asks for, and
+references are resolved to what they name before keying — an unresolved key UNDERCOUNTS, measurably
+so at the array layer.
+
 **THE KEY IS THE VALUE LIST, not the structural identity §3a named.** The reading is *"each
 distinct vocabulary is one type"*, and a vocabulary is a set of admitted values. Measured over the
 bundle: of the value lists stated at more than one position, the overwhelming majority carry one
