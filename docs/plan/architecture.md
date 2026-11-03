@@ -2149,6 +2149,23 @@ condition, below.
    exactly, because every import resolves and nothing else is written. The closure is still what
    the ORDER is computed over; it is not what the run emits.
 
+  **AND "WHAT AN ATTEMPTED LOWERING REFERENCED" MEANS EVERY EDGE A MODULE IMPORTS ALONG, NOT THE
+   `$ref` EDGES ALONE.** The sentence above is right and its implementation reads one kind of
+   edge. §3a's catalogue gives a position a type by IMPORTING the symbol the naming position
+   declares — a vocabulary collected across documents, a restating title, an object type whose
+   home is elsewhere — and **none of those is a `$ref` in the source document.** So a run named
+   over a subset writes a module importing from a module it did not write, and the package does
+   not import.
+
+   **The rule is one sentence and it is about imports, not about references: a run writes every
+   module that any module it writes imports from.** The closure is the transitive closure of the
+   IMPORT relation the lowering actually produces, and `$ref` is one contributor to it.
+
+   This is green today over the whole bundle and false over any subset, which is the shape of a
+   defect that an instrument ranging only over the full set cannot see — **and the fix is to the
+   closure, not to the gate's set**: a gate that only ever runs over everything proves nothing
+   about the mechanism it is named for.
+
 8. **The approximation, end to end, with no cell widened.** The instrument before the change.
    Add `Widening` and `widens_to` to the cell and retire `Effect.REFUSE`; add `Approximation` and
    `RootModelDecl` to the IR and `approximations` to `Lowering` and `Module`; add

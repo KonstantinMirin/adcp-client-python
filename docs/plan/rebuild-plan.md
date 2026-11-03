@@ -1093,6 +1093,23 @@ sources, in order:
    discriminator field and a template resolving a schema from it, and `manifest.tools` is the
    table. Such a union emits as a mapping keyed by that field: its discriminant is in the
    envelope, not in the payload.
+
+   **THE KEY MUST BE READABLE AT THE UNION'S OWN NODE, AND THAT IS WHAT THIS SOURCE APPLIES TO.**
+   The manifest naming a field is not the condition — a document whose branches ARE the documents
+   the template resolves still has to state the key where the dispatch happens. Where the union's
+   own node neither declares the field nor is itself a document the template resolves, the
+   manifest names a discriminant that is in the ENVELOPE and not in this payload, and **source 2
+   does not apply**: the branch is selected by the caller's envelope, so a class dispatching on it
+   would read a key no instance it validates carries.
+
+   That distinction is the whole of this source's set. A root whose branches are the resolved
+   documents, which does not itself declare the key, reaches source 2 — the key selects the
+   BRANCH. A root that is merely named in the table does not.
+
+   **AND WHERE SOURCE 2 APPLIES, THE UNION OWES NO `UNDERDETERMINED` DECLARATION.** A declaration
+   says the derivation could not separate the branches; the manifest separates them. A root
+   carrying both is stating two incompatible things about itself, and the declaration is the one
+   to go.
 3. **Branches no instance satisfies twice.** Where the branches are pairwise disjoint, the
    payload selects its own branch and the order they are tried in cannot change which one it
    reaches. Disjointness is derived from the branches themselves: one property pinned to
