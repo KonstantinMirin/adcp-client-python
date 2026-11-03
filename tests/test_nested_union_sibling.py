@@ -498,10 +498,37 @@ def test_the_screen_admits_exactly_the_one_name() -> None:
 #: site loud rather than silently absent -- a list of paths is complete with respect to
 #: itself.
 #:
-#: 18 sites over 15 documents.  **The 9 of :data:`THE_NINE` are the subset whose
-#: document's EARLIEST obstruction was the sibling carrier**; the other 6 documents
-#: refuse earlier on something else and reach the site only once those rows land, which
-#: is why the two sets are different sizes and why neither is the other's measure.
+#: **The documents of :data:`THE_CARRIERS_OWN_DOCUMENTS` are the subset whose EARLIEST obstruction was
+#: the sibling carrier**; the other documents refuse earlier on something else and reach
+#: the site only once those rows land, which is why the two sets are different sizes and
+#: why neither is the other's measure.
+#:
+#: **IT IS A RATCHET AND NO LONGER AN EQUALITY, AND TWO ENTRIES LEFT** (2026-11-04,
+#: ``adcp-client-python-99m``).  The equality was red:
+#:
+#:     pinned and not derived: ('core/canonical-forecast-point.json', '/properties/viewability')
+#:                             ('core/forecast-point.json', '/properties/viewability')
+#:
+#: and a site LEAVING is not a finding about this row.  Both nodes state an ``anyOf`` of
+#: one branch forbidding four metrics and one requiring ``standard``, and
+#: ``schema.presence_clause`` reads a branch stating ONLY a ``not`` over required groups
+#: as a presence clause with an empty required group -- so ``presence_only`` is ``True``
+#: at both, the node lowers to a RULE on the enclosing class, and there is no nested
+#: union left to compose a sibling.  Measured: ``presence_only({"anyOf": [...]},
+#: Position.PROP)`` is ``True`` for both.  ``tests/test_union_disjointness.py``'s
+#: ``_INSEPARABLE_CONSTRAINTS`` records the same two nodes leaving the same way, for the
+#: same commit, in as many words -- "the derivation moved and the name did not move with
+#: it" -- so this is the second reader of one parser change, and the first one had already
+#: written down what to do about it.
+#:
+#: So the entries are removed (the pin FOLLOWING the behaviour) and the direction is
+#: stated, which is what the equality was standing in front of.  **This set may SHRINK
+#: and may not GROW**: what the row needs is that no site appears it has not been
+#: measured over -- "a nineteenth site reddens here instead of being quietly absent from
+#: a list" -- and a site the parser stops reading as a nested union is the parser
+#: changing and not this carrier failing.  The containment is the loud half; the exit
+#: condition below, that no document is refused on the carrier's sentence, is what says
+#: the remaining sites are HANDLED and is total over the run.
 COMPOSING_SITES = frozenset(
     {
         ("account/sync-accounts-request.json", "/properties/accounts/items"),
@@ -510,8 +537,6 @@ COMPOSING_SITES = frozenset(
             "compliance/comply-test-controller-response.json",
             "/oneOf/6/properties/recorded_calls/items",
         ),
-        ("core/canonical-forecast-point.json", "/properties/viewability"),
-        ("core/forecast-point.json", "/properties/viewability"),
         ("core/format.json", "/properties/renders/items"),
         ("core/format.json", "/properties/assets/items/oneOf/0"),
         ("creative/preview-creative-response.json", "/oneOf/1/properties/results/items"),
@@ -534,16 +559,29 @@ COMPOSING_SITES = frozenset(
     }
 )
 
-#: The 9 documents whose refusal WAS the sibling carrier -- group G2 of
+#: The documents whose refusal WAS the sibling carrier -- group G2 of
 #: ``docs/plan/reasons-vs-rows.md``, 42 documents blocked and 34 of them chained.  They
-#: are the 9 of the 21 nodes reaching this screen that state a sibling beyond the ``type``
-#: word, and every one of them is a site of :data:`COMPOSING_SITES`, asserted below.
-THE_NINE = frozenset(
+#: are the ones among the nodes reaching this screen that state a sibling beyond the
+#: ``type`` word, and every one of them is a site of :data:`COMPOSING_SITES`, asserted
+#: below -- which is what makes this a group the carrier APPLIES to rather than a group
+#: somebody wrote down.
+#:
+#: **RENAMED FROM ``THE_NINE`` AND NOW HOLDS SEVEN** (2026-11-04,
+#: ``adcp-client-python-99m``).  ``core/canonical-forecast-point.json`` and
+#: ``core/forecast-point.json`` left for the reason :data:`COMPOSING_SITES` records
+#: above: ``schema.presence_clause`` reads their ``/properties/viewability`` as a
+#: presence clause, so the node lowers to a rule and has no nested union composing a
+#: sibling.  The containment below was RED on exactly those two, and it was right -- the
+#: set's own definition ties membership to having such a site, so a document that stops
+#: having one has to leave.
+#:
+#: The NAME went with them, because a constant called ``THE_NINE`` holding seven entries
+#: is the same staleness one level up: a count in an identifier cannot follow the
+#: behaviour, and nothing here needs to know how many there are.
+THE_CARRIERS_OWN_DOCUMENTS = frozenset(
     {
         "account/sync-accounts-request.json",
         "compliance/comply-test-controller-response.json",
-        "core/canonical-forecast-point.json",
-        "core/forecast-point.json",
         "core/format.json",
         "creative/preview-creative-response.json",
         "formats/canonical/coordinated_placements.json",
@@ -612,13 +650,19 @@ def _composing_nested_sites() -> dict[str, list[str]]:
 def test_the_population_the_widening_is_about_is_derived_off_the_bundle() -> None:
     """The sites, DERIVED, and the sibling carrier gone from the whole run's report.
 
-    Three claims.  The derived site set equals the pinned one, in both directions, so a
-    nineteenth site reddens here instead of being quietly absent from a list.  The 9
-    documents the carrier refused are a subset of its documents, which is what says the
-    pinned nine name real sites rather than a group somebody wrote down.  And no document
-    of the run -- chains included -- is refused on the sentence any more, which is the
-    exit condition: the fact has a carrier rather than those 9 having moved somewhere the
-    report cannot see.
+    Three claims.  Every DERIVED site is one :data:`COMPOSING_SITES` has been measured
+    over, so a nineteenth site reddens here instead of being quietly absent from a list.
+    The 9 documents the carrier refused are a subset of its documents, which is what says
+    the pinned nine name real sites rather than a group somebody wrote down.  And no
+    document of the run -- chains included -- is refused on the sentence any more, which
+    is the exit condition: the fact has a carrier rather than those 9 having moved
+    somewhere the report cannot see.
+
+    **The first claim is a CONTAINMENT and not an equality** (2026-11-04): the data's own
+    comment says which direction is the obligation and why the other one reddened on a
+    parser change that is not this row's.  The exit condition is what makes the
+    containment enough -- it ranges over the whole run and names any document the carrier
+    still stops.
     """
     sites = _composing_nested_sites()
     documents = claimed("documents whose nested union composes a sibling", set(sites))
@@ -626,19 +670,24 @@ def test_the_population_the_widening_is_about_is_derived_off_the_bundle() -> Non
         "composing nested union sites",
         [(d, p) for d, ps in sites.items() for p in ps],
     )
-    assert pairs == COMPOSING_SITES, {
-        "derived and not pinned": sorted(pairs - COMPOSING_SITES),
-        "pinned and not derived": sorted(COMPOSING_SITES - pairs),
-    }
-    assert THE_NINE <= documents, sorted(THE_NINE - documents)
+    unmeasured = sorted(pairs - COMPOSING_SITES)
+    assert unmeasured == [], (
+        f"{len(unmeasured)} composing nested-union site(s) this row has not been "
+        f"measured over: {unmeasured}.  COMPOSING_SITES may SHRINK and may not GROW; a "
+        "new site needs its own reading, not an entry."
+    )
+    assert THE_CARRIERS_OWN_DOCUMENTS <= documents, sorted(
+        THE_CARRIERS_OWN_DOCUMENTS - documents
+    )
     out = compiled(BUNDLE, sorted(bundle.portable(BUNDLE)))
     assert [d for d, r in out.refusals.items() if _CARRIER in r["detail"]] == []
     # Partitioned rather than summed: one of the nine emits and the other eight report a
     # next obstruction that belongs to another row.
     partitions(
-        THE_NINE,
-        emits=THE_NINE & set(out.emitted),
-        refuses_on_its_own_next_obstruction=THE_NINE - set(out.emitted),
+        THE_CARRIERS_OWN_DOCUMENTS,
+        emits=THE_CARRIERS_OWN_DOCUMENTS & set(out.emitted),
+        refuses_on_its_own_next_obstruction=THE_CARRIERS_OWN_DOCUMENTS
+        - set(out.emitted),
     )
     assert MEASURED_CASE in out.emitted, out.refusals.get(MEASURED_CASE)
     # And each of the eight is refused on something OTHER than the sibling carrier, which
@@ -656,7 +705,7 @@ def test_the_population_the_widening_is_about_is_derived_off_the_bundle() -> Non
     # nowhere in it -- is reported AT a composing site.  The pointer was a PROXY for the
     # sentence; the claim is about the sentence, so the sentence is what is read, in the
     # one spelling the whole-run check above uses.
-    for document in sorted(THE_NINE - set(out.emitted)):
+    for document in sorted(THE_CARRIERS_OWN_DOCUMENTS - set(out.emitted)):
         assert _CARRIER not in out.refusals[document]["detail"], out.refusals[document]
 
 
