@@ -2052,14 +2052,35 @@ is not a fact the document states but where the fact is kept. The `if` row is su
 the only reason it was not already covered is that the rule was written for the checks that first
 hit it.
 
-**3b. §5's `if` row needs words for a NEGATED clause.** A condition stating a presence fact under a
-`not` is readable — it is the complement of the group — and the row has no case for it, so such a
-node compiles to nothing and the model widens undeclared. **Where the condition is a negated
-presence fact, the clause is the negation of the group it would otherwise state.** **Measured, this shape is a small minority and
-it is NOT exactly lowerable**: the conditions negate a presence-AND-value fact, whose negation is a
-disjunction — absent OR a different value — and a clause list is a conjunction, so no list states
-it. So these DECLARE under sentence 1, and sentence 3a is what lowers the majority. The two were
-written as one and they are not.
+**3b. A NEGATED PRESENCE-AND-VALUE CONDITION IS ONE COMPLEMENTED MATCH, AND `Match` GAINS THE
+COMPLEMENT (decided 2026-11-03). This replaces what stood here, which said such conditions
+DECLARE.**
+
+The condition the bundle writes most often is `not: {required: [k], properties: {k: {const: v}}}` —
+the inner schema being *"k is present AND equals v"*. By De Morgan its negation is *"k is absent OR
+k differs from v"*, and that was read as a disjunction no clause list can state, since a rule's
+`when` is a conjunction. **That reading is wrong, and the error is in where the disjunction sits.**
+It is not a disjunction of independent facts about different keys; it is **one predicate about one
+key** — *k is not v, whether by absence or by value* — and a single clause says it the moment the
+clause can say *not*.
+
+**What the rule vocabulary lacks is a complement, not a disjunction.** The match primitive carries
+a key, a two-state presence flag and a POSITIVE value set, so absence and a differing value cannot
+both satisfy it: requiring presence fails the absent instance, requiring absence fails the present
+one. **Presence becomes three-state — must be present, must be absent, immaterial — and the value
+set gains its complement.** The condition above is then one clause: the key, presence immaterial,
+value forbidden to be `v`. Absent satisfies it, present-and-different satisfies it,
+present-and-equal does not — which is the negation exactly.
+
+**And this is the lever sentence 2 was carrying alone.** The overwhelming majority of the
+conditions that make declaration unaffordable are this one shape, and under the complement they
+**lower exactly and declare nothing**. Declaring them was never the answer; it was the price of a
+primitive that could not say *not*.
+
+**A condition whose negation genuinely spans two keys still declares**, under sentence 1 — an
+`anyOf` of requirements, or a negated conjunction over different keys, is a disjunction of clauses
+and the vocabulary is right not to express it. The test is whether the disjunction is inside one
+key's predicate or across several.
 
 **4. §5's `oneOf` row is WRONG about `not oneOf`, and this is a narrowing in a rule rather than a
 gap.** It says the clause is *"the union of the branches' groups"*. But `not oneOf` admits an
