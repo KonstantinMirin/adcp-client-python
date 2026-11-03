@@ -239,7 +239,7 @@ exceed 900 s on an 8,145,255-byte conjunction and one exceeds 600 s on a 6,832,2
 residue is not a currency question. It is the document-derived construction decision, and it is
 open.
 
-### The wheel SHIPS `py.typed`, and 350 internal errors are its precondition (decided 2026-11-02)
+### The wheel SHIPS `py.typed`, and the gate is the CONSUMER'S checker (decided 2026-11-02, precondition withdrawn 2026-11-03)
 
 **Nothing this project built reaches a consumer's type checker today.** Measured against the
 INSTALLED package rather than the source tree: `Skipping analyzing "adcp.types.core": module is
@@ -255,11 +255,27 @@ decision for the row that owns the shipped package."* **No row owned it.** The g
 ergonomic, schema-faithful, DX-friendly SDK, and a typed SDK whose types are `Any` to its
 consumer is none of the three. So the marker ships.
 
-**And pyproject is right about what it promises, which makes the precondition non-negotiable.**
-A `py.typed` marker asserts that every annotation in `src/adcp` is sound, and the same mypy run
-reports **350 errors in 80 files inside the SDK — 260 `[assignment]`, 74 `[list-item]`**.
-Shipping the marker over those promises something false, so they are resolved first and the
-ordering is part of this decision rather than a follow-up.
+**THE PRECONDITION THIS SECTION DECLARED IS WITHDRAWN (2026-11-03), and the section's own last
+paragraph is why.** It said a marker asserts every annotation inside `src/adcp` is sound, that
+internal errors therefore make the marker a false promise, and that they must be resolved first.
+That is inconsistent with *"the gate is the consumer's checker, not ours"* three paragraphs down,
+and the inconsistency was never noticed because neither claim had been measured against an
+installed wheel.
+
+**It has been now, and the gate clause is the right one.** A checker running over a consumer's
+code does not re-check the internals of an installed package; it reads the package's annotations
+and reports errors in the consumer's own file. So the marker promises *"my annotations are usable
+by your checker"*, which is exactly what the three-direction check decides, and it does not
+promise *"my internals type-check"*. Both were measured on one wheel: the consumer's correct file
+checks clean, the consumer's misuse reports one error per misuse, and removing the marker from the
+installed package makes every one of them vanish — with the internal errors present throughout.
+
+**An internal error is therefore a defect we own and not a bar to shipping the marker.** Those
+that sit in the GENERATED tree are a rendering defect by construction, fixed in `render.py` and
+never in the tree, which §5 already settles: the committed tree is an artifact, verified by one
+byte-compare, and is never the subject. The checker's scope names that exclusion explicitly rather
+than omitting the directory, and the gate's own population reads the exclusion, so deleting it
+pulls the whole tree in without anyone having to remember.
 
 **The gate is the consumer's checker, not ours.** A file outside the package that misuses a field
 and an enum member must FAIL a check against the installed wheel. The audit measured both of those

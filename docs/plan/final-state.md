@@ -107,12 +107,16 @@ reached to be the same object as the private path's.
 ## 7. The package declares its types to a consumer's type checker
 
 `py.typed` ships, so every annotation the compiler derives — constraint, branch type, enum member —
-is visible at the boundary it was built for. It ships with its errors declared rather than waiting
-for zero.
+is visible at the boundary it was built for. The marker promises that a consumer's checker can USE
+these annotations; it does not promise that our internals type-check, and an internal error is a
+defect we own rather than a bar to shipping it.
 
-**Decided by** running a type checker over a consumer module importing from `adcp.types.<domain>`
-in an environment that has only the installed wheel, and requiring a wrong assignment to be an
-error.
+**Decided by three directions against an environment holding only the installed wheel**, because
+the first two alone pass on a checker that sees nothing: a consumer module using the package
+correctly checks clean; a consumer module misusing a field, an enum member and a constructor
+reports one error per misuse; and removing the marker from the *installed* package makes every one
+of those errors vanish, leaving only the missing-marker notice. Checking our own source tree
+decides nothing here — it is readable with or without a marker, which is why the gap survived.
 
 ## 8. The wheel is the artifact
 
