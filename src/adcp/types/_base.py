@@ -74,6 +74,7 @@ from __future__ import annotations
 
 import functools
 import json
+import re
 from collections.abc import Callable, Mapping
 from importlib import resources
 from typing import (
@@ -265,6 +266,86 @@ def _document(document: str) -> dict:
 SAME_INSTANCE_LIST = ("allOf", "anyOf", "oneOf")
 SAME_INSTANCE_ONE = ("then", "else")
 
+#: THE SECTION A CARRIED DOCUMENT STORES A REPEATED SUBTREE UNDER, and the entry name it
+#: stores it as.
+#:
+#: ``docs/plan/architecture.md``, "THE RECORD'S TEXT IS A DAG; ITS POINTERS ARE NOT": "The
+#: record stores each distinct subtree once under its own ``definitions`` with a local
+#: reference at each occurrence.  **Every pointer any reader SPELLS keeps the spelling it
+#: has today.**  The hoisting is a storage representation and the readers dereference
+#: through it; it is not a renaming."
+#:
+#: **It is declared HERE, in the artifact's own vocabulary, for :class:`SchemaRef`'s
+#: reason.**  The package carries the document, so the package is what has to read its
+#: storage; ``codegen.bundle`` WRITES it and imports these two names rather than spelling
+#: them a second time.  Two spellings of the storage section is how a writer and a reader
+#: come to disagree about which pointers resolve.
+#:
+#: **No document of the bundle names an entry under this prefix**, which is what keeps the
+#: predicate below exact rather than approximate: ``codegen.bundle.stored`` refuses to
+#: write a record whose own section already holds one, so a reference matching it is one
+#: the storage wrote.
+STORE_SECTION = "definitions"
+STORE_PREFIX = "Shared"
+
+#: The reference a stored subtree is named by, and the one place its SPELLING is written.
+_STORE_REF = re.compile(rf"^#/{STORE_SECTION}/({STORE_PREFIX}\d+)$")
+
+
+def store_entry(index: int) -> str:
+    """The entry name the ``index``-th stored subtree is held under."""
+    return f"{STORE_PREFIX}{index}"
+
+
+def store_ref(entry: str) -> str:
+    """The local reference naming the stored subtree held under ``entry``."""
+    return f"#/{STORE_SECTION}/{entry}"
+
+
+def through_the_store(node: Any, root: Any) -> Any:
+    """``node`` with a STORAGE reference followed, or ``node`` itself.
+
+    **The one dereference of the record's own storage, and it is TRANSPARENT.**  The
+    architecture section above makes the hoisting invisible to every pointer a reader
+    spells, so a pointer that named a node of the inlined text must name the same node of
+    the stored text -- and between the two sits exactly this hop.  It carries nothing and
+    answers nothing: a ``definitions/Shared<N>`` segment is not an instance-bearing hop,
+    so :func:`applied_schema` neither resets the ``type`` it is carrying nor drops a
+    sibling conjunct across it, which is what the section requires of it.
+
+    **A DOCUMENT'S OWN local reference is left exactly as written**, which is the whole
+    reason the predicate is this narrow.  ``bundle.record`` leaves one in and 1,158 of them
+    carry a ``description`` beside the ``$ref``; following those would change what
+    :func:`schema_at` hands a grader at every one of them, for a storage decision that
+    touches none.  So the hop is taken only for a node whose ONE key is a ``$ref`` naming
+    a storage entry, which is the only node the hoisting writes.
+
+    One hop suffices and the loop is bounded for the reason it suffices: a stored subtree
+    is never itself a bare reference (``bundle.stored`` stores no node that already is
+    one), so a storage reference resolves to a node that is not another.  The bound is
+    written anyway, and raises, because a cycle here is a defect of the writer and the
+    alternative to raising is a hang.
+    """
+    for _ in range(_STORE_HOPS):
+        if not isinstance(node, dict) or len(node) != 1:
+            return node
+        uri = node.get("$ref")
+        if not isinstance(uri, str) or (named := _STORE_REF.match(uri)) is None:
+            return node
+        section = root.get(STORE_SECTION) if isinstance(root, dict) else None
+        if not isinstance(section, dict) or named[1] not in section:
+            return node
+        node = section[named[1]]
+    raise LookupError(
+        f"{node} is reached through more than {_STORE_HOPS} storage references, so the "
+        "record's own store holds a reference cycle"
+    )
+
+
+#: How many storage hops one dereference takes before it is a defect.  One is enough; see
+#: :func:`through_the_store`.
+_STORE_HOPS = 4
+
 #: The keywords an enclosing node states ABOUT THE SAME INSTANCE beside its ``type``
 #: word, conjoined into the node below it by :func:`_conjunction`.
 #:
@@ -345,7 +426,16 @@ def _as_a_member(word: Any) -> Any:
     return tuple(word) if isinstance(word, list) else word
 
 
-def entails_type(node: Mapping[str, Any], value: Any) -> bool:
+#: What ``root`` says when there is no stored document behind a node, which is what every
+#: reader holding a bare schema has.  :func:`through_the_store` answers ``node`` itself for
+#: it, so a caller grading a literal or a RAW document passes nothing and reads what it
+#: always read; a caller walking a RECORD passes the record, because that is where the
+#: storage lives.  Written as a name so the three statement readers below say the same
+#: thing in their signatures.
+NO_STORE: Any = None
+
+
+def entails_type(node: Mapping[str, Any], value: Any, root: Any = NO_STORE) -> bool:
     """Does this node's COMBINATOR force exactly ``value`` on its own instance?
 
     :func:`entailed_types` asked of one candidate, for the reader that holds a ``type``
@@ -354,10 +444,10 @@ def entails_type(node: Mapping[str, Any], value: Any) -> bool:
     normalisation is applied to both sides here rather than at the call, which is what
     keeps the two readers of the derivation from disagreeing about the list form.
     """
-    return _as_a_member(value) in entailed_types(node)
+    return _as_a_member(value) in entailed_types(node, root)
 
 
-def entailed_types(node: Mapping[str, Any]) -> frozenset[Any]:
+def entailed_types(node: Mapping[str, Any], root: Any = NO_STORE) -> frozenset[Any]:
     """The ``type`` words a node's COMBINATORS force on the instance it describes.
 
     draft-07 holds a ``oneOf``/``anyOf`` against the same instance the node describes,
@@ -406,6 +496,12 @@ def entailed_types(node: Mapping[str, Any]) -> frozenset[Any]:
             continue
         if not all(isinstance(b, dict) for b in branches):
             continue
+        # Each branch READ THROUGH THE RECORD'S OWN STORAGE, because both clauses below
+        # read the branch's keys: a branch stored once and referenced here states its
+        # ``type`` at the entry, and read as the reference it is a branch stating no word
+        # -- so the entailment the document makes would go unseen and the clause would
+        # answer about a node the document does not have.
+        branches = [through_the_store(b, root) for b in branches]
         stated = {_as_a_member(b.get("type")) for b in branches}
         if len(stated) == 1 and (word := next(iter(stated))) is not None:
             out.add(word)
@@ -418,7 +514,7 @@ def entailed_types(node: Mapping[str, Any]) -> frozenset[Any]:
     return frozenset(out)
 
 
-def _conjunction(node: dict, through: str) -> list:
+def _conjunction(node: dict, through: str, root: Any = NO_STORE) -> list:
     """What ``node`` asserts about the same instance, as draft-07's own conjunct list.
 
     **A conjunction is spelled the way draft-07 spells one -- an ``allOf`` member --
@@ -459,9 +555,13 @@ def _conjunction(node: dict, through: str) -> list:
     # enclosing pointer and at a pointer below it.
     out: list = [own] if own else []
     if through != "allOf" and isinstance(node.get("allOf"), list):
+        # Each conjunct READ THROUGH THE RECORD'S OWN STORAGE: the strip below reads the
+        # conjunct's keys, and a conjunct stored once and referenced here has one key that
+        # is not a statement at all, so the conjunction would carry a reference where the
+        # document states facts.
         out.extend(
             {k: v for k, v in c.items() if k not in _ANNOTATES_THE_POINTER_THAT_STATES_IT}
-            for c in node["allOf"]
+            for c in (through_the_store(c, root) for c in node["allOf"])
             if isinstance(c, dict)
         )
     return out
@@ -503,7 +603,7 @@ def _cut_to_its_own_word(node: dict) -> dict:
     return {**node, "type": "object"}
 
 
-def _descended(statements: list, key: str) -> list:
+def _descended(statements: list, key: str, root: Any = NO_STORE) -> list:
     """Every statement in ``statements``, read at ``key``.
 
     One hop of a pointer, applied to the statements held against the instance the hop
@@ -519,7 +619,17 @@ def _descended(statements: list, key: str) -> list:
     reading of the pointer's segments is needed (``docs/plan/architecture.md`` §3, "a
     node's position is never recovered from a pointer string").
     """
-    return [s[key] for s in statements if isinstance(s, dict) and isinstance(s.get(key), dict)]
+    # The value at ``key`` is READ THROUGH THE RECORD'S OWN STORAGE before it is tested
+    # for being a statement at all: a statement whose value at this key is stored once and
+    # referenced here would be carried as the reference and then DROP OUT at the next hop,
+    # where the reference holds no key -- so a conjunct the document states about an
+    # instance two hops down would silently stop being conjoined.
+    return [
+        descended
+        for s in statements
+        if isinstance(s, dict)
+        and isinstance(descended := through_the_store(s.get(key), root), dict)
+    ]
 
 
 def applied_schema(root: dict, pointer: str) -> dict:
@@ -585,6 +695,18 @@ def applied_schema(root: dict, pointer: str) -> dict:
     cutting: list | None = None
     parts = [p for p in pointer.lstrip("#").lstrip("/").split("/") if p != ""]
     for part in parts:
+        # **THE STORAGE HOP, taken BEFORE the part is read and carrying nothing.**  The
+        # record stores a repeated subtree once and references it at each occurrence, so a
+        # pointer that walked into the inlined text walks into a reference here -- and
+        # :func:`through_the_store` is what makes the two the same pointer.  Taken here
+        # rather than inside an arm because every arm below reads the node: the
+        # ``same_instance`` arm reads its ``type``, the conjunction arm asks whether it
+        # holds the key, and the hop at the foot indexes it.
+        #
+        # It is TRANSPARENT: nothing of ``enclosing``, ``conjoined``, ``siblings`` or
+        # ``cutting`` moves across it, because the segment it crosses is not one the
+        # document's own text spells and asserts nothing about any instance.
+        node = through_the_store(node, root)
         if isinstance(node, list):
             # the index half of a combinator hop, whose keyword was read already
             index = int(part)
@@ -593,9 +715,12 @@ def applied_schema(root: dict, pointer: str) -> dict:
                 # exactly as :func:`_conjunction` strips a spliced conjunct: a sibling's
                 # ``description`` is the SIBLING's pointer's answer, and spliced here it
                 # would arrive at a pointer the document has already answered.
+                # Each sibling READ THROUGH THE RECORD'S OWN STORAGE, which is
+                # :func:`_conjunction`'s reason at the same strip: a sibling conjunct
+                # stored once and referenced here holds one key that states nothing.
                 siblings = [
                     {k: v for k, v in c.items() if k not in _ANNOTATES_THE_POINTER_THAT_STATES_IT}
-                    for i, c in enumerate(cutting)
+                    for i, c in enumerate(through_the_store(c, root) for c in cutting)
                     if i != index and isinstance(c, dict)
                 ]
                 cutting = None
@@ -634,12 +759,12 @@ def applied_schema(root: dict, pointer: str) -> dict:
                 enclosing = declared
             elif (
                 isinstance(node, dict)
-                and len(entailed := entailed_types(node)) == 1
+                and len(entailed := entailed_types(node, root)) == 1
                 and isinstance(word := next(iter(entailed)), str)
             ):
                 enclosing = word
             if isinstance(node, dict):
-                conjoined += _conjunction(node, part)
+                conjoined += _conjunction(node, part, root)
             # **A second CUT drops the first one's siblings rather than guessing how
             # the two compose.**  A conjunct of a conjunct would need a reading of which
             # of the outer siblings' nodes answers the inner cut, and this rule makes
@@ -705,8 +830,8 @@ def applied_schema(root: dict, pointer: str) -> dict:
             # There is one operation and not two: :func:`_descended` is what the sibling
             # carrier already did, and the two lists differ in where they came from and
             # not in how they travel.
-            conjoined = _descended(conjoined, key)
-            siblings = _descended(siblings, key)
+            conjoined = _descended(conjoined, key, root)
+            siblings = _descended(siblings, key, root)
         if isinstance(node, dict) and key not in node and conjoined_holds:
             # **A HOP THE CONJUNCTION HAS AND THE NODE'S OWN TEXT DOES NOT.**  §8's third
             # pairing rule is "followed as far as the pointer goes", and this is one hop
@@ -737,6 +862,11 @@ def applied_schema(root: dict, pointer: str) -> dict:
             node = {}
             continue
         node = node[key]
+    # The LAST hop's storage reference, for the same reason as the one in the loop and
+    # with one more consequence: draft-07 IGNORES every sibling of a ``$ref``, so a node
+    # returned as a bare storage reference would silently discard the conjunction below
+    # it -- the pointer would resolve and the facts it was resolved for would not.
+    node = through_the_store(node, root)
     if not isinstance(node, dict):
         raise LookupError(f"{pointer} is {type(node).__name__}, not a schema")
     # A sibling conjunct is a conjunct of THIS node, so it joins the enclosing

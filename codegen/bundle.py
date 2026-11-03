@@ -16,10 +16,11 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
-from collections.abc import Collection, Iterator, Mapping
+from collections.abc import Callable, Collection, Iterator, Mapping
 from pathlib import Path, PurePosixPath
 from typing import NamedTuple
 
+from adcp.types import _base
 from adcp.types._base import applied_schema
 
 from codegen import keywords
@@ -1275,10 +1276,16 @@ def record(bundle_dir: Path, document: str, known: Collection[str]) -> dict | Re
     answer = inline(
         roots[document], pointer="", home=document, scope=None, where=_Where((document,), ())
     )
-    return answer if isinstance(answer, Refusal) else answer.node
+    return answer if isinstance(answer, Refusal) else stored(answer.node)
 
 
-def rebuilt(keyword: str, held: object, done: Mapping[str, object]) -> object:
+def rebuilt(
+    keyword: str,
+    held: object,
+    done: Mapping[str, object],
+    *,
+    missing: Callable[[object], object] = copy.deepcopy,
+) -> object:
     """``held`` with each subschema replaced by the one its caller computed for it.
 
     The inverse of :func:`subschemas` for one keyword, and BOTH descents that rebuild a
@@ -1292,20 +1299,197 @@ def rebuilt(keyword: str, held: object, done: Mapping[str, object]) -> object:
     ``additionalProperties: false``, an ``items`` that is neither a schema nor a list of
     them -- is deep-copied as it stands, because §3 drops nothing and because a record
     that aliased the bundle's own object would let one reader's edit reach another's.
+    ``missing`` is what a value the descent did not reach becomes, and it DEFAULTS to the
+    deep copy the paragraph above argues for.  :func:`stored` passes the identity instead,
+    because what it builds out of this is hashed and thrown away: a copy there would walk
+    every ``enum`` of every node of the record to answer a question about the node's own
+    text.  Both readers that PLACE a subschema take the default.
     """
-    def done_or_copy(suffix: str, sub: object) -> object:
-        return done[suffix] if suffix in done else copy.deepcopy(sub)
+
+    def done_or_missing(suffix: str, sub: object) -> object:
+        return done[suffix] if suffix in done else missing(sub)
 
     if keyword in HELD_BY_NAME and isinstance(held, dict):
         return {
-            key: done_or_copy(f"/{keyword}/{escape_key(key)}", sub)
+            key: done_or_missing(f"/{keyword}/{escape_key(key)}", sub)
             for key, sub in held.items()
         }
     if isinstance(held, list):
-        return [done_or_copy(f"/{keyword}/{i}", sub) for i, sub in enumerate(held)]
+        return [done_or_missing(f"/{keyword}/{i}", sub) for i, sub in enumerate(held)]
     if isinstance(held, dict):
-        return done_or_copy(f"/{keyword}", held)
-    return copy.deepcopy(held)
+        return done_or_missing(f"/{keyword}", held)
+    return missing(held)
+
+
+def _itself(value: object) -> object:
+    """``value``, uncopied: :func:`rebuilt`'s ``missing`` for a reader that only HASHES.
+
+    Named rather than written as a lambda at the call site because the argument it is
+    passed as carries a decision -- :func:`rebuilt`'s docstring says which -- and a lambda
+    there says only "do nothing" without saying what that is safe for.
+    """
+    return value
+
+
+def stored(record: dict) -> dict:
+    """``record`` STATING EACH DISTINCT SUBTREE ONCE, under its own ``definitions``.
+
+    ``docs/plan/architecture.md``, "THE RECORD'S TEXT IS A DAG; ITS POINTERS ARE NOT":
+    "The record stores each distinct subtree once under its own ``definitions`` with a
+    local reference at each occurrence.  **Every pointer any reader SPELLS keeps the
+    spelling it has today.**  The hoisting is a storage representation and the readers
+    dereference through it; it is not a renaming."
+
+    So this changes WHAT A RECORD STATES NOT AT ALL and only how it is stored.  A node at
+    a schema position whose content occurs more than once is written once under
+    :data:`adcp.types._base.STORE_SECTION` and replaced, at each occurrence, by the local
+    reference naming it -- draft-07 resolves that reference against the document root,
+    which is the document the package carries beside the module, so the payload a document
+    admitted before it admits after and ``strict_validate`` resolves the reference against
+    the referrer exactly as it already resolves a document's own.
+
+    **The whole node is replaced and no sibling is left beside the reference**, which is
+    what makes the replacement an identity rather than a reading of draft-07's
+    sibling rule.  Draft-07 IGNORES every key beside a ``$ref``, so a reference written
+    with siblings would state the target alone and the siblings would be text nothing
+    reads; the occurrence's own keys are PART of the content hashed, so two occurrences
+    differing in a ``description`` are two contents and share nothing.
+
+    **WHY IT IS NEEDED, measured** (``adcp-client-python-82m.25``): the bundle's 1,054
+    portable documents are 5,363,667 bytes of source and their inlined records were
+    835,864,437 bytes committed, with ``core/mcp-webhook-payload.json`` alone at
+    112,920,473 -- 957,187 nodes carrying 6,442 distinct ones, one subtree placed 1,957
+    times.  The record was a TREE where the document is a DAG.  The duplication was never
+    the bundle's: it is what inlining a reference graph structurally produces.
+
+    **WHICH SUBTREES, and the rule is IN-DEGREE over the consed graph rather than
+    occurrences in the text.**  Content is interned, every distinct content's own child
+    edges are counted, and a content with two or more in-edges is stored.  That is
+    exactly "each distinct subtree once": a content with ONE in-edge has one parent, and
+    walking up from it reaches a stored ancestor or the root along one path, so its text
+    appears once whether it is stored or not -- while a content with two reaches two.
+    Counting occurrences in the expanded text instead would ask a question about 957,187
+    nodes to decide 6,442.
+
+    Two nodes are never stored, each for a reason that is not a threshold:
+
+    * the ROOT, which cannot arise -- a finite acyclic record's root content cannot occur
+      strictly inside itself, so the root's in-degree is 0 -- and which is written as the
+      exclusion it is, because the root is where the section itself is added;
+    * a node that IS already a bare reference.  Storing one writes a reference to a
+      reference, which is longer than the node it replaces and buys nothing.
+
+    **THE ENTRY NAMES ARE ASSIGNED IN A WALK OF THE CONSED GRAPH** and not in hash order,
+    so the name a subtree gets is a function of where the document first reaches it.  The
+    emission is byte-stable under that: the record is dumped with its keys sorted, so the
+    one thing a node's own key order could move -- which object of an interned content is
+    the representative -- reaches no byte.
+
+    **A COLLIDING ENTRY IS A BUILD FAILURE**, which is §2's rule for a property of the
+    compiler rather than of a document: the predicate the package dereferences through
+    (:func:`adcp.types._base.through_the_store`) reads the entry's NAME, so a document
+    already holding one would make the storage indistinguishable from its own text and the
+    two would resolve to different nodes.  Measured over the 3.2 bundle: 0 entries under
+    the prefix in any document, raw or recorded.
+    """
+    #: The content digest per node OBJECT.  Keyed on ``id`` because the record already
+    #: shares one object per inlined target (:func:`record`), so this is one digest per
+    #: distinct object rather than one per occurrence; ``record`` holds every one of them
+    #: alive for the length of this call.
+    by_id: dict[int, str] = {}
+    #: Per distinct CONTENT: one node that has it, and the suffix -> content of its own
+    #: child subschemas.  The graph this function reasons over is this mapping.
+    body: dict[str, dict] = {}
+    edges: dict[str, dict[str, str]] = {}
+    #: In-edges per content, counted once per edge of the consed graph above.
+    into: dict[str, int] = {}
+
+    def digest(node: dict) -> str:
+        held = by_id.get(id(node))
+        if held is not None:
+            return held
+        children = {
+            suffix: digest(sub)
+            for _, suffix, sub, _ in subschemas(node)
+            if isinstance(sub, dict)
+        }
+        # The node's own text with each child subschema standing as its digest, which is
+        # what makes the hash a function of the whole subtree while costing the node's own
+        # size.  ``_itself`` because this mapping is serialised and dropped.
+        canonical = {
+            key: rebuilt(key, value, children, missing=_itself) if key in DESCENDS else value
+            for key, value in node.items()
+        }
+        at = hashlib.sha256(
+            json.dumps(canonical, sort_keys=True, default=str).encode()
+        ).hexdigest()
+        by_id[id(node)] = at
+        if at not in body:
+            body[at] = node
+            edges[at] = children
+            for child in children.values():
+                into[child] = into.get(child, 0) + 1
+        return at
+
+    root = digest(record)
+    names: dict[str, str] = {}
+
+    def is_stored(at: str) -> bool:
+        """Whether the content ``at`` is written once under the section, which is the
+        in-degree rule and the two exclusions the docstring argues."""
+        if at == root or into.get(at, 0) < 2:
+            return False
+        node = body[at]
+        return not (len(node) == 1 and "$ref" in node)
+
+    #: Breadth-first over the consed graph from the root, children in the node's own key
+    #: order, so an entry's name says where the document first reaches the subtree.
+    unread = [root]
+    reached = {root}
+    while unread:
+        one = unread.pop(0)
+        if is_stored(one):
+            names[one] = _base.store_entry(len(names))
+        for child in edges[one].values():
+            if child not in reached:
+                reached.add(child)
+                unread.append(child)
+
+    built: dict[str, dict] = {}
+
+    def build(at: str) -> dict:
+        held = built.get(at)
+        if held is not None:
+            return held
+        node = body[at]
+        done = {
+            suffix: (
+                {"$ref": _base.store_ref(names[child])} if child in names else build(child)
+            )
+            for suffix, child in edges[at].items()
+        }
+        out = {
+            key: rebuilt(key, value, done, missing=_itself) if key in DESCENDS else value
+            for key, value in node.items()
+        }
+        built[at] = out
+        return out
+
+    out = build(root)
+    if not names:
+        return out
+    section = out.get(_base.STORE_SECTION)
+    section = dict(section) if isinstance(section, dict) else {}
+    colliding = sorted(set(section) & set(names.values()))
+    if colliding:
+        raise BuildFailure(
+            f"the record's own {_base.STORE_SECTION} section already holds "
+            f"{colliding}, so a stored subtree cannot be told from the document's own "
+            f"text: {_base.STORE_PREFIX!r} is the one prefix "
+            "adcp.types._base.through_the_store dereferences through"
+        )
+    section.update((entry, build(at)) for at, entry in names.items())
+    return {**out, _base.STORE_SECTION: section}
 
 
 def pointers_above(pointer: str, candidates: Collection[str]) -> list[str]:
