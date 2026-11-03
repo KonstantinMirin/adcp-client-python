@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import IntMin1, StrMinLen1, StrMinLen16MaxLen255Matching1E5CF9EB, StrMinLen1MaxLen128, StrMinLen1MaxLen255, StrMinLen1MaxLen255Matching67860854, StrMinLen1MaxLen64MatchingD373B860
 
@@ -61,6 +61,10 @@ class ReportingObligation(AdCPBaseModel):
         UniqueItems('media_buy_ids'),
         ConditionalRequired((Match('health', True, ('healthy', 'complete')),Match('destination_ref', True, None),), require=('materialization_count', 'successful_materialization_count', 'resource_retained_until'), forbid=()),
         ConditionalRequired((Match('reconciliation_mode', True, ('consumer_receipt',)),Match('health', True, ('healthy', 'complete')),), require=('accepted_receipt_count', 'receipt_count', 'pending_adjustment_count'), forbid=()),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/reporting-obligation.json', pointer='#/properties/schedule/allOf/0', keyword='else', kind='WIDENED', rung='KEYWORD', fact={'if': {'properties': {'alignment': {'const': 'source_timezone'}}, 'required': ['alignment']}, 'then': {'required': ['period_timezone'], 'not': {'required': ['period_anchor']}}, 'else': {'not': {'anyOf': [{'required': ['period_anchor']}, {'required': ['period_timezone']}]}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/else'),
+        Approximation(document='core/reporting-obligation.json', pointer='#/properties/schedule', keyword='else', kind='WIDENED', rung='KEYWORD', fact={'if': {'properties': {'alignment': {'const': 'source_timezone'}}, 'required': ['alignment']}, 'then': {'required': ['period_timezone'], 'not': {'required': ['period_anchor']}}, 'else': {'not': {'anyOf': [{'required': ['period_anchor']}, {'required': ['period_timezone']}]}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/else'),
     )
     reporting_obligation_id: StrMinLen1MaxLen255Matching67860854
     delivery_config_id: StrMinLen1MaxLen64MatchingD373B860

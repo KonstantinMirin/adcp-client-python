@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, PropertyCount, Rule, UniqueItems
 from adcp.types.constraints import IntMin1, StrMaxLen2048Matching3AC8B861, StrMaxLen254
 
@@ -44,6 +44,10 @@ class ReportingDeliveryCapabilities(AdCPBaseModel):
         ConditionalRequired((Match('managed_delivery', True, (True,)),), require=('resource_retention_days', 'authorization_revocation_seconds'), forbid=()),
         ConditionalRequired((Match('reconciled_billing', True, (True,)),), require=('receipt_task',), forbid=()),
         ConditionalRequired((Match('readiness_notification', True, None),), require=('managed_delivery',), forbid=()),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/reporting-delivery-capabilities.json', pointer='#/properties/offerings/items/properties/schedule/allOf/0', keyword='else', kind='WIDENED', rung='KEYWORD', fact={'if': {'properties': {'alignment': {'const': 'source_timezone'}}, 'required': ['alignment']}, 'then': {'required': ['period_timezone_policy'], 'not': {'anyOf': [{'required': ['period_anchor_policy']}, {'required': ['period_anchor']}]}, 'allOf': [{'if': {'properties': {'period_timezone_policy': {'const': 'fixed'}}, 'required': ['period_timezone_policy']}, 'then': {'required': ['period_timezone']}, 'else': {'not': {'required': ['period_timezone']}}}]}, 'else': {'not': {'anyOf': [{'required': ['period_anchor_policy']}, {'required': ['period_timezone_policy']}, {'required': ['period_anchor']}, {'required': ['period_timezone']}]}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/else'),
+        Approximation(document='core/reporting-delivery-capabilities.json', pointer='#/properties/offerings/items/properties/schedule', keyword='else', kind='WIDENED', rung='KEYWORD', fact={'if': {'properties': {'alignment': {'const': 'source_timezone'}}, 'required': ['alignment']}, 'then': {'required': ['period_timezone_policy'], 'not': {'anyOf': [{'required': ['period_anchor_policy']}, {'required': ['period_anchor']}]}, 'allOf': [{'if': {'properties': {'period_timezone_policy': {'const': 'fixed'}}, 'required': ['period_timezone_policy']}, 'then': {'required': ['period_timezone']}, 'else': {'not': {'required': ['period_timezone']}}}]}, 'else': {'not': {'anyOf': [{'required': ['period_anchor_policy']}, {'required': ['period_timezone_policy']}, {'required': ['period_anchor']}, {'required': ['period_timezone']}]}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/else'),
     )
     supported: Literal[True]
     reliable_reporting_version: Annotated[Literal['1.0'] | None, Field(description='Explicit adoption declaration for the proper-name AdCP 3.2 Reliable Reporting contract. Presence, together with supported: true and the media_buy.reporting_delivery experimental feature gate, is the affirmative machine-readable answer. Absence denotes the earlier experimental managed-reporting shape.')] = None

@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import IntMin1, IntMin1Max99, StrMatching611F08F3, StrMinLen1, StrMinLen1MaxLen2048, StrMinLen1MaxLen255, StrMinLen1MaxLen64
 
@@ -99,6 +99,10 @@ class GetReportingStatusResponse(BranchDispatchMixin, AdCPVersionEnvelope, Proto
         ConditionalRequired((Match('health', True, ('action_required',)),), require=('issues',), forbid=()),
         ConditionalRequired((Match('health', True, ('delayed',)),), require=('issues',), forbid=()),
         ConditionalRequired((Match('health', True, ('healthy', 'waiting', 'complete')),), require=('issues',), forbid=()),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='media-buy/get-reporting-status-response.json', pointer='#/properties/periods/items/properties/schedule/allOf/0', keyword='else', kind='WIDENED', rung='KEYWORD', fact={'if': {'properties': {'alignment': {'const': 'source_timezone'}}, 'required': ['alignment']}, 'then': {'required': ['period_timezone'], 'not': {'required': ['period_anchor']}}, 'else': {'not': {'anyOf': [{'required': ['period_anchor']}, {'required': ['period_timezone']}]}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/else'),
+        Approximation(document='media-buy/get-reporting-status-response.json', pointer='#/properties/periods/items/properties/schedule', keyword='else', kind='WIDENED', rung='KEYWORD', fact={'if': {'properties': {'alignment': {'const': 'source_timezone'}}, 'required': ['alignment']}, 'then': {'required': ['period_timezone'], 'not': {'required': ['period_anchor']}}, 'else': {'not': {'anyOf': [{'required': ['period_anchor']}, {'required': ['period_timezone']}]}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/else'),
     )
     view: ReportingStatusView | None = None
     ledger_snapshot_id: Annotated[StrMinLen1MaxLen255 | None, Field(description="Opaque identity of the seller's consistent reporting-ledger snapshot. Every page reached from one periods cursor MUST return the same value.")] = None

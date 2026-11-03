@@ -1056,6 +1056,329 @@ _ALIEN_KEY = "__adcp_harness_not_a_property__"
 _ALIEN_VALUES: tuple[Any, ...] = (None, "__adcp_harness__", -1, [], {}, True)
 
 
+#: How many ``allOf`` levels :func:`own_facts` folds before it stops.  A composed class
+#: is one class over its whole conjunct list at any depth
+#: (``compiler.lower_composition``'s worklist), so the fold has to reach the same depth;
+#: the bound is here because a fold with no base case is a crash and section 9 says a
+#: crash is not an outcome.
+_OWN_DEPTH = 8
+
+
+def own_facts(schema: Any, depth: int = 0) -> dict[str, Any]:
+    """Every keyword the node at this pointer states ABOUT ITSELF, conjuncts folded in.
+
+    **The input half of :func:`refused_witnesses`, and it is not :func:`_composed`.**
+    That function is the document-side reading of a node's VALUE SET and folds the facts
+    section 2's intersection rule orders -- ``FOLDED_FACTS``, which is
+    ``keywords.rendered_at(ROOT)`` and therefore carries no ``min``/``maxProperties``, no
+    ``dependencies`` and no conditional.  What a refuses-check needs is the opposite
+    reading: not "what does the composed node admit" but "which keywords are there to take
+    a boundary FROM", and a keyword no intersection rule can order still names a boundary.
+    ``core/positive-postal-area-support.json`` is the measurement: its ``minProperties``
+    sits in a conjunct, ``_composed`` does not carry it to the root, and the witness that
+    found the P0 -- ``{}`` -- is derived from that keyword and from no other.
+
+    Gap-fill and never override, in document order, which is the safe direction here: the
+    node's own statement is the one the walk reads first, and a conjunct's fills a keyword
+    nobody else states.  Every candidate built from this is SCREENED by the whole document
+    anyway (:func:`refused_witnesses`), so a fold that reads one keyword from the wrong
+    view produces a candidate the document admits and the candidate is dropped.
+
+    **``required`` is the one exception and it composes by UNION**, which is
+    :func:`_composed`'s own rule for it: it is a set of names and every conjunct
+    contributes its own, so a gap-fill would read one view's names and drop the rest --
+    and ``required`` is the keyword this function's commonest witness comes from.
+
+    **``properties`` is deliberately NOT merged here.**  A key two views declare is one
+    key whose declarations compose, and composing them needs the pointer each view's
+    ``$ref`` is read against -- ``core/positive-postal-area-support.json`` declares
+    ``us_zip`` in both views and the RECORD shares each declaration into its own
+    ``definitions`` entry, so the merge is of two pointers and not of two declarations.
+    That reading belongs to a caller that has the root in hand; nothing in
+    :func:`refused_witnesses` reads ``properties`` at all.
+    """
+    if not isinstance(schema, dict) or depth > _OWN_DEPTH:
+        return {}
+    out = {k: v for k, v in schema.items() if k != "allOf"}
+    conjuncts = schema.get("allOf")
+    if not isinstance(conjuncts, list):
+        return out
+    for conjunct in conjuncts:
+        folded = own_facts(conjunct, depth + 1)
+        for keyword, value in folded.items():
+            if keyword == "required" and isinstance(value, list):
+                have = out["required"] if isinstance(out.get("required"), list) else []
+                out["required"] = [*have, *(k for k in value if k not in have)]
+                continue
+            out.setdefault(keyword, value)
+    return out
+
+
+def refused_witnesses(
+    schema: dict, instance: Any, *, validator_cls: Any = None
+) -> tuple[tuple[Any, str, str], ...]:
+    """Every value this node's own keywords say the document REFUSES, from one it ADMITS.
+
+    **Section 8's witness derivation, taken on the FAR side of each boundary.**  The draw
+    "COVERS the node's admissible space by constraint class; it does not sample it. ...
+    For each keyword the node states, the draw takes the classes that keyword
+    distinguishes: every member of an ``enum``, both sides of each bound and the bound
+    itself."  :data:`codegen.keywords` names the keywords; this takes the OUTSIDE class of
+    each one -- the string one shorter than ``minLength``, the object one key short of
+    ``minProperties``, the number just past ``maximum``, the value no ``enum`` member is --
+    because that is the half ``check_accepts`` never offers and therefore the half no
+    instrument has ever graded.  ``adcp-client-python-6oe`` is what that blindness cost: a
+    class wider than its document in the one direction the whole existing instrument
+    cannot see, reported by nothing for as long as it existed.
+
+    **EVERY CANDIDATE IS SCREENED BY THE DOCUMENT**, exactly as :func:`refusing_payload`
+    screens its three: ``conforms`` has to answer ``False`` before a candidate is yielded,
+    so a derivation that misreads a keyword yields nothing rather than an assertion the
+    document does not make.  That is what lets the derivations below be simple: a keyword
+    whose far side this cannot build, or whose far side the document admits anyway because
+    a sibling keyword widens it, contributes no witness and costs no verdict.
+
+    **It is a REDUCTION of the instance and never a draw**, which is the whole of why this
+    is affordable: ``check_accepts``' cost is ``hypothesis_jsonschema.from_schema``
+    (151.24 s of a 151.51 s pair, ``tests/corpus.py``), and this calls it never.  One
+    accepted instance -- the one the accepts check already has in hand, which is why
+    ``check_pair`` passes ``accepted[0]`` to :func:`check_liveness` for its own payload --
+    is perturbed once per keyword, and each perturbation is one ``conforms``.
+
+    Returns ``(the candidate, the keyword it came from, how)``.  The keyword is the one
+    this function AIMED at; which keywords the document actually refused on is
+    :func:`violated_keywords`' answer and the caller reports that beside it, for the reason
+    that function's own docstring gives.
+    """
+    cls = validator_cls or validator_for(schema)
+    facts = own_facts(schema)
+    out: list[tuple[Any, str, str]] = []
+
+    def take(candidate: Any, keyword: str, how: str) -> None:
+        if conforms(schema, candidate, validator_cls=cls) is False:
+            out.append((candidate, keyword, how))
+
+    def whole(value: Any) -> int | float | None:
+        return value if isinstance(value, (int, float)) and not isinstance(value, bool) else None
+
+    # ---- the object's KEY SET: required, the property counts, a closed object ----
+    if isinstance(instance, dict):
+        for key in facts.get("required") or []:
+            if isinstance(key, str) and key in instance:
+                take({k: v for k, v in instance.items() if k != key}, "required",
+                     f"drops the required key {key!r}")
+        low = whole(facts.get("minProperties"))
+        if low is not None:
+            short = dict(list(instance.items())[: max(int(low) - 1, 0)])
+            take(short, "minProperties", f"{len(short)} keys, one short of minProperties {low}")
+        high = whole(facts.get("maxProperties"))
+        if high is not None:
+            over = dict(instance)
+            while len(over) <= int(high):
+                over[f"{_ALIEN_KEY}{len(over)}"] = 1
+            take(over, "maxProperties", f"{len(over)} keys, one past maxProperties {high}")
+        for keyword in ("additionalProperties", "propertyNames", "patternProperties"):
+            if keyword in facts:
+                take({**instance, _ALIEN_KEY: 1}, keyword,
+                     f"adds the undeclared key {_ALIEN_KEY!r}")
+        depends = facts.get("dependencies")
+        if isinstance(depends, dict):
+            for trigger, needs in depends.items():
+                if not isinstance(needs, list):
+                    continue
+                dropped = {k: v for k, v in instance.items() if k not in needs}
+                take({**dropped, trigger: instance.get(trigger, 1)}, "dependencies",
+                     f"keeps {trigger!r} and drops what it depends on")
+    # ---- the string's LENGTH and its PATTERN ----
+    if isinstance(instance, str):
+        low = whole(facts.get("minLength"))
+        if low is not None:
+            take(instance[: max(int(low) - 1, 0)], "minLength",
+                 f"one character short of minLength {low}")
+        high = whole(facts.get("maxLength"))
+        if high is not None:
+            # EXACTLY one past the bound, built by padding the accepted instance and
+            # truncating: the witness §8 names is "both sides of each bound and the bound
+            # itself", so the far side is the bound plus one and not an arbitrarily longer
+            # string -- a reader of a failure has to see which boundary was crossed.
+            take((instance + "x" * (int(high) + 1))[: int(high) + 1], "maxLength",
+                 f"one character past maxLength {high}")
+        if "pattern" in facts:
+            take(_ALIEN_KEY, "pattern", "a string the pattern does not match")
+    # ---- the number's BOUNDS ----
+    if isinstance(instance, (int, float)) and not isinstance(instance, bool):
+        for keyword, step in (("minimum", -1), ("maximum", 1)):
+            bound = whole(facts.get(keyword))
+            if bound is not None:
+                take(bound + step, keyword, f"one past {keyword} {bound}")
+        for keyword in ("exclusiveMinimum", "exclusiveMaximum"):
+            bound = whole(facts.get(keyword))
+            if bound is not None:
+                take(bound, keyword, f"the excluded bound {bound} itself")
+        factor = whole(facts.get("multipleOf"))
+        if factor:
+            take(factor + factor / 2 if isinstance(factor, float) else factor * 2 + 1,
+                 "multipleOf", f"not a multiple of {factor}")
+    # ---- the array's LENGTH and its DISTINCTNESS ----
+    if isinstance(instance, list):
+        low = whole(facts.get("minItems"))
+        if low is not None:
+            take(instance[: max(int(low) - 1, 0)], "minItems",
+                 f"one element short of minItems {low}")
+        high = whole(facts.get("maxItems"))
+        if high is not None:
+            filler = instance[0] if instance else None
+            take([*instance, *([filler] * (int(high) + 1 - len(instance)))], "maxItems",
+                 f"one element past maxItems {high}")
+        if facts.get("uniqueItems") is True and instance:
+            take([*instance, instance[0]], "uniqueItems", "repeats an element")
+        if "contains" in facts:
+            take([], "contains", "an empty array, which contains nothing")
+    # ---- the VOCABULARY, and the JSON type itself ----
+    if "const" in facts:
+        for alien in _ALIEN_VALUES:
+            take(alien, "const", f"{alien!r}, which is not the pinned value")
+    members = facts.get("enum")
+    if isinstance(members, list):
+        for alien in (_ALIEN_KEY, *_ALIEN_VALUES):
+            if alien not in members:
+                take(alien, "enum", f"{alien!r}, which no enum member is")
+    if "type" in facts:
+        for alien in _ALIEN_VALUES:
+            if type(alien) is not type(instance):
+                take(alien, "type", f"replaces the instance with {alien!r}")
+    #: Deduplicated by the candidate's JSON text, keeping the FIRST keyword that aimed at
+    #: it: two keywords can name one value (a ``const`` and the ``type`` beside it), and
+    #: offering it twice would report one disagreement twice.
+    seen: set[str] = set()
+    unique: list[tuple[Any, str, str]] = []
+    for candidate, keyword, how in out:
+        text = json.dumps(candidate, sort_keys=True, default=str)
+        if text in seen:
+            continue
+        seen.add(text)
+        unique.append((candidate, keyword, how))
+    return tuple(unique)
+
+
+@dataclass
+class RefusesResult:
+    """What the refuses-check found about one pair: the witnesses and the disagreements."""
+
+    #: ``(the candidate as JSON, the keyword aimed at, the keywords the document refused
+    #: on, whether the CONSTRUCTOR admitted it)``, one row per witness offered.
+    rows: tuple[tuple[str, str, tuple[str, ...], bool], ...] = ()
+    #: The rows the constructor ADMITTED -- the model wider than its document -- and for
+    #: which the module declares nothing.  Section 2 permits the first and not the second.
+    undeclared: tuple[tuple[str, str, tuple[str, ...], bool], ...] = ()
+    #: The keywords the module DECLARES an approximation for at or under this pointer.
+    declared: tuple[str, ...] = ()
+    #: pass | widened_undeclared | model_error | no_witness
+    outcome: str = "unrun"
+    detail: str = ""
+
+
+def check_refuses(
+    schema: dict,
+    construct: Callable[[Any], Any],
+    instance: Any,
+    *,
+    declared: Collection[str] = (),
+    validator_cls: Any = None,
+) -> RefusesResult:
+    """**The other half of section 8's method**: every value the document REFUSES, offered
+    to the class, which must refuse it or carry a declaration saying it does not.
+
+    Section 8 states the obligation as "the class admits every value its document admits
+    and refuses every value it refuses", and ``docs/plan/final-state.md`` reading 1 is the
+    same sentence about the artifact.  :func:`check_accepts` is the first half; this is the
+    second, over the witnesses :func:`refused_witnesses` derives from the node's own
+    keywords.  ``adcp-client-python-6oe`` is what its absence cost: a class admitting ``{}``
+    where its document refuses it, undeclared, which a cell proof found in 1.4 s and no
+    pair-scoped site had ever reported.
+
+    **AND ONE FORM OF THIS CHECK WAS BUILT, MEASURED WORTHLESS AND DELETED.  THIS IS NOT
+    THAT FORM, AND THE DIFFERENCE IS THE WHOLE DESIGN.**  This module's own docstring
+    records the refutation: the deleted check "mutated ONE KEYWORD at a time, drew an
+    instance the mutated schema accepts, and passed it to the caller's ``accept`` -- which
+    validates against THE DOCUMENT before constructing.  So a step site asserted that
+    ``jsonschema`` rejects a payload violating the schema it was handed, and the generated
+    class took no part in the outcome: on ``core/pagination-request.json`` a model with
+    ``Any`` on every field accepted, refused 75 of 75 instances and recorded no wrong
+    acceptance, exactly as a faithful one did."  27,791 such sites were the suite's entire
+    wall clock, spent on a property of a third-party validator.
+
+    Three things keep this out of that trap, and each is GATED in
+    ``tests/test_refuses_check.py`` rather than asserted here:
+
+    * **the value is offered to the CLASS and to nothing else.**  ``construct`` is
+      ``model_validate``, never ``pair.accept`` -- see the paragraph below, which is the
+      one rule this signature exists to enforce;
+    * **the refutation is the gate.**
+      ``test_a_model_with_any_on_every_field_fails_this_check`` runs the discarded
+      instrument's own counterexample against this one, and a model with ``Any`` on every
+      field must FAIL.  A green there means this has been rebuilt as the thing that
+      measured ``jsonschema``;
+    * **nothing is drawn and nothing is MUTATED.**  The witness comes off the unmodified
+      document and is screened by ``conforms(schema, candidate) is False``, so the document
+      refuses it as written rather than as a mutation left it.
+
+    **``construct`` IS THE CONSTRUCTOR AND NOT THE ENTRY POINT, and that is the whole
+    distinction from :func:`check_liveness` and the whole distinction from the deleted
+    check above.**  That function offers ONE refused payload to
+    ``pair.accept``, whose schema half answers first, and its own docstring is emphatic
+    that the result "is a LIVENESS check on the wiring and it is not a measurement of the
+    class" -- an acceptance there means the schema half is missing.  This function asks the
+    other question, the one reading 1 is actually about: ``model_validate`` builds this
+    payload, so what does a consumer who constructs rather than validates get?  D4 says
+    the constructor MAY be looser; reading 2 says every place it is must be declared at
+    its own pointer.  So an admission here is not a verdict on its own -- it is one exactly
+    where the module declares nothing.
+
+    ``declared`` is the keywords the module declares an approximation for at or under this
+    pointer (``harness.declarations_of`` read through ``render.declared_at``'s containment
+    rule).  A candidate the constructor admits is ``pass`` where a declaration names its
+    keyword and ``widened_undeclared`` where none does -- which is section 2's rule read as
+    a check rather than as prose, and is what keeps the declared set from being an
+    allowlist in this direction too.
+
+    ``no_witness`` is a real answer and not a failure: a document that refuses nothing this
+    reduction can build -- an open typeless object, which draft-07 admits every instance of
+    -- has nothing for the class to refuse, and the pair is neither graded nor failed.
+    """
+    res = RefusesResult(declared=tuple(sorted(set(declared))))
+    cls = validator_cls or validator_for(schema)
+    witnesses = refused_witnesses(schema, instance, validator_cls=cls)
+    if not witnesses:
+        res.outcome = "no_witness"
+        return res
+    rows: list[tuple[str, str, tuple[str, ...], bool]] = []
+    for candidate, keyword, _how in witnesses:
+        try:
+            construct(candidate)
+            admitted = True
+        except ValidationError:
+            admitted = False
+        except Exception as error:  # not a refusal a consumer could catch
+            res.outcome = "model_error"
+            res.detail = f"{type(error).__name__}: {error}"[:300]
+            return res
+        rows.append(
+            (
+                json.dumps(candidate, sort_keys=True, default=str),
+                keyword,
+                tuple(violated_keywords(schema, candidate, validator_cls=cls)),
+                admitted,
+            )
+        )
+    res.rows = tuple(rows)
+    res.undeclared = tuple(
+        row for row in rows if row[3] and row[1] not in res.declared
+    )
+    res.outcome = "widened_undeclared" if res.undeclared else "pass"
+    return res
+
+
 def refusing_payload(
     schema: dict, instance: Any, *, validator_cls: Any = None
 ) -> tuple[Any, str] | None:
