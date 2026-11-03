@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import IntMin0Max150, StrMinLen1
 
@@ -53,6 +53,11 @@ class Age(AdCPBaseModel):
         UniqueItems('supported_verification_methods'),
         ConditionalRequired((Match('supported_verification_methods', True, None),), require=('supported_bases',), forbid=()),
     )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/demographic-targeting-capability.json', pointer='#/properties/age/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'execution_modes': {'contains': {'const': 'continuous_bounds'}}}, 'required': ['execution_modes']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/demographic-targeting-capability.json', pointer='#/properties/age/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'execution_modes': {'contains': {'const': 'enumerated_intervals'}}}, 'required': ['execution_modes']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/demographic-targeting-capability.json', pointer='#/properties/age/allOf/3', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'supported_bases': {'contains': {'const': 'verified'}}}, 'required': ['supported_bases']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
     execution_modes: Annotated[list[ExecutionModesItem], Field(description='Ways this product can execute canonical age intent. continuous_bounds accepts canonical predicates whose explicit integer bounds fall between min_supported_age and max_supported_age, inclusive; omitted bounds additionally require the corresponding supports_unbounded_min or supports_unbounded_max flag. enumerated_intervals accepts exact unions of the declared intervals; signals resolves through signals carrying authoritative demographic_predicate metadata.', json_schema_extra={'uniqueItems': True}, min_length=1)]
     min_supported_age: Annotated[IntMin0Max150 | None, Field(description='Lowest integer accepted as an explicit min or max bound by continuous_bounds. This limit does not replace an omitted min: omission means no lower age restriction. Required when that execution mode is declared.')] = None
     max_supported_age: Annotated[IntMin0Max150 | None, Field(description='Highest integer accepted as an explicit min or max bound by continuous_bounds. This limit does not replace an omitted max: omission means no upper age restriction, so a request such as min 65 remains 65+ even when max_supported_age is 65. Required when that execution mode is declared.')] = None
@@ -72,6 +77,11 @@ class DemographicTargetingCapability(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/demographic-targeting-capability.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/demographic-targeting-capability.json', pointer='#/properties/age/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'execution_modes': {'contains': {'const': 'continuous_bounds'}}}, 'required': ['execution_modes']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/demographic-targeting-capability.json', pointer='#/properties/age/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'execution_modes': {'contains': {'const': 'enumerated_intervals'}}}, 'required': ['execution_modes']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/demographic-targeting-capability.json', pointer='#/properties/age/allOf/3', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'supported_bases': {'contains': {'const': 'verified'}}}, 'required': ['supported_bases']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
     age: Annotated[Age, Field(description='Age-targeting execution available for this product.')]
 
 

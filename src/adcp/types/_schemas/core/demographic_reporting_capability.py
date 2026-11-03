@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule, UniqueItems
 from adcp.types.constraints import IntMin0Max150, StrMinLen1Matching130C1C9D
 
@@ -45,6 +45,10 @@ class Age(AdCPBaseModel):
         UniqueItems('reporting_modes'),
         UniqueItems('intervals'),
     )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/demographic-reporting-capability.json', pointer='#/properties/age/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'reporting_modes': {'contains': {'const': 'exact_predicates'}}}, 'required': ['reporting_modes']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/demographic-reporting-capability.json', pointer='#/properties/age/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'reporting_modes': {'contains': {'const': 'enumerated_intervals'}}}, 'required': ['reporting_modes']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
     reporting_modes: Annotated[list[ReportingModesItem], Field(description='Ways this product can produce age rows. exact_predicates accepts requested canonical age predicates within the declared bounds. enumerated_intervals reports only the exact intervals declared in intervals; buyers may aggregate adjacent complete intervals but MUST NOT treat a wider or narrower interval as the requested audience.', json_schema_extra={'uniqueItems': True}, min_length=1)]
     min_reportable_age: Annotated[IntMin0Max150 | None, Field(description='Lowest explicit min or max bound accepted by exact_predicates. Required when that mode is declared.')] = None
     max_reportable_age: Annotated[IntMin0Max150 | None, Field(description='Highest explicit min or max bound accepted by exact_predicates. Required when that mode is declared.')] = None
@@ -64,6 +68,10 @@ class DemographicReportingCapability(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         RequiredGroups((('age',), ('demographic_systems',)), 'anyOf'),
         UniqueItems('demographic_systems'),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/demographic-reporting-capability.json', pointer='#/properties/age/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'reporting_modes': {'contains': {'const': 'exact_predicates'}}}, 'required': ['reporting_modes']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/demographic-reporting-capability.json', pointer='#/properties/age/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'reporting_modes': {'contains': {'const': 'enumerated_intervals'}}}, 'required': ['reporting_modes']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     age: Annotated[Age | None, Field(description='Machine-comparable age ranges this product can report.')] = None
     demographic_systems: Annotated[list[DemographicSystem] | None, Field(description='Measurement-system notations this product may return. A code remains opaque unless its capability interval and response row also carry a canonical age predicate.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None

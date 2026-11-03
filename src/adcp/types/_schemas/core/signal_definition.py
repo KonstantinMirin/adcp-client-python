@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule, UniqueItems
 from adcp.types.constraints import AdCPUrl, HttpUrl, IntMin1, IntMin1Max90, StrMatching59861E88, StrMatchingA828669D, StrMatchingEFC12812, StrMaxLen2000, StrMaxLen253, StrMaxLen500, StrMinLen1, StrMinLen1MaxLen255
 
@@ -198,6 +198,9 @@ class SignalDefinition(AdCPBaseModel):
         ConditionalRequired((Match('methodology', True, ('modeled',)),), require=('modeling',), forbid=()),
         ConditionalRequired((Match('audience_expansion', True, (True,)),), require=('modeling',), forbid=()),
         ConditionalRequired((Match('demographic_predicate', True, None),), require=('restricted_attributes',), forbid=()),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/signal-definition.json', pointer='#/allOf/4', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'data_sources': {'type': 'array', 'contains': {'enum': ['offline_survey', 'public_record_census', 'public_record_voter_file', 'public_record_other', 'offline_transaction']}}}, 'required': ['data_sources']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     id: Annotated[StrMatchingA828669D, Field(description="Signal identifier within the publishing domain's adagents.json signals[]")]
     name: Annotated[StrMinLen1MaxLen255, Field(description='Human-readable signal name')]

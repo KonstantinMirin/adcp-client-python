@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, RequiredGroups, Rule, UniqueItems
 from adcp.types.constraints import FloatMin0Max100, StrMinLen1, StrMinLen16MaxLen255Matching1E5CF9EB
 
@@ -30,10 +30,6 @@ class CreativesItem(CreativeAsset):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/sync-creatives-request.json', pointer='#/properties/creatives/items')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ConditionalRequired((Match('representation_selection', True, None),), require=(), forbid=('localization',)),
-    )
-    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='creative/sync-creatives-request.json', pointer='#/properties/creatives/items/properties/assets', keyword='patternProperties', kind='WIDENED', rung='CONTAINER', fact={'^[a-z0-9_]+$': {'oneOf': [{'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/assets/asset-union.json'}, {'type': 'array', 'items': {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/assets/asset-union.json'}, 'minItems': 1}]}}, attribution='docs/plan/rebuild-plan.md §5 objects/patternProperties'),
-        Approximation(document='creative/sync-creatives-request.json', pointer='#/properties/creatives/items/properties/component_assets/patternProperties/^[a-z][a-z0-9_]*$', keyword='patternProperties', kind='WIDENED', rung='CONTAINER', fact={'^[a-z0-9_]+$': {'anyOf': [{'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/assets/asset-union.json'}, {'type': 'array', 'items': {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/assets/asset-union.json'}, 'minItems': 1}]}}, attribution='docs/plan/rebuild-plan.md §5 objects/patternProperties'),
     )
     revision_id: Annotated[CreativeRevisionID | None, Field(description='Optional buyer-assigned identity for this exact input-content state. Buyers may send it to any 3.2 peer; creative.supports_revisions gates reliance on immutability, echo, readback, and delivery correlation, not whether the open request shape may carry the field. Within a supporting seller, a revision_id is immutable under one creative_id: reusing it with different canonical revision content MUST fail with CREATIVE_REVISION_CONTENT_MISMATCH. Metadata and assignment fields excluded from revision content may change without minting a new revision.')] = None
     localization: Annotated[CreativeLocalization | None, Field(description='Sync-only materialized-localization mutation. The top-level assets are the source variant; optional locale_fallbacks declare buyer-approved language-family substitutions, and default_locale_variant_id selects the final serving fallback. An object transactionally replaces the source assets and complete locale set, omission preserves existing localization only when the top-level source assets are unchanged, and null removes localization. This field never requests translation or generation. Receivers MUST advertise get_adcp_capabilities creative.localization before accepting it.')] = None
@@ -103,10 +99,6 @@ class SyncCreativesRequest(AdCPVersionEnvelope):
         RequiredGroups((('creatives',), ('assignments',), ('assignment_operations',)), 'anyOf'),
         ConditionalRequired((Match('delete_missing', True, (True,)),), require=('creatives',), forbid=()),
         ForbiddenGroups((('assignments', 'assignment_operations'),)),
-    )
-    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='creative/sync-creatives-request.json', pointer='#/properties/creatives/items/properties/assets', keyword='patternProperties', kind='WIDENED', rung='CONTAINER', fact={'^[a-z0-9_]+$': {'oneOf': [{'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/assets/asset-union.json'}, {'type': 'array', 'items': {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/assets/asset-union.json'}, 'minItems': 1}]}}, attribution='docs/plan/rebuild-plan.md §5 objects/patternProperties'),
-        Approximation(document='creative/sync-creatives-request.json', pointer='#/properties/creatives/items/properties/component_assets/patternProperties/^[a-z][a-z0-9_]*$', keyword='patternProperties', kind='WIDENED', rung='CONTAINER', fact={'^[a-z0-9_]+$': {'anyOf': [{'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/assets/asset-union.json'}, {'type': 'array', 'items': {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/assets/asset-union.json'}, 'minItems': 1}]}}, attribution='docs/plan/rebuild-plan.md §5 objects/patternProperties'),
     )
     account: Annotated[AccountReference, Field(description='Account that owns these creatives.')]
     creatives: Annotated[list[CreativesItem] | None, Field(description='Array of creative assets to sync (create or update)', max_length=100, min_length=1)] = None

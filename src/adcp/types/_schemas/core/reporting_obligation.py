@@ -63,8 +63,7 @@ class ReportingObligation(AdCPBaseModel):
         ConditionalRequired((Match('reconciliation_mode', True, ('consumer_receipt',)),Match('health', True, ('healthy', 'complete')),), require=('accepted_receipt_count', 'receipt_count', 'pending_adjustment_count'), forbid=()),
     )
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='core/reporting-obligation.json', pointer='#/properties/schedule/allOf/0', keyword='else', kind='WIDENED', rung='KEYWORD', fact={'if': {'properties': {'alignment': {'const': 'source_timezone'}}, 'required': ['alignment']}, 'then': {'required': ['period_timezone'], 'not': {'required': ['period_anchor']}}, 'else': {'not': {'anyOf': [{'required': ['period_anchor']}, {'required': ['period_timezone']}]}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/else'),
-        Approximation(document='core/reporting-obligation.json', pointer='#/properties/schedule', keyword='else', kind='WIDENED', rung='KEYWORD', fact={'if': {'properties': {'alignment': {'const': 'source_timezone'}}, 'required': ['alignment']}, 'then': {'required': ['period_timezone'], 'not': {'required': ['period_anchor']}}, 'else': {'not': {'anyOf': [{'required': ['period_anchor']}, {'required': ['period_timezone']}]}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/else'),
+        Approximation(document='core/reporting-obligation.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'consumer_status_count': {'minimum': 1}}, 'required': ['consumer_status_count']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     reporting_obligation_id: StrMinLen1MaxLen255Matching67860854
     delivery_config_id: StrMinLen1MaxLen64MatchingD373B860

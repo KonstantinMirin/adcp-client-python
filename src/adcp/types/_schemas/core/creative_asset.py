@@ -48,7 +48,6 @@ class CreativeAsset(AdCPBaseModel):
     )
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='core/creative-asset.json', pointer='#/properties/assets', keyword='patternProperties', kind='WIDENED', rung='CONTAINER', fact={'^[a-z0-9_]+$': {'oneOf': [{'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/assets/asset-union.json'}, {'type': 'array', 'items': {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/assets/asset-union.json'}, 'minItems': 1}]}}, attribution='docs/plan/rebuild-plan.md §5 objects/patternProperties'),
-        Approximation(document='core/creative-asset.json', pointer='#/properties/component_assets/patternProperties/^[a-z][a-z0-9_]*$', keyword='patternProperties', kind='WIDENED', rung='CONTAINER', fact={'^[a-z0-9_]+$': {'anyOf': [{'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/assets/asset-union.json'}, {'type': 'array', 'items': {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/assets/asset-union.json'}, 'minItems': 1}]}}, attribution='docs/plan/rebuild-plan.md §5 objects/patternProperties'),
     )
     creative_id: Annotated[str, Field(description='Unique identifier for the creative. Stable across legacy named-format and 3.1+ canonical-format paths — a creative registered against `format_id` retains the same `creative_id` when later viewed through a canonical-format flatten.')]
     name: Annotated[str, Field(description='Human-readable creative name')]

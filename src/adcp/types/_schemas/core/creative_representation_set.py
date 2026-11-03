@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types.constraints import StrMatching3CBDBB74, StrMinLen1
 
 from .creative_representation import CreativeRepresentation
@@ -21,10 +21,6 @@ class CreativeRepresentationSet(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/creative-representation-set.json', pointer='#')
-    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='core/creative-representation-set.json', pointer='#/properties/representations/items/properties/assets', keyword='patternProperties', kind='WIDENED', rung='CONTAINER', fact={'^[a-z0-9_]+$': {'oneOf': [{'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/assets/asset-union.json'}, {'type': 'array', 'items': {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/assets/asset-union.json'}, 'minItems': 1}]}}, attribution='docs/plan/rebuild-plan.md §5 objects/patternProperties'),
-        Approximation(document='core/creative-representation-set.json', pointer='#/properties/representations/items/properties/component_assets/patternProperties/^[a-z][a-z0-9_]*$', keyword='patternProperties', kind='WIDENED', rung='CONTAINER', fact={'^[a-z0-9_]+$': {'anyOf': [{'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/assets/asset-union.json'}, {'type': 'array', 'items': {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/assets/asset-union.json'}, 'minItems': 1}]}}, attribution='docs/plan/rebuild-plan.md §5 objects/patternProperties'),
-    )
     creative_id: Annotated[StrMinLen1, Field(description='Stable logical creative identifier across all representations and later seller-bound manifests.')]
     revision_id: Annotated[CreativeRevisionID, Field(description='Buyer-assigned immutable revision identity for this complete representation set. Changing any revision-bearing part of the set requires a new revision_id; selection does not.')]
     revision_content_digest: Annotated[StrMatching3CBDBB74, Field(description='SHA-256 of the RFC 8785 JCS canonical revision content defined by this schema. The producer computes it over the complete representation set after removing exactly the top-level $schema, creative_id, revision_id, revision_content_digest, and name properties. `$schema` is transport/schema-location metadata and never mints creative content identity. Resolvers MUST recompute and reject a mismatch; selection readback carries the verified digest so downstream sellers bind the revision to the complete source set rather than only the selected manifest.')]

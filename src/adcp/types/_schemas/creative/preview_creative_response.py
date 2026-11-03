@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types.constraints import HttpUrl, StrMaxLen2000
 
 from ..core.context import ContextObject
@@ -32,10 +32,6 @@ class PreviewCreativeResponse(BranchDispatchMixin, AdCPVersionEnvelope, Protocol
     @classmethod
     def _branch_combinator(cls) -> str:
         return "oneOf"
-    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='creative/preview-creative-response.json', pointer='#/oneOf/2/properties/manifest/properties/assets', keyword='patternProperties', kind='WIDENED', rung='CONTAINER', fact={'^[a-z0-9_]+$': {'oneOf': [{'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/assets/asset-union.json'}, {'type': 'array', 'items': {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/assets/asset-union.json'}, 'minItems': 1}]}}, attribution='docs/plan/rebuild-plan.md §5 objects/patternProperties'),
-        Approximation(document='creative/preview-creative-response.json', pointer='#/oneOf/2/properties/manifest/properties/component_assets/patternProperties/^[a-z][a-z0-9_]*$', keyword='patternProperties', kind='WIDENED', rung='CONTAINER', fact={'^[a-z0-9_]+$': {'anyOf': [{'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/assets/asset-union.json'}, {'type': 'array', 'items': {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/assets/asset-union.json'}, 'minItems': 1}]}}, attribution='docs/plan/rebuild-plan.md §5 objects/patternProperties'),
-    )
 
 
 class PreviewCreativeSingleResponsePreviewsItemInput(AdCPBaseModel):
@@ -155,10 +151,6 @@ class PreviewCreativeVariantResponse(PreviewCreativeResponse):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/preview-creative-response.json', pointer='#/oneOf/2')
-    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='creative/preview-creative-response.json', pointer='#/oneOf/2/properties/manifest/properties/assets', keyword='patternProperties', kind='WIDENED', rung='CONTAINER', fact={'^[a-z0-9_]+$': {'oneOf': [{'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/assets/asset-union.json'}, {'type': 'array', 'items': {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/assets/asset-union.json'}, 'minItems': 1}]}}, attribution='docs/plan/rebuild-plan.md §5 objects/patternProperties'),
-        Approximation(document='creative/preview-creative-response.json', pointer='#/oneOf/2/properties/manifest/properties/component_assets/patternProperties/^[a-z][a-z0-9_]*$', keyword='patternProperties', kind='WIDENED', rung='CONTAINER', fact={'^[a-z0-9_]+$': {'anyOf': [{'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/assets/asset-union.json'}, {'type': 'array', 'items': {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/assets/asset-union.json'}, 'minItems': 1}]}}, attribution='docs/plan/rebuild-plan.md §5 objects/patternProperties'),
-    )
     response_type: Annotated[Literal['variant'], Field(description='Discriminator indicating this is a variant preview response')]
     variant_id: Annotated[str, Field(description="Agent-assigned AdCP served-execution identifier. Agent-unique for an agent advertising creative.supports_revisions; otherwise scoped by this response's creative_id.")]
     creative_id: Annotated[str | None, Field(description='Creative identifier this variant belongs to')] = None

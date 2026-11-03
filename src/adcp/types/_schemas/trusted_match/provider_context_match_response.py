@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import IntMin0Max86400
 
@@ -48,10 +48,6 @@ class ContextMatchResponseProviderRouter(AdCPVersionEnvelope, ProtocolEnvelope):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='trusted-match/provider-context-match-response.json', pointer='#')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('signals_by_provider',), ('context',), ('ext',))),
-    )
-    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='trusted-match/provider-context-match-response.json', pointer='#/properties/offers/items/properties/creative_manifest/properties/assets', keyword='patternProperties', kind='WIDENED', rung='CONTAINER', fact={'^[a-z0-9_]+$': {'oneOf': [{'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/assets/asset-union.json'}, {'type': 'array', 'items': {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/assets/asset-union.json'}, 'minItems': 1}]}}, attribution='docs/plan/rebuild-plan.md §5 objects/patternProperties'),
-        Approximation(document='trusted-match/provider-context-match-response.json', pointer='#/properties/offers/items/properties/creative_manifest/properties/component_assets/patternProperties/^[a-z][a-z0-9_]*$', keyword='patternProperties', kind='WIDENED', rung='CONTAINER', fact={'^[a-z0-9_]+$': {'anyOf': [{'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/assets/asset-union.json'}, {'type': 'array', 'items': {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/assets/asset-union.json'}, 'minItems': 1}]}}, attribution='docs/plan/rebuild-plan.md §5 objects/patternProperties'),
     )
     type: Annotated[Literal['context_match_response'], Field(description='Message type discriminator for deserialization. Same const as the router→publisher variant so decoders can key off type before dispatching on hop shape.')]
     request_id: Annotated[str, Field(description='Echoed request identifier from the context match request.')]

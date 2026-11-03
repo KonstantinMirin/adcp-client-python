@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule, UniqueItems
 from adcp.types.constraints import StrMinLen1
 
@@ -65,6 +65,10 @@ class DemographicTargetingResolution(AdCPBaseModel):
         UniqueItems('applied_bases'),
         UniqueItems('applied_verification_methods'),
         ConditionalRequired((Match('applied_verification_methods', True, None),), require=('applied_bases',), forbid=()),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/demographic-targeting-resolution.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'requested': {'properties': {'age': {'required': ['accepted_bases']}}}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/demographic-targeting-resolution.json', pointer='#/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'applied_bases': {'contains': {'const': 'verified'}}}, 'required': ['applied_bases']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     requested: Annotated[DemographicTargetingIntent, Field(description='Canonical demographic predicate and determination constraints requested by the buyer.')]
     applied: Annotated[DemographicPredicate, Field(description='Canonical demographic predicate actually applied by the seller.')]

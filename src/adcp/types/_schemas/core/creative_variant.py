@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types.constraints import StrMinLen1MaxLen255
 
 from .creative_manifest import CreativeManifest
@@ -48,10 +48,6 @@ class CreativeVariant(DeliveryMetrics):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/creative-variant.json', pointer='#')
-    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='core/creative-variant.json', pointer='#/properties/manifest/properties/assets', keyword='patternProperties', kind='WIDENED', rung='CONTAINER', fact={'^[a-z0-9_]+$': {'oneOf': [{'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/assets/asset-union.json'}, {'type': 'array', 'items': {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/assets/asset-union.json'}, 'minItems': 1}]}}, attribution='docs/plan/rebuild-plan.md §5 objects/patternProperties'),
-        Approximation(document='core/creative-variant.json', pointer='#/properties/manifest/properties/component_assets/patternProperties/^[a-z][a-z0-9_]*$', keyword='patternProperties', kind='WIDENED', rung='CONTAINER', fact={'^[a-z0-9_]+$': {'anyOf': [{'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/assets/asset-union.json'}, {'type': 'array', 'items': {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/assets/asset-union.json'}, 'minItems': 1}]}}, attribution='docs/plan/rebuild-plan.md §5 objects/patternProperties'),
-    )
     variant_id: Annotated[str, Field(description='Agent-assigned served-execution identifier. The legacy contract scopes uniqueness to the agent and creative. When the agent advertises creative.supports_revisions, the identifier is agent-unique and MUST NOT be reused for another creative, source revision, locale, or rendered manifest. A revision-capable adapter whose native platform reuses an identifier maps each distinct execution to a distinct AdCP variant_id and may retain the native identifier in ext. When that agent supports variant preview, this ID is its unambiguous lookup key.')]
     revision_id: Annotated[CreativeRevisionID | None, Field(description='Buyer-authored input revision from which this served execution was derived. Required when that execution derives from a revision-aware creative. Historical reporting may legitimately return an older revision after list_creatives shows a newer current revision. Delivery optimization, generation, transcoding, or representation selection does not mint a revision.')] = None
     locale_variant_id: Annotated[StrMinLen1MaxLen255 | None, Field(description='Buyer-assigned locale variant that supplied the served assets. Required for every delivered variant of a localized creative, including default fallback delivery. Omitted for unlocalized creatives.')] = None

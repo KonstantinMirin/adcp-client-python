@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Dependencies, ForbiddenGroups, Rule
 from adcp.types.constraints import AdCPUrl, HttpUrl, IntMin1, StrMatching32F5291C, StrMatching43E30B32, StrMaxLen512Matching7C270D5A, StrMaxLen64Matching2AA13120, StrMinLen1, StrMinLen3MaxLen63MatchingBF870236
 
@@ -93,10 +93,6 @@ class Account(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         Dependencies('identity_change', ('revision',)),
         ForbiddenGroups((('destination_billing_entity',),)),
-    )
-    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='core/account.json', pointer='#/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule/allOf/0', keyword='else', kind='WIDENED', rung='KEYWORD', fact={'if': {'properties': {'alignment': {'const': 'source_timezone'}}, 'required': ['alignment']}, 'then': {'required': ['period_timezone'], 'not': {'required': ['period_anchor']}}, 'else': {'not': {'anyOf': [{'required': ['period_anchor']}, {'required': ['period_timezone']}]}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/else'),
-        Approximation(document='core/account.json', pointer='#/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule', keyword='else', kind='WIDENED', rung='KEYWORD', fact={'if': {'properties': {'alignment': {'const': 'source_timezone'}}, 'required': ['alignment']}, 'then': {'required': ['period_timezone'], 'not': {'required': ['period_anchor']}}, 'else': {'not': {'anyOf': [{'required': ['period_anchor']}, {'required': ['period_timezone']}]}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/else'),
     )
     account_id: Annotated[str, Field(description='Unique identifier for this account')]
     name: Annotated[str, Field(description="Human-readable account name (e.g., 'Acme', 'Acme c/o Pinnacle')")]

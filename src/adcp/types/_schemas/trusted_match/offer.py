@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 
 from ..core.brand_ref import BrandReference
@@ -24,10 +24,6 @@ class Offer(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='trusted-match/offer.json', pointer='#')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('macros',),)),
-    )
-    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='trusted-match/offer.json', pointer='#/properties/creative_manifest/properties/assets', keyword='patternProperties', kind='WIDENED', rung='CONTAINER', fact={'^[a-z0-9_]+$': {'oneOf': [{'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/assets/asset-union.json'}, {'type': 'array', 'items': {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/assets/asset-union.json'}, 'minItems': 1}]}}, attribution='docs/plan/rebuild-plan.md §5 objects/patternProperties'),
-        Approximation(document='trusted-match/offer.json', pointer='#/properties/creative_manifest/properties/component_assets/patternProperties/^[a-z][a-z0-9_]*$', keyword='patternProperties', kind='WIDENED', rung='CONTAINER', fact={'^[a-z0-9_]+$': {'anyOf': [{'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/assets/asset-union.json'}, {'type': 'array', 'items': {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/assets/asset-union.json'}, 'minItems': 1}]}}, attribution='docs/plan/rebuild-plan.md §5 objects/patternProperties'),
     )
     package_id: Annotated[str, Field(description='Package identifier from the media buy.')]
     seller_agent: Annotated[SellerAgentReference | None, Field(description="Optional echo of the package's seller agent from sync-time metadata. Provided for publisher-side observability so log pipelines can attribute offers to sellers without round-tripping to the media-buy store. Non-authoritative: the binding on the cached AvailablePackage is source of truth. When omitted, the router MAY stamp this field from its cached package→seller map.")] = None

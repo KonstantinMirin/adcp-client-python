@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Dependencies, ForbiddenGroups, Match, NegatedConditional, Rule
 from adcp.types.constraints import HttpUrl, IntMin1, StrMatching43E30B32, StrMinLen1
 from adcp.types.envelopes import FailedResponse
@@ -45,10 +45,6 @@ class SyncAccountsResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnv
     @classmethod
     def _branch_combinator(cls) -> str:
         return "oneOf"
-    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='account/sync-accounts-response.json', pointer='#/oneOf/0/properties/accounts/items/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule/allOf/0', keyword='else', kind='WIDENED', rung='KEYWORD', fact={'if': {'properties': {'alignment': {'const': 'source_timezone'}}, 'required': ['alignment']}, 'then': {'required': ['period_timezone'], 'not': {'required': ['period_anchor']}}, 'else': {'not': {'anyOf': [{'required': ['period_anchor']}, {'required': ['period_timezone']}]}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/else'),
-        Approximation(document='account/sync-accounts-response.json', pointer='#/oneOf/0/properties/accounts/items/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule', keyword='else', kind='WIDENED', rung='KEYWORD', fact={'if': {'properties': {'alignment': {'const': 'source_timezone'}}, 'required': ['alignment']}, 'then': {'required': ['period_timezone'], 'not': {'required': ['period_anchor']}}, 'else': {'not': {'anyOf': [{'required': ['period_anchor']}, {'required': ['period_timezone']}]}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/else'),
-    )
 
 
 class Action(StrEnum):
@@ -94,10 +90,6 @@ class AccountsItem(AdCPBaseModel):
         ConditionalRequired((Match('action', True, ('failed',)),), require=('errors',), forbid=()),
         NegatedConditional((Match('action', True, ('failed',)),), require=('status',), forbid=()),
     )
-    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='account/sync-accounts-response.json', pointer='#/oneOf/0/properties/accounts/items/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule/allOf/0', keyword='else', kind='WIDENED', rung='KEYWORD', fact={'if': {'properties': {'alignment': {'const': 'source_timezone'}}, 'required': ['alignment']}, 'then': {'required': ['period_timezone'], 'not': {'required': ['period_anchor']}}, 'else': {'not': {'anyOf': [{'required': ['period_anchor']}, {'required': ['period_timezone']}]}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/else'),
-        Approximation(document='account/sync-accounts-response.json', pointer='#/oneOf/0/properties/accounts/items/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule', keyword='else', kind='WIDENED', rung='KEYWORD', fact={'if': {'properties': {'alignment': {'const': 'source_timezone'}}, 'required': ['alignment']}, 'then': {'required': ['period_timezone'], 'not': {'required': ['period_anchor']}}, 'else': {'not': {'anyOf': [{'required': ['period_anchor']}, {'required': ['period_timezone']}]}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/else'),
-    )
     account_id: Annotated[str | None, Field(description="Seller-assigned account identifier. Use this in subsequent create_media_buy and other account-scoped operations when the seller's account model uses account_id references. For buyer-declared accounts, this may be echoed as the seller's internal handle for correlation and support, but the seller MUST continue accepting the natural-key AccountRef for subsequent calls. Buyers keep sending the natural key and MUST NOT assume the seller accepts the echoed account_id as an AccountRef.")] = None
     account: Annotated[AccountReference | None, Field(description='Account reference, echoed from the request\'s settings-update-mode entry. Present only for settings-update-mode results (an account-id-namespace or previously-provisioned natural-key account targeted via the request\'s `account` field, per sync_accounts request schema) — not for provisioning-mode results, which use the flat `brand` + `operator` fields instead. When present, this is the row\'s identity anchor in place of brand/operator, including on action: "failed" rows where the account cannot be resolved to a brand/operator tuple at all (e.g. an unreachable account_id in an upstream-managed namespace).')] = None
     brand: Annotated[BrandReference | None, Field(description='Current canonical brand reference for the account.')] = None
@@ -136,10 +128,6 @@ class SyncAccountsSuccess(SyncAccountsResponse):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='account/sync-accounts-response.json', pointer='#/oneOf/0')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('errors',),)),
-    )
-    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='account/sync-accounts-response.json', pointer='#/oneOf/0/properties/accounts/items/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule/allOf/0', keyword='else', kind='WIDENED', rung='KEYWORD', fact={'if': {'properties': {'alignment': {'const': 'source_timezone'}}, 'required': ['alignment']}, 'then': {'required': ['period_timezone'], 'not': {'required': ['period_anchor']}}, 'else': {'not': {'anyOf': [{'required': ['period_anchor']}, {'required': ['period_timezone']}]}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/else'),
-        Approximation(document='account/sync-accounts-response.json', pointer='#/oneOf/0/properties/accounts/items/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule', keyword='else', kind='WIDENED', rung='KEYWORD', fact={'if': {'properties': {'alignment': {'const': 'source_timezone'}}, 'required': ['alignment']}, 'then': {'required': ['period_timezone'], 'not': {'required': ['period_anchor']}}, 'else': {'not': {'anyOf': [{'required': ['period_anchor']}, {'required': ['period_timezone']}]}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/else'),
     )
     dry_run: Annotated[bool | None, Field(description='Whether this was a dry run (no actual changes made)')] = None
     accounts: Annotated[list[AccountsItem], Field(description='Results for each account processed')]

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import Dependencies, Rule, UniqueItems
 from adcp.types.constraints import StrMinLen1, StrMinLen16MaxLen255Matching1E5CF9EB
 
@@ -133,6 +133,9 @@ class GetProductsRequest(AdCPVersionEnvelope):
         Dependencies('catalog', ('brand',)),
         Dependencies('if_pricing_version', ('if_wholesale_feed_version',)),
         UniqueItems('preferred_delivery_types'),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='media-buy/get-products-request.json', pointer='#/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'anyOf': [{'required': ['if_wholesale_feed_version']}, {'required': ['if_pricing_version']}]}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     idempotency_key: Annotated[StrMinLen16MaxLen255Matching1E5CF9EB | None, Field(description='Optional client-generated key on the AdCP 3.x compatibility facade. The field remains optional on every arm for wire compatibility. A seller MAY ignore a supplied key on a guaranteed side-effect-free synchronous read. Buyers SHOULD supply a key whenever the request may allocate a task, finalize a proposal, or otherwise change observable state. When a key is supplied on such a request and the seller declares adcp.idempotency.supported: true, the seller MUST apply the AdCP replay contract before that effect. If the key is omitted or the seller declares adcp.idempotency.supported: false, the buyer has no portable at-most-once retry guarantee after an ambiguous result. New callers SHOULD use the compact 3.2 tasks; each stateful split task has its own idempotency identity, so callers MUST retry with the same tool name. Keys MUST be unique per seller and logical request.')] = None
     buying_mode: Annotated[BuyingMode, Field(description="Declares buyer intent for this request. 'brief': publisher curates product recommendations from the provided brief. 'wholesale': buyer requests raw product inventory to apply their own audiences — brief must not be provided, and proposals are omitted. 'refine': iterate on products and proposals from a previous get_products response using the refine array of change requests. v3 clients MUST include buying_mode. Sellers receiving requests from pre-v3 clients without buying_mode SHOULD default to 'brief'. Timing semantics: 'wholesale' is a wholesale product feed read — sellers SHOULD return a synchronous response and MUST NOT route a 'wholesale' request through the async/Submitted arm; partial completion is signalled via the response's incomplete[] field (with optional estimated_wait), not via a task-handoff envelope. 'brief' and 'refine' MAY complete synchronously, or MAY return a Submitted envelope (see get-products-async-response-submitted.json) when curation requires upstream-system queries or HITL review the seller cannot complete inside time_budget. Buyers needing predictable fast wholesale product feed access MUST use 'wholesale'; buyers open to slower curation use 'brief' or 'refine'.")]

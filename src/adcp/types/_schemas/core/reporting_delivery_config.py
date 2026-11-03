@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, PropertyCount, Rule, UniqueItems
 from adcp.types.constraints import IntMin1, StrMinLen1MaxLen128MatchingB577C746, StrMinLen1MaxLen255Matching67860854, StrMinLen1MaxLen64MatchingD373B860
 
@@ -60,10 +60,6 @@ class ReportingDeliveryConfiguration(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-delivery-config.json', pointer='#')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ConditionalRequired((Match('reconciliation_mode', True, ('consumer_receipt',)),), require=('method',), forbid=()),
-    )
-    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='core/reporting-delivery-config.json', pointer='#/properties/schedule/allOf/0', keyword='else', kind='WIDENED', rung='KEYWORD', fact={'if': {'properties': {'alignment': {'const': 'source_timezone'}}, 'required': ['alignment']}, 'then': {'required': ['period_timezone'], 'not': {'required': ['period_anchor']}}, 'else': {'not': {'anyOf': [{'required': ['period_anchor']}, {'required': ['period_timezone']}]}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/else'),
-        Approximation(document='core/reporting-delivery-config.json', pointer='#/properties/schedule', keyword='else', kind='WIDENED', rung='KEYWORD', fact={'if': {'properties': {'alignment': {'const': 'source_timezone'}}, 'required': ['alignment']}, 'then': {'required': ['period_timezone'], 'not': {'required': ['period_anchor']}}, 'else': {'not': {'anyOf': [{'required': ['period_anchor']}, {'required': ['period_timezone']}]}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/else'),
     )
     delivery_config_id: Annotated[StrMinLen1MaxLen64MatchingD373B860, Field(description='Caller-selected stable identifier, unique within the authenticated caller and account.')]
     delivery_config_version: Annotated[IntMin1, Field(description='Caller-selected immutable semantic generation. Increment when feed/profile/scope/finality/schedule/method/destination changes; lifecycle fields may change in place.')]

@@ -35,15 +35,28 @@ live cells, each over the WHOLE set and none over a list:
   (:func:`test_every_deferred_cell_names_its_keyword`), which is what makes a deferral an
   outcome rather than a silence.
 
-**AND SIX CELLS ARE NOT YET PROVED, each with a bead and a measurement, and NONE of them
-is in an allowlist here.**  They are excluded by a DERIVED predicate -- the bundle states
-none of them -- and the gate above says so by name: all six are a keyword at a RULE
-position inside an ``if`` that states no ``required``, which §5's ``if`` row decides
-compiles to nothing ("a ``Match`` clause list where it states ``required`` plus
-``properties`` with ``const`` or ``enum`` values; otherwise nothing").  Declaring the
-widening instead mints 4,635 sites in 97 documents from 112 distinct conditional facts,
-which §8 rules out by name.  ``adcp-client-python-3bb`` carries the measurement and the
-two sentences the design documents would have to move.
+* **EVERY live cell is PROVED or REFUSED BY NAME, over the whole 289 and with no
+  predicate narrowing the set** (:func:`test_every_live_cell_is_proved_or_refused_by_name`).
+
+**THE SIX THAT WERE NOT, AND WHAT CLOSED THEM (``sdk/ident``).**  ``additionalProperties``,
+``dependencies``, ``minProperties``, ``maxProperties``, ``oneOf`` and ``patternProperties``
+at a RULE position were unproved, and the clause that let the suite stay green was a
+DERIVED exclusion -- the bundle states none of the six, so the gate above ranged over the
+cells the bundle does state and these six sat outside it with a bead and a measurement.
+The exclusion is deleted, because the cells are proved.
+
+Each is a keyword inside an ``if`` that states no ``required``, which §5's ``if`` row
+decides compiles to nothing ("a ``Match`` clause list where it states ``required`` plus
+``properties`` with ``const`` or ``enum`` values; otherwise nothing") and which §8 sentence
+3b's complement does not reach either -- there is no key whose predicate the complement
+would be of.  So the model is wider at all six and §2's answer is a DECLARATION; what
+stood in the way was arithmetic.  Declaring an unreadable condition minted **4,635 sites in
+97 documents from 112 distinct conditional facts**, a set §8 ruled out by name, and the
+ratio 4,635 : 112 was a measurement of a DIFFERENT defect: a declaration written once per
+pointer the record inlines the condition to.  §8 sentence 2 retires that -- "a fact is
+declared ONCE, at the node the document STATES it" -- and ``lower.rules._conditional``
+declares the condition now.  ``./check``'s third line is 126 facts in 61 documents, of
+which 89 are this drop.
 """
 
 from __future__ import annotations
@@ -218,87 +231,66 @@ def test_every_deferred_cell_names_its_keyword() -> None:
     assert nameless == set(), sorted(nameless)
 
 
-def test_every_cell_the_bundle_states_is_proved_or_refused_by_name() -> None:
-    """**The half of §5's table the artifact's correctness rests on, and it holds whole.**
+def test_every_live_cell_is_proved_or_refused_by_name() -> None:
+    """**Every one of the 289, PROVED by a payload or REFUSED by name -- no predicate.**
 
-    ``cells.stated_by_the_bundle`` is "the set the induction has to range over to reach a
-    document", because "a cell no document states is a cell no document's faithfulness
-    depends on".  So this is the gate with a consequence for the shipped tree: every cell
-    some portable document STATES is either PROVED by a payload -- no narrowing, and no
-    undeclared widening -- or refused by name, which takes the document out of the
-    emitted set rather than shipping a class the cell got wrong.
+    This is one gate where there were two, and the deletion is the finding
+    (``sdk/ident``).  What stood here was ``..._every_cell_the_bundle_states_...``, over
+    ``live() & stated_by_the_bundle()``, beside a second clause that took the complement
+    and asserted the six cells in it all had ONE cause.  The second was not an allowlist --
+    the set was derived twice over and a cell leaving it needed no edit -- but it was an
+    EXCLUSION, and the sentence it rested on was "a cell no document states is a cell no
+    document's faithfulness depends on".  That sentence is true about faithfulness and it
+    was doing a second job here: it decided which cells had to be proved.
 
-    **Derived and not a list**, in both halves: the population is read off
-    ``bundle.nodes_at`` over the bundle, and the verdict is ``cells.grade``'s.  A cell the
-    bundle starts stating joins this gate with no edit here, which is the direction an
-    allowlist cannot be written in.
+    The six are proved (the module docstring says by what), so the predicate has nothing to
+    exclude and goes.  **The set this ranges over is now ``live()``**, which is the table's
+    own area and needs no reading of the bundle at all -- and a cell that stops being
+    proved reddens here whether any document states it or not.
 
-    What is NOT in this set is the complement, and §8 names the hole it leaves: a cell the
-    bundle states at a pointer the WALK never lowers as that position is in the population
-    and contributes no node -- ``contains`` at CONJ is stated at 8 nodes in 4 documents
-    while ``./check`` reads ``deferred 0``.  That gap is premise 3 of the induction and
-    ``adcp-client-python-xjs`` owns it; this gate does not claim to close it.
+    ``stated_by_the_bundle`` is still read, by
+    :func:`test_the_cells_the_bundle_states_are_the_induction_s_own_set`, because §8's
+    induction ranges over it and that is a fact worth measuring; it no longer narrows an
+    obligation.
+    """
+    claimed("live cells", live())
+    failing = {
+        cell: (verdicts.outcome, verdicts.narrowed, verdicts.widened, verdicts.declared)
+        for cell, verdicts in graded().items()
+        if not (verdicts.proved or verdicts.refused_on)
+    }
+    assert failing == {}, failing
+
+
+def test_the_cells_the_bundle_states_are_the_induction_s_own_set() -> None:
+    """§8's induction ranges over the cells the bundle STATES, and this is that figure.
+
+    A measurement and not an obligation: the gate above holds over the whole table, so this
+    says only how much of the table the artifact's correctness actually rests on -- "a cell
+    no document states is a cell no document's faithfulness depends on".  Asserted as a
+    containment rather than a count, because a count here would pin a property of the
+    BUNDLE and the bundle is an input.
     """
     stated = claimed(
         "live cells the bundle states",
         {cell for cell in live() if cell in stated_by_the_bundle()},
     )
-    failing = {
-        cell: (verdicts.outcome, verdicts.narrowed, verdicts.widened, verdicts.declared)
+    assert stated <= live()
+    assert all(
+        verdicts.proved or verdicts.refused_on
         for cell, verdicts in graded().items()
-        if cell in stated and not (verdicts.proved or verdicts.refused_on)
-    }
-    assert failing == {}, failing
-
-
-def test_the_cells_the_bundle_does_not_state_are_reported_with_their_denominator() -> None:
-    """**The six cells still unproved, named rather than counted, and NOT allowlisted.**
-
-    The set is DERIVED twice over -- the cells the bundle states nowhere, intersected with
-    the ones ``cells.grade`` neither proves nor refuses -- so nothing here admits a cell by
-    membership and a cell that stops failing leaves without an edit.  The assertion is that
-    every one of them has the SAME located cause, which is what makes them one defect with
-    a bead rather than six exemptions:
-
-    **all six are a keyword at a RULE position held under an ``if`` that states no
-    ``required``.**  §5's ``if`` row decides that shape -- "a ``Match`` clause list where
-    it states ``required`` plus ``properties`` with ``const`` or ``enum`` values; otherwise
-    nothing, and the schema half answers" -- and a condition with no required key cannot
-    yield a clause at all, because a clause tests a key that is PRESENT.  A clause reduced
-    from such a node would fire on instances the document's own condition does not match,
-    and the rule would then refuse what the document admits, which §2 forbids outright.
-
-    So the model is wider at these six and §2 asks for a declaration.  **The measurement
-    is why one is not written**: over the 1,054 portable paths, declaring an unreadable
-    condition mints 4,635 sites in 97 documents from 112 distinct conditional facts --
-    3,641 of them ONE logo-slot ``if`` the record inlines at that many referring paths --
-    and §8 rules that set out by name, "an approximation nothing can demonstrate does not
-    belong in the set".  ``adcp-client-python-3bb`` carries both sentences.
-    """
-    unstated = live() - stated_by_the_bundle()
-    failing = {
-        cell
-        for cell, verdicts in graded().items()
-        if cell in unstated and not (verdicts.proved or verdicts.refused_on)
-    }
-    assert all(position is Position.RULE for _, position in failing), sorted(
-        (k, p.name) for k, p in failing
+        if cell in stated
     )
-    # Every one of them is the SAME shape, read off the probe rather than listed: the
-    # cell's own node, placed at a RULE position under ``if``, states no ``required``.
-    from cells import probe_for
-
-    for keyword, position in sorted(failing):
-        probe = probe_for(keyword, position)
-        assert probe.under == "if", (keyword, probe.under)
-        assert "required" not in probe.node, (keyword, sorted(probe.node))
     # The report's own arithmetic: the three outcomes account for every live cell, so a
-    # cell cannot leave one bucket without arriving in another.
+    # cell cannot leave one bucket without arriving in another -- and ``unproved`` is EMPTY
+    # now, which is what makes the gate above a gate over the whole set.  Kept in the
+    # partition rather than dropped: a partition with a bucket that must be empty says
+    # which bucket, where two buckets would say only that the sum is right.
     assert partitions(
         live(),
         proved={c for c, v in graded().items() if v.proved},
         refused={c for c, v in graded().items() if not v.proved and v.refused_on},
-        unproved=failing,
+        unproved={c for c, v in graded().items() if not (v.proved or v.refused_on)},
     ) == live()
 
 

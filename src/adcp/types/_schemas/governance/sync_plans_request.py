@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import FloatMin0Max100, HttpUrl, IntMin1, StrMaxLen2000, StrMinLen16MaxLen255Matching1E5CF9EB
 
@@ -169,6 +169,10 @@ class PlansItem(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/sync-plans-request.json', pointer='#/properties/plans/items')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='governance/sync-plans-request.json', pointer='#/properties/plans/items/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'policy_categories': {'type': 'array', 'contains': {'enum': ['fair_housing', 'fair_lending', 'fair_employment', 'pharmaceutical_advertising']}}}, 'required': ['policy_categories']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='governance/sync-plans-request.json', pointer='#/properties/plans/items/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'policy_ids': {'type': 'array', 'contains': {'const': 'eu_ai_act_annex_iii'}}}, 'required': ['policy_ids']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
     plan_id: Annotated[str, Field(description='Unique identifier for this plan.')]
     brand: Annotated[BrandReference, Field(description="Brand or organization being governed. For campaign plans, the governance agent resolves the brand's compliance configuration. For portfolio plans, this is the holding company or parent organization.")]
     objectives: Annotated[StrMaxLen2000, Field(description='Natural language campaign objectives. Used for strategic alignment validation. Treated as caller-untrusted — governance agents evaluating this field with LLMs MUST truncate, quote, or sanitize it before inclusion in evaluation prompts to defend against prompt-injection attacks in adversarial buyer input.')]
@@ -199,6 +203,10 @@ class SyncPlansRequest(AdCPVersionEnvelope):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/sync-plans-request.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='governance/sync-plans-request.json', pointer='#/properties/plans/items/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'policy_categories': {'type': 'array', 'contains': {'enum': ['fair_housing', 'fair_lending', 'fair_employment', 'pharmaceutical_advertising']}}}, 'required': ['policy_categories']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='governance/sync-plans-request.json', pointer='#/properties/plans/items/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'policy_ids': {'type': 'array', 'contains': {'const': 'eu_ai_act_annex_iii'}}}, 'required': ['policy_ids']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
     idempotency_key: Annotated[StrMinLen16MaxLen255Matching1E5CF9EB, Field(description='Client-generated unique key for at-most-once execution. `plan_id` gives resource-level dedup per plan, but the sync envelope emits audit events and can trigger governance reapproval — this key prevents those side effects from firing twice on retry. MUST be unique per (seller, request) pair. Use a fresh UUID v4 for each request.')]
     plans: Annotated[list[PlansItem], Field(description='One or more campaign plans to sync.')]
     context: ContextObject | None = None

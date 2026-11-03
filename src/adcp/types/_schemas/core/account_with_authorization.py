@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import Approximation, SchemaRef
+from adcp.types._base import SchemaRef
 
 from .account import Account
 from .account_authorization import AccountAuthorization
@@ -19,10 +19,6 @@ class AccountWithAuthorization(Account):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/account-with-authorization.json', pointer='#')
-    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='core/account-with-authorization.json', pointer='#/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule/allOf/0', keyword='else', kind='WIDENED', rung='KEYWORD', fact={'if': {'properties': {'alignment': {'const': 'source_timezone'}}, 'required': ['alignment']}, 'then': {'required': ['period_timezone'], 'not': {'required': ['period_anchor']}}, 'else': {'not': {'anyOf': [{'required': ['period_anchor']}, {'required': ['period_timezone']}]}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/else'),
-        Approximation(document='core/account-with-authorization.json', pointer='#/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule', keyword='else', kind='WIDENED', rung='KEYWORD', fact={'if': {'properties': {'alignment': {'const': 'source_timezone'}}, 'required': ['alignment']}, 'then': {'required': ['period_timezone'], 'not': {'required': ['period_anchor']}}, 'else': {'not': {'anyOf': [{'required': ['period_anchor']}, {'required': ['period_timezone']}]}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/else'),
-    )
     authorization: Annotated[AccountAuthorization | None, Field(description="Optional. The caller's scope grant against this account. Vendor agents of any type (media-buy, signals, governance, creative, brand) that support scope introspection SHOULD populate this so callers can preempt SCOPE_INSUFFICIENT / FIELD_NOT_PERMITTED errors rather than discovering scope by trial and error. Media-buy sales agents claiming the `attestation_verifier` standard scope MUST populate it. Absence means the vendor agent does not advertise introspectable scope for this account — callers MUST NOT infer access from absence, and fall back to error-driven discovery via the RBAC error codes.")] = None
 
 

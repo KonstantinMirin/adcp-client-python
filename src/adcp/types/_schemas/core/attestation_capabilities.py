@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import HttpUrl, IntMin1024Max1048576, StrMinLen1MaxLen255MatchingEAB1CA79
 
@@ -83,6 +83,9 @@ class AttestationCapabilities(AdCPBaseModel):
         UniqueItems('accepted_claim_types'),
         UniqueItems('accepted_proof_formats'),
         UniqueItems('supported_delivery_methods'),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/attestation-capabilities.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'supported_delivery_methods': {'contains': {'const': 'embedded'}}}, 'required': ['supported_delivery_methods']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     accepted_claim_types: Annotated[list[HttpUrl], Field(description='Open claim identifiers the evaluator is prepared to evaluate. Each value is an absolute URI. Absence means the evaluator has not advertised portable-attestation support; an empty list is not permitted.', json_schema_extra={'uniqueItems': True}, min_length=1)]
     accepted_proof_formats: Annotated[list[HttpUrl], Field(description='Open credential/proof format identifiers the evaluator can verify. Values are absolute URIs rather than a protocol enum so issuers can adopt new formats without AdCP endorsement.', json_schema_extra={'uniqueItems': True}, min_length=1)]

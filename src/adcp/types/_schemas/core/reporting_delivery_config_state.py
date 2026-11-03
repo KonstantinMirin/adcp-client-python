@@ -52,8 +52,8 @@ class ReportingDeliveryConfigurationState(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-delivery-config-state.json', pointer='#')
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='core/reporting-delivery-config-state.json', pointer='#/properties/configuration/properties/schedule/allOf/0', keyword='else', kind='WIDENED', rung='KEYWORD', fact={'if': {'properties': {'alignment': {'const': 'source_timezone'}}, 'required': ['alignment']}, 'then': {'required': ['period_timezone'], 'not': {'required': ['period_anchor']}}, 'else': {'not': {'anyOf': [{'required': ['period_anchor']}, {'required': ['period_timezone']}]}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/else'),
-        Approximation(document='core/reporting-delivery-config-state.json', pointer='#/properties/configuration/properties/schedule', keyword='else', kind='WIDENED', rung='KEYWORD', fact={'if': {'properties': {'alignment': {'const': 'source_timezone'}}, 'required': ['alignment']}, 'then': {'required': ['period_timezone'], 'not': {'required': ['period_anchor']}}, 'else': {'not': {'anyOf': [{'required': ['period_anchor']}, {'required': ['period_timezone']}]}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/else'),
+        Approximation(document='core/reporting-delivery-config-state.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'state': {'const': 'ready'}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/reporting-delivery-config-state.json', pointer='#/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'state': {'const': 'inactive'}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     configuration: ReportingDeliveryConfiguration
     state: ReportingDeliveryConfigLifecycleState

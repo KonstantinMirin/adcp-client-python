@@ -128,7 +128,8 @@ def _carried() -> dict[tuple[str, str, str], Any]:
 #: (:func:`test_the_harness_result_is_counted_over_the_whole_population`) rather than as a
 #: second 130-entry literal, because its obligation is that it reaches zero.
 #:
-#: **RE-PINNED AT ``sdk/ident``: 178 IN 70 -> 37 IN 32, BY §8 SENTENCE 2.**  "A fact is
+#: **RE-PINNED AT ``sdk/ident``: 178 IN 70 -> 126 IN 61, BY §8 SENTENCE 2 AND THE
+#: DECLARATION IT MADE AFFORDABLE.**  "A fact is
 #: declared ONCE, at the node the document STATES it, and never once per pointer the record
 #: inlines it to ... An approximation's identity is ``(stating document, stating pointer,
 #: keyword)``, and every inlined occurrence resolves to it."  Nothing stopped widening and
@@ -136,7 +137,17 @@ def _carried() -> dict[tuple[str, str, str], Any]:
 #: reference inlines its node to -- a local reference moved it to the referring pointer, a
 #: remote one copied the target's to the referrer, a third pass folded it off an ``allOf``
 #: conjunct -- and the record resolves references by COPYING, so one conditional reached 58
-#: pointers and one cell 80.  The walk mints 37 and that machinery reported 178.
+#: pointers and one cell 80.  The walk minted 37 and that machinery reported 178.
+#:
+#: **AND 89 OF THE 126 ARE A DECLARATION THAT COULD NOT BE AFFORDED BEFORE.**  §5's
+#: ``if`` row compiles an unreadable condition to nothing, §8 sentence 3b's complement
+#: does not reach one that states no ``required``, and §2's answer for a model wider
+#: than its document is a declaration -- which ``lower.rules._conditional`` now writes.
+#: Declaring it under the old rule minted **4,635 sites in 97 documents from 112
+#: distinct conditional facts**, 3,641 of them one logo-slot ``if``; that ratio was the
+#: measurement of the per-pointer defect and not of this drop.  It closes the six RULE
+#: cells ``tests/test_cells.py`` excluded by a derived predicate, and that predicate is
+#: deleted in the same commit.
 #:
 #: **THE 141 THAT LEFT ARE NOT A SET THIS FILE SHOULD HAVE HELD**, which is why this is a
 #: re-pin and not a loosening: every one of them was a second entry for a fact already here,
@@ -145,9 +156,9 @@ def _carried() -> dict[tuple[str, str, str], Any]:
 #: reader is what resolves an occurrence to the entry (``harness.inseparable_sites``, over
 #: the origin map ``bundle.recorded`` exports).
 #:
-#: **FIVE SHAPES, and the sentence that keeps each -- per SHAPE, because that is the level
+#: **SIX SHAPES, and the sentence that keeps each -- per SHAPE, because that is the level
 #: at which a declaration is a decision.**  A site is a document's instance of one of
-#: these five and carries no argument of its own:
+#: these six and carries no argument of its own:
 #:
 #: * ``oneOf`` at the JOIN rung, UNDERDETERMINED -- **15 sites in 13 documents**: §4's
 #:   dispatch cannot separate the branches, which is the one kind §8 gives an instrument of
@@ -168,13 +179,107 @@ def _carried() -> dict[tuple[str, str, str], Any]:
 #:   is a plain keyword rather than a structural answer:
 #:   ``compliance/comply-test-controller-response.json`` at
 #:   ``#/oneOf/6/properties/recorded_calls/items/properties/payload``.
+#: * ``if`` at the KEYWORD rung -- **89 sites in 33 documents**, the condition §5's
+#:   ``if`` row cannot reduce to a clause list and §8 sentence 3b's complement cannot
+#:   reach: it states no ``required``, and a clause tests a key that is PRESENT.
 #:
-#: **FIVE CAUSES, NOT 37**, which is the reading ``codegen/dump_exemptions.py``'s own
-#: instrument records for the same shape: one derivation at 25 unions, one cell at 7
-#: containers, one conditional shape at 4 nodes, one keyword at 1.  The pointer count and
+#: **SIX CAUSES, NOT 126**, which is the reading ``codegen/dump_exemptions.py``'s own
+#: instrument records for the same shape: one row at 89 conditions, one derivation at 25
+#: unions, one cell at 7 containers, one conditional shape at 4 nodes, one keyword at 1.  The pointer count and
 #: the cause count are different numbers over different denominators and the report never
 #: adds them.
 DECLARED_WIDENINGS = {
+    # if at KEYWORD: 89 sites in 33 documents
+    ('aao/agent-publishers.json', '#/definitions/PublisherEntry/allOf/0', 'if'),
+    ('adagents.json', '#/oneOf/1/allOf/1', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/10', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/11', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/12', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/13', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/14', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/15', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/16', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/17', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/18', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/19', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/2', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/20', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/21', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/22', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/23', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/25', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/26', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/3', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/4', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/5', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/6', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/7', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/8', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/9', 'if'),
+    ('compliance/comply-test-controller-response.json', '#/oneOf/3/properties/forced/allOf/0', 'if'),
+    ('compliance/comply-test-controller-response.json', '#/oneOf/3/properties/forced/allOf/1', 'if'),
+    ('core/agent-notification-config.json', '#', 'if'),
+    ('core/attestation-capabilities.json', '#/allOf/0', 'if'),
+    ('core/bidding-policy-capability.json', '#/definitions/policy_profile/allOf/0', 'if'),
+    ('core/bidding-policy-capability.json', '#/definitions/policy_profile/allOf/1', 'if'),
+    ('core/canonical-product.json', '#/allOf/0', 'if'),
+    ('core/canonical-product.json', '#/allOf/1', 'if'),
+    ('core/delivery-metric-aggregate.json', '#/oneOf/0/allOf/0', 'if'),
+    ('core/delivery-metric-aggregate.json', '#/oneOf/0/allOf/1', 'if'),
+    ('core/delivery-metric-aggregate.json', '#/oneOf/0/allOf/2', 'if'),
+    ('core/delivery-metric-aggregate.json', '#/oneOf/0/allOf/3', 'if'),
+    ('core/demographic-reporting-capability.json', '#/properties/age/allOf/0', 'if'),
+    ('core/demographic-reporting-capability.json', '#/properties/age/allOf/1', 'if'),
+    ('core/demographic-targeting-capability.json', '#/properties/age/allOf/0', 'if'),
+    ('core/demographic-targeting-capability.json', '#/properties/age/allOf/1', 'if'),
+    ('core/demographic-targeting-capability.json', '#/properties/age/allOf/3', 'if'),
+    ('core/demographic-targeting-resolution.json', '#/allOf/0', 'if'),
+    ('core/demographic-targeting-resolution.json', '#/allOf/2', 'if'),
+    ('core/package.json', '#/allOf/2', 'if'),
+    ('core/product.json', '#/allOf/0', 'if'),
+    ('core/product.json', '#/allOf/1', 'if'),
+    ('core/product.json', '#/allOf/10', 'if'),
+    ('core/product.json', '#/allOf/2', 'if'),
+    ('core/product.json', '#/allOf/5', 'if'),
+    ('core/product.json', '#/allOf/6', 'if'),
+    ('core/product.json', '#/allOf/7', 'if'),
+    ('core/product.json', '#/allOf/8', 'if'),
+    ('core/product.json', '#/allOf/9', 'if'),
+    ('core/reporting-delivery-capabilities.json', '#/allOf/5', 'if'),
+    ('core/reporting-delivery-capabilities.json', '#/allOf/6', 'if'),
+    ('core/reporting-delivery-config-state.json', '#/allOf/0', 'if'),
+    ('core/reporting-delivery-config-state.json', '#/allOf/2', 'if'),
+    ('core/reporting-obligation.json', '#/allOf/0', 'if'),
+    ('core/reporting-reliability-statistics.json', '#/allOf/0', 'if'),
+    ('core/signal-definition.json', '#/allOf/4', 'if'),
+    ('core/signal-listing.json', '#/allOf/0', 'if'),
+    ('core/targeting-overlay-support.json', '#/definitions/daypartSupport/anyOf/1/allOf/0', 'if'),
+    ('creative/preview-creative-request.json', '#/allOf/2', 'if'),
+    ('creative/preview-creative-request.json', '#/allOf/3', 'if'),
+    ('formats/canonical/native_in_feed.json', '#/allOf/2', 'if'),
+    ('governance/check-governance-request.json', '#/allOf/10', 'if'),
+    ('governance/check-governance-request.json', '#/allOf/14', 'if'),
+    ('governance/sync-plans-request.json', '#/properties/plans/items/allOf/0', 'if'),
+    ('governance/sync-plans-request.json', '#/properties/plans/items/allOf/1', 'if'),
+    ('media-buy/build-creative-request.json', '#/allOf/8', 'if'),
+    ('media-buy/get-media-buy-delivery-response.json', '#/allOf/3', 'if'),
+    ('media-buy/get-media-buys-response.json', '#/properties/media_buys/items/properties/packages/items/allOf/4', 'if'),
+    ('media-buy/get-products-request.json', '#/allOf/1', 'if'),
+    ('media-buy/get-products-response.json', '#/allOf/2', 'if'),
+    ('media-buy/get-reporting-status-response.json', '#/allOf/6', 'if'),
+    ('protocol/get-adcp-capabilities-response.json', '#/allOf/10', 'if'),
+    ('protocol/get-adcp-capabilities-response.json', '#/allOf/15', 'if'),
+    ('protocol/get-adcp-capabilities-response.json', '#/allOf/16', 'if'),
+    ('protocol/get-adcp-capabilities-response.json', '#/allOf/4', 'if'),
+    ('protocol/get-adcp-capabilities-response.json', '#/allOf/5', 'if'),
+    ('protocol/get-adcp-capabilities-response.json', '#/allOf/8', 'if'),
+    ('protocol/get-adcp-capabilities-response.json', '#/allOf/9', 'if'),
+    ('protocol/get-adcp-capabilities-response.json', '#/properties/adcp/properties/capability_changes/allOf/0', 'if'),
+    ('protocol/get-adcp-capabilities-response.json', '#/properties/adcp/properties/principal/allOf/0', 'if'),
+    ('protocol/get-adcp-capabilities-response.json', '#/properties/creative/allOf/2', 'if'),
+    ('protocol/get-adcp-capabilities-response.json', '#/properties/media_buy/allOf/1', 'if'),
+    ('signals/get-signals-request.json', '#/allOf/1', 'if'),
+
     # oneOf at JOIN, UNDERDETERMINED: 15 sites in 13 documents
     ('adagents.json', '#/oneOf', 'oneOf'),
     ('brand.json', '#/oneOf', 'oneOf'),

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule, UniqueItems
 from adcp.types.constraints import HttpUrl, IntMin1, StrMatching564F6F3C, StrMatching5E987613, StrMinLen1MaxLen128, StrMinLen1MaxLen128MatchingB577C746, StrMinLen1MaxLen32
 
@@ -71,6 +71,9 @@ class ReportingReliabilityStatistics(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-reliability-statistics.json', pointer='#')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('adjustment_magnitude'),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/reporting-reliability-statistics.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'official_revisions_adjusted': {'minimum': 1}}, 'required': ['official_revisions_adjusted']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     offering_id: StrMinLen1MaxLen128MatchingB577C746
     measurement_period: ReportingReliabilityMeasurementPeriod

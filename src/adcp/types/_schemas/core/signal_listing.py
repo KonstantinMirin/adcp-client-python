@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule
 from adcp.types.constraints import HttpUrl
 
@@ -39,6 +39,9 @@ class SignalListing(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         RequiredGroups((('signal_ref',), ('signal_id',)), 'anyOf'),
         ConditionalRequired((Match('demographic_predicate', True, None),), require=('restricted_attributes',), forbid=()),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/signal-listing.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'signal_ref': {'type': 'object', 'properties': {'scope': {'const': 'product'}}, 'required': ['scope']}}, 'required': ['signal_ref']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     signal_ref: Annotated[SignalRef | None, Field(description="Canonical signal reference. Use scope 'product' for a product-local signal defined by this listing; use scope 'data_provider' with data_provider_domain for a signal defined in a data provider's published adagents.json signals[]; use scope 'signal_source' with signal_source_url for a source-native signal.")] = None
     signal_id: Annotated[SignalID | None, Field(description='DEPRECATED. Use signal_ref instead. Legacy SignalId retained for compatibility with older Signals Protocol clients.')] = None

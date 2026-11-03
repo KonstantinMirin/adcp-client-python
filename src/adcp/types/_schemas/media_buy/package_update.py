@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, NotValue, Rule
 from adcp.types.constraints import StrMaxLen500
 
@@ -33,10 +33,6 @@ class CreativesItem(CreativeAsset):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('localization',),)),
     )
-    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='media-buy/package-update.json', pointer='#/properties/creatives/items/properties/assets', keyword='patternProperties', kind='WIDENED', rung='CONTAINER', fact={'^[a-z0-9_]+$': {'oneOf': [{'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/assets/asset-union.json'}, {'type': 'array', 'items': {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/assets/asset-union.json'}, 'minItems': 1}]}}, attribution='docs/plan/rebuild-plan.md §5 objects/patternProperties'),
-        Approximation(document='media-buy/package-update.json', pointer='#/properties/creatives/items/properties/component_assets/patternProperties/^[a-z][a-z0-9_]*$', keyword='patternProperties', kind='WIDENED', rung='CONTAINER', fact={'^[a-z0-9_]+$': {'anyOf': [{'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/assets/asset-union.json'}, {'type': 'array', 'items': {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/assets/asset-union.json'}, 'minItems': 1}]}}, attribution='docs/plan/rebuild-plan.md §5 objects/patternProperties'),
-    )
 
 
 class PackageUpdate(AdCPBaseModel):
@@ -49,10 +45,6 @@ class PackageUpdate(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/package-update.json', pointer='#')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('product_id',), ('format_ids',), ('format_option_refs',), ('format_kind',), ('params',), ('capability_ids',), ('pricing_option_id',), ('budget_cap_timezone',))),
-    )
-    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='media-buy/package-update.json', pointer='#/properties/creatives/items/properties/assets', keyword='patternProperties', kind='WIDENED', rung='CONTAINER', fact={'^[a-z0-9_]+$': {'oneOf': [{'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/assets/asset-union.json'}, {'type': 'array', 'items': {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/assets/asset-union.json'}, 'minItems': 1}]}}, attribution='docs/plan/rebuild-plan.md §5 objects/patternProperties'),
-        Approximation(document='media-buy/package-update.json', pointer='#/properties/creatives/items/properties/component_assets/patternProperties/^[a-z][a-z0-9_]*$', keyword='patternProperties', kind='WIDENED', rung='CONTAINER', fact={'^[a-z0-9_]+$': {'anyOf': [{'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/assets/asset-union.json'}, {'type': 'array', 'items': {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/assets/asset-union.json'}, 'minItems': 1}]}}, attribution='docs/plan/rebuild-plan.md §5 objects/patternProperties'),
     )
     package_id: Annotated[str, Field(description="Seller's ID of package to update")]
     budget: Annotated[NonNegativeFloat | None, Field(description='Updated hard spend cap for this package in the media-buy currency. Every selected pricing option in an AdCP-authored media buy MUST declare that same currency. In seller-optimized mode a number changes the package ceiling and null removes it so only the shared total and other constraints bound the package. null is invalid when the resulting allocation mode is fixed. A number in a resulting seller-optimized buy requires advertised media_buy.features.seller_optimized_package_budgets; otherwise rejected with UNSUPPORTED_FEATURE before any over-subscription validation.')] = None

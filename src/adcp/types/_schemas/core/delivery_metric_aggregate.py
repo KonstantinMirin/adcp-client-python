@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AfterValidator, ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import NotValue
 
 from ..enums.available_metric import AvailableMetric
@@ -25,6 +25,12 @@ class DeliveryMetricAggregate(BranchDispatchMixin, AdCPBaseModel):
     @classmethod
     def _branch_combinator(cls) -> str:
         return "oneOf"
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/delivery-metric-aggregate.json', pointer='#/oneOf/0/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'metric_id': {'const': 'viewable_rate'}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/delivery-metric-aggregate.json', pointer='#/oneOf/0/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'metric_id': {'const': 'completion_rate'}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/delivery-metric-aggregate.json', pointer='#/oneOf/0/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'metric_id': {'const': 'cost_per_acquisition'}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/delivery-metric-aggregate.json', pointer='#/oneOf/0/allOf/3', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'metric_id': {'const': 'roas'}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
 
 
 class DeliveryMetricAggregateStandard(DeliveryMetricAggregate):
@@ -32,6 +38,12 @@ class DeliveryMetricAggregateStandard(DeliveryMetricAggregate):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/delivery-metric-aggregate.json', pointer='#/oneOf/0')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/delivery-metric-aggregate.json', pointer='#/oneOf/0/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'metric_id': {'const': 'viewable_rate'}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/delivery-metric-aggregate.json', pointer='#/oneOf/0/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'metric_id': {'const': 'completion_rate'}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/delivery-metric-aggregate.json', pointer='#/oneOf/0/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'metric_id': {'const': 'cost_per_acquisition'}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/delivery-metric-aggregate.json', pointer='#/oneOf/0/allOf/3', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'metric_id': {'const': 'roas'}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
     scope: Annotated[Literal['standard'], Field(description='Standard metric from the closed `available-metric.json` enum.')]
     metric_id: Annotated[Annotated[AvailableMetric, AfterValidator(NotValue(('viewability', 'viewed_seconds_percentiles', 'viewed_seconds_histogram', 'quartile_data', 'time_based_views', 'dooh_metrics')))], Field(description='Identifier for a scalar standard metric. Container tokens and structured distribution identities are committed and selected through their canonical carriers, not represented as numeric aggregate rows.')]
     qualifier: Annotated[CanonicalMetricQualifier | None, Field(description="Qualifier keys disambiguating this row from sibling rows under the same `metric_id`. Symmetric with `committed_metrics.qualifier` today; expected to diverge in future minors as transparency disclosures buyers don't commit to ship delivery-only. Closed (`additionalProperties: false`) — new qualifier keys ship explicitly.")] = None
