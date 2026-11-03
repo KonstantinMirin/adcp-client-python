@@ -63,7 +63,32 @@ class does not name it. That rule is derivable, unique per class, and needs no j
 alternative — picking among equally legitimate derivations — would be a decision per object with
 nothing deciding it.
 
-**A gate on this must count OBJECTS, not names.** A check asking whether every export resolves at
+**A gate on this counts DECLARATIONS, not `id()` and not names (decided 2026-11-03).** Three
+readings were available and the middle one is right.
+
+**Counting NAMES is too weak**: two names for one class each resolve at one path, so the check is
+answered `yes` while the rule is false — which is how objects reachable at several paths stood
+while the gate read green.
+
+**Counting `id()` is too STRONG, and it charges us for something we did not do.** Where several
+documents each state the same constrained scalar, the walk emits an independent alias statement in
+each — and every one of those names IS the name derived at its own declaring position, so there is
+no referencing position to drop and nothing to rename. The runtime then binds them to one object
+because the type system interns it, and the same happens to an interned literal. **A gate keyed on
+object identity reports those as a violation with no available repair**, which makes it a gate
+nobody can satisfy rather than one that finds a defect.
+
+**So the reading is one DECLARATION per class.** A class the walk declares twice is the defect —
+two statements where the bundle states one subject. Two names bound to one object by a statement
+each, in documents that each state it, are two declarations of one ENTRY, and **the catalogue layer
+owns that case**: a symbol the catalogue has collected is declared once by construction. So §3a's
+collection is the repair there, not a rename, and the two rules must not both claim it.
+
+**What remains for this rule is the case it was written for** — one class declared once and
+EXPORTED twice — and there the surface keeps only the declaring position's spelling. **Applying it
+is not purely subtractive:** for some of these the name the rule keeps is not currently exported at
+all, because the surface assigns no kind to a declaration at a property or element position, so the
+rename adds a name as well as removing ones. A check asking whether every export resolves at
 exactly one path is answered `yes` by two names for one object, each resolving cleanly, so it is
 green while the rule is false. The reading is that the number of export paths equals the number of
 distinct objects behind them.
