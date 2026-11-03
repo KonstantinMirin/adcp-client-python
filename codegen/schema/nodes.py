@@ -304,7 +304,7 @@ class Composition(Base):
     #: it cannot be a base' are the unimplemented half of that sentence".  A bound stated
     #: beside the ``allOf`` is one of those siblings, so it constrains the type the
     #: conjuncts supply; a node whose conjuncts are all class BASES has no such type and
-    #: ``compiler.lower_composition`` refuses there, exactly as it does for a ``contains``
+    #: ``lower.composition.lower_composition`` refuses there, exactly as it does for a ``contains``
     #: and for a value set.
     #:
     #: :attr:`contains` is the precedent and the arrangement is deliberately the same: the
@@ -360,7 +360,7 @@ class Union(Base):
     same, onto the base"), :attr:`Base.declared` the ``properties``, :attr:`required` the
     ``required``, :attr:`Base.extra` the ``additionalProperties``.  The mapping was a
     fifth reading of those four and **nothing in ``codegen/`` read it**:
-    ``compiler.lower_composition`` took the conjunct list off :attr:`conjuncts` the day
+    ``lower.composition.lower_composition`` took the conjunct list off :attr:`conjuncts` the day
     the parser built it (``adcp-client-python-10l.37``) and the other three were never
     read out of it at all.  So it carried the document's own subtrees for no reader, and
     ``adcp-client-python-3be.9`` deleted it on that measurement -- the guard that should
@@ -414,7 +414,7 @@ class Union(Base):
     #: :attr:`Base.declared` and :attr:`Base.extra` are fields too: §5's ``required``
     #: row at ROOT beside a union is "required on the base's fields, and the names
     #: recorded in ``_ROOT_REQUIRED``", and the reader of that is
-    #: ``compiler.lower_composition``, which takes this field off every kind that can
+    #: ``lower.composition.lower_composition``, which takes this field off every kind that can
     #: state one (:attr:`Composition.required`, :attr:`Object.required`).  So one
     #: spelling serves the three kinds, and :attr:`conjuncts` carries what is left of
     #: §4's "every keyword beside the combinator".

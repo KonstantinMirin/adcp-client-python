@@ -249,7 +249,7 @@ def perturbed() -> Iterator[None]:
       never runs, and the comment at four of the five sites says in as many words that "the
       walk has to RUN";
     * a perturbation that changes BEHAVIOUR -- ``keywords.TABLE`` without a row,
-      ``compiler.lower_composition`` without its root arm -- computes a census under a
+      ``lower.composition.lower_composition`` without its root arm -- computes a census under a
       compiler no source describes and, on a miss, WRITES it under the honest key.  Every
       later run of that key would then export names a compiler nobody runs derived, which is
       exactly the staleness the key exists to make impossible.

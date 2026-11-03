@@ -52,7 +52,7 @@ left refusing is a sibling no class carries.  Four things are graded below and e
 different claim:
 
 * the SELECTOR is derived and not listed (``union.carried_by_a_class`` is
-  ``compiler.COMPOSING`` plus the node's own rule sources, minus the two the ``A | B``
+  ``lower.composition.COMPOSING`` plus the node's own rule sources, minus the two the ``A | B``
   arm answers for), so a keyword §5 later compiles onto a class joins it with no edit
   here;
 * the 9 documents the old sentence refused are exactly the bundle's population for it,
@@ -78,8 +78,8 @@ from typing import Any
 from compiled import compiled
 from nodeset import claimed, partitions
 
-from codegen import bundle, compiler, emit, keywords
-from codegen.lower import names
+from codegen import bundle, emit, keywords
+from codegen.lower import composition, names
 from codegen.lower import union as lower_union
 from codegen.schema import nodes
 from codegen.schema import parse as schema_parse
@@ -714,7 +714,7 @@ def test_the_selector_is_derived_from_two_declarations_and_not_listed_here() -> 
     """``union.carried_by_a_class`` reads the TABLE and the NODE, and nothing retyped.
 
     Both sources are load-bearing and each is graded on a keyword only it supplies:
-    ``properties`` is in :data:`compiler.COMPOSING`, which is the one declaration of what
+    ``properties`` is in :data:`lower.composition.COMPOSING`, which is the one declaration of what
     a composing class consumes, and ``dependencies`` is NOT -- it reaches the set only
     because ``compiler.rules_at`` reads it off this node as a rule source.  §8's measured
     case states both, so a selector that dropped either source would answer differently
@@ -727,9 +727,9 @@ def test_the_selector_is_derived_from_two_declarations_and_not_listed_here() -> 
     node = _union_node(bundle.node_at(bundle.read(BUNDLE, MEASURED_CASE), AT))
     assert isinstance(node, nodes.Union), type(node).__name__
     carried = lower_union.carried_by_a_class(node)
-    assert "properties" in compiler.COMPOSING
+    assert "properties" in composition.COMPOSING
     assert "properties" in carried
-    assert "dependencies" not in compiler.COMPOSING
+    assert "dependencies" not in composition.COMPOSING
     assert "dependencies" in carried, sorted(carried)
     assert node.combinator not in carried and "type" not in carried, sorted(carried)
     # A value constraint beside a combinator of shapes is in NEITHER source, which is

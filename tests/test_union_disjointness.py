@@ -38,6 +38,7 @@ from nodeset import claimed, partitions
 from adcp.types._base import UNDERDETERMINED
 from codegen import bundle, compiler, emit, harness, keywords, store
 from codegen.keywords import Rung
+from codegen.lower import composition
 from codegen.lower import union as lower_union
 from codegen.schema import nodes
 from codegen.schema import parse as schema_parse
@@ -1760,7 +1761,7 @@ def test_the_conjunct_borne_combinator_separates_or_names_the_pair() -> None:
 
 
 def test_a_union_of_shapes_reaching_the_composing_row_without_a_caller_refuses() -> None:
-    """A :class:`nodes.Union` handed to ``compiler.lower_composition`` with no
+    """A :class:`nodes.Union` handed to ``lower.composition.lower_composition`` with no
     ``UnionBase`` would build the composed class with the branch list DROPPED, so it
     refuses -- by the keyword, at the pointer the document writes it at.
 
@@ -1774,7 +1775,7 @@ def test_a_union_of_shapes_reaching_the_composing_row_without_a_caller_refuses()
     does not permit at any rung, so the guard is graded directly rather than deleted for
     having no population.
 
-    The DECISION is graded at :func:`compiler._refuse_a_combinator_of_shapes`, which is
+    The DECISION is graded at :func:`lower.composition._refuse_a_combinator_of_shapes`, which is
     the whole of it, and the POPULATION by tracing every call the walk makes.
     """
     node = schema_parse.parse(
@@ -1788,7 +1789,7 @@ def test_a_union_of_shapes_reaching_the_composing_row_without_a_caller_refuses()
     # The keyword is NOT in the node's own declares -- the conjunct states it -- which is
     # exactly why the screen reading could not see it and the kind has to be the subject.
     assert "anyOf" not in node.declares, node.declares
-    refusal = compiler._refuse_a_combinator_of_shapes(node, frozenset())
+    refusal = composition._refuse_a_combinator_of_shapes(node, frozenset())
     assert refusal is not None
     assert (refusal.keyword, refusal.pointer) == ("anyOf", "/oneOf/1/allOf/0"), refusal
     assert "the branch list would be dropped" in refusal.detail, refusal
@@ -1798,15 +1799,15 @@ def test_a_union_of_shapes_reaching_the_composing_row_without_a_caller_refuses()
     # And no document of the bundle reaches it, traced at the call rather than asserted
     # from the refusal set: a stale guard is one whose population a reader cannot see.
     reached: list[tuple[str, str]] = []
-    real = compiler.lower_composition
+    real = composition.lower_composition
 
     def traced(node: Any, mod: Any, **kw: Any) -> Any:
         if isinstance(node, nodes.Union) and kw.get("union") is None:
             reached.append((mod.source.document, node.stated_at))
         return real(node, mod, **kw)
 
-    compiler.lower_composition = traced  # type: ignore[assignment]
-    lower_union.compiler.lower_composition = traced  # type: ignore[assignment]
+    composition.lower_composition = traced  # type: ignore[assignment]
+    lower_union.composition.lower_composition = traced  # type: ignore[assignment]
     try:
         # ``store.perturbed()``: ``emit.emit`` holds §1's census on disk under a digest of
         # ``codegen/``'s source (``codegen/store.py``), which this reassignment does not
@@ -1816,6 +1817,6 @@ def test_a_union_of_shapes_reaching_the_composing_row_without_a_caller_refuses()
         with store.perturbed():
             emit.emit(BUNDLE, sorted(bundle.portable(BUNDLE)))
     finally:
-        compiler.lower_composition = real  # type: ignore[assignment]
-        lower_union.compiler.lower_composition = real  # type: ignore[assignment]
+        composition.lower_composition = real  # type: ignore[assignment]
+        lower_union.composition.lower_composition = real  # type: ignore[assignment]
     assert reached == [], sorted(set(reached))

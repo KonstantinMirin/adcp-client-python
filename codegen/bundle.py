@@ -792,7 +792,7 @@ def reported_drops(doc: object) -> tuple[tuple[str, str], ...]:
     one position and not another is a defect in the CHANNEL, not a second decision."
 
     **This is that channel, and it cannot screen a position.**  The defect it replaces
-    was ``compiler.lower_composition``'s conjunct worklist, which saw CONJ and nothing
+    was ``lower.composition.lower_composition``'s conjunct worklist, which saw CONJ and nothing
     else: ``media-buy/sync-catalogs-request.json`` states ``errorMessage`` twice, at
     ``/allOf/1`` under a ``not`` and at ``/then`` beside a ``required``, and the reader
     was told about the first alone -- the second reached no reader at all, because

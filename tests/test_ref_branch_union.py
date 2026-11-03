@@ -42,6 +42,7 @@ from pydantic import ValidationError
 
 from adcp.types._base import BranchDispatchMixin
 from codegen import bundle, compiler, emit
+from codegen.lower import composition
 from codegen.lower import union as lower_union
 from codegen.refusal import Kind
 
@@ -273,7 +274,7 @@ def test_a_ref_branch_whose_target_is_not_a_class_refuses_by_name() -> None:
     ``Annotated`` alias, and subclassing one is a ``TypeError`` at import -- so it is
     refused by name rather than
     emitted as a module nobody can import.  The same refusal
-    ``compiler.lower_composition`` raises for a ``$ref`` conjunct, at the one other
+    ``lower.composition.lower_composition`` raises for a ``$ref`` conjunct, at the one other
     position a reference becomes a base.
 
     **THE SENTENCE IS ASSERTED, because this is the one of §4's three root outcomes the
@@ -348,7 +349,7 @@ def test_the_bundles_ref_branch_roots_are_claimed_by_name_and_wait_on_their_targ
             and any(
                 isinstance(branch, dict)
                 and set(
-                    __import__("codegen.compiler", fromlist=["x"]).declaring(
+                    __import__("codegen.intersect", fromlist=["x"]).declaring(
                         branch, __import__("codegen.keywords", fromlist=["x"]).Position.BRANCH
                     )
                 )
@@ -419,7 +420,7 @@ def test_the_dispatch_mixin_is_named_only_where_no_base_already_carries_it() -> 
     ``BranchDispatchMixin`` has to come FIRST so the MRO finds its
     ``__get_pydantic_core_schema__``, and a union base already carries it -- so naming it
     beside such a base puts a class before its own subclass and Python refuses to build
-    the module. :func:`compiler.dispatching_bases` is the one reading, asked at the point
+    the module. :func:`lower.composition.dispatching_bases` is the one reading, asked at the point
     the list is built, so both routes into ``lower_union`` get it: the one that carries
     :class:`lower_union.Enclosing` and the DISPATCH, which does not.
 
@@ -428,33 +429,33 @@ def test_the_dispatch_mixin_is_named_only_where_no_base_already_carries_it() -> 
     it again.
     """
     mod = compiler.Module(document="probe.json")
-    plain = compiler.dispatching_bases((), mod)
+    plain = composition.dispatching_bases((), mod)
     assert [b.path for b in plain] == ["BranchDispatchMixin"], plain
     assert (compiler.ir.BASE_MODULE, "BranchDispatchMixin") in mod.imports, (
         "the import is added where the name is, so a suppressed mixin imports nothing"
     )
     # A base that IS the mixin: not named twice.
-    assert compiler.dispatching_bases(plain, mod) == plain
+    assert composition.dispatching_bases(plain, mod) == plain
     # A base this module declares whose own bases carry it -- the union base, and then a
     # class descending from that base, which is the transitive hop.
     mod.declarations.append(
         compiler.ir.ClassDecl(name="", ref=None, fields=(), bases=plain)
     )
     base = compiler.ir.TypeRef("", local=True)
-    assert [b.path for b in compiler.dispatching_bases((base,), mod)] == [""], (
+    assert [b.path for b in composition.dispatching_bases((base,), mod)] == [""], (
         "a union base already carries the mixin"
     )
     mod.declarations.append(
         compiler.ir.ClassDecl(name="/anyOf/0", ref=None, fields=(), bases=(base,))
     )
     branch = compiler.ir.TypeRef("/anyOf/0", local=True)
-    assert [b.path for b in compiler.dispatching_bases((branch,), mod)] == ["/anyOf/0"], (
+    assert [b.path for b in composition.dispatching_bases((branch,), mod)] == ["/anyOf/0"], (
         "and so does a class that descends from one, two hops up"
     )
     # A base this module does NOT declare is not followed and the mixin is named, which is
     # the conservative direction: an imported symbol has no declaration here to read.
     outside = compiler.ir.TypeRef("SomeImportedClass", local=True)
-    assert [b.path for b in compiler.dispatching_bases((outside,), mod)] == [
+    assert [b.path for b in composition.dispatching_bases((outside,), mod)] == [
         "BranchDispatchMixin",
         "SomeImportedClass",
     ]
@@ -467,7 +468,7 @@ def test_the_nested_union_base_of_postal_area_imports_and_dispatches() -> None:
     Its ``/anyOf/0`` is a branch of the root union that composes a ``$ref`` whose target
     is a union ROOT, so §5's ``$ref`` row distributes the target's branches and the branch
     class becomes a union base of its own -- reached through
-    ``compiler.lower_composition``, not through the branch loop that builds
+    ``lower.composition.lower_composition``, not through the branch loop that builds
     :class:`lower_union.Enclosing`. With the mixin named unconditionally there the module
     was ``(BranchDispatchMixin, PostalArea, AdCPBaseModel)``: an inconsistent MRO, and the
     module did not import.

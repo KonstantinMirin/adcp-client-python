@@ -47,7 +47,7 @@ from adcp.types import _base, constraints
 from codegen import bundle, compiler, emit, intersect, ir, keywords, refusal, render, store
 from codegen import constraints as constraints_module
 from codegen.harness import Pair, check_pair, violated_keywords
-from codegen.lower import names
+from codegen.lower import composition, names
 from codegen.refusal import Kind, Refusal
 from codegen.schema import nodes
 from codegen.schema import nodes as schema_nodes
@@ -251,12 +251,12 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     # reason the row's selector carried a root clause: a NESTED ``allOf`` is a different
     # step's measurement (``test_emit.py`` counts it), and stubbing the whole arm would
     # take those documents out of ``without`` as well and inflate this row's delta.
-    # **The row is reached at ``compiler.lower_composition`` now**, because §14 step 5
+    # **The row is reached at ``lower.composition.lower_composition`` now**, because §14 step 5
     # made ``lower/composition.py`` the handler and ``emit`` no longer names the function
     # at all.  The patch has to be where the CALL resolves or the perturbation is inert
     # and this check passes vacuously -- which is what ``tests/nodeset.py``'s non-empty
     # assertion is for, and it is what caught the stale target.
-    composing_at_a_root = compiler.lower_composition
+    composing_at_a_root = composition.lower_composition
 
     def without_the_root_arm(node, mod, *rest, **kw):
         # The POSITION and the POINTER are the node's own fields: §14 step 7 took the
@@ -639,7 +639,7 @@ def test_a_composing_root_reaches_one_arm_and_nothing_can_claim_it_twice() -> No
     #
     # Read off the field the handler reads (``adcp-client-python-3be.9``).  It was
     # ``nodes.Union.siblings``, a keyword mapping holding the ``allOf`` as the document
-    # states it -- and ``compiler.lower_composition`` stopped reading that mapping at
+    # states it -- and ``lower.composition.lower_composition`` stopped reading that mapping at
     # ``adcp-client-python-10l.37``, so the assertion graded a carrier no handler took the
     # list off.  The mapping is deleted; this is the same clause over ``conjuncts``.
     for d in both:
@@ -1296,7 +1296,7 @@ def _lower(
     a type where the section says the node has one.
     """
     mod = emit.Module(document="probe.json", targets=targets or {})
-    return compiler.lower_composition(_probe_node(doc, mod), mod)
+    return composition.lower_composition(_probe_node(doc, mod), mod)
 
 
 def test_an_incompatible_restatement_refuses_by_name_pointer_and_keyword() -> None:
@@ -1441,7 +1441,7 @@ def test_a_constraining_sibling_of_a_ref_conjunct_compiles_to_nothing_and_is_rep
             )
         },
     )
-    compiler.lower_composition(_probe_node(doc, mod), mod)
+    composition.lower_composition(_probe_node(doc, mod), mod)
     assert "ProbeBase" in {symbol for _, symbol in mod.imports}
     assert [line for line in mod.carries_nothing if "minimum" in line], mod.carries_nothing
     assert "/allOf/0: minimum" in mod.carries_nothing[0], mod.carries_nothing
@@ -1555,7 +1555,7 @@ def test_a_keyword_at_the_root_beside_the_conjunct_list_refuses() -> None:
             keyword: value,
             **also,
         }
-        compiler.lower_composition(_probe_node(doc, mod), mod)
+        composition.lower_composition(_probe_node(doc, mod), mod)
         # The walk declares at a POINTER and ``lower/names.py`` binds the name (§7), so
         # the probe asks the pass for the symbol rather than the walk.
         mod.hops[""] = names.Root("Probe")

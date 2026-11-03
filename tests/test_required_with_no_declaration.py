@@ -34,7 +34,7 @@ import pytest
 from pydantic import ValidationError
 
 from adcp.types._base import SchemaRef, schema_at
-from codegen import bundle, compiler, emit, store
+from codegen import bundle, emit, store
 from codegen.lower import objects
 from tests.nodeset import claimed
 

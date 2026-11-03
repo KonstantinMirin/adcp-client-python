@@ -312,7 +312,7 @@ def parse(
         # names the document states reached no node field at all.  §5's ``required`` row
         # decides the fact at every one of those positions ("BRANCH -> the branch class's
         # requiredness"; "ROOT beside a union -> required on the base's fields"), and the
-        # carrier is one :class:`nodes.Object` already has: ``compiler.lower_composition``
+        # carrier is one :class:`nodes.Object` already has: ``lower.composition.lower_composition``
         # takes :attr:`nodes.Object.required` off every kind that can state one, so the
         # names reach the class that narrows them without a second reading anywhere.
         # ``_object`` reads a missing map as ``{}``, which is what such a node declares.
@@ -751,7 +751,7 @@ def _borne_by_a_conjunct(
 
     **Draft-07 conjoins a conjunct with the node that holds it**, which is the same
     reading :func:`applies_to_one_instance` makes for §4's disjointness derivation and
-    the reason ``compiler.lower_composition`` takes a conjunct's ``properties`` as the
+    the reason ``lower.composition.lower_composition`` takes a conjunct's ``properties`` as the
     composed node's fields.  So a conjunct stating ``oneOf``/``anyOf`` states it about
     THIS node's instance, and §5's ``oneOf``/``anyOf`` row has the cell for it: "CONJ ->
     one class per branch over the composed bases".  The classification is the parser's
@@ -773,7 +773,7 @@ def _borne_by_a_conjunct(
       class-per-branch answer.  Measured over the 1,054 portable documents: **0 nodes**;
     * the conjunct states anything else beside the combinator.  Then the conjunct also
       contributes to the composed class, and the conjunction of ITS contribution with
-      its own branch list is the thing ``compiler._refuse_a_combinator_of_shapes``
+      its own branch list is the thing ``lower.composition._refuse_a_combinator_of_shapes``
       refuses for having no pointer.  Measured: **0 of the 7 sites** -- every conjunct
       carrying a combinator of shapes in this bundle states the keyword and annotations
       alone.
@@ -869,7 +869,7 @@ def _union(
         branch_raw=tuple(branches),
         # §5's ``required`` row at ROOT beside a union -- "required on the base's
         # fields, and the names recorded in ``_ROOT_REQUIRED``" -- read the way every
-        # other kind that can state one reads it, so ``compiler.lower_composition``
+        # other kind that can state one reads it, so ``lower.composition.lower_composition``
         # takes the node's requiredness off one field name whatever kind it is handed.
         required=tuple(raw["required"]) if isinstance(raw.get("required"), list) else (),
         word=word,
@@ -998,7 +998,7 @@ def _requires_as_a_type(raw: Mapping[str, Any], position: Position) -> bool:
     which needs no node of its own.  Everywhere else the row is the requiredness OF the
     node ("BRANCH -> the branch class's requiredness", "ROOT beside a union -> required on
     the base's fields"), which is :attr:`nodes.Object.required` and
-    ``compiler.lower_composition``'s reading of it.
+    ``lower.composition.lower_composition``'s reading of it.
 
     So the split is the CELL's ``effect`` and this is a reader of the table, the way
     :func:`_rule_sources` and :func:`presence_only` are -- not a position named here,
@@ -1290,7 +1290,7 @@ def applies_to_one_instance(node: Any, position: Position) -> list[Mapping[str, 
 
     Draft-07 conjoins an ``allOf`` conjunct with the node that holds it, so a fact a
     conjunct states is a fact about the instance the node describes -- which is D7's own
-    wording and the reason ``compiler.lower_composition`` reads a conjunct's
+    wording and the reason ``lower.composition.lower_composition`` reads a conjunct's
     ``properties`` as the composing node's fields and hands its rule sources to
     ``compiler.rules_at`` as that node's own.  Every reading of a BRANCH's declaration
     owes the same descent, and §4's disjointness derivation is three of them: what the

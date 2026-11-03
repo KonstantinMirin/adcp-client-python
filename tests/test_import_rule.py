@@ -199,6 +199,7 @@ THE_WALK = frozenset(
         "codegen.render",
         "codegen.emit",
         "codegen.compiler",
+        "codegen.intersect",
         "codegen.constraints",
     }
 )
@@ -671,16 +672,35 @@ def test_the_python_text_rule_catches_the_four_texts_it_replaced(tmp_path: Path)
 #:   asks this data for, and the same move ``adcp-client-python-g4z`` made when the set
 #:   went from four entries to six.  ``adcp-client-python-d54`` is this entry; the
 #:   detector's name-based blind spot is still ``adcp-client-python-7ko``.
-=======
-#: * ``codegen/compiler.py`` -- TWO readings, and naming them separately is the point:
-#:   ``lower_composition`` reads a ``$ref`` conjunct's own declaration for §5's ``$ref``
-#:   row at CONJ, and ``local_reference`` reads a local target's ``default`` so that
-#:   draft-07's replacement of a ``$ref`` node by its target reaches the referring field
-#:   (``adcp-client-python-10l.26``).  **This entry is the one the set's own ratchet does
-#:   not cover**, and the reason is measurable rather than a judgement: the §6 entry above
-#:   USED to be this module's, one permitted module became two when
-#:   ``adcp-client-python-g4z`` moved §2's pure rule into a module of its own, and the
-#:   permission is unchanged -- 5 entries to 6 with no new reading admitted.
+#: * ``codegen/lower/composition.py`` -- the COMPOSING row: ``lower_composition`` reads a
+#:   ``$ref`` conjunct's own declaration for §5's ``$ref`` row at CONJ, and §4 gives it
+#:   ``nodes.Conjunct.raw`` as the carrier.  **This entry is the one the set's own ratchet
+#:   does not cover**, and the reason is measurable rather than a judgement: this reading
+#:   and the one above were BOTH ``compiler.py``'s, one permitted module became two when
+#:   ``adcp-client-python-g4z`` separated §6's pure rule from §5's composing row, and the
+#:   permission is unchanged -- 4 entries to 5 with no new reading admitted and
+#:   ``compiler.py`` off the list entirely.
+#: * ``codegen/compiler.py`` -- ``local_reference``, which is the one place a LOCAL
+#:   ``$ref`` is resolved, reads the target declaration's ``default`` so that draft-07's
+#:   replacement of a ``$ref`` node by its target reaches the referring field
+#:   (``adcp-client-python-10l.26``).  :attr:`compiler.Module.local` is the carrier: the
+#:   context holds this document's own nodes as declarations, because a local pointer is
+#:   resolved after the parse and not during it.
+#:
+#:
+#: **THE SET WENT 5 ENTRIES TO 7 AT ``adcp-client-python-g4z`` AND ADMITTED NO NEW
+#: READING**, which is the one thing a ratcheting set has to be able to say about itself.
+#: Three of the entries above were ONE entry -- ``compiler.py`` -- whose sentence named
+#: §6's pure functions and nothing else, while the module's actual reads were §6's rule,
+#: §5's composing row AND ``local_reference``'s ``default``.  The row that split that
+#: module into ``intersect.py``, ``lower/composition.py`` and the context separated the
+#: three readings, and each now carries the sentence that forces it.  So the COUNT grew by
+#: two and the PERMISSION is the same set of lines; what the old entry hid is that one of
+#: its three readings had no sentence at all.  ``lower/normalise.py`` is
+#: ``adcp-client-python-d54``'s and is the fifth, landed beside this row rather than by
+#: it.  The set may still only shrink from here, and the honest next shrink is
+#: ``local_reference`` reaching ``lower/references.py``.
+#:
 #: ``codegen/emit.py`` is NOT in this set and §14 step 7 is what removed it.  It held
 #: ``_composed_nodes``, the pointers a document's root ``allOf`` NAMES -- a fact about the
 #: bundle's reference GRAPH, which §11 puts in the source layer.  It is ``bundle.composed``
@@ -694,6 +714,7 @@ MAY_READ_A_DECLARATION = frozenset(
         "lower/union.py",
         "lower/normalise.py",
         "intersect.py",
+        "lower/composition.py",
         "compiler.py",
     }
 )
@@ -1182,7 +1203,7 @@ def test_the_parser_is_the_only_entry_that_reads_a_raw_mapping() -> None:
         ("intersect.py", "_parsed_property"),
         # a ``$ref`` CONJUNCT, for the DOCUMENT HALF that says which resolution it is (§5's
         # ``$ref`` row at CONJ; ``adcp-client-python-10l.43``)
-        ("compiler.py", "_conjunct_base"),
+        ("lower/composition.py", "_conjunct_base"),
     }, sorted(sites)
 
 

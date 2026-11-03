@@ -110,7 +110,7 @@ from codegen.harness import (
 from codegen.keywords import Rung
 from codegen.lower import const as lower_const
 from codegen.lower import enum as lower_enum
-from codegen.lower import names, objects, rules, scalars
+from codegen.lower import composition, names, objects, rules, scalars
 from codegen.lower import union as lower_union
 from codegen.refusal import Refusal
 from codegen.schema import nodes
@@ -3567,7 +3567,7 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
     ``allOf`` is a conjunction with every branch and no pointer addresses the
     conjunction (``ROOT_CONJUNCTS``).  The other half of that row is gone:
     ``salesagent-j3k2l.40`` shared the conjunct reader, so a branch that composes is
-    lowered by ``compiler.lower_composition`` rather than refused, and ``allOf`` fell
+    lowered by ``lower.composition.lower_composition`` rather than refused, and ``allOf`` fell
     51 -> 44.  So the profile's largest row is a bill rather than a queue, which is
     what it is for.  The 37 + 9 split the previous revision quoted was measured when
     ``allOf`` was 46 and is not re-measured here; what is asserted is the row.
@@ -3752,11 +3752,11 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
     # named in the delivery as unfinished.
     #
     # **THREE LEFT AT ``adcp-client-python-10l.43``, ALL THREE BY EMITTING, AND ALL THREE
-    # ON ONE ROUTING GAP.**  ``compiler.lower_composition``'s ``$ref``-conjunct arm asked
+    # ON ONE ROUTING GAP.**  ``lower.composition.lower_composition``'s ``$ref``-conjunct arm asked
     # the binder for every reference, so a LOCAL pointer -- a pointer into the document
     # being written -- got ``emit.answer``'s "this is not a binding at all" as the
     # DOCUMENT's verdict.  The arm branches on the parser's document half now and routes a
-    # local pointer through ``compiler.local_reference`` (``compiler._conjunct_base``).
+    # local pointer through ``compiler.local_reference`` (``lower.composition._conjunct_base``).
     # ``core/account-identity-change-preview.json`` and ``core/registry-event.json`` held
     # the two live sites (``#/definitions/impact`` at
     # ``/definitions/nonblocking_impacts/items/allOf/0``, and ``#/$defs/propertyPayload``
@@ -7279,7 +7279,7 @@ def test_the_uniqueItems_step_grades_an_emitted_class_and_its_rule_holds_it() ->
         if not isinstance(node, dict):
             continue  # a class at a pointer the raw walk does not reach
         # **The node's own ``properties`` AND every inline conjunct's**, which is the
-        # one map ``compiler.lower_composition`` builds: a draft-07 ``allOf`` conjunct
+        # one map ``lower.composition.lower_composition`` builds: a draft-07 ``allOf`` conjunct
         # applies to the same instance, so its ``properties`` are this node's fields and
         # a ``uniqueItems`` among them is this class's rule.  Reading the node's own
         # ``properties`` alone put the two sides at different scopes again -- the same
@@ -8174,12 +8174,12 @@ VERDICTS = frozenset(
         # floor below reports.
         #
         # **FOUR LEAVE AT ``adcp-client-python-10l.43``, ALL FOUR BY EMITTING, AND THEY
-        # ARE ONE ROUTING GAP AND NOT FOUR DOCUMENTS.**  ``compiler.lower_composition``'s
+        # ARE ONE ROUTING GAP AND NOT FOUR DOCUMENTS.**  ``lower.composition.lower_composition``'s
         # ``$ref``-conjunct arm asked the binder for every reference, so a LOCAL pointer --
         # a pointer into the document being written, which is not a binding at all -- got
         # ``emit.answer``'s loud answer as the DOCUMENT's verdict.  The arm branches on the
         # parser's document half now and routes a local pointer through
-        # ``compiler.local_reference`` (``compiler._conjunct_base``), which is the resolver
+        # ``compiler.local_reference`` (``lower.composition._conjunct_base``), which is the resolver
         # ``lower.references.lower`` has always reached for the same reference met the
         # other way.  The two sites were ``core/account-identity-change-preview.json`` at
         # ``/definitions/nonblocking_impacts/items/allOf/0`` (``#/definitions/impact``) and
@@ -8585,7 +8585,7 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     # ``adcp-client-python-10l.43`` took it to 92, and both of ITS two are emission: a
     # local pointer reached through an ``allOf`` conjunct asks
     # ``compiler.local_reference`` now instead of the binder
-    # (``compiler._conjunct_base``), so ``core/account-identity-change-preview.json`` and
+    # (``lower.composition._conjunct_base``), so ``core/account-identity-change-preview.json`` and
     # ``core/registry-event.json`` emit, and the two chains behind them leave with their
     # targets -- ``account/sync-accounts-response.json`` and
     # ``core/registry-feed-response.json``.
@@ -8661,7 +8661,7 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     #
     # **967 -> 988 and 87 -> 66, moved by `salesagent-j3k2l.40`**, which shared the
     # conjunct reader: a union BRANCH that composes is lowered by
-    # `compiler.lower_composition` with the union base as `bases`, so all 10
+    # `lower.composition.lower_composition` with the union base as `bases`, so all 10
     # documents waiting on "a branch composes once that reader is shared" cleared
     # that row -- 3 emitted, 6 accounted as verdicts, and 1 (`adagents.json`) moved
     # on to the NEXT gap, which is why the product row's deferral reads 13 here and
@@ -8837,7 +8837,7 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     #   verdict, so this is a second instance of a decided shape and not a new claim.
     #   **Both left the set at ``adcp-client-python-81c``, and the verdict with them.**
     #   A symbol the base merely imported is reachable from the module that DECLARES it,
-    #   so ``compiler._reused`` takes it from there: ``core/media-buy-frequency-cap``
+    #   so ``lower.composition._reused`` takes it from there: ``core/media-buy-frequency-cap``
     #   ``-capability.json`` EMITS, and ``core/product-signal-targeting-option.json``
     #   stays in the set on its NEXT obstruction -- a chain through
     #   ``core/vendor-pricing-option.json``, which resolves to a verdict of its own.  The
@@ -9136,6 +9136,12 @@ def test_the_const_row_has_exactly_one_lowering() -> None:
         name
         for name, module in (
             ("compiler", compiler),
+            # ADDED AT ``adcp-client-python-g4z``, and for the reason the ``enum`` entry
+            # below records: §5's ``allOf`` row and the object row left ``compiler.py``
+            # for modules of their own, and a scan that names modules by hand narrows its
+            # own reach every time code moves out of one it names.
+            ("composition", composition),
+            ("objects", objects),
             ("union", lower_union),
             ("const", lower_const),
             # ADDED AT ``salesagent-j3k2l.21``, and adding it is the point rather than
@@ -9191,7 +9197,7 @@ def test_the_const_row_has_exactly_one_lowering() -> None:
 #: ``fields`` part the same size and drop the key count.
 #:
 #: The walk below descends into a conjunct's OWN ``allOf`` the way
-#: ``compiler.lower_composition``'s worklist does, so a nested conjunct is counted here
+#: ``lower.composition.lower_composition``'s worklist does, so a nested conjunct is counted here
 #: and its rule is one of the sources clause 4 reads.  One such conjunct is in the
 #: committed tree today (``core/demographic-targeting-intent.json`` at
 #: ``/properties/age/allOf/1/allOf/0``, an ``if``/``then``), and dropping the production
@@ -9242,7 +9248,7 @@ CONJUNCT_PARTS = (
 #: **``fields+required+rule`` LEFT at ``adcp-client-python-81c``**, one site:
 #: ``core/media-buy-frequency-cap-capability.json`` at ``/allOf/1``, whose conjunct
 #: states ``properties``, ``required`` and a ``not`` together.  That document emitted for
-#: the first time when ``compiler._reused`` stopped refusing a re-used field whose type
+#: the first time when ``lower.composition._reused`` stopped refusing a re-used field whose type
 #: names a symbol the base IMPORTED and started taking it from the declaring module --
 #: which is the direction this tuple exists for, again.
 CONJUNCT_PARTS_WITH_NO_SITE = ()
@@ -9438,7 +9444,7 @@ def test_every_conjunct_contributes_every_part_of_itself() -> None:
             cls = declared_here
             ancestry = {base.__name__ for base in cls.__mro__}
             rule_nodes = [node]
-            # The SAME worklist ``compiler.lower_composition`` walks, because section 5's
+            # The SAME worklist ``lower.composition.lower_composition`` walks, because section 5's
             # ``allOf`` row says CONJ -> the same rule applied to the conjunct's own
             # conjuncts: a nested conjunct contributes to THIS class, so a walk that
             # stopped at depth one would read its rule as absent and clause 4 would grade

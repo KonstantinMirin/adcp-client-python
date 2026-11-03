@@ -1381,7 +1381,7 @@ _ALIEN_VALUES: tuple[Any, ...] = (None, "__adcp_harness__", -1, [], {}, True)
 
 #: How many ``allOf`` levels :func:`own_facts` folds before it stops.  A composed class
 #: is one class over its whole conjunct list at any depth
-#: (``compiler.lower_composition``'s worklist), so the fold has to reach the same depth;
+#: (``lower.composition.lower_composition``'s worklist), so the fold has to reach the same depth;
 #: the bound is here because a fold with no base case is a crash and section 9 says a
 #: crash is not an outcome.
 _OWN_DEPTH = 8

@@ -233,7 +233,7 @@ def test_no_member_form_pin_names_a_symbol_its_module_cannot_resolve() -> None:
     """Every ``Literal[Symbol.MEMBER]`` of the tree names a symbol that module resolves.
 
     The failure this prevents is an undefined name at import, which is the shape
-    ``compiler._placeable`` declines 39 sites to avoid.  Graded by reading each module's
+    ``lower.composition._placeable`` declines 39 sites to avoid.  Graded by reading each module's
     own bindings -- its imports and its class declarations -- so a module that pins a
     member of something it never names reddens here and not three test files away.
 

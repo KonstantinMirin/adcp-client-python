@@ -242,7 +242,7 @@ def test_the_three_shapes_of_not_beside_a_conjoined_type_partition_the_populatio
     ``core/targeting-input.json``, each composing two roots that state ``if``/``then`` and
     nothing else -- take §2's intersection over DECLARATIONS instead: a target declaring
     only rule sources contributes a RULE to the composing node and never reaches this row
-    (``compiler._a_rule_the_target_states``).  The other two parts are unmoved at 3 and
+    (``lower.composition._a_rule_the_target_states``).  The other two parts are unmoved at 3 and
     32, and so is the 11 / 7 / 2 / 2 split below, which is why that part emptying is the
     whole of the change here.  Ten of the eleven
     rules are still a ``not``; the eleventh is the first CONDITIONAL at this position --

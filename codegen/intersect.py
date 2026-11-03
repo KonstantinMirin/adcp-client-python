@@ -1002,13 +1002,7 @@ def _dereferenced(
     return target if isinstance(target, dict) else declaration
 
 
-#: The type of the one resolver this module's predicates take.  Named because
-#: :func:`declares_an_array` is read by ``lower.rules`` as well, and the parameter it
-#: threads is this one.
-Resolver = Callable[[str], dict | None] | None
-
-
-def declares_an_array(declaration: Any, resolve: Resolver = None) -> bool:
+def declares_an_array(declaration: Any, resolve: compiler.Resolver = None) -> bool:
     """Does this DECLARATION put an ARRAY at the instance it describes?
 
     §5's ``uniqueItems`` row's gate, and the one reading of it.  draft-07 asserts
@@ -1054,7 +1048,7 @@ def declares_an_array(declaration: Any, resolve: Resolver = None) -> bool:
     return isinstance(conjuncts, list) and a_conjunct_declares_an_array(conjuncts, resolve)
 
 
-def a_conjunct_declares_an_array(conjuncts: Iterable[Any], resolve: Resolver = None) -> bool:
+def a_conjunct_declares_an_array(conjuncts: Iterable[Any], resolve: compiler.Resolver = None) -> bool:
     """:func:`declares_an_array`, asked of a raw CONJUNCT LIST.
 
     The same question in the spelling :func:`lower_composition` holds it -- that row has
@@ -1184,6 +1178,21 @@ def _parsed_property(declaration: Any, at: str, mod: compiler.Module) -> nodes.N
     if not isinstance(declaration, Mapping):
         return Refusal("properties", at, "property is not a schema", kind=Kind.VERDICT)
     return schema.parse(declaration, pointer=at, position=Position.PROP, source=mod.source)
+
+
+#: **Which of §5's non-class targets this one IS**, for a refusal at CONJ that has to name
+#: it.  The row names four -- "a scalar, an enum, a container, or a union root, whose
+#: instance is one of its branches" -- and :class:`TargetKind` tells the union root from
+#: the other three, so the sentence states the kind rather than asserting flatly that the
+#: target "is not a class".  That assertion is false for a union root, which is a class
+#: (``BranchDispatchMixin`` plus the model base), and it is the same misreading
+#: ``adcp-client-python-10l.55`` found one position over in ``lower.union._inherited``.
+_NOT_A_BASE: Mapping[compiler.TargetKind, str] = {
+    compiler.TargetKind.UNION: "is a union root, whose instance is one of its branches and which "
+    "is therefore not a class a model can extend",
+    compiler.TargetKind.ANNOTATION: "is a scalar, an enumeration, a container or a root model, "
+    "which declares no field set a model can inherit",
+}
 
 
 def _distributes(
@@ -1443,7 +1452,7 @@ def _the_conjuncts_own_type(
         return Refusal(
             "allOf",
             where,
-            f"{symbol} {compiler._NOT_A_BASE[target.kind]}, so section 5's $ref row at CONJ makes "
+            f"{symbol} {_NOT_A_BASE[target.kind]}, so section 5's $ref row at CONJ makes "
             f"it this node's own TYPE -- and that clause holds at a node declaring no "
             f"fields of its own, where this node declares {sorted(fields_declared)} and "
             f"composes {[b.path for b in bases]}: the instance must be {symbol} AND carry "

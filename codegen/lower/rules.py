@@ -195,7 +195,7 @@ def lower(
     declared: Mapping[str, Any] = {},  # read-only, and the empty mapping is the answer
     extra_stated: bool = False,
     *,
-    resolve: intersect.Resolver = None,
+    resolve: compiler.Resolver = None,
     root: Mapping[str, Any] | None = None,
 ) -> Lowered:
     """Every rule one node states, off the three facts a node carries for it.
@@ -246,7 +246,7 @@ def lower_declaration(
     declaration: Mapping[str, Any],
     position: Position,
     *,
-    resolve: intersect.Resolver = None,
+    resolve: compiler.Resolver = None,
     extra_stated: bool | None = None,
     root: Mapping[str, Any] | None = None,
 ) -> Lowered:
@@ -732,7 +732,7 @@ def _combinator(node: Mapping[str, Any], out: Lowered) -> None:
 
 
 def _distinct(
-    declared: Mapping[str, Any], out: Lowered, resolve: intersect.Resolver = None
+    declared: Mapping[str, Any], out: Lowered, resolve: compiler.Resolver = None
 ) -> None:
     """``uniqueItems: true`` on an array this node holds as a property.
 
