@@ -1888,10 +1888,17 @@ repaired.** I claimed everything stated beside a combinator compiles onto the ba
 branch inherits it. Four keywords do not: `additionalProperties` is scoped to the node's own
 `properties` and cannot see a branch's, so a per-branch copy of it means something else entirely;
 and `not`, `if`/`then`/`else` and `dependencies` each state a condition over the whole instance
-that no per-branch copy reproduces. **They occur at combinator roots of this bundle in numbers,
-and the renderer emits none of them there** — a root carries its required set and nothing else.
-Whether that is a dropped fact is a correctness question this section does not settle, and it is
-filed rather than assumed.
+that no per-branch copy reproduces. That alone withdraws the obligation: a check built on "strip
+the combinator and grade what is left" cannot be stated for a keyword whose meaning changes when
+it is moved.
+
+**AND THESE FACTS DO REACH THE CLASS, which is worth saying because the renderer carries none of
+them in a `_ROOT_*` attribute and the absence reads like a drop.** It is not one. `additionalProperties`
+arrives as the model's extra-field policy, and every combinator root of this bundle that forbids
+extras has a class that forbids them — no exceptions. A root-level `not` is enforced too, checked
+by offering the class the instance that `not` forbids beside a control the document admits. **So
+the four are a reason the obligation cannot be WRITTEN, not evidence of a fact dropped.** A claim
+that any of them is dropped needs the payload, as every claim here does.
 
 **AND CERTAINTY ITSELF COMES FROM §5's TABLE, NOT FROM THE DRAW.** §5 is a keyword × position
 decision table: each cell says what one keyword at one position compiles to. **Prove each cell
