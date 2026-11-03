@@ -423,43 +423,32 @@ required-version = ">=0.17"
 line-length = 120
 target-version = "py311"
 
-# THE GENERATED TREE IS NAMED, NEVER OMITTED, for the reason ``[tool.mypy]
-# exclude`` already records: the committed tree is an ARTIFACT, verified by one
-# byte-compare, and is never the subject of grading.  Its own reading is 11,315
-# findings -- 10,925 ``E501`` from schema ``description`` text carried verbatim,
-# 378 ``I001`` because import order is ``codegen/render.py``'s output, and 12
-# ``F401``.  All three are statements about ``codegen/render.py`` and are
-# attributed there.  Deleting this line pulls 1,089 modules back under the
-# linter automatically, which is what distinguishes an exclusion from an
-# omission.
+# **NOTHING IS EXCLUDED. THE GENERATED CODE IS THE PRODUCT (owner's decision).**
 #
-# **AND THE EMITTER WRITES 25 MORE MODULES BESIDE THAT TREE, which the first
-# line misses.**  ``emit.write`` puts ``out.files`` under ``_schemas/`` and
-# ``out.beside`` directly in ``src/adcp/types/``: ``constraints.py``,
-# ``envelopes.py`` and one module per domain.  They are as generated as the
-# 1,089, and a finding in one is the same statement about ``codegen/render.py``.
+# An earlier form of this section excluded the emitted tree, on the argument
+# that a finding there is a statement about ``codegen/render.py`` and that a fix
+# in the file is undone by the next run.  **The first half is true and the
+# conclusion is backwards.**  A finding whose fix belongs to the generator has
+# an OWNER -- the generator -- and an owner is the opposite of an exemption.
+# Excluding it means the renderer can emit unsorted imports, imports nothing
+# uses and a mutable class default forever with nothing saying so, in **the code
+# a consumer installs**: the wheel is 1,089 generated modules plus the 25
+# ``emit.write`` puts beside them, and three hand-written files.
 #
-# **The pattern is the package's own convention, not a list that goes stale:
-# under ``adcp.types`` the GENERATED half is the PUBLIC surface and the
-# hand-written half is PRIVATE.**  ``__init__.py``, ``_base.py`` and
-# ``_runtime.py`` are the hand-written three (``tests/fresh.py`` states that
-# split and it is what a fresh emit does not write), and every public name
-# there is rendered.  So the exclusion is every top-level module whose name
-# does not begin with an underscore, and the three that do stay IN scope --
-# they are hand-written code in the shipped package, which is what every
-# reading is about.
+# So the linter grades the whole package, and a finding in a generated module is
+# a row against ``codegen/render.py``.  Fixing the renderer fixes 1,089 modules
+# at once, which is the argument FOR having the reading rather than against it.
 #
-# **WHY A STYLE FINDING IS EXCLUDED HERE AND A TYPE ERROR IS NOT**, which is
-# the asymmetry with ``[tool.mypy]`` above and is deliberate: ``I001`` import
-# order and ``F401`` in a generated module are the RENDERER'S OWN DECISIONS
-# about its output, and a fix in the file is undone by the next run.  A type
-# error in generated code is a correctness fact worth seeing even though its
-# fix is also in the renderer -- so mypy keeps these 25 while it is clean over
-# them, and the day it is not, the error is a rendering defect and the row is
-# ``codegen/render.py``'s.  Excluding a tool from a file is a statement about
-# WHOSE decision the finding reports, never about whether the finding is
-# acceptable.
-extend-exclude = ["src/adcp/types/_schemas", "src/adcp/types/[a-z]*.py"]
+# The reading as this landed, over the generated tree alone and with ``E501``
+# already dropped below: **399 ``I001``, 31 ``RUF022``, 14 ``F401``, 6
+# ``RUF012``, 1 ``UP033``, 1 ``RUF100``.**  Every one is a decision
+# ``render.py`` makes about its output, and ``RUF012`` -- a mutable default on a
+# model -- is a behaviour risk and not a style question.
+#
+# ``[tool.mypy]``'s ``exclude`` of ``_schemas`` stays as it is for its own
+# recorded reason, which is about READABILITY of a gate carrying third-party
+# stub noise rather than about whose code it is, and its ``files`` list already
+# takes the 25 beside the tree.
 
 [tool.ruff.lint]
 # ``select`` and never ``extend-select``, for the ``required-version`` reason.
@@ -486,14 +475,150 @@ extend-exclude = ["src/adcp/types/_schemas", "src/adcp/types/[a-z]*.py"]
 #        tree were written against families that are not selected.  Every
 #        ``noqa`` must name a selected rule or be deleted; that is a row, and
 #        selecting a family to retroactively justify a comment is backwards.
-select = ["E", "W", "F", "I", "B", "C4", "UP", "RUF"]
+#
+# **AND THE LIST IS NOW ``ALL``, NOT EIGHT FAMILIES (owner's decision).** The
+# eight above were copied from a reference repository that runs no CI, which is
+# no basis for a rule set: ruff ships **973 rules** and selecting 8 families
+# graded a fraction of them while reading as a configured linter.  The form is
+# inverted -- **select everything, then decline by NAME with a measurement** --
+# because that way every rule this project does not enforce is written down
+# with its reason, and a rule nobody thought about is enforced rather than
+# silently absent.
+#
+# Measured over the hand-written code at the commit that landed this:
+# ``--select ALL`` reads ~6,500 findings in 30 families.  The declines below
+# account for ~5,900 of them and each says why; what is left is rows.
+#
+# **Selecting ``BLE`` and ``SLF`` also makes 51 existing ``noqa`` comments
+# LIVE.**  The tree carries 28 naming ``BLE001`` and 23 naming ``SLF001``,
+# written against a linter that did not exist -- so the code already documented
+# those decisions and now a tool reads them.
+select = ["ALL"]
 ignore = [
     # The prose in this repository is load-bearing and long by design -- the
     # comment block above ``[tool.mypy]`` runs past 100 lines.  This is a
     # formatting preference and not an invariant over behaviour, and no
-    # formatter is configured here to own it.
+    # formatter is configured here to own it.  In the generated tree the long
+    # lines are schema ``description`` text carried verbatim, which is DATA.
     "E501",
+    # Ambiguous-unicode: it fires on DATA and not on code.  149 of its findings
+    # are in generated docstrings, where the character came from the schema's
+    # own ``description`` -- an en dash, a curly quote, a ``×`` -- and the rest
+    # are this repository's prose.  The rule is about a homoglyph in an
+    # identifier being mistaken for its ASCII twin; nothing here is at risk of
+    # that, and rewriting the protocol's own text to satisfy it would make the
+    # emitted docstring differ from the document it quotes.  A rule declined is
+    # declined by NAME and in one place, which is how this differs from an
+    # exclusion: it says the rule does not apply anywhere, not that some files
+    # are not the subject.
+    "RUF001",
+    "RUF002",
+    "RUF003",
+    # Mutable class default: every instance of it in this repository is a
+    # PYDANTIC FIELD or a ``model_config``, and the semantics document's §5
+    # already carries the measurement -- "pydantic deep-copies a plain mutable
+    # default per instance, so two instances already receive distinct objects
+    # and mutating one does not reach the other".  Six are a generated
+    # ``= ['brief']`` or ``= []`` on a model field; the seventh is a
+    # ``model_config`` dict.  Ruff cannot tell a model field from a plain class
+    # attribute, so the rule reports a hazard this framework removes.  Declined
+    # by NAME with the measurement, which is the only way a rule may be
+    # declined -- had one instance been a plain class, this would be a row.
+    "RUF012",
+
+    # ---- the formatter's domain, and NO FORMATTER IS CONFIGURED -----------
+    # ``Q`` (957 bad-quotes-inline-string, 10 avoidable-escaped-quote) and
+    # ``COM`` (611 missing-trailing-comma, 8 prohibited) are a formatter's
+    # output, not an invariant over behaviour.  Declining them is honest only
+    # because the alternative is named: adopting ``ruff format`` is a row, and
+    # until it lands nothing enforces quote or comma style.  Do not fix these
+    # by hand -- 1,586 findings of churn with no behaviour behind it.
+    "Q", "COM",
+
+    # ---- redundant under a checker or a check we already have -------------
+    # ``ANN`` (403): mypy is configured strict over this tree; an annotation
+    # rule restates what the checker already requires.
+    # ``D`` (860): the docstring convention here is deliberate and unlike any
+    # pydocstyle profile, and ``tests/test_prose_resolves.py`` enforces the
+    # checkable part -- that a docstring naming a path or a symbol RESOLVES --
+    # which no pydocstyle rule does.
+    # ``CPY`` (95): no license-header policy exists; adopting one is a decision
+    # and not a lint finding.
+    # ``ERA``: this codebase's docstrings quote JSON and pointers as prose, so
+    # it fires on the prose.
+    "ANN", "D", "CPY", "ERA",
+
+    # ---- the complexity family, DEFERRED BY A RECORDED DECISION ----------
+    # ``architecture.md`` §5: a ceiling on complexity or length is set AFTER
+    # the decomposition and the two are set together, because a ceiling set
+    # today freezes the debt and is satisfiable by moving statements.  These
+    # are the rules that ceiling is made of, and the row that lands the
+    # decomposition (``adcp-client-python-g4z``) re-selects them.  Their
+    # reading today is the worklist, not a gate: 26 PLR0913, 26 PLR0911,
+    # 20 PLR0912, 11 PLR0917, 10 PLR0915.
+    "PLR0911", "PLR0912", "PLR0913", "PLR0915", "PLR0917", "PLR0904", "C901",
+
+    # ---- declined with a measurement, each a statement about THIS tree ----
+    # ``TC`` (52): it moves an import into a ``TYPE_CHECKING`` block -- which
+    # is the exact construction that produced the ``NameError`` this linter was
+    # added for.  Every module here has ``from __future__ import annotations``,
+    # so an annotation is already a string and the import costs nothing at
+    # runtime; moving it into a conditional block makes ``get_type_hints``
+    # fail, and that defect has now appeared FOUR times in one file.  A rule
+    # that creates the defect class the tool caught is declined.
+    # ``PLC0415`` (120): an import inside a function is deliberate here -- it
+    # breaks an import cycle, and ``tests/conftest.py``'s is a SIDE-EFFECT
+    # import that binds the generated half of the package.  ``E402`` still
+    # owns module-level ordering.
+    # ``TRY003`` (57) and ``EM101``/``EM102`` (60): they require an exception
+    # message to be a constant.  High churn, no behaviour, and this project's
+    # messages carry the measurement that explains the failure.
+    # ``PT018`` (65): a composite assertion is how a check states one fact
+    # about two halves, and every one here carries its own message.
+    # ``PLR2004`` (55): a comparison against a literal is frequently the
+    # CONTENT of a check here, not a magic number in logic.
+    # ``FBT003`` (141): a boolean at a CALL site.  ``FBT001``/``FBT002`` stay
+    # selected, which is where the design fact is -- a boolean PARAMETER.
+    "TC", "PLC0415", "TRY003", "EM101", "EM102", "PT018", "PLR2004", "FBT003",
+
+    # ``PLC0414`` useless-import-alias (1,945): **this rule is WRONG for this
+    # package and following it would break reading 7.**  ``X as X`` is the
+    # PEP 484 explicit re-export form, and it is what tells a consumer's type
+    # checker that a name imported into ``adcp.types.<domain>`` is part of that
+    # module's public interface.  We ship ``py.typed``, so the promise is load
+    # bearing: ``core.py`` alone carries 971 of these, every one a re-export of
+    # a class from the private module at the document's own path.  A linter rule
+    # that calls the idiom useless is reading it as ordinary code.
+    "PLC0414",
+
+    # ``TID252`` relative-imports (2,228): a relative import WITHIN a package
+    # is valid Python and is what ``codegen/render.py`` emits for a
+    # cross-document reference -- ``from ..enums.action_source import
+    # ActionSource``.  The rule exists for projects whose policy bans them;
+    # this project has no such policy, and adopting one would be a decision
+    # about the renderer's output rather than a defect in it.
+    "TID252",
 ]
+
+# A per-file ignore says "this rule does not apply to this KIND of file", which
+# is different from an exclusion ("these files are not the subject") and
+# different from a blanket ignore ("this rule applies nowhere").  Three, each
+# measured:
+[tool.ruff.lint.per-file-ignores]
+# ``assert`` IS the test -- 2,325 of them, and S101 is the only reason bandit
+# reads this directory as unsafe.  The rest of ``S`` stays live in tests, which
+# is where the subprocess rules (S603, S607) actually fire.
+# ``SLF001`` (65): a test that grades an internal must name it, and 23 ``noqa``
+# comments already said so one site at a time.
+# ``INP001`` (55): ``tests/`` is deliberately not a package -- ``pythonpath``
+# in ``[tool.pytest.ini_options]`` is what puts it on the path.
+"tests/*" = ["S101", "SLF001", "INP001"]
+# ``T201`` print: ``codegen/__main__.py`` is a command-line program and print
+# is its output channel.  Everywhere else a print is a finding.
+"codegen/__main__.py" = ["T201"]
+# The emitted tree's ``__init__.py`` files are 0 bytes by design (the layout
+# rule beside ``emit.write``), so a docstring rule has nothing to attach to.
+"src/adcp/types/_schemas/**/__init__.py" = ["D104"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["adcp", "codegen"]
