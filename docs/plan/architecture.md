@@ -600,7 +600,7 @@ is the second miss and the more expensive one.
 
 The cost of the prohibition is that the compiler reproduces the defect it was built to escape.
 
-### §3a's ENTRY KEY IS THE VALUE LIST, AND AN UNTITLED ENTRY IS NAMED FROM ITS HOME (2026-11-03)
+### §3a's ENTRY KEY IS THE VALUE LIST, AND AN UNTITLED ENTRY IS NAMED FROM ITS HOME
 
 **THREE CONSEQUENCES OF THAT TEST THAT THE SENTENCE DOES NOT SPELL (2026-11-03), each from a lane
 applying it.**
@@ -691,7 +691,7 @@ Because the home is unique and derived, lengthening by the home's chain is order
 where two entries share both a home and a derived name §4's own axes decide as they already do for
 every other position.
 
-### THREE CORRECTIONS TO §3a, EACH FROM A LANE THAT REFUSED TO DECIDE IT (2026-11-02)
+### THREE CORRECTIONS TO §3a, EACH FROM A LANE THAT REFUSED TO DECIDE IT
 
 **A DOCUMENT ROOT BEATS A RESTATING TITLE, so a CONFLICT with a rooted vocabulary is not one.**
 §3a said of two titles over one member set that *"in neither case is there a third name to collapse
@@ -1349,6 +1349,48 @@ type checker still proves here.
   total by construction, and the handlers are plain functions testable with a hand-built node
   and a context — no module object, no callables threaded through a dataclass.
 
+### A HANDLER MODULE HOLDS ITS ROW'S DECISION, AND `compiler.py` HOLDS NO ROW
+
+**A module whose body delegates to another module is not a module. It is a name for one**, and
+it satisfies this section's layout while leaving the structure the layout describes unbuilt. A
+reader who opens `lower/composition.py` to learn what an `allOf` lowers to must find the answer
+there — not a call into a module that also holds the object row, the intersection rule, the
+field builder and the walk's context.
+
+This is not a new decomposition. §14 step 5 already states it — "each handler takes its node:
+`lower_object`, `lower_composition`, the containers, the union, the enum and const rows become
+`lower/<kind>.py`" — and the pattern is already chosen above, against two named alternatives. So
+the instruction is to FINISH the one that exists, and nothing is to be invented: no new
+abstraction, no new indirection, no pattern adopted to justify a move. **Where a façade module
+and a god module both exist, the code moves into the façade and the god module shrinks to what
+only it can hold.**
+
+**What only `compiler.py` can hold is the CONTEXT** — the one value the handlers share, which
+is the walk's state and belongs to no row. Everything else has a home that names its subject:
+
+- **a row's decision** lives in that row's `lower/<kind>.py`, whole.
+- **a collaborator several rows share** lives with its PRIMARY subject and is imported by the
+  others. The field builder and the class declarer are the object row's — every class with
+  fields passes through them, and the composing row and a union branch are callers.
+- **a pure function over two declarations** lives in a module of its own, because purity is
+  exactly the property that makes it gradeable alone, and §6 already classifies the
+  intersection rule that way.
+
+**THE TEST OF THE BOUNDARY IS WHAT A READER OPENS, NEVER A LINE COUNT.** A module states one
+subject; a function answers one question about it. Both are judgements, and neither is a
+threshold — which is why the sentence above is about where a reader looks and not about how much
+is there.
+
+**A CEILING ON COMPLEXITY OR LENGTH IS SET AFTER THE DECOMPOSITION, NEVER BEFORE IT, AND THE TWO
+ARE SET TOGETHER.** Before: the number is the debt, frozen, and it is satisfiable by moving
+statements — a long function becomes two in the same module and nothing is separated. After: the
+number is the structure's own, and it is a tripwire against the next drift rather than a
+description of the present one. Together, because each alone has an escape: a complexity limit is
+met by splitting a function inside the module, a length limit by splitting a module without
+separating a concern. **This is the one place a count is admitted in this project, and it is
+admitted as a regression guard on a structure already reached — never as the instrument that
+reaches it.**
+
 **Root and non-root are one path.** There is no second table of root selectors. A document is
 `parse(raw, position=ROOT)` followed by `decide`. The only thing ROOT adds is the module
 wrapper — a class carries `strict_validate` by inheritance, and a root whose lowering is an
@@ -1356,8 +1398,7 @@ alias or an enumeration gets a `RootBinding` declaration from `lower_document`, 
 one function that knows a root is a root. The document-set predicates a step's result was
 stated over are the tests' business and live under `tests/`.
 
-**The committed tree's own population is not one of those predicates (added 2026-10-29).** It
-is `bundle.portable` — every document of the bundle that can be emitted at all — because the
+**The committed tree's own set is not one of those predicates.** It is `bundle.portable` — every document of the bundle that can be emitted at all — because the
 tree is an ARTIFACT and not a phase. The steps' selectors grade their steps and are untouched by
 this; written from their union the tree omits documents that emit, and which ones it happens to
 carry depends on what a past run reached through `$ref` closure, which is not a derivation.
@@ -2042,7 +2083,7 @@ condition, below.
    `additionalProperties` on a class stop refusing or crashing. *Tree unchanged where a
    document emitted before.* Unblocks §5 and §6 in full.
 
-   *How the conversion is STAGED, settled 2026-10-26 after two attempts measured the surface.*
+   *How the conversion is STAGED, after two attempts measured the surface.*
    The end state above is not negotiable: `parse` is the only reader of a raw mapping, and a
    handler reads node fields. But the conversion to it is not one commit's worth of work — the
    surface is 11 screen sites, 7 descent sites, roughly 2,100 lines of handler code and 32 test
@@ -2059,8 +2100,7 @@ condition, below.
    finished step 5, and no later step may read it. Staging a refactor is not the same as
    softening its end state.
 
-   *The refusal ORDER is document order, and that settles what this step owes the old report
-   (2026-10-26).* The first attempt at this step stalled on trying to reproduce the sequence six
+   *The refusal ORDER is document order, and that settles what this step owes the old report.* The first attempt at this step stalled on trying to reproduce the sequence six
    handlers happen to screen in — `lower_composition` checking `type` before its screen,
    `union.ROOT_CLAIMS` claiming four keywords so its own refusal reports after them — and
    concluded the parser could not be written without preserving all six. It does not owe them
