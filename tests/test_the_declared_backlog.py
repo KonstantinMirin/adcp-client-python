@@ -152,9 +152,18 @@ def _carried() -> dict[tuple[str, str, str], Any]:
 #: **Grown by EMISSION and not by permissiveness**, which is the reading
 #: ``codegen/dump_exemptions.py``'s own instrument records for the same shape: "the number
 #: of positions one upstream pattern reaches is a property of how much of the bundle is
-#: packaged, not of how permissive the SDK is".  80 of the 120 are one cell at 80
-#: positions; 39 are one derivation at 39 unions; 1 is a keyword.  **Three causes, not
-#: 120.**
+#: packaged, not of how permissive the SDK is".  80 of the 178 are one cell at 80
+#: positions; 58 are ONE conditional at 58 positions; 39 are one derivation at 39 unions;
+#: 1 is a keyword.  **Four causes, not 178.**
+#:
+#: **RE-PINNED AT ``adcp-client-python-3bb``: 120 IN 53 -> 178 IN 70.**  The 58 that
+#: arrived are ``else`` at the KEYWORD rung and nothing is pinned-and-no-longer-declared:
+#: a conditional nested inside another conditional's ``else`` arm compiles to nothing on
+#: the model, and ``docs/plan/final-state.md`` reading 2 makes every exception to reading 1
+#: a DECLARED widening rather than a named ceiling.  The fifth shape's own sentence sits
+#: with the sites below, and the arithmetic is 120 + 58 = 178 facts, 53 + 17 = 70
+#: documents -- 8 of the 25 documents the 58 sites fall in already declared a
+#: ``patternProperties`` or an ``anyOf``.
 DECLARED_WIDENINGS = {
 
     # anyOf at JOIN: 21 sites in 18 documents
@@ -184,6 +193,90 @@ DECLARED_WIDENINGS = {
     ('media-buy/refine-proposals-request.json', '#/properties/refinements/items/oneOf/1/anyOf', 'anyOf'),
     ('media-buy/request-proposals-request.json', '#/anyOf', 'anyOf'),
     ('trusted-match/provider-registration.json', '#/anyOf', 'anyOf'),
+    # **else at KEYWORD: 58 sites in 25 documents, and they are ONE conditional**
+    # (``adcp-client-python-3bb``, and ``docs/plan/final-state.md`` reading 2).
+    # ``core/reporting-schedule-offering.json#/allOf/0/else`` holds an ``if``/``then`` of
+    # its own: the outer condition does not match, the inner one does, and the document
+    # requires a key the class does not -- ``{"b": "y", "t": "off"}`` is the payload, at
+    # cell scale.  §5's ``then``/``else`` row decides the ANNOTATION ("``ConditionalRequired``
+    # / ``NegatedConditional`` from its ``required`` and a single-name ``not``" -- a nested
+    # conditional is neither), and reading 2 decides the MODULE: a ``model_validate`` that
+    # builds a payload the document refuses is reading 1 failing, and §2 permits it only
+    # where the run says so at the pointer.
+    #
+    # **Grown by EMISSION and not by permissiveness**, which is this set's own reading of
+    # the ``patternProperties`` 80: one schedule conditional reached through the
+    # account/reporting closure in 25 documents.  Only ``core/reporting-schedule.json``,
+    # ``core/reporting-schedule-offering.json``, ``media-buy/get-products-response.json``
+    # and ``signals/get-signals-response.json`` state it at a root; every other site is
+    # that node under a ``properties``/``items`` path, and the paired
+    # ``.../schedule`` and ``.../schedule/allOf/0`` entries are the composing property and
+    # the conjunct ``emit._folded`` leaves where the document states it.
+    #
+    # **What is NOT here, and the measurement is the reason.**  The six RULE cells of
+    # ``3bb``'s second population widen for the OTHER half of the same row -- an ``if``
+    # the ``Match`` reduction cannot read -- and declaring those mints 4,635 sites in 97
+    # documents from 112 distinct conditional facts, 3,641 of them one inlined logo-slot
+    # ``if``.  §8 rules that set out by name: "an approximation nothing can demonstrate
+    # does not belong in the set".  The bead carries it.
+    ('account/list-accounts-response.json', '#/properties/accounts/items/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule', 'else'),
+    ('account/list-accounts-response.json', '#/properties/accounts/items/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule/allOf/0', 'else'),
+    ('account/sync-accounts-request.json', '#/properties/accounts/items/properties/reporting_delivery_configs/items/properties/schedule', 'else'),
+    ('account/sync-accounts-request.json', '#/properties/accounts/items/properties/reporting_delivery_configs/items/properties/schedule/allOf/0', 'else'),
+    ('account/sync-accounts-response.json', '#/oneOf/0/properties/accounts/items/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule', 'else'),
+    ('account/sync-accounts-response.json', '#/oneOf/0/properties/accounts/items/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule/allOf/0', 'else'),
+    ('compliance/comply-test-controller-request.json', '#/properties/params/properties/result/anyOf/0', 'else'),
+    ('compliance/comply-test-controller-request.json', '#/properties/params/properties/result/anyOf/1', 'else'),
+    ('compliance/comply-test-controller-request.json', '#/properties/params/properties/result/anyOf/2/properties/account/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule', 'else'),
+    ('compliance/comply-test-controller-request.json', '#/properties/params/properties/result/anyOf/2/properties/account/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule/allOf/0', 'else'),
+    ('compliance/task-completion-data.json', '#/anyOf/0', 'else'),
+    ('compliance/task-completion-data.json', '#/anyOf/1', 'else'),
+    ('compliance/task-completion-data.json', '#/anyOf/2/properties/account/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule', 'else'),
+    ('compliance/task-completion-data.json', '#/anyOf/2/properties/account/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule/allOf/0', 'else'),
+    ('core/account-with-authorization.json', '#/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule', 'else'),
+    ('core/account-with-authorization.json', '#/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule/allOf/0', 'else'),
+    ('core/account.json', '#/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule', 'else'),
+    ('core/account.json', '#/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule/allOf/0', 'else'),
+    ('core/async-response-data.json', '#/anyOf/0', 'else'),
+    ('core/async-response-data.json', '#/anyOf/15', 'else'),
+    ('core/async-response-data.json', '#/anyOf/18/oneOf/0/properties/account/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule', 'else'),
+    ('core/async-response-data.json', '#/anyOf/18/oneOf/0/properties/account/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule/allOf/0', 'else'),
+    ('core/async-response-data.json', '#/anyOf/34/oneOf/0/properties/creatives/items/properties/account/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule', 'else'),
+    ('core/async-response-data.json', '#/anyOf/34/oneOf/0/properties/creatives/items/properties/account/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule/allOf/0', 'else'),
+    ('core/mcp-webhook-payload.json', '#/properties/result/anyOf/0', 'else'),
+    ('core/mcp-webhook-payload.json', '#/properties/result/anyOf/15', 'else'),
+    ('core/mcp-webhook-payload.json', '#/properties/result/anyOf/18/oneOf/0/properties/account/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule', 'else'),
+    ('core/mcp-webhook-payload.json', '#/properties/result/anyOf/18/oneOf/0/properties/account/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule/allOf/0', 'else'),
+    ('core/mcp-webhook-payload.json', '#/properties/result/anyOf/34/oneOf/0/properties/creatives/items/properties/account/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule', 'else'),
+    ('core/mcp-webhook-payload.json', '#/properties/result/anyOf/34/oneOf/0/properties/creatives/items/properties/account/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule/allOf/0', 'else'),
+    ('core/media-buy.json', '#/properties/account/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule', 'else'),
+    ('core/media-buy.json', '#/properties/account/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule/allOf/0', 'else'),
+    ('core/reporting-delivery-capabilities.json', '#/properties/offerings/items/properties/schedule', 'else'),
+    ('core/reporting-delivery-capabilities.json', '#/properties/offerings/items/properties/schedule/allOf/0', 'else'),
+    ('core/reporting-delivery-config-state.json', '#/properties/configuration/properties/schedule', 'else'),
+    ('core/reporting-delivery-config-state.json', '#/properties/configuration/properties/schedule/allOf/0', 'else'),
+    ('core/reporting-delivery-config.json', '#/properties/schedule', 'else'),
+    ('core/reporting-delivery-config.json', '#/properties/schedule/allOf/0', 'else'),
+    ('core/reporting-delivery-offering.json', '#/properties/schedule', 'else'),
+    ('core/reporting-delivery-offering.json', '#/properties/schedule/allOf/0', 'else'),
+    ('core/reporting-obligation.json', '#/properties/schedule', 'else'),
+    ('core/reporting-obligation.json', '#/properties/schedule/allOf/0', 'else'),
+    ('core/reporting-schedule-offering.json', '#', 'else'),
+    ('core/reporting-schedule.json', '#', 'else'),
+    ('creative/list-creatives-response.json', '#/properties/creatives/items/properties/account/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule', 'else'),
+    ('creative/list-creatives-response.json', '#/properties/creatives/items/properties/account/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule/allOf/0', 'else'),
+    ('creative/sync-creatives-response.json', '#/oneOf/0/properties/creatives/items/properties/account/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule', 'else'),
+    ('creative/sync-creatives-response.json', '#/oneOf/0/properties/creatives/items/properties/account/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule/allOf/0', 'else'),
+    ('media-buy/create-media-buy-response.json', '#/oneOf/0/properties/account/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule', 'else'),
+    ('media-buy/create-media-buy-response.json', '#/oneOf/0/properties/account/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule/allOf/0', 'else'),
+    ('media-buy/get-media-buys-response.json', '#/properties/media_buys/items/properties/account/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule', 'else'),
+    ('media-buy/get-media-buys-response.json', '#/properties/media_buys/items/properties/account/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule/allOf/0', 'else'),
+    ('media-buy/get-products-response.json', '#', 'else'),
+    ('media-buy/get-reporting-status-response.json', '#/properties/periods/items/properties/schedule', 'else'),
+    ('media-buy/get-reporting-status-response.json', '#/properties/periods/items/properties/schedule/allOf/0', 'else'),
+    ('protocol/get-adcp-capabilities-response.json', '#/properties/media_buy/properties/reporting_delivery/properties/offerings/items/properties/schedule', 'else'),
+    ('protocol/get-adcp-capabilities-response.json', '#/properties/media_buy/properties/reporting_delivery/properties/offerings/items/properties/schedule/allOf/0', 'else'),
+    ('signals/get-signals-response.json', '#', 'else'),
     # maxLength at KEYWORD: 1 sites in 1 documents
     ('compliance/comply-test-controller-response.json', '#/oneOf/6/properties/recorded_calls/items/properties/payload', 'maxLength'),
     # oneOf at JOIN: 18 sites in 16 documents
