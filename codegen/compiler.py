@@ -1384,6 +1384,25 @@ class Module:
 
 
 @dataclass(frozen=True)
+class Dropped:
+    """One fact a rule source states and the class does not carry, at its own address.
+
+    The four things ``lower.approximate.declare`` needs and nothing else: it mints the
+    declaration, reads the rung off the cell at ``position``, and the caller supplies
+    neither -- §3's "a handler never chooses a rung and never writes an attribution".
+    """
+
+    keyword: str
+    #: Where the DOCUMENT states it.  The node's own pointer for the node's own sources,
+    #: and the conjunct's for a conjunct's.
+    pointer: str
+    #: The position the cell is read at, which is the node's own or CONJ.
+    position: Position
+    #: What the document states for the keyword there, in the document's own spelling.
+    fact: Any
+
+
+@dataclass(frozen=True)
 class Rules:
     """What one node's D6 rules come to, as the four things a lowering needs.
 
@@ -1426,6 +1445,20 @@ class Rules:
     screen: frozenset[str]
     rules: tuple[Rule, ...]
     distinct: tuple[str, ...]
+    #: **Every fact a rule source states that the rules above do NOT carry**, each with
+    #: the pointer and the position it is stated at, so the one caller that declares a
+    #: class can declare them (``docs/plan/final-state.md`` reading 2, "every exception to
+    #: reading 1 is a declared widening").  Fifth on this carrier for the reason the other
+    #: four are here: a caller that read the rule tuple and forgot the drops would emit a
+    #: class wider than its document with nothing in the report naming the pointer, which
+    #: is what ``adcp-client-python-3bb`` and ``-6oe`` both measured.
+    #:
+    #: The POINTER is carried per entry because a conjunct's fact is stated at the
+    #: conjunct's own pointer and not at the class's: §2 keeps a conjunct a DECLARATION,
+    #: ``approximate.declare`` spells the pointer the way ``__adcp_schema__`` spells it,
+    #: and a declaration at a pointer the document states nothing at is one
+    #: ``harness.check_widening`` can never discharge.
+    dropped: tuple["Dropped", ...] = ()
     #: The names this node forbids ONE AT A TIME, read off the ``ForbiddenGroups`` the
     #: rules above already reduced the node's ``not`` to: a SINGLETON group says the
     #: name is not present at all, where a longer one says only that the group is not
@@ -1445,6 +1478,8 @@ def rules_at(
     *also: Mapping[str, Any],
     position: Position = Position.ROOT,
     resolve: "Resolver" = None,
+    at: Sequence[str] = (),
+    keeps_every_key: bool | None = None,
 ) -> Rules:
     """D6's reading of a node, for a lowering that cannot import the rules module.
 
@@ -1489,8 +1524,22 @@ def rules_at(
     gate) -- and ``screen`` is the rule sources the node STATES, which is what a screen
     asks: the only keys a screen can admit are keys the node carries, and a rule source
     the node carries is in that mapping exactly when the table and ``presence_only``
-    admit it here.  ``also`` stays raw, because an ``allOf`` conjunct is a DECLARATION by
+    admit it here.  ``also`` stays RAW, because an ``allOf`` conjunct is a DECLARATION by
     §2's own decision.
+
+    **``at`` is where each of ``also`` is STATED**, one pointer per conjunct in the same
+    order, so :attr:`Rules.dropped` can carry a conjunct's fact at the conjunct's own
+    address rather than at the class's.  Empty for a caller with no conjuncts, and a
+    caller that passes conjuncts without pointers gets the node's own -- which is the
+    fail-safe direction for everything but a declaration, and is why the one caller that
+    declares passes them.
+
+    **``keeps_every_key`` is the CLASS's extra policy, asked once for every view**
+    (``adcp-client-python-6oe``): ``min``/``maxProperties`` are counted over the keys the
+    class RETAINED, and one class carries every conjunct's rules, so the gate is a
+    property of the class and not of whichever view stated the keyword.  ``None`` keeps
+    each view's own reading, which is what every caller but :func:`declare_object` has to
+    offer -- and :func:`declare_object` is the one that writes the tuple onto a class.
     """
     from codegen.lower import rules
 
@@ -1498,10 +1547,21 @@ def rules_at(
         rules.lower(
             node.rules,
             node.declared,
-            "additionalProperties" in node.declares,
+            ("additionalProperties" in node.declares)
+            if keeps_every_key is None
+            else keeps_every_key,
             resolve=resolve,
         ),
-        *(rules.lower_declaration(c, position, resolve=resolve) for c in also),
+        *(
+            rules.lower_declaration(c, position, resolve=resolve, extra_stated=keeps_every_key)
+            for c in also
+        ),
+    ]
+    #: The pointer and the position each view's facts are STATED at: the node's own for
+    #: the node, and the conjunct's own at CONJ for each conjunct the caller located.
+    sites = [
+        (node.pointer, node.position),
+        *((at[i] if i < len(at) else node.pointer, Position.CONJ) for i in range(len(also))),
     ]
     screen = frozenset(node.rules)
     distinct: list[str] = []
@@ -1512,6 +1572,11 @@ def rules_at(
         screen=screen,
         rules=written,
         distinct=tuple(distinct),
+        dropped=tuple(
+            Dropped(keyword, pointer, stated_at, fact)
+            for one, (pointer, stated_at) in zip(lowered, sites, strict=True)
+            for keyword, fact in one.dropped
+        ),
         forbids=frozenset(
             group[0]
             for rule in written
@@ -2052,6 +2117,7 @@ def declare_object(
     bases: tuple[ir.TypeRef, ...] = (),
     branches: tuple[ir.TypeRef, ...] | None = None,
     rule_nodes: Sequence[Mapping[str, Any]] = (),
+    rule_sites: Sequence[str] = (),
     description: str | None = None,
     root_required: tuple[str, ...] | None = None,
     discriminator: str | None = None,
@@ -2078,7 +2144,11 @@ def declare_object(
 
     ``rule_nodes`` are the OTHER nodes whose rules are this class's -- an ``allOf``
     conjunct, which draft-07 applies to the same instance.  Empty for every row but
-    the composing one.
+    the composing one.  ``rule_sites`` is where the document STATES each of them, one
+    pointer per node in the same order, and it exists for the DECLARATION and nothing
+    else: a fact a conjunct states and this class does not carry is declared at the
+    conjunct's own pointer, because that is where ``harness.check_widening`` will go
+    looking for the fact to draw against.
 
     ``extras`` is the extras STORE as a parsed node -- the ``dict[K, V]`` §5 says a typed
     ``additionalProperties`` on a class is -- or ``None`` where the document states
@@ -2098,7 +2168,6 @@ def declare_object(
     reading rather than a rewritten mapping (``lower_composition`` and the union's
     ``$ref`` branch, which is a composition of the union base and the target).
     """
-    stated = rules_at(node, *rule_nodes, position=position, resolve=mod.resolve_node)
     # D8's typed row: a property the class does not DECLARE is validated against
     # the document's own value schema, through pydantic's ``__pydantic_extra__``.
     # The TYPE is the same ``dict[K, V]`` a mapping node lowers to, decided by the
@@ -2171,6 +2240,42 @@ def declare_object(
         if extra_type is not None
         else {False: "forbid", True: "allow"}.get(ap, shape.extra)
     )
+    # **D6's reading runs AFTER the extra policy is resolved, because one of its gates IS
+    # that policy** (``adcp-client-python-6oe``).  ``min``/``maxProperties`` are counted
+    # over the keys the class RETAINED, so the gate ``lower.rules._count`` asks is "does
+    # this class keep every key the document would count" -- ``forbid`` admits only
+    # declared fields and ``allow`` keeps the extras, while a class with no policy at all
+    # takes ``AdCPBaseModel``'s ``ignore`` and drops them.  Read off each VIEW's own
+    # ``additionalProperties`` the gate answered about a different object: a conjunct
+    # stating ``true`` passed it while the composed class it wrote the rule onto kept no
+    # key, and ``PositivePostalAreaSupport`` lost its ``minProperties`` entirely because
+    # the conjunct that states it says nothing about extras and the BASE says everything.
+    # Nothing moves but the order; ``resolved_extra`` reads no rule.
+    stated = rules_at(
+        node,
+        *rule_nodes,
+        position=position,
+        resolve=mod.resolve_node,
+        at=tuple(rule_sites),
+        keeps_every_key=resolved_extra is not None,
+    )
+    # **Every fact a rule source states and this class does not carry is DECLARED here**
+    # (``docs/plan/final-state.md`` reading 2; ``adcp-client-python-3bb``, ``-6oe``).  §5
+    # decides what the ANNOTATION is -- an unreadable ``if`` compiles to "nothing, and the
+    # schema half answers" -- and reading 2 decides what the MODULE says: a
+    # ``model_validate`` that builds a payload the document refuses is reading 1 failing,
+    # and §2 permits it only as a declared widening at its own pointer.  This is the one
+    # funnel a class with fields passes through, which is what makes "a dropped fact is
+    # declared" true of every row rather than of the one that remembered -- the same
+    # sentence the rule TUPLE above is written here for.
+    #
+    # Imported on use, for the reason the rules module is: ``lower.approximate`` imports
+    # this module for :class:`Module` and :func:`schema_ref`, so this side is the lazy one.
+    if stated.dropped:
+        from codegen.lower.approximate import declare as _declare_widening
+
+        for drop in stated.dropped:
+            _declare_widening(mod, drop.pointer, drop.keyword, drop.position, drop.fact)
     described = node.description if node.description is not None else description
     declaration = ir.ClassDecl(
         # **The POINTER in the name slot, until the pass runs** (§7, and
@@ -3677,6 +3782,12 @@ def lower_composition(
     required: set[str] = set(getattr(node, "required", ()))
     #: The conjuncts that state a RULE of this node rather than a base or fields.
     conjunct_rules: list[dict] = []
+    #: Each of those conjuncts' own POINTER, in the same order.  Carried for the
+    #: DECLARATION and nothing else: a fact a conjunct states and the composed class does
+    #: not carry is declared where the document states it, which is the conjunct's pointer
+    #: and not this node's (``adcp-client-python-3be.29`` is the same defect read from the
+    #: other end).
+    conjunct_sites: list[str] = []
     #: **The conjuncts whose whole content is a VALUE SET** (:data:`_A_VALUE_SET`), with
     #: each one's own pointer, for §5's ``enum`` row at CONJ.  A value set constrains this
     #: node's own TYPE, so it is read after the whole list beside the reference that
@@ -3851,6 +3962,7 @@ def lower_composition(
                 stating = _a_rule_the_target_states(conjunct["$ref"], mod)
                 if stating is not None:
                     conjunct_rules.append(stating)
+                    conjunct_sites.append(where)
                     continue
                 if target.branches is not None:
                     # **§5's distribution clause drops a branch whose intersection with
@@ -3992,6 +4104,31 @@ def lower_composition(
                     "keyword over this bundle state true",
                     kind=Kind.DEFERRED,
                 )
+            if "additionalProperties" in keys and inherited_extra is None:
+                # **``true`` IS the identity for the composed value schema and it is NOT
+                # the identity for the class's ``extra``, which is the asymmetry
+                # ``adcp-client-python-6oe`` measured.**  §5's ``additionalProperties``
+                # row says the value "is read from what the document states at the class's
+                # own pointer AFTER THE DOCUMENT-SIDE FOLD -- which is where the root's
+                # conjunct arrives", and ``harness.FOLDED_FACTS`` carries the keyword, so
+                # the document-side reading already puts a conjunct's ``true`` at this
+                # pointer.  The walk dropped it, and the two halves then disagreed about
+                # what the document states here -- which is the one thing §9's two
+                # spellings exist to prevent.
+                #
+                # It is not a cosmetic difference: ``absent -> ignore`` drops every key
+                # the document counts, so §5's ``minProperties`` gate ("written only where
+                # ``additionalProperties`` is stated") passed on the conjunct's word while
+                # the class it wrote the rule onto kept none of the keys -- a
+                # ``PropertyCount(minimum=…)`` refusing what the document admits, which is
+                # the one direction §2 forbids outright.
+                #
+                # First-wins over the conjunct list and after the caller's own bases, which
+                # is exactly the order ``inherited_extra`` is already filled in and the
+                # order ``harness._composed`` gap-fills in -- so the two readings of "what
+                # does the document state here" cannot come apart.  ``true`` is the only
+                # value reachable: anything else refused two lines above.
+                inherited_extra = "allow"
             if "allOf" in keys:
                 # Section 5's ``allOf`` row, CONJ: the same rule applied to the
                 # conjunct's own conjuncts.  Pushed onto the worklist at their own
@@ -4034,6 +4171,7 @@ def lower_composition(
             # no source and renders nothing.
             if keys:
                 conjunct_rules.append(conjunct)
+                conjunct_sites.append(where)
             continue
         combinator = next((k for k in ("oneOf", "anyOf") if k in keys), None)
         if combinator is not None:
@@ -4328,7 +4466,13 @@ def lower_composition(
         mod.imports.add((ir.BASE_MODULE, "AdCPBaseModel"))
         mod.imports.add(("typing", "ClassVar"))
 
-    stated = rules_at(node, *conjunct_rules, position=position, resolve=mod.resolve_node)
+    stated = rules_at(
+        node,
+        *conjunct_rules,
+        position=position,
+        resolve=mod.resolve_node,
+        at=tuple(conjunct_sites),
+    )
 
     own: dict[str, dict] = {}
     #: The keys whose field is the inherited one wearing this document's annotations.
@@ -4749,6 +4893,7 @@ def lower_composition(
             else (*bases, base_if_none_composes)
         ),
         rule_nodes=conjunct_rules,
+        rule_sites=conjunct_sites,
         # §4's three facts a union base carries and no other class does, and the
         # branch list §7 gives the base's fourth slot: ``None`` for every node that is
         # not one, which is what :func:`declare_object` reads to tell a base from a

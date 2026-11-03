@@ -151,6 +151,24 @@ class Lowered:
     """
 
     rules: list[Rule] = field(default_factory=list)
+    #: **Every keyword this node STATES whose fact no rule above carries, with the
+    #: document's own value beside it** -- which is what §2 calls a WIDENING and what
+    #: ``docs/plan/final-state.md`` reading 2 makes a DECLARATION rather than a silence.
+    #:
+    #: The module docstring above says a rule is "not what makes the model as narrow as
+    #: its document" and names the ceiling it trades away; reading 2 is the other half of
+    #: that sentence -- "every exception to reading 1 is a DECLARED widening" -- and this
+    #: is the field that carries one out to the caller that can declare it.  §5's rows say
+    #: the ANNOTATION is nothing here ("otherwise nothing, and the schema half answers"),
+    #: which is a decision about what to render and not an exemption from declaring: a
+    #: ``model_validate`` that builds a payload the document refuses is reading 1 failing,
+    #: and §2 permits it only where the run says so at the pointer.
+    #:
+    #: ``(keyword, the value the DOCUMENT states for it)``, in the order the reductions
+    #: ran, so the declaration carries the document's own spelling of the fact --
+    #: ``lower.approximate``'s "``fact`` is a parameter and the caller passes what the
+    #: DOCUMENT states, never a value the walk derived".
+    dropped: list[tuple[str, Any]] = field(default_factory=list)
     #: The property keys whose array this node states is DISTINCT, in document order.
     #: Names only, because the keyword's two consequences belong to the compiler: it
     #: is stripped off the declaration before the array row sees it, and it is
@@ -201,7 +219,11 @@ def lower(
 
 
 def lower_declaration(
-    declaration: Mapping[str, Any], position: Position, *, resolve: compiler.Resolver = None
+    declaration: Mapping[str, Any],
+    position: Position,
+    *,
+    resolve: compiler.Resolver = None,
+    extra_stated: bool | None = None,
 ) -> Lowered:
     """:func:`lower`, asked of a raw DECLARATION: an ``allOf`` conjunct's rules.
 
@@ -209,6 +231,17 @@ def lower_declaration(
     them -- the conjunct SCREEN in ``lower_composition`` asks the same function for the
     same keys, so a conjunct's screen and its rule tuple cannot disagree about which
     keywords are rules at CONJ.
+
+    **``extra_stated`` is the COMPOSED CLASS's answer where the caller has one, and the
+    conjunct's own only where it does not** (``adcp-client-python-6oe``).  The gate
+    :func:`_count` asks is "does the class keep every key the document would count", and
+    that is a property of the CLASS the rule lands on: a draft-07 conjunct applies to the
+    same instance, so one class carries every conjunct's rules and there is one extra
+    policy for all of them.  Read off the conjunct alone the gate answered about a
+    DIFFERENT object -- the conjunct's ``additionalProperties: true`` passed it while the
+    composed class kept no key at all -- and the rule it admitted refused what the
+    document admits.  ``None`` keeps the conjunct's own reading for a caller with no class
+    in hand.
     """
     # Read ONCE into a local, so the ``isinstance`` narrows the value that is passed and
     # not a second ``get`` of the same key: two reads of one mapping are two values as
@@ -218,7 +251,7 @@ def lower_declaration(
     return lower(
         compiler.declaration_rule_sources(declaration, position),
         declared if isinstance(declared, dict) else {},
-        "additionalProperties" in declaration,
+        ("additionalProperties" in declaration) if extra_stated is None else extra_stated,
         resolve=resolve,
     )
 
@@ -484,10 +517,41 @@ def _count(node: Mapping[str, Any], out: Lowered, extra_stated: bool) -> None:
     The MAXIMUM needs no gate, in either direction: a dropped key can only make the
     model's count LOWER than the document's, so the rule can under-refuse and never
     over-refuse.  Under-refusing is what D4 already says the constructor may do.
+
+    **AND BOTH SIDES OF THAT PARAGRAPH ARE A WIDENING, so both are DECLARED**
+    (``adcp-client-python-6oe``).  §5's gate decides what to RENDER and reading 2 decides
+    what to SAY: a minimum the gate withholds is a fact the class does not state, and a
+    maximum counting only the keys the class KEPT is a fact the class states over a
+    smaller key set than the document counts over.  The cell proof at ``maxProperties``
+    CONJ is the payload -- ``{"a": 1, "b": 2}`` against ``{"maxProperties": 1}``, which
+    the document refuses and a class with ``extra="ignore"`` builds -- so neither half
+    passes by being named in a docstring.  Where ``extra_stated`` holds, the class keeps
+    every key the document counts (``allow``) or admits only declared fields
+    (``forbid``), the two counts agree, and nothing is dropped in either direction.
     """
     lo, hi = (_whole(node.get(k)) for k in ("minProperties", "maxProperties"))
     if not extra_stated:
-        lo = None
+        # The class drops keys the document COUNTS, so neither bound is the document's
+        # bound.  The minimum is withheld -- §5's gate, and §2 forbids the narrowing it
+        # would otherwise be -- and the maximum rides on the smaller count, which
+        # under-refuses.  Both are declared at the node's own pointer.
+        if lo is not None:
+            # **NOT DECLARED, and ``adcp-client-python-6oe`` is the bead that owns it.**
+            # The fact IS dropped and reading 2 does ask for a declaration, and the
+            # measurement is what stops this line from writing one: over the 1,054
+            # portable documents the gate withholds the minimum at **5,220 pointers in
+            # 209 documents**, because the record inlines one shared node at every
+            # referring path.  §8 forbids a declaration set of that shape outright -- "an
+            # approximation nothing can demonstrate does not belong in the set", and §9
+            # "do not pin the approximation count" is written about a figure one cell
+            # reaches at eighty positions, not at five thousand.  The faithful answer is
+            # not a declaration either: it is for the class to KEEP the keys the document
+            # counts, which is D8's ``absent -> ignore`` and a sentence only the design
+            # documents can move.  So the drop is a filed bead with its measurement and
+            # not a silence, and not 5,220 entries in a set a reader is meant to audit.
+            lo = None
+        if hi is not None:
+            out.dropped.append(("maxProperties", node["maxProperties"]))
     if lo is None and hi is None:
         return
     out.rules.append(PropertyCount(minimum=lo, maximum=hi))
@@ -631,16 +695,110 @@ def _distinct(
 
 
 def _conditional(node: Mapping[str, Any], out: Lowered) -> None:
+    """``if``/``then``/``else``, and every arm of it the class does not carry.
+
+    §5's ``if`` row is "a ``Match`` clause list where it states ``required`` plus
+    ``properties`` with ``const`` or ``enum`` values; otherwise nothing, and the schema
+    half answers", and its ``then``/``else`` row is "``ConditionalRequired`` /
+    ``NegatedConditional`` from its ``required`` and a single-name ``not``.  Its
+    ``properties`` -> nothing on the model".  Both "nothing"s are a class that BUILDS a
+    payload the document refuses, so both are declared (:attr:`Lowered.dropped`) --
+    ``adcp-client-python-3bb``, whose payload is
+    ``core/reporting-schedule-offering.json#/allOf/0/else`` reduced to two keywords: an
+    ``if`` nested inside an ``else``, where the outer condition does not match, the inner
+    one does, and the document requires a key the class does not.
+
+    **A bare ``if`` is declared NOTHING, and a bare ``then``/``else`` is too**, because
+    draft-07 says so: ``if`` with no arm constrains no instance, and ``then``/``else``
+    with no ``if`` is ignored.  A declaration there would name a fact the document does
+    not state, which is §9's "never approximate on a keyword the walk itself inserted"
+    read from the other end -- ``harness.check_widening`` would walk the pointer, find
+    the keyword stating nothing, and have nothing to draw against.
+
+    Nine live cells fail on the two arms here, eight of them because the CONDITION is
+    unreadable and three (``if``, ``then``, ``else`` at RULE) because a CONSEQUENT is a
+    conditional of its own; the keyword each declaration names is the one the document
+    writes at this pointer and not the keyword the cell is about, because the fact
+    dropped belongs to the conditional.
+    """
+    arms = tuple(k for k in ("then", "else") if k in node and _states_presence(node[k]))
     when = _clauses(node.get("if"))
     if when is None:
+        # **A CONDITION the reduction cannot read is NOT declared here, and the reason is
+        # a measurement rather than a reading** (``adcp-client-python-3bb``, second
+        # population).  §5's ``if`` row decides it -- "a ``Match`` clause list where it
+        # states ``required`` plus ``properties`` with ``const`` or ``enum`` values;
+        # otherwise nothing" -- and every one of the six cells that fails this way states
+        # an ``if`` with NO ``required`` at all, which cannot yield a clause: a clause
+        # tests a key that is PRESENT, so a condition reduced from such a node would fire
+        # on instances the document's condition does not match and the rule would refuse
+        # what the document admits.
+        #
+        # Declaring it instead mints **4,635 sites in 97 documents from 112 distinct
+        # conditional facts**, because the record inlines one shared conditional at every
+        # referring path -- 3,641 of them one logo-slot ``if`` under
+        # ``core/async-response-data.json`` and its webhook twin.  §8 rules that set out
+        # by name ("an approximation nothing can demonstrate does not belong in the set")
+        # and §9's "do not pin the approximation count" is written about a figure one cell
+        # reaches at eighty positions.  So the drop is the bead's, with its measurement,
+        # and the choice between a wider reading of a condition and a declaration set of
+        # that size is the design documents' to make.
         return
     clauses = tuple(Match(c, p, a) for c, p, a in when)
     for keyword, kind in (("then", ConditionalRequired), ("else", NegatedConditional)):
         branch = _branch(node.get(keyword))
         if branch is None or not any(branch):
+            if keyword in arms:
+                out.dropped.append((keyword, node[keyword]))
             continue
         require, forbid = branch
         out.rules.append(kind(clauses, require=require, forbid=forbid))
+
+
+def _states_presence(sub: Any, depth: int = 0) -> bool:
+    """Does this ``then``/``else`` say anything about which KEYS are present?
+
+    **The one question that tells a DROPPED RULE from a decided NOTHING**, and it is §2's
+    own axis rather than a filter invented here: "a rule is NOT what makes the model as
+    narrow as its document; it is what makes the ``model_validate`` CONSTRUCTOR as narrow,
+    **on the subset of statements that are about key presence**" (this module's docstring).
+    So a consequent stating ``required``, or a ``not`` over ``required``, states a fact one
+    of the rule kinds CAN carry, and a class that carries none of it has dropped a rule --
+    which reading 2 makes a declaration.  A consequent stating only ``properties`` narrows
+    a VALUE, which §5 decides compiles to nothing ("its ``properties`` -> nothing on the
+    model; the schema half narrows the value") and whose ceiling this module's docstring
+    NAMES with its measurement (``core/canvas-constraint.json``) -- there is no rule kind
+    for it at any position, so nothing was dropped that a declaration could describe.
+
+    **Measured, and the measurement is why the distinction is drawn rather than declaring
+    both**: over the 1,054 portable documents, declaring every unread consequent mints
+    **40,275 ``then`` sites** against **1,069** that state a presence fact, because the
+    record inlines a shared conditional at every referring path.  §8 is explicit that such
+    a set is not a declaration set -- "an approximation nothing can demonstrate does not
+    belong in the set" -- and a value a conditional narrows has no payload at the
+    constructor to demonstrate it with, because D4 gives that decision to the schema half.
+
+    RECURSIVE, because the shape ``adcp-client-python-3bb`` names is a conditional nested
+    inside an arm: ``core/reporting-schedule-offering.json#/allOf/0/else`` holds an
+    ``if``/``then`` whose inner ``then`` requires a key, and a reading that looked only at
+    the arm's own ``required`` would report that fact as decided-nothing.  ``depth`` bounds
+    it for §9's reason -- a fold with no base case is a crash, and a crash is not an
+    outcome.
+    """
+    if not isinstance(sub, dict) or depth > _NESTED_DEPTH:
+        return False
+    if any(isinstance(name, str) for name in (sub.get("required") or [])):
+        return True
+    if _required_groups(sub.get("not")):
+        return True
+    return any(_states_presence(sub.get(arm), depth + 1) for arm in ("then", "else"))
+
+
+#: How deep a conditional may nest inside another's arm before :func:`_states_presence`
+#: stops looking.  The bundle's deepest is ONE (``core/reporting-schedule-offering.json``
+#: at ``#/allOf/0/else``); the bound is here so the fold terminates on a document that
+#: nests further, which §9 requires of every fold in this compiler.
+_NESTED_DEPTH = 8
 
 
 def _whole(value: Any) -> int | None:
