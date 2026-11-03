@@ -30,7 +30,7 @@ from compiled import compiled
 from codegen import bundle, emit, keywords
 from codegen.lower import envelope
 import fresh
-from tests.nodeset import claimed
+from tests.nodeset import claimed, partitions
 
 BUNDLE = emit.TREE.parents[3] / "schemas" / "cache" / "3.2"
 
@@ -71,31 +71,20 @@ MEMBERS = frozenset(
     }
 )
 
-#: The members whose DOCUMENT does not emit yet, so there is no class for the base to
-#: reach.  Their refusals belong to §14 steps 9 and 10 and not to this row; when one of
-#: those steps lands, the member's class takes the base with no change here but this set,
-#: which is why it is a set and not a tolerance.
+#: **``WAITING`` STOOD HERE AND HAS REACHED EMPTY** (2026-11-04,
+#: ``adcp-client-python-99m``).  It named the members whose DOCUMENT did not emit yet, so
+#: there was no class for the base to reach, and its own comment said what to do when
+#: that stopped being true: "when one of those steps lands, the member's class takes the
+#: base with no change here but this set, which is why it is a set and not a tolerance."
+#: Every one of §14 steps 9 and 10's documents emits now -- ``./check`` reports
+#: ``refused 0`` -- so the set shrank to nothing, which is a ratchet reaching its floor
+#: and not a gate being relaxed.
 #:
-#: **ONE LEFT AT ``adcp-client-python-10l.55`` BY EMITTING, which is the move this set
-#: is written to absorb.**  ``creative/sync-creatives-response.json#/oneOf/1`` chained
-#: four documents deep onto ``core/assets/asset-union.json``, whose ``$ref`` branch onto
-#: the UNION root ``VASTAsset`` the branch row refused for not being a class.  It is one;
-#: the gate reads ``compiler.TargetKind`` now, the document emits, and its member class
-#: takes the base with no change here but this entry.
-WAITING = frozenset(
-    {
-        "account/sync-accounts-response.json#/oneOf/1",
-        "brand/acquire-rights-response.json#/oneOf/3",
-        "brand/update-rights-response.json#/oneOf/1",
-        "brand/verify-brand-claim-response.json#/oneOf/1",
-        "brand/verify-brand-claims-response.json#/oneOf/1",
-        "content-standards/get-content-standards-response.json#/oneOf/1",
-        "content-standards/list-content-standards-response.json#/oneOf/1",
-        "media-buy/build-creative-response.json#/oneOf/4",
-        "media-buy/create-media-buy-response.json#/oneOf/1",
-        "media-buy/update-media-buy-response.json#/oneOf/1",
-    }
-)
+#: It had grown to ten entries and the two checks reading it asserted it as an EQUALITY,
+#: so the shrink reddened them both rather than passing.  What they say now is the TOTAL
+#: form the set was always a deduction from: every member of the derived family has a
+#: class, and that class takes the base.  A member whose document stops emitting reddens
+#: by NAME against that, which is strictly more than re-pinning a smaller set would say.
 
 
 @functools.cache
@@ -240,7 +229,9 @@ def test_the_base_is_not_a_pair_and_every_member_class_still_is() -> None:
     # The members are unchanged pairs: each declares its own reference, and the reference
     # is its own node's and not the base's.
     taken = {site: model for site, model in classes().items() if site in dict(family())}
-    assert {f"{s.document}#{s.pointer}" for s in taken} == MEMBERS - WAITING, sorted(taken)
+    # ``MEMBERS`` whole, and no longer ``MEMBERS - WAITING``: every member's document
+    # emits, so every member has a class and the deduction has nothing left to subtract.
+    assert {f"{s.document}#{s.pointer}" for s in taken} == MEMBERS, sorted(taken)
     for site, model in taken.items():
         assert "__adcp_schema__" in model.__dict__, site
         assert model.__adcp_schema__.document == site.document
@@ -265,10 +256,14 @@ def test_every_member_class_takes_the_base_and_no_other_class_does() -> None:
     reached nothing else.  A membership test checked one way is complete with respect to
     itself, which is the reason §8's own equalities have two directions.
 
-    Eleven of the 26 members are in documents that do not emit yet, so they have no class
-    to take the base.  That set is named here as a MEASUREMENT: those documents' refusals
-    belong to §14 steps 9 and 10, and when one of them emits its member class takes the
-    base with no change to this row.
+    **AND IT IS TOTAL OVER THE FAMILY NOW** (2026-11-04).  Eleven of the 26 members were
+    in documents that did not emit, so they had no class to take the base, and this check
+    subtracted a named ``WAITING`` set from both sides.  Those documents emit --
+    ``./check`` reports ``refused 0`` -- so the subtraction is gone and the third
+    direction is stated instead: every member of the DERIVED family has a class at all.
+    That is the direction the deduction was hiding, and it is the one a regression would
+    come back through: a member whose document stops emitting used to be absorbed by
+    editing a set, and now reddens by name.
     """
     members = dict(family())
     carried = {
@@ -278,17 +273,17 @@ def test_every_member_class_takes_the_base_and_no_other_class_does() -> None:
     }
     present = {site for site in members if site in classes()}
     assert carried == present, sorted(carried ^ present)
-    waiting = {f"{site.document}#{site.pointer}" for site in members} - {
-        f"{site.document}#{site.pointer}" for site in present
-    }
-    assert waiting == WAITING, sorted(waiting ^ WAITING)
-    # Every one of them is in a document the run REFUSES, not one it emits without a
-    # member class: the second would mean the pass missed a class, which is the half this
-    # equality could not otherwise see.  The refused set is read from the figures test's
-    # own run, which is the one run this module makes.
-    refused = set(whole().refusals)
-    documents = {site.split("#")[0] for site in waiting}
-    assert documents <= refused, sorted(documents - refused)
+    # THE THIRD DIRECTION: every member of the family has a class.  Without this the two
+    # above are complete with respect to a tree that emitted no member at all.
+    missing = sorted(
+        f"{site.document}#{site.pointer}" for site in set(members) - present
+    )
+    assert missing == [], (
+        f"{len(missing)} member(s) of the derived family have no class, so the base "
+        f"cannot reach them: {missing}.  Every such document used to be one the run "
+        "REFUSES, which is what the retired WAITING set absorbed; at refused 0 a member "
+        "without a class means the pass missed one."
+    )
 
 
 def test_the_base_annotates_a_supertype_of_every_members_own_field() -> None:
@@ -384,11 +379,29 @@ def test_the_row_moves_none_of_the_three_figures() -> None:
     reason reddens.  So this asserts that no document of the family moved between emitting
     and refusing because of the base, and that the family declares no approximation --
     which is the design's claim that nothing is dropped.
+
+    **THE FIRST ASSERTION REQUIRED A REFUSAL AND IS GONE** (2026-11-04).  It read
+
+        assert documents & set(out.emitted) and documents & set(out.refusals)
+
+    -- both halves non-empty -- which made a family with no refused document a FAILURE.
+    At ``refused 0`` that is every family, and it is the state the row wanted: the claim
+    is "the base costs no document its emission", so a refused half was evidence the
+    design was being graded against, never evidence it needed.  What is asserted now is
+    the claim itself, with the offenders NAMED -- and the accounting that was the second
+    assertion survives as a partition, because "every family document is emitted or
+    refused and never both" is still what makes the first meaningful.
     """
     out = whole()
     documents = {site.document for site, _ in family()}
-    assert documents & set(out.emitted) and documents & set(out.refusals)
-    assert documents == (documents & set(out.emitted)) | (documents & set(out.refusals))
+    emitted, refused = documents & set(out.emitted), documents & set(out.refusals)
+    # Total and disjoint over the family's documents: a document in neither is one the run
+    # did not reach at all, which neither figure would report.
+    partitions(documents, emitted=emitted, refused=refused)
+    # **THE BASE COSTS NO DOCUMENT ITS EMISSION**, which is this row's whole claim about
+    # the first two figures.  Named and not counted: a document refusing here is the base
+    # having changed a verdict, and which document it is is the finding.
+    assert sorted(refused) == [], sorted(refused)
     # Nothing is approximated FOR the family: every member keeps its own constraint, so
     # there is no widening to declare at any member's pointer.
     pointers = {f"{site.document}{site.pointer}" for site, _ in family()}
