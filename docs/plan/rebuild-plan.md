@@ -2011,15 +2011,38 @@ is an acceptance.** The refuses-check is the instrument that produces it, and it
 offered the value through any path that consults the document first.
 
 **2. A fact is declared ONCE, at the node the document STATES it, and never once per pointer the
-record inlines it to.** This is the sentence whose absence made the first one unusable: one
+record inlines it to. THIS IS THE WHOLE OF THE LEVER, and two things it needs were missing.**
+
+**THE IDENTITY IS READ OFF THE NODE WHOSE KEYWORD THE FACT IS (decided 2026-11-03).** Where the
+dropped fact is itself a subschema — a condition, a branch — the fact object carries its own origin
+and the stating site is read off it directly. Where it is not — a count, a length, a pattern map,
+an inseparability — **the identity is the ENCLOSING node's**, because that is the node whose keyword
+was dropped and the only schema node in play. So the parser's node types must each carry the raw
+node they were built from, as the conjunct type already does, and the inliner must export the
+origin of a node by identity rather than by pointer: the walk folds a conjunct into the enclosing
+node's pointer space, so a declared pointer is routinely at no pointer the record spells, and a
+pointer-keyed origin map cannot answer.
+
+**AND A FACT IS DECLARED ONLY BY THE STATING DOCUMENT'S OWN MODULE**, not merely deduplicated
+within each module — the report sums per document, so per-module deduplication leaves one entry per
+referring document and the figure cannot fall. **The risk this takes on is named rather than
+hedged:** a stating document whose own walk never reaches that pointer would declare the fact
+nowhere. That failure is already caught, by the equality this section requires in both directions —
+a fact minted and declared nowhere reddens it — so the risk is detected rather than silent, which
+is the condition on which it is accepted. This is the sentence whose absence made the first one unusable: one
 conditional in one document reaches thousands of pointers because the record resolves references
 by copying, so a declaration per pointer turns a hundred-odd facts into tens of thousands and the
 declared set stops being readable — which §8 already forbids by name. §3a settled the same question
 for a vocabulary: *the entry, not the declaration site.* **An approximation's identity is
 `(stating document, stating pointer, keyword)`, and every inlined occurrence resolves to it.**
 
-**3a. §5's `if` ROW READS THROUGH A LOCAL REFERENCE THE RECORD MINTED (decided 2026-11-03), and
-this is the sentence that unblocks the six cells.** The overwhelming majority of unreadable
+**3a. §5's `if` ROW READS THROUGH A LOCAL REFERENCE THE RECORD MINTED (decided 2026-11-03). It is
+correct and it is NOT the lever — measured, it removes no declaration at all.** The two sets are
+disjoint: a condition the record stored is one that occurs more than once, and at every such
+pointer the CONSEQUENT states no presence fact, so no rule was ever dropped there and no
+declaration was ever owed. The sentence stands because reading the document through its own storage
+is right wherever it applies; it does not stand as an answer to the unaffordable set, and I wrote
+it as though it did. The overwhelming majority of unreadable
 conditions are unreadable for one reason: the record stores each distinct subtree once, so the
 condition — or a property declaration inside it — was replaced by a reference to the record's own
 `definitions`. **Read through that reference and the condition is readable and lowers exactly,
