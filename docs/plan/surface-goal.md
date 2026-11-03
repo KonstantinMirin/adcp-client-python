@@ -78,6 +78,34 @@ import spellings is owed and will be built, but it is not this work and must not
 case it: designing the classes to make the aliases easy is how upstream's mistakes get copied in
 through the back door. Build the correct surface, then map onto it.
 
+### THE TWO HALVES, IN ORDER, AND WHAT UPSTREAM IS AN INPUT TO (owner, 2026-11-03)
+
+**FIRST a faithful representation of the schemas as Pydantic classes. THEN a DX layer that makes
+it compatible and usable.** The order is not a preference, and the second half may not begin by
+reshaping the first: a class exists because a schema node states it, and faithfulness is settled
+by payloads, not by how convenient the result is to call.
+
+**UPSTREAM'S DESIGN INTENT IS A LEGITIMATE INPUT TO THE SECOND HALF. UPSTREAM'S CLASSES ARE NOT AN
+INPUT TO THE FIRST.** This is the distinction the one-directional rule above is about, and it is
+easy to collapse in the wrong direction. Their ideas about class hierarchy, about how classes
+compose, about what an envelope is and what a caller touches to make a call and read a reply —
+**those ideas are sound.** What is unsound is how they are reached: by patching a generator's
+output, across a tree carrying several bundle versions and hand-written ergonomic, eager,
+forward-compat, partial, legacy and POC-alias layers with no provenance key. **We reach the same
+structure by EMISSION, from the schema, which is the whole of the difference.**
+
+So when a reading of upstream shows a structure we lack, there are two questions and they are
+answered in order. **First: does the schema state it?** If it does and we fold or drop it, that is
+a correctness defect in the first half and it outranks everything — file it with the node named.
+**Only if the schema does not state it** is it a second-half question, and then the answer is
+derived from the protocol rather than copied from their file: the structure is good, the patch is
+not the way to get it.
+
+**A verdict of "we represent it differently and we are right" remains the expected outcome for a
+CLASS.** It is not the expected outcome for a STRUCTURE a caller programs against. Those are
+different things, and conflating them is how a sound idea gets refused on the authority of a rule
+written about redundant classes.
+
 And the comparison is **one-directional**. Every name upstream exposes gets a verdict; the
 reverse is not asked. A smaller count on our side is the EXPECTED outcome, not a deficit to close:
 upstream duplicates classes and is wrong about unions, and we fold where folding is right.
