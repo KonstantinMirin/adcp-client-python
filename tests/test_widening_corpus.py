@@ -64,6 +64,8 @@ import subprocess
 from pathlib import Path
 from typing import Any, ClassVar
 
+import pytest
+
 import corpus as corpus_module
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from codegen import harness
@@ -427,6 +429,70 @@ def test_a_failed_draw_is_held_with_its_reason_so_a_replayed_run_reports_it() ->
     assert "earlier run" in res.unproved[0], res.unproved
 
 
+#: A schema whose draw has no bound worth waiting for and no filtering in it, so what ends
+#: the draw below is the BUDGET and nothing else -- an ``Unsatisfiable`` here would be the
+#: held-failure case above and not this one.
+UNBOUNDED_DRAW: dict[str, Any] = {
+    "type": "array",
+    "minItems": 2000,
+    "items": {
+        "type": "object",
+        "required": [f"p{i}" for i in range(200)],
+        "properties": {f"p{i}": {"type": "string", "minLength": 120} for i in range(200)},
+    },
+}
+
+
+def test_a_draw_the_budget_cut_is_not_held_because_a_cut_is_not_an_answer() -> None:
+    """**The clause the accepts store has had all along and this one did not**
+    (``adcp-client-python-pjc``).
+
+    The paragraph above holds a FAILED draw, which is right: an ``Unsatisfiable`` is a
+    whole generation budget spent on filtered cases and it is a fact about the position.
+    A CUT is not that.  It says this process stopped asking, and held here it becomes
+    evidence: :class:`corpus.Layered` serves it like any other entry and
+    ``check_widening`` reports ``unproved_widening`` carrying "could not be drawn:
+    OverBudget: ...", a sentence about a budget some other process chose.  Measured on
+    ``trusted-match/offer.json#`` -- with the cut entry in place the pair graded in 8.8 s,
+    with it removed the same pair did not finish in 600 s -- so the entry was the only
+    thing making an unbounded draw look graded.
+
+    Read through the REAL budget and the REAL draw, and both halves: the store holds
+    nothing, and the cut reaches the caller as a cut rather than as a position that cannot
+    be drawn.
+    """
+    store = Held()
+    draws = harness._Draws(corpus=store, identity=DOC)  # noqa: SLF001
+    position = ("class", AT, "uniqueItems", "an unbounded draw")
+    with pytest.raises(harness.OverBudget):
+        with harness.within(1):
+            draws.one(UNBOUNDED_DRAW, position, {})
+    assert store.puts == [], f"a budget cut was held as an answer: {store.entries}"
+    assert store.entries == {}
+
+
+def test_an_entry_recording_a_budget_cut_is_not_a_held_answer() -> None:
+    """:func:`harness.records_a_cut`, over the spellings the shared cache actually held.
+
+    The clause and the gate below are one predicate, so what it reads is worth stating
+    directly -- and the inputs are measured rather than invented: 46 entries of the shared
+    widening cache recorded a 30 s budget, 99 recorded a 20 s one, and a single entry from
+    2026-10-31 spells the class ``_OverBudget`` with an empty message, which is why the
+    name is sought anywhere in the sentence rather than only at its front.
+
+    The two it must NOT read as cuts are the two this store exists to hold: a genuine
+    undrawable position with its reason, and a drawn JSON ``null``.
+    """
+    assert harness.records_a_cut([None, "OverBudget: the grade did not finish inside 30 s"])
+    assert harness.records_a_cut([None, "OverBudget: the grade did not finish inside 20 s"])
+    assert harness.records_a_cut([None, "_OverBudget: "])
+    assert not harness.records_a_cut(
+        [None, "Unsatisfiable: 459 of 459 test cases failed a .filter() or assume() condition"]
+    )
+    assert not harness.records_a_cut([None]), "a drawn JSON null is an answer"
+    assert not harness.records_a_cut([{"box": {"tags": ["a"]}}])
+
+
 def test_a_drawn_null_is_an_answer_and_not_a_failure() -> None:
     """The two states are told apart by LENGTH, which is what the one-slot memo had wrong.
 
@@ -603,4 +669,45 @@ def test_every_committed_widening_entry_is_a_well_formed_held_answer(pytestconfi
     print(
         f"committed widening corpus: {corpus_module.WIDENING_FLOOR.entries()} entries, "
         f"{corpus_module.WIDENING_FLOOR.bytes_held()} bytes of content"
+    )
+
+
+def test_no_held_widening_entry_records_a_budget_cut() -> None:
+    """**THE GATE READING 2 WAS MISSING: a declaration proved by a TIMEOUT is not proved.**
+
+    ``docs/plan/final-state.md`` reading 2 -- "every declaration holds a value that
+    demonstrates it... where an entry recording a budget cut is not a value" --
+    and ``harness.records_a_cut`` carries why an entry like
+    ``[null, "OverBudget: the grade did not finish inside 30 s"]`` is the worst thing this
+    directory can hold: it is served like evidence and it is a reading of somebody's clock.
+
+    **BOTH STORES, and each for its own reason.**  The FLOOR because
+    ``--write-corpus`` promotes straight out of the cache into the repository, so the floor
+    is where a cut becomes permanent and reviewed -- that is the half that makes this a gate
+    on the artifact.  The CACHE because that is the store every lane on a machine actually
+    grades against (:class:`corpus.Layered` reads the floor first and the cache second), so
+    a cut sitting there is a green widening check nobody should believe, on this checkout
+    and on every sibling one.  A gate over the floor alone would have been green for the
+    whole of the window in which 146 cut entries accumulated in the cache.
+
+    Not an allowlist and nothing to grow: the set is empty or the gate is red, and the
+    failure names the files so a lane can read what it is deleting.  A fresh checkout has
+    no cache and passes, which is correct -- there is nothing held to disbelieve.
+    """
+    poisoned: dict[str, str] = {}
+    for store, which in (
+        (corpus_module.WIDENING_FLOOR, "committed floor"),
+        (corpus_module.WIDENING_CACHE, "shared cache"),
+    ):
+        for path in store.files():
+            try:
+                entry = json.loads(path.read_text())
+            except (OSError, ValueError):
+                continue  # the shape gate above owns an unreadable entry
+            if harness.records_a_cut(entry):
+                poisoned[f"{which}: {path}"] = str(entry)[:120]
+    assert poisoned == {}, (
+        f"{len(poisoned)} held widening entries record a budget cut rather than a value, so "
+        f"every widening verdict that replays one is a statement about a clock: "
+        f"{json.dumps(poisoned, indent=2, sort_keys=True)[:4000]}"
     )

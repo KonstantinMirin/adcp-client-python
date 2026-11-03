@@ -229,6 +229,54 @@ def test_a_round_tripped_instance_is_counted_and_an_unreported_one_is_not() -> N
 
 
 # --------------------------------------------------------------------------- #
+# the BUDGET, which is a statement about the instrument and never about a document
+# --------------------------------------------------------------------------- #
+#: A document whose draw has no bound worth waiting for and no filtering in it, so what
+#: ends the draw below is the BUDGET and nothing else: 2,000 objects of 200 demanded
+#: 120-character strings is 400,000 strings, and nothing about it is unsatisfiable --
+#: an ``Unsatisfiable`` or a ``strategy_error`` here would be a different reading.
+UNBOUNDED_DRAW: dict[str, Any] = {
+    "type": "array",
+    "minItems": 2000,
+    "items": {
+        "type": "object",
+        "required": [f"p{i}" for i in range(200)],
+        "properties": {f"p{i}": {"type": "string", "minLength": 120} for i in range(200)},
+    },
+}
+
+
+def test_a_budget_cut_is_a_cut_and_never_a_verdict_about_the_document() -> None:
+    """**The reading ``adcp-client-python-pjc``'s third part moves**, through the real check.
+
+    ``check_accepts``' last clause catches "a model that raises something other than a
+    ``ValidationError``" and spells it ``model_error``.  A budget cut used to arrive there
+    like any other exception, so the verdict said the MODEL raised when what had happened
+    was that this process stopped asking -- measured over the whole graded population at a
+    20 s budget: 73 pairs reported ``accepts:model_error`` and every one of the 73 was a
+    cut, which is 73 false reds in the column a reader scans for real ones.
+
+    Both halves are read, because either one alone would pass on the old code: the cut
+    reaches the caller AS a cut, and no enclosing ``except Exception`` sees it -- which is
+    what makes the property hold at the twenty-odd broad handlers between here and the
+    draw rather than only at this one.  The entry point below accepts whatever it is
+    handed, so there is no defect for a verdict to be about; it is never reached, because
+    the draw does not produce an instance inside the budget, and that is the point.
+    """
+    swallowed: Exception | None = None
+    with pytest.raises(harness.OverBudget):
+        try:
+            with harness.within(1):
+                harness.check_accepts(UNBOUNDED_DRAW, lambda payload: payload, examples=1)
+        except Exception as e:  # noqa: BLE001 -- the handler under judgement
+            swallowed = e
+    assert swallowed is None, (
+        f"a budget cut was caught by an `except Exception` and would have been reported as "
+        f"a verdict about the document: {type(swallowed).__name__}: {swallowed}"
+    )
+
+
+# --------------------------------------------------------------------------- #
 # the canonicalisation sharing, whose whole correctness is its lifetime
 # --------------------------------------------------------------------------- #
 def test_the_sharing_is_installed_for_one_call_and_restored_even_on_a_raise() -> None:

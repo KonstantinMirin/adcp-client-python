@@ -1301,6 +1301,46 @@ def check_accepts(
 # --------------------------------------------------------------------------- #
 # section 8's accepts OBLIGATION: a widening is PROVED, not believed
 # --------------------------------------------------------------------------- #
+def records_a_cut(entry: Any) -> bool:
+    """Whether a held widening answer records a BUDGET CUT rather than a value.
+
+    **The clause the widening store was missing, and the one reading two callers share**
+    (``adcp-client-python-pjc``).  :meth:`_Draws.one` asks it before it holds anything, so
+    a cut cannot enter the store; ``tests/test_widening_corpus.py`` asks it of every entry
+    the floor and the cache already hold, so a cut cannot be promoted into the repository
+    by ``--write-corpus`` either.  One predicate and not two, because a store clause and a
+    gate that disagreed about what a cut looks like would be a gate that passes the entries
+    its own clause declines.
+
+    **Why a declaration backed by a cut is the worst entry this store can hold.**
+    ``docs/plan/final-state.md`` reading 2 is that every widening is "proved by a value",
+    and :func:`within`'s docstring already says what a budgeted pair is: "a statement about
+    the INSTRUMENT".  A cut held here makes the instrument's own statement the evidence --
+    :class:`Layered` serves it like any other entry, :func:`check_widening` reports
+    ``unproved_widening`` with "a key the patternProperties admits could not be drawn:
+    OverBudget: ...", and at the point of use that verdict is indistinguishable from a
+    measurement of the document.  Measured on
+    ``trusted-match/offer.json#``: with the cut entry in place the pair graded in 8.8 s;
+    with it removed the same pair did not finish in 600 s.  The entry was not making the
+    grade cheap, it was making an unbounded draw LOOK graded.
+
+    **Read off the REASON and not off a list of keys**, because the subject is an artifact
+    on disk and a hash is not readable: a held failure's reason is :func:`_why`'s
+    ``f"{type(e).__name__}: ..."``, so the entry carries the name of the exception that
+    ended the draw and that name is the whole question.  The needle is
+    :class:`OverBudget`'s own ``__name__`` rather than a literal, so a rename moves both
+    the clause and the gate; it is sought anywhere in the sentence rather than only at the
+    front, which catches a cut a library wrapped on the way out and the one entry in the
+    shared cache spelled ``_OverBudget:`` by a lane that had renamed the class.
+
+    A one-element entry is a VALUE whatever the value is (:class:`_Draws` -- a document can
+    admit ``null``), so only the two-element failure form can record a cut.
+    """
+    if not (isinstance(entry, list) and len(entry) == 2 and entry[0] is None):
+        return False
+    return isinstance(entry[1], str) and OverBudget.__name__ in entry[1]
+
+
 @dataclass
 class _Draws:
     """**WHERE §8's OBLIGATION HOLDS THE INSTANCES IT DRAWS**, and what it paid for them.
@@ -1393,6 +1433,16 @@ class _Draws:
     as much a failure as a narrowing (:class:`WideningResult`) -- so the worst a held
     failure can do is report work owed, never a pass nobody earned.  A generator bump moves
     the key (``_DRAW_VERSION``) and the position is redrawn.
+
+    **AND A DRAW THAT WAS CUT IS NOT A FAILED DRAW, which is the clause the accepts store
+    has had all along and this one did not** (``adcp-client-python-pjc``).
+    ``check_accepts`` declines to hold a ``strategy_error`` "because what it reports is
+    that the generator produced nothing for this schema, and an entry would then claim a
+    draw happened".  A budget cut reports strictly less than that -- it reports that THIS
+    PROCESS stopped asking -- and the paragraph above is exactly what let one in: a cut
+    arrived at :meth:`_draw`'s handler like any other failure, was spelled with
+    :func:`_why`, and was held as "this position cannot be drawn".  :func:`records_a_cut`
+    is the clause, and ``tests/test_widening_corpus.py`` reads it over both stores.
     """
 
     #: The caller's store, or ``None`` to draw exactly as this check always did.
@@ -1418,7 +1468,14 @@ class _Draws:
             self.replayed += 1
             return held
         answer = self._draw(schema, custom_formats)
-        self.corpus.put(key, answer)
+        #: **A cut is not an answer, so nothing holds it** -- ``check_accepts``' own
+        #: ``res.outcome != "strategy_error"`` clause, for this key space.
+        #: :func:`records_a_cut` carries the reasoning and the measurement.  The answer is
+        #: still RETURNED, because this call's caller asked a question and the cut is the
+        #: honest answer to it for this run; what must not happen is the next run reading
+        #: it back as evidence.
+        if not records_a_cut(answer):
+            self.corpus.put(key, answer)
         return answer
 
     def _draw(self, schema: Any, custom_formats: Mapping[str, Any]) -> list[Any]:
@@ -4801,8 +4858,46 @@ def pairs(package: Any, path: Sequence[str] | None = None) -> tuple[list[Paired]
 _BUDGET_RETRY = 2.0
 
 
-class OverBudget(Exception):
-    """One pair's grade spent the budget a caller gave it; see :func:`within`."""
+class OverBudget(BaseException):
+    """One pair's grade spent the budget a caller gave it; see :func:`within`.
+
+    **NOT an ``Exception``, and that is the whole of ``adcp-client-python-pjc``'s third
+    part.**  Every check in this module ends in a broad handler that turns what it caught
+    into a VERDICT about a document -- ``check_accepts``' last clause is "a model that
+    raises something other than ``ValidationError``" and spells it ``model_error``,
+    :func:`conforms` answers ``None`` for "the document is not usable as a validator",
+    :func:`undrawable_formats` names the position, :meth:`_Draws._draw` says "this position
+    cannot be drawn".  A budget cut reaching any of them is read as a fact about the
+    document, and it is a fact about THIS PROCESS's clock.
+
+    **Measured over all 2,793 graded pairs at a 20 s budget: 73 reported
+    ``accepts:model_error`` and every one of the 73 was a cut.**  So the category that
+    means "the model raised" held nothing but the instrument, and a cut was spelled exactly
+    like a defect -- only the clock told them apart.  Those 73 are false reds in the one
+    column a reader scans for real ones.
+
+    **Outside ``Exception`` and not re-raised at each site, because the sites are the
+    problem.**  There are more than twenty broad handlers between :func:`within` and the
+    draw, two of them inside ``hypothesis``, and a rule that has to be restated at each one
+    is a rule that is missing from the next one somebody writes.  ``BaseException`` is the
+    language's own answer to "this is not a failure of the code it passes through", which
+    is what ``KeyboardInterrupt`` and ``SystemExit`` are, and a cut is the same kind of
+    thing: the caller stopped asking.  A cut is then catchable only BY NAME, which is how
+    ``codegen/__main__.py`` has always caught it -- one row, with the budget in the cause,
+    distinct from every verdict in the table.
+
+    **Measured that it still arrives, which is the one thing this change could have broken.**
+    A ``SIGALRM`` handler raising a ``BaseException`` subclass from inside
+    ``hypothesis``'s draw machinery -- past ``core.py``'s own two ``except BaseException``
+    frames -- propagates past an enclosing ``except Exception`` as the same type, with the
+    same message, at the same latency as the ``Exception`` subclass did (4.0 s against a 4 s
+    budget, on a draw with no filtering in it).  ``hypothesis`` re-raises what it did not
+    recognise as a test failure rather than wrapping it, which is the behaviour
+    ``KeyboardInterrupt`` already depends on.
+
+    :func:`within` says what forces a budget at all, and ``Refusal``'s "nothing raises one
+    and nothing catches one" is about a different class for a different reason.
+    """
 
 
 @contextmanager
