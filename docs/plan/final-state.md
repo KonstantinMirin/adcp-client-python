@@ -124,8 +124,11 @@ references it resolves.
 branches and aliases alike — at exactly one such path, with the domain derived from the document's
 own path. No second way reaches the same class, and no name in one namespace means two classes.
 
-**Decided by** resolving every export and requiring exactly one path each, and requiring the object
-reached to be the same object as the private path's.
+**Decided by** counting OBJECTS, not names: the number of export paths equals the number of distinct
+objects behind them, and the object reached is the same object as the private path's. A check that
+resolves every export and requires exactly one path each is answered `yes` by two names for one
+object, each resolving cleanly — so it reads green while this reading is false. Both checks belong;
+the per-name one is incomplete, not wrong.
 
 ## 7. The package declares its types to a consumer's type checker
 
