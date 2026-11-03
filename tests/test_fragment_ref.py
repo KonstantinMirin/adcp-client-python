@@ -1883,140 +1883,89 @@ def test_no_document_of_the_bundle_refuses_on_a_definition_section_any_more() ->
 def test_the_bundles_own_sections_are_walked_and_the_closure_follows() -> None:
     """The POSITIVE path on the real bundle, which the committed tree cannot grade.
 
-    15 of the 45 documents emit at 0130e5fc9 -- it was 6 at 16052ffb0 and 0 of 40
-    when this was written -- and the other 30 are each held by a keyword another
-    step owns (``$ref`` 9, ``oneOf`` 5, ``allOf`` 4, ``anyOf`` 4,
-    ``discriminator`` 3, ``properties`` 3, ``uniqueItems`` 2).  The constructed
-    bundles above are what grade the declaration itself.  What the real bundle
-    grades is the WALK, in the two places it is observable:
+    The constructed bundles above are what grade the declaration itself.  What the real
+    bundle grades is the WALK, in the two places it is observable:
 
-    * a refusal at a pointer INSIDE a section is proof the walk descended one.  9
-      documents are in that position, and none was before: every pointer under
-      ``definitions`` used to be unreachable.
-    * a refusal that moved from the root to a property means the walk got FURTHER, and
-      the closure then reaches what those earlier properties name.
+    * the walk DESCENDS into a section rather than reading the section's name, read off
+      the declarations the run made at pointers inside one;
+    * the closure then reaches what the properties inside those sections name.
       ``governance/policy-entry.json`` is the case: it refused at ``/`` on ``$defs``
-      before any of its 8 property references was read, and now refuses at
-      ``/properties/acceptance_profile`` -- so the three enum documents its earlier
-      properties name are emitted over step 1, 2 and 4's population, and no member of
-      that population references two of the three from anywhere else.
+      before any of its 8 property references was read, and the three enum documents
+      its properties name are emitted over step 1, 2 and 4's population, with no member
+      of that population referencing two of the three from anywhere else.
+
+    **THE FIRST HALF WAS A REFUSAL READING UNTIL 2026-11-03, AND IT IS A DECLARATION
+    READING NOW.**  It derived "documents refusing at a pointer inside a
+    ``definitions`` section", pinned two of them by name at an exact pointer, and read
+    a refusal INSIDE a section as proof the walk had descended into one.  That set is
+    EMPTY at ``refused 0``, so ``nodeset.claimed`` reddened it -- correctly: every
+    assertion over it held vacuously.
+
+    ``refused 0`` does NOT guarantee what this check is named for, which is why it is
+    restated rather than retired.  A walk that never entered a section refuses nothing
+    inside one either, so the absence of a refusal at a position is not evidence that
+    the position was reached; the two readings are indistinguishable from the refusal
+    side.  The DECLARATIONS separate them, and they separate them in the direction that
+    matters: a symbol at a pointer inside a section is a node the walk reached, decided
+    and named, which is strictly more than a refusal there ever said.
+
+    It also retires a pin whose own comment recorded FIVE moves -- two documents
+    leaving by emitting, three pointers going deeper -- because a refusal's pointer is
+    a quantity every emitting row moves and a pin on one is a census.  The partition
+    below says the same thing as a property: the declared positions inside a section
+    split into the section's own ENTRIES and the nodes strictly BELOW one, and the
+    second part is the descent.  A walk reading the section's name declares neither; a
+    walk stopping at the entry declares only the first.
     """
     out = compiled(BUNDLE, sorted(bundle.portable(BUNDLE)))
-    inside = {
-        d: r["pointer"]
-        for d, r in out.refusals.items()
-        if r["pointer"].lstrip("/").split("/")[0] in bundle.DEFINITIONS
-    }
-    # 8 -> 9 at ``salesagent-j3k2l.40``, and the ninth is the walk getting FURTHER
-    # rather than a new kind of refusal: ``brand.json`` refused at ``/oneOf/4`` on the
-    # branch that composes, and now that a composing branch is lowered it refuses at
-    # ``/definitions/default_language/allOf/0`` -- a verdict, on a base that is an
-    # alias, three hops inside a section.  No member left; the other 8 are unchanged.
-    #
-    # 9 -> 7 at ``salesagent-j3k2l.28``, and BOTH halves of the move are the walk
-    # finishing rather than stopping earlier.  Two documents LEFT because they emit:
-    # ``core/bidding-policy-capability.json`` (refused at
-    # ``/definitions/policy_profile/properties/supported_combinations/items/oneOf/0``)
-    # and ``core/targeting-overlay-support.json`` (at
-    # ``/definitions/countrySupport/anyOf/0``) -- both on the local-``$ref`` branch
-    # guard that row removed.  And ``governance/reported-outcome-error.json``'s
-    # pointer went DEEPER, ``/definitions/bounded_value/anyOf/0`` ->
-    # ``/definitions/bounded_value_level_3/anyOf/1``, for the same reason: the first
-    # branch lowers now and the walk reaches the third level.  No member joined.
-    #
-    # 7 -> 8 at ``salesagent-j3k2l.21``, and the eighth is the walk getting FURTHER
-    # for the third time in this test's history rather than a document becoming
-    # unrepresentable.  ``core/geo-place-requirement.json`` joined, and the cause is
-    # MEASURED on trunk rather than inferred from the count: at 8c021bffa it refused
-    # at ``/properties/systems/propertyNames`` on ``$ref``, kind ``deferred``,
-    # CHAINED to ``core/geo-place-system.json``'s own refusal -- "a branch of type
-    # 'string' is step 6", which is this row's ground.  That target is a root
-    # ``anyOf`` of scalars and now lowers, so the chain clears and the walk descends
-    # into the section, where it meets ``pattern`` on
-    # ``/definitions/catalogRequirement/properties/countries/propertyNames``.
-    #
-    # That surviving refusal was not that row's: its detail was
-    # ``salesagent-j3k2l.64``'s ground verbatim -- a constrained-str key pydantic
-    # renders back as ``patternProperties``, which that row had no reading for -- and
-    # section 5's ``propertyNames`` row decides that position: ``pattern`` -> an
-    # annotated ``str`` key.
-    #
-    # **``.64`` emitted that key and the document stayed, which is the walk getting
-    # FURTHER a fourth time rather than the count holding still.**  It was predicted
-    # here that .64 would take the count 8 -> 7; it did not, and the measurement is
-    # why: with the key lowered, the walk descends ONE MORE HOP into the same
-    # property and meets ``uniqueItems`` on the array inside the mapping's VALUE --
-    # ``/definitions/catalogRequirement/properties/countries/additionalProperties``,
-    # a verdict on an array with no class above it (``lower.containers``'s
-    # ``_DISTINCT_HAS_NOWHERE_TO_LIVE``).  So the member is unchanged, the count is
-    # unchanged, and the POINTER is what moved -- which is exactly why this test pins
-    # pointers and not a total.
-    #
-    # NAMED, NOT COUNTED: the count went 7 -> 8 -> 9 -> 8 over four rows, each move a
-    # document joining or leaving for a cause measured at the time, and a number going
-    # back down says nothing about which document moved.  The two pointers asserted
-    # below are what make this evidence of a DESCENT into the section rather than of
-    # the section being read, and they are what a count could never say.
-    #
-    # **8 -> 7 AT ``adcp-client-python-10l.21``'s SECOND INSTALMENT, and the pointer
-    # this test pinned is the one that LEFT.**  §5(b)'s ``uniqueItems`` row is a declared
-    # WIDENING now rather than a verdict, so ``core/geo-place-requirement.json`` emits
-    # and leaves this population -- which is the fourth time the pointer it carried
-    # moved and the first time it cleared.  ``governance/policy-entry.json`` emits for
-    # the same reason and its own pin below went with it.
-    #
-    # The replacement pin is ``core/creative-localization-readback.json``, which is
-    # deeper than either and reads INSIDE a section through three further hops -- a
-    # section entry, a ``patternProperties`` expression, a combinator branch -- so it
-    # still says what this test exists to say: the walk DESCENDS into a section rather
-    # than reading the section's name.  ``brand.json`` joined at ``/definitions/colors``
-    # and that is ``adcp-client-python-857``, a latent collision the overlap used to
-    # stand in front of.
-    #
-    # **AND THAT REPLACEMENT PIN CLEARED AT ``adcp-client-python-10l.55``, THE FIFTH
-    # TIME THIS POINTER HAS MOVED AND THE SECOND TIME BY EMITTING.**
-    # ``core/creative-localization-readback.json`` refused at that pointer because the
-    # branch there is a ``$ref`` onto ``core/localized-creative-asset.json``, chained to
-    # ``core/assets/asset-union.json``, whose own ``$ref`` branch onto the UNION root
-    # ``VASTAsset`` the branch row refused for not being a class.  It is one, the gate
-    # reads ``compiler.TargetKind`` now, and the whole chain emits.
-    #
-    # The pin moves to ``brand/verify-brand-claim-response.json``, which is the same
-    # depth claim through the same number of hops -- a section entry, an ``allOf``
-    # conjunct, a property -- so what this assertion says is unchanged: the walk
-    # DESCENDS into a section rather than reading the section's name.
-    claimed("documents refusing inside a definitions section", inside)
-    assert inside["brand/verify-brand-claim-response.json"] == (
-        "/definitions/signed_response/allOf/1/properties/payload"
+
+    def in_a_section(pointer: str) -> bool:
+        """``pointer``'s FIRST segment is a section keyword, so the node is inside one."""
+        return pointer.lstrip("/").split("/")[0] in bundle.DEFINITIONS
+
+    # ``Emitted.declared`` is the run's own record of where each symbol came from --
+    # "the only thing D3's content dedup can be graded over", and the only place the
+    # pointer a declaration lowered is still in hand.  The emitted TEXT has no pointers.
+    declared = claimed(
+        "nodes the run declared at a pointer inside a definitions section",
+        {
+            (document, pointer)
+            for document, at in out.declared.items()
+            for pointer in at
+            if in_a_section(pointer)
+        },
     )
-    # Pinned by name because a count alone cannot say the pointer went INTO a
-    # section.  This was ``core/response-payload-jws-envelope.json`` at
-    # ``/definitions/response_payload/properties/typ``; that document EMITS as of
-    # 16052ffb0, so it left this population and the pin moved to the deepest
-    # section pointer the bundle still refuses at -- three hops past the section
-    # name, which is what makes it evidence of a descent rather than of the
-    # section being read.  It held across 0130e5fc9, where the membership of the
-    # other seven changed and the count went 7 -> 8, and across
-    # ``salesagent-j3k2l.40``, where ``brand.json`` joined and took it 8 -> 9.
-    #
-    # **AND IT CLEARED AT ``adcp-client-python-10l.43``, THE THIRD TIME THIS SECOND PIN
-    # HAS MOVED AND THE SECOND TIME BY EMITTING.**
-    # ``core/account-identity-change-preview.json`` refused at
-    # ``/definitions/nonblocking_impacts/items/allOf/0`` because the conjunct there is a
-    # LOCAL ``$ref`` -- ``#/definitions/impact``, a pointer into its own document -- and
-    # ``lower_composition``'s conjunct arm asked the binder for it.  It asks
-    # ``compiler.local_reference`` now (``compiler._conjunct_base``) and the document
-    # emits, which is the same clearing as the first pin's: a routing gap charged to a
-    # document, not a fact about the document.
-    #
-    # The pin moves to ``brand/verify-brand-claims-response.json``, the SIBLING of the
-    # first pin at the same pointer -- a section entry, an ``allOf`` conjunct, a property,
-    # three hops past the section name -- so what this assertion says is unchanged, and
-    # the two pins are now two independently-named documents rather than two depths.
-    # There are 3 members left and ``brand.json``'s pointer is two hops, so these two are
-    # the whole of the deep evidence.
-    assert inside["brand/verify-brand-claims-response.json"] == (
-        "/definitions/signed_response/allOf/1/properties/payload"
+    entries = claimed(
+        "declarations at a section's own ENTRY",
+        {(d, p) for d, p in declared if p.strip("/").count("/") == 1},
+    )
+    below = claimed(
+        "declarations strictly BELOW a section entry, which is the descent",
+        declared - entries,
+    )
+    partitions(declared, at_an_entry=entries, below_an_entry=below)
+
+    # Each of those pointers names a node the RAW document states, so a declaration is
+    # a position of the bundle and not a string the walk composed.  Total, with the
+    # offenders NAMED: this is what makes the partition above evidence of a descent
+    # through real nodes rather than of a naming convention.
+    unreal = sorted(
+        (d, p) for d, p in declared if node_at(bundle.read(BUNDLE, d), p) is NOTHING
+    )
+    assert unreal == [], unreal[:10]
+
+    # And the descent CHAINS, which is the "the walk got FURTHER" fact the retired pin
+    # kept chasing one pointer at a time: a declaration below an entry whose own
+    # declared ancestor is itself below that entry.  Named by derivation and not pinned,
+    # so a document leaving this set by emitting differently cannot empty it silently.
+    claimed(
+        "declarations two descents below a section entry",
+        {
+            (d, p)
+            for d, p in below
+            for a in bundle.pointers_above(p, [q for e, q in below if e == d])
+            if a != p
+        },
     )
 
     # ``governance/policy-entry.json`` EMITS at ``adcp-client-python-10l.21``'s second
