@@ -1853,24 +1853,45 @@ why it is the instrument of record for a defect. It cannot establish the absence
 class is faithful to its document"* is not a claim the draw can deliver at any budget. Two
 consequences, and both are rules.
 
-**A COMBINATOR ROOT IS NOT GRADED BY DRAWING THE PRODUCT OF ITS BRANCHES.** Every branch of a
+**A COMBINATOR ROOT IS NOT GRADED BY DRAWING THE POWER SET OF ITS BRANCHES.** Every branch of a
 union is its own class and therefore its own pair, graded on its own; drawing the root re-draws
-the product of what has already been verified one branch at a time, and in this bundle that
-product does not terminate — a root whose branches nest combinators several deep is a
-multiplication across levels, not a sum, and it is the library's canonicaliser that performs it.
+what has already been verified one branch at a time — and it does so by enumerating **every SUBSET
+of the branches**, because the canonicaliser must merge each combination to know what the union
+admits. That is `2^n`, not a product, and it is why no constant factor reaches it: an eighteen-branch
+site is a quarter of a million subsets, and a generous budget completes a fraction of one percent
+of them. **A speedup is not available at any multiple**, which is the measured reason this section
+exists.
 **So a composite root is discharged by four finite obligations and never by one unbounded search:**
 
 1. **every branch pair green** — which is the existing check, at the existing cost;
 2. **the dispatch resolves** — §4's sources, and a root that cannot name the branch a payload is
    fails that check already;
-3. **the root's OWN keywords graded at the root with its combinator removed** — everything stated
-   beside the combinator compiles onto the base and every branch inherits it, so it is a plain
-   object check;
+3. ~~the root's OWN keywords graded at the root with its combinator removed~~ — **WITHDRAWN
+   2026-11-03, the day it was written, and refuted twice over.** *Unsound:* removing a restriction
+   **widens** the admissible set, so instances drawn from the stripped node are not instances the
+   document admits — measured, nearly every one is refused by the pair's own entry point and fails
+   to conform to the full node, so the obligation run as written reports almost every root as
+   refusing a valid value. Screening by the full node restores soundness and reintroduces the
+   product as rejection sampling. *And non-terminating anyway:* most roots state `properties`
+   beside the combinator and those values carry combinators of their own, so the product is not at
+   the root to be removed. **The sound form of this obligation is the table below, and there is no
+   shortcut around it.**
 4. **disjointness proved or declared** — the existing UNDERDETERMINED declaration is exactly this
    obligation's negative answer.
 
-A branch that is itself a combinator root recurses by the same four. Nothing here samples a
-product, and a root the draw can never finish is reachable by all four.
+A branch that is itself a combinator root recurses by the same obligations. **And the recursion
+does not reach every root:** a minority of the pairs the draw cannot finish carry no combinator
+anywhere, so they are the table's to discharge and not this section's.
+
+**AND THE PREMISE OBLIGATION 3 RESTED ON IS FALSE, which is why it is withdrawn rather than
+repaired.** I claimed everything stated beside a combinator compiles onto the base and every
+branch inherits it. Four keywords do not: `additionalProperties` is scoped to the node's own
+`properties` and cannot see a branch's, so a per-branch copy of it means something else entirely;
+and `not`, `if`/`then`/`else` and `dependencies` each state a condition over the whole instance
+that no per-branch copy reproduces. **They occur at combinator roots of this bundle in numbers,
+and the renderer emits none of them there** — a root carries its required set and nothing else.
+Whether that is a dropped fact is a correctness question this section does not settle, and it is
+filed rather than assumed.
 
 **AND CERTAINTY ITSELF COMES FROM §5's TABLE, NOT FROM THE DRAW.** §5 is a keyword × position
 decision table: each cell says what one keyword at one position compiles to. **Prove each cell
