@@ -828,6 +828,31 @@ reached first.
   else its sorted `required` set; else, where the branch is a bare `$ref`, **the TARGET's own
   derived name**; else its **index among the branches**, `<Base>Branch<i>`.
 
+  **These five are an ORDERED LIST OF CANDIDATES RESOLVED BY FIRST FIT**, and the fifth is the
+  **default case**. A collision means the candidate did not identify the branch, so the next is
+  taken. Position here means *is preferred* and nothing more: **a name is not an acceptance fact**,
+  so moving along this list changes nothing an instance can observe — which is what distinguishes
+  it from §2's widening chain, where moving changes what the class admits.
+
+**A CONTENT DIGEST IS A STABLE NAME AND STILL NOT A NAME (decided 2026-11-03).** `constraints.py`
+declares 114 symbols ending in eight hex digits — `StrMatching02AE7B1E`,
+`StrMaxLen100MatchingE02C3DE8` — 85 of them distinct `StrMatching` entries. A digest satisfies the
+**insertion-stability** criterion this section is built on: it is derived from the constraint set
+and nothing else, so adding a constrained scalar renames none of the others. That is why it is not
+a defect of the kind `<Base>Branch<i>` is, and the two must not be swept together.
+
+**But a consumer imports these and annotates with them, so they are names a reader reads**, and
+final-state.md's fifth invariant is about exactly those. The resolution is not a new rule: a
+constrained scalar is **§3a's L1 catalogue layer**, and reading 4's three-way split already
+governs it — one named type where the bundle names the subject, separate types over one definition
+where the positions are different subjects, and **separate types pending a name where nothing in
+the bundle names it, which is an upstream ask and not a local answer**. The digest is what a layer
+mints while it has no catalogue entry to take a name from; §1's rule for a symbol carrying no
+`__adcp_schema__` — the declaring position is its catalogue entry's home — is what replaces it.
+
+So: **no invariant is written over the digest form**, and the 114 are not a row of their own. They
+are the L1 half of the catalogue row, and they stop being digests when that layer collects.
+
 **A bare `$ref` branch is named for its TARGET, and the index is the candidate after that (decided
 2026-10-29; corrected on implementation the same day).** The name is the target's
 DISTINGUISHING REMAINDER and never the target's own symbol spelled straight: the branch's second
