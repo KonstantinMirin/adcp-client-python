@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types._runtime import Rule, UniqueItems
+from adcp.types._runtime import PropertyCount, Rule, UniqueItems
 from adcp.types.constraints import AdCPUrl, FloatMin0Max1, HttpUrl, IntMin1
 
 from ..enums.c2pa_watermark_action import C2PAWatermarkAction
@@ -140,8 +140,12 @@ class RenderGuidance(AdCPBaseModel):
     """
     How the disclosure should be rendered for this jurisdiction. Expresses the declaring party's intent for persistence and position based on regulatory requirements. Publishers control actual rendering but governance agents can audit whether guidance was followed.
     """
+    model_config = ConfigDict(
+        extra='allow',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/provenance.json', pointer='#/properties/disclosure/properties/jurisdictions/items/properties/render_guidance')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
+        PropertyCount(minimum=1, maximum=None),
         UniqueItems('positions'),
     )
     persistence: Annotated[DisclosurePersistence | None, Field(description='How long the disclosure must persist during content playback or display')] = None

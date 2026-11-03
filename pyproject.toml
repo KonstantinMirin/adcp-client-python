@@ -88,6 +88,41 @@ where = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
+# **WHICH TREE IS GRADED, and it is declared here because an environment variable per
+# lane is not a mechanism.**  Every check in this suite grades a pair -- a class the
+# EMITTER produced, under ``adcp``, against the document it names, read through
+# ``codegen`` -- and the import system resolves those two halves independently.  A
+# sibling worktree's ``.venv`` is a SYMLINK to the main checkout's, because these pins are
+# exact and a second environment per lane is not free, and that environment carries an
+# editable install:
+#
+#     .venv/lib/python3.12/site-packages/__editable__.adcp_emit-0.0.0.pth
+#         /srv/ws/adcp-client-python/src
+#
+# ``site`` reads that at interpreter start, so with ``PYTHONPATH`` unset ``adcp`` resolves
+# to the MAIN checkout from any worktree while ``codegen`` -- which is not under ``src``
+# and so not in the ``.pth`` -- resolves from the current directory.  **The run then
+# grades one tree's emitted classes with another tree's compiler and reports a verdict
+# about neither**, in a suite that is green or red for ordinary-looking reasons either way.
+# ``adcp-client-python-82m.43`` is the row; a lane found it on itself after four batches
+# and re-ran them.
+#
+# ``pythonpath`` is applied in ``pytest_load_initial_conftests`` -- before conftest import
+# and before collection, which is the window that matters because ``tests/conftest.py``
+# imports ``codegen`` at module scope -- and the entries are inserted at the FRONT of
+# ``sys.path``, ahead of the ``.pth``.  Relative to ROOTDIR, so a run in any worktree
+# resolves both halves from THAT worktree whatever the environment holds.  ``.`` is
+# ``codegen`` and ``src`` is ``adcp``: the same two roots ``./check``'s preamble sets, and
+# the preamble stays correct for the non-pytest entry points it covers.
+#
+# **THE PREVENTION IS NOT THE DETECTION**, and ``docs/plan/final-state.md`` asks a reading
+# to name something that fails when it fails.  ``tests/test_one_tree_is_graded.py`` reads
+# the two halves back off ``__file__`` in the process that does the grading, and proves
+# its own red by constructing a mixture out of two temporary checkouts rather than by
+# arguing one is impossible.  This declaration without that check is one ``.pth``, one
+# ``--import-mode`` or one plugin away from being silently false again.
+pythonpath = [".", "src"]
+
 # EVERY RUN IS PARALLEL, because the expensive part of this suite is one
 # ``check_pair`` per emitted pair and those are independent of each other.
 # Measured on the same tree, same pins, same bundle: 1,070 s serial against

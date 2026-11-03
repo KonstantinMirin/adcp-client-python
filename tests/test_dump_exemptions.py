@@ -54,17 +54,23 @@ PACKAGED = fresh.TREE
 #: taken over ``schemas/cache/<version>/`` (section 6).
 SOURCE = pathlib.Path("schemas/cache/3.2")
 
-#: The three pairs the dump half refuses on the committed tree, named rather than
-#: discovered, so this file does not grade a population another lane is moving.  Each
-#: is ``(document, pointer, the exempt keyword the document refuses the dump on)``.
+#: The pairs the dump half refuses on the committed tree, named rather than discovered, so
+#: this file does not grade a population another lane is moving.  Each is ``(document,
+#: pointer, the exempt keyword the document refuses the dump on)``.
+#:
+#: **IT WAS THREE AND IS TWO, because the third was REPAIRED rather than exempted.**
+#: ``core/provenance.json#/properties/disclosure/properties/jurisdictions/items/properties/render_guidance``
+#: on ``minProperties`` was here, and the dump it named was refused for a reason that was
+#: OURS: the class resolved ``extra="ignore"`` and dropped the undeclared key the document
+#: counts, so an instance whose only key was undeclared dumped to ``{}``.
+#: ``docs/plan/rebuild-plan.md`` §8 sentence 4's second consequence (2026-11-03) decides
+#: that such a count "is answered by the class KEEPING the keys the document counts",
+#: ``compiler.declare_object`` takes that reversal, and the pair now passes with no entry
+#: at all -- so the entry, its reason, its ancestors below and the exposure bound that
+#: graded it are all gone together.  The registry's shrink-only pin fell from 1 to 0.
 REFUSED_TODAY = (
     ("core/attestation-issuer.json", "#/oneOf/2", "pattern"),
     ("core/attestation-capabilities.json", "#", "pattern"),
-    (
-        "core/provenance.json",
-        "#/properties/disclosure/properties/jurisdictions/items/properties/render_guidance",
-        "minProperties",
-    ),
 )
 
 
@@ -178,10 +184,27 @@ def test_the_exempt_set_only_shrinks() -> None:
     part obliges each of them to raise a shrink-only pin.  That part is derived by
     :func:`test_the_origin_only_part_is_the_packaged_positions` instead, and what is
     pinned here is the part that genuinely is not a function of emission.
-    """
+
+    **AND THE PINNED PART IS NOW EMPTY, which is a STATE and not a vacuous assertion.**
+    This read ``assert pinned, "the pinned part is empty: this assertion would hold
+    vacuously"`` -- the right guard while the part had members, because a ``<=`` over an
+    empty list says nothing.  The last member was the ``minProperties`` entry, and
+    ``docs/plan/rebuild-plan.md`` §8 sentence 4 removed it by repairing the pair rather
+    than exempting it (see :data:`REFUSED_TODAY`).  ``PIN`` is 0, and
+    ``tests/test_every_check_names_its_set.py`` says in as many words that ``== 0`` is
+    "this part is empty, which the design asks for" and is not a census.  So the claim is
+    stated as the EQUALITY it always was -- the pinned part is exactly ``PIN`` entries --
+    which is false the moment an entry is added at either end and carries its own
+    content at zero: *this SDK exempts no dump for a reason of its own.*  The
+    non-emptiness guard moves onto ``EXEMPT`` itself, so an empty registry still cannot
+    make the rest of this file pass by having nothing to grade."""
+    assert EXEMPT, "the registry is empty: every assertion over it would hold vacuously"
     pinned = [e for e in EXEMPT if e.value != ORIGIN_ONLY]
-    assert pinned, "the pinned part is empty: this assertion would hold vacuously"
-    assert len(pinned) <= PIN, [f"{e.document}{e.pointer}" for e in pinned]
+    assert len(pinned) == PIN, {
+        "the pinned part of the exempt set": [f"{e.document}{e.pointer}" for e in pinned],
+        "PIN": PIN,
+        "note": "PIN may FALL and may not rise; raising it is a decision in a diff",
+    }
 
 
 def test_the_origin_only_part_is_the_packaged_positions() -> None:
@@ -284,45 +307,26 @@ def _graded_positions() -> set[str]:
     return out
 
 
-def test_the_minproperties_entry_is_the_only_copy_that_is_a_pairs_own_node() -> None:
-    """The accepted exposure, asserted as the INVARIANT and not as a count.
-
-    Entry four's authored node is inlined all over the packaged tree.  Only where a
-    copy is a graded pair's OWN node does the dump refuse with certainty -- the dump is
-    then ``{}`` at the root.  Where the copy is nested inside a larger pair, a refusal
-    needs a drawn instance that gives ``render_guidance`` exactly one key and that key
-    undeclared, which is the latent exposure the module names.
-
-    **The count of copies is deliberately NOT pinned, and the first version of this
-    test pinned it and was wrong.**  It asserted 90, and merging ``.28`` forward moved
-    it to 92 because that row emits more documents -- so the pin reddened on
-    population growth, which the metric pins to HAPPEN.  A number that moves whenever
-    the build succeeds is noise.  The invariant does not move: exactly one copy is a
-    pair's own node, and it is the one in the set.  A second copy becoming a pair's own
-    node reddens here, which is the condition that would actually produce a new
-    certain refusal.
-    """
-    entry = next(e for e in EXEMPT if e.keyword == "minProperties")
-    copies = {
-        f"{f.relative_to(PACKAGED)}#{ptr}"
-        for f in PACKAGED.rglob("*.json")
-        for ptr, node in _walk(json.loads(f.read_text()))
-        if isinstance(node, dict) and "minProperties" in node and "additionalProperties" not in node
-    }
-    assert len(copies) > 1, copies  # the denominator: there IS an exposure to bound
-    graded = _graded_positions()
-    assert graded, "the denominator is empty: no pair would be checked"
-    # Each copy that IS a pair's own node, re-read as the document applies it
-    # (:func:`_silent_about_extras`): the exposure is a class's ``extra`` setting and D8
-    # derives that from the node the class is paired with, so a conjunct whose sibling
-    # closes the object has no exposure to bound.  The intersection is asserted
-    # non-empty first, so the applied reading cannot empty the denominator silently.
-    own = copies & graded
-    assert own, "the denominator is empty: no copy is a pair's own node"
-    exposed = {
-        c for c in own if _silent_about_extras(schema_at(SchemaRef(*c.split("#", 1))))
-    }
-    assert exposed == {f"{entry.document}#{entry.pointer}"}, (sorted(own), sorted(exposed))
+# **THE ``minProperties`` EXPOSURE BOUND IS GONE, AND SO IS THE EXPOSURE.**
+# ``test_the_minproperties_entry_is_the_only_copy_that_is_a_pairs_own_node`` stood here.
+# It bounded a LATENT defect: the exempt node is inlined all over the packaged tree, and
+# at every copy nested inside a larger pair the dump would refuse as soon as a draw gave
+# ``render_guidance`` exactly one key and that key undeclared.  The invariant it asserted
+# -- exactly one copy is a graded pair's own node -- was the honest statement of a risk
+# nobody had retired.
+#
+# It is retired now rather than re-pinned.  The refusal was never the node's: our own
+# ``extra="ignore"`` dropped the key the document counts, and ``docs/plan/rebuild-plan.md``
+# §8 sentence 4 answers such a count by the class KEEPING those keys.  With
+# ``extra="allow"`` resolved at every node a property count rides over, no copy of that
+# node -- own-node or nested, drawn or undrawn -- can dump to ``{}`` by losing a key it
+# counts.  So there is no exposure left to bound, and a bound over an empty exposure is
+# the vacuous check §8's last paragraph forbids.
+#
+# What replaces it is the pair passing on its own merits, which
+# ``test_check_pair_passes_the_exempt_pair_and_reports_why`` grades for the entries that
+# remain and ``test_an_unexempt_pair_reports_no_exemption_and_still_passes`` grades for a
+# pair with no entry -- the shape ``core/provenance.json`` now has.
 
 
 # --------------------------------------------------------------------------- #
@@ -627,15 +631,13 @@ def test_an_unexempt_pair_reports_no_exemption_and_still_passes() -> None:
 #: ancestor whose drawn instance never reached the node.  Named, because the first
 #: version of the reported field recorded all eight pairs an entry applies to and that
 #: made a conditional pass unreadable -- five of the eight pass on their own merits.
+#:
+#: **The three ``core/provenance.json`` ancestors are gone with their entry**, which is
+#: the ``minProperties`` repair recorded at :data:`REFUSED_TODAY`: an ancestor of a
+#: position that is no longer exempt is not an ancestor of anything this file grades.
 ANCESTORS = (
     ("core/attestation-issuer.json", "#"),
     ("core/attestation-capabilities.json", "#/properties/accepted_issuers/items"),
-    ("core/provenance.json", "#"),
-    ("core/provenance.json", "#/properties/disclosure"),
-    (
-        "core/provenance.json",
-        "#/properties/disclosure/properties/jurisdictions/items",
-    ),
 )
 
 

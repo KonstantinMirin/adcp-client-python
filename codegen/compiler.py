@@ -2154,6 +2154,26 @@ def fields(
     return built
 
 
+def _a_property_count_rides(
+    node: "nodes.Base", rule_nodes: Sequence[Mapping[str, Any]]
+) -> bool:
+    """Does ``min``/``maxProperties`` ride on this class, from the node or a rule source?
+
+    The keyword set is ``lower.containers.KEY_BOUNDS`` -- the one declaration of which
+    keywords count an object's keys, read rather than restated, so a third family of them
+    cannot come to disagree with the mapping arm that renders the same two as
+    ``min_length``/``max_length``.
+
+    Imported on use because ``codegen.lower.containers`` imports THIS module, which is the
+    direction the lazy import at the ``dropped`` funnel below already resolves.
+    """
+    from codegen.lower.containers import KEY_BOUNDS  # noqa: PLC0415 -- see above
+
+    return any(
+        key in node.rules or any(key in one for one in rule_nodes) for key in KEY_BOUNDS
+    )
+
+
 def declare_object(
     node: "nodes.Base",
     pointer: str,
@@ -2289,6 +2309,43 @@ def declare_object(
         if extra_type is not None
         else {False: "forbid", True: "allow"}.get(ap, shape.extra)
     )
+    # **A COUNT KEYWORD MAKES THE CLASS KEEP THE KEYS IT COUNTS** (§8 sentence 4's second
+    # consequence, decided 2026-11-03): *"a count keyword withheld from a class whose
+    # extra policy drops the keys it counts is not answered by declaring the count -- it
+    # is answered by the class KEEPING the keys the document counts.  Declaring it would
+    # be declaring a difference the walk created.  That reverses the ``absent -> ignore``
+    # reading at exactly those nodes and nowhere else."*
+    #
+    # So this is that reversal, and its scope is the condition: a node over which
+    # ``min``/``maxProperties`` rides AND which states no extra policy anywhere.  With
+    # ``allow`` the class retains every undeclared key, ``_runtime.supplied`` reads the
+    # extras, and the rule counts what the document counts -- the two bounds then agree
+    # and nothing is dropped in either direction, so no declaration is owed and none is
+    # minted.  Without it ``lower.rules._count``'s gate withholds the MINIMUM, because a
+    # rule counting the keys that survived ``ignore`` would refuse an instance the
+    # document accepts, which is the narrowing §2 forbids outright.
+    #
+    # **WHAT RULED THIS OUT WAS A FIGURE OFF BY THREE ORDERS OF MAGNITUDE**, which is why
+    # the measurement is here and not a paragraph of reasoning.  ``lower.rules._count``
+    # carried "the gate withholds the minimum at 5,220 pointers in 209 documents" and
+    # concluded a declaration set of that size was forbidden and the keeping-the-keys fix
+    # too broad to take.  **Both halves rested on a count over the INLINED record and the
+    # walk does not inline** -- it compiles each shared node once and imports the symbol.
+    # Measured over the 1,054 portable documents by recording every call at which the gate
+    # fires: **5 calls at 4 distinct (document, pointer)**, of which the minimum arm
+    # reaches three and ONE class loses a rule by it --
+    # ``core/provenance.json#/properties/disclosure/properties/jurisdictions/items/properties/render_guidance``.
+    # The other two are ``maxProperties`` at ``/properties/ext`` in
+    # ``core/account-change.json`` and its webhook twin, where the node is a MAPPING and
+    # the drop is recorded and then discarded by this function's caller
+    # (``adcp-client-python-gbo``'s sibling defect, filed and not fixed here).
+    #
+    # The read is over this node AND its rule sources, because the keyword and the extra
+    # policy routinely sit on different conjuncts: ``core/positive-postal-area-support.json``
+    # states the count on a conjunct that says nothing about extras while the base says
+    # everything, which is the pair ``adcp-client-python-6oe`` was filed on.
+    if resolved_extra is None and _a_property_count_rides(node, rule_nodes):
+        resolved_extra = "allow"
     # **D6's reading runs AFTER the extra policy is resolved, because one of its gates IS
     # that policy** (``adcp-client-python-6oe``).  ``min``/``maxProperties`` are counted
     # over the keys the class RETAINED, so the gate ``lower.rules._count`` asks is "does

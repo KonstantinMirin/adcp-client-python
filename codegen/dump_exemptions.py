@@ -1,9 +1,9 @@
 """The positions where a document refuses the SDK's own correct output.
 
 Section 6's dump half validates what a class EMITS against the same document that
-admitted the input, and it found three pairs where the document refuses the dump.
-Two decisions were re-affirmed rather than amended, so those positions are exempted
-here instead:
+admitted the input, and it found three pairs where the document refuses the dump. **ONE
+decision is re-affirmed and its positions are exempted here; the other was WRONG and its
+exemption is gone**:
 
 * **D5 stays.** ``HttpUrl`` keeps a ``format: uri`` position, the document's own
   ``pattern`` stays with the schema half, and the non-round-trip ceiling stands.  The
@@ -14,9 +14,20 @@ here instead:
   accepts, and NO conforming URL library can satisfy it.  Filed upstream as
   :data:`UPSTREAM`, which already argues that these patterns express constraints a
   ``pattern`` cannot carry; the minimal repair is ``^https://[^/?#@]+/?$``.
-* **D8 stays.** Absent ``additionalProperties`` means ``extra="ignore"``, so an
+* **D8 DOES NOT STAY AT A NODE THAT COUNTS KEYS, and this bullet is the retraction.**  It
+  read: *"D8 stays.  Absent ``additionalProperties`` means ``extra="ignore"``, so an
   undeclared key is accepted and dropped; an instance whose ONLY key is undeclared
-  therefore dumps to ``{}`` and a ``minProperties`` the node states refuses it.
+  therefore dumps to ``{}`` and a ``minProperties`` the node states refuses it"* -- and it
+  blamed the node for *"stating a property count it does not let a reader satisfy"*.  The
+  node states a count over its own keys and lets a reader satisfy it exactly; what dropped
+  the key was OUR extra policy.  ``docs/plan/rebuild-plan.md`` §8 sentence 4's second
+  consequence (2026-11-03) settles it: *"a count keyword withheld from a class whose extra
+  policy drops the keys it counts is not answered by declaring the count -- it is answered
+  by the class KEEPING the keys the document counts.  Declaring it would be declaring a
+  difference the walk created.  That reverses the ``absent -> ignore`` reading at exactly
+  those nodes and nowhere else."*  ``compiler.declare_object`` takes that reversal, the one
+  class resolves ``extra='allow'``, the key survives the dump, and the pair passes with no
+  exemption at all.  So this registry now holds ONE kind of entry and :data:`PIN` is 0.
 
 **D5's OWN NAMED UPGRADE PATH DOES NOT FIX THE FIRST ONE, and it is recorded here so
 it is not re-proposed.**  D5 says "carry the sender's string beside the parsed value".
@@ -109,15 +120,31 @@ _RFC = (
     "pattern (minimally to ^https://[^/?#@]+/?$)"
 )
 
-_D8 = (
-    "D8 maps a silent additionalProperties to extra='ignore', so an undeclared key is "
-    "accepted and DROPPED; an instance whose only key is undeclared dumps to {} and "
-    f"this minProperties refuses it.  D8 stays as written; {UPSTREAM} covers the node "
-    "stating a property count it does not let a reader satisfy"
-)
+# **THE ``minProperties`` EXEMPTION AND ITS REASON ARE GONE, AND THE FIX IS NOT HERE.**
+# What stood here read: "D8 maps a silent additionalProperties to extra='ignore', so an
+# undeclared key is accepted and DROPPED; an instance whose only key is undeclared dumps
+# to {} and this minProperties refuses it.  D8 stays as written; <upstream> covers the
+# node stating a property count it does not let a reader satisfy."  It exempted
+# ``core/provenance.json#/properties/disclosure/properties/jurisdictions/items/properties/render_guidance``.
+#
+# **The node was never at fault and the exemption was describing a difference the WALK
+# created** -- which is exactly what §8 sentence 4's second consequence (2026-11-03)
+# settles: *"a count keyword withheld from a class whose extra policy drops the keys it
+# counts is not answered by declaring the count -- it is answered by the class KEEPING the
+# keys the document counts."*  ``compiler.declare_object`` takes that reversal, the class
+# resolves ``extra='allow'``, the undeclared key SURVIVES the dump, and the document's own
+# ``minProperties`` is satisfied by the instance it was always satisfied by.  So the pair
+# passes on its own and the entry is removed rather than re-explained.
+#
+# One entry, one class, and :data:`PIN` falls from 1 to 0 with it: the shrink-only part of
+# this registry is now empty, which is the one direction it is allowed to move in.
 
-#: **The whole exemption.**  Nine positions: eight on :data:`ORIGIN_ONLY`, which are
-#: DERIVED against the packaged tree, and one on ``minProperties``, which is pinned.
+#: **The whole exemption.**  Eight positions, ALL of them on :data:`ORIGIN_ONLY` and
+#: all of them DERIVED against the packaged tree.  The one pinned entry -- a
+#: ``minProperties`` -- is gone, for the reason written above ``EXEMPT``'s reasons: it
+#: described a difference the walk created, and §8 sentence 4 says such a count is
+#: answered by the class keeping the keys the document counts rather than by an
+#: exemption.  So nothing here is pinned any more and :data:`PIN` is 0.
 #:
 #: Three of the four are one authored node, ``core/attestation-issuer.json``'s
 #: ``AttestationOriginIssuer.origin``, which the record inlines into
@@ -273,15 +300,6 @@ EXEMPT: tuple[Exemption, ...] = (
         value=ORIGIN_ONLY,
         reason=_RFC,
     ),
-    Exemption(
-        document="core/provenance.json",
-        pointer=(
-            "/properties/disclosure/properties/jurisdictions/items/properties/render_guidance"
-        ),
-        keyword="minProperties",
-        value=1,
-        reason=_D8,
-    ),
 )
 
 #: Shrink-only, asserted by ``test_the_exempt_set_only_shrinks``, and over the entries
@@ -294,8 +312,14 @@ EXEMPT: tuple[Exemption, ...] = (
 #: much of the bundle is PACKAGED, not of how permissive this SDK is, so every row that
 #: emits a document carrying that node has to raise it -- which is the one thing a
 #: shrink-only pin may not do.  That part is derived now (see :data:`EXEMPT`), and what
-#: is left here is the part that genuinely is not a function of emission.
-PIN = 1
+#: was left here was the part that genuinely is not a function of emission.
+#:
+#: **IT IS NOW ZERO**, which is "this part is empty" and not a census: the one
+#: ``minProperties`` entry it covered is gone because the pair passes, and §8 sentence 4
+#: is what made it pass.  A later row that needs a non-ORIGIN_ONLY exemption raises this,
+#: and raising it is what ``test_the_exempt_set_only_shrinks`` forbids -- so such a row
+#: brings the sentence first, which is the whole point of the pin being shrink-only.
+PIN = 0
 
 
 def applying_to(ref_document: str, ref_pointer: str) -> tuple[Exemption, ...]:

@@ -692,23 +692,72 @@ def _read(item: Any, key: str) -> Any:
 
 @dataclass(frozen=True)
 class Match:
-    """One clause of an ``if``: a key is present, and its value is one of ``allowed``.
+    """One clause of an ``if``: one predicate about ONE key.
 
-    ``allowed is None`` is a presence test alone (the ``if``'s ``required`` with no
-    ``properties`` entry for that key).  A clause with ``present=False`` is the key
-    being absent.
+    ``allowed is None`` and ``forbidden is None`` is a presence test alone (the ``if``'s
+    ``required`` with no ``properties`` entry for that key).
+
+    **PRESENCE IS THREE-STATE AND THE VALUE SET HAS A COMPLEMENT**
+    (``docs/plan/rebuild-plan.md`` §8 sentence 3b, decided 2026-11-03).  What stood here
+    was a two-state presence flag and a POSITIVE value set alone, and that pair cannot
+    state the condition this bundle writes most often:
+
+        not: {required: [k], properties: {k: {const: v}}}
+
+    whose inner schema is *"k is present AND equals v"*.  By De Morgan the negation is
+    *"k is absent OR k differs from v"*, and with a two-state flag and a positive set
+    neither spelling reaches it -- ``present=True`` fails the absent instance and
+    ``present=False`` fails the present one, so **absence and a differing value could
+    never both satisfy one clause**.  That was read as a disjunction no clause list can
+    carry, since a rule's ``when`` is a conjunction.
+
+    **The error was in where the disjunction sits.**  It is not a disjunction of
+    independent facts about different keys; it is one predicate about one key -- *k is
+    not v, whether by absence or by value* -- and a single clause says it the moment the
+    clause can say *not*.  So:
+
+    * ``present=True`` -- the key must be present;
+    * ``present=False`` -- the key must be absent;
+    * ``present=None`` -- **IMMATERIAL**, and this is the state that was missing: the
+      clause says nothing about whether the key arrived, only about its value if it did.
+
+    and ``forbidden`` is the complement of ``allowed``: a value set the key's value must
+    NOT be in.  The condition above is then ONE clause -- the key, presence immaterial,
+    value forbidden to be ``v``.  Absent satisfies it, present-and-different satisfies
+    it, present-and-equal does not, which is the negation exactly.
+
+    **``forbidden`` is a second field and not a flag reinterpreting ``allowed``**, so the
+    two compose as the conjunction :meth:`holds` reads them as and neither has to be
+    understood through the other.  A clause can state both.
+
+    **A negation that genuinely spans two keys is still not expressible here, and that is
+    correct** -- an ``anyOf`` of requirements, or a negated conjunction over DIFFERENT
+    keys, is a disjunction of clauses rather than one clause's own predicate, and
+    ``codegen.lower.rules`` declares it.  The test is whether the disjunction is inside
+    one key's predicate or across several.
     """
 
     key: str
-    present: bool = True
+    present: bool | None = True
     allowed: tuple[Any, ...] | None = None
+    forbidden: tuple[Any, ...] | None = None
 
     def holds(self, keys: frozenset[str], values: Mapping[str, Any]) -> bool:
+        """Does this clause hold of the keys that arrived and the values they carried?
+
+        **``is not True`` and ``is False`` rather than truthiness**, because ``present``
+        now has three states and ``not None`` is ``True``: a truthy read would make an
+        immaterial clause behave as ``present=False`` at the absent instance and refuse
+        the very payload the complement exists to admit.
+        """
         if self.key not in keys:
-            return not self.present
-        if not self.present:
+            return self.present is not True
+        if self.present is False:
             return False
-        return self.allowed is None or values.get(self.key) in self.allowed
+        value = values.get(self.key)
+        if self.allowed is not None and value not in self.allowed:
+            return False
+        return self.forbidden is None or value not in self.forbidden
 
 
 @dataclass(frozen=True)
@@ -763,19 +812,30 @@ class NegatedConditional:
                 yield ("not", (name,), f"forbidden when {condition}", values.get(name))
 
 
+def _values_as_text(values: tuple[Any, ...]) -> str:
+    """A clause's value set as text: the one value, or the list."""
+    return repr(values[0]) if len(values) == 1 else f"in {list(values)!r}"
+
+
+def _clause_as_text(clause: Match) -> str:
+    """One clause as text, over THREE presence states and both value sets.
+
+    ``present is False`` is the only state that spells ``absent``.  An IMMATERIAL
+    presence spells nothing about presence -- it is the value sets that carry the
+    clause's whole content, and a payload refused by one needs to read what it said
+    rather than a word about a key that may not have arrived.
+    """
+    said = [clause.key + (" absent" if clause.present is False else "")]
+    if clause.allowed is not None:
+        said.append("=" + _values_as_text(clause.allowed))
+    if clause.forbidden is not None:
+        said.append(" not " + _values_as_text(clause.forbidden))
+    return "".join(said)
+
+
 def _condition(when: tuple[Match, ...]) -> str:
     """The ``when`` clauses as text, for the detail of a refusal."""
-    return ", ".join(
-        f"{c.key}{'' if c.present else ' absent'}"
-        + (
-            ""
-            if c.allowed is None
-            else f"={c.allowed[0]!r}"
-            if len(c.allowed) == 1
-            else f" in {list(c.allowed)!r}"
-        )
-        for c in when
-    )
+    return ", ".join(_clause_as_text(c) for c in when)
 
 
 def supplied(model: BaseModel) -> tuple[frozenset[str], Mapping[str, Any]]:

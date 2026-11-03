@@ -113,6 +113,16 @@ from codegen import compiler
 from codegen.keywords import Position
 from codegen.schema import parse as schema
 
+#: **ONE ``if`` CLAUSE, as the reduction hands it to :class:`adcp.types._runtime.Match`:**
+#: ``(key, present, allowed values, forbidden values)``.
+#:
+#: Named because four readers pass it between them and a four-tuple spelled out at each
+#: one is four places to go stale -- which is what the checker reported the moment §8
+#: sentence 3b's complement widened ``present`` to three states and added the second value
+#: set.  ``present is None`` is IMMATERIAL and ``forbidden`` is the complement of
+#: ``allowed``; ``Match``'s own docstring is the declaration of what they mean.
+Clause = tuple[str, bool | None, tuple[Any, ...] | None, tuple[Any, ...] | None]
+
 #: Everything this module reads off a node with FIELDS: the keywords whose CELL
 #: compiles to a RULE, read off ``codegen.keywords`` at the position asked about.
 #:
@@ -434,9 +444,43 @@ def contains_predicate(sub: Any) -> AtLeastOne | None:
     if bare is not None:
         return AtLeastOne(values=bare) if len(bare) == 1 else None
     clauses = _clauses(sub)
-    if clauses is None or not all(a is not None and len(a) == 1 for _, _, a in clauses):
+    if clauses is None:
         return None
-    return AtLeastOne(pinned=tuple((key, allowed[0]) for key, _, allowed in clauses if allowed))
+    pinned: list[tuple[str, Any]] = []
+    for clause in clauses:
+        pin = _a_pinned_value(clause)
+        if pin is None:
+            return None
+        pinned.append(pin)
+    return AtLeastOne(pinned=tuple(pinned))
+
+
+def _a_pinned_value(clause: Clause) -> tuple[str, Any] | None:
+    """The ``(key, value)`` pair this clause pins, or ``None`` where it pins none.
+
+    ``AtLeastOne(pinned=…)`` is a list of such pairs and says nothing else, so every part
+    of the clause past those two has to be the part a pin would carry anyway: the key
+    PRESENT, exactly one admitted value, and nothing forbidden.
+
+    **The last two states are §8 sentence 3b's and are checked rather than assumed.**
+    :func:`_clauses` can now return a clause whose presence is IMMATERIAL and whose value
+    set is a COMPLEMENT -- *k is not v* -- and neither is a pin: an element satisfying
+    *k is not v* has no pinned value to record, and recording ``v`` would invert the
+    predicate and refuse every array the document admits.  A clause list this declines is
+    the row's own "any other predicate", where the keyword is CARRIED and the schema half
+    answers alone.
+
+    **It returns the PAIR rather than answering yes or no**, so the value is read where it
+    has been narrowed: a predicate returning ``bool`` leaves ``allowed`` an
+    ``Optional[tuple]`` at the caller, and the checker is right to refuse the subscript
+    the caller then writes.
+    """
+    key, present, allowed, forbidden = clause
+    if present is not True or forbidden is not None:
+        return None
+    if allowed is None or len(allowed) != 1:
+        return None
+    return key, allowed[0]
 
 
 def contains_source(declaration: Mapping[str, Any]) -> Any:
@@ -552,19 +596,36 @@ def _count(node: Mapping[str, Any], out: Lowered, extra_stated: bool) -> None:
         # would otherwise be -- and the maximum rides on the smaller count, which
         # under-refuses.  Both are declared at the node's own pointer.
         if lo is not None:
-            # **NOT DECLARED, and ``adcp-client-python-6oe`` is the bead that owns it.**
-            # The fact IS dropped and reading 2 does ask for a declaration, and the
-            # measurement is what stops this line from writing one: over the 1,054
-            # portable documents the gate withholds the minimum at **5,220 pointers in
-            # 209 documents**, because the record inlines one shared node at every
-            # referring path.  §8 forbids a declaration set of that shape outright -- "an
-            # approximation nothing can demonstrate does not belong in the set", and §9
-            # "do not pin the approximation count" is written about a figure one cell
-            # reaches at eighty positions, not at five thousand.  The faithful answer is
-            # not a declaration either: it is for the class to KEEP the keys the document
-            # counts, which is D8's ``absent -> ignore`` and a sentence only the design
-            # documents can move.  So the drop is a filed bead with its measurement and
-            # not a silence, and not 5,220 entries in a set a reader is meant to audit.
+            # **NOT DECLARED, AND NOW ALSO ALL BUT UNREACHABLE** --
+            # ``adcp-client-python-gbo``, whose own figure is what kept it reachable.
+            #
+            # **THE FIGURE THAT STOOD HERE WAS WRONG BY THREE ORDERS OF MAGNITUDE AND IT
+            # WAS THE WHOLE ARGUMENT.**  It read "the gate withholds the minimum at
+            # **5,220 pointers in 209 documents**, because the record inlines one shared
+            # node at every referring path", and concluded that §8 forbids a declaration
+            # set of that shape and that the faithful fix -- the class KEEPING the keys the
+            # document counts -- was a sentence only the design documents could move.  The
+            # count was over the INLINED record and **the walk does not inline**: it
+            # compiles each shared node once and imports the symbol.  Re-measured over the
+            # same 1,054 portable documents by recording every call at which this gate
+            # fires: **5 calls at 4 distinct (document, pointer)**, zero declarations on
+            # either count keyword, and the minimum arm reaches three of the five.  Five is
+            # well inside the regime ``tests/test_the_declared_backlog.py`` already pins,
+            # so the cardinality objection does not survive its own denominator.
+            #
+            # **AND THE DESIGN DOCUMENTS DID MOVE IT**: §8 sentence 4's second consequence
+            # (2026-11-03) decides that such a count "is answered by the class KEEPING the
+            # keys the document counts.  Declaring it would be declaring a difference the
+            # walk created."  ``compiler.declare_object`` takes that reversal at exactly
+            # the nodes a count rides over, so ``extra_stated`` is now true wherever a
+            # class carries one and this arm is reached by no class of this bundle.
+            #
+            # It is KEPT rather than deleted because the reversal is the caller's and this
+            # is the reduction: a node reaching ``lower`` from a path that does not resolve
+            # an extra policy still must not write a minimum over a smaller key set, which
+            # would be a rule refusing what the document accepts and the narrowing §2
+            # forbids outright.  Withheld and not declared, for the reason the sentence
+            # gives: the difference would be the walk's own and not the document's.
             lo = None
         if hi is not None:
             out.dropped.append(("maxProperties", node["maxProperties"]))
@@ -762,7 +823,7 @@ def _conditional(
         # and the choice between a wider reading of a condition and a declaration set of
         # that size is the design documents' to make.
         return
-    clauses = tuple(Match(c, p, a) for c, p, a in when)
+    clauses = tuple(Match(*clause) for clause in when)
     for keyword, kind in (("then", ConditionalRequired), ("else", NegatedConditional)):
         branch = _branch(node.get(keyword))
         if branch is None or not any(branch):
@@ -885,16 +946,79 @@ def through_the_storage(node: Any, root: Mapping[str, Any] | None) -> Any:
     return _base.through_the_store(node, root)
 
 
+def _complement(
+    inner: Any, root: Mapping[str, Any] | None = None
+) -> list[Clause] | None:
+    """A NEGATED condition as one complemented clause, or ``None``.
+
+    **§8's sentence 3b (decided 2026-11-03), and it replaces a sentence that said such
+    conditions DECLARE.**  The condition this bundle writes most often is
+
+        not: {required: [k], properties: {k: {const: v}}}
+
+    the inner schema being *"k is present AND equals v"*.  By De Morgan its negation is
+    *"k is absent OR k differs from v"*, which was read as a disjunction no clause list
+    can state, since a rule's ``when`` is a conjunction.  **The error was in where the
+    disjunction sits:** it is not a disjunction of independent facts about different keys,
+    it is ONE predicate about ONE key -- *k is not v, whether by absence or by value* --
+    and :class:`adcp.types._runtime.Match` now says it, because its presence is
+    three-state and its value set has a complement.
+
+    So the inner condition is read by the SAME reduction that reads a positive one, and
+    the complement is taken on its result.  Two cases and both are exact:
+
+    * one clause carrying a value set → the key, presence IMMATERIAL, that set
+      FORBIDDEN.  Absent satisfies, present-and-different satisfies,
+      present-and-equal does not;
+    * one clause with no value set (a bare ``not: {required: [k]}``) → the key
+      ABSENT, which is the two-state flag's own ``present=False`` and needs no
+      complement at all.
+
+    **MORE THAN ONE CLAUSE IS ``None``, and that is the rule rather than a budget.**
+    §8: *"A condition whose negation genuinely spans two keys still declares ... The test
+    is whether the disjunction is inside one key's predicate or across several."*
+    ``not (a present and b present)`` is *a absent OR b absent* -- a disjunction ACROSS
+    keys, which a conjunction of clauses cannot state and which a per-key complement
+    would state as *a absent AND b absent*, a rule strictly stronger than its document
+    and the one direction §2 forbids outright.
+
+    An inner ``type: "object"`` is carried by the inner reduction and costs nothing here:
+    the negation of *"an object AND k present"* includes *"not an object"*, and every
+    instance a rule ever runs on is an instance of the class, which is one.
+    """
+    inner = through_the_storage(inner, root)
+    read = _clauses(inner, root)
+    if read is None or len(read) != 1:
+        return None
+    key, _, allowed, forbidden = read[0]
+    if forbidden is not None:
+        # The inner condition is itself complemented, so its negation is a POSITIVE value
+        # set -- but only where the inner states nothing else about the key, and a clause
+        # carrying both sets says more than one De Morgan step can undo.  Left to declare
+        # rather than guessed at: no node of this bundle reaches it.
+        return None
+    if allowed is None:
+        return [(key, False, None, None)]
+    return [(key, None, None, allowed)]
+
+
 def _clauses(
     sub: Any, root: Mapping[str, Any] | None = None
-) -> list[tuple[str, bool, tuple[Any, ...] | None]] | None:
-    """An ``if`` as ``(key, present, allowed values)`` clauses, or ``None``.
+) -> list[Clause] | None:
+    """An ``if`` as ``(key, present, allowed values, forbidden values)`` clauses, or ``None``.
 
     Every clause must be about a key the ``if`` also REQUIRES.  A ``properties`` entry
     for a key the ``if`` does not require is satisfied by the key being ABSENT as well
     as by its value matching, and a clause cannot say "absent or one of these" -- so
     such an ``if`` reduces to nothing rather than to something stronger than the
     document.
+
+    **A condition that is exactly a ``not`` is read by :func:`_complement`** (§8's
+    sentence 3b), which takes the negation of what this function reads of the inner
+    schema.  ``_keys`` is the test and not a membership check on the raw node, so an
+    annotation beside the ``not`` does not take the arm: a key that annotates without
+    constraining is not part of what a rule TESTS, which is the position this module
+    reads everything at.
 
     **The condition and each property declaration inside it are read THROUGH the record's
     own storage** (:func:`through_the_storage`, §8's sentence 3a).  Both hops are needed
@@ -908,6 +1032,8 @@ def _clauses(
     if not isinstance(sub, dict):
         return None
     keys = _keys(sub)
+    if keys == {"not"}:
+        return _complement(sub["not"], root)
     if sub.get("type") not in (None, "object"):
         return None
     if not keys <= {"required", "properties", "type"} or not isinstance(sub.get("required"), list):
@@ -916,7 +1042,7 @@ def _clauses(
     properties = sub.get("properties") or {}
     if not isinstance(properties, dict) or not set(properties) <= set(required):
         return None
-    out = []
+    out: list[Clause] = []
     for name in required:
         declaration = through_the_storage(properties.get(name), root)
         allowed = None
@@ -924,7 +1050,7 @@ def _clauses(
             allowed = _values(declaration)
             if allowed is None:
                 return None
-        out.append((name, True, allowed))
+        out.append((name, True, allowed, None))
     return out or None
 
 
