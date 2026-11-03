@@ -73,6 +73,20 @@ are carried because they are what the judgement preserved -- ``brand.json``'s ``
 ``depth_of_field`` uses ``shallow/medium/deep`` and ``color_temperature``
 ``warm/neutral/cool``.
 
+**NO ROW REACHES A VALUE LIST ONE DOCUMENT STATES ALONE**, because §4's content dedup is
+the whole rule in that scope -- "two nodes with identical content emit one class ...
+declared under the name of the position the walk reaches first" -- and its key is node
+EQUALITY, which keeps two positions apart exactly when they state different things about an
+instance.  ``tests/test_vocabularies.py`` holds that, and five rows were written and
+removed by it: *Surface* and *Fit*, which §4 would have to be widened to collapse
+(``brand.json``'s ``color_ref.surface`` beside its ``color_constraint.applies_to``, and
+``core/placement-presentation.json``'s two ``fit`` properties), and three it already keeps
+apart correctly -- ``brand.json``'s ``contrast``/``intensity`` over ``{low, medium, high}``,
+``governance/get-plan-audit-logs-response.json``'s plan status beside its action status, and
+``protocol/get-adcp-capabilities-response.json``'s two ``requirement`` blocks.  Widening
+§4's key from node equality to the value list is a change to THAT rule and is not taken
+here.
+
 **EVERY ROW IS ALSO AN UPSTREAM QUESTION, and §3a says so of all four collections**:
 "either the bundle defines one thing twice, or it defines two things that coincide on
 their values and says nothing about why.  Both are questions for the specification, and
@@ -160,7 +174,7 @@ AGREED: frozenset[Vocabulary] = frozenset(
 )
 
 #: Value list -> the name the bundle states for it, for the value lists judged ONE SUBJECT
-#: whose positions derived different names (32).  The name is in the tree's own convention,
+#: whose positions derived different names (30).  The name is in the tree's own convention,
 #: because a title is a human string and a type is an identifier (§3a).
 JUDGED: Mapping[Vocabulary, str] = {
     ('string', ('jsonl', 'csv', 'parquet', 'avro', 'orc')): 'FileFormat',
@@ -176,11 +190,9 @@ JUDGED: Mapping[Vocabulary, str] = {
     ('string', ('square', 'horizontal', 'vertical', 'stacked')): 'LogoOrientation',
     ('string', ('subsidiary', 'parent', 'property', 'trademark')): 'ClaimType',
     ('string', ('zip', 'zip_plus_four')): 'USPostalCodeSystem',
-    ('string', ('background', 'foreground', 'text', 'logo_background', 'cta', 'accent', 'border', 'icon', 'graphic_element')): 'Surface',
     ('string', ('brief', 'wholesale')): 'DiscoveryMode',
     ('string', ('brief', 'wholesale', 'refine')): 'BuyingMode',
     ('string', ('consistent', 'measurement_variance', 'disputed', 'unmatched', 'closed_unresolved')): 'DeliveryReconciliationStatus',
-    ('string', ('contain', 'cover', 'stretch')): 'Fit',
     ('string', ('creative_fatigue', 'creative_quality_opportunity')): 'AssignmentIndicatorType',
     ('string', ('description', 'industries', 'keller_type', 'logos', 'colors', 'fonts', 'visual_guidelines', 'tone', 'tagline', 'voice_synthesis', 'assets', 'rights')): 'BrandIdentityField',
     ('string', ('direct', 'delegated', 'ad_network')): 'DelegationType',
@@ -208,7 +220,7 @@ PENDING_A_NAME: Mapping[Vocabulary, str] = {
 }
 
 #: Value list -> the names the judgement KEPT APART, for the value lists whose positions
-#: are different subjects coinciding on their values (11).  Separate types over one value
+#: are different subjects coinciding on their values (8).  Separate types over one value
 #: list, which is §3a's second state.
 DISTINCT: Mapping[Vocabulary, tuple[str, ...]] = {
     ('string', ('accepted', 'rejected')): ('BuyerAssetAcceptance', 'HostReceiptStatus', 'Status',),
@@ -216,12 +228,9 @@ DISTINCT: Mapping[Vocabulary, tuple[str, ...]] = {
     ('string', ('open', 'closed')): ('DeliveryPeriodState', 'EntriesItemDeliveryPeriodState', 'GovernedActionsItemDeliveryPeriodState', 'Status',),
     ('string', ('intra_day', 'daily', 'weekly', 'monthly', 'bi_monthly', 'quarterly', 'bi_annually', 'annually')): ('LookbackWindow', 'RefreshCadence',),
     ('string', ('postal_code', 'custom')): ('PostalAreaBranch9System', 'PostalAreaSupportValueItem', 'PostalCountrySystemBranch9System',),
-    ('string', ('active', 'suspended', 'completed')): ('GovernedActionsItemStatus', 'PlansItemStatus',),
     ('string', ('include', 'omit', 'finalize')): ('ProductRefinementRequestsItemProposalAction', 'RefineItemProposalAction',),
     ('string', ('include', 'omit', 'more_like_this')): ('ProductRefinementRequestsItemProductAction', 'RefineItemProductAction',),
     ('string', ('linear', 'non_linear', 'companion')): ('Target', 'VastTarget',),
-    ('string', ('low', 'medium', 'high')): ('Contrast', 'Intensity',),
-    ('string', ('optional', 'required')): ('RightsAttestationsRequirement', 'SignalActivationRequirement',),
 }
 
 

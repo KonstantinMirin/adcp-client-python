@@ -24,7 +24,7 @@ class ContainersItem(StrEnum):
     MKV = 'mkv'
 
 
-class CodecsItem(StrEnum):
+class VideoCodec(StrEnum):
     H264 = 'h264'
     H265 = 'h265'
     VP8 = 'vp8'
@@ -60,7 +60,7 @@ class VideoAssetRequirements(AdCPBaseModel):
     min_duration_ms: Annotated[IntMin1 | None, Field(description='Minimum duration in milliseconds')] = None
     max_duration_ms: Annotated[IntMin1 | None, Field(description='Maximum duration in milliseconds')] = None
     containers: Annotated[list[ContainersItem] | None, Field(description='Accepted video container formats')] = None
-    codecs: Annotated[list[CodecsItem] | None, Field(description='Accepted video codecs')] = None
+    codecs: Annotated[list[VideoCodec] | None, Field(description='Accepted video codecs')] = None
     max_file_size_kb: Annotated[IntMin1 | None, Field(description='Maximum file size, where 1 KB is exactly 1,000 bytes')] = None
     min_bitrate_kbps: Annotated[IntMin1 | None, Field(description='Minimum video bitrate in kilobits per second')] = None
     max_bitrate_kbps: Annotated[IntMin1 | None, Field(description='Maximum video bitrate in kilobits per second')] = None

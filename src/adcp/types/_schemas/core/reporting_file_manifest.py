@@ -10,7 +10,7 @@ from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import StrMinLen1, StrMinLen1MaxLen255Matching67860854
 
 from .reporting_control_total import ReportingControlTotal
-from .reporting_delivery_method import Format
+from .reporting_delivery_method import FileFormat
 from .reporting_file_compression import ReportingFileCompression
 from .reporting_file_entry import ReportingFileEntry
 
@@ -42,7 +42,7 @@ class ReportingFileManifest(AdCPBaseModel):
     reporting_obligation_id: StrMinLen1MaxLen255Matching67860854
     reporting_materialization_id: StrMinLen1MaxLen255Matching67860854
     period: Period
-    format: Format
+    format: FileFormat
     compression: ReportingFileCompression
     files: Annotated[list[ReportingFileEntry], Field(min_length=1)]
     total_size_bytes: NonNegativeInt

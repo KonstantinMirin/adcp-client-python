@@ -24,7 +24,7 @@ from .signal_ref import SignalRef
 from .vendor_pricing_option import VendorPricingOption
 
 
-class EventType(StrEnum):
+class WholesaleFeedEventType(StrEnum):
     """
     Discriminator. Determines the shape of `payload`.
     """
@@ -60,7 +60,7 @@ class WholesaleFeedEvent(BranchDispatchMixin, AdCPBaseModel):
     def _branch_combinator(cls) -> str:
         return "oneOf"
     event_id: Annotated[str, Field(description='Stable logical event identifier for this wholesale feed change. MUST equal the enclosing webhook notification_id. UUID v7 is RECOMMENDED so receivers can detect obvious out-of-order delivery; missed or distrusted pushes are repaired through list_products / get_signals.', json_schema_extra={'format': 'uuid'})]
-    event_type: Annotated[EventType, Field(description='Discriminator. Determines the shape of `payload`.')]
+    event_type: Annotated[WholesaleFeedEventType, Field(description='Discriminator. Determines the shape of `payload`.')]
     entity_type: Annotated[EntityType, Field(description="Entity class. 'product' for product.* events, 'signal' for signal.* events, 'feed' for wholesale_feed.bulk_change.")]
     entity_id: Annotated[str, Field(description='Entity identifier. For product.* events, the product_id. For signal.* events, the signal_agent_segment_id. For wholesale_feed.bulk_change, an agent-defined operation id.')]
     created_at: Annotated[AwareDatetime, Field(description='ISO 8601 timestamp when the agent emitted the event. Advisory — consumers MUST order by event_id (UUID v7), not by created_at, to avoid clock-skew artifacts.')]
@@ -116,7 +116,7 @@ class WholesaleFeedEventProductCreatedProduct(WholesaleFeedEvent):
     product.created — a new product was added to the agent's wholesale product feed.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/wholesale-feed-event.json', pointer='#/oneOf/0')
-    event_type: Annotated[Literal[EventType.PRODUCT_CREATED], Field(description='Discriminator. Determines the shape of `payload`.')]
+    event_type: Annotated[Literal[WholesaleFeedEventType.PRODUCT_CREATED], Field(description='Discriminator. Determines the shape of `payload`.')]
     entity_type: Annotated[Literal[EntityType.PRODUCT], Field(description="Entity class. 'product' for product.* events, 'signal' for signal.* events, 'feed' for wholesale_feed.bulk_change.")]
     payload: Annotated[WholesaleFeedEventProductCreatedProductPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
 
@@ -145,7 +145,7 @@ class WholesaleFeedEventProductUpdatedProduct(WholesaleFeedEvent):
     product.updated — product metadata changed (name, description, formats, properties, targeting capabilities, measurement terms). Use changed_fields for fine-grained re-render, but be prepared to handle a full replacement.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/wholesale-feed-event.json', pointer='#/oneOf/1')
-    event_type: Annotated[Literal[EventType.PRODUCT_UPDATED], Field(description='Discriminator. Determines the shape of `payload`.')]
+    event_type: Annotated[Literal[WholesaleFeedEventType.PRODUCT_UPDATED], Field(description='Discriminator. Determines the shape of `payload`.')]
     entity_type: Annotated[Literal[EntityType.PRODUCT], Field(description="Entity class. 'product' for product.* events, 'signal' for signal.* events, 'feed' for wholesale_feed.bulk_change.")]
     payload: Annotated[WholesaleFeedEventProductUpdatedProductPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
 
@@ -176,7 +176,7 @@ class WholesaleFeedEventProductPricedProduct(WholesaleFeedEvent):
     product.priced — the pricing-option set changed (new option or retirement/replacement of an option). A binding price, floor, currency, model, or priced applicability change MUST use a new pricing_option_id; the event never reinterprets an issued option ID at new terms. Existing media buys are unaffected; composition replaces its cached option set.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/wholesale-feed-event.json', pointer='#/oneOf/2')
-    event_type: Annotated[Literal[EventType.PRODUCT_PRICED], Field(description='Discriminator. Determines the shape of `payload`.')]
+    event_type: Annotated[Literal[WholesaleFeedEventType.PRODUCT_PRICED], Field(description='Discriminator. Determines the shape of `payload`.')]
     entity_type: Annotated[Literal[EntityType.PRODUCT], Field(description="Entity class. 'product' for product.* events, 'signal' for signal.* events, 'feed' for wholesale_feed.bulk_change.")]
     payload: Annotated[WholesaleFeedEventProductPricedProductPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
 
@@ -210,7 +210,7 @@ class WholesaleFeedEventProductRemovedProduct(WholesaleFeedEvent):
     product.removed — product no longer available. In-flight buys honor existing cancellation policy regardless of removal_reason; storefront UX differs by reason.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/wholesale-feed-event.json', pointer='#/oneOf/3')
-    event_type: Annotated[Literal[EventType.PRODUCT_REMOVED], Field(description='Discriminator. Determines the shape of `payload`.')]
+    event_type: Annotated[Literal[WholesaleFeedEventType.PRODUCT_REMOVED], Field(description='Discriminator. Determines the shape of `payload`.')]
     entity_type: Annotated[Literal[EntityType.PRODUCT], Field(description="Entity class. 'product' for product.* events, 'signal' for signal.* events, 'feed' for wholesale_feed.bulk_change.")]
     payload: Annotated[WholesaleFeedEventProductRemovedProductPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
 
@@ -273,7 +273,7 @@ class WholesaleFeedEventSignalCreatedSignal(WholesaleFeedEvent):
     signal.created — a new signal was added to the agent's wholesale signals feed.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/wholesale-feed-event.json', pointer='#/oneOf/4')
-    event_type: Annotated[Literal[EventType.SIGNAL_CREATED], Field(description='Discriminator. Determines the shape of `payload`.')]
+    event_type: Annotated[Literal[WholesaleFeedEventType.SIGNAL_CREATED], Field(description='Discriminator. Determines the shape of `payload`.')]
     entity_type: Annotated[Literal[EntityType.SIGNAL], Field(description="Entity class. 'product' for product.* events, 'signal' for signal.* events, 'feed' for wholesale_feed.bulk_change.")]
     payload: Annotated[WholesaleFeedEventSignalCreatedSignalPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
 
@@ -298,7 +298,7 @@ class WholesaleFeedEventSignalUpdatedSignal(WholesaleFeedEvent):
     signal.updated — signal metadata changed (description, coverage, deployments).
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/wholesale-feed-event.json', pointer='#/oneOf/5')
-    event_type: Annotated[Literal[EventType.SIGNAL_UPDATED], Field(description='Discriminator. Determines the shape of `payload`.')]
+    event_type: Annotated[Literal[WholesaleFeedEventType.SIGNAL_UPDATED], Field(description='Discriminator. Determines the shape of `payload`.')]
     entity_type: Annotated[Literal[EntityType.SIGNAL], Field(description="Entity class. 'product' for product.* events, 'signal' for signal.* events, 'feed' for wholesale_feed.bulk_change.")]
     payload: Annotated[WholesaleFeedEventSignalUpdatedSignalPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
 
@@ -325,7 +325,7 @@ class WholesaleFeedEventSignalPricedSignal(WholesaleFeedEvent):
     signal.priced — signal pricing options changed.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/wholesale-feed-event.json', pointer='#/oneOf/6')
-    event_type: Annotated[Literal[EventType.SIGNAL_PRICED], Field(description='Discriminator. Determines the shape of `payload`.')]
+    event_type: Annotated[Literal[WholesaleFeedEventType.SIGNAL_PRICED], Field(description='Discriminator. Determines the shape of `payload`.')]
     entity_type: Annotated[Literal[EntityType.SIGNAL], Field(description="Entity class. 'product' for product.* events, 'signal' for signal.* events, 'feed' for wholesale_feed.bulk_change.")]
     payload: Annotated[WholesaleFeedEventSignalPricedSignalPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
 
@@ -349,7 +349,7 @@ class WholesaleFeedEventSignalRemovedSignal(WholesaleFeedEvent):
     signal.removed — signal no longer available.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/wholesale-feed-event.json', pointer='#/oneOf/7')
-    event_type: Annotated[Literal[EventType.SIGNAL_REMOVED], Field(description='Discriminator. Determines the shape of `payload`.')]
+    event_type: Annotated[Literal[WholesaleFeedEventType.SIGNAL_REMOVED], Field(description='Discriminator. Determines the shape of `payload`.')]
     entity_type: Annotated[Literal[EntityType.SIGNAL], Field(description="Entity class. 'product' for product.* events, 'signal' for signal.* events, 'feed' for wholesale_feed.bulk_change.")]
     payload: Annotated[WholesaleFeedEventSignalRemovedSignalPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
 
@@ -389,7 +389,7 @@ class WholesaleFeedEventWholesaleFeedBulkChangeFeed(WholesaleFeedEvent):
     wholesale_feed.bulk_change — fast-forward event emitted when a single operation affects many entities in one feed. Consumers SHOULD repair products through list_products and signals through get_signals.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/wholesale-feed-event.json', pointer='#/oneOf/8')
-    event_type: Annotated[Literal[EventType.WHOLESALE_FEED_BULK_CHANGE], Field(description='Discriminator. Determines the shape of `payload`.')]
+    event_type: Annotated[Literal[WholesaleFeedEventType.WHOLESALE_FEED_BULK_CHANGE], Field(description='Discriminator. Determines the shape of `payload`.')]
     entity_type: Annotated[Literal[EntityType.FEED], Field(description="Entity class. 'product' for product.* events, 'signal' for signal.* events, 'feed' for wholesale_feed.bulk_change.")]
     payload: Annotated[WholesaleFeedEventWholesaleFeedBulkChangeFeedPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
 

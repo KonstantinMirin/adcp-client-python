@@ -15,7 +15,7 @@ from ...enums.gop_type import GOPType
 from ...enums.moov_atom_position import MoovAtomPosition
 from ...enums.scan_type import ScanType
 from ..provenance import Provenance
-from .audio_asset import BitDepth
+from .audio_asset import AudioBitDepth
 
 
 class ColorSpace(StrEnum):
@@ -89,7 +89,7 @@ class VideoAsset(AdCPBaseModel):
     audio_codec: Annotated[str | None, Field(description='Audio codec used (aac, aac_lc, he_aac, pcm, mp3, ac3, eac3, etc.)')] = None
     audio_sampling_rate_hz: Annotated[int | None, Field(description='Audio sampling rate in Hz (e.g., 44100, 48000)')] = None
     audio_channels: Annotated[AudioChannelLayout | None, Field(description='Audio channel configuration')] = None
-    audio_bit_depth: Annotated[BitDepth | None, Field(description='Audio bit depth')] = None
+    audio_bit_depth: Annotated[AudioBitDepth | None, Field(description='Audio bit depth')] = None
     audio_bitrate_kbps: Annotated[IntMin1 | None, Field(description='Audio bitrate in kilobits per second')] = None
     audio_loudness_lufs: Annotated[float | None, Field(description='Integrated loudness in LUFS')] = None
     audio_true_peak_dbfs: Annotated[float | None, Field(description='True peak level in dBFS')] = None

@@ -9,7 +9,7 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import StrMatching2DACB561, StrMatching43C17DAB, StrMaxLen2048MatchingFE5FDE4A
 
-from ..core.verification_token_claims import VerificationTokenMode
+from ..core.verification_token_claims import VerificationMode
 
 
 class AnyOfItemAgentUrl(AdCPBaseModel):
@@ -33,7 +33,7 @@ class AnyOfItemVerification(AdCPBaseModel):
     registry: Annotated[StrMaxLen2048MatchingFE5FDE4A, Field(description='Seller-configured trusted verification registry without userinfo, query, or fragment. The candidate cannot supply or override this URL; fetches use the registry-resolution security contract.', json_schema_extra={'format': 'uri'})]
     role: Annotated[StrMatching2DACB561, Field(description="Role asserted by the trusted registry's verified record, never by candidate self-description.")]
     adcp_version: Annotated[StrMatching43C17DAB, Field(description='Registry protocol version in canonical MAJOR.MINOR form.')]
-    verification_modes: Annotated[list[VerificationTokenMode], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
+    verification_modes: Annotated[list[VerificationMode], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
     max_age_seconds: Annotated[NonNegativeInt, Field(description='Maximum age of the registry evidence at binding time. Zero requires a fresh result. Evidence is pinned to the accepted binding; later registry drift does not silently revoke an existing binding.')]
 
 

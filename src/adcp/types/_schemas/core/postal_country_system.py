@@ -11,7 +11,7 @@ from adcp.types._runtime import NotValue
 from adcp.types.constraints import StrMatchingEFC12812
 
 from ..enums.postal_system import PostalCodeSystem
-from .postal_area_support import CAItem, GBItem, USItem
+from .postal_area_support import CaPostalCodeSystem, GBPostalCodeSystem, USPostalCodeSystem
 
 
 class PostalCountrySystem(BranchDispatchMixin, AdCPBaseModel):
@@ -32,19 +32,19 @@ class PostalCountrySystem(BranchDispatchMixin, AdCPBaseModel):
 class PostalCountrySystemUS(PostalCountrySystem):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/postal-country-system.json', pointer='#/anyOf/0')
     country: Annotated[Literal['US'], Field(description='ISO 3166-1 alpha-2 country code.')]
-    system: Annotated[USItem, Field(description='Country-local postal code system.')]
+    system: Annotated[USPostalCodeSystem, Field(description='Country-local postal code system.')]
 
 
 class PostalCountrySystemGB(PostalCountrySystem):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/postal-country-system.json', pointer='#/anyOf/1')
     country: Annotated[Literal['GB'], Field(description='ISO 3166-1 alpha-2 country code.')]
-    system: Annotated[GBItem, Field(description='Country-local postal code system.')]
+    system: Annotated[GBPostalCodeSystem, Field(description='Country-local postal code system.')]
 
 
 class PostalCountrySystemCA(PostalCountrySystem):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/postal-country-system.json', pointer='#/anyOf/2')
     country: Annotated[Literal['CA'], Field(description='ISO 3166-1 alpha-2 country code.')]
-    system: Annotated[CAItem, Field(description='Country-local postal code system.')]
+    system: Annotated[CaPostalCodeSystem, Field(description='Country-local postal code system.')]
 
 
 class Country(StrEnum):

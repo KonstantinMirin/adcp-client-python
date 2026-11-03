@@ -84,10 +84,10 @@ class IndicatorsItem(Indicator):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/list-creatives-response.json', pointer='#/properties/creatives/items/properties/assignments/properties/assigned_packages/items/allOf/1/properties/indicators/items')
-    type: Annotated[IndicatorTypesEvaluatedItem, Field(description="A seller-asserted material risk or optimization opportunity that currently warrants buyer attention on an AdCP resource relationship. AdCP standardizes the broad meaning of each value for the protocol release; it does not standardize or version the seller's detection methodology or prescribe a universal remedy.")]
+    type: Annotated[AssignmentIndicatorType, Field(description="A seller-asserted material risk or optimization opportunity that currently warrants buyer attention on an AdCP resource relationship. AdCP standardizes the broad meaning of each value for the protocol release; it does not standardize or version the seller's detection methodology or prescribe a universal remedy.")]
 
 
-class IndicatorTypesEvaluatedItem(StrEnum):
+class AssignmentIndicatorType(StrEnum):
     """
     A seller-asserted material risk or optimization opportunity that currently warrants buyer attention on an AdCP resource relationship. AdCP standardizes the broad meaning of each value for the protocol release; it does not standardize or version the seller's detection methodology or prescribe a universal remedy.
     """
@@ -121,7 +121,7 @@ class AssignedPackagesItem(IndicatorBearingResourceState):
     rejection_reason: Annotated[str | None, Field(description='Human-readable explanation when approval_status is rejected. Mirrors get_media_buys for the same relationship.')] = None
     approval_scopes: Annotated[list[ScopedCreativeApproval] | None, Field(description='Complete, disjoint publisher/placement approval partition when approval_status is partially_approved. A normalized scope appears once. For one publisher, use either one publisher-wide row or placement-specific rows, never both. Omit when one approval_status applies uniformly to the whole assignment. The same scoped outcomes are mirrored on get_media_buys.', json_schema_extra={'uniqueItems': True}, min_length=2)] = None
     indicators: Annotated[list[IndicatorsItem] | None, Field(description='Current seller indicators that are true for this creative in this package assignment. The package assignment supplies the default delivery scope; an indicator may narrow further with scope. Omitted means unknown or not evaluated. A present empty array means the seller completed the evaluation identified by indicators_evaluated_scope at indicators_as_of and asserts no current indicator in that evaluated scope.', json_schema_extra={'uniqueItems': True})] = None
-    indicator_types_evaluated: Annotated[list[IndicatorTypesEvaluatedItem] | None, Field(description='Indicator types covered by this assignment snapshot. Required whenever indicators is present; omitted types remain unknown.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    indicator_types_evaluated: Annotated[list[AssignmentIndicatorType] | None, Field(description='Indicator types covered by this assignment snapshot. Required whenever indicators is present; omitted types remain unknown.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     indicators_as_of: Annotated[AwareDatetime | None, Field(description='When the seller last completed the evaluation represented by indicators for this relationship. Required whenever indicators is present, including an empty array.')] = None
     indicators_evaluated_scope: Annotated[list[IndicatorScope] | None, Field(description='Optional publisher or placement scopes covered by this evaluation. Omit when indicators covers the whole package–creative assignment. When present, scopes not listed remain unknown; every returned indicator.scope entry MUST be contained by this set.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
 

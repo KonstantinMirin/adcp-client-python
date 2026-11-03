@@ -12,7 +12,7 @@ from adcp.types.constraints import StrMinLen16MaxLen255Matching1E5CF9EB, StrMinL
 
 from .ext import ExtensionObject
 from .notification_config import ProductPayloadView
-from .wholesale_feed_event import EventType, WholesaleFeedEvent
+from .wholesale_feed_event import WholesaleFeedEvent, WholesaleFeedEventType
 
 
 class CacheScope(StrEnum):
@@ -37,7 +37,7 @@ class WholesaleFeedWebhook(AdCPBaseModel):
     )
     idempotency_key: Annotated[StrMinLen16MaxLen255Matching1E5CF9EB, Field(description='Sender-generated key stable across retries of the same webhook fire. Receivers MUST dedupe by this key, scoped to the authenticated sender identity.')]
     notification_id: Annotated[str, Field(description='Stable identifier for this logical wholesale feed event. MUST equal event.event_id. Re-emissions of the same logical event reuse this value under a new idempotency_key.', json_schema_extra={'format': 'uuid'})]
-    notification_type: Annotated[EventType, Field(description='Wholesale feed notification type discriminator. MUST match event.event_type.')]
+    notification_type: Annotated[WholesaleFeedEventType, Field(description='Wholesale feed notification type discriminator. MUST match event.event_type.')]
     fired_at: Annotated[AwareDatetime, Field(description='ISO 8601 timestamp when the seller initiated this webhook fire. Distinct from event.created_at, which is when the seller observed or recorded the feed change.')]
     subscriber_id: Annotated[StrMinLen1MaxLen64MatchingD373B860, Field(description='Identifies which notification_configs[] entry is receiving this fire. Echoed from the registered subscriber_id.')]
     account_id: Annotated[str, Field(description='Seller account identifier for the account scope that registered this webhook through sync_accounts.accounts[].notification_configs[]. Required because wholesale feed webhooks are account-anchored notifications.')]

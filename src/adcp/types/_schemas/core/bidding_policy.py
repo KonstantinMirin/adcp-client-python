@@ -10,7 +10,7 @@ from adcp.types._runtime import ForbiddenGroups, PropertyCount, Rule
 from adcp.types.constraints import FloatGt0
 
 from ..enums.outcome_target_cost_strength import OutcomeTargetCostStrength
-from .bidding_policy_capability import RoasStrengthsItem
+from .bidding_policy_capability import RoasStrength
 
 
 class CostPer(AdCPBaseModel):
@@ -34,7 +34,7 @@ class Roas(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/bidding-policy.json', pointer='#/properties/roas')
     value: Annotated[FloatGt0, Field(description='Return per unit of ad spend; 4 means 4 units of value per 1 unit spent.')]
-    strength: Annotated[RoasStrengthsItem, Field(description='`floor` prefers underdelivery to knowingly optimizing below the requested return; `target` optimizes around the requested return. Neither guarantees realized return.')]
+    strength: Annotated[RoasStrength, Field(description='`floor` prefers underdelivery to knowingly optimizing below the requested return; `target` optimizes around the requested return. Neither guarantees realized return.')]
 
 
 class BiddingPolicy(AdCPBaseModel):

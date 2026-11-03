@@ -10,7 +10,7 @@ from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import Distinct, RequiredGroups, Rule, UniqueItems
 from adcp.types.constraints import HttpUrl, StrFormatUuid, StrMatching32F5291C, StrMatchingEFC12812
 
-from ..adagents import AuthorizedAgentsItemPropertyIdsDelegationType
+from ..adagents import DelegationType
 from ..enums.adcp_protocol import AdCPProtocol
 from ..enums.collection_kind import CollectionKind
 from ..enums.distribution_identifier_type import DistributionIdentifierType
@@ -680,7 +680,7 @@ class AuthorizationPayload(AdCPBaseModel):
     placement_tags: Annotated[list[str] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     collections: Annotated[list[CollectionSelector] | None, Field(description='Collection constraints from authorized_agents[*].collections. When set, the event does NOT authorize the property unqualified — consumers building a local authorization index MUST scope the grant to these selectors and fail closed when a query carries no collection scope. A selector without collection_ids is a bulk grant for all collections declared at that publisher_domain.', min_length=1)] = None
     countries: Countries | None = None
-    delegation_type: AuthorizedAgentsItemPropertyIdsDelegationType | None = None
+    delegation_type: DelegationType | None = None
     exclusive: bool | None = None
     signing_keys: Annotated[list[AgentSigningKey] | None, Field(description='Publisher-attested signing keys copied from adagents.json when the registry has them. Advisory in feed events; verifiers MUST re-fetch the authoritative publisher artifact before treating keys as a trust anchor.', min_length=1)] = None
     effective_from: AwareDatetime | None = None

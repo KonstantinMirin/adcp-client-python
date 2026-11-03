@@ -15,7 +15,7 @@ from ..enums.audience_subject_type import AudienceSubjectType
 from .attestation_reference import AttestationReference
 from .attestation_subject import AttestationResourceSubject, AttestationSubject
 from .audience_characteristic import AudienceCharacteristic
-from .audience_evidence_requirements import AcceptedEvidenceTypesItem
+from .audience_evidence_requirements import EvidenceType
 from .brand_ref import BrandReference
 from .date_range import DateRange
 from .ext import ExtensionObject
@@ -93,7 +93,7 @@ class AudienceEvidence(AdCPBaseModel):
     value: Annotated[NonNegativeFloat, Field(description='Estimated relationship value, interpreted according to unit.')]
     unit: Annotated[Unit, Field(description='composition uses fraction in [0,1], index uses ratio, and reach_estimate uses count.')]
     baseline: Annotated[Baseline, Field(description='Reference population against which the estimate was calculated.')]
-    evidence_type: Annotated[AcceptedEvidenceTypesItem, Field(description='Nature of the evidence. Independent verification is represented separately by attestation_refs and never inferred from this value.')]
+    evidence_type: Annotated[EvidenceType, Field(description='Nature of the evidence. Independent verification is represented separately by attestation_refs and never inferred from this value.')]
     methodology: AudienceEvidenceMethodology
     subject_type: AudienceSubjectType
     resolution_method: Annotated[AudienceResolutionMethod | None, Field(description='Optional subject-resolution method used by the study or estimate. This describes population methodology, not a promise that the product can execute that resolution at serving time.')] = None

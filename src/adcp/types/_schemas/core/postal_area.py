@@ -12,7 +12,7 @@ from adcp.types.constraints import StrMatchingEFC12812
 
 from ..enums.legacy_postal_system import CountryFusedPostalCodeSystem
 from ..enums.postal_system import PostalCodeSystem
-from .postal_area_support import CAItem, GBItem, USItem
+from .postal_area_support import CaPostalCodeSystem, GBPostalCodeSystem, USPostalCodeSystem
 from .postal_country_system import PostalCountrySystem, PostalCountrySystemAUPostcode, PostalCountrySystemBRCep, PostalCountrySystemBranch9, PostalCountrySystemCA, PostalCountrySystemFRCodePostal, PostalCountrySystemGB, PostalCountrySystemINPin, PostalCountrySystemPlz, PostalCountrySystemUS, PostalCountrySystemZAPostalCode
 
 
@@ -51,7 +51,7 @@ class PostalAreaUS(PostalAreaCountrySystemValues, PostalCountrySystemUS):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/postal-area.json', pointer='#/anyOf/0/allOf/0/anyOf/0')
     country: Annotated[Literal['US'], Field(description='ISO 3166-1 alpha-2 country code.')]
-    system: Annotated[USItem, Field(description='Country-local postal code system.')]
+    system: Annotated[USPostalCodeSystem, Field(description='Country-local postal code system.')]
 
 
 class PostalAreaGB(PostalAreaCountrySystemValues, PostalCountrySystemGB):
@@ -60,7 +60,7 @@ class PostalAreaGB(PostalAreaCountrySystemValues, PostalCountrySystemGB):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/postal-area.json', pointer='#/anyOf/0/allOf/0/anyOf/1')
     country: Annotated[Literal['GB'], Field(description='ISO 3166-1 alpha-2 country code.')]
-    system: Annotated[GBItem, Field(description='Country-local postal code system.')]
+    system: Annotated[GBPostalCodeSystem, Field(description='Country-local postal code system.')]
 
 
 class PostalAreaCA(PostalAreaCountrySystemValues, PostalCountrySystemCA):
@@ -69,7 +69,7 @@ class PostalAreaCA(PostalAreaCountrySystemValues, PostalCountrySystemCA):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/postal-area.json', pointer='#/anyOf/0/allOf/0/anyOf/2')
     country: Annotated[Literal['CA'], Field(description='ISO 3166-1 alpha-2 country code.')]
-    system: Annotated[CAItem, Field(description='Country-local postal code system.')]
+    system: Annotated[CaPostalCodeSystem, Field(description='Country-local postal code system.')]
 
 
 class Country(StrEnum):

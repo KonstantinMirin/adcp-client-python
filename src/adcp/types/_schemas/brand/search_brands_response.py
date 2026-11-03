@@ -11,7 +11,7 @@ from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import DictMinProperties1, HttpUrl, StrMatchingEFC12812
 from adcp.types.envelopes import FailedResponse
 
-from ..brand import Background, KellerType, LogoOrientation, Variant
+from ..brand import Background, KellerType, LogoOrientation, LogoVariant
 from ..core.context import ContextObject
 from ..core.error import Error
 from ..core.ext import ExtensionObject
@@ -70,7 +70,7 @@ class LogosItem(AdCPBaseModel):
     url: Annotated[HttpUrl, Field(description='URL to the logo asset')]
     orientation: Annotated[LogoOrientation | None, Field(description='Logo aspect ratio orientation')] = None
     background: Annotated[Background | None, Field(description='Background compatibility')] = None
-    variant: Annotated[Variant | None, Field(description='Logo variant type')] = None
+    variant: Annotated[LogoVariant | None, Field(description='Logo variant type')] = None
 
 
 class Rights(AdCPBaseModel):

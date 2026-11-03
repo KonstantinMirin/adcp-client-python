@@ -10,7 +10,7 @@ from adcp.types._base import SchemaRef
 from adcp.types.constraints import IntMin1, StrMatchingF601B9EB
 
 from ...core.canonical_projection_ref import AssetSource
-from ...core.requirements.video_asset_requirements import CodecsItem
+from ...core.requirements.video_asset_requirements import VideoCodec
 from ...enums.ctv_ad_experience import CTVAdExperience
 from ._base import CanonicalFormatBase, SlotsItem
 from .seller_rendered_stateful_display import ContainersItem
@@ -63,7 +63,7 @@ class CanonicalFormatHostedVideo(CanonicalFormatBase):
     max_height: IntMin1 | None = None
     duration_ms_range: Annotated[list[NonNegativeInt | None] | None, Field(description='[min, max] duration in milliseconds. Either endpoint MAY be null to express an unbounded side: [null, 60000] means up to 60s; [15000, null] means at least 15s. [null, null] is invalid because at least one endpoint must be bounded. **Precedence**: when both `duration_ms_exact` and `duration_ms_range` ship on the same product, `duration_ms_exact` takes precedence — buyers MUST validate against the exact value and ignore the range. SDKs SHOULD lint a warning when both fields ship; producers SHOULD pick one.', max_length=2, min_length=2)] = None
     duration_ms_exact: Annotated[IntMin1 | None, Field(description='When set, duration must equal exactly this value. Takes precedence over `duration_ms_range` when both ship (see `duration_ms_range` description).')] = None
-    video_codecs: list[CodecsItem] | None = None
+    video_codecs: list[VideoCodec] | None = None
     audio_codecs: list[AudioCodecsItem] | None = None
     containers: list[ContainersItem] | None = None
     min_bitrate_kbps: IntMin1 | None = None

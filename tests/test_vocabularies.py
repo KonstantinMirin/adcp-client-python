@@ -91,6 +91,27 @@ def test_no_row_reaches_a_value_list_the_bundle_titles(
     assert not titled, json.dumps(titled, indent=2)
 
 
+def test_no_row_reaches_a_value_list_one_document_states_alone(
+    stated: dict[catalogue.Vocabulary, list[catalogue.Stated]],
+) -> None:
+    """§4's content dedup owns one module, so a row inside one document decides nothing.
+
+    "Two nodes with identical content emit one class ... declared under the name of the
+    position the walk reaches first", and the dedup's key is node EQUALITY -- so within one
+    document the answer is already given, by a rule whose scope is the module and which
+    ``codegen/catalogue.py`` deliberately does not reach into.  A row there is inert: the
+    collection records the group and never consults the judgement, which is a row a reader
+    would believe and nothing would read.
+    """
+    rows = claimed("judgements the register declares", every_row())
+    confined = {
+        str(key): sorted({p.document for p in stated[key]})
+        for key in rows
+        if len({p.document for p in stated.get(key, ())}) == 1
+    }
+    assert not confined, json.dumps(confined, indent=2)
+
+
 def test_a_value_list_is_in_exactly_one_collection() -> None:
     """§3a's three states, and a value list is in one of them.
 

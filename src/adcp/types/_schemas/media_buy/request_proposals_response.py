@@ -20,7 +20,7 @@ from ..core.ext import ExtensionObject
 from ..core.version_envelope import AdcpVersion
 from .get_products_response import Scope
 from .get_products_targeting_resolution import ProductDiscoveryTargetingResolution
-from .legacy_purchase_continuation_input import AcceptedLossesItem
+from .legacy_purchase_continuation_input import LossesItem
 from .refine_proposals_response import Status
 
 
@@ -90,7 +90,7 @@ class PurchaseContinuationLegacyCreate(AdCPBaseModel):
     continuation_expires_at: Annotated[AwareDatetime, Field(description='Absolute expiry of the single-use compatibility continuation.')]
     source_adcp_version: Annotated[SourceAdcpVersion, Field(description='Established AdCP version actually negotiated with the peer. This provenance is required; the coordinator MUST NOT infer stronger guarantees from the label.')]
     product_ids: Annotated[list[StrMinLen1], Field(description='Exact products bound to this continuation. A follow-up MUST select a non-empty subset and MUST NOT substitute an ID from another discovery result.', json_schema_extra={'uniqueItems': True}, min_length=1)]
-    losses: Annotated[Annotated[list[AcceptedLossesItem], AfterValidator(AtLeastOne(values=('feed_version_not_atomic',), pinned=())), AfterValidator(AtLeastOne(values=('pricing_version_not_atomic',), pinned=()))], Field(description='Guarantees that the established create_media_buy continuation cannot provide. The coordinator MUST fail before mutation unless the caller explicitly accepts every listed loss.', json_schema_extra={'uniqueItems': True}, min_length=2)]
+    losses: Annotated[Annotated[list[LossesItem], AfterValidator(AtLeastOne(values=('feed_version_not_atomic',), pinned=())), AfterValidator(AtLeastOne(values=('pricing_version_not_atomic',), pinned=()))], Field(description='Guarantees that the established create_media_buy continuation cannot provide. The coordinator MUST fail before mutation unless the caller explicitly accepts every listed loss.', json_schema_extra={'uniqueItems': True}, min_length=2)]
     requires_explicit_acceptance: Literal[True]
 
 

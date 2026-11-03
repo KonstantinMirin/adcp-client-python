@@ -1255,6 +1255,7 @@ def decidable(
     census: Mapping[str, frozenset[str]],
     vocabularies: Mapping[str, Target] = {},
     restatements: Mapping[tuple[object, ...], Target | str] = {},
+    judged: Mapping[str, str] = {},
     *,
     known: Collection[str],
 ) -> tuple[Module, ir.Module] | Refusal:
@@ -1321,7 +1322,7 @@ def decidable(
         for symbol, wanted in census.items()
         if wanted - {document}
     )
-    bound = lower_names.assign(mod, carriers, elsewhere)
+    bound = lower_names.assign(mod, carriers, elsewhere, judged)
     if isinstance(bound, Refusal):
         # §4's two naming refusals, both VERDICTS of the document: two pointers deriving
         # one class name, and a branch with no identity.  Returned from here because this
@@ -2065,6 +2066,26 @@ def emit(
             )
         return out
 
+    def judged(document: str) -> dict[str, str]:
+        """§3a's JUDGED NAME for the catalogue entries this document DECLARES.
+
+        ``codegen/vocabularies.py``'s rows, read at the one pointer each entry is declared
+        at (``catalogue.Entry.naming``).  §3a's table is what admits them -- "a name is the
+        bundle's when every token in it is stated at that vocabulary's own positions" --
+        and ``lower/names.py``'s ``assign`` takes them as an extra FIRST RUNG, so §4's
+        collision rule still decides and a judged name that collides falls to the chain
+        the position would have been named by anyway.
+
+        Empty for every entry the bundle TITLES: there the title is the name §4 already
+        derives at the naming position, measured at all of them, so a row would be a second
+        statement of the same answer.
+        """
+        return {
+            entry.naming.pointer: entry.name
+            for entry in l0.entries.values()
+            if entry.name is not None and entry.naming.document == document
+        }
+
     for document in ordered:
         doc = bundle.read(bundle_dir, document)
         outcome = decidable(
@@ -2085,6 +2106,7 @@ def emit(
             census.get(domain(document), {}),
             vocabularies(document),
             restatements(document),
+            judged(document),
             known=known,
         )
         if isinstance(outcome, Refusal):

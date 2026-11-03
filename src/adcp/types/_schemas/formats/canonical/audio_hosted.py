@@ -10,7 +10,7 @@ from adcp.types._base import SchemaRef
 from adcp.types.constraints import FloatGt0, IntMin1
 
 from ...core.canonical_projection_ref import AssetSource
-from ...core.requirements.audio_asset_requirements import ChannelsItem
+from ...core.requirements.audio_asset_requirements import AudioChannels
 from ._base import CanonicalFormatBase, SlotsItem
 
 
@@ -43,7 +43,7 @@ class CanonicalFormatHostedAudio(CanonicalFormatBase):
     duration_ms_exact: Annotated[IntMin1 | None, Field(description='When set, duration must equal exactly this value. Takes precedence over `duration_ms_range` when both ship.')] = None
     audio_codecs: list[AudioCodecsItem] | None = None
     audio_sample_rates: list[IntMin1] | None = None
-    audio_channels: list[ChannelsItem] | None = None
+    audio_channels: list[AudioChannels] | None = None
     min_bitrate_kbps: IntMin1 | None = None
     max_bitrate_kbps: IntMin1 | None = None
     max_file_size_mb: Annotated[FloatGt0 | None, Field(description='Maximum hosted audio file size in decimal megabytes. Agents that proxy or cache media SHOULD advertise their effective transport ceiling here.')] = None

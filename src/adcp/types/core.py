@@ -702,8 +702,8 @@ from ._schemas.core.creative_variant import (
 )
 from ._schemas.core.daast_tracker_constraints import (
     DAASTTrackerConstraints as DAASTTrackerConstraints,
+    DAASTTrackerConstraintsDaastTarget as DAASTTrackerConstraintsDaastTarget,
     DaastOffset as DaastOffset,
-    DaastTarget as DaastTarget,
     DaastVersions as DaastVersions,
 )
 from ._schemas.core.data_provider_signal_selector import (
@@ -2288,8 +2288,8 @@ __all__ = [
     'DAASTAudioFormatDeclaration',
     'DAASTTrackerAsset',
     'DAASTTrackerConstraints',
+    'DAASTTrackerConstraintsDaastTarget',
     'DaastOffset',
-    'DaastTarget',
     'DaastVersions',
     'DataProviderSignalSelector',
     'DataProviderSignalSelectorAll',

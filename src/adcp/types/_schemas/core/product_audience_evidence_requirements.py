@@ -12,7 +12,7 @@ from adcp.types.constraints import FloatMin0Max1, HttpUrl
 from ..enums.audience_evidence_methodology import AudienceEvidenceMethodology
 from ..enums.audience_resolution_method import AudienceResolutionMethod
 from ..enums.audience_subject_type import AudienceSubjectType
-from .audience_evidence_requirements import AcceptedEvidenceTypesItem, EvidencePresence, RequirementMode, Unit
+from .audience_evidence_requirements import EvidencePresence, EvidenceType, RequirementMode, Unit
 from .brand_key import BrandKey
 from .duration import Duration
 from .ext import ExtensionObject
@@ -81,7 +81,7 @@ class ProductAudienceEvidenceRequirements(AdCPBaseModel):
     evidence_presence: EvidencePresence
     accepted_methodologies: Annotated[list[AudienceEvidenceMethodology] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     excluded_methodologies: Annotated[list[AudienceEvidenceMethodology] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    accepted_evidence_types: Annotated[list[AcceptedEvidenceTypesItem] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    accepted_evidence_types: Annotated[list[EvidenceType] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     accepted_providers: Annotated[list[BrandKey] | None, Field(min_length=1)] = None
     excluded_providers: Annotated[list[BrandKey] | None, Field(min_length=1)] = None
     accepted_subject_types: Annotated[list[AudienceSubjectType] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None

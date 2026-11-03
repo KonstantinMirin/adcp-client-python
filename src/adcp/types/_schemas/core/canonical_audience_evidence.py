@@ -14,7 +14,7 @@ from ..enums.audience_resolution_method import AudienceResolutionMethod
 from ..enums.audience_subject_type import AudienceSubjectType
 from .audience_characteristic import AudienceCharacteristic
 from .audience_evidence import Relationship, Unit
-from .audience_evidence_requirements import AcceptedEvidenceTypesItem
+from .audience_evidence_requirements import EvidenceType
 from .brand_key import BrandKey
 from .date_range import DateRange
 from .ext import ExtensionObject
@@ -51,7 +51,7 @@ class CanonicalAudienceEvidence(AdCPBaseModel):
     value: NonNegativeFloat
     unit: Unit
     baseline: Baseline
-    evidence_type: AcceptedEvidenceTypesItem
+    evidence_type: EvidenceType
     methodology: AudienceEvidenceMethodology
     subject_type: AudienceSubjectType
     resolution_method: AudienceResolutionMethod | None = None

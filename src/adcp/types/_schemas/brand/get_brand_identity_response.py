@@ -10,7 +10,7 @@ from adcp.types._runtime import ForbiddenGroups, PropertyCount, Rule
 from adcp.types.constraints import AdCPUrl, DictMinProperties1, DictMinProperties1MaxProperties1, HttpUrl, IntMin100Max900, NonEmptyList, StrMatching83577F62, StrMatchingEFC12812, StrMatchingF01B4765, StrMaxLen100, StrMinLen1
 from adcp.types.envelopes import FailedResponse
 
-from ..brand import Background, FontFileStyle, KellerType, LogoOrientation, Variant
+from ..brand import Background, FontFileStyle, KellerType, LogoOrientation, LogoVariant
 from ..core.context import ContextObject
 from ..core.error import Error
 from ..core.ext import ExtensionObject
@@ -18,7 +18,7 @@ from ..core.protocol_envelope import ProtocolEnvelope
 from ..core.version_envelope import AdCPVersionEnvelope
 from ..enums.asset_content_type import AssetContentType
 from ..enums.right_use import RightUse
-from .get_brand_identity_request import FieldsItem
+from .get_brand_identity_request import BrandIdentityField
 
 
 class GetBrandIdentityResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope):
@@ -57,7 +57,7 @@ class LogosItem(AdCPBaseModel):
     url: Annotated[HttpUrl, Field(description='URL to the logo asset')]
     orientation: Annotated[LogoOrientation | None, Field(description='Logo aspect ratio orientation')] = None
     background: Annotated[Background | None, Field(description='Background compatibility')] = None
-    variant: Annotated[Variant | None, Field(description='Logo variant type')] = None
+    variant: Annotated[LogoVariant | None, Field(description='Logo variant type')] = None
     tags: Annotated[list[str] | None, Field(description='Additional semantic tags')] = None
     usage: Annotated[str | None, Field(description='When to use this logo variant')] = None
     width: Annotated[int | None, Field(description='Width in pixels')] = None
@@ -204,7 +204,7 @@ class GetBrandIdentitySuccess(GetBrandIdentityResponse):
     voice_synthesis: Annotated[VoiceSynthesis | None, Field(description='Voice synthesis configuration for AI-generated audio')] = None
     assets: Annotated[list[AssetsItem] | None, Field(description='Available brand assets (images, audio, video). Authorized callers only. Shape matches brand.json asset definition.')] = None
     rights: Annotated[Rights | None, Field(description='Rights availability summary. For detailed pricing, use get_rights.')] = None
-    available_fields: Annotated[list[FieldsItem] | None, Field(description='Fields available but not returned in this response due to authorization level. Tells the caller what they would gain by linking their account via sync_accounts. Values match the request fields enum.')] = None
+    available_fields: Annotated[list[BrandIdentityField] | None, Field(description='Fields available but not returned in this response due to authorization level. Tells the caller what they would gain by linking their account via sync_accounts. Values match the request fields enum.')] = None
     context: ContextObject | None = None
     ext: ExtensionObject | None = None
 

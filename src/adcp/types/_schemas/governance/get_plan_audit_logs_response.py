@@ -288,7 +288,7 @@ class RuntimeAttestationsItem(AdCPBaseModel):
     evaluation: AttestationEvaluation
 
 
-class EntriesItemDeliveryReconciliationStatus(StrEnum):
+class DeliveryReconciliationStatus(StrEnum):
     CONSISTENT = 'consistent'
     MEASUREMENT_VARIANCE = 'measurement_variance'
     DISPUTED = 'disputed'
@@ -369,7 +369,7 @@ class EntriesItem(AdCPBaseModel):
     runtime_attestation_binding_digest: Annotated[StrMatching3CBDBB74 | None, Field(description="Binding digest copied from the check response and signed governance_context. Auditors recompute it from this entry's ordered runtime_attestations[].evaluation values plus findings carrying attestation_reference_digest after verifying each paired reference digest.")] = None
     purchase_type: Annotated[PurchaseType | None, Field(description='Purchase type for this entry.')] = None
     outcome_status: Annotated[str | None, Field(description='Outcome status (present for outcome entries).')] = None
-    delivery_reconciliation_status: EntriesItemDeliveryReconciliationStatus | None = None
+    delivery_reconciliation_status: DeliveryReconciliationStatus | None = None
     delivery_period_state: Annotated[EntriesItemDeliveryPeriodState | None, Field(description='Operational governance-window state for this delivery observation.')] = None
     adjustment_state: AdjustmentState | None = None
     verified_amount: NonNegativeFloat | None = None
@@ -400,7 +400,7 @@ class GovernedActionsItemDeliveryReportingPeriod(AdCPBaseModel):
     end: AwareDatetime
 
 
-GovernedActionsItemDeliveryReconciliationStatus = EntriesItemDeliveryReconciliationStatus
+GovernedActionsItemDeliveryReconciliationStatus = DeliveryReconciliationStatus
 
 
 class GovernedActionsItemDeliveryPeriodState(StrEnum):
