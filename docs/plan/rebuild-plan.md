@@ -1911,6 +1911,32 @@ why it is the instrument of record for a defect. It cannot establish the absence
 class is faithful to its document"* is not a claim the draw can deliver at any budget. Two
 consequences, and both are rules.
 
+**A REFERENCED DOCUMENT IS GRADED BY ITS OWN PAIR, SO AT A REFERRING POSITION IT IS A FIXTURE AND
+NOT A DRAW (decided by the owner, 2026-11-03). This is the rule the four obligations below were
+reaching for, and it is simpler than they are.**
+
+A class under grade varies **its own** payload. Every subtree it reaches through a reference is a
+document with a pair of its own, graded there — so at the referring position the instrument needs
+**one instance that document admits and one it refuses**, not a generated space. Three properties
+over a reference holding fifteen branches is **three plus fifteen, never three times fifteen**: the
+product becomes a sum because nothing is re-derived that is already decided elsewhere.
+
+**AND THIS IS A RULE ABOUT THE DRAW, NOT ABOUT THE RECORD.** The explosion is in generating into an
+inlined subtree, so substituting a fixture collapses it **whether or not the record inlined the
+bytes** — which makes it a change to how we grade rather than a change to the artifact. It is the
+cheap half of what un-inlining would buy.
+
+**Two costs, stated rather than discovered.** A fixture is one instance where a draw is many, so a
+defect reachable only by an unusual value *inside* a referenced subtree is found by **that
+subtree's own pair or not at all** — which is correct, and is the whole content of "graded there",
+but it must be said out loud because it moves where a defect is found. And **the fixture is DERIVED
+from the referenced document, never hand-written**: a hand-written one is a thousand files to
+maintain and a silent exemption the first time a document changes under it.
+
+**THE FOUR OBLIGATIONS BELOW ARE SUBSUMED BY IT.** Branch pairs green and the dispatch resolving
+are what "graded there" means; disjointness stays its own obligation because no fixture shows it;
+and obligation 3 was already withdrawn.
+
 **A COMBINATOR ROOT IS NOT GRADED BY DRAWING THE POWER SET OF ITS BRANCHES.** Every branch of a
 union is its own class and therefore its own pair, graded on its own; drawing the root re-draws
 what has already been verified one branch at a time — and it does so by enumerating **every SUBSET
