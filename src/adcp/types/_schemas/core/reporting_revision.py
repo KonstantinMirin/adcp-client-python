@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule, UniqueItems
-from adcp.types.constraints import HttpUrl, StrMatching5E987613, StrMinLen1, StrMinLen1MaxLen128, StrMinLen1MaxLen255Matching67860854, StrMinLen1MaxLen64
+from adcp.types.constraints import StrFormatUriMatching3AC8B861, StrMatching5E987613, StrMinLen1, StrMinLen1MaxLen128, StrMinLen1MaxLen255Matching67860854, StrMinLen1MaxLen64
 
 from ..enums.reporting_finality import ReportingFinality
 from .reporting_canonical_content_digest import ReportingCanonicalContentDigest
@@ -61,11 +61,11 @@ class ReportingRevision(AdCPBaseModel):
     reporting_revision_id: Annotated[StrMinLen1MaxLen255Matching67860854, Field(description='Portable AdCP identity for this immutable report publication. Distinct from package delivery_revision_id and provider-native versions.')]
     revision_content_sha256: Annotated[StrMatching5E987613, Field(description='SHA-256 of the immutable RFC 8785 JCS binding object containing reporting_revision_id, row_count, control_totals, and reporting_rows. Reliable Reporting 1.0 Core revisions include it and exact reads return the identical value.')]
     report_definition_id: Annotated[StrMinLen1MaxLen255Matching67860854, Field(description='Identity or canonical fingerprint of immutable metric, grain, attribution, breakdown, action-definition, profile, and calendar/timezone semantics.')]
-    report_definition_uri: HttpUrl
+    report_definition_uri: StrFormatUriMatching3AC8B861
     report_definition_sha256: StrMatching5E987613
     reporting_profile: StrMinLen1MaxLen128
     schema_version: StrMinLen1MaxLen64
-    schema_uri: Annotated[HttpUrl, Field(description='Machine-readable schema on the authenticated seller/provider or AdCP-registry origin.')]
+    schema_uri: Annotated[StrFormatUriMatching3AC8B861, Field(description='Machine-readable schema on the authenticated seller/provider or AdCP-registry origin.')]
     schema_sha256: Annotated[StrMatching5E987613, Field(description='Digest of the exact schema bytes used to validate this immutable revision.')]
     schema_dialect: Annotated[Literal['https://json-schema.org/draft/2020-12/schema'], Field(description='Closed SDK-bundled dialect; the metaschema is never network-fetched.')]
     schema_ref_policy: Annotated[Literal['local_fragment_only'], Field(description='The fetched schema is self-contained and every $ref is a local # fragment.')]

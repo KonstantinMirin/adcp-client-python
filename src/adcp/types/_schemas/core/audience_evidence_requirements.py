@@ -8,7 +8,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
-from adcp.types.constraints import FloatMin0Max1, HttpUrl
+from adcp.types.constraints import FloatMin0Max1, StrFormatUri
 
 from ..enums.audience_evidence_methodology import AudienceEvidenceMethodology
 from ..enums.audience_resolution_method import AudienceResolutionMethod
@@ -94,7 +94,7 @@ class AudienceEvidenceRequirements(AdCPBaseModel):
     methodology_documentation_required: Annotated[bool | None, Field(description='Whether an admissible item must carry methodology_url.')] = False
     independent_attestation_required: Annotated[bool | None, Field(description="Whether an admissible item must have at least one exact reference/evaluation pair whose outcome is verified, whose reference is published in the evidence, and whose claim type and issuer match the buyer's accepted lists as well as the seller's issuer and resolver policy. Setting true requires accepted_attestation_issuers.")] = False
     accepted_attestation_issuers: Annotated[list[AttestationIssuer] | None, Field(description="Buyer allowlist for independent attestation issuers. An exact reference/evaluation pair satisfies the requirement only when reference.issuer matches an entry here. This list narrows and never broadens the seller's accepted issuer policy.", json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    accepted_attestation_claim_types: Annotated[list[HttpUrl] | None, Field(description='Optional acceptable claim types when attestation is used. Buyer-supplied claim types further constrain but never broaden seller policy.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    accepted_attestation_claim_types: Annotated[list[StrFormatUri] | None, Field(description='Optional acceptable claim types when attestation is used. Buyer-supplied claim types further constrain but never broaden seller policy.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     ext: ExtensionObject | None = None
 
 

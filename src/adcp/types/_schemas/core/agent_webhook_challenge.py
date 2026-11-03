@@ -8,7 +8,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
-from adcp.types.constraints import HttpUrl, StrMatchingEF42E836, StrMinLen1MaxLen64MatchingD373B860, StrMinLen32MaxLen255Matching3AEA6666
+from adcp.types.constraints import StrMatchingEF42E836, StrMinLen1MaxLen64MatchingD373B860, StrMinLen32MaxLen255Matching3AEA6666
 
 
 class Mode(StrEnum):
@@ -55,7 +55,7 @@ class AgentWebhookChallenge(AdCPBaseModel):
     scope: Annotated[Literal['agent'], Field(description='Discriminator for agent-level endpoint proof challenges.')]
     challenge: Annotated[StrMinLen32MaxLen255Matching3AEA6666, Field(description='Opaque, cryptographically random value that the receiver must echo in the response body. Recommended encoding: base64url without padding.')]
     subscriber_id: Annotated[StrMinLen1MaxLen64MatchingD373B860, Field(description='Buyer-supplied subscriber identifier from the caller-scoped notification_configs[] entry being challenged.')]
-    seller_agent_url: Annotated[HttpUrl, Field(description='Exact seller agent URL whose RFC 9421 webhook profile key signs this challenge and that will send subsequent webhooks.')]
+    seller_agent_url: Annotated[str, Field(description='Exact seller agent URL whose RFC 9421 webhook profile key signs this challenge and that will send subsequent webhooks.', json_schema_extra={'format': 'uri'})]
     delivery_auth: Annotated[DeliveryAuth, Field(description='Authentication/signing mode the seller will use for subsequent webhooks delivered to this notification config.')]
     event_types: Annotated[list[EventTypesItem], Field(description='Normalized agent-level notification types requested by the subscriber at the time of the challenge. Part of the endpoint proof scope; changing event_types[] requires a fresh challenge before the new set can become active. Currently only `capabilities.changed` is valid.', json_schema_extra={'uniqueItems': True}, min_length=1)]
 

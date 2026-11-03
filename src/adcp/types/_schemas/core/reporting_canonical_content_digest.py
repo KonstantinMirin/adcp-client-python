@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import HttpUrl, StrMatching5E987613, StrMinLen1MaxLen128
+from adcp.types.constraints import StrFormatUriMatching3AC8B861, StrMatching5E987613, StrMinLen1MaxLen128
 
 
 class ReportingCanonicalContentDigest(AdCPBaseModel):
@@ -20,7 +20,7 @@ class ReportingCanonicalContentDigest(AdCPBaseModel):
     algorithm: Literal['sha256']
     value: StrMatching5E987613
     canonicalization_id: StrMinLen1MaxLen128
-    canonicalization_uri: Annotated[HttpUrl, Field(description='Location of the exact immutable canonicalization contract. Consumers verify canonicalization_sha256 before applying it.')]
+    canonicalization_uri: Annotated[StrFormatUriMatching3AC8B861, Field(description='Location of the exact immutable canonicalization contract. Consumers verify canonicalization_sha256 before applying it.')]
     canonicalization_sha256: StrMatching5E987613
 
 

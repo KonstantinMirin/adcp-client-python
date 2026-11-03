@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import AdCPUrl
+from adcp.types.constraints import StrFormatUriMatching5E721644
 
 from ..enums.co_branding_requirement import CoBrandingRequirement
 from ..enums.landing_page_requirement import LandingPageRequirement
@@ -35,7 +35,7 @@ class AcceptedVerifiersItem(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('providers'),
     )
-    agent_url: Annotated[AdCPUrl, Field(description="URL of the governance agent. MUST use the `https://` scheme. The seller calls this URL via `get_creative_features` to verify a buyer's claim; the seller has already vetted the endpoint and accepts responsibility for outbound calls to it.")]
+    agent_url: Annotated[StrFormatUriMatching5E721644, Field(description="URL of the governance agent. MUST use the `https://` scheme. The seller calls this URL via `get_creative_features` to verify a buyer's claim; the seller has already vetted the endpoint and accepts responsibility for outbound calls to it.")]
     feature_id: Annotated[str | None, Field(description="Optional canonical `feature_id` the seller will request against this agent (e.g., `encypher.markers_present_v2`). When present, the buyer's `verify_agent.feature_id` SHOULD either match this value or be omitted. When absent, the seller selects a feature from the agent's `governance.creative_features` catalog at evaluation time. Resolves the selector ambiguity that would otherwise let two compliant receivers reach different verdicts.")] = None
     providers: Annotated[list[str] | None, Field(description="Optional `provider` labels this agent verifies (e.g., `['Encypher', 'Digimarc']`). When present, sellers SHOULD only invoke this agent for `embedded_provenance[]` / `watermarks[]` entries whose `provider` field matches one of these labels — letting buyers pre-flight whether their attached evidence is verifiable against the seller's allowlist. When absent, the agent is treated as provider-agnostic.", json_schema_extra={'uniqueItems': True}, min_length=1)] = None
 

@@ -1,46 +1,48 @@
 """The positions where a document refuses the SDK's own correct output.
 
 Section 6's dump half validates what a class EMITS against the same document that
-admitted the input, and it found three pairs where the document refuses the dump.
-Two decisions were re-affirmed rather than amended, so those positions are exempted
-here instead:
+admitted the input.  It found three pairs where the document refused the dump; **two of
+the three were this SDK's defect and are fixed rather than exempted**, and what is left
+here is the one that is upstream's.
 
-* **D5 stays.** ``HttpUrl`` keeps a ``format: uri`` position, the document's own
-  ``pattern`` stays with the schema half, and the non-round-trip ceiling stands.  The
-  DEFECT IS THE PATTERN.  ``^https://[^/?#@]+$`` is the only one of the bundle's eight
-  ``uri`` patterns that anchors ``$`` immediately after the authority, and RFC 3986
-  section 6.2.3 makes ``https://x.example/`` the normalized form of
-  ``https://x.example`` -- so the pattern refuses the canonical spelling of a value it
-  accepts, and NO conforming URL library can satisfy it.  Filed upstream as
-  :data:`UPSTREAM`, which already argues that these patterns express constraints a
-  ``pattern`` cannot carry; the minimal repair is ``^https://[^/?#@]+/?$``.
-* **D8 stays.** Absent ``additionalProperties`` means ``extra="ignore"``, so an
-  undeclared key is accepted and dropped; an instance whose ONLY key is undeclared
-  therefore dumps to ``{}`` and a ``minProperties`` the node states refuses it.
-
-**D5's OWN NAMED UPGRADE PATH DOES NOT FIX THE FIRST ONE, and it is recorded here so
-it is not re-proposed.**  D5 says "carry the sender's string beside the parsed value".
-Measured: ``AttestationOriginIssuer(type="origin", origin="https://a.com")`` dumps
-``https://a.com/``.  An instance built WITHOUT a payload has no sender bytes, so a
-carrier is populated exactly when the harness constructs from a drawn payload -- the
-check greens while a consumer constructing directly still emits the refused value.
-That is a vacuous pass, not a fix.
+* **THE ``format: uri`` POSITIONS ARE GONE, because the defect was ours** (section 2's
+  withdrawal, 2026-11-02).  Eight entries stood here on one pattern,
+  ``^https://[^/?#@]+$`` -- the only one of the bundle's ``uri`` patterns that anchors
+  ``$`` immediately after the authority, which RFC 3986 section 6.2.3 makes unsatisfiable
+  by a NORMALIZING URL library, since ``https://x.example/`` is the normalized form of
+  ``https://x.example``.  The reading was that the pattern was the defect and the type
+  was kept.  It is the other way round: a pydantic URL type rewrites the value, so what
+  the class dumped was never the string it was handed, and the SAME type decision also
+  made the class refuse two URIs the document calls distinct.  The type is withdrawn, a
+  ``format: uri`` field carries the document's own string, and every one of those dumps
+  satisfies its own pattern with nothing struck.
+  ``tests/test_dump_exemptions.py`` re-measures that over every ``uri`` pattern the
+  bundle states, so the entries cannot come back unnoticed, and
+  ``tests/test_the_value_is_the_documents_own.py`` holds the payloads.
+  :data:`UPSTREAM` still argues upstream that the pattern expresses a constraint a
+  ``pattern`` cannot carry, and the minimal repair is still ``^https://[^/?#@]+/?$`` --
+  but nothing of ours now waits on it.
+* **D8 stays, and it is the one entry left.** Absent ``additionalProperties`` means
+  ``extra="ignore"``, so an undeclared key is accepted and dropped; an instance whose
+  ONLY key is undeclared therefore dumps to ``{}`` and a ``minProperties`` the node
+  states refuses it.
 
 **THIS IS THE MOST DANGEROUS FILE IN THE EPIC AND IT IS SHAPED FOR THAT.**  Section 6:
 the dump half is the only check that reads what a class DID with a value.  Three
 constraints follow, and each is enforced by the shape of this module rather than by a
 reader's care:
 
-1. **A LITERAL SET OF POSITIONS, NEVER A PREDICATE.**  D5's own reasoning about the
-   https arm applies to its own exemption: a literal set can be audited where a
-   predicate cannot, and "does this regex conflict with normalization" is a new
+1. **A LITERAL SET OF POSITIONS, NEVER A PREDICATE.**  A literal set can be audited
+   where a predicate cannot, and "does this regex conflict with normalization" is a new
    mechanism with no falsifiable population.  So each entry names one document, one
    pointer, one keyword and THE VALUE THAT KEYWORD HOLDS -- and the value is what makes
-   the set shrink on its own: when upstream repairs the pattern, the value stops
+   the set shrink on its own: when upstream repairs the position, the value stops
    matching at the entry's own pointer and the entry is dead by its own terms.
 2. **THE SET ONLY SHRINKS**, pinned by count.
 3. **EVERY ENTRY NAMES ITS UPSTREAM ISSUE**, so nothing here reads as this SDK's own
-   decision.
+   decision.  The eight that left were the counter-example and the reason this rule is
+   not enough on its own: they named an upstream issue and were still ours, because an
+   annotation that rewrites a value is a defect no repair of the document can reach.
 
 **The strike is per keyword at one position, and it is not a relaxation of the accepts
 half.**  :func:`struck` removes only the named keyword at only the named pointer, so
@@ -79,10 +81,12 @@ class Exemption(NamedTuple):
     value no longer matches the document is a repaired position, and the test
     reddens until the entry goes.
 
-    ``latent`` says the position does not refuse a dump on the committed tree.  It is
-    still in the set, because it refuses one for some draws and not others -- a site
-    that passes by luck of the draw is not passing, and leaving it out would mean the
-    set has to GROW on the day a draw reaches it.
+    **There is no ``latent`` flag any more.**  One entry carried it -- the position
+    refused a dump for some draws and not others, so leaving it out would have meant the
+    set growing on the day a draw reached it -- and that entry was a ``format: uri``
+    position, withdrawn with the type (see the module docstring).  Nothing set the field
+    and nothing read it, which in a module shaped this deliberately is a line a reader has
+    to account for and cannot.
     """
 
     document: str
@@ -90,24 +94,7 @@ class Exemption(NamedTuple):
     keyword: str
     value: Any
     reason: str
-    latent: bool = False
 
-
-#: The one ``uri`` pattern no URL library can satisfy, as a literal rather than as a
-#: rule about regexes.  Measured over all eight patterns the bundle states at a
-#: ``format: uri`` node, 40 strings drawn per pattern from ``st.from_regex`` and
-#: round-tripped through the type ``codegen.constraints.url_type`` selects: this is
-#: the only one whose own type's OUTPUT it refuses, and it is the only one anchoring
-#: ``$`` immediately after the authority.  A second violating pattern in a later bundle
-#: is a second entry here, taken the same way over the whole pattern population.
-ORIGIN_ONLY = "^https://[^/?#@]+$"
-
-_RFC = (
-    "RFC 3986 S6.2.3 makes 'https://h/' the normalized form of 'https://h', so this "
-    "pattern refuses the canonical spelling of a value it accepts and no conforming "
-    f"URL library can satisfy it; D5 keeps the URL type, {UPSTREAM} repairs the "
-    "pattern (minimally to ^https://[^/?#@]+/?$)"
-)
 
 _D8 = (
     "D8 maps a silent additionalProperties to extra='ignore', so an undeclared key is "
@@ -116,163 +103,26 @@ _D8 = (
     "stating a property count it does not let a reader satisfy"
 )
 
-#: **The whole exemption.**  Nine positions: eight on :data:`ORIGIN_ONLY`, which are
-#: DERIVED against the packaged tree, and one on ``minProperties``, which is pinned.
+#: **The whole exemption: ONE position.**  The ``minProperties`` node of
+#: ``core/provenance.json``, which D8 cannot satisfy and upstream can.
 #:
-#: Three of the four are one authored node, ``core/attestation-issuer.json``'s
-#: ``AttestationOriginIssuer.origin``, which the record inlines into
-#: ``core/attestation-capabilities.json`` and into
-#: ``core/audience-evidence-requirements.json`` as well.
+#: **It held nine.** Eight were ``format: uri`` positions on one pattern, and they are
+#: gone with the type that needed them rather than with an upstream repair -- see the
+#: module docstring.  Those eight were also the reason the set had a DERIVED half: the
+#: number of positions one upstream pattern reaches is a property of how much of the
+#: bundle is PACKAGED, not of how permissive this SDK is, so every row that emitted a
+#: document carrying that authored node added a position and a shrink-only count could
+#: not express it.  With them gone the whole set is pinned again (:data:`PIN`), which is
+#: the stronger statement and is the one this module wanted in the first place.
 #:
-#: **The ORIGIN_ONLY part is not a count any more**, and the reason is the failure that
-#: changed it.  It read "the bundle SOURCE states ORIGIN_ONLY at four positions and the
-#: packaged tree carries three of them", naming two missing SOURCE positions in documents
-#: the emitter did not emit -- ``core/product-audience-evidence-requirements.json`` and
-#: ``error-details/governance-agent-not-accepted.json``, both since emitted and both now
-#: entries of their own, each arriving by the mechanism this split predicted.  That
-#: enumeration counted SOURCE positions, so an INLINED copy of an already-exempted node
-#: had nowhere to be counted: when ``salesagent-j3k2l.43`` made
-#: ``core/audience-evidence-requirements.json`` emit, its packaged form inlined the node a
-#: third time, the position reached a pair, and a shrink-only count was one short of the
-#: positions it exists to cover with no way to say so.
-#:
-#: So ``test_the_origin_only_part_is_the_packaged_positions`` asserts the equality
-#: instead: the ORIGIN_ONLY entries ARE the positions of the packaged tree whose
-#: ``pattern`` is that exact string.  Both sides derived, neither a literal count.  It
-#: reddens when a position is MISSED rather than when a number moves, it shrinks on its
-#: own when upstream repairs the pattern (the value stops matching and both sides fall
-#: together), and it grows only with emission -- growth explained by one upstream issue
-#: rather than by a judgement call.  It is still a literal SET of positions compared
-#: against one exact string, not a predicate over regexes, which is the constraint this
-#: module's first rule states.
-#:
-#: **One exposure is accepted and measured rather than papered over.**  Entry four's
-#: authored node is inlined at 90 positions of the packaged tree, and only the one
-#: named here is a pair's own root.  At the other 89 the node is nested inside a
-#: larger pair, where a refusal needs a drawn instance that gives ``render_guidance``
-#: exactly one key and that key undeclared; none does on the committed tree.  If one
-#: ever fires, that is a measurement saying this exemption's SHAPE needs revisiting --
-#: it is not an entry to add, because adding one would grow the set.
+#: **One exposure is accepted and measured rather than papered over.**  The entry's
+#: authored node is inlined at 90 positions of the packaged tree, and only the one named
+#: here is a pair's own root.  At the other 89 the node is nested inside a larger pair,
+#: where a refusal needs a drawn instance that gives ``render_guidance`` exactly one key
+#: and that key undeclared; none does on the committed tree.  If one ever fires, that is
+#: a measurement saying this exemption's SHAPE needs revisiting -- it is not an entry to
+#: add, because adding one would grow the set.
 EXEMPT: tuple[Exemption, ...] = (
-    Exemption(
-        document="core/attestation-issuer.json",
-        pointer="/oneOf/2/properties/origin",
-        keyword="pattern",
-        value=ORIGIN_ONLY,
-        reason=_RFC,
-    ),
-    Exemption(
-        # The resolver's inlined copy of the entry above, which is why the two are
-        # separate entries: this pointer is a position of attestation-capabilities'
-        # own packaged document and the pair graded against it is a different pair.
-        document="core/attestation-capabilities.json",
-        pointer="/properties/accepted_issuers/items/properties/issuer/oneOf/2/properties/origin",
-        keyword="pattern",
-        value=ORIGIN_ONLY,
-        reason=_RFC,
-    ),
-    Exemption(
-        document="core/attestation-capabilities.json",
-        pointer="/properties/accepted_issuers/items/properties/credential_origins/items",
-        keyword="pattern",
-        value=ORIGIN_ONLY,
-        reason=_RFC,
-        latent=True,
-    ),
-    Exemption(
-        # A THIRD packaged copy of entry one's authored node, and the same mechanism as
-        # entry two: the record inlines ``core/attestation-issuer.json``'s origin
-        # branch here, so this is a position of audience-evidence-requirements' own
-        # packaged document and the pair graded against it is a different pair.  The
-        # bundle SOURCE does not state the pattern at this document at all.
-        #
-        # It reached a pair when ``salesagent-j3k2l.43`` made the document EMIT -- a
-        # composition merges by intersection, so the restatement its root composes is no
-        # longer refused.  The comment above anticipated the shape and mis-categorised
-        # it: the two positions it names as missing are SOURCE positions in documents
-        # still unemitted, and it was counting source positions, so an inlined copy of an
-        # already-exempted node had nowhere to be counted.
-        document="core/audience-evidence-requirements.json",
-        pointer=(
-            "/properties/accepted_attestation_issuers/items/oneOf/2/properties/origin"
-        ),
-        keyword="pattern",
-        value=ORIGIN_ONLY,
-        reason=_RFC,
-    ),
-    Exemption(
-        # A FOURTH packaged copy of entry one's authored node, at the same pointer shape
-        # as the entry above, in a different document.
-        #
-        # It reaches a pair only on the MERGED compiler.  Neither ``salesagent-j3k2l.43``
-        # nor ``.67`` emits this document alone; the composition rule and the
-        # nested-union sibling rule together clear its last refusal, so the first tree
-        # that carries it is the one a merge of the two emits.  That is the case the
-        # derived check exists for: under an absolute count this position would have
-        # obliged a second rise of a shrink-only pin within the hour, and the pin could
-        # not have said WHICH position was missing.
-        document="core/product-audience-evidence-requirements.json",
-        pointer=(
-            "/properties/accepted_attestation_issuers/items/oneOf/2/properties/origin"
-        ),
-        keyword="pattern",
-        value=ORIGIN_ONLY,
-        reason=_RFC,
-    ),
-    Exemption(
-        # **The SIXTH ORIGIN_ONLY position, and the second of the two this docstring
-        # named as "still unemitted"** (``adcp-client-python-10l.21``'s third
-        # instalment).  Its AUTHORED node is this document's own -- not an inlined copy
-        # of ``core/attestation-issuer.json``'s -- and it reached a pair when the
-        # document started emitting: its chain target
-        # ``governance/accepted-governance-agents.json`` was refused for a ``type`` word
-        # beside a NESTED combinator, which §5(a)'s first bullet answers.
-        #
-        # This is the derived check's own growth channel and not a rise of the
-        # shrink-only pin: ``PIN`` covers the entries that are NOT ORIGIN_ONLY, is still
-        # 1, and is untouched.  The growth is explained by the same upstream issue every
-        # other ORIGIN_ONLY entry names, which is the property the split was made for.
-        document="error-details/governance-agent-not-accepted.json",
-        pointer="/oneOf/0/properties/attempted_agent_origin",
-        keyword="pattern",
-        value=ORIGIN_ONLY,
-        reason=_RFC,
-    ),
-    Exemption(
-        # **A FIFTH and a SIXTH packaged copy of entry one's authored node**, by the
-        # same mechanism as entries two, four and five: the record inlines
-        # ``core/attestation-issuer.json``'s origin branch, so each is a position of its
-        # own packaged document and the pair graded against it is a different pair.  The
-        # bundle SOURCE states the pattern at neither document.
-        #
-        # Both reached a pair when ``adcp-client-python-10l.45`` made
-        # ``core/attestation-reference.json`` emit: its one obstruction was a type list
-        # with a constrained arm, which the document-side fold now reads back as the
-        # type list it spells (``harness._type_list``) -- and
-        # ``governance/get-plan-audit-logs-response.json`` referenced it, so the two
-        # documents emit together.
-        #
-        # This is the derived check's own growth channel and not a rise of the
-        # shrink-only pin: ``PIN`` covers the entries that are NOT ORIGIN_ONLY, is still
-        # 1, and is untouched.  The growth is explained by the same upstream issue every
-        # other ORIGIN_ONLY entry names.
-        document="core/attestation-reference.json",
-        pointer="/properties/issuer/oneOf/2/properties/origin",
-        keyword="pattern",
-        value=ORIGIN_ONLY,
-        reason=_RFC,
-    ),
-    Exemption(
-        document="governance/get-plan-audit-logs-response.json",
-        pointer=(
-            "/properties/plans/items/properties/entries/items/properties/"
-            "runtime_attestations/items/properties/reference/properties/issuer/"
-            "oneOf/2/properties/origin"
-        ),
-        keyword="pattern",
-        value=ORIGIN_ONLY,
-        reason=_RFC,
-    ),
     Exemption(
         document="core/provenance.json",
         pointer=(
@@ -284,17 +134,13 @@ EXEMPT: tuple[Exemption, ...] = (
     ),
 )
 
-#: Shrink-only, asserted by ``test_the_exempt_set_only_shrinks``, and over the entries
-#: that are NOT :data:`ORIGIN_ONLY` -- one, the ``minProperties`` position.  A pin and not
-#: a ``len()`` read back off the tuple, because a pin a test computes from the thing it
-#: grades cannot fail.
+#: Shrink-only, asserted by ``test_the_exempt_set_only_shrinks``, and over the WHOLE set
+#: now that the derived half is gone.  A pin and not a ``len()`` read back off the tuple,
+#: because a pin a test computes from the thing it grades cannot fail.
 #:
-#: It covered every entry and was 4.  An absolute count over the ORIGIN_ONLY part had no
-#: denominator: the number of positions one upstream pattern reaches is a property of how
-#: much of the bundle is PACKAGED, not of how permissive this SDK is, so every row that
-#: emits a document carrying that node has to raise it -- which is the one thing a
-#: shrink-only pin may not do.  That part is derived now (see :data:`EXEMPT`), and what
-#: is left here is the part that genuinely is not a function of emission.
+#: It covered every entry, was raised to 4, then split so that the eight ``format: uri``
+#: positions could be derived instead -- see :data:`EXEMPT`.  Those are withdrawn, so the
+#: split has nothing left to cover and the pin is whole again at 1.
 PIN = 1
 
 

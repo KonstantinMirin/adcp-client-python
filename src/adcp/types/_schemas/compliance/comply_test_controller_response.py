@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
-from adcp.types.constraints import HttpUrl, IntMin100Max599, StrMatchingEF42E836, StrMaxLen128, StrMinLen1MaxLen1000, StrMinLen1MaxLen2000, StrMinLen1MaxLen255
+from adcp.types.constraints import IntMin100Max599, StrMatchingEF42E836, StrMaxLen128, StrMinLen1MaxLen1000, StrMinLen1MaxLen2000, StrMinLen1MaxLen255
 
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
@@ -218,7 +218,7 @@ class RecordedCallsItem(BranchDispatchMixin, AdCPBaseModel):
     )
     method: Annotated[Method, Field(description='HTTP method of the outbound call.')]
     endpoint: Annotated[str, Field(description="Composed `<METHOD> <URL>` string used for `endpoint_pattern` matching, e.g. 'POST https://api.tiktok.com/v2/audience/upload'. Convenience field — the runner can also reconstruct from `method` + URL components.")]
-    url: Annotated[HttpUrl, Field(description='Full URL of the outbound call (scheme + host + path + query). Treated as untrusted agent-controlled input by report renderers — see runner-output-contract.yaml > security.rendered_output_fencing.')]
+    url: Annotated[str, Field(description='Full URL of the outbound call (scheme + host + path + query). Treated as untrusted agent-controlled input by report renderers — see runner-output-contract.yaml > security.rendered_output_fencing.', json_schema_extra={'format': 'uri'})]
     host: Annotated[str | None, Field(description='Host portion of the URL, useful for grouping calls by upstream platform.')] = None
     path: Annotated[str | None, Field(description='Path portion of the URL (without query string).')] = None
     content_type: Annotated[str, Field(description="Media type of the outbound request body, mirroring the agent's outbound `Content-Type` header (e.g., `application/json`, `application/x-www-form-urlencoded`, `multipart/form-data`, `text/plain`). In raw mode this describes the returned `payload`; in digest mode it describes the body the digest was computed over. Storyboard `payload_must_contain` JSONPath-lite assertions are valid only when content_type is `application/json` or has a `+json` suffix AND attestation_mode is `raw` — digest mode and non-JSON content types grade `payload_must_contain` as not_applicable. Required so the runner can choose the right matcher deterministically.")]

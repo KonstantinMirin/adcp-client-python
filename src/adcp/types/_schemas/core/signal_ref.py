@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
-from adcp.types.constraints import HttpUrl, StrMatching32F5291C, StrMatchingA828669D
+from adcp.types.constraints import StrMatching32F5291C, StrMatchingA828669D
 
 
 class SignalRef(BranchDispatchMixin, AdCPBaseModel):
@@ -66,7 +66,7 @@ class SignalRefSignalSource(SignalRef):
         ForbiddenGroups((('data_provider_domain',), ('agent_url',), ('source',), ('id',))),
     )
     scope: Annotated[Literal['signal_source'], Field(description='Discriminator indicating the signal resolves through the issuing signal source.')]
-    signal_source_url: Annotated[HttpUrl, Field(description='URL of the signal source that issues this source-native signal.')]
+    signal_source_url: Annotated[str, Field(description='URL of the signal source that issues this source-native signal.', json_schema_extra={'format': 'uri'})]
     signal_id: Annotated[StrMatchingA828669D, Field(description="Signal identifier within the issuing signal source's signal set.")]
 
 

@@ -8,10 +8,9 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
-from adcp.types.constraints import DictMinProperties1, HttpUrl, StrMatchingEFC12812
+from adcp.types.constraints import DictMinProperties1, StrMatchingEFC12812
 from adcp.types.envelopes import FailedResponse
 
-from ..brand import Background, KellerType, LogoOrientation, LogoVariant
 from ..core.context import ContextObject
 from ..core.error import Error
 from ..core.ext import ExtensionObject
@@ -62,15 +61,55 @@ class RelationshipTrust(StrEnum):
     UNVERIFIABLE = 'unverifiable'
 
 
+class KellerType(StrEnum):
+    """
+    Brand architecture type: master (primary brand of house), sub_brand (carries parent name), endorsed (independent identity backed by parent), independent (operates separately)
+    """
+    MASTER = 'master'
+    SUB_BRAND = 'sub_brand'
+    ENDORSED = 'endorsed'
+    INDEPENDENT = 'independent'
+
+
+class Orientation(StrEnum):
+    """
+    Logo aspect ratio orientation
+    """
+    SQUARE = 'square'
+    HORIZONTAL = 'horizontal'
+    VERTICAL = 'vertical'
+    STACKED = 'stacked'
+
+
+class Background(StrEnum):
+    """
+    Background compatibility
+    """
+    DARK_BG = 'dark-bg'
+    LIGHT_BG = 'light-bg'
+    TRANSPARENT_BG = 'transparent-bg'
+
+
+class Variant(StrEnum):
+    """
+    Logo variant type
+    """
+    PRIMARY = 'primary'
+    SECONDARY = 'secondary'
+    ICON = 'icon'
+    WORDMARK = 'wordmark'
+    FULL_LOCKUP = 'full-lockup'
+
+
 class LogosItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/search-brands-response.json', pointer='#/definitions/SearchBrandResult/properties/logos/items')
-    url: Annotated[HttpUrl, Field(description='URL to the logo asset')]
-    orientation: Annotated[LogoOrientation | None, Field(description='Logo aspect ratio orientation')] = None
+    url: Annotated[str, Field(description='URL to the logo asset', json_schema_extra={'format': 'uri'})]
+    orientation: Annotated[Orientation | None, Field(description='Logo aspect ratio orientation')] = None
     background: Annotated[Background | None, Field(description='Background compatibility')] = None
-    variant: Annotated[LogoVariant | None, Field(description='Logo variant type')] = None
+    variant: Annotated[Variant | None, Field(description='Logo variant type')] = None
 
 
 class Rights(AdCPBaseModel):

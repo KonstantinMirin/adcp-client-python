@@ -7,7 +7,6 @@ from typing import Annotated, Any, ClassVar
 from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import HttpUrl
 
 from ..core.context import ContextObject
 from ..core.error import Error
@@ -25,7 +24,7 @@ class AcpHandoff(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-terminate-session-response.json', pointer='#/properties/acp_handoff')
-    checkout_url: Annotated[HttpUrl | None, Field(description="Brand's ACP checkout endpoint. Hosts MUST validate this is HTTPS before opening.")] = None
+    checkout_url: Annotated[str | None, Field(description="Brand's ACP checkout endpoint. Hosts MUST validate this is HTTPS before opening.", json_schema_extra={'format': 'uri'})] = None
     checkout_token: Annotated[str | None, Field(description='Opaque token for the checkout flow. The host passes this to the checkout endpoint to correlate the SI session with the transaction.')] = None
     payload: Annotated[dict[str, Any] | None, Field(description='Rich checkout context to pass to the ACP endpoint (product details, applied offers, pricing). Alternative to checkout_token for integrations that need structured data.')] = None
     expires_at: Annotated[AwareDatetime | None, Field(description='When this handoff data expires. Hosts should initiate checkout before this time.')] = None

@@ -7,7 +7,6 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
-from adcp.types.constraints import HttpUrl
 
 from ..core.context import ContextObject
 from ..core.error import Error
@@ -30,7 +29,7 @@ class Source(StrEnum):
 
 class CreativeAgentsItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/list-creative-formats-response.json', pointer='#/properties/creative_agents/items')
-    agent_url: Annotated[HttpUrl, Field(description="Base URL for the creative agent (e.g., 'https://reference.example.com', 'https://dco.example.com').")]
+    agent_url: Annotated[str, Field(description="Base URL for the creative agent (e.g., 'https://reference.example.com', 'https://dco.example.com').", json_schema_extra={'format': 'uri'})]
     agent_name: Annotated[str | None, Field(description='Human-readable name for the creative agent')] = None
     capabilities: Annotated[list[CreativeAgentCapability] | None, Field(description='Capabilities this creative agent provides')] = None
 

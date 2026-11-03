@@ -7,7 +7,7 @@ from pydantic import Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, NegatedConditional, Rule, UniqueItems
-from adcp.types.constraints import AdCPUrl, StrMatching32F5291C
+from adcp.types.constraints import StrFormatUriMatching5E721644, StrMatching32F5291C
 
 from ..enums.channels import MediaChannel
 from .canonical_format_kind import CanonicalFormatKind
@@ -37,7 +37,7 @@ class CreativeOperationFormatDeclaration(AdCPBaseModel):
     macro_resolution_capabilities: Annotated[list[MacroProcessingCapability] | None, Field(description='Creative-route processing capabilities for exact macro dialect identities, semantics, operations, actors, contexts, and encodings. These capabilities describe build, validation, or preview processing and do not grant seller production authority.', min_length=1)] = None
     technical_requirements_complete: bool | None = None
     display_name: str | None = None
-    sample_render_url: AdCPUrl | None = None
+    sample_render_url: StrFormatUriMatching5E721644 | None = None
     applies_to_channels: Annotated[list[MediaChannel] | None, Field(json_schema_extra={'uniqueItems': True})] = None
     seller_preference: SellerPreference | None = None
     locale_policy: CreativeLocalePolicy | None = None

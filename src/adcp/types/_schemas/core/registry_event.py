@@ -8,7 +8,7 @@ from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field, NonNegati
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import Distinct, RequiredGroups, Rule, UniqueItems
-from adcp.types.constraints import HttpUrl, StrFormatUuid, StrMatching32F5291C, StrMatchingEFC12812
+from adcp.types.constraints import StrFormatUri, StrFormatUuid, StrMatching32F5291C, StrMatchingEFC12812
 
 from ..adagents import DelegationType
 from ..enums.adcp_protocol import AdCPProtocol
@@ -374,7 +374,7 @@ class AgentProfilePayload(AdCPBaseModel):
         UniqueItems('markets'),
         UniqueItems('format_kinds'),
     )
-    agent_url: HttpUrl | None = None
+    agent_url: Annotated[str | None, Field(json_schema_extra={'format': 'uri'})] = None
     name: str | None = None
     type: AgentProfilePayloadType | None = None
     channels: StringArray | None = None
@@ -400,7 +400,7 @@ class RegistryEventAgentDiscoveredAgentPayload(AgentProfilePayload):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/9/properties/payload')
-    agent_url: HttpUrl
+    agent_url: Annotated[str, Field(json_schema_extra={'format': 'uri'})]
 
 
 class RegistryEventAgentDiscoveredAgent(RegistryEvent):
@@ -421,7 +421,7 @@ class RegistryEventAgentRemovedAgentPayload(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/10/properties/payload')
-    agent_url: HttpUrl
+    agent_url: Annotated[str, Field(json_schema_extra={'format': 'uri'})]
     removed_from_publishers: Annotated[list[Domain] | None, Field(min_length=1)] = None
 
 
@@ -444,7 +444,7 @@ class RegistryEventAgentProfileUpdatedAgentPayload(AgentProfilePayload):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/11/properties/payload')
     changed_fields: ChangedFields | None = None
-    agent_url: HttpUrl
+    agent_url: Annotated[str, Field(json_schema_extra={'format': 'uri'})]
 
 
 class RegistryEventAgentProfileUpdatedAgent(RegistryEvent):
@@ -501,7 +501,7 @@ class CompliancePayload(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/$defs/compliancePayload')
-    agent_url: HttpUrl
+    agent_url: Annotated[str, Field(json_schema_extra={'format': 'uri'})]
     previous_status: ComplianceStatus
     current_status: ComplianceStatus
     headline: str | None = None
@@ -537,7 +537,7 @@ class RegistryEventAgentVerificationEarnedAgentPayload(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/13/properties/payload')
-    agent_url: HttpUrl
+    agent_url: Annotated[str, Field(json_schema_extra={'format': 'uri'})]
     role: AdCPProtocol
     verified_specialisms: Annotated[list[str], Field(min_length=1)]
     adcp_version: str | None = None
@@ -562,7 +562,7 @@ class RegistryEventAgentVerificationLostAgentPayload(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/14/properties/payload')
-    agent_url: HttpUrl
+    agent_url: Annotated[str, Field(json_schema_extra={'format': 'uri'})]
     role: AdCPProtocol
     reason: str
     adcp_version: str | None = None
@@ -591,8 +591,8 @@ class PublisherAdagentsPayload(AdCPBaseModel):
     domain: Annotated[Domain | None, Field(description='Legacy alias for publisher_domain retained for early feed examples.')] = None
     properties_added: NonNegativeInt | None = None
     properties_removed: NonNegativeInt | None = None
-    agents_added: list[HttpUrl] | None = None
-    agents_removed: list[HttpUrl] | None = None
+    agents_added: list[StrFormatUri] | None = None
+    agents_removed: list[StrFormatUri] | None = None
     agent_count: NonNegativeInt | None = None
     property_count: NonNegativeInt | None = None
     collection_count: NonNegativeInt | None = None
@@ -665,7 +665,7 @@ class AuthorizationPayload(AdCPBaseModel):
         UniqueItems('placement_tags'),
     )
     id: Annotated[str | None, Field(description='Registry authorization row id when the event is backed by a materialized effective authorization row.', json_schema_extra={'format': 'uuid'})] = None
-    agent_url: HttpUrl
+    agent_url: Annotated[str, Field(json_schema_extra={'format': 'uri'})]
     agent_url_canonical: Annotated[str | None, Field(description='Registry-canonicalized form of agent_url for equality checks.')] = None
     publisher_domain: Domain
     authorization_type: Annotated[AuthorizationType | None, Field(description='When present, identifies the adagents.json authorization variant represented by this payload.')] = None

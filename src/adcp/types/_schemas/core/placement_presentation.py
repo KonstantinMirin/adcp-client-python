@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import AdCPUrl, IntMin0Max8192, IntMin1Max8192, IntMin6Max256, StrMatching3CBDBB74, StrMatchingF01B4765, StrMaxLen4096
+from adcp.types.constraints import IntMin0Max8192, IntMin1Max8192, IntMin6Max256, StrFormatUriMatching5E721644, StrMatching3CBDBB74, StrMatchingF01B4765, StrMaxLen4096
 
 
 class Canvas(AdCPBaseModel):
@@ -93,7 +93,7 @@ class ImageRef(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/placement-presentation.json', pointer='#/definitions/image_decoration/properties/image_ref')
-    uri: Annotated[AdCPUrl, Field(description='Untrusted image asset. Fetch with public-address-only SSRF protection, no redirects, DNS pinning, and body/time limits; do not attach ambient credentials.')]
+    uri: Annotated[StrFormatUriMatching5E721644, Field(description='Untrusted image asset. Fetch with public-address-only SSRF protection, no redirects, DNS pinning, and body/time limits; do not attach ambient credentials.')]
     digest: Annotated[StrMatching3CBDBB74, Field(description='SHA-256 digest of the exact image bytes. Consumers MUST fail closed on mismatch.')]
 
 

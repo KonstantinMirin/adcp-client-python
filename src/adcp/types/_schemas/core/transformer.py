@@ -8,7 +8,7 @@ from pydantic import AfterValidator, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, RequiredGroups, Rule, UniqueItems
-from adcp.types.constraints import HttpUrl, IntMin1, StrMatchingA828669D
+from adcp.types.constraints import IntMin1, StrMatchingA828669D
 
 from .format_id import FormatReferenceStructuredObject
 from .product_format_declaration import ProductFormatDeclaration
@@ -24,7 +24,7 @@ class BrandAgent(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/transformer.json', pointer='#/properties/voice_synthesis_ref/items/properties/brand_agent')
-    url: Annotated[HttpUrl, Field(description='MCP endpoint URL of the brand agent.')]
+    url: Annotated[str, Field(description='MCP endpoint URL of the brand agent.', json_schema_extra={'format': 'uri'})]
     id: Annotated[str, Field(description='Agent identifier.')]
 
 

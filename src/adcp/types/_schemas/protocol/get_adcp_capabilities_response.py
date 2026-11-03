@@ -9,12 +9,11 @@ from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field, NonNegati
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import AtLeastOne, ConditionalRequired, ForbiddenGroups, Match, NotValue, Rule, UniqueItems
-from adcp.types.constraints import AdCPUrl, HttpUrl, IntMin0Max50, IntMin0Max86400, IntMin1, IntMin1Max365, IntMin1Max604800, IntMin1Max64, IntMin1Max86400, IntMin2Max10, IntMin3600Max604800, IntMin60Max604800, IntMin86400Max604800, IntMin90, StrMatching071A974C, StrMatching32F5291C, StrMatching3A976806, StrMatching3CBDBB74, StrMatching4D6E1599, StrMatching611F08F3, StrMatching6C40A8AC, StrMatchingA828669D, StrMatchingEFC12812, StrMaxLen10000, StrMaxLen256MatchingF7F39876, StrMaxLen5000, StrMinLen1, StrMinLen1MaxLen100Matching85112285, StrMinLen1MaxLen255, StrMinLen1MaxLen64Matching5CDAE669
+from adcp.types.constraints import IntMin0Max50, IntMin0Max86400, IntMin1, IntMin1Max365, IntMin1Max604800, IntMin1Max64, IntMin1Max86400, IntMin2Max10, IntMin3600Max604800, IntMin60Max604800, IntMin86400Max604800, IntMin90, StrFormatUri, StrFormatUriMatching5E721644, StrMatching071A974C, StrMatching32F5291C, StrMatching3A976806, StrMatching3CBDBB74, StrMatching4D6E1599, StrMatching611F08F3, StrMatching6C40A8AC, StrMatchingA828669D, StrMatchingEFC12812, StrMaxLen10000, StrMaxLen256MatchingF7F39876, StrMaxLen5000, StrMinLen1, StrMinLen1MaxLen100Matching85112285, StrMinLen1MaxLen255, StrMinLen1MaxLen64Matching5CDAE669
 
 from ..core.account_timezone_capability import AccountTimezoneCapability
 from ..core.attestation_capabilities import AttestationCapabilities
 from ..core.audience_activation_method import AudienceActivationMethod
-from ..core.audience_evidence_requirements import EvidencePresence, RequirementMode
 from ..core.context import ContextObject
 from ..core.creative_operation_format_declaration import CreativeOperationFormatDeclaration
 from ..core.duration import Duration
@@ -28,18 +27,12 @@ from ..core.locale_tag import LanguageTag
 from ..core.macro_resolution_capability import MacroProcessingCapability
 from ..core.media_buy_features import MediaBuyFeatures
 from ..core.media_buy_frequency_cap_capability import MediaBuyFrequencyCapCapability
-from ..core.optimization_goal import OptimizationMetric
 from ..core.postal_area_support import PostalAreaSupport
-from ..core.preview_renderer_metadata import RenderingOrigin
-from ..core.principal_declarations import WebhookSigningAlgorithm
-from ..core.product import ConversionTrackingSupportedTargetsItem
 from ..core.protocol_envelope import ProtocolEnvelope
 from ..core.reporting_delivery_capabilities import ReportingDeliveryCapabilities
-from ..core.reporting_delivery_method import FileFormat
 from ..core.reporting_verification_profile_set import ReportingVerificationProfileSet
 from ..core.vendor_metric_id import VendorMetricID
 from ..core.version_envelope import AdCPVersionEnvelope
-from ..core.wholesale_feed_event import WholesaleFeedEventType
 from ..enums.account_currency_mode import AccountCurrencyMode
 from ..enums.action_source import ActionSource
 from ..enums.age_verification_method import AgeVerificationMethod
@@ -62,7 +55,6 @@ from ..enums.transport_mode import TransportMode
 from ..enums.uid_type import UIDType
 from ..enums.vast_version import VASTVersion
 from ..governance.accepted_governance_agents import AcceptedGovernanceAgents
-from ..media_buy.get_products_request import BuyingMode
 from ..sponsored_intelligence.si_capabilities import SICapabilities
 
 
@@ -100,6 +92,14 @@ class ReportingDestinationOfferingsItemPattern(StrEnum):
     DATASET_SHARE = 'dataset_share'
 
 
+class FormatsItem(StrEnum):
+    JSONL = 'jsonl'
+    CSV = 'csv'
+    PARQUET = 'parquet'
+    AVRO = 'avro'
+    ORC = 'orc'
+
+
 class ReportingDestinationOfferingsItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -112,7 +112,7 @@ class ReportingDestinationOfferingsItem(AdCPBaseModel):
     )
     pattern: ReportingDestinationOfferingsItemPattern
     transports: Annotated[list[StrMinLen1MaxLen64Matching5CDAE669], Field(description='Provider transports the seller can deliver through for this pattern.', json_schema_extra={'uniqueItems': True}, min_length=1)]
-    formats: Annotated[list[FileFormat] | None, Field(description='Physical file formats the seller can produce. Only meaningful for file_transfer.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    formats: Annotated[list[FormatsItem] | None, Field(description='Physical file formats the seller can produce. Only meaningful for file_transfer.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     access_modes: Annotated[list[StrMinLen1MaxLen64Matching5CDAE669] | None, Field(description='Dataset-share access families the seller can provision. Only meaningful for dataset_share.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     verification_profiles: Annotated[ReportingVerificationProfileSet, Field(description='Verification profiles the seller can produce for this pattern. A destination whose accepted_verification_profiles does not intersect this set is out of offering.')]
 
@@ -451,7 +451,7 @@ class Account(AdCPBaseModel):
         UniqueItems('supported_account_currency_modes'),
     )
     require_operator_auth: Annotated[bool | None, Field(description="Whether the seller requires operator-level credentials. This declares who must authenticate; it does not by itself declare whether OAuth is used, whether list_accounts is exposed, or which sync_accounts modes are supported. When true, operators authenticate independently with the seller and account-scoped calls use seller/storefront-assigned account_id values because the seller or upstream platform owns the canonical account namespace. If a credential may access more than one account, the seller MUST expose list_accounts and buyers MUST resolve an explicit account_id before the first account-scoped request. If a credential is bound to exactly one account, the seller SHOULD expose list_accounts returning that singleton; a seller MAY omit list_accounts only when it provides the same explicit account_id through another declared path or out-of-band onboarding. When false (default, buyer-declared accounts), the seller trusts the agent's identity claims and account-scoped calls use the advertiser natural key: brand + operator + optional operator_unit, fixed currency, optional buyer-selected account timezone, and sandbox. operator_unit.id is owned by the operator and is distinct from the seller's account_id. The seller normally provisions through sync_accounts, but MAY lazily provision on the first account-scoped request when billing and other required settings are unambiguous from capabilities or onboarding defaults. A lazy-provisioning seller MUST keep accepting the natural key and MUST expose list_accounts for recovery; if buyer input is needed before use, the seller MUST expose sync_accounts.")] = False
-    authorization_endpoint: Annotated[HttpUrl | None, Field(description='OAuth authorization endpoint for obtaining operator-level credentials. Present when the seller supports OAuth for operator authentication. The agent directs the operator to this URL to authenticate and obtain a bearer token. If absent and require_operator_auth is true, operators obtain credentials out-of-band (e.g., seller portal, API key).')] = None
+    authorization_endpoint: Annotated[str | None, Field(description='OAuth authorization endpoint for obtaining operator-level credentials. Present when the seller supports OAuth for operator authentication. The agent directs the operator to this URL to authenticate and obtain a bearer token. If absent and require_operator_auth is true, operators obtain credentials out-of-band (e.g., seller portal, API key).', json_schema_extra={'format': 'uri'})] = None
     supported_billing: Annotated[list[BillingParty], Field(description="Billing models this seller supports. operator: seller invoices the operator (agency or brand buying direct). agent: agent consolidates billing. advertiser: seller invoices the advertiser directly, even when a different operator places orders on their behalf. When the buyer calls sync_accounts, it must pass one of these values. A lazy-provisioning seller may omit sync_accounts only when billing can be resolved unambiguously from this capability or the authenticated agent's onboarding defaults.", min_length=1)]
     supported_account_currency_modes: Annotated[list[AccountCurrencyMode] | None, Field(description='Required for sellers implementing AdCP 3.2 advertiser-account provisioning, but optional in this shared 3.x response schema so existing 3.0 and 3.1 capability responses remain valid. Declares whether advertiser accounts are bound to one immutable currency (`fixed`), select currency independently per proposal or media buy (`per_media_buy`), or support both models. When only `fixed` is advertised, buyer-declared provisioning entries MUST include `currency`. When only `per_media_buy` is advertised, they MUST omit it. When both are advertised, presence of `currency` selects a fixed-currency account and omission selects per-media-buy currency. Buyers MUST treat absence as an older seller whose currency mode is not discoverable, not as support for either mode.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     timezone: Annotated[AccountTimezoneCapability | None, Field(description='Required for sellers implementing AdCP 3.2 advertiser-account provisioning, but optional in the shared 3.x response schema for compatibility. Declares whether the account timezone is seller-wide or fixed per account and whether a buyer must select it during sync_accounts provisioning. Account timezone is the default for account-scoped calendar semantics; feature-specific capability fields explicitly declare exceptions.')] = None
@@ -474,9 +474,15 @@ class AcceptancePolicyDiscovery(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('default_profile_ids'),
     )
-    catalog_url: Annotated[AdCPUrl, Field(description='HTTPS document that validates against acceptance-policy-catalog.json.')]
+    catalog_url: Annotated[StrFormatUriMatching5E721644, Field(description='HTTPS document that validates against acceptance-policy-catalog.json.')]
     catalog_digest: Annotated[StrMatching3CBDBB74, Field(description='SHA-256 digest of the exact catalog representation fetched from catalog_url.')]
     default_profile_ids: Annotated[list[StrMinLen1] | None, Field(description='Local or registry-referenced catalog profiles that apply seller-wide unless a product adds further profiles. IDs MUST resolve uniquely across profiles and registry_profiles; all referenced profiles compose restrictively.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+
+
+class BuyingModesItem(StrEnum):
+    BRIEF = 'brief'
+    WHOLESALE = 'wholesale'
+    REFINE = 'refine'
 
 
 class LifecycleToolsItem(StrEnum):
@@ -716,9 +722,19 @@ class Execution(AdCPBaseModel):
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/get-adcp-capabilities-response.json', pointer='#/properties/media_buy/properties/execution')
     trusted_match: Annotated[TrustedMatch | None, Field(description='Trusted Match Protocol (TMP) support. Presence of this object indicates the seller has TMP infrastructure deployed. Check individual products via get_products for per-product TMP capabilities.')] = None
-    axe_integrations: Annotated[list[HttpUrl] | None, Field(description='Deprecated. Legacy AXE integrations. Use trusted_match for new integrations.')] = None
+    axe_integrations: Annotated[list[StrFormatUri] | None, Field(description='Deprecated. Legacy AXE integrations. Use trusted_match for new integrations.')] = None
     creative_specs: Annotated[CreativeSpecs | None, Field(description='Creative specification support')] = None
     targeting: Annotated[Targeting | None, Field(description='Targeting capabilities. If declared true/supported, buyer can use these targeting parameters and seller MUST honor them.')] = None
+
+
+class SupportedRequirementModesItem(StrEnum):
+    REQUIRED = 'required'
+    PREFERRED = 'preferred'
+
+
+class SupportedPresenceModesItem(StrEnum):
+    REQUIRED = 'required'
+    WHEN_AVAILABLE = 'when_available'
 
 
 class AudienceEvidence(AdCPBaseModel):
@@ -733,8 +749,8 @@ class AudienceEvidence(AdCPBaseModel):
         UniqueItems('supported_requirement_modes'),
         UniqueItems('supported_presence_modes'),
     )
-    supported_requirement_modes: Annotated[list[RequirementMode], Field(description='Buyer policy modes the seller evaluates. A seller MUST NOT silently ignore a mode it does not list.', json_schema_extra={'uniqueItems': True}, min_length=1)]
-    supported_presence_modes: Annotated[list[EvidencePresence], Field(description='Evidence-presence semantics the seller supports.', json_schema_extra={'uniqueItems': True}, min_length=1)]
+    supported_requirement_modes: Annotated[list[SupportedRequirementModesItem], Field(description='Buyer policy modes the seller evaluates. A seller MUST NOT silently ignore a mode it does not list.', json_schema_extra={'uniqueItems': True}, min_length=1)]
+    supported_presence_modes: Annotated[list[SupportedPresenceModesItem], Field(description='Evidence-presence semantics the seller supports.', json_schema_extra={'uniqueItems': True}, min_length=1)]
     supports_attestation_evaluation: Annotated[bool, Field(description='Whether the seller evaluates audience-evidence attestation_refs under its core adcp.attestations policy and returns the exact reference and AttestationEvaluation in package readback.')]
 
 
@@ -790,7 +806,22 @@ class AudienceTargeting(AdCPBaseModel):
     matching_latency_hours: Annotated[MatchingLatencyHours | None, Field(description='Expected matching latency range in hours after upload. Use to calibrate polling cadence and set appropriate expectations before configuring push_notification_config.')] = None
 
 
-class SupportedTargetsItem(StrEnum):
+class SupportedOptimizationMetricsItem(StrEnum):
+    CLICKS = 'clicks'
+    VIEWS = 'views'
+    COMPLETED_VIEWS = 'completed_views'
+    VIEWED_SECONDS = 'viewed_seconds'
+    VIEWABLE_RATE = 'viewable_rate'
+    ATTENTION_SECONDS = 'attention_seconds'
+    ATTENTION_SCORE = 'attention_score'
+    ENGAGEMENTS = 'engagements'
+    FOLLOWS = 'follows'
+    SAVES = 'saves'
+    PROFILE_VISITS = 'profile_visits'
+    REACH = 'reach'
+
+
+class VendorMetricOptimizationSupportedTargetsItem(StrEnum):
     COST_PER = 'cost_per'
     THRESHOLD_RATE = 'threshold_rate'
 
@@ -806,7 +837,13 @@ class VendorMetricOptimization(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('supported_targets'),
     )
-    supported_targets: Annotated[list[SupportedTargetsItem] | None, Field(description='Target kinds this seller can support for vendor_metric optimization goals on at least one product. Values match optimization_goals[].target.kind for kind: vendor_metric. A target-less vendor_metric goal maximizes the metric within budget and does not require a target-kind declaration.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    supported_targets: Annotated[list[VendorMetricOptimizationSupportedTargetsItem] | None, Field(description='Target kinds this seller can support for vendor_metric optimization goals on at least one product. Values match optimization_goals[].target.kind for kind: vendor_metric. A target-less vendor_metric goal maximizes the metric within budget and does not require a target-kind declaration.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+
+
+class ConversionTrackingSupportedTargetsItem(StrEnum):
+    COST_PER = 'cost_per'
+    PER_AD_SPEND = 'per_ad_spend'
+    MAXIMIZE_VALUE = 'maximize_value'
 
 
 SupportedHashedIdentifiersItem = SupportedIdentifierTypesItem
@@ -935,7 +972,7 @@ class MediaBuy(AdCPBaseModel):
     anonymous_discovery: Annotated[bool | None, Field(description='Whether this seller accepts product discovery without caller credentials. This applies to list_products and to get_products in brief or wholesale mode; it does not apply to proposal refinement or finalization, purchasing, account-scoped reads, or mutations. true means an anonymous discovery request can produce a successful response, but the response may be a public subset and may differ from results for an authenticated principal or selected account. false means these discovery calls require an authenticated principal. Absence means unspecified legacy behavior, so callers probe and handle AUTH_MISSING. A valid authenticated request is never rejected merely because credentials were supplied. true is inconsistent with account.required_for_products=true because an anonymous caller cannot select protected account context.')] = None
     acceptance_policy_discovery: Annotated[AcceptancePolicyDiscovery | None, Field(description='Registry-backed seller acceptance-policy discovery. Presence means the seller publishes a versioned catalog; it does not claim that the seller evaluates acceptance_context during discovery. Discovery is advisory, exact task responses remain authoritative, and absent capability means support is unknown rather than unrestricted acceptance.')] = None
     supported_pricing_models: Annotated[list[PricingModel] | None, Field(description='Pricing models this seller supports across its product portfolio. Buyers can use this for pre-flight filtering before querying individual products. Individual products may support a subset of these models.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    buying_modes: Annotated[list[BuyingMode] | None, Field(description="Buying modes this seller supports on get_products. 'brief' (semantic discovery driven by the brief) is universally supported and implicit. 'wholesale' (raw wholesale product feed enumeration — caller omits brief and the seller returns the full priced product feed, paginated) is opt-in and SHOULD be declared explicitly so buyers can probe before issuing wholesale calls. 'refine' lets buyers iterate on prior products/proposals and is also the vehicle for finalizing draft proposals when the seller returns them. Sellers MAY declare ['brief', 'wholesale'] to signal wholesale support; absent declaration is treated as ['brief'] for wholesale-feed probing purposes and sellers MAY return INVALID_REQUEST for wholesale calls they do not support. Symmetric with signals.discovery_modes.", json_schema_extra={'uniqueItems': True}, min_length=1)] = ['brief']
+    buying_modes: Annotated[list[BuyingModesItem] | None, Field(default_factory=lambda: TypeAdapter(list[BuyingModesItem]).validate_python(['brief']), description="Buying modes this seller supports on get_products. 'brief' (semantic discovery driven by the brief) is universally supported and implicit. 'wholesale' (raw wholesale product feed enumeration — caller omits brief and the seller returns the full priced product feed, paginated) is opt-in and SHOULD be declared explicitly so buyers can probe before issuing wholesale calls. 'refine' lets buyers iterate on prior products/proposals and is also the vehicle for finalizing draft proposals when the seller returns them. Sellers MAY declare ['brief', 'wholesale'] to signal wholesale support; absent declaration is treated as ['brief'] for wholesale-feed probing purposes and sellers MAY return INVALID_REQUEST for wholesale calls they do not support. Symmetric with signals.discovery_modes.", json_schema_extra={'uniqueItems': True, 'default': ['brief']}, min_length=1)]
     measurement_terms_acceptance: Annotated[bool | None, Field(description="Whether this seller can accept the default measurement_terms it advertises on a product. A value of true means the seller can return a product carrying measurement_terms for a measurement-specific brief and accept those terms unchanged on a package for that product. This opts the seller into conformance scenarios that discover and replay the product's own terms. False or absent means acceptance is outside the seller's advertised scope, but the seller must still reject unsupported terms with TERMS_REJECTED rather than being graded on an acceptance path it did not claim.")] = False
     availability_horizon: Annotated[bool | None, Field(description='Whether this seller supports flexible-window availability discovery: parsing offer_filters.availability_horizon and answering with time-dimensioned forecast points that carry availability_status. Sellers declaring true MUST apply the full window contract — half-open non-overlapping windows that partition the requested horizon (or signal gaps via incomplete[]), with availability_status computed from all booking eligibility constraints, not only competing holds. false or absent means flexible-window support is unknown: buyers SHOULD use exact start_date/end_date filtering, and sellers MAY ignore the field or reject it. Conformance storyboards gate flexible-window checks on this declaration.')] = False
     lifecycle_tools: Annotated[list[LifecycleToolsItem] | None, Field(description='Compact product and MediaBuy lifecycle operation names this seller supports. Added in AdCP 3.2 as task-specific contracts that form the 4.0 lifecycle foundation. Sellers may advertise any supported subset while retaining the deprecated get_products/create_media_buy/update_media_buy facades throughout 3.x. Each stateful split task has its own idempotency identity; callers MUST retry with the same tool name.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
@@ -956,7 +993,7 @@ class MediaBuy(AdCPBaseModel):
     audience_evidence: Annotated[AudienceEvidence | None, Field(description='Support for structured product audience evidence and buyer-authored evidence policy. Presence means the seller can publish Product.audience_evidence, preserve immutable snapshots through package readback, and evaluate the declared policy modes. It does not declare audience-targeting capability.')] = None
     rights_attestations: Annotated[RightsAttestations | None, Field(description='Seller evaluation policy for portable rights-grant attestations carried on creative rights constraints. Presence requires adcp.attestations and the rights-grant claim URI in accepted_claim_types. The seller remains verifier-of-record and never treats verification_url or a buyer-authored evaluation as authorization.')] = None
     audience_targeting: Annotated[AudienceTargeting | None, Field(description='Audience targeting capabilities. Presence of this object indicates the seller supports audience targeting, including sync_audiences and audience_include/audience_exclude in targeting overlays.')] = None
-    supported_optimization_metrics: Annotated[list[OptimizationMetric] | None, Field(description='Optimization metrics this seller can support on at least one of their products. Seller-level rollup of product-level metric_optimization.supported_metrics declarations (core/product.json). Buyers SHOULD filter their requested optimization goals against this list before submitting briefs. Sellers MUST keep this in sync with their product catalog — if no products support a metric, it must not appear here. Omitting this field means the seller declares no specific guarantees about which metrics they support; buyers should fall back to per-product inspection of metric_optimization.supported_metrics.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    supported_optimization_metrics: Annotated[list[SupportedOptimizationMetricsItem] | None, Field(description='Optimization metrics this seller can support on at least one of their products. Seller-level rollup of product-level metric_optimization.supported_metrics declarations (core/product.json). Buyers SHOULD filter their requested optimization goals against this list before submitting briefs. Sellers MUST keep this in sync with their product catalog — if no products support a metric, it must not appear here. Omitting this field means the seller declares no specific guarantees about which metrics they support; buyers should fall back to per-product inspection of metric_optimization.supported_metrics.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     vendor_metric_optimization: Annotated[VendorMetricOptimization | None, Field(description='Seller-level rollup of vendor-metric optimization capabilities supported by at least one product. Product-level vendor_metric_optimization.supported_metrics[] remains authoritative for the specific (vendor, metric_id) pairs and target kinds a buyer may bind on a package; this seller-level object exists so buyers and compliance runners can discover whether vendor_metric goals are in scope before walking the catalog. Sellers MUST keep this in sync with product-level vendor_metric_optimization declarations.')] = None
     conversion_tracking: Annotated[ConversionTracking | None, Field(description='Seller-level conversion tracking capabilities. Presence of this object indicates the seller supports sync_event_sources and log_event for conversion event tracking.')] = None
     frequency_capping: Annotated[FrequencyCapping | None, Field(description='Seller-wide package frequency-capping infrastructure. Presence means the seller honors targeting_overlay.frequency_cap on packages, with an independent counter per package, and MUST reject caps it cannot enforce rather than silently dropping them. Product.overlay_support is the binding per-product declaration. A cap whose single counter spans every package in a MediaBuy is advertised separately through aggregate_frequency_capping.')] = None
@@ -966,7 +1003,7 @@ class MediaBuy(AdCPBaseModel):
     portfolio: Annotated[Portfolio | None, Field(description="Information about the seller's media inventory portfolio. Media-buy sellers SHOULD publish primary_channels and primary_countries as their complete brief-routing scope. Buyers use publisher_domains to verify authorization via adagents.json. Omitted routing arrays mean unknown scope and MUST NOT be interpreted as global coverage.")] = None
 
 
-class DiscoveryMode(StrEnum):
+class DiscoveryModesItem(StrEnum):
     BRIEF = 'brief'
     WHOLESALE = 'wholesale'
 
@@ -993,7 +1030,7 @@ class Signals(AdCPBaseModel):
     )
     anonymous_discovery: Annotated[bool | None, Field(description='Whether this agent accepts get_signals discovery without caller credentials in brief or wholesale mode. true means an anonymous discovery request can produce a successful response, but the response may be a public subset and may differ from results for an authenticated principal or selected account. false means get_signals requires an authenticated principal. Absence means unspecified legacy behavior, so callers probe and handle AUTH_MISSING. A valid authenticated request is never rejected merely because credentials were supplied.')] = None
     data_provider_domains: Annotated[list[StrMatching32F5291C] | None, Field(description="Data provider domains this signals agent is authorized to resell. Buyers should fetch each data provider's adagents.json for published signal definitions and to verify authorization.", min_length=1)] = None
-    discovery_modes: Annotated[list[DiscoveryMode] | None, Field(default_factory=lambda: TypeAdapter(list[DiscoveryMode]).validate_python(['brief']), description="Discovery modes this signals agent supports on get_signals. 'brief' (default — every signals agent supports this): semantic discovery driven by signal_spec or signal_refs, with deprecated signal_ids accepted for older clients. 'wholesale': raw wholesale signals feed enumeration — caller omits signal_spec, signal_refs, and signal_ids and the agent returns its full priced signals feed, paginated, scoped by filters/account/destinations/countries. Agents that do not declare 'wholesale' MAY return INVALID_REQUEST for wholesale calls. Absent declaration is treated as ['brief'].", json_schema_extra={'uniqueItems': True, 'default': ['brief']}, min_length=1)]
+    discovery_modes: Annotated[list[DiscoveryModesItem] | None, Field(default_factory=lambda: TypeAdapter(list[DiscoveryModesItem]).validate_python(['brief']), description="Discovery modes this signals agent supports on get_signals. 'brief' (default — every signals agent supports this): semantic discovery driven by signal_spec or signal_refs, with deprecated signal_ids accepted for older clients. 'wholesale': raw wholesale signals feed enumeration — caller omits signal_spec, signal_refs, and signal_ids and the agent returns its full priced signals feed, paginated, scoped by filters/account/destinations/countries. Agents that do not declare 'wholesale' MAY return INVALID_REQUEST for wholesale calls. Absent declaration is treated as ['brief'].", json_schema_extra={'uniqueItems': True, 'default': ['brief']}, min_length=1)]
     features: Annotated[SignalsFeatures | None, Field(description='Optional signals features supported')] = None
 
 
@@ -1014,7 +1051,7 @@ class SignalActivation(AdCPBaseModel):
         UniqueItems('claim_types'),
     )
     requirement: Annotated[SignalActivationRequirement, Field(description='Whether an activate_signal activation check may omit runtime_attestations. When required, missing evidence fails an activation check. Deactivation and privacy-removal checks never require signal-quality evidence and remain available without it.')]
-    claim_types: Annotated[list[HttpUrl], Field(description='Signal-quality claim identifiers accepted for this governed action. Values are open absolute URIs and MUST be a subset of adcp.attestations.accepted_claim_types.', json_schema_extra={'uniqueItems': True}, min_length=1)]
+    claim_types: Annotated[list[StrFormatUri], Field(description='Signal-quality claim identifiers accepted for this governed action. Values are open absolute URIs and MUST be a subset of adcp.attestations.accepted_claim_types.', json_schema_extra={'uniqueItems': True}, min_length=1)]
 
 
 class RuntimeAttestations(AdCPBaseModel):
@@ -1053,7 +1090,7 @@ class PropertyFeaturesItem(AdCPBaseModel):
     range: Annotated[PropertyFeaturesItemRange | None, Field(description='For quantitative features, the valid range')] = None
     categories: Annotated[list[str] | None, Field(description='For categorical features, the valid values')] = None
     description: Annotated[str | None, Field(description='Human-readable description of what this feature measures')] = None
-    methodology_url: Annotated[HttpUrl | None, Field(description='URL to documentation explaining how this feature is calculated or measured. Helps buyers understand and compare methodologies across vendors.')] = None
+    methodology_url: Annotated[str | None, Field(description='URL to documentation explaining how this feature is calculated or measured. Helps buyers understand and compare methodologies across vendors.', json_schema_extra={'format': 'uri'})] = None
 
 
 CreativeFeaturesItemType = PropertyFeaturesItemType
@@ -1069,7 +1106,7 @@ class CreativeFeaturesItem(AdCPBaseModel):
     range: Annotated[CreativeFeaturesItemRange | None, Field(description='For quantitative features, the valid range')] = None
     categories: Annotated[list[str] | None, Field(description='For categorical features, the valid values')] = None
     description: Annotated[str | None, Field(description='Human-readable description of what this feature measures')] = None
-    methodology_url: Annotated[HttpUrl | None, Field(description='URL to documentation explaining how this feature is calculated or measured.')] = None
+    methodology_url: Annotated[str | None, Field(description='URL to documentation explaining how this feature is calculated or measured.', json_schema_extra={'format': 'uri'})] = None
 
 
 class Governance(AdCPBaseModel):
@@ -1083,16 +1120,24 @@ class Governance(AdCPBaseModel):
     creative_features: Annotated[list[CreativeFeaturesItem] | None, Field(description='Creative features this governance agent can evaluate. Each feature describes a score, rating, or assessment the agent can provide for creatives (e.g., security scanning, creative quality, content categorization).')] = None
 
 
+class TransportsItemType(StrEnum):
+    """
+    Protocol transport type
+    """
+    MCP = 'mcp'
+    A2A = 'a2a'
+
+
 class TransportsItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/get-adcp-capabilities-response.json', pointer='#/properties/sponsored_intelligence/properties/endpoint/properties/transports/items')
-    type: Annotated[ProtocolTransportType, Field(description='Protocol transport type')]
-    url: Annotated[HttpUrl, Field(description='Agent endpoint URL for this transport')]
+    type: Annotated[TransportsItemType, Field(description='Protocol transport type')]
+    url: Annotated[str, Field(description='Agent endpoint URL for this transport', json_schema_extra={'format': 'uri'})]
 
 
-class ProtocolTransportType(StrEnum):
+class Preferred(StrEnum):
     """
     Preferred transport when host supports multiple
     """
@@ -1106,7 +1151,7 @@ class Endpoint(AdCPBaseModel):
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/get-adcp-capabilities-response.json', pointer='#/properties/sponsored_intelligence/properties/endpoint')
     transports: Annotated[list[TransportsItem], Field(description='Available protocol transports. Hosts select based on their capabilities.', min_length=1)]
-    preferred: Annotated[ProtocolTransportType | None, Field(description='Preferred transport when host supports multiple')] = None
+    preferred: Annotated[Preferred | None, Field(description='Preferred transport when host supports multiple')] = None
 
 
 class SponsoredIntelligence(AdCPBaseModel):
@@ -1116,7 +1161,7 @@ class SponsoredIntelligence(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/get-adcp-capabilities-response.json', pointer='#/properties/sponsored_intelligence')
     endpoint: Annotated[Endpoint, Field(description='SI agent endpoint configuration')]
     capabilities: Annotated[SICapabilities, Field(description='Modalities, components, and commerce capabilities')]
-    brand_url: Annotated[HttpUrl | None, Field(description='URL to brand.json with colors, fonts, logos, tone')] = None
+    brand_url: Annotated[str | None, Field(description='URL to brand.json with colors, fonts, logos, tone', json_schema_extra={'format': 'uri'})] = None
 
 
 class Brand(AdCPBaseModel):
@@ -1196,6 +1241,14 @@ class SupportedFormatsItem(AdCPBaseModel):
     capability_id: Annotated[StrMatchingA828669D | None, Field(description="Stable identifier for this format capability within the creative agent (e.g., 'audio_narration_30s'). The value MUST be unique across this agent's supported_formats catalog. Route the advertised operation with this ID: build_creative.target_capability_id(s) for build, preview_creative.target_capability_id for preview, or validate_input targets[] kind capability for validate. Capability IDs are agent-local routes and do not appear on portable manifests or products.")] = None
     format: Annotated[CreativeOperationFormatDeclaration, Field(description='Format declaration on which this agent can perform the listed operations. Creative-agent capability self-description has no seller production authority, so tracker_execution_contract and tracker_execution_contract_digest are forbidden.')]
     operations: Annotated[list[OperationsItem] | None, Field(default_factory=lambda: TypeAdapter(list[OperationsItem]).validate_python(['build']), description='Creative operations this capability supports. `build` means the agent can produce a conforming manifest via build_creative; `validate` means it can evaluate inputs against the declaration; `preview` means it can render a preview. New 3.2 producers MUST emit this field so buyers and registries can distinguish producers, validators, and renderers without probing tasks. Consumers interpret omission from a legacy 3.x entry as `["build"]`.', json_schema_extra={'uniqueItems': True, 'default': ['build']}, min_length=1)]
+
+
+class RenderingOrigin(StrEnum):
+    """
+    Informational implementation origin. platform_native means the route uses the serving platform's preview machinery; agent_approximation means the agent renders an approximation. Neither value grants authority without a publisher preview_provider delegation.
+    """
+    PLATFORM_NATIVE = 'platform_native'
+    AGENT_APPROXIMATION = 'agent_approximation'
 
 
 class RoutesItem(AdCPBaseModel):
@@ -1307,6 +1360,11 @@ class Profile(StrEnum):
     ADCP_WEBHOOK_SIGNING_V1 = 'adcp/webhook-signing/v1'
 
 
+class AlgorithmsItem(StrEnum):
+    ED25519 = 'ed25519'
+    ECDSA_P256_SHA256 = 'ecdsa-p256-sha256'
+
+
 class WebhookSigning(AdCPBaseModel):
     """
     RFC 9421 webhook-signature and delivery-retry support for outbound webhook callbacks (top-level peer of request_signing). Declares which AdCP webhook-signing profile version and algorithms this agent produces on delivery, whether it supports the legacy HMAC-SHA256 fallback for receivers that have not yet adopted RFC 9421, and the maximum retry horizon receivers use to retain immutable delivery evidence. See docs/building/by-layer/L3/webhooks.mdx.
@@ -1317,7 +1375,7 @@ class WebhookSigning(AdCPBaseModel):
     )
     supported: Annotated[bool, Field(description='Whether this agent signs outbound webhooks with the AdCP RFC 9421 webhook profile. When false or absent, webhooks are delivered with legacy Bearer or HMAC-SHA256 auth only and receivers MUST NOT expect a Signature header. When the seller advertises mutating-webhook emission (i.e., `media_buy.reporting_delivery_methods` includes `webhook`, `media_buy.content_standards.supports_webhook_delivery` is true, `media_buy.relationship_notifications.supported` is true, `wholesale_feed_webhooks.supported` is true, `adcp.capability_changes.notifications.supported` is true, or `account.notifications.supported` is true), this MUST be `true` — emitting state-changing webhooks unsigned is a downgrade vector that lets an on-path attacker forge delivery callbacks. See `x-adcp-validation`.')]
     profile: Annotated[Profile | None, Field(description='Identifier of the webhook-signing profile version the agent emits. Value MUST match the `tag=` parameter emitted in the RFC 9421 `Signature-Input` header (see docs/building/implementation/webhooks.mdx) so receivers can statically validate the declared profile against the on-wire tag. Closed enum; future profile revisions will extend this enum in a follow-up schema bump.')] = None
-    algorithms: Annotated[list[WebhookSigningAlgorithm] | None, Field(description="Signature algorithms this agent uses on outbound webhooks. 3.0 profile permits 'ed25519' and 'ecdsa-p256-sha256' only; other values are reserved for future profile versions and MUST NOT be emitted under adcp/webhook-signing/v1.", json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    algorithms: Annotated[list[AlgorithmsItem] | None, Field(description="Signature algorithms this agent uses on outbound webhooks. 3.0 profile permits 'ed25519' and 'ecdsa-p256-sha256' only; other values are reserved for future profile versions and MUST NOT be emitted under adcp/webhook-signing/v1.", json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     legacy_hmac_fallback: Annotated[bool | None, Field(description='Whether this agent will fall back to HMAC-SHA256 on the legacy push_notification_config.authentication, accounts[].notification_configs[].authentication, sync_principal.configuration.notification_configs[].authentication, or sync_agent_notification_configs.notification_configs[].authentication paths for receivers that have not adopted RFC 9421. Deprecated; removed in AdCP 4.0.')] = False
     delivery_retry_horizon_seconds: Annotated[IntMin86400Max604800 | None, Field(description='Maximum elapsed time from the first delivery attempt during which this agent may retry the same webhook delivery. The publisher retains the immutable delivery-key-to-RFC-8785-JCS-payload binding and sufficient delivery state for at least this interval, and MUST NOT retry that key afterward. Receivers retain the matching payload binding and terminal publication proof for at least max(86400, this value) seconds in AdCP 3.x. Retries do not extend the horizon. A webhook-emitting AdCP 3.2 agent MUST populate this additive field; it remains schema-optional so existing 3.x capability documents stay valid. Minimum 86400 (24h), maximum 604800 (7d).')] = None
 
@@ -1330,10 +1388,10 @@ class KeyOrigins(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/get-adcp-capabilities-response.json', pointer='#/properties/identity/properties/key_origins')
-    governance_signing: Annotated[HttpUrl | None, Field(description='Origin (scheme + host) serving the governance-signing JWKS.')] = None
-    request_signing: Annotated[HttpUrl | None, Field(description='Origin (scheme + host) serving the request-signing JWKS.')] = None
-    webhook_signing: Annotated[HttpUrl | None, Field(description='Origin (scheme + host) serving the JWKS used for webhook delivery. Webhooks are signed with `adcp_use: "request-signing"` keys; the deprecated `adcp_use: "webhook-signing"` value remains accepted during the backward-compatibility window.')] = None
-    tmp_signing: Annotated[HttpUrl | None, Field(description='Origin (scheme + host) serving the TMP-signing JWKS, when this operator participates in TMP.')] = None
+    governance_signing: Annotated[str | None, Field(description='Origin (scheme + host) serving the governance-signing JWKS.', json_schema_extra={'format': 'uri'})] = None
+    request_signing: Annotated[str | None, Field(description='Origin (scheme + host) serving the request-signing JWKS.', json_schema_extra={'format': 'uri'})] = None
+    webhook_signing: Annotated[str | None, Field(description='Origin (scheme + host) serving the JWKS used for webhook delivery. Webhooks are signed with `adcp_use: "request-signing"` keys; the deprecated `adcp_use: "webhook-signing"` value remains accepted during the backward-compatibility window.', json_schema_extra={'format': 'uri'})] = None
+    tmp_signing: Annotated[str | None, Field(description='Origin (scheme + host) serving the TMP-signing JWKS, when this operator participates in TMP.', json_schema_extra={'format': 'uri'})] = None
 
 
 class CompromiseNotification(AdCPBaseModel):
@@ -1356,7 +1414,7 @@ class Identity(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/get-adcp-capabilities-response.json', pointer='#/properties/identity')
-    brand_json_url: Annotated[AdCPUrl | None, Field(description="HTTPS URL of the operator's brand.json (typically `https://{operator-domain}/.well-known/brand.json`). Trust-root pointer for this agent's signing keys. See [security.mdx §Discovering an agent's signing keys via `brand_json_url`](https://adcontextprotocol.org/docs/building/by-layer/L1/security#discovering-an-agents-signing-keys-via-brand_json_url) for the verifier algorithm and `x-adcp-validation` for structured constraints. Distinct from `sponsored_intelligence.brand_url`, which is a rendering pointer for SI agent visuals — verifiers MUST use this field for key discovery and MUST NOT fall back to `sponsored_intelligence.brand_url` as a trust-root pointer.")] = None
+    brand_json_url: Annotated[StrFormatUriMatching5E721644 | None, Field(description="HTTPS URL of the operator's brand.json (typically `https://{operator-domain}/.well-known/brand.json`). Trust-root pointer for this agent's signing keys. See [security.mdx §Discovering an agent's signing keys via `brand_json_url`](https://adcontextprotocol.org/docs/building/by-layer/L1/security#discovering-an-agents-signing-keys-via-brand_json_url) for the verifier algorithm and `x-adcp-validation` for structured constraints. Distinct from `sponsored_intelligence.brand_url`, which is a rendering pointer for SI agent visuals — verifiers MUST use this field for key discovery and MUST NOT fall back to `sponsored_intelligence.brand_url` as a trust-root pointer.")] = None
     per_principal_key_isolation: Annotated[bool | None, Field(description="When true, this multi-principal operator scopes signing keys per-principal so a single principal's key compromise does not silently re-scope across principals served by the same operator. `kid` values remain opaque to verifiers per RFC 7517; any operator-side naming convention (e.g., `{operator}:{principal}:{key_version}`) is internal bookkeeping and MUST NOT be parsed by verifiers. See docs/building/understanding/security-model.mdx.")] = False
     key_origins: Annotated[KeyOrigins | None, Field(description='Map of signing-key surface/purpose → publishing origin, so counterparties can verify origin separation (e.g., governance keys served from a separate origin than transport/webhook keys) at onboarding. Absent means the operator has not declared a separation scheme; receivers SHOULD assume shared-origin. Every entry listed MUST have a corresponding signing posture declared elsewhere — `request_signing` requires non-empty `request_signing.supported_for`/`required_for`/`protocol_methods_supported_for`/`protocol_methods_required_for`; `webhook_signing` requires `webhook_signing.supported === true` and names the webhook delivery surface, not a required live `adcp_use: "webhook-signing"` key purpose — otherwise the consistency check at signature-verification time has nothing to anchor against. See `x-adcp-validation` and docs/building/by-layer/L1/security.mdx §Origin separation.')] = None
     compromise_notification: Annotated[CompromiseNotification | None, Field(description='Whether this agent emits the `identity.compromise_notification` webhook event on key revocation due to known or suspected compromise (as opposed to scheduled rotation). Subscribers use this to bound the window between compromise detected and verifiers converging on revocation. See docs/building/implementation/webhooks.mdx §identity.compromise_notification.')] = None
@@ -1382,7 +1440,7 @@ class AccreditationsItem(AdCPBaseModel):
     accrediting_body: Annotated[str, Field(description='Accrediting organization — open string (the global landscape includes MRC, ARF, ABC, BARB, JICWEBS, AGOF, JIC bodies in many markets). Use the canonical short name where one exists.')]
     certification_id: Annotated[str | None, Field(description="Optional identifier for the certification in the accrediting body's records (when one exists; many bodies do not issue stable IDs).")] = None
     valid_until: Annotated[date | None, Field(description="Optional ISO 8601 date when the current accreditation expires. Buyers MAY treat post-expiry data as un-accredited. Absence means the vendor does not assert an expiry — buyers SHOULD verify currency at the accrediting body's directory.")] = None
-    evidence_url: Annotated[HttpUrl | None, Field(description="Optional URL pointing at the accrediting body's public listing for this certification (the buyer's path to verify the claim independently).")] = None
+    evidence_url: Annotated[str | None, Field(description="Optional URL pointing at the accrediting body's public listing for this certification (the buyer's path to verify the claim independently).", json_schema_extra={'format': 'uri'})] = None
 
 
 class MetricsItem(AdCPBaseModel):
@@ -1394,11 +1452,11 @@ class MetricsItem(AdCPBaseModel):
         UniqueItems('accreditations'),
     )
     metric_id: Annotated[VendorMetricID, Field(description="Identifier for the metric within the vendor's vocabulary. Combined with the agent's BrandRef, forms the canonical tuple `(vendor.domain, vendor.brand_id, metric_id)`. Each metric_id MUST be unique within a single agent's catalog.")]
-    standard_reference: Annotated[HttpUrl | None, Field(description='Optional URI pointing at the published standard this metric IMPLEMENTS (e.g., IAB Attention Measurement Guidelines, MRC Viewable Impression Measurement, GARM emissions framework). Distinct from `accreditations[]` — `standard_reference` is what the metric is built against; `accreditations[]` is third-party certification that the implementation actually conforms. Buyer agents normalizing across vendors SHOULD apply the AdCP URL canonicalization rules before comparing — vendors implementing the same standard MAY use different URL forms for the same canonical document.')] = None
+    standard_reference: Annotated[str | None, Field(description='Optional URI pointing at the published standard this metric IMPLEMENTS (e.g., IAB Attention Measurement Guidelines, MRC Viewable Impression Measurement, GARM emissions framework). Distinct from `accreditations[]` — `standard_reference` is what the metric is built against; `accreditations[]` is third-party certification that the implementation actually conforms. Buyer agents normalizing across vendors SHOULD apply the AdCP URL canonicalization rules before comparing — vendors implementing the same standard MAY use different URL forms for the same canonical document.', json_schema_extra={'format': 'uri'})] = None
     accreditations: Annotated[list[AccreditationsItem] | None, Field(description="Third-party accreditations this metric holds (MRC, ARF, JIC, ABC, BARB, AGOF, etc.). Distinct from `standard_reference`: a metric can implement a standard without being independently accredited. Buyers asking 'is this MRC-accredited?' SHOULD check this array, not just `standard_reference`. Each entry names the accrediting body and optionally pins a certification ID, validity date, and evidence URL.", json_schema_extra={'uniqueItems': True})] = None
     unit: Annotated[str | None, Field(description='Unit of the metric value when reported via `vendor_metric_values.value` (e.g., `score`, `seconds`, `persons`, `gCO2e`, `lift_percent`, `USD`). Buyers SHOULD render the unit alongside the value rather than computing units locally; sellers populating `vendor_metric_values.unit` MUST match this declaration when present.')] = None
     description: Annotated[str | None, Field(description='Human-readable description of what this metric measures and any relevant methodology notes. Surfaced in buyer-agent UX when explaining the metric to humans.')] = None
-    methodology_url: Annotated[HttpUrl | None, Field(description="URL to the vendor's full methodology documentation for this metric. Buyers SHOULD link or fetch this when human review of the methodology is in scope (compliance, RFP review, accreditation audit). Field name mirrors `governance.property_features[].methodology_url`.")] = None
+    methodology_url: Annotated[str | None, Field(description="URL to the vendor's full methodology documentation for this metric. Buyers SHOULD link or fetch this when human review of the methodology is in scope (compliance, RFP review, accreditation audit). Field name mirrors `governance.property_features[].methodology_url`.", json_schema_extra={'format': 'uri'})] = None
     methodology_version: Annotated[str | None, Field(description='Optional version identifier (semver, ISO date, or vendor-defined version string) for the methodology this metric currently implements. When present, buyer agents pin the contracted version via `committed_metrics[].methodology_version` (vendor scope) so silent vendor methodology changes are detectable; absence means the vendor does not version their methodology and buyers MUST treat any change as untracked.')] = None
     ext: ExtensionObject | None = None
 
@@ -1439,6 +1497,18 @@ class WholesaleFeedVersioning(AdCPBaseModel):
     cache_scope_account: Annotated[bool | None, Field(description="Whether the agent ever returns cache_scope: 'account' (i.e., publishes per-account overlays distinct from the public rate card). When true, buyers MUST be prepared to maintain account-overlay caches alongside the public layer. When false or absent, all responses are cache_scope: 'public' regardless of whether account was provided — the agent's rate card is universal. Confidentiality note: declaring true advertises that the agent runs custom-pricing deals (low-grade market-posture signal); agents preferring not to disclose this MAY omit the field and let consumers detect-on-call via cache_scope on response.")] = None
 
 
+class WholesaleFeedWebhooksEventTypesItem(StrEnum):
+    PRODUCT_CREATED = 'product.created'
+    PRODUCT_UPDATED = 'product.updated'
+    PRODUCT_PRICED = 'product.priced'
+    PRODUCT_REMOVED = 'product.removed'
+    SIGNAL_CREATED = 'signal.created'
+    SIGNAL_UPDATED = 'signal.updated'
+    SIGNAL_PRICED = 'signal.priced'
+    SIGNAL_REMOVED = 'signal.removed'
+    WHOLESALE_FEED_BULK_CHANGE = 'wholesale_feed.bulk_change'
+
+
 class WholesaleFeedWebhooks(AdCPBaseModel):
     """
     Per-agent wholesale product-feed and wholesale signals-feed webhook capabilities. Consumers register durable sync_accounts notification subscribers and receive actual product.*, signal.*, or wholesale_feed.bulk_change payloads without polling. Product mirrors bootstrap and repair through list_products(if_feed_version); signal mirrors use get_signals(if_wholesale_feed_version). Deprecated wholesale get_products remains the 3.x product compatibility path. Webhook emission MUST apply the same caller/account authorization and cache-scope predicate as the corresponding read.
@@ -1451,7 +1521,7 @@ class WholesaleFeedWebhooks(AdCPBaseModel):
         UniqueItems('event_types'),
     )
     supported: Annotated[bool, Field(description='Whether this agent can push wholesale feed change payloads through account-level sync_accounts.accounts[].notification_configs[]. When false or absent, consumers fall back to wholesale polling, optionally with if_wholesale_feed_version probes.')]
-    event_types: Annotated[list[WholesaleFeedEventType] | None, Field(description='Wholesale feed webhook event types this agent can emit. Sales agents emit product.* events and MUST expose list_products or the deprecated 3.x wholesale get_products compatibility path. Signals agents emit signal.* events and MUST support wholesale get_signals. wholesale_feed.bulk_change requires at least one corresponding repair path.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    event_types: Annotated[list[WholesaleFeedWebhooksEventTypesItem] | None, Field(description='Wholesale feed webhook event types this agent can emit. Sales agents emit product.* events and MUST expose list_products or the deprecated 3.x wholesale get_products compatibility path. Signals agents emit signal.* events and MUST support wholesale get_signals. wholesale_feed.bulk_change requires at least one corresponding repair path.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
 
 
 class GetAdCPCapabilitiesResponse(AdCPVersionEnvelope, ProtocolEnvelope):

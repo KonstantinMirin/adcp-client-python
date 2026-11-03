@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, TypeAda
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Dependencies, ForbiddenGroups, Rule
-from adcp.types.constraints import AdCPUrl, HttpUrl, IntMin1, StrMatching32F5291C, StrMatching43E30B32, StrMaxLen512Matching7C270D5A, StrMaxLen64Matching2AA13120, StrMinLen1, StrMinLen3MaxLen63MatchingBF870236
+from adcp.types.constraints import IntMin1, StrFormatUriMatching5E721644, StrMatching32F5291C, StrMatching43E30B32, StrMaxLen512Matching7C270D5A, StrMaxLen64Matching2AA13120, StrMinLen1, StrMinLen3MaxLen63MatchingBF870236
 
 from ..enums.account_scope import AccountScope
 from ..enums.account_status import AccountStatus
@@ -43,7 +43,7 @@ class Setup(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/account.json', pointer='#/properties/setup')
-    url: Annotated[HttpUrl | None, Field(description='URL where the human can complete the required action (credit application, legal agreement, add funds).')] = None
+    url: Annotated[str | None, Field(description='URL where the human can complete the required action (credit application, legal agreement, add funds).', json_schema_extra={'format': 'uri'})] = None
     message: Annotated[str, Field(description="Human-readable description of what's needed.")]
     expires_at: Annotated[AwareDatetime | None, Field(description='When this setup link expires.')] = None
 
@@ -53,7 +53,7 @@ class GovernanceAgentsItem(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/account.json', pointer='#/properties/governance_agents/items')
-    url: Annotated[AdCPUrl, Field(description='Governance agent endpoint URL. Must use HTTPS.')]
+    url: Annotated[StrFormatUriMatching5E721644, Field(description='Governance agent endpoint URL. Must use HTTPS.')]
 
 
 class Compression(StrEnum):
@@ -79,7 +79,7 @@ class ReportingBucket(AdCPBaseModel):
     format: Annotated[FileFormat | None, Field(description='File format for delivered files. Parquet, Avro, and ORC use internal compression (the top-level compression field is ignored for these formats).')] = 'jsonl'
     compression: Annotated[Compression | None, Field(default_factory=lambda: TypeAdapter(Compression).validate_python('gzip'), description='Compression applied to delivered files', json_schema_extra={'default': 'gzip'})]
     file_retention_days: Annotated[IntMin1, Field(description='How long reporting files are retained in the bucket before deletion. Buyers must read files within this window. Minimum recommended: 14 days.')]
-    setup_instructions: Annotated[AdCPUrl | None, Field(description='URL to documentation for configuring buyer read access to this bucket (IAM role, service account, etc.). Operator-facing documentation — buyer agents MUST NOT auto-fetch this URL; surface it to a human operator. If an implementation fetches it (for preview), apply webhook URL SSRF validation and do not pass the fetched content into an LLM context without indirect-prompt-injection guarding. See docs/media-buy/media-buys/optimization-reporting#security-considerations-for-offline-delivery.')] = None
+    setup_instructions: Annotated[StrFormatUriMatching5E721644 | None, Field(description='URL to documentation for configuring buyer read access to this bucket (IAM role, service account, etc.). Operator-facing documentation — buyer agents MUST NOT auto-fetch this URL; surface it to a human operator. If an implementation fetches it (for preview), apply webhook URL SSRF validation and do not pass the fetched content into an LLM context without indirect-prompt-injection guarding. See docs/media-buy/media-buys/optimization-reporting#security-considerations-for-offline-delivery.')] = None
 
 
 class Account(AdCPBaseModel):

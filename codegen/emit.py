@@ -175,10 +175,11 @@ BASE_POSITIONS: frozenset[Position] = frozenset({Position.CONJ}) | frozenset(
     and answer.descends is not None
 )
 
-# **``FORMAT_TYPES`` and ``URL_FORMATS`` are ``codegen/lower/scalars.py``'s now**, with
-# ``_named_alias`` and ``name_the_constraint``.  They were here because the SCALAR TAIL of
-# the per-node dispatch was, and section 14 step 5 makes each kind's row
-# ``lower/<kind>.py``; nothing about any of them changed in the move.
+# **``FORMAT_TYPES`` is ``codegen/lower/scalars.py``'s now**, with ``_named_alias`` and
+# ``name_the_constraint``.  They were here because the SCALAR TAIL of the per-node
+# dispatch was, and section 14 step 5 makes each kind's row ``lower/<kind>.py``; nothing
+# about any of them changed in the move.  ``URL_FORMATS`` moved with them and has since
+# been deleted outright: section 2 withdrew the URL type it gated (2026-11-02).
 
 
 def asserted_formats(doc: dict) -> frozenset[str]:
@@ -2309,7 +2310,7 @@ def emit(
     # shape, so its text is the same whichever documents a run was named, and the
     # member modules that import it are the same text too (§9).
     #
-    # Written on every run for the reason the alias module's ``URL_LINE`` is: a consumer
+    # Written on every run for the reason ``constraints.NAMED_CONTAINERS`` is: a consumer
     # imports the base to annotate their own code, so it is declared whatever a run met.
     out.beside[f"{lower_envelope.MODULE.rsplit('.', 1)[1]}.py"] = _envelope_bases(
         bundle_dir, envelope_shape

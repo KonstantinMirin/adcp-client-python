@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
-from adcp.types.constraints import HttpUrl
+from adcp.types.constraints import StrFormatUriMatching2E1F4D86, StrFormatUriMatching339ABAF8
 
 from .brand_ref import BrandReference
 from .ext import ExtensionObject
@@ -41,7 +41,7 @@ class AttestationAgentIssuer(AttestationIssuer):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/attestation-issuer.json', pointer='#/oneOf/1')
     type: Annotated[Literal['agent'], Field(description='The issuer is an AdCP agent identified by its canonical HTTPS endpoint.')]
-    agent_url: Annotated[HttpUrl, Field(description='Canonical HTTPS endpoint of the issuing agent. Evaluators compare it using AdCP URL canonicalization rules.')]
+    agent_url: Annotated[StrFormatUriMatching339ABAF8, Field(description='Canonical HTTPS endpoint of the issuing agent. Evaluators compare it using AdCP URL canonicalization rules.')]
     ext: ExtensionObject | None = None
 
 
@@ -51,7 +51,7 @@ class AttestationOriginIssuer(AttestationIssuer):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/attestation-issuer.json', pointer='#/oneOf/2')
     type: Annotated[Literal['origin'], Field(description='The issuer is identified by a canonical HTTPS origin because no AdCP brand or agent identity applies.')]
-    origin: Annotated[HttpUrl, Field(description='Canonical HTTPS origin with no path, query, fragment, or userinfo. This identifies the issuer; it does not authorize a fetch.')]
+    origin: Annotated[StrFormatUriMatching2E1F4D86, Field(description='Canonical HTTPS origin with no path, query, fragment, or userinfo. This identifies the issuer; it does not authorize a fetch.')]
     ext: ExtensionObject | None = None
 
 

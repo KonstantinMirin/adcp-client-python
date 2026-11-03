@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
-from adcp.types.constraints import HttpUrl, StrMatchingA828669D
+from adcp.types.constraints import StrMatchingA828669D
 
 from ..core.account_ref import AccountReference
 from ..core.brand_ref import BrandReference
@@ -38,7 +38,7 @@ class ProductTarget(TargetsItem):
 class ThirdPartyFormatTarget(TargetsItem):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/validate-input-request.json', pointer='#/properties/targets/items/oneOf/2')
     kind: Literal['third_party_format']
-    id: Annotated[HttpUrl, Field(description='URI-form format identifier referencing a third-party format definition (e.g., `https://creativevendor.example/formats/image_300x250@sha256:...`). Validators fetch the definition (digest-pinned, cached) and validate the manifest against it.')]
+    id: Annotated[str, Field(description='URI-form format identifier referencing a third-party format definition (e.g., `https://creativevendor.example/formats/image_300x250@sha256:...`). Validators fetch the definition (digest-pinned, cached) and validate the manifest against it.', json_schema_extra={'format': 'uri'})]
 
 
 class CreativeCapabilityTarget(TargetsItem):

@@ -8,7 +8,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import HttpUrl, StrMatching43E30B32
+from adcp.types.constraints import StrMatching43E30B32
 
 from .ext import ExtensionObject
 from .offering_asset_group import OfferingAssetGroup
@@ -78,7 +78,7 @@ class JobItem(AdCPBaseModel):
     salary: Annotated[Salary | None, Field(description='Salary range. Specify min and/or max with currency and period.')] = None
     date_posted: Annotated[date | None, Field(description='Date the job was posted (ISO 8601 date).')] = None
     valid_through: Annotated[date | None, Field(description='Application deadline (ISO 8601 date).')] = None
-    apply_url: Annotated[HttpUrl | None, Field(description='Direct application URL.')] = None
+    apply_url: Annotated[str | None, Field(description='Direct application URL.', json_schema_extra={'format': 'uri'})] = None
     job_functions: Annotated[list[str] | None, Field(description="Job function categories (e.g., 'engineering', 'marketing', 'sales', 'finance').", min_length=1)] = None
     industries: Annotated[list[str] | None, Field(description="Industry classifications (e.g., 'technology', 'healthcare', 'retail').", min_length=1)] = None
     tags: Annotated[list[str] | None, Field(description="Tags for filtering (e.g., 'remote', 'visa-sponsorship', 'equity').", min_length=1)] = None
