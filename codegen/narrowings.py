@@ -38,8 +38,9 @@ graded exactly as it had.  A per-pair reading cannot see an edit here, which is 
 ``tests/test_decision_set.py`` holds the guard and why both sides of it are derived.
 
 **WHAT READS IT.**  :func:`unadmitted` is the whole of the authority: it takes the
-narrowings a RUN actually took, read off the graded reports, and answers which of them no
-entry admits.  Those are the defect.  :func:`unused` is the other direction -- an entry
+narrowings a RUN actually took -- read off §5's table, one graded cell at a time, which is
+the reading that COMPLETES (:data:`_Site`) -- and answers which of them no entry admits.
+Those are the defect.  :func:`unused` is the other direction -- an entry
 admitting a narrowing no run takes is an allowlist with nothing behind it, which section 2
 calls "a declaration with no value behind it is an allowlist wearing a measurement".  The
 registry is therefore compared in BOTH directions against a measurement, and neither side
@@ -57,6 +58,8 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from typing import Any
 
+from codegen.keywords import Position
+
 
 def _canonical(value: Any) -> str:
     """One spelling of a value, so equality does not depend on how it was written.
@@ -69,55 +72,79 @@ def _canonical(value: Any) -> str:
     return json.dumps(value, sort_keys=True, default=repr)
 
 
+#: **WHAT AN ENTRY IS INDEXED BY, and it is the CELL rather than the document pointer**
+#: (``docs/plan/final-state.md`` reading 9, re-indexed 2026-11-03).
+#:
+#: An entry used to be keyed ``(document, pointer, value)``.  That key obliges the
+#: comparison's right-hand side to be a reading of every PAIR the run builds -- a document
+#: and a pointer only a pair has -- and that reading is the draw: measured at **2h21m of
+#: CPU at 20.3 GB without completing**, so the equality reading 9 asks for was cut rather
+#: than answered, and a cut equality is the one thing reading 9 forbids ("a budget cut is
+#: reported as a cut, and no pair passes by leaving the check unexecuted").
+#:
+#: Keyed on the CELL -- ``(keyword, position, canonical(value))`` -- the right-hand side is
+#: §5's table instead: **289 live cells, enumerable, and it completes.**  §8 is the reason
+#: that is the same measurement and not a weaker one: "a cell is one keyword at one
+#: position inside a two-keyword probe, so the cost of a cell proof is a function of the
+#: KEYWORD and not of any document that states it", and the cell form "reaches the 86
+#: documents no draw will ever finish".
+#:
+#: **§2's equality-over-the-value rule survives the re-indexing unchanged**, which is what
+#: makes it a re-indexing and not a relaxation: the value is still the instance the
+#: document admits and the class refuses, so an entry still admits that FACT and not its
+#: kind.  What moves is which coordinates locate the fact, and the cell locates it in the
+#: space the obligation is actually stated over.
+_Site = tuple[str, str, str]
+
+
 @dataclass(frozen=True)
 class Narrowing:
     """One narrowing this SDK takes on purpose, as the FACT and not as its kind.
 
-    ``document`` and ``pointer`` are the position, in the space
-    :class:`adcp.types._base.SchemaRef` names.  ``value`` is the instance the document
-    admits and the class refuses, and it is the field that makes an entry a fact: a kind --
-    "a URI whose host differs only in case", "a string longer than 2,083 characters" --
-    has no value to state, so an entry that tried to admit one could not be written.
+    ``keyword`` and ``position`` are §5's CELL -- one keyword at one of §3's nine
+    positions -- which is the space the obligation is stated over; :data:`_Site` carries
+    the measurement that made it the key.  ``value`` is the instance the document admits
+    and the class refuses, and it is the field that makes an entry a fact: a kind -- "a URI
+    whose host differs only in case", "a string longer than 2,083 characters" -- has no
+    value to state, so an entry that tried to admit one could not be written.
 
-    ``keyword`` is what the document states at the pointer that the annotation does not
-    carry, and ``decision`` is the sentence in ``docs/plan/`` that admits the narrowing.
-    Both are for the reader and neither is part of the comparison -- an entry whose
-    reasoning drifted would otherwise stop admitting the narrowing it was written for, and
-    the pair would redden with the wrong explanation.
+    ``decision`` is the sentence in ``docs/plan/`` that admits the narrowing.  It is for
+    the reader and is not part of the comparison -- an entry whose reasoning drifted would
+    otherwise stop admitting the narrowing it was written for, and the pair would redden
+    with the wrong explanation.
 
     Frozen, so an entry cannot be re-pointed after import.
     """
 
-    document: str
-    pointer: str
-    value: Any
     keyword: str
+    position: Position
+    value: Any
     decision: str
 
     @property
-    def site(self) -> tuple[str, str, str]:
+    def site(self) -> _Site:
         """What :func:`admits` compares, in one place so the two directions share it."""
-        return (self.document, self.pointer, _canonical(self.value))
+        return (self.keyword, self.position.name, _canonical(self.value))
 
 
 @dataclass(frozen=True)
 class Taken:
     """One narrowing a RUN took, as a grader reports it.
 
-    The same three fields :attr:`Narrowing.site` compares, plus the ``detail`` the grader
-    wrote, so a failure names the pydantic refusal rather than only the position.  Built by
-    the guard from the graded reports and never written down, which is what makes the
-    comparison's right-hand side a measurement.
+    The same three coordinates :attr:`Narrowing.site` compares, plus the ``detail`` the
+    grader wrote, so a failure names the refusal rather than only the cell.  Built by the
+    guard from §5's table graded cell by cell and never written down, which is what makes
+    the comparison's right-hand side a measurement.
     """
 
-    document: str
-    pointer: str
+    keyword: str
+    position: Position
     value: Any
     detail: str
 
     @property
-    def site(self) -> tuple[str, str, str]:
-        return (self.document, self.pointer, _canonical(self.value))
+    def site(self) -> _Site:
+        return (self.keyword, self.position.name, _canonical(self.value))
 
 
 #: **THE REGISTRY.**  Empty; the module docstring says why that is a reading.

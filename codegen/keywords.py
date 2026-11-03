@@ -1164,7 +1164,13 @@ _COMBINATORS: dict[str, Row] = {
                 Effect.RULE,
                 False,
                 Position.BRANCH,
-                ": under `not` → the union of the branches' groups; else nothing.",
+                ": nothing, and the schema half answers. The `not` clause this row "
+                "carried — the union of the branches' groups — is WITHDRAWN (§8, "
+                "2026-11-03): `not oneOf` admits an instance satisfying ZERO branches "
+                "or TWO OR MORE, and a forbidden group over the union refuses an "
+                "instance satisfying two, which the document admits. A forbidden-group "
+                "list cannot say \"not exactly one\", so such a node DECLARES rather "
+                "than lowers.",
             ),
         },
         grid=COMBINATORS,
