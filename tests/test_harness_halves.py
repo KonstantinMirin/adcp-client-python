@@ -415,6 +415,80 @@ def test_the_real_alarm_cuts_a_draw_that_cannot_END_and_the_cut_is_still_a_cut()
     )
 
 
+def test_an_exception_raised_after_a_swallowed_cut_is_a_cut_and_not_a_verdict() -> None:
+    """The door ``OverBudget``'s TYPE cannot close, and what came through it.
+
+    Making a cut a ``BaseException`` stops an enclosing ``except Exception`` from reading
+    the cut ITSELF as a verdict.  It does nothing when a frame between the alarm and the
+    handler swallows the cut and raises its OWN exception in its place -- and
+    ``hypothesis`` does that: the first cut lands inside a draw, ``hypothesis`` re-runs the
+    strategy to see whether the failure reproduces, the second run diverges because the
+    first was interrupted, and ``FlakyStrategyDefinition`` -- an ordinary ``Exception`` in
+    the ``HypothesisException`` family -- is what reaches ``check_accepts``.
+
+    **Measured, not supposed.**  Over all 2,793 graded pairs at a 20 s budget, single
+    process: 2 pairs reported ``accepts:strategy_error``, both at 20.2 s against the 20 s
+    budget, both with ``FlakyStrategyDefinition: Inconsistent data generation!`` as the
+    whole of their detail -- ``core/signal-coverage-forecast.json#`` and
+    ``media-buy/media-buy-commitment-response.json#/oneOf/0``.  Two facts about this
+    process's clock, in the column that means the generator produced nothing for the
+    schema.
+
+    **The REAL alarm, and the swallow is the entry point's rather than a race.**  The entry
+    point waits for the cut and catches it exactly as ``hypothesis``'s own
+    ``except BaseException`` frames do, then raises a ``HypothesisException`` -- the
+    sequence end to end, with the failsafe of this section making a budget that never
+    fires cost ``_FAILSAFE_SECONDS`` and redden rather than hang.  It fails on the old code
+    for the reason the figures above record and not for a timing reason.
+    """
+    from hypothesis.errors import FlakyStrategyDefinition
+
+    swallowed_the_cut = [False]
+
+    def entry_point(payload: Any) -> Any:
+        until = time.monotonic() + _FAILSAFE_SECONDS
+        while not swallowed_the_cut[0] and time.monotonic() < until:
+            try:
+                time.sleep(0.05)
+            except harness.OverBudget:
+                swallowed_the_cut[0] = True
+        raise FlakyStrategyDefinition("Inconsistent data generation!")
+
+    verdict: Any = None
+    started = time.monotonic()
+    with pytest.raises(harness.OverBudget):
+        with harness.within(1):
+            verdict = harness.check_accepts(DOC, entry_point, examples=1)
+    assert swallowed_the_cut[0], "the fixture never reached the swallow it is about"
+    assert verdict is None, (
+        f"an exception raised after the cut was swallowed became a verdict about the "
+        f"document: {verdict}"
+    )
+    assert time.monotonic() - started < _FAILSAFE_SECONDS, (
+        "the alarm did not cut the draw; the entry point's own failsafe did"
+    )
+
+
+def test_a_grade_with_no_budget_reports_the_verdict_it_always_did() -> None:
+    """The other side of :func:`harness.budget_expired`, so the clause is not a mute.
+
+    A caller grading with no :func:`harness.within` around it -- every direct caller in
+    this file -- must still get ``strategy_error`` for a generator that errors, because
+    there is no clock for the exception to be an artefact of.  Without this the clause
+    above could be satisfied by reporting every error as a cut.
+    """
+    from hypothesis.errors import FlakyStrategyDefinition
+
+    def entry_point(payload: Any) -> Any:
+        raise FlakyStrategyDefinition("Inconsistent data generation!")
+
+    res = harness.check_accepts(DOC, entry_point, examples=1)
+    assert res.outcome == "strategy_error", (
+        f"with no budget active the generator's own error is still the verdict, "
+        f"not a cut: {res.outcome}"
+    )
+
+
 # --------------------------------------------------------------------------- #
 # the canonicalisation sharing, whose whole correctness is its lifetime
 # --------------------------------------------------------------------------- #

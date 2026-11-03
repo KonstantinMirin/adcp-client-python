@@ -1369,6 +1369,10 @@ def check_accepts(
         res.detail = f"{err['type']} at {err['loc']}: {err['msg']}"
         res.counterexample = _dump(seen[-1]) if seen else ""
     except (HypothesisRefResolutionError, HypothesisException, RecursionError) as e:
+        #: The CLOCK first, because ``hypothesis`` swallows the cut and raises its own
+        #: ``FlakyStrategyDefinition`` in its place; :func:`budget_expired` measures it.
+        if budget_expired():
+            raise OverBudget(f"the grade was cut and {type(e).__name__} arrived after") from e
         res.outcome = "strategy_error"
         #: ``_why`` and not the raw message: hypothesis's advice to whoever wrote the
         #: test was pushing the filtered-draw count past the truncation, and the cut
@@ -1377,6 +1381,8 @@ def check_accepts(
         #: places and the one that goes stale.
         res.detail = _why(e)
     except Exception as e:  # a model that raises something other than ValidationError
+        if budget_expired():
+            raise OverBudget(f"the grade was cut and {type(e).__name__} arrived after") from e
         res.outcome = "model_error"
         res.detail = f"{type(e).__name__}: {e}"[:400]
         res.counterexample = _dump(seen[-1]) if seen else ""
@@ -1598,6 +1604,12 @@ class _Draws:
         try:
             return [one_instance(schema, custom_formats)]
         except Exception as e:  # noqa: BLE001 -- an undrawable position is unproved
+            #: A cut that ``hypothesis`` swallowed and replaced with its own exception is
+            #: not an undrawable position; :func:`budget_expired` says which this is.
+            if budget_expired():
+                raise OverBudget(
+                    f"the widening draw was cut and {type(e).__name__} arrived after"
+                ) from e
             return [None, _why(e)]
 
 
@@ -5058,12 +5070,57 @@ def within(seconds: int) -> Iterator[None]:
     import signal
 
     def over(signum: int, frame: Any) -> None:
+        _FIRED[0] = True
         raise OverBudget(f"the grade did not finish inside {seconds} s")
 
     previous = signal.signal(signal.SIGALRM, over)
+    was = _FIRED[0]
+    _FIRED[0] = False
     signal.setitimer(signal.ITIMER_REAL, seconds, _BUDGET_RETRY)
     try:
         yield
     finally:
         signal.setitimer(signal.ITIMER_REAL, 0)
         signal.signal(signal.SIGALRM, previous)
+        _FIRED[0] = was
+
+
+#: Whether the alarm :func:`within` installed has already raised, read by
+#: :func:`budget_expired`.  A list and not a module name rebound, so the handler can set it
+#: from inside a signal frame without a ``global`` statement.
+_FIRED = [False]
+
+
+def budget_expired() -> bool:
+    """Whether the enclosing :func:`within` has already cut this grade.
+
+    **The clause :class:`OverBudget`'s type alone could not carry, and it is measured.**
+    Making ``OverBudget`` a ``BaseException`` stops an enclosing ``except Exception`` from
+    reading a cut as a verdict, and that works for the cut ITSELF.  It does not work when
+    something between the alarm and the handler SWALLOWS the cut and raises its own
+    exception instead -- and ``hypothesis`` does exactly that: the first ``OverBudget``
+    lands inside a draw, ``hypothesis`` re-runs the strategy to see whether the failure
+    reproduces, the second run behaves differently because the alarm interrupted the first
+    one, and what arrives at ``check_accepts`` is ``FlakyStrategyDefinition`` -- an
+    ordinary ``Exception`` in the ``HypothesisException`` family, caught by name, reported
+    as ``accepts:strategy_error``.
+
+    Measured over all 2,793 graded pairs at a 20 s budget, single process: 2 pairs reported
+    ``accepts:strategy_error`` and both were cuts, each at 20.2 s against the 20 s budget,
+    each with ``FlakyStrategyDefinition: Inconsistent data generation!`` as its whole
+    detail -- ``core/signal-coverage-forecast.json#`` and
+    ``media-buy/media-buy-commitment-response.json#/oneOf/0``.  So the column that means
+    "the generator produced nothing for this schema" held two facts about this process's
+    clock, which is the same defect the 73 false ``model_error``s were, arriving by a
+    different door.
+
+    **So a handler that is about to name a document asks the CLOCK first.**  Once the
+    alarm has fired, nothing that follows it inside the same :func:`within` is a statement
+    about the document: the draw was interrupted part-way and whatever the interrupted
+    machinery then raised is an artefact of the interruption.  The three handlers that turn
+    an arbitrary exception into a reported outcome re-raise :class:`OverBudget` instead.
+
+    ``False`` with no :func:`within` active, so a caller grading without a budget -- every
+    direct caller in ``tests/`` -- is untouched.
+    """
+    return _FIRED[0]
