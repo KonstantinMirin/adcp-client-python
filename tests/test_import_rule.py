@@ -756,7 +756,8 @@ def _candidates() -> set[tuple[type, str]]:
 
 def _reachable(root: object) -> list[object]:
     """Every node declaration reachable from ``root`` through its fields, deduped by id."""
-    from dataclasses import fields as dataclass_fields, is_dataclass
+    from dataclasses import fields as dataclass_fields
+    from dataclasses import is_dataclass
 
     seen: set[int] = set()
     out: list[object] = []
@@ -1017,7 +1018,8 @@ def test_the_raw_carrier_detector_is_name_blind_and_not_vacuous() -> None:
       resolver that resolved nothing.
     """
     from codegen import bundle, keywords
-    from codegen.schema import nodes, parse as schema_parse
+    from codegen.schema import nodes
+    from codegen.schema import parse as schema_parse
 
     doc = bundle.read(BUNDLE, "core/package.json")
     subtrees = {id(sub) for _, sub in bundle.nodes(doc)}

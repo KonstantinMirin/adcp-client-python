@@ -57,6 +57,7 @@ from typing import Annotated, Any, NamedTuple
 
 import jsonschema
 import pytest
+from compiled import compiled
 from pydantic import AfterValidator, TypeAdapter, ValidationError
 from pydantic_core import PydanticCustomError
 
@@ -70,7 +71,6 @@ from adcp.types._runtime import (
     RequiredGroups,
     ValueRule,
 )
-from compiled import compiled
 from codegen import bundle, compiler, emit, ir, render, store
 from codegen.keywords import Position
 from codegen.lower import rules as lower_rules

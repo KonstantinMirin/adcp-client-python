@@ -64,11 +64,11 @@ from __future__ import annotations
 import ast
 import importlib
 import re
-from dataclasses import fields as dataclass_fields, is_dataclass
+from dataclasses import fields as dataclass_fields
+from dataclasses import is_dataclass
 from pathlib import Path
 
 import pytest
-
 
 ROOT = Path(__file__).resolve().parents[1]
 PKG = ROOT / "src" / "adcp"

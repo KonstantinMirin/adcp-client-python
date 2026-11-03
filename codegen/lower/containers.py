@@ -82,12 +82,12 @@ from typing import Any
 
 from adcp.types._runtime import UniqueItems
 from codegen import bundle, compiler, ir
+from codegen.compiler import Module
+from codegen.keywords import Position, declares
 from codegen.lower import approximate, names, rules
+from codegen.refusal import Kind, Refusal
 from codegen.schema import nodes
 from codegen.schema import parse as nodes_parse
-from codegen.keywords import Position, declares
-from codegen.compiler import Module
-from codegen.refusal import Kind, Refusal
 
 #: An ARRAY's own bounds, in the document's spelling, and the ones a field holding
 #: the array can carry.  ``uniqueItems`` is deliberately absent, and the reason is

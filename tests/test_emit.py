@@ -64,61 +64,57 @@ import types
 from dataclasses import replace
 from pathlib import Path
 from typing import Annotated, Any, ClassVar, Literal, NamedTuple
-from unittest import mock
 
+import compared
+import corpus
+import fresh
 import jsonschema
+import populations
 import pytest
+from compiled import compiled
+from conftest import refusal_from
 from datamodel_code_generator.types import DataType
-from hypothesis import given, HealthCheck, Phase, settings
+from hypothesis import HealthCheck, Phase, given, settings
 from hypothesis import strategies as st
-from unittest.mock import patch
-
-from pydantic import BaseModel, ConfigDict, Field, RootModel, TypeAdapter, ValidationError
+from nodeset import claimed, partitions, ratchet
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
 from pydantic_core import PydanticCustomError
 
 from adcp.types._base import (
+    REGEX_ENGINE,
     WIDENED,
     AdCPBaseModel,
     AdCPRootModel,
-    applied_schema,
     BranchDispatchMixin,
-    REGEX_ENGINE,
     SchemaRef,
+    applied_schema,
     schema_at,
 )
 from adcp.types._runtime import Dependencies, Rule, RuleBound, UniqueItems, bound_rules
 from codegen import bundle, compiler, emit, harness, ir, keywords, render
-from codegen.keywords import Rung
 from codegen import constraints as constraints_module
 from codegen import refusal as refusal_module
-from codegen.lower import names, scalars
-from codegen.schema import nodes, parse as schema_parse
-from codegen.lower import const as lower_const
-from codegen.lower import enum as lower_enum
-from codegen.lower import union as lower_union
-from codegen.refusal import Refusal
 from codegen.harness import (
     AcceptsResult,
-    check_accepts,
-    check_liveness,
     LivenessResult,
     Pair,
     PairReport,
     _composed,  # noqa: PLC2701 -- the harness's own folding of an allOf conjunct's facts
+    check_accepts,
+    check_liveness,
     check_pair,
     conforms,
     refusing_payload,
     violated_keywords,
 )
-from codegen.lower import rules
-import compared
-import corpus
-from compiled import compiled
-import fresh
-import populations
-from conftest import refusal_from
-
-from nodeset import claimed, partitions, ratchet
+from codegen.keywords import Rung
+from codegen.lower import const as lower_const
+from codegen.lower import enum as lower_enum
+from codegen.lower import names, rules, scalars
+from codegen.lower import union as lower_union
+from codegen.refusal import Refusal
+from codegen.schema import nodes
+from codegen.schema import parse as schema_parse
 
 REPO = Path(__file__).resolve().parents[1]
 
@@ -1919,7 +1915,7 @@ def test_a_root_scalar_alias_is_compiled_with_the_same_engine_as_a_class() -> No
     claimed("graded aliases that state a pattern", with_pattern, inside=aliases)
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def _pattern_model(pattern: str, engine: str | None) -> type[BaseModel]:
     """A one-field carrier for ``pattern`` under ``engine``.
 
@@ -2618,7 +2614,7 @@ def _source(document: str) -> str:
     return (TREE / f"{emit.module_file(document, PACKAGES)}.py").read_text()
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def _symbol(document: str) -> str:
     """The name the emitted module exports, read off the module itself.
 
@@ -4778,7 +4774,7 @@ def test_a_mapping_is_a_dict_whose_key_comes_from_the_document() -> None:
         # the assertion is the declaration rather than a key alias -- a key alias here
         # would be a model narrower than its document, which is the direction §2 forbids.
         if node.get("additionalProperties") is not False and "patternProperties" in node:
-            assert f"dict[str," in _source(path), document
+            assert "dict[str," in _source(path), document
             # **The declaration is looked for on the MODULE AND on every class the module
             # defines, and what is asserted is that the POINTER is declared**
             # (``adcp-client-python-10l.55``).  §7 puts an approximation on the object
@@ -6836,7 +6832,7 @@ def test_each_rule_kind_refuses_on_two_plain_arguments() -> None:
     ]
     seen: set[str] = set()
     for rule, keys, keyword in cases:
-        values = {k: "p" for k in keys}
+        values = dict.fromkeys(keys, "p")
         got = [e[0] for e in rule.errors(frozenset(keys), values)]
         assert got == ([keyword] if keyword else []), (rule, keys, got)
         seen.add(type(rule).__name__)

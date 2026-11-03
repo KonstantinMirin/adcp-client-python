@@ -76,12 +76,13 @@ from pathlib import Path
 from typing import Any
 
 from compiled import compiled
+from nodeset import claimed, partitions
+
 from codegen import bundle, compiler, emit, keywords
 from codegen.lower import names
 from codegen.lower import union as lower_union
-from codegen.schema import nodes, parse as schema_parse
-
-from nodeset import claimed, partitions
+from codegen.schema import nodes
+from codegen.schema import parse as schema_parse
 
 REPO = Path(__file__).resolve().parents[1]
 BUNDLE = REPO / "schemas" / "cache" / "3.2"

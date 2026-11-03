@@ -64,11 +64,6 @@ from __future__ import annotations
 import functools
 from typing import Any
 
-import pytest
-
-from codegen import keywords
-from codegen.keywords import Position
-
 from cells import (
     AT,
     NODES,
@@ -81,7 +76,9 @@ from cells import (
 )
 from nodeset import claimed, partitions
 from pydantic import TypeAdapter
-from codegen import harness
+
+from codegen import harness, keywords
+from codegen.keywords import Position
 
 #: §5's row count and §3's position count, the two factors of the table's area.  Pinned
 #: because the DENOMINATOR is the reading: a row added without a cell, or a position

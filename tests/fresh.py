@@ -64,9 +64,9 @@ import time
 import traceback
 from pathlib import Path
 
-from codegen import bundle, emit
-
 from compiled import CACHE_ROOT, compiled, digest
+
+from codegen import bundle, emit
 
 REPO = Path(__file__).resolve().parents[1]
 BUNDLE = REPO / "schemas" / "cache" / "3.2"

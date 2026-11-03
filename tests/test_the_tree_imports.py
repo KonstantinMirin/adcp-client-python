@@ -48,15 +48,14 @@ import subprocess
 import sys
 from pathlib import Path
 
+import fresh
 import pytest
-from adcp.types._base import SchemaRef
+from compiled import compiled
+from nodeset import claimed, partitions
 
+from adcp.types._base import SchemaRef
 from codegen import bundle, emit, ir
 from codegen.refusal import BuildFailure
-
-from compiled import compiled
-import fresh
-from nodeset import claimed, partitions
 
 REPO = Path(__file__).resolve().parents[1]
 BUNDLE = REPO / "schemas" / "cache" / "3.2"

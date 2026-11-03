@@ -22,7 +22,6 @@ from typing import Any, NamedTuple
 
 from adcp.types import _base
 from adcp.types._base import applied_schema
-
 from codegen import keywords
 from codegen.refusal import BuildFailure, Kind, Refusal
 

@@ -39,11 +39,11 @@ import sys
 import time
 from pathlib import Path
 
-from codegen import bundle
-
 import compiled
 import fresh
 from nodeset import claimed
+
+from codegen import bundle
 
 REPO = Path(__file__).resolve().parents[1]
 BUNDLE = REPO / "schemas" / "cache" / "3.2"

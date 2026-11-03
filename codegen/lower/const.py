@@ -92,8 +92,8 @@ from typing import Any
 import jsonschema
 
 from codegen import compiler, ir
-from codegen.schema import nodes
 from codegen.refusal import Kind, Refusal
+from codegen.schema import nodes
 
 #: The cells a ``const`` node consumes WHATEVER IT STATES -- the pin itself and the type
 #: word, which is this row's own coverage independent of any node.  ``description`` is a

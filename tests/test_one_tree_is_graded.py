@@ -53,7 +53,6 @@ import sys
 import textwrap
 
 import adcp
-
 import codegen
 
 #: This file, so a child interpreter can import the predicate below rather than restate

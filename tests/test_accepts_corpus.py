@@ -69,14 +69,14 @@ from pathlib import Path
 from typing import Any
 from unittest import mock
 
+import corpus as corpus_module
 import pytest
+from nodeset import claimed
 from pydantic import BaseModel, ConfigDict
 
-import corpus as corpus_module
-from adcp.types._base import PACKAGE, SchemaRef, schema_at
+from adcp.types._base import PACKAGE, SchemaRef
 from codegen import bundle, harness
 from codegen.harness import Pair, check_accepts, check_pair, corpus_defect, corpus_key
-from nodeset import claimed
 
 REPO = Path(__file__).resolve().parents[1]
 BUNDLE = REPO / "schemas" / "cache" / "3.2"

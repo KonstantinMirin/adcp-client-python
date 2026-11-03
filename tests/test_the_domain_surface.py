@@ -87,13 +87,12 @@ from __future__ import annotations
 import importlib
 from pathlib import Path
 
-import pytest
-
 import fresh
-from codegen import emit
+import pytest
 from compiled import compiled
 from nodeset import claimed
 
+from codegen import emit
 
 BUNDLE = Path(__file__).resolve().parents[1] / "schemas" / "cache" / "3.2"
 

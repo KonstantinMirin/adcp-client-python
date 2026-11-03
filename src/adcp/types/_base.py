@@ -96,9 +96,6 @@ from pydantic_core import InitErrorDetails, PydanticCustomError, ValidationError
 
 from adcp.types._runtime import RuleBound, refuse
 
-if TYPE_CHECKING:
-    from pydantic_core import SchemaValidator
-
 #: The package the emitter writes both the modules and the documents into.  One
 #: JSON file per document, at the document's own bundle-relative path, so
 #: ``SchemaRef.document`` is simultaneously the identity of the schema and the
@@ -234,7 +231,7 @@ KINDS = (WIDENED, UNDERDETERMINED)
 APPROXIMATIONS = "__adcp_approximations__"
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def _document(document: str) -> dict:
     """One document, read from the package and held.
 

@@ -113,7 +113,8 @@ from codegen.ir import MISSING
 from codegen.keywords import Position
 from codegen.lower import names
 from codegen.refusal import BuildFailure, Kind, Refusal, first_refusal
-from codegen.schema import nodes, parse as schema
+from codegen.schema import nodes
+from codegen.schema import parse as schema
 
 SCALAR = {"string": "str", "integer": "int", "number": "float", "boolean": "bool"}
 
@@ -142,7 +143,7 @@ def declaring(node: Mapping[str, Any], position: Position) -> dict[str, Any]:
 
 
 def inert_beside_a_reference(
-    node: Mapping[str, Any], pointer: str, position: Position, mod: "Module | None" = None
+    node: Mapping[str, Any], pointer: str, position: Position, mod: Module | None = None
 ) -> frozenset[str]:
     """§5's ``$ref`` row: the CONSTRAINING siblings, which compile to NOTHING and are
     REPORTED.
@@ -190,7 +191,7 @@ def inert_beside_a_reference(
     return inert
 
 
-def report_inert(inert: "Collection[str]", pointer: str, mod: "Module") -> None:
+def report_inert(inert: Collection[str], pointer: str, mod: Module) -> None:
     """The REPORTED half of §5's ``$ref`` row, for a caller that already has the set.
 
     ``codegen/lower/references.py`` reads :attr:`nodes.Reference.inert` -- the parser's
@@ -207,7 +208,7 @@ def report_inert(inert: "Collection[str]", pointer: str, mod: "Module") -> None:
     )
 
 
-def report_reported_drops(drops: "Collection[tuple[str, str]]", mod: "Module") -> None:
+def report_reported_drops(drops: Collection[tuple[str, str]], mod: Module) -> None:
     """The REPORTED half of a cell whose :attr:`keywords.Cell.reported` is set.
 
     ``docs/plan/rebuild-plan.md`` §7 on ``errorMessage``: "it customises a validator's
@@ -448,7 +449,7 @@ class TargetKind(StrEnum):
     UNION = "union"
 
 
-def target_kind(declared: "ir.Declaration | None") -> TargetKind:
+def target_kind(declared: ir.Declaration | None) -> TargetKind:
     """Which of :class:`TargetKind`'s three a node's DECLARATION makes it.
 
     THE ONE DERIVATION, read by the two sites that have a declaration to read it off:
@@ -640,7 +641,7 @@ class TargetBranches:
 
 
 def branches_of(
-    declared: "ir.Declaration | None", at: Callable[[str], Target]
+    declared: ir.Declaration | None, at: Callable[[str], Target]
 ) -> TargetBranches | None:
     """The branches of a UNION declaration, as :class:`Target`\\ s, or ``None``.
 
@@ -692,7 +693,7 @@ def unresolved(uri: str, pointer: str) -> Refusal:
     return Refusal("$ref", pointer, f"{NO_TARGET} -- {uri}", kind=Kind.VERDICT)
 
 
-def local_target(mod: "Module", pointer: str) -> Target:
+def local_target(mod: Module, pointer: str) -> Target:
     """The node at ``pointer`` of THIS module, as the :class:`Target` a row reads.
 
     A LOCAL ``#/...`` reference resolves inside the document being written, so there is no
@@ -730,7 +731,7 @@ def local_target(mod: "Module", pointer: str) -> Target:
 def decide(
     raw: Any,
     pointer: str,
-    mod: "Module",
+    mod: Module,
     position: Position,
     *,
     objectish: bool = False,
@@ -768,7 +769,7 @@ def decide(
 
 
 def lower_node(
-    node: nodes.Node, mod: "Module", *, of_a_root_union: bool = False
+    node: nodes.Node, mod: Module, *, of_a_root_union: bool = False
 ) -> ir.Decided | Refusal:
     """What one PARSED node is: §4's content dedup, the ONE dispatch, and a SYMBOL where
     another document names the node.
@@ -1167,7 +1168,7 @@ class Module:
     #: content keep a class each: collapsing them would need a rule for which module owns
     #: the survivor, D1 gives a node exactly one home, and 0 of the bundle's 1,271
     #: identical-content groups have a ROOT carrying that content for a ``$ref`` to reach.
-    collapsed: list[tuple["nodes.Base", str]] = field(default_factory=list)
+    collapsed: list[tuple[nodes.Base, str]] = field(default_factory=list)
     #: The other half of that record, and the half a check can read: ``pointer -> the
     #: symbol the node at it ADOPTED`` because an earlier node of identical content had
     #: already declared one.  ``collapsed`` is keyed by content, which says what was
@@ -1496,7 +1497,7 @@ class Rules:
     #: ``approximate.declare`` spells the pointer the way ``__adcp_schema__`` spells it,
     #: and a declaration at a pointer the document states nothing at is one
     #: ``harness.check_widening`` can never discharge.
-    dropped: tuple["Dropped", ...] = ()
+    dropped: tuple[Dropped, ...] = ()
     #: The names this node forbids ONE AT A TIME, read off the ``ForbiddenGroups`` the
     #: rules above already reduced the node's ``not`` to: a SINGLETON group says the
     #: name is not present at all, where a longer one says only that the group is not
@@ -1512,10 +1513,10 @@ class Rules:
 
 
 def rules_at(
-    node: "nodes.Base",
+    node: nodes.Base,
     *also: Mapping[str, Any],
     position: Position = Position.ROOT,
-    resolve: "Resolver" = None,
+    resolve: Resolver = None,
     at: Sequence[str] = (),
     keeps_every_key: bool | None = None,
     root: Mapping[str, Any] | None = None,
@@ -1742,7 +1743,7 @@ def check_keywords(
     node: nodes.Base,
     handled: Collection[str] = (),
     why: str | None = None,
-    mod: "Module | None" = None,
+    mod: Module | None = None,
 ) -> Refusal | None:
     """The first keyword this NODE states that the TABLE does not admit here, as a
     refusal -- or ``None`` where every key is admitted.
@@ -1807,7 +1808,7 @@ def check_declaration(
     position: Position,
     handled: Collection[str] = (),
     why: str | None = None,
-    mod: "Module | None" = None,
+    mod: Module | None = None,
 ) -> Refusal | None:
     """:func:`check_keywords`, asked of a raw DECLARATION rather than of a node.
 
@@ -1821,12 +1822,12 @@ def check_declaration(
 
 
 def _screen(
-    keys: "Collection[str]",
+    keys: Collection[str],
     pointer: str,
     position: Position,
     handled: Collection[str],
     why: str | None,
-    mod: "Module | None",
+    mod: Module | None,
 ) -> Refusal | None:
     """The admission reader itself, over keys already in the order the report wants."""
     for key in keys:
@@ -2155,7 +2156,7 @@ def fields(
 
 
 def _a_property_count_rides(
-    node: "nodes.Base", rule_nodes: Sequence[Mapping[str, Any]]
+    node: nodes.Base, rule_nodes: Sequence[Mapping[str, Any]]
 ) -> bool:
     """Does ``min``/``maxProperties`` ride on this class, from the node or a rule source?
 
@@ -2175,7 +2176,7 @@ def _a_property_count_rides(
 
 
 def declare_object(
-    node: "nodes.Base",
+    node: nodes.Base,
     pointer: str,
     mod: Module,
     props: Sequence[ir.Field],
@@ -2469,7 +2470,7 @@ def lower_object(
     mod: Module,
     *,
     bases: tuple[ir.TypeRef, ...] = (),
-    inherits: "Shape | None" = None,
+    inherits: Shape | None = None,
 ) -> str | Refusal:
     """Append the class for an object NODE, children first, and return its POINTER.
 
@@ -2706,7 +2707,7 @@ class UnionBase:
 
 
 def _refuse_a_combinator_of_shapes(
-    node: "nodes.Base", screen: frozenset[str]
+    node: nodes.Base, screen: frozenset[str]
 ) -> Refusal | None:
     """A node that COMPOSES and also carries a combinator of SHAPES.
 
@@ -2868,7 +2869,7 @@ _NOT_A_BASE: Mapping[TargetKind, str] = {
 
 
 def _asserted_properties(
-    node: "nodes.Base", conjuncts: Sequence["nodes.Conjunct"]
+    node: nodes.Base, conjuncts: Sequence[nodes.Conjunct]
 ) -> dict[str, list[dict]]:
     """Every DECLARATION this node and its conjuncts state about each property key.
 
@@ -3026,8 +3027,8 @@ def _distributes(
 
 
 def _the_conjuncts_own_type(
-    node: "nodes.Base",
-    conjoined: Sequence[tuple[str, Target, "nodes.Base"]],
+    node: nodes.Base,
+    conjoined: Sequence[tuple[str, Target, nodes.Base]],
     *,
     fields_declared: Collection[str],
     bases: Sequence[ir.TypeRef],
@@ -3329,7 +3330,7 @@ def _the_conjuncts_own_type(
 DISPATCH_MIXIN = "BranchDispatchMixin"
 
 
-def dispatching_bases(bases: tuple[ir.TypeRef, ...], mod: "Module") -> tuple[ir.TypeRef, ...]:
+def dispatching_bases(bases: tuple[ir.TypeRef, ...], mod: Module) -> tuple[ir.TypeRef, ...]:
     """``bases`` with :data:`DISPATCH_MIXIN` named FIRST, or unchanged where a base in it
     already carries the mixin.
 
@@ -3373,7 +3374,7 @@ def dispatching_bases(bases: tuple[ir.TypeRef, ...], mod: "Module") -> tuple[ir.
     return (ir.TypeRef(DISPATCH_MIXIN, local=True), *bases)
 
 
-def _carries_the_mixin(base: ir.TypeRef, mod: "Module", seen: frozenset[str]) -> bool:
+def _carries_the_mixin(base: ir.TypeRef, mod: Module, seen: frozenset[str]) -> bool:
     """Does this ONE base carry :data:`DISPATCH_MIXIN`, itself or through its own bases?
 
     ``seen`` is the pointers already on this walk, so a declaration naming itself among
@@ -3403,8 +3404,8 @@ def _carries_the_mixin(base: ir.TypeRef, mod: "Module", seen: frozenset[str]) ->
 def _the_vocabularys_intersection(
     decided: ir.Decided,
     stated: Sequence[tuple[str, Mapping[str, Any]]],
-    reference: "nodes.Reference",
-    mod: "Module",
+    reference: nodes.Reference,
+    mod: Module,
 ) -> ir.Decided | Refusal:
     """§5's ``enum`` row at CONJ: the TYPE :func:`_the_conjuncts_own_type` decided,
     narrowed to the intersection of the target's vocabulary with the conjuncts' own.
@@ -3506,8 +3507,8 @@ def _the_vocabularys_intersection(
 
 
 def _conjunct_base(
-    conjunct: Mapping[str, Any], where: str, mod: "Module"
-) -> tuple[Target, "nodes.Reference"] | Refusal:
+    conjunct: Mapping[str, Any], where: str, mod: Module
+) -> tuple[Target, nodes.Reference] | Refusal:
     """The :class:`Target` a ``$ref`` conjunct names, by whichever of the TWO resolutions
     its DOCUMENT HALF makes it, **and the NODE it named it with**.
 
@@ -3624,7 +3625,7 @@ def _conjunct_base(
 
 
 def lower_composition(
-    node: "nodes.Base",
+    node: nodes.Base,
     mod: Module,
     *,
     bases: tuple[ir.TypeRef, ...] = (),
@@ -5239,7 +5240,7 @@ def _distribute(
     base: str,
     where: str,
     branches: TargetBranches,
-    reference: "nodes.Reference",
+    reference: nodes.Reference,
     *,
     asserted: Mapping[str, list[dict]],
     mod: Module,
@@ -6586,7 +6587,7 @@ def _entailed_type(members: list) -> str | None:
     # One word, and the FIRST match per member: ``_JSON_TYPES`` is ordered so a bool
     # answers ``boolean`` and not ``integer``, and the set comprehension above would
     # collect both -- so a bool present at all makes this ambiguous rather than wrong.
-    if not members or any(isinstance(m, bool) for m in members) and len(found) > 1:
+    if not members or (any(isinstance(m, bool) for m in members) and len(found) > 1):
         return None
     return next(iter(found)) if len(found) == 1 else None
 

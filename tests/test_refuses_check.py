@@ -80,15 +80,14 @@ from functools import cache
 from pathlib import Path
 from typing import Annotated, Any
 
+import fresh
 import pytest
+from compiled import compiled
+from nodeset import claimed
 from pydantic import BaseModel, StringConstraints, TypeAdapter
 
 from codegen import bundle, harness
 from codegen.harness import check_refuses, own_facts, refused_witnesses
-
-import fresh
-from compiled import compiled
-from nodeset import claimed
 
 REPO = Path(__file__).resolve().parents[1]
 BUNDLE = REPO / "schemas" / "cache" / "3.2"

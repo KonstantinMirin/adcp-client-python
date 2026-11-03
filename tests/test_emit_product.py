@@ -30,33 +30,32 @@ does not have.
 from __future__ import annotations
 
 import importlib
-from unittest import mock
 import json
 import shutil
 import sys
 from pathlib import Path
 from typing import Any
+from unittest import mock
 
+import populations
 import pydantic
 import pytest
+from compiled import compiled
+from conftest import refusal_from
 
 from adcp.types import _base, constraints
 from codegen import bundle, compiler, emit, ir, keywords, refusal, render, store
 from codegen import constraints as constraints_module
 from codegen.harness import Pair, check_pair, violated_keywords
-from codegen.lower import names, union
+from codegen.lower import names
 from codegen.refusal import Kind, Refusal
-from codegen.schema import nodes, parse as schema_parse
-from compiled import compiled
-import populations
-from conftest import refusal_from
-
-from tests.nodeset import claimed, partitions, ratchet
+from codegen.schema import nodes
 from codegen.schema import nodes as schema_nodes
 from codegen.schema import parse as schema_parse
+from tests.nodeset import claimed, partitions, ratchet
 
 
-def _probe_node(doc: dict, mod: "compiler.Module", pointer: str = "") -> "schema_nodes.Base":
+def _probe_node(doc: dict, mod: compiler.Module, pointer: str = "") -> schema_nodes.Base:
     """One hand-written declaration as the NODE the parser decides it is, at ROOT.
 
     The ``Source`` is the module's own, so the applied word and the ``carries_nothing``

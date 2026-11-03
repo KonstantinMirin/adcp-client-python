@@ -29,12 +29,11 @@ import pkgutil
 from pathlib import Path
 from typing import Any
 
-from adcp.types._base import SchemaBound, SchemaRef
-
-from codegen import bundle, harness
-
 from compiled import compiled
 from nodeset import claimed, ratchet
+
+from adcp.types._base import SchemaBound, SchemaRef
+from codegen import bundle, harness
 
 REPO = Path(__file__).resolve().parents[1]
 BUNDLE = REPO / "schemas" / "cache" / "3.2"

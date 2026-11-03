@@ -38,10 +38,9 @@ import time
 from pathlib import Path
 
 import pytest
+from nodeset import claimed
 
 from codegen import emit, store
-
-from nodeset import claimed
 
 REPO = Path(__file__).resolve().parents[1]
 BUNDLE = REPO / "schemas" / "cache" / "3.2"

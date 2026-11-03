@@ -37,12 +37,11 @@ from pathlib import Path
 from typing import Any
 
 import jsonschema
+from compiled import compiled
 from pydantic import ValidationError
 
-from compiled import compiled
 from codegen import bundle, emit
 from codegen.ir import MISSING
-
 from tests.nodeset import claimed, partitions
 
 REPO = Path(__file__).resolve().parents[1]

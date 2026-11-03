@@ -758,7 +758,7 @@ def declared_at(
     difference §3a's layer buys and is why this function names it.
     """
     best = min(positions, key=lambda p: ranked(p, title))
-    if best.title == title and title is not None or best.is_a_root:
+    if (best.title == title and title is not None) or best.is_a_root:
         return best
     documents = {p.document for p in positions}
 

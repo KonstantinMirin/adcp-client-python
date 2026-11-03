@@ -21,11 +21,10 @@ from collections.abc import Callable, Mapping
 from dataclasses import replace
 from typing import Any
 
-from codegen import compiler, ir
+from codegen import compiler, ir, keywords
 from codegen import constraints as constraints_module
-from codegen import keywords
-from codegen.keywords import Position
 from codegen.compiler import SCALAR, Module, check_keywords
+from codegen.keywords import Position
 from codegen.refusal import Kind, Refusal
 from codegen.schema import nodes
 
@@ -389,7 +388,6 @@ def typeless(node: nodes.Typeless, mod: Module) -> ir.Decided | Refusal:
     answers both, which is what the two shapes always were: a root with no kind keyword,
     once with a rule to carry and once without.
     """
-    from codegen import bundle
     from codegen.lower import approximate
     from codegen.lower import rules as lower_rules
 

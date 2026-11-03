@@ -29,17 +29,17 @@ from __future__ import annotations
 
 import functools
 
+import fresh
+
 from codegen import harness
 from codegen.harness import Paired
-
-import fresh
 
 #: The four fields ``tests/test_emit.py``'s ``Graded`` carries, in its order, because that
 #: file wraps these rows in it.  **``codegen.harness``'s and not this module's**, because
 #: the WALK is the verifier's (``harness.pairs``) and a row type stated twice would be two
 #: types one reader has to tell apart.  Re-exported under this name so every reader that
 #: already says ``compared.Paired`` still reads the one it always did.
-__all__ = ["Paired", "UNIMPORTABLE", "pairs"]
+__all__ = ["UNIMPORTABLE", "Paired", "pairs"]
 
 
 #: Modules of the fresh tree that did not import, as ``name -> the tail of the traceback``.

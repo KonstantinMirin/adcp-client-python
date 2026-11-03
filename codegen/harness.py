@@ -80,19 +80,19 @@ import importlib
 import json
 import pkgutil
 import traceback
-from contextlib import contextmanager
 from collections import Counter
 from collections.abc import Callable, Collection, Iterator, Mapping, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import Any, NamedTuple
 
 import hypothesis
+import hypothesis_jsonschema
 import jsonschema
 from hypothesis import HealthCheck, Phase, given, settings
 from hypothesis import strategies as st
 from hypothesis.errors import HypothesisException
 from hypothesis.internal.conjecture.engine import BUFFER_SIZE as _HYPOTHESIS_BUFFER_SIZE
-import hypothesis_jsonschema
 from hypothesis_jsonschema import _canonicalise as _hjs_canon
 from hypothesis_jsonschema import from_schema
 from hypothesis_jsonschema._canonicalise import HypothesisRefResolutionError
@@ -2320,7 +2320,7 @@ def _reached(
     pointer: str,
     instance: Any,
     custom_formats: Mapping[str, Any],
-    draws: "_Draws",
+    draws: _Draws,
 ) -> Any:
     """``instance`` with every node on the way to ``pointer``'s location PRESENT.
 
@@ -2471,7 +2471,7 @@ def _bases(
     instances: Sequence[Any],
     cf: Mapping[str, Any],
     memo: list[Any],
-    draws: "_Draws",
+    draws: _Draws,
 ) -> Iterator[Any]:
     """The base payloads §8's obligation may place a drawn value into, cheapest first.
 

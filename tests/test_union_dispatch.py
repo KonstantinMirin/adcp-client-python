@@ -45,7 +45,6 @@ from pydantic import BaseModel, ValidationError
 import adcp.types._schemas as schemas_pkg
 from adcp.types._base import BranchDispatchMixin, through_the_store
 from codegen import bundle
-
 from tests.nodeset import claimed
 
 REPO = Path(__file__).resolve().parents[1]

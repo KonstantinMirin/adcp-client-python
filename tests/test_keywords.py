@@ -28,9 +28,6 @@ from __future__ import annotations
 import ast
 import importlib
 import pathlib
-import re
-
-import pytest
 
 from codegen import keywords
 from codegen.keywords import ADMITTED, GRIDS, REFUSED, Cell, Effect, Position, cell, lowers

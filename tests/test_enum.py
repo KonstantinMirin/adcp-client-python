@@ -29,22 +29,23 @@ import json
 from pathlib import Path
 from typing import Any
 
+import populations
 import pytest
+from compiled import compiled
+from conftest import refusal_from
 from pydantic import TypeAdapter, ValidationError
 
 from adcp.types._base import SchemaRef, schema_at
 from codegen import bundle, compiler, emit, ir, keywords, render, store
+from codegen import refusal as refusal_module
 from codegen.keywords import Position
 from codegen.lower import enum as lower_enum
 from codegen.lower import names
 from codegen.schema import nodes as schema_nodes
 from codegen.schema import parse as schema_parse
-from codegen import refusal as refusal_module
-from compiled import compiled
-import populations
-from conftest import refusal_from
-from tests.test_emit import BUNDLE, graded, PACKAGES, population, TREE
 from tests.nodeset import claimed, partitions
+from tests.test_emit import BUNDLE, PACKAGES, TREE, graded, population
+
 
 def _probe(raw: dict, pointer: str = "", position: Position = Position.PROP) -> schema_nodes.Base:
     """One hand-written declaration as the NODE the parser decides it is.
@@ -180,7 +181,7 @@ def test_every_root_enum_is_emitted_or_refused_by_name_pointer_and_keyword() -> 
     )
     claimed("documents referring to enums/task-type.json", referrers, inside=known)
     in_population = claimed(
-        "those referrers inside the step's population", 
+        "those referrers inside the step's population",
         [d for d in referrers if d in population()],
         inside=referrers,
     )
@@ -731,7 +732,7 @@ def test_the_accepts_and_liveness_checks_are_blind_to_this_row() -> None:
     document = next(d for d in root_enums() if d in compiled(BUNDLE, population()).emitted)
     doc = schema_at(SchemaRef(document, "#"))
 
-    from codegen.harness import check_accepts, check_pair, Pair
+    from codegen.harness import Pair, check_accepts, check_pair
 
     adapter = TypeAdapter(str)
 

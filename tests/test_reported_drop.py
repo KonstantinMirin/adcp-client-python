@@ -27,9 +27,10 @@ from __future__ import annotations
 import importlib
 from pathlib import Path
 
+from compiled import compiled
+
 from codegen import bundle, keywords, render
 from codegen.lower import names
-from compiled import compiled
 from tests.nodeset import claimed
 
 BUNDLE = Path("schemas/cache/3.2")
@@ -40,7 +41,7 @@ BUNDLE = Path("schemas/cache/3.2")
 SECTION_7 = "errorMessage"
 
 
-def _stated(documents: "list[str]", keywords_wanted: "set[str]") -> set[tuple[str, str, str]]:
+def _stated(documents: list[str], keywords_wanted: set[str]) -> set[tuple[str, str, str]]:
     """Every ``(document, pointer, keyword)`` the corpus states one of these keys at.
 
     Over ``bundle.nodes_at`` -- the ONE walk, which carries the position the descent

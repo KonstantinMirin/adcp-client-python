@@ -65,16 +65,16 @@ import time
 from pathlib import Path
 from typing import Any, ClassVar
 
+import corpus as corpus_module
 import pytest
 from hypothesis import strategies as st
+from nodeset import claimed
 
-import corpus as corpus_module
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from codegen import harness
 from codegen.harness import check_widening, corpus_key
 from codegen.keywords import Position
 from codegen.lower.approximate import approximate
-from nodeset import claimed
 
 REPO = Path(__file__).resolve().parents[1]
 

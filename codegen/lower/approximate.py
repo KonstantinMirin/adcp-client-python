@@ -50,7 +50,6 @@ append stays in one function beside it, so no handler spells either.
 from __future__ import annotations
 
 from adcp.types._base import SchemaRef
-
 from codegen import attribution, ir, keywords
 from codegen.compiler import Module, schema_ref
 from codegen.keywords import Position, Rung

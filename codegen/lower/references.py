@@ -15,7 +15,7 @@ from __future__ import annotations
 from codegen import bundle, compiler, ir
 from codegen.compiler import Module, check_keywords
 from codegen.keywords import Position
-from codegen.refusal import Kind, Refusal
+from codegen.refusal import Refusal
 from codegen.schema import nodes
 
 
