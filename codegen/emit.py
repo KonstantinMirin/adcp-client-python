@@ -2506,12 +2506,13 @@ def vocabularies_modules(l0: catalogue.Catalogue) -> dict[str, tuple[ir.ValuesDe
     the value lists alone -- not of the order a mapping was built in (P7) and not of
     which document the walk reached first.
 
-    The members carry no DESCRIPTION, and that is measured rather than overlooked: a
-    block ``enumDescriptions`` is stated per POSITION, and the two positions of this
-    bundle that state one over a shared value list -- *Canonical Media Buy Action Mode*
-    and *Media Buy Action Mode* -- describe their members DIFFERENTLY.  So a description
-    belongs to the type and not to the list, and ``render._functional_enum`` writes it
-    there.
+    The list carries no MEMBER NAME and no DESCRIPTION, and both are measured rather than
+    overlooked.  A member NAME is a class-body statement at each type over the list, which
+    is what a consumer's type checker reads (:attr:`ir.EnumDecl.values`).  A block
+    ``enumDescriptions`` is stated per POSITION, and the two positions of this bundle that
+    state one over a shared value list -- *Canonical Media Buy Action Mode* and *Media Buy
+    Action Mode* -- describe their members DIFFERENTLY, so a description belongs to the
+    type and the class body is where the renderer puts it.
     """
     held: dict[str, dict[str, ir.ValuesDecl]] = {}
     for shared in sorted(l0.shared.values(), key=lambda s: (s.kind, repr(s.members))):
@@ -2519,18 +2520,13 @@ def vocabularies_modules(l0: catalogue.Catalogue) -> dict[str, tuple[ir.ValuesDe
         spelled = lower_enum.values_name(shared.members)
         if spelled in into:
             raise BuildFailure(
-                f"{spelled!r} is the name both {list(into[spelled].members)!r} and "
+                f"{spelled!r} is the name both {list(into[spelled].values)!r} and "
                 f"{list(shared.members)!r} spell for their value list: the separator is a "
                 "character a member name can hold, so the two are not told apart -- which "
                 "is a defect in this compiler and not an outcome of any document"
             )
         into[spelled] = ir.ValuesDecl(
-            name=spelled,
-            kind=shared.kind,
-            members=tuple(
-                ir.Member(name=lower_enum.member_name(value), value=value)
-                for value in shared.members
-            ),
+            name=spelled, kind=shared.kind, values=shared.members
         )
     return {
         namespace: tuple(by_name[name] for name in sorted(by_name))

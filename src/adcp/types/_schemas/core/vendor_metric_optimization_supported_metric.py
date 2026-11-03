@@ -14,7 +14,9 @@ from .brand_ref import BrandReference
 from .vendor_metric_id import VendorMetricID
 
 
-SupportedTargetsItem = StrEnum('SupportedTargetsItem', _VALUES_COST_PER_THRESHOLD_RATE)
+class SupportedTargetsItem(StrEnum):
+    COST_PER = _VALUES_COST_PER_THRESHOLD_RATE[0]
+    THRESHOLD_RATE = _VALUES_COST_PER_THRESHOLD_RATE[1]
 
 
 class VendorMetricOptimizationSupportedMetric(AdCPBaseModel):

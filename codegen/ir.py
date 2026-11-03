@@ -487,51 +487,59 @@ class EnumDecl:
     kind: str
     members: tuple[Member, ...]
     description: str | None = None
-    #: The module-level VALUE LIST this enumeration is constructed FROM, as the
-    #: expression that names it, or ``None`` where the members are written in the class
-    #: body.
+    #: The module-level VALUE LIST this enumeration's members are read OUT OF, as the
+    #: expression that names it, or ``None`` where each member's value is written beside
+    #: it.
     #:
-    #: ``docs/plan/architecture.md`` §3a's correction of 2026-11-02: "**ONE TYPE IS A
-    #: CLASS STATEMENT; THE FUNCTIONAL FORM IS FOR TWO TYPES SHARING ONE VALUE LIST** ...
-    #: Where the vocabulary is one type, its members ARE the value list and a normal class
-    #: statement writes it once -- the rule is satisfied with nothing lost.  The functional
-    #: form is needed only where the bundle states one member set under names judged
-    #: genuinely distinct, which is the narrow case, and there the docstring is written as
-    #: its own statement."
+    #: ``docs/plan/architecture.md`` §3a: "the **VALUE LIST** is a module-level constant in
+    #: the catalogue layer, written once per distinct member set; the **NAMED TYPE** is
+    #: constructed from it at each position that needs one, keeping the name §4 derives and
+    #: keeping the types distinct."
     #:
-    #: So this is ``None`` for all but the narrow case, and :attr:`members` is what the
-    #: renderer writes.  Where it is set the renderer writes
-    #: ``<name> = StrEnum('<name>', <values>)`` and :attr:`members` is still carried --
-    #: unread by the rendering, and read by every check that asks what the class admits.
+    #: **IT IS STILL A CLASS STATEMENT, and §3a's correction of 2026-11-02 is why**: "ONE
+    #: TYPE IS A CLASS STATEMENT ... a functionally-built enum has no slot for the class
+    #: docstring pydantic renders as ``description``".  The functional
+    #: ``StrEnum('<Name>', …)`` call is ONE way to construct a type from a value list and
+    #: is not the rule, and it costs a third thing the correction did not price: **a
+    #: consumer's type checker cannot read its members.**  Measured against a wheel --
+    #: ``CatalogAction.CREATED`` is ``error: "type[CatalogAction]" has no attribute
+    #: "CREATED"  [attr-defined]`` -- which is a regression in reading 7, *the package
+    #: declares its types to a consumer's type checker*, a reading that HOLDS.
+    #:
+    #: So the member's NAME is a class-body statement, which every checker reads, and only
+    #: its VALUE is the expression ``<values>[<i>]`` -- the index being the member's own
+    #: position in the value list, which is the document's order.  The rendering keeps the
+    #: model layer's two docstring slots, the JSON Schema pydantic renders is byte-identical
+    #: to the literal form's, and nothing is restated: the value is written once, in the
+    #: constant.
     values: str | None = None
 
 
 @dataclass(frozen=True)
 class ValuesDecl:
-    """``<name>: tuple[tuple[str, <base>], ...] = ((...), ...)``: ONE value list, written
-    once.
+    """``<name>: tuple[<base>, ...] = (…)``: ONE value list, written once.
 
     §3a: "the **VALUE LIST** is a module-level constant in the catalogue layer, written
     once per distinct member set; the **NAMED TYPE** is constructed from it at each
     position that needs one, keeping the name §4 derives and keeping the types distinct."
 
-    The pairs are ``(member name, value)`` and not the values alone, because the member
-    NAME is what a consumer writes: ``StrEnum('X', ['a', 'b'])`` would name the members
-    ``a`` and ``b``, and ``codegen.lower.enum.member_name`` is the one function the
-    emitted member names come from whichever rendering a position takes.  So one list
-    carries both halves and two types over it cannot spell one value's member two ways.
+    **The VALUES and nothing else.**  It carried ``(member name, value)`` pairs while the
+    types over it were built by the functional ``StrEnum('<Name>', …)`` call, which names
+    members from what it is handed; a class statement names them itself
+    (:attr:`EnumDecl.values`), so the member name belongs to the type and the list is the
+    value list the reading is worded on.
 
     It declares a NAME and is not a type, which is why it is a declaration of its own
     rather than a slot on :class:`EnumDecl`: the constant is written once and the
-    enumerations that reference it are written per position, and a slot would make the
-    first position's declaration carry the others' shared text.
+    enumerations that read members out of it are written per position, and a slot would
+    make the first position's declaration carry the others' shared text.
     """
 
     name: str
     #: ``"string"`` or ``"integer"``, in JSON Schema's words -- :attr:`EnumDecl.kind`'s
     #: own spelling, because the two always agree and the annotation is written from it.
     kind: str
-    members: tuple[Member, ...]
+    values: tuple[object, ...]
 
 
 @dataclass(frozen=True)

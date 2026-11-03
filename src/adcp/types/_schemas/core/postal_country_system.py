@@ -93,10 +93,12 @@ class PostalCountrySystemZAPostalCode(PostalCountrySystem):
     system: Annotated[Literal[PostalCodeSystem.POSTAL_CODE], Field(description='Country-local postal code system.')]
 
 
-System = StrEnum('System', _VALUES_POSTAL_CODE_CUSTOM)
-System.__doc__ = """
-Country-local postal code system.
-"""
+class System(StrEnum):
+    """
+    Country-local postal code system.
+    """
+    POSTAL_CODE = _VALUES_POSTAL_CODE_CUSTOM[0]
+    CUSTOM = _VALUES_POSTAL_CODE_CUSTOM[1]
 
 
 class PostalCountrySystemBranch9(PostalCountrySystem):

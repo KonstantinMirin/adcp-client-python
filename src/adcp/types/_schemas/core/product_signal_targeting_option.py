@@ -23,7 +23,9 @@ class ActivationStatus(StrEnum):
     REQUIRES_ACTIVATION = 'requires_activation'
 
 
-AllowedTargetingModesItem = StrEnum('AllowedTargetingModesItem', _VALUES_INCLUDE_EXCLUDE)
+class AllowedTargetingModesItem(StrEnum):
+    INCLUDE = _VALUES_INCLUDE_EXCLUDE[0]
+    EXCLUDE = _VALUES_INCLUDE_EXCLUDE[1]
 
 
 class ProductSignalTargetingOption(SignalListing):

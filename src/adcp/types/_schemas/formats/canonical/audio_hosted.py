@@ -23,10 +23,12 @@ class AudioCodecsItem(StrEnum):
     FLAC = 'flac'
 
 
-BuyerAssetAcceptance = StrEnum('BuyerAssetAcceptance', _VALUES_ACCEPTED_REJECTED)
-BuyerAssetAcceptance.__doc__ = """
-Whether the product accepts buyer-uploaded audio. When `rejected`, the buyer cannot ship an audio asset directly — they must use build_creative (or sync_creatives with brief inputs) so the seller produces the audio. Combined with `asset_source`, lets a product declare 'I produce audio from briefs and refuse buyer uploads' (asset_source=`seller_pre_rendered_from_brief`, buyer_asset_acceptance=`rejected`).
-"""
+class BuyerAssetAcceptance(StrEnum):
+    """
+    Whether the product accepts buyer-uploaded audio. When `rejected`, the buyer cannot ship an audio asset directly — they must use build_creative (or sync_creatives with brief inputs) so the seller produces the audio. Combined with `asset_source`, lets a product declare 'I produce audio from briefs and refuse buyer uploads' (asset_source=`seller_pre_rendered_from_brief`, buyer_asset_acceptance=`rejected`).
+    """
+    ACCEPTED = _VALUES_ACCEPTED_REJECTED[0]
+    REJECTED = _VALUES_ACCEPTED_REJECTED[1]
 
 
 class CanonicalFormatHostedAudio(CanonicalFormatBase):

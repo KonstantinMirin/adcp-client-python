@@ -10,10 +10,15 @@ from ._vocabularies import _VALUES_CREATED_UPDATED_UNCHANGED_FAILED_DELETED
 
 __adcp_schema__ = SchemaRef(document='enums/catalog-action.json', pointer='#')
 
-CatalogAction = StrEnum('CatalogAction', _VALUES_CREATED_UPDATED_UNCHANGED_FAILED_DELETED)
-CatalogAction.__doc__ = """
-Action taken on a catalog during sync operation
-"""
+class CatalogAction(StrEnum):
+    """
+    Action taken on a catalog during sync operation
+    """
+    CREATED = _VALUES_CREATED_UPDATED_UNCHANGED_FAILED_DELETED[0]
+    UPDATED = _VALUES_CREATED_UPDATED_UNCHANGED_FAILED_DELETED[1]
+    UNCHANGED = _VALUES_CREATED_UPDATED_UNCHANGED_FAILED_DELETED[2]
+    FAILED = _VALUES_CREATED_UPDATED_UNCHANGED_FAILED_DELETED[3]
+    DELETED = _VALUES_CREATED_UPDATED_UNCHANGED_FAILED_DELETED[4]
 
 
 strict_validate = strict_alias(__adcp_schema__, "CatalogAction", CatalogAction)

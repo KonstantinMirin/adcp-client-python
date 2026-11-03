@@ -38,7 +38,8 @@ class DeliveryAuth(AdCPBaseModel):
     credential_fingerprint: Annotated[StrMatchingEF42E836 | None, Field(description='SHA-256 hex fingerprint of the exact legacy credential string supplied in notification_configs[].authentication.credentials. Required when mode is Bearer or HMAC-SHA256; absent for rfc9421.')] = None
 
 
-EventTypesItem = StrEnum('EventTypesItem', _VALUES_CAPABILITIES_CHANGED)
+class EventTypesItem(StrEnum):
+    CAPABILITIES_CHANGED = _VALUES_CAPABILITIES_CHANGED[0]
 
 
 class AgentWebhookChallenge(AdCPBaseModel):

@@ -29,7 +29,9 @@ class CaPostalCodeSystem(StrEnum):
     FULL = 'full'
 
 
-PostalAreaSupportValueItem = StrEnum('PostalAreaSupportValueItem', _VALUES_POSTAL_CODE_CUSTOM)
+class PostalAreaSupportValueItem(StrEnum):
+    POSTAL_CODE = _VALUES_POSTAL_CODE_CUSTOM[0]
+    CUSTOM = _VALUES_POSTAL_CODE_CUSTOM[1]
 
 
 class PostalAreaSupport(AdCPBaseModel):

@@ -13,42 +13,42 @@ document to be reached through.  It sits in the narrowest namespace that contain
 position referencing it -- a domain's where every reference is within one domain, the
 shared one otherwise.
 
-**Nothing here is a type.**  Each name is a list of ``(member, value)`` pairs, and the
-enumerations built from it are declared in the modules of the documents that state them,
-each keeping the name §4 derives for it: "a conflicting title is not a question about
-which name wins ... where the bundle states two concepts, both names are right and
-merging types one subject with the other's name."
+**Nothing here is a type.**  Each name is a list of VALUES, and the enumerations that
+read their members out of it are declared in the modules of the documents that state
+them -- as class statements, each keeping the name §4 derives for it: "a conflicting
+title is not a question about which name wins ... where the bundle states two concepts,
+both names are right and merging types one subject with the other's name."
 """
 
 from __future__ import annotations
 
 
-_VALUES_INCLUDE_EXCLUDE: tuple[tuple[str, str], ...] = (
-    ('INCLUDE', 'include'),
-    ('EXCLUDE', 'exclude'),
+_VALUES_INCLUDE_EXCLUDE: tuple[str, ...] = (
+    'include',
+    'exclude',
 )
 
 
-_VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY: tuple[tuple[str, str], ...] = (
-    ('INTRA_DAY', 'intra_day'),
-    ('DAILY', 'daily'),
-    ('WEEKLY', 'weekly'),
-    ('MONTHLY', 'monthly'),
-    ('BI_MONTHLY', 'bi_monthly'),
-    ('QUARTERLY', 'quarterly'),
-    ('BI_ANNUALLY', 'bi_annually'),
-    ('ANNUALLY', 'annually'),
+_VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY: tuple[str, ...] = (
+    'intra_day',
+    'daily',
+    'weekly',
+    'monthly',
+    'bi_monthly',
+    'quarterly',
+    'bi_annually',
+    'annually',
 )
 
 
-_VALUES_LINEAR_NON_LINEAR_COMPANION: tuple[tuple[str, str], ...] = (
-    ('LINEAR', 'linear'),
-    ('NON_LINEAR', 'non_linear'),
-    ('COMPANION', 'companion'),
+_VALUES_LINEAR_NON_LINEAR_COMPANION: tuple[str, ...] = (
+    'linear',
+    'non_linear',
+    'companion',
 )
 
 
-_VALUES_POSTAL_CODE_CUSTOM: tuple[tuple[str, str], ...] = (
-    ('POSTAL_CODE', 'postal_code'),
-    ('CUSTOM', 'custom'),
+_VALUES_POSTAL_CODE_CUSTOM: tuple[str, ...] = (
+    'postal_code',
+    'custom',
 )

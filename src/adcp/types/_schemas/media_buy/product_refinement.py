@@ -21,10 +21,13 @@ class ProductRefinementRequestsItemRequest(AdCPBaseModel):
     ask: Annotated[StrMinLen1, Field(description='What the buyer is asking for at the request level.')]
 
 
-ProductRefinementRequestsItemProductAction = StrEnum('ProductRefinementRequestsItemProductAction', _VALUES_INCLUDE_OMIT_MORE_LIKE_THIS)
-ProductRefinementRequestsItemProductAction.__doc__ = """
-Requested product-level action.
-"""
+class ProductRefinementRequestsItemProductAction(StrEnum):
+    """
+    Requested product-level action.
+    """
+    INCLUDE = _VALUES_INCLUDE_OMIT_MORE_LIKE_THIS[0]
+    OMIT = _VALUES_INCLUDE_OMIT_MORE_LIKE_THIS[1]
+    MORE_LIKE_THIS = _VALUES_INCLUDE_OMIT_MORE_LIKE_THIS[2]
 
 
 class ProductRefinementRequestsItemProduct(AdCPBaseModel):
@@ -38,10 +41,13 @@ class ProductRefinementRequestsItemProduct(AdCPBaseModel):
     ask: Annotated[StrMinLen1 | None, Field(description='What the buyer is asking for on this product.')] = None
 
 
-ProductRefinementRequestsItemProposalAction = StrEnum('ProductRefinementRequestsItemProposalAction', _VALUES_INCLUDE_OMIT_FINALIZE)
-ProductRefinementRequestsItemProposalAction.__doc__ = """
-Requested proposal-level action.
-"""
+class ProductRefinementRequestsItemProposalAction(StrEnum):
+    """
+    Requested proposal-level action.
+    """
+    INCLUDE = _VALUES_INCLUDE_OMIT_FINALIZE[0]
+    OMIT = _VALUES_INCLUDE_OMIT_FINALIZE[1]
+    FINALIZE = _VALUES_INCLUDE_OMIT_FINALIZE[2]
 
 
 class ProductRefinementRequestsItemProposal(AdCPBaseModel):

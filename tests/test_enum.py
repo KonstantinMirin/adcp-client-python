@@ -495,9 +495,9 @@ def test_enum_descriptions_are_carried_into_the_member_docstrings() -> None:
         # about what a consumer MEETS, and a consumer meets a member docstring in an
         # editor and in ``help()``, both of which read the source.
         #
-        # The classes, though, come from the namespace census, so the functional form is
-        # in scope: it writes the same text as ``X.A.__doc__ = "..."`` statements, and
-        # :func:`_docstrings` reads both.
+        # The CLASSES come from the namespace census, which is what keeps an enumeration
+        # over a shared value list in scope: its members' values are read out of a
+        # constant, so nothing in the text names a base this could have selected on.
         rendered = {
             frozenset(name for name, _ in _members(cls)): _docstrings(tree, cls.__name__)
             for cls in by_document.get(document, ())
@@ -561,29 +561,19 @@ def _docstrings(tree: ast.Module, symbol: str) -> dict[str, str]:
     carrying a quote or a backslash is escaped in the source and would never match
     the document verbatim there.
 
-    **TWO FORMS, because §3a's correction gives an enumeration two renderings** and the
-    member docstring is written differently in each: a class statement carries it as a
-    bare string expression under the member, and a type CONSTRUCTED from a shared value
-    list has no class body at all, so the renderer writes
-    ``<Symbol>.<MEMBER>.__doc__ = "..."`` at module level.  Both are read here and the
-    answer is one mapping, so a check written against it cannot be told which rendering
-    a position took -- which is what keeps the two forms one obligation.
+    **ONE FORM, and that is what §3a's value list costing a consumer's checker settled**:
+    an enumeration over a shared value list is a class statement like any other and only
+    its members' VALUES move into the constant, so the docstring slot is the class body's
+    in both cases and there is one reading of it.  It was two for the length of one
+    commit, while the shared case was the functional ``StrEnum('<Name>', …)`` call and the
+    member docstring had to be a module-level ``<Symbol>.<MEMBER>.__doc__`` statement.
+
+    ``symbol`` and not the whole module, because a class is found by the NAME the
+    namespace census read off the class object -- so the two readings cannot disagree
+    about which class a docstring belongs to.
     """
     out: dict[str, str] = {}
     for node in tree.body:
-        # The functional form's statements, which name the class and the member.
-        if (
-            isinstance(node, ast.Assign)
-            and isinstance(node.value, ast.Constant)
-            and isinstance(node.value.value, str)
-            and len(node.targets) == 1
-            and isinstance(target := node.targets[0], ast.Attribute)
-            and target.attr == "__doc__"
-            and isinstance(member := target.value, ast.Attribute)
-            and isinstance(held := member.value, ast.Name)
-            and held.id == symbol
-        ):
-            out[member.attr] = node.value.value
         if not (isinstance(node, ast.ClassDef) and node.name == symbol):
             continue
         for assign, after in zip(node.body, node.body[1:], strict=False):

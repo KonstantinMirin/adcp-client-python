@@ -15,10 +15,12 @@ from .si_context_use import SIContextUse
 from .si_sponsored_context import SISponsoredContext
 
 
-HostReceiptStatus = StrEnum('HostReceiptStatus', _VALUES_ACCEPTED_REJECTED)
-HostReceiptStatus.__doc__ = """
-Whether the host accepted the declared sponsored context for use.
-"""
+class HostReceiptStatus(StrEnum):
+    """
+    Whether the host accepted the declared sponsored context for use.
+    """
+    ACCEPTED = _VALUES_ACCEPTED_REJECTED[0]
+    REJECTED = _VALUES_ACCEPTED_REJECTED[1]
 
 
 class DisclosureCommitmentStatus(StrEnum):

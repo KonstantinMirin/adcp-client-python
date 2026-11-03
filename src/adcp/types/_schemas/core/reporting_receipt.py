@@ -17,7 +17,9 @@ from .reporting_native_version_ref import ReportingNativeVersionReference
 from .reporting_verification_profile import ReportingVerificationProfile
 
 
-Status = StrEnum('Status', _VALUES_ACCEPTED_REJECTED)
+class Status(StrEnum):
+    ACCEPTED = _VALUES_ACCEPTED_REJECTED[0]
+    REJECTED = _VALUES_ACCEPTED_REJECTED[1]
 
 
 class ReportingReceipt(AdCPBaseModel):

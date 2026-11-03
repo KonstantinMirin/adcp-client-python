@@ -24,10 +24,12 @@ class OutcomeState(StrEnum):
     FINDINGS = 'findings'
 
 
-DeliveryPeriodState = StrEnum('DeliveryPeriodState', _VALUES_OPEN_CLOSED)
-DeliveryPeriodState.__doc__ = """
-Operational state of the governance reporting period. Closure freezes governance evidence for that period but is not billing settlement.
-"""
+class DeliveryPeriodState(StrEnum):
+    """
+    Operational state of the governance reporting period. Closure freezes governance evidence for that period but is not billing settlement.
+    """
+    OPEN = _VALUES_OPEN_CLOSED[0]
+    CLOSED = _VALUES_OPEN_CLOSED[1]
 
 
 class FindingsItem(AdCPBaseModel):

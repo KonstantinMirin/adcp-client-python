@@ -44,7 +44,10 @@ class VastEvent(StrEnum):
     CLOSELINEAR = 'closeLinear'
 
 
-VastTarget = StrEnum('VastTarget', _VALUES_LINEAR_NON_LINEAR_COMPANION)
+class VastTarget(StrEnum):
+    LINEAR = _VALUES_LINEAR_NON_LINEAR_COMPANION[0]
+    NON_LINEAR = _VALUES_LINEAR_NON_LINEAR_COMPANION[1]
+    COMPANION = _VALUES_LINEAR_NON_LINEAR_COMPANION[2]
 
 
 VastOffset = StrMatching38E7F7CC

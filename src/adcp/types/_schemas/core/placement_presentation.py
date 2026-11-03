@@ -20,17 +20,20 @@ class Canvas(AdCPBaseModel):
     background_color: StrMatchingF01B4765 | None = '#ffffff'
 
 
-_VALUES_CONTAIN_COVER_STRETCH: tuple[tuple[str, str], ...] = (
-    ('CONTAIN', 'contain'),
-    ('COVER', 'cover'),
-    ('STRETCH', 'stretch'),
+_VALUES_CONTAIN_COVER_STRETCH: tuple[str, ...] = (
+    'contain',
+    'cover',
+    'stretch',
 )
 
 
-CreativeSlotFit = StrEnum('CreativeSlotFit', _VALUES_CONTAIN_COVER_STRETCH)
-CreativeSlotFit.__doc__ = """
-How the creative render is scaled into the slot. contain preserves the whole render, cover fills and crops, and stretch fills without preserving aspect ratio.
-"""
+class CreativeSlotFit(StrEnum):
+    """
+    How the creative render is scaled into the slot. contain preserves the whole render, cover fills and crops, and stretch fills without preserving aspect ratio.
+    """
+    CONTAIN = _VALUES_CONTAIN_COVER_STRETCH[0]
+    COVER = _VALUES_CONTAIN_COVER_STRETCH[1]
+    STRETCH = _VALUES_CONTAIN_COVER_STRETCH[2]
 
 
 class CreativeSlot(AdCPBaseModel):
@@ -101,7 +104,10 @@ class ImageRef(AdCPBaseModel):
     digest: Annotated[StrMatching3CBDBB74, Field(description='SHA-256 digest of the exact image bytes. Consumers MUST fail closed on mismatch.')]
 
 
-ImageDecorationFit = StrEnum('ImageDecorationFit', _VALUES_CONTAIN_COVER_STRETCH)
+class ImageDecorationFit(StrEnum):
+    CONTAIN = _VALUES_CONTAIN_COVER_STRETCH[0]
+    COVER = _VALUES_CONTAIN_COVER_STRETCH[1]
+    STRETCH = _VALUES_CONTAIN_COVER_STRETCH[2]
 
 
 class ImageDecoration(AdCPBaseModel):

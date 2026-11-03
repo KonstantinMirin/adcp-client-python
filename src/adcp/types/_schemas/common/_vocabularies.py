@@ -13,50 +13,50 @@ document to be reached through.  It sits in the narrowest namespace that contain
 position referencing it -- a domain's where every reference is within one domain, the
 shared one otherwise.
 
-**Nothing here is a type.**  Each name is a list of ``(member, value)`` pairs, and the
-enumerations built from it are declared in the modules of the documents that state them,
-each keeping the name §4 derives for it: "a conflicting title is not a question about
-which name wins ... where the bundle states two concepts, both names are right and
-merging types one subject with the other's name."
+**Nothing here is a type.**  Each name is a list of VALUES, and the enumerations that
+read their members out of it are declared in the modules of the documents that state
+them -- as class statements, each keeping the name §4 derives for it: "a conflicting
+title is not a question about which name wins ... where the bundle states two concepts,
+both names are right and merging types one subject with the other's name."
 """
 
 from __future__ import annotations
 
 
-_VALUES_ACCEPTED_REJECTED: tuple[tuple[str, str], ...] = (
-    ('ACCEPTED', 'accepted'),
-    ('REJECTED', 'rejected'),
+_VALUES_ACCEPTED_REJECTED: tuple[str, ...] = (
+    'accepted',
+    'rejected',
 )
 
 
-_VALUES_BINARY_QUANTITATIVE_CATEGORICAL: tuple[tuple[str, str], ...] = (
-    ('BINARY', 'binary'),
-    ('QUANTITATIVE', 'quantitative'),
-    ('CATEGORICAL', 'categorical'),
+_VALUES_BINARY_QUANTITATIVE_CATEGORICAL: tuple[str, ...] = (
+    'binary',
+    'quantitative',
+    'categorical',
 )
 
 
-_VALUES_CAPABILITIES_CHANGED: tuple[tuple[str, str], ...] = (
-    ('CAPABILITIES_CHANGED', 'capabilities.changed'),
+_VALUES_CAPABILITIES_CHANGED: tuple[str, ...] = (
+    'capabilities.changed',
 )
 
 
-_VALUES_COST_PER_THRESHOLD_RATE: tuple[tuple[str, str], ...] = (
-    ('COST_PER', 'cost_per'),
-    ('THRESHOLD_RATE', 'threshold_rate'),
+_VALUES_COST_PER_THRESHOLD_RATE: tuple[str, ...] = (
+    'cost_per',
+    'threshold_rate',
 )
 
 
-_VALUES_OPEN_CLOSED: tuple[tuple[str, str], ...] = (
-    ('OPEN', 'open'),
-    ('CLOSED', 'closed'),
+_VALUES_OPEN_CLOSED: tuple[str, ...] = (
+    'open',
+    'closed',
 )
 
 
-_VALUES_VOICE_THEME_BEST_OF_N_TRANSFORMER_CONFIG_CUSTOM: tuple[tuple[str, str], ...] = (
-    ('VOICE', 'voice'),
-    ('THEME', 'theme'),
-    ('BEST_OF_N', 'best_of_n'),
-    ('TRANSFORMER_CONFIG', 'transformer_config'),
-    ('CUSTOM', 'custom'),
+_VALUES_VOICE_THEME_BEST_OF_N_TRANSFORMER_CONFIG_CUSTOM: tuple[str, ...] = (
+    'voice',
+    'theme',
+    'best_of_n',
+    'transformer_config',
+    'custom',
 )

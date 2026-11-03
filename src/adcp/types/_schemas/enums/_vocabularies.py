@@ -13,28 +13,28 @@ document to be reached through.  It sits in the narrowest namespace that contain
 position referencing it -- a domain's where every reference is within one domain, the
 shared one otherwise.
 
-**Nothing here is a type.**  Each name is a list of ``(member, value)`` pairs, and the
-enumerations built from it are declared in the modules of the documents that state them,
-each keeping the name §4 derives for it: "a conflicting title is not a question about
-which name wins ... where the bundle states two concepts, both names are right and
-merging types one subject with the other's name."
+**Nothing here is a type.**  Each name is a list of VALUES, and the enumerations that
+read their members out of it are declared in the modules of the documents that state
+them -- as class statements, each keeping the name §4 derives for it: "a conflicting
+title is not a question about which name wins ... where the bundle states two concepts,
+both names are right and merging types one subject with the other's name."
 """
 
 from __future__ import annotations
 
 
-_VALUES_CREATED_UPDATED_UNCHANGED_FAILED_DELETED: tuple[tuple[str, str], ...] = (
-    ('CREATED', 'created'),
-    ('UPDATED', 'updated'),
-    ('UNCHANGED', 'unchanged'),
-    ('FAILED', 'failed'),
-    ('DELETED', 'deleted'),
+_VALUES_CREATED_UPDATED_UNCHANGED_FAILED_DELETED: tuple[str, ...] = (
+    'created',
+    'updated',
+    'unchanged',
+    'failed',
+    'deleted',
 )
 
 
-_VALUES_SELF_SERVE_CONDITIONAL_SELF_SERVE_SELLER_MANAGED_REQUIRES_APPROVAL: tuple[tuple[str, str], ...] = (
-    ('SELF_SERVE', 'self_serve'),
-    ('CONDITIONAL_SELF_SERVE', 'conditional_self_serve'),
-    ('SELLER_MANAGED', 'seller_managed'),
-    ('REQUIRES_APPROVAL', 'requires_approval'),
+_VALUES_SELF_SERVE_CONDITIONAL_SELF_SERVE_SELLER_MANAGED_REQUIRES_APPROVAL: tuple[str, ...] = (
+    'self_serve',
+    'conditional_self_serve',
+    'seller_managed',
+    'requires_approval',
 )

@@ -12,10 +12,13 @@ from ..common._vocabularies import _VALUES_BINARY_QUANTITATIVE_CATEGORICAL
 from ..core.ext import ExtensionObject
 
 
-PropertyFeatureDefinitionType = StrEnum('PropertyFeatureDefinitionType', _VALUES_BINARY_QUANTITATIVE_CATEGORICAL)
-PropertyFeatureDefinitionType.__doc__ = """
-The type of values this feature produces: binary (true/false), quantitative (numeric range), categorical (enumerated values)
-"""
+class PropertyFeatureDefinitionType(StrEnum):
+    """
+    The type of values this feature produces: binary (true/false), quantitative (numeric range), categorical (enumerated values)
+    """
+    BINARY = _VALUES_BINARY_QUANTITATIVE_CATEGORICAL[0]
+    QUANTITATIVE = _VALUES_BINARY_QUANTITATIVE_CATEGORICAL[1]
+    CATEGORICAL = _VALUES_BINARY_QUANTITATIVE_CATEGORICAL[2]
 
 
 class Range(AdCPBaseModel):

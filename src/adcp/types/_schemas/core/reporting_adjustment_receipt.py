@@ -13,7 +13,9 @@ from adcp.types.constraints import StrMatching5E987613, StrMinLen16MaxLen255Matc
 from ..common._vocabularies import _VALUES_ACCEPTED_REJECTED
 
 
-Status = StrEnum('Status', _VALUES_ACCEPTED_REJECTED)
+class Status(StrEnum):
+    ACCEPTED = _VALUES_ACCEPTED_REJECTED[0]
+    REJECTED = _VALUES_ACCEPTED_REJECTED[1]
 
 
 ReportingAdjustmentRejectionCode = StrMinLen1MaxLen128MatchingE43B025C

@@ -10,14 +10,24 @@ from ._vocabularies import _VALUES_SELF_SERVE_CONDITIONAL_SELF_SERVE_SELLER_MANA
 
 __adcp_schema__ = SchemaRef(document='enums/media-buy-action-mode.json', pointer='#')
 
-MediaBuyActionMode = StrEnum('MediaBuyActionMode', _VALUES_SELF_SERVE_CONDITIONAL_SELF_SERVE_SELLER_MANAGED_REQUIRES_APPROVAL)
-MediaBuyActionMode.__doc__ = """
-How a seller honors a given action on a media buy. Buyers branch on this to decide whether to expect a synchronous response, an automatic-with-fallback flow, or seller-managed asynchronous processing. The mode is declared on each entry of `allowed_actions[]` (product, as `modes[]` array) or `available_actions[]` (buy, as singular `mode`). Requotes that fall outside the current buy envelope are not an action mode in 3.1; sellers return REQUOTE_REQUIRED from update_media_buy instead. Buyer SDKs MUST tolerate unknown future values by treating the affected action as unavailable until they re-fetch the product or buy and inspect the current `available_actions[]` / `allowed_actions[]` metadata.
-"""
-MediaBuyActionMode.SELF_SERVE.__doc__ = """Seller honors the request synchronously without approval or conditional checks. Buyer SDKs dispatch the task declared on the available action; legacy entries without task metadata use update_media_buy."""
-MediaBuyActionMode.CONDITIONAL_SELF_SERVE.__doc__ = """Seller completes the action automatically within declared tolerances and uses seller-managed processing outside them. Constraint metadata defining the tolerances is out of scope for v1; buyers cannot statically predict which path will apply unless negotiated terms define it."""
-MediaBuyActionMode.SELLER_MANAGED.__doc__ = """Asynchronous seller-managed processing. Buyer SDKs use the standard submitted, working, and input-required lifecycle and do not infer whether a person, model, queue, or other internal control is involved."""
-MediaBuyActionMode.REQUIRES_APPROVAL.__doc__ = """Legacy 3.x mode indicating an approval-dependent async path. New declarations SHOULD use seller_managed so the protocol describes externally meaningful processing without exposing internal workflow."""
+class MediaBuyActionMode(StrEnum):
+    """
+    How a seller honors a given action on a media buy. Buyers branch on this to decide whether to expect a synchronous response, an automatic-with-fallback flow, or seller-managed asynchronous processing. The mode is declared on each entry of `allowed_actions[]` (product, as `modes[]` array) or `available_actions[]` (buy, as singular `mode`). Requotes that fall outside the current buy envelope are not an action mode in 3.1; sellers return REQUOTE_REQUIRED from update_media_buy instead. Buyer SDKs MUST tolerate unknown future values by treating the affected action as unavailable until they re-fetch the product or buy and inspect the current `available_actions[]` / `allowed_actions[]` metadata.
+    """
+    SELF_SERVE = _VALUES_SELF_SERVE_CONDITIONAL_SELF_SERVE_SELLER_MANAGED_REQUIRES_APPROVAL[0]
+    """Seller honors the request synchronously without approval or conditional checks. Buyer SDKs dispatch the task declared on the available action; legacy entries without task metadata use update_media_buy."""
+
+
+    CONDITIONAL_SELF_SERVE = _VALUES_SELF_SERVE_CONDITIONAL_SELF_SERVE_SELLER_MANAGED_REQUIRES_APPROVAL[1]
+    """Seller completes the action automatically within declared tolerances and uses seller-managed processing outside them. Constraint metadata defining the tolerances is out of scope for v1; buyers cannot statically predict which path will apply unless negotiated terms define it."""
+
+
+    SELLER_MANAGED = _VALUES_SELF_SERVE_CONDITIONAL_SELF_SERVE_SELLER_MANAGED_REQUIRES_APPROVAL[2]
+    """Asynchronous seller-managed processing. Buyer SDKs use the standard submitted, working, and input-required lifecycle and do not infer whether a person, model, queue, or other internal control is involved."""
+
+
+    REQUIRES_APPROVAL = _VALUES_SELF_SERVE_CONDITIONAL_SELF_SERVE_SELLER_MANAGED_REQUIRES_APPROVAL[3]
+    """Legacy 3.x mode indicating an approval-dependent async path. New declarations SHOULD use seller_managed so the protocol describes externally meaningful processing without exposing internal workflow."""
 
 
 strict_validate = strict_alias(__adcp_schema__, "MediaBuyActionMode", MediaBuyActionMode)

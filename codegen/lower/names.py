@@ -1434,7 +1434,7 @@ def the_value_lists(
         spelled = values_name(members)
         if spelled not in written:
             written.add(spelled)
-            out.append(ir.ValuesDecl(name=spelled, kind=found.kind, members=found.members))
+            out.append(ir.ValuesDecl(name=spelled, kind=found.kind, values=members))
         out.append(_constructed(declaration, found, spelled))
     return tuple(out)
 

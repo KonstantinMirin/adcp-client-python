@@ -10,14 +10,24 @@ from ._vocabularies import _VALUES_SELF_SERVE_CONDITIONAL_SELF_SERVE_SELLER_MANA
 
 __adcp_schema__ = SchemaRef(document='enums/canonical-media-buy-action-mode.json', pointer='#')
 
-CanonicalMediaBuyActionMode = StrEnum('CanonicalMediaBuyActionMode', _VALUES_SELF_SERVE_CONDITIONAL_SELF_SERVE_SELLER_MANAGED_REQUIRES_APPROVAL)
-CanonicalMediaBuyActionMode.__doc__ = """
-How a seller honors a routed compact-lifecycle action.
-"""
-CanonicalMediaBuyActionMode.SELF_SERVE.__doc__ = """The declared task completes synchronously without approval."""
-CanonicalMediaBuyActionMode.CONDITIONAL_SELF_SERVE.__doc__ = """The declared task completes synchronously inside seller tolerances and may become asynchronous outside them."""
-CanonicalMediaBuyActionMode.SELLER_MANAGED.__doc__ = """The seller processes the action through the standard async lifecycle. The internal use of people, models, queues, or other controls is intentionally opaque."""
-CanonicalMediaBuyActionMode.REQUIRES_APPROVAL.__doc__ = """Legacy 3.x mode indicating an approval-dependent async path. New proposal-bound terms SHOULD use seller_managed so they do not expose an internal implementation."""
+class CanonicalMediaBuyActionMode(StrEnum):
+    """
+    How a seller honors a routed compact-lifecycle action.
+    """
+    SELF_SERVE = _VALUES_SELF_SERVE_CONDITIONAL_SELF_SERVE_SELLER_MANAGED_REQUIRES_APPROVAL[0]
+    """The declared task completes synchronously without approval."""
+
+
+    CONDITIONAL_SELF_SERVE = _VALUES_SELF_SERVE_CONDITIONAL_SELF_SERVE_SELLER_MANAGED_REQUIRES_APPROVAL[1]
+    """The declared task completes synchronously inside seller tolerances and may become asynchronous outside them."""
+
+
+    SELLER_MANAGED = _VALUES_SELF_SERVE_CONDITIONAL_SELF_SERVE_SELLER_MANAGED_REQUIRES_APPROVAL[2]
+    """The seller processes the action through the standard async lifecycle. The internal use of people, models, queues, or other controls is intentionally opaque."""
+
+
+    REQUIRES_APPROVAL = _VALUES_SELF_SERVE_CONDITIONAL_SELF_SERVE_SELLER_MANAGED_REQUIRES_APPROVAL[3]
+    """Legacy 3.x mode indicating an approval-dependent async path. New proposal-bound terms SHOULD use seller_managed so they do not expose an internal implementation."""
 
 
 strict_validate = strict_alias(__adcp_schema__, "CanonicalMediaBuyActionMode", CanonicalMediaBuyActionMode)

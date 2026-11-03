@@ -149,7 +149,8 @@ class RegistrationTask(StrEnum):
     SYNC_PRINCIPAL = 'sync_principal'
 
 
-CapabilityChangeNotificationsSupportedEventTypesItem = StrEnum('CapabilityChangeNotificationsSupportedEventTypesItem', _VALUES_CAPABILITIES_CHANGED)
+class CapabilityChangeNotificationsSupportedEventTypesItem(StrEnum):
+    CAPABILITIES_CHANGED = _VALUES_CAPABILITIES_CHANGED[0]
 
 
 class CapabilityChangeNotificationsSupported(AdCPBaseModel):
@@ -738,16 +739,18 @@ class AudienceEvidence(AdCPBaseModel):
     supports_attestation_evaluation: Annotated[bool, Field(description='Whether the seller evaluates audience-evidence attestation_refs under its core adcp.attestations policy and returns the exact reference and AttestationEvaluation in package readback.')]
 
 
-_VALUES_OPTIONAL_REQUIRED: tuple[tuple[str, str], ...] = (
-    ('OPTIONAL', 'optional'),
-    ('REQUIRED', 'required'),
+_VALUES_OPTIONAL_REQUIRED: tuple[str, ...] = (
+    'optional',
+    'required',
 )
 
 
-RightsAttestationsRequirement = StrEnum('RightsAttestationsRequirement', _VALUES_OPTIONAL_REQUIRED)
-RightsAttestationsRequirement.__doc__ = """
-required means every applicable rights constraint needs at least one current verified attestation evaluation before the creative is eligible to serve. optional permits independent legacy contractual policy, but unattested constraints remain machine-unverified and verification_url is never a downgrade path.
-"""
+class RightsAttestationsRequirement(StrEnum):
+    """
+    required means every applicable rights constraint needs at least one current verified attestation evaluation before the creative is eligible to serve. optional permits independent legacy contractual policy, but unattested constraints remain machine-unverified and verification_url is never a downgrade path.
+    """
+    OPTIONAL = _VALUES_OPTIONAL_REQUIRED[0]
+    REQUIRED = _VALUES_OPTIONAL_REQUIRED[1]
 
 
 class RightsAttestations(AdCPBaseModel):
@@ -794,7 +797,9 @@ class AudienceTargeting(AdCPBaseModel):
     matching_latency_hours: Annotated[MatchingLatencyHours | None, Field(description='Expected matching latency range in hours after upload. Use to calibrate polling cadence and set appropriate expectations before configuring push_notification_config.')] = None
 
 
-SupportedTargetsItem = StrEnum('SupportedTargetsItem', _VALUES_COST_PER_THRESHOLD_RATE)
+class SupportedTargetsItem(StrEnum):
+    COST_PER = _VALUES_COST_PER_THRESHOLD_RATE[0]
+    THRESHOLD_RATE = _VALUES_COST_PER_THRESHOLD_RATE[1]
 
 
 class VendorMetricOptimization(AdCPBaseModel):
@@ -999,10 +1004,12 @@ class Signals(AdCPBaseModel):
     features: Annotated[SignalsFeatures | None, Field(description='Optional signals features supported')] = None
 
 
-SignalActivationRequirement = StrEnum('SignalActivationRequirement', _VALUES_OPTIONAL_REQUIRED)
-SignalActivationRequirement.__doc__ = """
-Whether an activate_signal activation check may omit runtime_attestations. When required, missing evidence fails an activation check. Deactivation and privacy-removal checks never require signal-quality evidence and remain available without it.
-"""
+class SignalActivationRequirement(StrEnum):
+    """
+    Whether an activate_signal activation check may omit runtime_attestations. When required, missing evidence fails an activation check. Deactivation and privacy-removal checks never require signal-quality evidence and remain available without it.
+    """
+    OPTIONAL = _VALUES_OPTIONAL_REQUIRED[0]
+    REQUIRED = _VALUES_OPTIONAL_REQUIRED[1]
 
 
 class SignalActivation(AdCPBaseModel):
@@ -1028,10 +1035,13 @@ class RuntimeAttestations(AdCPBaseModel):
     signal_activation: SignalActivation
 
 
-PropertyFeaturesItemType = StrEnum('PropertyFeaturesItemType', _VALUES_BINARY_QUANTITATIVE_CATEGORICAL)
-PropertyFeaturesItemType.__doc__ = """
-Data type: 'binary' for yes/no, 'quantitative' for numeric scores, 'categorical' for enum values
-"""
+class PropertyFeaturesItemType(StrEnum):
+    """
+    Data type: 'binary' for yes/no, 'quantitative' for numeric scores, 'categorical' for enum values
+    """
+    BINARY = _VALUES_BINARY_QUANTITATIVE_CATEGORICAL[0]
+    QUANTITATIVE = _VALUES_BINARY_QUANTITATIVE_CATEGORICAL[1]
+    CATEGORICAL = _VALUES_BINARY_QUANTITATIVE_CATEGORICAL[2]
 
 
 class PropertyFeaturesItemRange(AdCPBaseModel):
@@ -1146,7 +1156,12 @@ class RepresentationResolution(AdCPBaseModel):
     strategies: Annotated[list[RepresentationSelectionStrategy], Field(description='Deterministic selection strategies the seller implements after compatibility filtering. `representation_order` selects the first compatible source entry. `highest_compatible_vast` selects the highest exact VAST version from the already-intersected candidate set, with equal-version ties resolved by source array order.', json_schema_extra={'uniqueItems': True}, min_length=1)]
 
 
-VariantDimensionsItem = StrEnum('VariantDimensionsItem', _VALUES_VOICE_THEME_BEST_OF_N_TRANSFORMER_CONFIG_CUSTOM)
+class VariantDimensionsItem(StrEnum):
+    VOICE = _VALUES_VOICE_THEME_BEST_OF_N_TRANSFORMER_CONFIG_CUSTOM[0]
+    THEME = _VALUES_VOICE_THEME_BEST_OF_N_TRANSFORMER_CONFIG_CUSTOM[1]
+    BEST_OF_N = _VALUES_VOICE_THEME_BEST_OF_N_TRANSFORMER_CONFIG_CUSTOM[2]
+    TRANSFORMER_CONFIG = _VALUES_VOICE_THEME_BEST_OF_N_TRANSFORMER_CONFIG_CUSTOM[3]
+    CUSTOM = _VALUES_VOICE_THEME_BEST_OF_N_TRANSFORMER_CONFIG_CUSTOM[4]
 
 
 class Multiplicity(AdCPBaseModel):

@@ -39,10 +39,12 @@ class Captions(StrEnum):
     NOT_REQUIRED = 'not_required'
 
 
-BuyerAssetAcceptance = StrEnum('BuyerAssetAcceptance', _VALUES_ACCEPTED_REJECTED)
-BuyerAssetAcceptance.__doc__ = """
-Whether the product accepts buyer-uploaded video. When `rejected`, the buyer cannot ship a video asset directly — they must use build_creative, sync_creatives with brief inputs, or sync_creatives with an accepted reference asset so the seller produces or resolves the video.
-"""
+class BuyerAssetAcceptance(StrEnum):
+    """
+    Whether the product accepts buyer-uploaded video. When `rejected`, the buyer cannot ship a video asset directly — they must use build_creative, sync_creatives with brief inputs, or sync_creatives with an accepted reference asset so the seller produces or resolves the video.
+    """
+    ACCEPTED = _VALUES_ACCEPTED_REJECTED[0]
+    REJECTED = _VALUES_ACCEPTED_REJECTED[1]
 
 
 class CanonicalFormatHostedVideo(CanonicalFormatBase):

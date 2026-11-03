@@ -101,7 +101,6 @@ from adcp.types._runtime import Distinct, Match, Rule, UniqueItems
 from codegen import constraints as constraint_names
 from codegen import ir
 from codegen.ir import MISSING
-from codegen.refusal import BuildFailure
 
 #: The runtime base §8 of the architecture document gives a root model, named here and
 #: imported by no emitted module until a handler declares one (§14 step 9).  A NAME and
@@ -701,7 +700,7 @@ def alias(decl: ir.AliasDecl) -> Rendered:
 _ENUM_BASES: dict[str, type[DmcgEnum]] = {"string": StrEnum, "integer": IntEnum}
 
 
-def _member(member: ir.Member) -> DataModelFieldBase:
+def _member(member: ir.Member, values: str | None = None, at: int = 0) -> DataModelFieldBase:
     """One member as the model layer's field.
 
     ``EnumMemberValue`` is the generator's own carrier for a string member, and it is
@@ -712,22 +711,32 @@ def _member(member: ir.Member) -> DataModelFieldBase:
     ``use_inline_field_description`` is what puts the description in the class
     body: a single-line one becomes ``\"\"\"text\"\"\"`` under the member, and a
     multi-line one an indented triple-quoted block.
+
+    **``values`` is §3a's module-level value list this member's VALUE is read out of**
+    (:attr:`ir.EnumDecl.values`), and ``at`` is the member's own position in it.  The
+    carrier is then ``PythonCode``, which is the generator's own carrier for a rendered
+    EXPRESSION -- the same mechanism ``EnumMemberValue`` is for a literal, selected here
+    rather than by concatenating text, so the escaping and the indexing go through one
+    template and not two.
+
+    The NAME is unchanged either way, which is the whole point: a class-body statement
+    binding a name is what a consumer's type checker reads, and only the value moves.
     """
     return DataModelFieldBase(
         name=member.name,
         data_type=DataType(),
-        default=EnumMemberValue(member.value) if isinstance(member.value, str) else member.value,
+        default=(
+            PythonCode(f"{values}[{at}]")
+            if values is not None
+            else EnumMemberValue(member.value)
+            if isinstance(member.value, str)
+            else member.value
+        ),
         required=True,
         extras={"description": member.description} if member.description else {},
         use_inline_field_description=True,
     )
 
-
-#: The two enumeration bases by the name the emitted module IMPORTS them under, which
-#: the functional form has to spell and the class form gets from the model layer.  Keyed
-#: by :attr:`ir.EnumDecl.kind`, like :data:`_ENUM_BASES` beside it, so the two cannot
-#: disagree about which base a kind takes.
-_ENUM_BASE_NAMES = {"string": "StrEnum", "integer": "IntEnum"}
 
 #: The Python type word for each kind's MEMBER VALUE, for the annotation a value list
 #: carries.  ``lower.enum.BASES`` is the same mapping read from the other side.
@@ -735,78 +744,27 @@ _VALUE_TYPES = {"string": "str", "integer": "int"}
 
 
 def values(decl: ir.ValuesDecl) -> Rendered:
-    """§3a's module-level VALUE LIST: ``<name> = ((<member>, <value>), ...)``.
+    """§3a's module-level VALUE LIST: ``<name>: tuple[<base>, ...] = (…)``.
 
     "The **VALUE LIST** is a module-level constant in the catalogue layer, written once
     per distinct member set; the **NAMED TYPE** is constructed from it at each position
     that needs one, keeping the name §4 derives and keeping the types distinct."
 
-    The pairs carry the MEMBER NAME beside the value, for :class:`ir.ValuesDecl`'s own
-    reason: ``codegen.lower.enum.member_name`` is the one function an emitted member name
-    comes from, and a list of bare values would let ``enum`` name the members itself.
+    The VALUES alone, which is :class:`ir.ValuesDecl`'s own reason: the member NAME is a
+    class-body statement at each type over the list, so the list is the value list the
+    reading is worded on and carries nothing a type decides.
 
     ``repr`` is the escaping, and it is the language's own rather than this module's: the
     repr of a ``str`` or an ``int`` is by definition a Python literal for that value, so
     a member containing a quote, a backslash or a newline round-trips without this
-    function knowing which characters those are.  The class form reaches the same
+    function knowing which characters those are.  The class body reaches the same
     guarantee through the model layer's ``EnumMemberValue`` (:func:`_member`); there is no
     second escaping rule here, only a second expression of one.
     """
-    pairs = "\n".join(f"    ({member.name!r}, {member.value!r})," for member in decl.members)
+    held = "\n".join(f"    {value!r}," for value in decl.values)
     return Rendered(
-        text=(
-            f"{decl.name}: tuple[tuple[str, {_VALUE_TYPES[decl.kind]}], ...] = (\n"
-            f"{pairs}\n)"
-        )
+        text=f"{decl.name}: tuple[{_VALUE_TYPES[decl.kind]}, ...] = (\n{held}\n)"
     )
-
-
-def _functional_enum(decl: ir.EnumDecl) -> Rendered:
-    """§3a's FUNCTIONAL form: one of two types over a value list written somewhere else.
-
-    §3a's correction of 2026-11-02 states both halves of this -- when it is used and what
-    it costs:
-
-        "**ONE TYPE IS A CLASS STATEMENT; THE FUNCTIONAL FORM IS FOR TWO TYPES SHARING ONE
-        VALUE LIST** ... a functionally-built enum has no slot for the class docstring
-        pydantic renders as ``description`` ... The functional form is needed only where
-        the bundle states one member set under names judged genuinely distinct, which is
-        the narrow case, **and there the docstring is written as its own statement**."
-
-    So the docstring is a statement and not a slot, and the MEMBER docstrings are
-    statements too -- a block ``enumDescriptions`` reaches the class form through the
-    model layer's inline field description and has nowhere to go here.  Measured over the
-    bundle's shared value lists: 2 positions carry the block, both of them
-    *Canonical Media Buy Action Mode* and *Media Buy Action Mode*, whose descriptions
-    DIFFER per type over one value list -- which is why the statements are per
-    declaration and the value list carries no description of its own.
-
-    ``__doc__`` is assigned the same text the class form puts in its body, and pydantic
-    cleans both the same way, so the ``description`` in the rendered JSON Schema is
-    byte-identical between the two forms.  Asserted rather than assumed
-    (``tests/test_enum.py``).
-
-    **The ceiling is the class form's own**: a description containing ``\"\"\"`` emits a
-    module that does not parse.  It is the same ceiling because it is the same
-    insertion -- ``codegen/lower/enum.py``'s docstring measures it at 0 of the bundle's
-    1,151 member descriptions and 0 of its class descriptions -- and it is named here so
-    the second insertion site is not an unrecorded one.
-    """
-    if decl.values is None:
-        raise BuildFailure(
-            f"{decl.name}: the functional form was asked for an enumeration with no value "
-            "list to construct from, so there is nothing for it to name"
-        )
-    base = _ENUM_BASE_NAMES[decl.kind]
-    lines = [f"{decl.name} = {base}({decl.name!r}, {decl.values})"]
-    if decl.description:
-        lines.append(f'{decl.name}.__doc__ = """\n{decl.description}\n"""')
-    for member in decl.members:
-        if member.description:
-            lines.append(f'{decl.name}.{member.name}.__doc__ = """{member.description}"""')
-    out = Rendered(text="\n".join(lines))
-    out.imports.add(("enum", base))
-    return out
 
 
 def enum(decl: ir.EnumDecl) -> Rendered:
@@ -816,16 +774,19 @@ def enum(decl: ir.EnumDecl) -> Rendered:
     nothing here, which is why ``codegen.lower.enum`` owns the naming and why the
     injectivity check binds to its function.
 
-    **Two forms, and §3a decides between them rather than this function**
-    (:attr:`ir.EnumDecl.values`): the members are written in the class body where this
-    enumeration is the one type over its value list, and constructed from a module-level
-    constant where the bundle states that value list under two names judged distinct.
+    **ONE FORM, and :attr:`ir.EnumDecl.values` moves the member's VALUE and not its
+    name.**  §3a's "the NAMED TYPE is constructed from it at each position" is satisfied
+    by a class statement whose members are read out of the one list, and the functional
+    ``StrEnum('<Name>', …)`` call -- which §3a's correction of 2026-11-02 named as one way
+    to do it -- is not usable here: a consumer's type checker cannot see a functionally
+    built enum's members (``error: "type[CatalogAction]" has no attribute "CREATED"
+    [attr-defined]``, measured against a wheel), which is a regression in reading 7.  So
+    the two docstring slots the correction was willing to give up are kept as well, and
+    nothing about this function differs between a value list of its own and a shared one.
     """
-    if decl.values is not None:
-        return _functional_enum(decl)
     model = _ENUM_BASES[decl.kind](
         reference=Reference(path=f"#/{decl.name}", original_name=decl.name, name=decl.name),
-        fields=[_member(m) for m in decl.members],
+        fields=[_member(m, decl.values, at) for at, m in enumerate(decl.members)],
         description=decl.description or None,
     )
     out = Rendered(text=model.render().rstrip("\n"))
@@ -1353,11 +1314,11 @@ document to be reached through.  It sits in the narrowest namespace that contain
 position referencing it -- a domain's where every reference is within one domain, the
 shared one otherwise.
 
-**Nothing here is a type.**  Each name is a list of ``(member, value)`` pairs, and the
-enumerations built from it are declared in the modules of the documents that state them,
-each keeping the name §4 derives for it: "a conflicting title is not a question about
-which name wins ... where the bundle states two concepts, both names are right and
-merging types one subject with the other's name."
+**Nothing here is a type.**  Each name is a list of VALUES, and the enumerations that
+read their members out of it are declared in the modules of the documents that state
+them -- as class statements, each keeping the name §4 derives for it: "a conflicting
+title is not a question about which name wins ... where the bundle states two concepts,
+both names are right and merging types one subject with the other's name."
 """'''
 
 

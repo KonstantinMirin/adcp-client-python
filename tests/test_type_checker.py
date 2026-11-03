@@ -32,13 +32,19 @@ because ``isinstance`` in an ``if`` IS the branch the design asks for and only a
 from __future__ import annotations
 
 import ast
+import enum
+import importlib
 import os
+import pkgutil
 import re
+import shutil
 import subprocess
 import sys
 import tokenize
 import tomllib
 from pathlib import Path
+
+from nodeset import claimed
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -149,6 +155,168 @@ def test_the_package_declares_its_types_to_a_consumer() -> None:
         "`py.typed` is in the tree and not in [tool.setuptools.package-data], so the "
         "wheel is built without it and the promise is made to readers alone"
     )
+
+
+def _installed(into: Path) -> Path:
+    """``src/adcp`` as an INSTALLED package, and the interpreter that resolves it.
+
+    A venv with no pip (``--without-pip``, 0.2 s) and the package copied into its
+    ``site-packages``, which is what a wheel unpacks to.  Returns the interpreter, because
+    that is how mypy is told where to look: ``--python-executable`` makes it read THAT
+    environment's ``site-packages``, so ``py.typed`` is load-bearing exactly as it is for a
+    consumer.  ``MYPYPATH`` would not do -- a package found there is analysed as SOURCE
+    whatever its marker says, and "the source tree is readable with or without the marker"
+    is the sentence this whole section exists because of.
+
+    ``src/adcp`` and not a fresh emit, for the reason the test above reads the same path:
+    the WHEEL is built from ``src``, so that is the artifact reading 7 is about.
+    ``tests/test_emit.py``'s byte compare is what ties it to a fresh run, and a check that
+    re-emitted here would be grading a different artifact from the one that ships.
+    """
+    subprocess.run(
+        [sys.executable, "-m", "venv", "--without-pip", str(into / "v")], check=True
+    )
+    (site,) = (into / "v").glob("lib/python*/site-packages")
+    shutil.copytree(
+        ROOT / "src" / "adcp", site / "adcp", ignore=shutil.ignore_patterns("__pycache__")
+    )
+    assert (site / "adcp" / "py.typed").is_file()
+    return into / "v" / "bin" / "python"
+
+
+def _consumer_errors(interpreter: Path, file: Path) -> list[str]:
+    """Every error a consumer's checker reports IN ``file``, checked against ``interpreter``.
+
+    ``--follow-imports=silent`` is what makes this a reading of the CONSUMER'S code, which
+    is the gate ``docs/plan/architecture.md`` states -- "a checker running over a
+    consumer's code does not re-check the internals of an installed package; it reads the
+    package's annotations and reports errors in the consumer's own file".  Without it mypy
+    crawls the generated tree and reports the internal errors that section calls "a defect
+    we own and not a bar to shipping the marker", which would make this gate red for
+    something it is not about.
+
+    **THE ENVIRONMENT IS SCRUBBED, and it is as load-bearing here as ``PYTHONPATH`` is in
+    the opposite direction for :data:`INVOCATION`.**  This suite runs with
+    ``PYTHONPATH=.:src``, and mypy builds its search path from it -- so an inherited
+    environment resolves ``adcp`` to ``src/adcp`` as SOURCE, where ``py.typed`` means
+    nothing, and the gate would be reading the directory instead of the installed package.
+    Measured: with the variable inherited, deleting the marker from the installed copy
+    changed no answer at all.  ``cwd`` moves off the repository for the same reason --
+    ``[tool.mypy]`` is the DECISION layer's configuration and names its own files and
+    exclusions, which is not what a consumer runs.
+    """
+    done = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "mypy",
+            "--no-incremental",
+            "--follow-imports=silent",
+            "--python-executable",
+            str(interpreter),
+            str(file),
+        ],
+        cwd=file.parent,
+        capture_output=True,
+        text=True,
+        check=False,
+        env={k: v for k, v in os.environ.items() if k != "PYTHONPATH"},
+    )
+    assert "No module named mypy" not in done.stderr, done.stderr
+    # ERRORS and not every line: mypy writes a ``note:`` beside an ``import-untyped``
+    # pointing at its own documentation, which is advice and not a finding.
+    return [
+        line
+        for line in done.stdout.splitlines()
+        if line.startswith(f"{file.name}:") and ": error:" in line
+    ]
+
+
+def _public_enum_members() -> dict[tuple[str, str], str]:
+    """``(domain, exported name) -> one member name``, for every PUBLIC enum export.
+
+    **DERIVED from each domain module's own ``__all__``, so it cannot go stale**: §1 fixes
+    the export set and ``emit.domain_modules`` writes it, so an enumeration that joins the
+    surface joins this population with nothing edited.  The MEMBER is the class's own
+    first one, read off ``__members__`` -- not a name written here, which would be the
+    pinned list the derivation exists to avoid.
+
+    The domains are enumerated off ``adcp.types``' own package path rather than listed,
+    for ``tests/test_the_domain_surface.py``'s reason: "a test carrying the list of
+    domains would be the second place that derivation lives, and the first to go stale".
+    """
+    import adcp.types
+
+    out: dict[tuple[str, str], str] = {}
+    for info in pkgutil.iter_modules(adcp.types.__path__):
+        if info.ispkg or info.name.startswith("_"):
+            continue
+        module = importlib.import_module(f"adcp.types.{info.name}")
+        for name in getattr(module, "__all__", ()):
+            held = getattr(module, name, None)
+            if isinstance(held, type) and issubclass(held, enum.Enum) and held.__members__:
+                out[(info.name, name)] = next(iter(held.__members__))
+    return out
+
+
+def test_a_consumer_can_name_a_member_of_every_public_enum_the_wheel_exports(tmp_path) -> None:
+    """Reading 7 at the one place it was measured to fail: an ENUM MEMBER.
+
+    ``docs/plan/architecture.md``: "**The gate is the consumer's checker, not ours.**  A
+    file outside the package that misuses a field and an enum member must FAIL a check
+    against the installed wheel ... Checking our own tree proves nothing about this."
+    This is the other direction of the same sentence -- a file outside the package that
+    uses an enum member CORRECTLY must pass -- and it is the direction nothing held.
+
+    **WHAT GOT PAST EVERY EXISTING GATE, which is why this one is derived.**  §3a's shared
+    value list was first emitted as ``<Name> = StrEnum('<Name>', _VALUES)``, which runs
+    correctly and is opaque to a checker: ``CatalogAction.CREATED`` reported ``error:
+    "type[CatalogAction]" has no attribute "CREATED"  [attr-defined]``.  Nothing reddened,
+    for two reasons that were each correct on their own -- our own ``[tool.mypy]``
+    excludes the generated tree by name (§5: the tree is an artifact and a defect in it is
+    fixed in ``render.py``), and the consumer-side reading next door was hand-written over
+    a handful of names and so was blind to the other 1,951.  So the population here is
+    DERIVED from each domain module's ``__all__``: 242 public enum exports over 11 domains
+    today, and a new one joins with nothing edited.
+
+    Three directions, because the first alone can pass for the wrong reason:
+
+    * every public enum export's first member is NAMEABLE -- the gate;
+    * a member no enumeration has is an ``[attr-defined]`` error, so the checker is
+      actually reading the class and not resolving it to ``Any``;
+    * and with ``py.typed`` removed from the installed copy the checker goes blind,
+      which is what makes the marker the test above asserts load-bearing here too.
+    """
+    exported = _public_enum_members()
+    claimed("public enum exports of the domain surface", exported)
+    interpreter = _installed(tmp_path)
+
+    lines = []
+    for i, ((domain, name), member) in enumerate(sorted(exported.items())):
+        lines.append(f"from adcp.types.{domain} import {name} as _{i}")
+        lines.append(f"held_{i}: _{i} = _{i}.{member}")
+    consumer = tmp_path / "consumer.py"
+    consumer.write_text("\n".join(lines) + "\n")
+    assert _consumer_errors(interpreter, consumer) == []
+
+    # The control: a member no enumeration carries.  ``_0`` is whichever export sorts
+    # first, so this names no enumeration either.
+    (domain, name), _ = sorted(exported.items())[0]
+    control = tmp_path / "control.py"
+    control.write_text(
+        f"from adcp.types.{domain} import {name}\n\nbad = {name}.NOT_A_MEMBER_ANY_RULE_MINTS\n"
+    )
+    reported = _consumer_errors(interpreter, control)
+    assert len(reported) == 1 and "attr-defined" in reported[0], reported
+
+    # And the marker, which is what makes the two readings above about an INSTALLED
+    # package rather than about a directory of source: without it the control's error
+    # becomes `import-untyped` on the module, so every annotation resolves to `Any` and
+    # the misuse passes unreported.
+    (site,) = (tmp_path / "v").glob("lib/python*/site-packages")
+    (site / "adcp" / "py.typed").unlink()
+    blind = _consumer_errors(interpreter, control)
+    assert len(blind) == 1 and "import-untyped" in blind[0], blind
 
 
 def test_the_decision_layer_holds_no_suppression_the_gate_would_hide() -> None:

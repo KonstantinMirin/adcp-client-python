@@ -195,10 +195,12 @@ class RequiredGeoTargetingItem(AdCPBaseModel):
     system: Annotated[str | None, Field(description="Optional classification system within the level. Use for a specific metro system (e.g., 'nielsen_dma'), native postal_area system (e.g., 'zip' with country 'US'), or deprecated legacy postal alias (e.g., 'us_zip'). Not applicable for country/region which use ISO standards.")] = None
 
 
-TargetingMode = StrEnum('TargetingMode', _VALUES_INCLUDE_EXCLUDE)
-TargetingMode.__doc__ = """
-Desired use of this signal on the product. 'include' requires the product option to allow use in an any group. 'exclude' requires the product option to allow use in a none group.
-"""
+class TargetingMode(StrEnum):
+    """
+    Desired use of this signal on the product. 'include' requires the product option to allow use in an any group. 'exclude' requires the product option to allow use in a none group.
+    """
+    INCLUDE = _VALUES_INCLUDE_EXCLUDE[0]
+    EXCLUDE = _VALUES_INCLUDE_EXCLUDE[1]
 
 
 class SignalTargetingItem(BranchDispatchMixin, AdCPBaseModel):

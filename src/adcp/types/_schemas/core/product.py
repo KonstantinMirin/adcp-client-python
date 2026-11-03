@@ -73,7 +73,9 @@ class DeliveryMeasurement(AdCPBaseModel):
     notes: Annotated[str | None, Field(description="Additional details about measurement methodology in plain language (e.g., 'MRC-accredited viewability. 50% in-view for 1s display / 2s video', 'Panel-based demographic measurement updated monthly'). Free-form prose for context that doesn't fit the structured `vendors` field.")] = None
 
 
-MetricOptimizationSupportedTargetsItem = StrEnum('MetricOptimizationSupportedTargetsItem', _VALUES_COST_PER_THRESHOLD_RATE)
+class MetricOptimizationSupportedTargetsItem(StrEnum):
+    COST_PER = _VALUES_COST_PER_THRESHOLD_RATE[0]
+    THRESHOLD_RATE = _VALUES_COST_PER_THRESHOLD_RATE[1]
 
 
 class MetricOptimization(AdCPBaseModel):

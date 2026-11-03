@@ -13,25 +13,25 @@ document to be reached through.  It sits in the narrowest namespace that contain
 position referencing it -- a domain's where every reference is within one domain, the
 shared one otherwise.
 
-**Nothing here is a type.**  Each name is a list of ``(member, value)`` pairs, and the
-enumerations built from it are declared in the modules of the documents that state them,
-each keeping the name §4 derives for it: "a conflicting title is not a question about
-which name wins ... where the bundle states two concepts, both names are right and
-merging types one subject with the other's name."
+**Nothing here is a type.**  Each name is a list of VALUES, and the enumerations that
+read their members out of it are declared in the modules of the documents that state
+them -- as class statements, each keeping the name §4 derives for it: "a conflicting
+title is not a question about which name wins ... where the bundle states two concepts,
+both names are right and merging types one subject with the other's name."
 """
 
 from __future__ import annotations
 
 
-_VALUES_INCLUDE_OMIT_FINALIZE: tuple[tuple[str, str], ...] = (
-    ('INCLUDE', 'include'),
-    ('OMIT', 'omit'),
-    ('FINALIZE', 'finalize'),
+_VALUES_INCLUDE_OMIT_FINALIZE: tuple[str, ...] = (
+    'include',
+    'omit',
+    'finalize',
 )
 
 
-_VALUES_INCLUDE_OMIT_MORE_LIKE_THIS: tuple[tuple[str, str], ...] = (
-    ('INCLUDE', 'include'),
-    ('OMIT', 'omit'),
-    ('MORE_LIKE_THIS', 'more_like_this'),
+_VALUES_INCLUDE_OMIT_MORE_LIKE_THIS: tuple[str, ...] = (
+    'include',
+    'omit',
+    'more_like_this',
 )

@@ -39,10 +39,13 @@ class MacroDeclarationsItem(MacroDeclaration):
     location: Location
 
 
-Target = StrEnum('Target', _VALUES_LINEAR_NON_LINEAR_COMPANION)
-Target.__doc__ = """
-Which VAST creative element this tracker scopes to — `linear` for `<Linear>/<TrackingEvents>`, `non_linear` for `<NonLinearAds>/<TrackingEvents>`, `companion` for `<CompanionAds>/<Companion>/<TrackingEvents>`. Defaults to `linear`. Existing 3.x assets remain structurally permissive; a tracker execution contract applies the standards-valid event/target matrix when matching a creative to a product.
-"""
+class Target(StrEnum):
+    """
+    Which VAST creative element this tracker scopes to — `linear` for `<Linear>/<TrackingEvents>`, `non_linear` for `<NonLinearAds>/<TrackingEvents>`, `companion` for `<CompanionAds>/<Companion>/<TrackingEvents>`. Defaults to `linear`. Existing 3.x assets remain structurally permissive; a tracker execution contract applies the standards-valid event/target matrix when matching a creative to a product.
+    """
+    LINEAR = _VALUES_LINEAR_NON_LINEAR_COMPANION[0]
+    NON_LINEAR = _VALUES_LINEAR_NON_LINEAR_COMPANION[1]
+    COMPANION = _VALUES_LINEAR_NON_LINEAR_COMPANION[2]
 
 
 class VASTTrackerAsset(AdCPBaseModel):
