@@ -43,7 +43,7 @@ import pytest
 from pydantic import BaseModel, ValidationError
 
 import adcp.types._schemas as schemas_pkg
-from adcp.types._base import BranchDispatchMixin
+from adcp.types._base import BranchDispatchMixin, through_the_store
 from codegen import bundle
 
 from tests.nodeset import claimed
@@ -66,10 +66,35 @@ def _records() -> dict[str, dict]:
     return out
 
 
-def _at(node: Any, pointer: str) -> Any:
+def _at(root: Any, pointer: str) -> Any:
+    """The node ``pointer`` names in a document of RECORD, READ THROUGH ITS STORAGE.
+
+    ``docs/plan/architecture.md``, "A READER ASKING WHAT THE DOCUMENT STATES READS
+    THROUGH THE STORAGE": the record holds each distinct subtree once and references the
+    entry at every occurrence, so **a reference to a storage entry is not a fact the
+    document states -- it is where the fact is kept.**  Every question this file asks is
+    semantic (what does this document require at this pointer, what does it admit there),
+    so every walk here dereferences.
+
+    **The dereference is the package's own seam and not a second reading written here**,
+    which is the other half of that section: ``through_the_store`` for the hop a DESCENT
+    crosses -- a pointer that walked into the inlined text walks into a reference now, and
+    that function is what makes the two the same pointer -- and ``bundle.expanded`` for the
+    node handed back.
+
+    The node is handed back EXPANDED because every caller here makes it the ROOT of a
+    ``jsonschema.Draft7Validator``, where a surviving ``#/definitions/Shared<N>`` resolves
+    against the node rather than against the record and raises ``PointerToNowhere``.  That
+    is what three checks did on the merged tree, and the classes they grade were right:
+    ``Account._ROOT_REQUIRED`` is ``('brand', 'operator')`` and the arm's ``required`` is
+    ``['status', 'task_id']``.  The stored form is the record's and is not the thing to
+    change; the raw walk was.
+    """
+    node = root
     for part in [p for p in pointer.lstrip("#").split("/") if p]:
+        node = through_the_store(node, root)
         node = node[int(part)] if isinstance(node, list) else node[part]
-    return node
+    return bundle.expanded(node, root)
 
 
 def _union_node(node: Any) -> dict | None:
@@ -266,7 +291,7 @@ def test_the_submitted_arm_requires_what_its_target_requires() -> None:
     the target's required ones were shadowed: the class admitted ``{"task_id": "0"}``,
     which its node refuses.
     """
-    node = _refine_record()["anyOf"][1]
+    node = _at(_refine_record(), "#/anyOf/1")
     module = importlib.import_module("adcp.types._schemas.media_buy.refine_proposals_response")
     arm = module.RefineProposalsResponseSubmitted
     payload = {"task_id": "0"}
