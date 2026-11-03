@@ -224,6 +224,31 @@ dispatch sources already say *branch*. Nothing is gained by a second word for on
 *"Population"* is a **set** — the portable set, the declared set, the set a check ranges over.
 A count is stated over a set, and `bundle.portable` returns one.
 
+**"RUNG" AND "LADDER" ARE BANNED, AND THIS ONE HID A TYPE ERROR RATHER THAN A SYNONYM (decided
+2026-11-03).** The word named **two different structures** in this tree, and naming them alike
+asserted a relation between them that does not exist:
+
+- **§2's widening order is a CHAIN — a totally ordered set — over five types, ordered by
+  INCLUSION OF THE ADMITTED VALUE SET**: `KEYWORD ⊆ TYPE ⊆ JOIN ⊆ CONTAINER ⊆ TOP`. A handler
+  that cannot render a fact takes the **LEAST WIDENING** it can render. `Any` is the order's
+  **greatest element**, which is why no node runs out of renderings — a property of the order,
+  not of a metaphor. "Monotone", "terminates", "least" and "greatest" are the words this is made
+  of, and all four are checkable.
+- **§4's branch naming is an ORDERED LIST OF CANDIDATE NAMES, resolved by FIRST FIT.** A
+  collision means the candidate did not identify the branch, so the next candidate is taken. The
+  last is the **DEFAULT CASE**, and it is the one that mints `<Base>Branch<i>`.
+
+**Position means something different in each, and that is the whole error.** In the chain,
+position means *admits at least as much*; a move along it changes what the class accepts. In the
+candidate list, position means *is preferred*, and §4 already states that **a name is not an
+acceptance fact** — so a move along it changes nothing an instance can observe. One word for an
+order over admitted sets and a preference list over symbols is how "it falls to the next one"
+reads as a single mechanism when the two share no code: `codegen/lower/names.py` does not import
+`Rung` and never has.
+
+The ban is on the word, in these documents and in the identifiers. `Rung` is a **`Widening`**,
+`LADDER` is the **`WIDENING_ORDER`**, and `spell_the_rungs` returns **candidates**.
+
 
 
 ### Where the `oneOf` entailment is derived (decided 2026-10-29)
@@ -565,7 +590,7 @@ The refusal argument survives in exactly two places, and the design keeps both.
   `URL_IMPLIED`'s two facts cannot "stop being dropped" when the registry that declared them has
   no references left, and `tests/test_decision_set.py` — which this section names as holding the
   guard — **does not exist**. The third count is already zero as well, since `refused` is 0 and
-  §5's `uri`-beside-a-constraint case is answered by the TYPE rung already.
+  §5's `uri`-beside-a-constraint case is answered by the TYPE widening already.
 
   **What the withdrawal moves is the NARROWING count, and that is invisible to the drawn set** —
   which is the measure of the problem rather than an excuse. None of the narrowing's measured
@@ -596,8 +621,9 @@ The refusal argument survives in exactly two places, and the design keeps both.
 
 A fact the annotation cannot carry is **dropped**, never substituted. Dropping a constraint
 widens the admitted set and can do nothing else; substituting a "nearest expressible"
-constraint could narrow, so substitution is not available. The handler takes the lowest rung of
-one ladder it can render, and the ladder is finite, monotone and terminates:
+constraint could narrow, so substitution is not available. The handler takes the **least
+widening** it can render in one **chain of five, totally ordered by inclusion of the admitted
+value set** — finite, monotone, and terminating at its greatest element:
 
 1. **KEYWORD** — drop the one keyword, keep the type. (`uniqueItems` where no class and no
    named type hold the rule → `list[X]`.)
@@ -609,14 +635,14 @@ one ladder it can render, and the ladder is finite, monotone and terminates:
 4. **CONTAINER** — replace the node with its bare container: `list[Any]`, `dict[str, Any]`.
 5. **TOP** — `Any`.
 
-`Any` admits everything, so the ladder always has a rung left and no node can run out of
-renderings. **Which rung a keyword takes is the keyword's decision and lives in its cell
+`Any` admits everything, so `TOP` is the chain's **greatest element** and no node can run out of
+renderings. **Which widening a keyword takes is the keyword's decision and lives in its cell
 (§5), never at the site that widens.**
 
 A narrowing is not discouraged here; it is a **failing check**. §8's accepts draw covers the
 node's admissible space by constraint class, so a type that refuses any value the document
 admits is reported with the value. Where a widening would still leave a narrowing — the type
-word itself refusing what a constraint admits — the type widens by another rung, to `Any` if
+word itself refusing what a constraint admits — the type widens by another widening, to `Any` if
 nothing else carries it.
 
 #### An approximation is declared, and it is local
@@ -625,7 +651,7 @@ A refusal propagates: a parent returns it upward unchanged and the document emit
 approximation does **not**. It is a property of one node, the document still emits, and the
 approximation travels upward only to be **accumulated** — a refusal is absorbing, an
 approximation is additive. Every one carries its document, its pointer, the keyword whose fact
-the annotation does not carry, the rung it took, that fact in the document's own spelling, and
+the annotation does not carry, the widening it took, that fact in the document's own spelling, and
 an **attribution**. Nothing is approximated by silence: an undeclared widening is a defect and
 §8 reports it as one.
 
@@ -802,7 +828,7 @@ reached first.
   else its sorted `required` set; else, where the branch is a bare `$ref`, **the TARGET's own
   derived name**; else its **index among the branches**, `<Base>Branch<i>`.
 
-**A bare `$ref` branch is named for its TARGET, and the index is the rung after that (decided
+**A bare `$ref` branch is named for its TARGET, and the index is the candidate after that (decided
 2026-10-29; corrected on implementation the same day).** The name is the target's
 DISTINGUISHING REMAINDER and never the target's own symbol spelled straight: the branch's second
 base IS the target, so the module imports that symbol, and `spell()`'s `occupied` keeps a
@@ -810,16 +836,16 @@ shadowing name rather than refusing it where a chain of one segment has no ances
 That case is already red — `core/vendor_pricing_option.py` emits
 `class CpmPricing(VendorPricingOption, CpmPricing)` five times — so a rule producing it would
 have shipped the defect it was written to avoid. Where the two names share nothing, the branch
-takes `<Doc><Other>`. §4 already makes such a branch inherit the target's property map for the pin rung,
+takes `<Doc><Other>`. §4 already makes such a branch inherit the target's property map for the pin candidate,
 and the target is a document whose own class name this section derives — so the name is available
-and the index is a worse answer that was reached only because no rung asked.
+and the index is a worse answer that was reached only because no candidate asked.
 
 A positional name is the one outcome a consumer cannot work with. `AssetRequirementsBranch0`
 through `...Branch11` are the twelve asset kinds — `image-asset-requirements.json`,
 `video-asset-requirements.json`, `audio-asset-requirements.json` and so on — and a caller writing
 `isinstance(req, AssetRequirementsBranch7)` has to count the document's branches to know it means
 JavaScript. **Measured on a FRESH RUN: 18 classes over 7 documents take the index, of which 13 are bare
-`$ref`s** and are what this rung reaches. The other five are other cases — a nested registry
+`$ref`s** and are what this candidate reaches. The other five are other cases — a nested registry
 branch, an `allOf` arm, a properties-only arm, and a `not`-complement branch with the copy another
 document inlines. An earlier figure of 19 over 6 was read off the committed tree, which was 39
 documents stale, and assumed one case for all of them.
@@ -831,11 +857,11 @@ Both inputs are facts about the one branch — its root and its target — so th
 insertion-stable, which is what §4's own criterion asks and what the branch rule reverted at
 `64d0f897` failed.
 
-**The spelling needs a rename census before it lands**, as rung 2's did: the four single-pin
+**The spelling needs a rename census before it lands**, as candidate 2's did: the four single-pin
 branches of `postal-country-system` had to keep `US`, `GB`, `CA` and `Plz`, and the same question
 applies to every sibling of the 19.
 
-**Rung 2 reads EVERY pin the branch states, and a rung that collides has not identified the
+**Candidate 2 reads EVERY pin the branch states, and a candidate that collides has not identified the
 branch (decided 2026-10-29).** Two clauses, and both are functions of the one branch, which is
 the insertion-stability criterion this section already states for the nested rule — a rule
 reading "the property the most branches pin" would rename every sibling when a branch is
@@ -857,26 +883,26 @@ identifying beside a `true`, so reading every pin appended a segment identifying
 `PackageSignalTargetingBinary` became `PackageSignalTargetingBinaryTrue`.
 
 It subsumes the collision case rather than sitting beside it. A branch whose pins are all boolean
-contributes no segment at all, so rung 2 answers nothing for it and it falls through — which is
+contributes no segment at all, so candidate 2 answers nothing for it and it falls through — which is
 what `trusted-match/provider-registration.json` needs, reached now by one rule rather than two.
 
-Where a rung derives one name for two branches it has not identified either, so **both fall to
-the next rung** — the collision rule above lengthens a chain, and these chains are one segment
+Where a candidate derives one name for two branches it has not identified either, so **both fall to
+the next candidate** — the collision rule above lengthens a chain, and these chains are one segment
 with nothing to lengthen by. Measured on `trusted-match/provider-registration.json`, whose two
 branches pin `context_match: true` and `identity_match: true`: the value `true` is the same on
-both and names neither, so rung 2 answers nothing and rung 3's `required` set gives
+both and names neither, so candidate 2 answers nothing and candidate 3's `required` set gives
 `ContextMatch` and `IdentityMatch`. What identifies those branches is WHICH property is present,
-which is the fact rung 3 reads.
+which is the fact candidate 3 reads.
 
-Rung 2 is not narrowed to unions that derive a dispatch discriminator. Measured: that reading
+Candidate 2 is not narrowed to unions that derive a dispatch discriminator. Measured: that reading
 takes `postal-country-system`'s four working names away, because no property of it is shared by
 all ten branches and the strict reading would send every branch to its index.
 
 **A branch colliding with its own document ROOT: the root keeps the name and the branch falls to
-the next rung (decided 2026-10-29).** The collision rule lengthens a chain, and a root has no
+the next candidate (decided 2026-10-29).** The collision rule lengthens a chain, and a root has no
 chain to lengthen — D5 fixes its symbol, because a document exports one importable symbol named
 for the document. So the branch is the side that moves, and it moves the same way any colliding
-rung does: to the next rung that answers.
+candidate does: to the next candidate that answers.
 
 Measured on `core/postal-area.json`, whose root is titled "Postal Area" and whose `/anyOf/0` is
 titled "PostalArea". Both derive `PostalArea`, neither can spend a segment, and the compiler
@@ -886,7 +912,7 @@ case §2 forbids most plainly: a refusal must name a fact about the document, an
 this document derive one class name" is a fact about `lower/names.py`.
 
 The verdict goes with the rule (`adcp-client-python-10l.78`). No document of bundle 3.2 refuses
-for a derivable name again: rung 4 always answers, because a branch always has an index.
+for a derivable name again: candidate 4 always answers, because a branch always has an index.
 
 **AND AN IMPORTED SYMBOL IS THE SAME CASE, stated because a lane had to reach it by analogy
 (2026-10-30).** A module that imports a name and then declares a class under it leaves the name
@@ -899,8 +925,8 @@ colliding branch falls, and the import keeps the name.**
 The rule reaches both of §4's axes, and that is the half that was missing rather than the rule
 itself. A position whose name is occupied is colliding when deciding whether to LENGTHEN *and*
 when deciding whether to FALL; honouring it on the first axis alone reads "cannot lengthen" as
-"resolved", which is exactly what a bare-`$ref` branch at rung 1 hits — it is a chain of one with
-no ancestor to prepend, and it had three rungs still underneath. Measured at 56 names over 4
+"resolved", which is exactly what a bare-`$ref` branch at candidate 1 hits — it is a chain of one with
+no ancestor to prepend, and it had three candidates still underneath. Measured at 56 names over 4
 modules, every one of them that case.
 
 **Collision, which this section never stated and the emitter therefore avoided by never
@@ -1158,7 +1184,7 @@ is the one place a keyword decision lives, and a grid is its rendering.
 <!-- generated from codegen/keywords.py -->
 | keyword | compiles to |
 | --- | --- |
-| `type` | A scalar word → `str` / `int` / `float` / `bool`, unless a constrained type or `format` selects one. `object` with `properties` → a class; without → `dict[K, V]`. `array` → `list[X]`. `null` → `None`. A LIST of words → `A \| B`, each sibling keyword going to the one type word that can carry it. Absent → `Any`; absent beside `properties` → an object, where an enclosing node applies `type: object` to the same instance, and refused otherwise. An enclosing `oneOf` APPLIES a type word it does not state, where TWO OR MORE of its branches admit that type vacuously: `oneOf` admits an instance satisfying exactly one branch, so an instance two branches both admit is refused by the combinator, and the type is excluded by the document itself. This is EXACT and not a widening — it reads a constraint the document imposes rather than relaxing one — so it owes no declaration and no rung. It holds at `oneOf` ALONE: at `anyOf` an instance one branch admits is admitted, so the same derivation there would state a constraint the document does not (`adcp-client-python-10l.69`, decided 2026-10-29). |
+| `type` | A scalar word → `str` / `int` / `float` / `bool`, unless a constrained type or `format` selects one. `object` with `properties` → a class; without → `dict[K, V]`. `array` → `list[X]`. `null` → `None`. A LIST of words → `A \| B`, each sibling keyword going to the one type word that can carry it. Absent → `Any`; absent beside `properties` → an object, where an enclosing node applies `type: object` to the same instance, and refused otherwise. An enclosing `oneOf` APPLIES a type word it does not state, where TWO OR MORE of its branches admit that type vacuously: `oneOf` admits an instance satisfying exactly one branch, so an instance two branches both admit is refused by the combinator, and the type is excluded by the document itself. This is EXACT and not a widening — it reads a constraint the document imposes rather than relaxing one — so it owes no declaration and no widening. It holds at `oneOf` ALONE: at `anyOf` an instance one branch admits is admitted, so the same derivation there would state a constraint the document does not (`adcp-client-python-10l.69`, decided 2026-10-29). |
 | `properties` | A class with one field per key. An entry whose subschema ADMITS NOTHING — `false`, or `{"not": {}}`, which draft-07 makes the same schema — is NOT a field: draft-07 validates a `properties` entry only where the key is PRESENT and that entry then always fails, so the document's statement is that the key MAY NOT APPEAR and it says nothing at all about a value. The accepted set is the accepted set of `not: {required: [key]}`, which the `not` row already compiles to a `ForbiddenGroups` rule, so the key joins that rule on the nearest enclosing class and no field is declared. EXACT, not wide: nothing is dropped reaching it and no declaration is owed. `extra` is NOT the carrier — all three sites of the bundle state `additionalProperties: true` beside the forbidden key, so closing the class would refuse the other extras the document admits. Where `required` ALSO names the key the document admits nothing, and so does the class without an arm of its own: the `required` row's undeclared-name field refuses a payload omitting the key and this rule refuses one carrying it. ROOT beside a union → fields on the base, inherited by every branch. PROP / ELEM / MAPV / DEF → a nested class. BRANCH → the branch class. CONJ → fields of the composed class. A property two conjuncts declare is one field: its constraints intersect by §2, and two object declarations compose as an `allOf` of the two at that property; an empty intersection — two type words, disjoint enums — refuses, because the document admits nothing there. A `default` or a `description` is not a constraint, and the document's own statement wins over a base's. RULE: under `if` → the values a `Match` clause tests, read only where `const` or `enum`; under `then` / `else` / `not` → nothing. |
 | `required` | The named fields are required: no `\| None`, no default. Naming a property NO declaration declares → a required field of type `Any`, and it is EXACT rather than wide: `required: ['x']` with no entry for `x` admits an object carrying `x` with any value, which is what the `type` row already gives an absent type word, so nothing is dropped and no declaration is owed. The model-only `properties` entry it renders is the empty schema, which states nothing the document does not. `required: []` → nothing. ROOT beside a union → required on the base's fields, and the names recorded in `_ROOT_REQUIRED`, so a refusal can separate a field the root requires from one that selects a branch. BRANCH → the branch class's requiredness, and the third of the branch-naming choices. CONJ → unioned into the composed class's `required`; a `required`-only conjunct → the overlay. RULE → a presence rule: `RequiredGroups`, `ForbiddenGroups` under `not`, the keys a `Match` clause tests under `if`, `ConditionalRequired` / `NegatedConditional` under `then` / `else`. |
 | `definitions`, `$defs` | Nothing by itself: a bag of named subschemas. Each entry is declared on demand when a `$ref` names it, as the node's own kind, under `<Root><Key>`. |
@@ -1182,7 +1208,7 @@ is the one place a keyword decision lives, and a grid is its rendering.
 | --- | --- |
 | `pattern` | `pattern` on the type, as a named alias. On `format: uri` → selects the type instead, and the pattern stays with the schema half. The regex engine is derived per class, because a pattern using look-around needs Python's engine rather than Rust's. ROOT → the root alias over it. ELEM / BRANCH → the alias as the element or member type. KEY → an annotated `str` key. RULE → nothing. |
 | `format` | Selects a TYPE where the document's draft asserts the format and a type is named: `date-time` → `AwareDatetime`, `date` → `datetime.date`, `uri` → a URL type chosen by `pattern`. Otherwise rides as `json_schema_extra={"format": …}` on the field. A `uri` beside another string constraint → refused: a URL type carries none. ELEM / MAPV with no type selected → a named alias carries it. BRANCH → the selected type as the member. |
-| `minLength`, `maxLength` | `min_length` / `max_length` on the type, as a named alias. On a URL type → refused, not representable. A node stating the bound and **no `type`** is `Any` (§5's `type` row, "absent → `Any`"), which carries no bound: the keyword is dropped at rung KEYWORD — the type is unchanged, which is what that rung is — and the drop is declared. Selecting the type the bound implies instead would NARROW, because a typeless node admits an instance of every type and the bound constrains only one of them. ROOT → the root alias. ELEM / MAPV → the alias inside the container. KEY → the key type, which Pydantic renders back as `propertyNames.minLength`. RULE → nothing. |
+| `minLength`, `maxLength` | `min_length` / `max_length` on the type, as a named alias. On a URL type → refused, not representable. A node stating the bound and **no `type`** is `Any` (§5's `type` row, "absent → `Any`"), which carries no bound: the keyword is dropped at widening KEYWORD — the type is unchanged, which is what that widening is — and the drop is declared. Selecting the type the bound implies instead would NARROW, because a typeless node admits an instance of every type and the bound constrains only one of them. ROOT → the root alias. ELEM / MAPV → the alias inside the container. KEY → the key type, which Pydantic renders back as `propertyNames.minLength`. RULE → nothing. |
 <!-- end generated -->
 
 ### Numbers
@@ -1201,7 +1227,7 @@ is the one place a keyword decision lives, and a grid is its rendering.
 | keyword | compiles to |
 | --- | --- |
 | `items` | `list[X]`, X decided by the same walk and named where it needs a symbol. A list-valued `items` → refused: that is tuple validation. ROOT array → `RootModel[list[X]]`. RULE → nothing. |
-| `minItems`, `maxItems` | `min_length` / `max_length` on the annotation of the **array's own type**, at every position. `minItems: 0` states nothing. `constraints` declares it once, generically, as `type NonEmptyList[T] = Annotated[list[T], Field(min_length=1)]`. A node stating the bound and **no `type`** is `Any` (§5's `type` row, "absent → `Any`"), which carries no bound: the keyword is dropped at rung KEYWORD — the type is unchanged, which is what that rung is — and the drop is declared. Selecting the type the bound implies instead would NARROW, because a typeless node admits an instance of every type and the bound constrains only one of them. PROP → on the field. ELEM / MAPV / DEF → the container's type must be named to carry it. BRANCH → on the branch's own type, never on the field holding the union. RULE → nothing. |
+| `minItems`, `maxItems` | `min_length` / `max_length` on the annotation of the **array's own type**, at every position. `minItems: 0` states nothing. `constraints` declares it once, generically, as `type NonEmptyList[T] = Annotated[list[T], Field(min_length=1)]`. A node stating the bound and **no `type`** is `Any` (§5's `type` row, "absent → `Any`"), which carries no bound: the keyword is dropped at widening KEYWORD — the type is unchanged, which is what that widening is — and the drop is declared. Selecting the type the bound implies instead would NARROW, because a typeless node admits an instance of every type and the bound constrains only one of them. PROP → on the field. ELEM / MAPV / DEF → the container's type must be named to carry it. BRANCH → on the branch's own type, never on the field holding the union. RULE → nothing. |
 | `uniqueItems` | A `UniqueItems` rule on the class holding the array, plus `json_schema_extra={"uniqueItems": true}` on the field so it is graded, and the keyword is stripped off the array's own declaration. Where no class encloses the array → a `Distinct` after-validator on its own annotated type, beside the same `json_schema_extra`. |
 | `contains` | An existential quantifier — `items` constrains every element, `contains` says at least one matches — and the model states the **predicate**, not a transcription of the subschema. Every position → an `AtLeastOne` after-validator on the array's own annotated type, because no class has a kind for it: `AtLeastOne(pinned=((property, const), …))` where the subschema requires properties pinned to a const, `AtLeastOne(values=(value,))` where it is a bare `const` or a one-member `enum`. A property KEY is not required to be a Python identifier, so the predicate is a tuple of pairs and not keyword arguments. Any other predicate — a bound, a pattern, a nested `contains`, a `$ref` — → the keyword is CARRIED and the schema half answers alone: a transcription of the subschema is the thing this row declines to emit, and the first document to state such a predicate decides its rendering. RULE position → a `Match` MEMBERSHIP clause, `value in field`, and no validator. |
 <!-- end generated -->
@@ -1453,7 +1479,7 @@ the directive's first effect is to make it. They are the dominant class.
   value's own type: the root is a permissive root model carrying `ConditionalRequired`. The
   document states a conditional and nothing else, and so does the model.
 
-**(b) Rows whose answer is a declared widening.** Each names its rung (§2's ladder) and its
+**(b) Rows whose answer is a declared widening.** Each names its widening (§2's chain) and its
 attribution.
 
 - **`patternProperties` beside a non-`false` `additionalProperties` (added 2026-10-27, and it was
@@ -1466,7 +1492,7 @@ attribution.
   not the pointer space's, and not Pydantic's either, since a key-pattern check is expressible as
   a rule.
 
-  Rung CONTAINER: the mapping is `dict[str, Any]`, the pattern's value typing is the fact
+  Widening CONTAINER: the mapping is `dict[str, Any]`, the pattern's value typing is the fact
   dropped, and `strict_validate` still enforces it from the document. Attribution ours, and the
   one sentence is that a faithful answer is a rule family for "keys matching this pattern take
   this type", which no row has written.
@@ -1509,7 +1535,7 @@ attribution.
   what it may no longer do is refuse the document for it. Dropping the keyword widens the array
   (a list with no matching element is accepted by the model and refused by the schema half) and
   transcribes nothing, so the row gets both of the things it wanted.
-- **A list-valued `items`.** Rung JOIN: `list[A | B | …]` over the positional schemas, dropping
+- **A list-valued `items`.** Widening JOIN: `list[A | B | …]` over the positional schemas, dropping
   position and arity, with the element type collapsing to `Any` where `additionalItems` is
   absent or `true`. **The arity bound is not derived.** `additionalItems: false` implies
   `maxItems: len(items)`, and §3 forbids deriving a keyword the bundle does not state, so the
@@ -1518,22 +1544,22 @@ attribution.
   decides a case before it arrives rather than after.
 - **An `allOf` restatement that neither matches nor narrows.** §2's intersection is the document's
   own accepted set, and the refusal exists where the intersection of two object or two array
-  declarations is not computable. Rung KEYWORD: the field takes the base's declaration and the
+  declarations is not computable. Widening KEYWORD: the field takes the base's declaration and the
   restatement's extra facts are dropped. That widens relative to the intersection and cannot
   narrow, because the base is one conjunct and the intersection is a subset of it. Attribution
   ours.
 - **An empty intersection** — two disjoint type words, two disjoint enums. The node admits
-  nothing, which is a contradiction in the document. Rung TOP, and this is the answer the `not`
+  nothing, which is a contradiction in the document. Widening TOP, and this is the answer the `not`
   row already gives for `not: {}`: "admits nothing, which the typeless `Any` carries", with the
   schema half refusing every payload. Attribution upstream, because a conjunction admitting
   nothing is a defect in the conjunction. This row is about a node whose WHOLE accepted set is
   empty. One empty DISJUNCT of a union that still admits something is not that node: §5's `$ref`
   distribution clause drops the branch, the document's accepted set is unchanged, and no
   declaration is owed.
-- **A keyword in none of §5, §6 or §7.** Rung TOP: the node is `Any`. Draft-07 ignores an
+- **A keyword in none of §5, §6 or §7.** Widening TOP: the node is `Any`. Draft-07 ignores an
   unknown key, so the document may be narrower than `Any` but can never be wider, which makes
-  `Any` the one safe rung when the keyword's reach is unknown. §2's by-name principle is intact
-  — the key is not silently ignored, it costs a declared approximation at the top rung and a loud
+  `Any` the one safe widening when the keyword's reach is unknown. §2's by-name principle is intact
+  — the key is not silently ignored, it costs a declared approximation at the TOP widening and a loud
   report line — and the node losing its whole type is exactly as visible as a refusal was.
   Attribution ours.
 - **A union whose branches §4's dispatch cannot separate.** Declares a WIDENED fact where the
@@ -1590,7 +1616,7 @@ case branches' classes. So no type over the case classes covers the instances th
 branch admits, and there is no faithful type for the union: the case branches give classes, the
 presence branch gives a rule, and an instance satisfying only the rule is none of the classes.
 That is the asymmetry Group A does not have, and it is why the two cases separate. The fact
-dropped is the case precision of the branches, the type widens by §2's ladder, and the gap is
+dropped is the case precision of the branches, the type widens along §2's chain, and the gap is
 declared and attributed.
 
 ### The dispatch mixin is named where no base already carries it (decided 2026-10-29)
@@ -1850,10 +1876,10 @@ reading that settles it is the number of reported drops naming the keyword: **tw
 over the same 15.
 
 A keyword in none of §5, §6 or §7 is one the bundle does not use. The first document to carry one
-**widens its node to `Any`** — §5's rung TOP — and declares the approximation, so a new keyword
-is loud rather than ignored. `Any` and not a narrower rung, because an unrowed keyword's reach is
+**widens its node to `Any`** — §5's widening TOP — and declares the approximation, so a new keyword
+is loud rather than ignored. `Any` and not a narrower widening, because an unrowed keyword's reach is
 unknown: draft-07 ignores it, so the document may be narrower than `Any` and can never be wider,
-and `Any` is the one rung that is safe without knowing what the keyword does. A node that loses
+and `Any` is the one widening that is safe without knowing what the keyword does. A node that loses
 its whole type is as visible in the report and in the emitted module as a refused document was,
 which is what the old sentence was buying.
 
@@ -2316,7 +2342,7 @@ Each is one sentence and its reason.
   count, which ratchets down.
 - **An approximation that narrows is not an approximation.** It is a model tighter than its
   document wearing a declaration, and §8's accepts draw is pointed at exactly that. Widen by
-  another rung — to `Any` if nothing else carries it — rather than declaring the narrowing.
+  another widening — to `Any` if nothing else carries it — rather than declaring the narrowing.
 - **A declared approximation the model does not make is a stale excuse.** The draw cannot prove
   it — no value the document admits is newly accepted at that pointer — so it is deleted, because
   a declaration that outlives its widening hides the next real gap at the same pointer.
@@ -2376,7 +2402,7 @@ Each is one sentence and its reason.
   raw documents read at ROOT cost 0.23 s, which is why the root axis is free. A NESTED name needs
   which positions exist and what kind each one is, and that is the WALK's decision, not the
   parse's: an untitled `enum` branch becomes a `Literal` and declares no class, §5's widenings drop
-  a position outright, and §4's bare-`$ref` rung takes its target's distinguishing remainder, which
+  a position outright, and §4's bare-`$ref` candidate takes its target's distinguishing remainder, which
   needs the target already named in §10's dependency order. A parse answering that would
   re-implement every one of those decisions, which is the second derivation §3 forbids.
 

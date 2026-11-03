@@ -43,7 +43,7 @@ Beside the pipeline, three modules every layer reads and none of them writes:
 
 - `codegen/keywords.py` — the declaration §8 of the semantics document calls for: every
   keyword, at every position, with what it compiles to, whether the model renders it as a
-  fact, which structural keywords descend into which position, and **which rung of §2's ladder
+  fact, which structural keywords descend into which position, and **which widening in §2's chain
   the keyword widens to where the handler cannot render it**.
 - `codegen/attribution.py` — **new (2026-10-26)**: the one registry of site-level upstream
   issues, keyed by document, pointer and keyword. A second declaration module beside
@@ -141,8 +141,8 @@ cycle. `emit` is its only reader. Three consequences, each mechanical:
   is nothing.
 
 **The handler's own obligation.** `approximate(node, keyword)` is to an approximation what
-`Refusal`'s constructors were to a kind: the ONE place a widening is minted, reading the rung off
-the cell (§3). A handler never chooses a rung and never writes an attribution, for the reason the
+`Refusal`'s constructors were to a kind: the ONE place a widening is minted, reading the widening off
+the cell (§3). A handler never chooses a widening and never writes an attribution, for the reason the
 reviews recorded for refusal kinds — a decision made at the site that needs it is a decision
 nobody can audit against the table that was supposed to hold it.
 
@@ -415,12 +415,12 @@ class Cell(NamedTuple):
     effect: Effect          # TYPE | FIELD | RULE | NAME | ANNOTATION | NOTHING
     rendered: bool          # does a faithful model state this keyword in model_json_schema()
     descends: Position | None   # the position of the subschema(s) this keyword holds, if any
-    widens_to: Rung | None  # the rung §2 of the semantics document drops to, where the
+    widens_to: Widening | None  # the widening §2 of the semantics document drops to, where the
                             # handler cannot render this keyword here; None where the
                             # keyword states no fact and there is nothing to drop
     compiles: str           # the sentence the grid states for this keyword here
 
-class Rung(StrEnum):        # §2's ladder, lowest first; TOP always terminates
+class Widening(StrEnum):        # §2's widening chain, lowest first; TOP always terminates
     KEYWORD, TYPE, JOIN, CONTAINER, TOP
 
 class Row(NamedTuple):
@@ -437,16 +437,16 @@ and name the positions that depart from it.
 
 **`Effect.REFUSE` leaves the enum and `widens_to` enters the cell (2026-10-26).** Both follow
 from the semantics document's §2: no keyword's presence refuses a document, so there is no
-effect for refusing; and a keyword the handler cannot render has to drop to one rung rather than
+effect for refusing; and a keyword the handler cannot render has to drop to one widening rather than
 another, so something must say which.
 
 *Why `widens_to` is a FIELD and not derived.* `effect`, `rendered` and `descends` do not
 determine it. `uniqueItems` is RULE, rendered, non-descending and drops its keyword (KEYWORD);
 a list-valued `items` is TYPE, rendered, descends to ELEM and drops to the union of its members
 (JOIN); an unrowed key has no row at all and drops the node's whole type (TOP). Cells whose
-other three fields agree take different rungs, which is the test of whether a field is needed.
+other three fields agree take different widenings, which is the test of whether a field is needed.
 It is `None` for a keyword that states no fact about an instance — `$comment`, `title`,
-`errorMessage`, the registry data keys — because there is nothing to drop and a rung would be a
+`errorMessage`, the registry data keys — because there is nothing to drop and a widening would be a
 decision about a non-decision.
 
 *Why the ATTRIBUTION of an `Ours` widening is derived and not a field.* The attribution of a
@@ -497,9 +497,9 @@ bundle carries is also a row, so a prefixed key with no row is admitted and REPO
 
 | reader | module | what it derives |
 | --- | --- | --- |
-| admission | `schema/parse.py` | at every node, every key is looked up at the node's position: NOTHING is admitted and carried nowhere; a key with no row is admitted and marks the node for the TOP rung, naming a keyword the bundle did not use before; any other effect is a fact the node's kind consumes |
+| admission | `schema/parse.py` | at every node, every key is looked up at the node's position: NOTHING is admitted and carried nowhere; a key with no row is admitted and marks the node for the TOP widening, naming a keyword the bundle did not use before; any other effect is a fact the node's kind consumes |
 | descent | `schema/parse.py`, `bundle.py`, `verify/record.py` | the structural keywords and the position each one's subschema occupies — the one descent table, where today there are three |
-| lowering | `lower/*` | a handler asks the table which of the keywords on its node are TYPE facts, which are RULE sources, which are annotations it carries, and — through `approximate` — which rung a keyword it cannot render drops to, so no handler holds a set of keyword names and none chooses a rung |
+| lowering | `lower/*` | a handler asks the table which of the keywords on its node are TYPE facts, which are RULE sources, which are annotations it carries, and — through `approximate` — which widening a keyword it cannot render drops to, so no handler holds a set of keyword names and none chooses a widening |
 | grading | `verify/compare.py` | the compared set is `{k for k in TABLE if cell(k, p).rendered}`; a keyword whose effect is RULE is graded against the class's rule tuple, as §8 of the semantics document says; a compared fact the model does not state is *approximated* where the class's declaration carries it and *missing* where it does not |
 
 **The table is the source of §5, §6 and §7's grids.** Those grids are GENERATED from
@@ -550,25 +550,25 @@ it and stops.
 **Where the RUNG of a widening comes from.** *This subsection said "where the kind of a refusal
 comes from" and the directive rewrote its subject on 2026-10-26.* The question the table answers
 is no longer which of two kinds a refusal is — §2 leaves one kind, and `bundle.record` is its
-only producer — but which rung a keyword the handler cannot render drops to. The mechanism is
+only producer — but which widening a keyword the handler cannot render drops to. The mechanism is
 unchanged and so is its reason:
 
-- the rung is `cell(keyword, node.position).widens_to`, read by `approximate` and by nothing
+- the widening is `cell(keyword, node.position).widens_to`, read by `approximate` and by nothing
   else;
 - a cell whose `widens_to` is `None` cannot be approximated, and a handler that asks for one is
   a `BuildFailure` — the keyword states no fact, so a widening against it would be a declaration
   with nothing to declare, and a declaration the draw cannot prove is deleted;
 - a key with no row takes TOP, because an unrowed keyword's reach is unknown and TOP is the one
-  rung that is safe without knowing it (the semantics document's §7);
+  widening that is safe without knowing it (the semantics document's §7);
 - the attribution is `Ours` at the cell's own address unless `attribution.py` holds an entry for
   this document, pointer and keyword, in which case it is that entry's issue. One lookup, no
   precedence to get wrong: a site-level entry is more specific than a keyword-level one.
 
 *Why derived.* The reviews record the two refusal kinds assigned by hand at a raise site and the
 assignment coming out inverted in bulk: a cell the semantics document decides, written up as a
-verdict against the document. The rung is the same hazard one step further on — a handler that
-chose its own rung would choose the one that makes its own output look best, and nothing could
-audit it against the table that was supposed to hold the decision. A rung read off the table
+verdict against the document. The widening is the same hazard one step further on — a handler that
+chose its own widening would choose the one that makes its own output look best, and nothing could
+audit it against the table that was supposed to hold the decision. A widening read off the table
 cannot say that, because the table is where the decision that the keyword compiles was made.
 
 **What is left of the refusal's kind.** `bundle.record` mints VERDICT where a reference's target
@@ -1270,7 +1270,7 @@ descends by the table's descent column, assigning each child its position and th
 word for a same-instance hop. And it validates case: `required` is a list of names,
 `properties` is a mapping of schemas, and so on, each failure a `BuildFailure` by the paragraph
 above. **`items` is no longer among them**: a list-valued `items` is draft-07's tuple validation,
-and the semantics document's §5 now lowers it to `list[A | B | …]` at the JOIN rung rather than
+and the semantics document's §5 now lowers it to `list[A | B | …]` at the JOIN widening rather than
 refusing it, so the parser builds an `Array` whose element is the join and records the
 approximation. Unexercised in bundle 3.2, which states no list-valued `items`.
 
@@ -1509,7 +1509,7 @@ There is an IR between a decided node and emitted text, and it is complete: noth
 | `RootBinding` | the `SchemaRef` and the symbol a module-level `strict_validate` binds, for a root that is an alias or an enumeration |
 | `RootModelDecl` | pointer, `SchemaRef`, the root `TypeRef`, description, rules, and for a mixed root union the dispatch facts — a root that is an array, a mixed union, or a document stating no schema keyword |
 | `UnionInstall` | the base and its branches, which the renderer writes as the `_branch_models` assignment and the rebuild |
-| `Approximation` | document, pointer, keyword, kind (WIDENED, the only one), rung, the fact the annotation does not carry in the document's own spelling, and the attribution |
+| `Approximation` | document, pointer, keyword, kind (WIDENED, the only one), widening, the fact the annotation does not carry in the document's own spelling, and the attribution |
 | `Module` | document, root symbol, declarations in declaration order, imports, approximations, the symbol table pointer → name, the adoption table pointer → declaring pointer |
 
 **An approximation is a DECLARATION and not a report, and it is written into the emitted
@@ -1627,7 +1627,7 @@ pairs a root model as it pairs a class.
 
 The verifier grades an emitted class against the document it names, and it does so without
 reading the walk. Its import set is the whole of that rule, and `tests/test_import_rule.py`
-asserts it: `codegen.keywords` (for the compared set and the rungs), `codegen.attribution` (to
+asserts it: `codegen.keywords` (for the compared set and the widenings), `codegen.attribution` (to
 grade an approximation's issue reference), `codegen.bundle` (for the record and the document
 set), `adcp.types` (the emitted package, reached as a consumer reaches it), `codegen.refusal`
 (to read a refusal the run recorded), and its libraries. Never `codegen.schema`,
@@ -1775,11 +1775,11 @@ boundaries that are about design: no Pydantic in the walk, no walk in the verifi
 
 | layer | modules | knows | may not know | crosses outward as |
 | --- | --- | --- | --- | --- |
-| declaration | `keywords.py`, `attribution.py` | positions, keywords, cells, descent, rungs; the upstream issue at a document, pointer and keyword | nodes, documents, types, text | `Cell`, `Issue` |
+| declaration | `keywords.py`, `attribution.py` | positions, keywords, cells, descent, widenings; the upstream issue at a document, pointer and keyword | nodes, documents, types, text | `Cell`, `Issue` |
 | refusal | `refusal.py` | the kinds, and that a document may have no accepted set | everything else | `Refusal` |
 | source | `bundle.py` | files, paths, `$ref` URIs, edges, the record | kinds, cells' effects, types | raw mapping, `edges`, `record` |
 | reading | `schema/nodes.py`, `schema/parse.py` | raw mapping → `Node`; admission; applied type; positions; pointers | the IR, Python types, text, the run | `Node` |
-| decision | `lower/decide.py`, `lower/<kind>.py`, `lower/rules.py`, `lower/names.py`, `constraints.py` | `Node` → `Lowering`; the table's cells and rungs; the attributions; naming; the runtime's rule classes | mappings, text, the renderer, files, the run | `Module` |
+| decision | `lower/decide.py`, `lower/<kind>.py`, `lower/rules.py`, `lower/names.py`, `constraints.py` | `Node` → `Lowering`; the table's cells and widenings; the attributions; naming; the runtime's rule classes | mappings, text, the renderer, files, the run | `Module` |
 | representation | `ir.py` | the declarations and `TypeRef` | text, pydantic, nodes | — |
 | render | `render.py` | `Module` → text through the pinned model layer | `Node`, mappings, the table | text |
 | run | `emit.py`, `__main__.py` | order, closure, files, the report | kinds, cells, nodes | files |
@@ -1828,7 +1828,7 @@ node reaching no outcome — is prevented by banning the only other way out.
 | the compared set in the verifier beside the handled sets in the walk | the table's `rendered` column |
 | the kind of a refusal at every raise site | `Refusal`'s constructors, and `bundle.record` is the one site |
 | the resolver's canonicalisation and its inverse folds | `bundle.record`, with no inverse |
-| the rung a handler widens to, chosen where it widens | the cell's `widens_to`, read by `approximate` |
+| the widening a handler takes, chosen where it widens | the cell's `widens_to`, read by `approximate` |
 | the upstream issue for a widening, written as prose in a comment | `attribution.py`, keyed by document, pointer and keyword |
 | the exempted facts listed once per check that strikes them | still two lists, and deliberately: `attribution.py` holds why a MODEL says less than its document, `verify/exemptions.py` holds which DUMP facts a check strikes. One registry for both would sum two different things |
 
@@ -2113,7 +2113,7 @@ condition, below.
    the ORDER is computed over; it is not what the run emits.
 
 8. **The approximation, end to end, with no cell widened.** The instrument before the change.
-   Add `Rung` and `widens_to` to the cell and retire `Effect.REFUSE`; add `Approximation` and
+   Add `Widening` and `widens_to` to the cell and retire `Effect.REFUSE`; add `Approximation` and
    `RootModelDecl` to the IR and `approximations` to `Lowering` and `Module`; add
    `codegen/attribution.py` and its no-issue-is-a-`BuildFailure` test; make `render.py` write
    `__adcp_approximations__`; add the
@@ -2128,18 +2128,18 @@ condition, below.
    "collapse the lowering seam to `Lowering` and retire `Kind.DEFERRED`, which is what makes every
    present deferral a compile error until its handler calls `approximate`". That cannot hold
    beside this step's own exit condition, and the row proved it by measurement rather than
-   argument: `approximate` reads the rung off the cell, a `None` rung is a `BuildFailure`, and of
-   the **141 primary refusals exactly 1 sits on an `Effect.REFUSE` cell** — so 140 have no rung
+   argument: `approximate` reads the widening off the cell, a `None` widening is a `BuildFailure`, and of
+   the **141 primary refusals exactly 1 sits on an `Effect.REFUSE` cell** — so 140 have no widening
    yet. A total seam today therefore either widens those cells, which moves the counts this step
    forbids moving, or crashes the run on 140 documents. The two sentences were written in one
    step and only one of them can be true at a time.
 
-   So the seam stays a sum type until the last cell has a rung, which is **step 10**, and
-   `Kind.DEFERRED` retires with it. The instrument is complete without the collapse: the rung
+   So the seam stays a sum type until the last cell has a widening, which is **step 10**, and
+   `Kind.DEFERRED` retires with it. The instrument is complete without the collapse: the widening
    field, the declaration, the registry, the two outcomes and both equalities all exist and are
    proved here, and the fourth import-rule test passes unchanged. What the collapse buys —
    turning every remaining deferral into a compile error — is worth having exactly when there is
-   a rung for each one to reach, and not before.
+   a widening for each one to reach, and not before.
 
 9. **The faithful rows.** The rows the directive forces to a FAITHFUL answer rather than to an
    approximation, which is the larger half of the refused set and costs no declaration at all:
@@ -2155,7 +2155,7 @@ condition, below.
    still 0, and the refused set down to the rows step 10 owns.* Each one moves refusals to
    emissions and is graded by the verifier at the pairs it unblocks.
 
-10. **The widened rows.** What is left, each with the rung and attribution the semantics
+10. **The widened rows.** What is left, each with the widening and attribution the semantics
     document's §5 states: an `allOf` restatement whose intersection is not computable; an empty
     intersection; a union whose branches cannot be separated; a `contains`
     predicate no `AtLeastOne` carries; a keyword with no row; a list-valued `items`; a root
@@ -2198,12 +2198,12 @@ condition, below.
     anyone outside this repository.
 
     **The seam collapse lands here, moved from step 8 on 2026-10-26.** Once this step has given
-    every reachable cell a rung, `decide` collapses to `Lowering`, `Refusal` narrows to its one
+    every reachable cell a widening, `decide` collapses to `Lowering`, `Refusal` narrows to its one
     producer in `bundle.record`, and `Kind.DEFERRED` retires — which is what turns any remaining
     deferral into a compile error rather than a report line. It belongs at the end rather than
-    the beginning for the reason step 8 records: a total seam over cells with no rung is a
+    the beginning for the reason step 8 records: a total seam over cells with no widening is a
     `BuildFailure` on every one of them, and 140 of 141 primary refusal sites were in that state
-    when the instrument was built. The collapse is the *consequence* of the rungs being complete,
+    when the instrument was built. The collapse is the *consequence* of the widenings being complete,
     not the mechanism that completes them.
 
     *Exit condition: `refused` is 0 over the portable population, `decide` returns `Lowering`,
