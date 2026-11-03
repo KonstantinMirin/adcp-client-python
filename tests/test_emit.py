@@ -110,7 +110,7 @@ from codegen.harness import (
 from codegen.keywords import Rung
 from codegen.lower import const as lower_const
 from codegen.lower import enum as lower_enum
-from codegen.lower import names, rules, scalars
+from codegen.lower import names, objects, rules, scalars
 from codegen.lower import union as lower_union
 from codegen.refusal import Refusal
 from codegen.schema import nodes
@@ -717,7 +717,7 @@ def test_step_sevens_population_is_counted_as_an_object_root_and_nothing_else() 
 
     Step 7 adds no lowering of its own: a rule attaches to the nearest class, so its
     documents are lowered by the OBJECT arm with ``rules.lower`` inside
-    ``compiler.lower_object``.  That only works if the object reading reaches them, and
+    ``lower.objects.lower_object``.  That only works if the object reading reaches them, and
     it did not: a root whose ``oneOf`` holds ``required`` groups carries a union
     keyword, so step 5's predicate counted all 5 and step 7's reached none -- and step
     5's lowering refuses a branch declaring no property, so step 7's whole population
@@ -5370,7 +5370,7 @@ def test_a_typed_additional_properties_is_a_typed_pydantic_extra() -> None:
     # ``$ref``\\ s name.  Four of the document's six store sites sit at such a pointer
     # (``colors``, ``fonts``, ``border_radius``, ``elevation``), so the walk met the
     # collision at the first of them and the other five sites were never graded.
-    # ``compiler.declare_object`` sends the store to the DISPATCH now.  Named rather
+    # ``lower.objects.declare_object`` sends the store to the DISPATCH now.  Named rather
     # than counted, and the six rows are in the store list below.
     emitted_typed = sorted(set(typed) & set(out.emitted))
     assert emitted_typed == [
@@ -9125,8 +9125,8 @@ def test_the_const_row_has_exactly_one_lowering() -> None:
     mangling above was in one of them.
     """
     assert not hasattr(lower_union, "_literal")
-    assert "decided" not in inspect.signature(compiler.fields).parameters
-    assert "decided" not in inspect.signature(compiler.lower_object).parameters
+    assert "decided" not in inspect.signature(objects.fields).parameters
+    assert "decided" not in inspect.signature(objects.lower_object).parameters
     # union still NAMES the keyword, and only in its branch screen: that row is an
     # attribution row (a bare const branch is a scalar branch) and not a lowering.
     # Asserted by resolving the name rather than by grepping for the word, which

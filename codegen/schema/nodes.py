@@ -433,7 +433,7 @@ class Object(Base):
     :attr:`properties` holds the CHILD NODES, parsed at PROP, in the document's own
     key order.  :attr:`extras` is ``additionalProperties`` read ONCE, here, as the
     typed value schema §5 says a typed one is -- which is the second of §2's three
-    node rewrites, retired: ``compiler.declare_object`` built a synthetic
+    node rewrites, retired: ``lower.objects.declare_object`` built a synthetic
     ``{"type": "object", "additionalProperties": ap, ...}`` mapping and handed it to
     the dispatch, which is a node the document does not have.  :attr:`key` is
     ``propertyNames`` at KEY, read once here for the same reason.
@@ -497,7 +497,7 @@ class Array(Base):
     """``type: array``: the element at ELEM, the bounds, distinct, contains.
 
     :attr:`distinct` is the third of §2's three node rewrites, retired on the array
-    side: ``compiler.fields`` stripped ``uniqueItems`` off a property's declaration
+    side: ``lower.objects.fields`` stripped ``uniqueItems`` off a property's declaration
     before the array row saw it, so the array was decided from a mapping the document
     does not state.  The fact is read once, here, and the class holding the array
     reads it off the node.

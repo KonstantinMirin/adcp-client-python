@@ -18,7 +18,7 @@ The negative case -- a required name the BRANCHES of a union declare, which is
 ``_ROOT_REQUIRED`` and not a field -- lives in
 ``tests/test_inner_facts.py::test_a_root_required_the_branches_declare_is_root_required_and_not_a_field``
 and is not repeated here.  It is the one thing that keeps this answer off a union base,
-and ``compiler.fields``' ``carried`` argument is the seam between the two.
+and ``lower.objects.fields``' ``carried`` argument is the seam between the two.
 """
 
 from __future__ import annotations
@@ -35,6 +35,7 @@ from pydantic import ValidationError
 
 from adcp.types._base import SchemaRef, schema_at
 from codegen import bundle, compiler, emit, store
+from codegen.lower import objects
 from tests.nodeset import claimed
 
 DRAFT = "http://json-schema.org/draft-07/schema#"
@@ -169,7 +170,7 @@ def test_the_field_takes_the_documents_own_spelling_through_an_alias(tmp_path) -
 
     ``extensions/extension-meta.json`` requires ``$id`` at its root, so the name this
     row most needs a field for is one pydantic cannot carry under its own spelling.
-    ``compiler.fields`` runs it through ``names.field_name`` exactly as a declared
+    ``lower.objects.fields`` runs it through ``names.field_name`` exactly as a declared
     property's key is, so the alias channel the rest of the tree already uses carries it
     -- and nothing sets ``populate_by_name``, so the attribute spelling is NOT accepted,
     which is what keeps the model's accepted set equal to the document's.
@@ -215,7 +216,7 @@ def test_a_required_name_colliding_with_a_declared_one_is_a_verdict(tmp_path) ->
 def test_the_bundle_population_is_the_one_this_row_claims() -> None:
     """:data:`SITES`, derived over the bundle SOURCE by asking the handler's question.
 
-    The question is ``compiler.fields``' own -- a ``required`` name that is in neither
+    The question is ``lower.objects.fields``' own -- a ``required`` name that is in neither
     the node's ``properties`` nor anything an enclosing class holds -- asked at the
     positions a CLASS is cut at, which is what makes this a population and not a grep:
     129 raw nodes of the bundle state a ``required`` naming a key their own
@@ -227,7 +228,7 @@ def test_the_bundle_population_is_the_one_this_row_claims() -> None:
     answer to the question the row is about.
     """
     seen: set[tuple[str, str, tuple[str, ...]]] = set()
-    real = compiler.fields
+    real = objects.fields
 
     def spy(props, required, pointer, mod, **kw):
         held = (*kw.get("inherited", ()), *kw.get("carried", ()))
@@ -241,7 +242,7 @@ def test_the_bundle_population_is_the_one_this_row_claims() -> None:
     # ``store.perturbed()``: ``emit.emit`` holds §1's census on disk under a digest of
     # ``codegen/``'s source (``codegen/store.py``), which this patch does not move, so pass
     # one would be unpickled and the spy would see the final walk alone.
-    with mock.patch.object(compiler, "fields", spy), store.perturbed():
+    with mock.patch.object(objects, "fields", spy), store.perturbed():
         emit.emit(SOURCE, sorted(bundle.portable(SOURCE)))
 
     claimed("nodes whose required names a key no declaration declares", seen)

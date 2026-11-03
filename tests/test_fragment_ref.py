@@ -1192,7 +1192,7 @@ def test_two_symbols_at_one_pointer_is_refused_rather_than_ordered() -> None:
     ``AliasDecl`` and then a ``ClassDecl`` at one pointer, because §4 parses a class's
     extras store at the CLASS's own pointer and the store was reaching the walk's
     per-node entry -- which names
-    the node at a pointer the bundle's ``$ref``\\ s name.  ``compiler.declare_object``
+    the node at a pointer the bundle's ``$ref``\\ s name.  ``lower.objects.declare_object``
     sends the store to THE DISPATCH now, so the only node that does not own the pointer
     it carries makes no statement about it, and the test below reads 0 again.
 

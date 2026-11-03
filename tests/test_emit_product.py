@@ -1502,7 +1502,7 @@ def test_a_keyword_at_the_root_beside_the_conjunct_list_refuses() -> None:
     ``if``, ``not`` and ``min``/``maxProperties`` were in the refusing list and are NOT
     keywords this row reports any more: ``salesagent-j3k2l.22`` admits D6's families at
     a composing root, where the rule attaches to the class this row declares
-    (``compiler.declare_object`` writes the tuple).  They are asserted on the admitting
+    (``lower.objects.declare_object`` writes the tuple).  They are asserted on the admitting
     side below, so the keywords that moved are graded rather than merely dropped.
 
     ``definitions`` left the list before them, at `salesagent-j3k2l.20`: a section is

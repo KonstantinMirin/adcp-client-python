@@ -48,7 +48,7 @@ implies them.**  A handler never sees a mapping the document does not state:
   keyword the walk itself inserted" is why that reading is the parser's;
 * the extras store rebuilt as a mapping -- a typed ``additionalProperties`` on a class is
   the ``dict[K, V]`` §5 says a typed one is, and :attr:`nodes.Object.extras` is that
-  mapping NODE, built here, where ``compiler.declare_object`` built a synthetic
+  mapping NODE, built here, where ``lower.objects.declare_object`` built a synthetic
   ``{"type": "object", "additionalProperties": ap, ...}`` and handed it to the dispatch;
 * the multi-type cut -- one member per type word, each holding only the keywords that
   word can carry (:data:`ARM`), which is draft-07's own semantics.
@@ -197,7 +197,7 @@ def parse(
         # Not a schema.  The kind that can hold the value and let the handler name the
         # keyword is :class:`nodes.Typeless`, whose own answer is ``Any``; every caller
         # that can be handed a non-mapping refuses it by the document's own keyword
-        # (``containers._value``, ``compiler.fields``), which is a reading the kind's
+        # (``containers._value``, ``lower.objects.fields``), which is a reading the kind's
         # conversion moves here.
         return nodes.Typeless(
             document=source.document, pointer=pointer, position=position
@@ -253,7 +253,7 @@ def parse(
     #
     # Measured over every node of the 1,054 portable documents: **4 composing nodes state
     # a non-object ``type`` word and all 4 state ``array``** -- the same 4
-    # ``compiler.declare_object``'s type screen measured.  A word no handler claims the
+    # ``lower.objects.declare_object``'s type screen measured.  A word no handler claims the
     # keyword for refuses on ``allOf`` through that handler's own screen, with the kind the
     # cell gives it, which is loud and is not a verdict about the document.
     if "$ref" in raw:
@@ -342,7 +342,7 @@ def parse(
         # ``{}``, which IS true".  That reason is sound for a branch stating nothing and
         # false for one stating a ``not`` over ``required`` or a presence combinator: such
         # a branch narrows the base by exactly the rule it carries, which
-        # ``compiler.declare_object`` writes for whatever node it declares.
+        # ``lower.objects.declare_object`` writes for whatever node it declares.
         # ``formats/canonical/display_tag.json``, ``html5.json`` and ``image.json`` are
         # the measured case -- their "responsive" branch states ``anyOf`` over four
         # dimension names and their "none" branch states only a ``not`` over seven.
@@ -355,7 +355,7 @@ def parse(
         # a fact about a VALUE, which no class carries, and reading it as an object costs
         # 22 documents (measured: ``emitted`` 923 -> 901, all 22 chained behind the
         # branches that stopped being scalars).  A RULE is precisely the thing a class
-        # with no fields can carry -- ``compiler.declare_object`` writes the tuple for
+        # with no fields can carry -- ``lower.objects.declare_object`` writes the tuple for
         # whatever node it declares -- so the test is that every declaration is one, read
         # off :attr:`nodes.Base.rules`, which is :func:`_rule_sources`' own answer at this
         # position and already includes a presence-only combinator.  Nothing is named
@@ -502,7 +502,7 @@ def _object(
 
     :attr:`nodes.Object.properties` holds the CHILD NODES, in the document's own key
     order, so the class's field order is the document's.  The pointer of a property is
-    ``<pointer>/properties/<key>`` -- the spelling ``compiler.fields`` already used, so a
+    ``<pointer>/properties/<key>`` -- the spelling ``lower.objects.fields`` already used, so a
     refusal inside a property names the pointer it named before.
 
     :attr:`nodes.Object.extras` is the second rewrite retired.  A TYPED
@@ -565,7 +565,7 @@ def extras_store(
     """The extras STORE of a class with a typed ``additionalProperties``: §2's SECOND
     node rewrite, retired.
 
-    ``compiler.declare_object`` synthesised ``{"type": "object", "additionalProperties":
+    ``lower.objects.declare_object`` synthesised ``{"type": "object", "additionalProperties":
     ap, "propertyNames": ...}`` and handed it to the dispatch -- a node the document does
     not have, which is exactly the defect §2 names.  The reading is the parser's and it is
     made here: a typed ``additionalProperties`` on a class is the ``dict[K, V]`` §5 says a
@@ -576,7 +576,7 @@ def extras_store(
     ``true`` everywhere, and ``true`` is the extra POLICY rather than a value type.
 
     Public, because two callers meet the shape: :func:`_object`, which is the converted
-    reading, and ``compiler.declare_object`` for the composing row and the union branch
+    reading, and ``lower.objects.declare_object`` for the composing row and the union branch
     that still read their own declaration (§14 step 5's staging).  One construction, two
     call sites -- never two constructions.
     """
@@ -646,7 +646,7 @@ def _array(
     ``contains`` predicate as stated, and the ``allOf`` conjuncts that constrain it.
 
     :attr:`nodes.Array.distinct` is the third rewrite retired on the array side:
-    ``compiler.fields`` stripped ``uniqueItems`` off a property's declaration before the
+    ``lower.objects.fields`` stripped ``uniqueItems`` off a property's declaration before the
     array row saw it, so the array was decided from a mapping the document does not state.
     The fact is read once here and the class holding the array reads it off the node.
 

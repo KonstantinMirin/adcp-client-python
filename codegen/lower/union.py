@@ -170,7 +170,7 @@ from typing import Any
 
 from codegen import bundle, compiler, intersect, ir, keywords
 from codegen.keywords import Position
-from codegen.lower import approximate, names
+from codegen.lower import approximate, names, objects
 from codegen.refusal import Kind, Refusal
 from codegen.schema import nodes
 from codegen.schema import parse as schema
@@ -1649,7 +1649,7 @@ def lower_union(
             # the entry declares a ``description`` -- so the two branch classes of
             # ``core/requirements/catalog-field-binding.json`` carried no description at
             # all where the document states one at their own pointers.
-            # ``compiler.fields`` transcribes a ``$ref`` sibling's description onto a
+            # ``lower.objects.fields`` transcribes a ``$ref`` sibling's description onto a
             # FIELD, and a branch class named off a reference has no such carrier.
             #
             # The same clause and the same spelling as ``lower_composition``'s, which
@@ -1687,7 +1687,7 @@ def lower_union(
             )
             if isinstance(own, Refusal):
                 return own
-            declared = compiler.declare_object(
+            declared = objects.declare_object(
                 plan.parsed,
                 plan.pointer,
                 mod,
@@ -1837,7 +1837,7 @@ def lower_union(
                     inherits=base_shape,
                 )
                 if base_shape.properties
-                else compiler.lower_object(
+                else objects.lower_object(
                     plan.parsed,
                     mod,
                     bases=(ir.TypeRef(pointer, local=True),),
@@ -2469,7 +2469,7 @@ def _plan(node: nodes.Union, i: int, mod: compiler.Module) -> Branch | Refusal:
             inherits=inherits,
         )
     # The branch's own D6 rules: the keywords are admitted here and the TUPLE is
-    # written by ``compiler.declare_object``, which ``lower_object`` below reaches.
+    # written by ``lower.objects.declare_object``, which ``lower_object`` below reaches.
     # ONE reading, and the dispatch derivation takes the other half of it: ``forbids``
     # is the names this branch's ``not`` forbids by name, which is §4's third source
     # (:func:`separates`), so the rule the branch carries and the separator the root is

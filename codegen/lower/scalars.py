@@ -450,7 +450,7 @@ def typeless(node: nodes.Typeless, mod: Module) -> ir.Decided | Refusal:
     # every non-object as well, so a class is narrower than the document and ``Any`` is
     # wider, and §2 admits neither direction silently.
     #
-    # **The ANSWER is ``compiler.lower_object``'s, because the obstruction is the same
+    # **The ANSWER is ``lower.objects.lower_object``'s, because the obstruction is the same
     # one**: that row refuses the identical shape where the parser does reach the object
     # kind (a ROOT, a branch of a root union), on the same keyword, and
     # ``test_an_object_node_with_properties_and_no_type_refuses_because_it_admits_a_non_object``

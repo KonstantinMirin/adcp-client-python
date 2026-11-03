@@ -64,7 +64,7 @@ SOURCE = pathlib.Path("schemas/cache/3.2")
 #: counts, so an instance whose only key was undeclared dumped to ``{}``.
 #: ``docs/plan/rebuild-plan.md`` §8 sentence 4's second consequence (2026-11-03) decides
 #: that such a count "is answered by the class KEEPING the keys the document counts",
-#: ``compiler.declare_object`` takes that reversal, and the pair now passes with no entry
+#: ``lower.objects.declare_object`` takes that reversal, and the pair now passes with no entry
 #: at all -- so the entry, its reason, its ancestors below and the exposure bound that
 #: graded it are all gone together.  The registry's shrink-only pin fell from 1 to 0.
 REFUSED_TODAY = (

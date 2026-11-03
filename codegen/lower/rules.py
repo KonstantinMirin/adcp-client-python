@@ -184,7 +184,7 @@ class Lowered:
     #: Names only, because the keyword's two consequences belong to the compiler: it
     #: is stripped off the declaration before the array row sees it, and it is
     #: rendered onto the field as the ``json_schema_extra`` half of the fact the
-    #: ``UniqueItems`` rule enforces (``compiler.fields``, ``ir.Field.distinct``).
+    #: ``UniqueItems`` rule enforces (``lower.objects.fields``, ``ir.Field.distinct``).
     #: A declaration re-cut
     #: here instead would put the walk's input in two modules.
     distinct: tuple[str, ...] = ()
@@ -616,7 +616,7 @@ def _count(node: Mapping[str, Any], out: Lowered, extra_stated: bool) -> None:
             # **AND THE DESIGN DOCUMENTS DID MOVE IT**: §8 sentence 4's second consequence
             # (2026-11-03) decides that such a count "is answered by the class KEEPING the
             # keys the document counts.  Declaring it would be declaring a difference the
-            # walk created."  ``compiler.declare_object`` takes that reversal at exactly
+            # walk created."  ``lower.objects.declare_object`` takes that reversal at exactly
             # the nodes a count rides over, so ``extra_stated`` is now true wherever a
             # class carries one and this arm is reached by no class of this bundle.
             #

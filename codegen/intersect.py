@@ -32,6 +32,7 @@ from typing import Any
 
 from codegen import compiler, ir, keywords
 from codegen.keywords import Position
+from codegen.lower import objects
 from codegen.refusal import Kind, Refusal
 from codegen.schema import nodes
 from codegen.schema import parse as schema
@@ -1301,7 +1302,7 @@ def _the_conjuncts_own_type(
     refusals reading '*X* is not a class, so it cannot be a base' are the unimplemented
     half of that sentence").  §2 binds a constraint to the TYPE, and the type here is the
     target's symbol -- so the bound rides on the :class:`codegen.ir.Decided` beside it, in the one
-    carrier ``compiler.fields`` already folds into :attr:`codegen.ir.TypeRef.facts` for
+    carrier ``lower.objects.fields`` already folds into :attr:`codegen.ir.TypeRef.facts` for
     every other node's constraints, and the position's own cell is what says where it
     lands: ``minItems`` at PROP is "-> on the field", ``minLength`` at PROP is
     "``min_length`` / ``max_length`` on the type".  A position with NO field of its own
@@ -1709,7 +1710,7 @@ def intersected_at_a_branch(
         merged = _parsed_property(intersected, f"{pointer}/properties/{key}", mod)
         if isinstance(merged, Refusal):
             return merged
-        decided = compiler.fields({key: merged}, [key] if key in required else (), pointer, mod)
+        decided = objects.fields({key: merged}, [key] if key in required else (), pointer, mod)
         if isinstance(decided, Refusal):
             return decided
         out += decided

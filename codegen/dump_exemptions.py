@@ -25,7 +25,7 @@ exemption is gone**:
   policy drops the keys it counts is not answered by declaring the count -- it is answered
   by the class KEEPING the keys the document counts.  Declaring it would be declaring a
   difference the walk created.  That reverses the ``absent -> ignore`` reading at exactly
-  those nodes and nowhere else."*  ``compiler.declare_object`` takes that reversal, the one
+  those nodes and nowhere else."*  ``lower.objects.declare_object`` takes that reversal, the one
   class resolves ``extra='allow'``, the key survives the dump, and the pair passes with no
   exemption at all.  So this registry now holds ONE kind of entry and :data:`PIN` is 0.
 
@@ -131,7 +131,7 @@ _RFC = (
 # created** -- which is exactly what §8 sentence 4's second consequence (2026-11-03)
 # settles: *"a count keyword withheld from a class whose extra policy drops the keys it
 # counts is not answered by declaring the count -- it is answered by the class KEEPING the
-# keys the document counts."*  ``compiler.declare_object`` takes that reversal, the class
+# keys the document counts."*  ``lower.objects.declare_object`` takes that reversal, the class
 # resolves ``extra='allow'``, the undeclared key SURVIVES the dump, and the document's own
 # ``minProperties`` is satisfied by the instance it was always satisfied by.  So the pair
 # passes on its own and the entry is removed rather than re-explained.

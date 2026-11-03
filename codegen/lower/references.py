@@ -15,6 +15,7 @@ from __future__ import annotations
 from codegen import bundle, compiler, ir
 from codegen.compiler import Module, check_keywords
 from codegen.keywords import Position
+from codegen.lower import objects
 from codegen.refusal import Refusal
 from codegen.schema import nodes
 
@@ -141,7 +142,7 @@ def _root(node: nodes.Reference, mod: Module) -> ir.Decided | Refusal:
         # arm is that sentence at a root and not a fourth answer.
         return ir.Decided(ir.TypeRef(mod.importing(target.symbol, target.where), local=True))
     mod.importing(target.symbol, target.where)
-    declared = compiler.declare_object(
+    declared = objects.declare_object(
         node,
         node.pointer,
         mod,

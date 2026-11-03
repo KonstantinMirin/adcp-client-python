@@ -8,7 +8,7 @@ constants that are re-measured once per epic.
 **The defect.**  draft-07 applies a root's assertions and its combinator branch's to
 the SAME instance, so ``{"type": "object", "oneOf": [{"properties": {...}}]}`` admits
 only objects and the branch at ``/oneOf/0`` does not restate it.  Read in ISOLATION
-that branch admits a string, so ``compiler.lower_object`` refused to build a class
+that branch admits a string, so ``lower.objects.lower_object`` refused to build a class
 for it -- 10 documents of the 3.2 bundle, with 34 more chaining off them through a
 ``$ref`` -- and ``_base.schema_at`` returned that same isolated node as the schema a
 branch class would then be graded against.  Fixing only the first turned one defect
