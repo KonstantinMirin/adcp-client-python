@@ -302,6 +302,17 @@ def store_ref(entry: str) -> str:
     return f"#/{STORE_SECTION}/{entry}"
 
 
+def is_a_store_entry(key: str) -> bool:
+    """Whether ``key`` names a section entry the STORAGE wrote rather than the document.
+
+    One predicate, read off the one spelling, for the two readers that have to agree
+    about which entries are the storage's: ``bundle.stored`` refuses to write one a
+    document already holds, and ``bundle.expanded`` drops exactly these when it puts the
+    storage back.
+    """
+    return _STORE_REF.match(store_ref(key)) is not None
+
+
 def through_the_store(node: Any, root: Any) -> Any:
     """``node`` with a STORAGE reference followed, or ``node`` itself.
 

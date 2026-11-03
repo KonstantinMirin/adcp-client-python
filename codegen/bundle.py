@@ -1492,6 +1492,74 @@ def stored(record: dict) -> dict:
     return {**out, _base.STORE_SECTION: section}
 
 
+def expanded(node: object, root: object) -> object:
+    """``node`` with the record's own storage PUT BACK, one shared object per entry.
+
+    :func:`stored`'s inverse, and it exists for ONE reader:
+    ``harness.resolve``, which hands the payload generator a self-contained copy and
+    delegates the inlining to ``hypothesis_jsonschema``'s resolver.  **That resolver
+    copies per occurrence** -- ``resolve_all_refs`` merges the referring node with a fresh
+    resolution at every ``$ref`` it meets and holds no memo -- so handing it the stored
+    form hands it back exactly the duplication the storage removed, inside the library,
+    where no caller can share it.  Measured on ``adagents.json``'s 25 pairs: 0.02 s per
+    pair with the storage expanded here and 3.4 s with it left to the library, and two
+    pairs raised ``PointerToNowhere`` where a budget cut had already abandoned the
+    resolution half-done.
+
+    So the storage is put back BEFORE the delegation, and the generator is handed what it
+    was handed before the storage existed -- **the same content and the same sharing**.
+    A subtree is expanded ONCE per entry and the result is placed at every occurrence,
+    which is :func:`record`'s own rule ("the same object is placed at every occurrence of
+    one target, which costs no byte") applied to the storage: ``json.dumps`` writes a
+    shared object out once per occurrence and ``copy.deepcopy`` copies it once, so the
+    text and the copy are the ones a fresh expansion per occurrence would produce.
+
+    **It descends by the table's descent column**, like everything else here, so a storage
+    reference is put back at a SCHEMA position and a mapping under an ``enum`` or an
+    ``examples`` that happens to spell one is instance data and is left alone.
+
+    ``root`` is what a storage reference resolves against -- the record, which is where
+    the section is -- and a node with no record behind it passes
+    :data:`adcp.types._base.NO_STORE` and gets itself back.
+
+    **The entries themselves are DROPPED from the section they were added to**, because
+    after the expansion nothing references them and leaving them would double the root's
+    own text -- which is what the one reader pays for twice, once in the copy and once in
+    the generator's canonicalisation key.  A document that STATED an empty section and
+    also had a subtree stored comes back with no section rather than an empty one; the two
+    state the same thing, draft-07 giving a section no assertion behaviour at all.
+    """
+    done: dict[int, object] = {}
+
+    def put_back(one: object) -> object:
+        one = _base.through_the_store(one, root)
+        if not isinstance(one, dict):
+            return one
+        held = done.get(id(one))
+        if held is not None:
+            return held
+        kids = {
+            suffix: put_back(sub)
+            for _, suffix, sub, _ in subschemas(one)
+            if isinstance(sub, dict)
+        }
+        out = {
+            key: rebuilt(key, value, kids, missing=_itself) if key in DESCENDS else value
+            for key, value in one.items()
+        }
+        section = out.get(_base.STORE_SECTION)
+        if isinstance(section, dict):
+            kept = {k: v for k, v in section.items() if not _base.is_a_store_entry(k)}
+            if kept:
+                out[_base.STORE_SECTION] = kept
+            else:
+                out.pop(_base.STORE_SECTION)
+        done[id(one)] = out
+        return out
+
+    return put_back(node)
+
+
 def pointers_above(pointer: str, candidates: Collection[str]) -> list[str]:
     """Those of ``candidates`` that are ``pointer`` itself or an ancestor of it.
 
