@@ -953,6 +953,19 @@ def test_the_verifiers_own_derivation_separates_the_pairs_section_4_separates() 
     assert harness.inseparable_unions(union(pins({"const": "a"}), bare[1])) == ()
 
 
+def _at(record: dict) -> dict:
+    """``{DOC: (record, origins)}``, which is what ``underdetermined_census`` takes.
+
+    **§8 sentence 2 makes both sides of that equality sets of the IDENTITY** ``(stating
+    document, stating pointer)``, so the derived side is read through ``origins`` and an
+    inlined occurrence resolves to the site it states.  These probe records have no
+    reference in them, so every node states itself and the map is the identity on them --
+    built by a walk here rather than by ``bundle.recorded`` because the point of the probe
+    is the derivation and not the inliner.
+    """
+    return {DOC: (record, {id(node): (DOC, pointer) for pointer, node in bundle.nodes(record)})}
+
+
 def test_the_underdetermined_set_equals_the_inseparable_set_in_both_directions() -> None:
     """**Section 8's UNDERDETERMINED equality, and each direction perturbed.**
 
@@ -968,18 +981,18 @@ def test_the_underdetermined_set_equals_the_inseparable_set_in_both_directions()
     declaration = approximate(
         _ref("#/oneOf"), "oneOf", Position.ROOT, OVERLAPPING["oneOf"], kind=UNDERDETERMINED
     )
-    stale, silent = harness.underdetermined_census((declaration,), {DOC: OVERLAPPING})
+    stale, silent = harness.underdetermined_census((declaration,), _at(OVERLAPPING))
     assert (stale, silent) == ([], [])
 
-    stale, silent = harness.underdetermined_census((declaration,), {DOC: SEPARATED})
+    stale, silent = harness.underdetermined_census((declaration,), _at(SEPARATED))
     assert len(stale) == 1 and "the derivation separates it" in stale[0]
     assert silent == []
 
-    stale, silent = harness.underdetermined_census((), {DOC: OVERLAPPING})
+    stale, silent = harness.underdetermined_census((), _at(OVERLAPPING))
     assert stale == []
     assert len(silent) == 1 and "nothing declares it" in silent[0]
 
-    assert harness.underdetermined_census((), {DOC: SEPARATED}) == ([], [])
+    assert harness.underdetermined_census((), _at(SEPARATED)) == ([], [])
 
 
 def test_a_widened_declaration_is_not_read_as_an_underdetermined_one() -> None:
@@ -991,6 +1004,6 @@ def test_a_widened_declaration_is_not_read_as_an_underdetermined_one() -> None:
     """
     widened = approximate(_ref("#/oneOf"), "oneOf", Position.ROOT, OVERLAPPING["oneOf"])
     assert widened.kind == WIDENED
-    stale, silent = harness.underdetermined_census((widened,), {DOC: OVERLAPPING})
+    stale, silent = harness.underdetermined_census((widened,), _at(OVERLAPPING))
     assert stale == []
     assert len(silent) == 1
