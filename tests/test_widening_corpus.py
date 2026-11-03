@@ -61,10 +61,12 @@ from __future__ import annotations
 
 import json
 import subprocess
+import time
 from pathlib import Path
 from typing import Any, ClassVar
 
 import pytest
+from hypothesis import strategies as st
 
 import corpus as corpus_module
 from adcp.types._base import AdCPBaseModel, SchemaRef
@@ -429,23 +431,45 @@ def test_a_failed_draw_is_held_with_its_reason_so_a_replayed_run_reports_it() ->
     assert "earlier run" in res.unproved[0], res.unproved
 
 
-#: A schema whose draw has no bound worth waiting for and no filtering in it, so what ends
-#: the draw below is the BUDGET and nothing else -- an ``Unsatisfiable`` here would be the
-#: held-failure case above and not this one.
-UNBOUNDED_DRAW: dict[str, Any] = {
-    "type": "array",
-    "minItems": 2000,
-    "items": {
-        "type": "object",
-        "required": [f"p{i}" for i in range(200)],
-        "properties": {f"p{i}": {"type": "string", "minLength": 120} for i in range(200)},
-    },
-}
+# **THE PROPERTY IS PROPAGATION AND IT IS NOT THE CLOCK.**  The three checks below replace
+# one that raced a 1 s ``within`` against a real draw over a schema commented "no bound
+# worth waiting for": 2,000 objects of 200 demanded 120-character strings.  **The comment
+# was refuted by the draw** -- ``hypothesis``'s buffer is 8,192 bytes, so all 459 generation
+# attempts overran and the library gave up on its own in 15.5 to 25.9 s with
+# ``Unsatisfiable``.  The check therefore passed only when the alarm beat the library, and
+# that is a race: **1 failure in 20 runs under 24-way CPU load**, and 1 in 6 at ``-n 4``
+# in a four-file set, every one of them ``DID NOT RAISE OverBudget`` with the test taking
+# 1.1 s.  ``tests/test_harness_halves.py``'s own budget section carries the mechanism and
+# the reason a WIDER budget makes it worse rather than better; the measurements are on
+# ``adcp-client-python-82m.34``.
+#
+# The division is the same one that file takes.  This store's own clause -- a cut is not an
+# answer, so nothing holds it -- needs no clock to be read, and reading it with one added a
+# flake and no coverage.
+
+#: How long a draw that does not finish spins before it gives up and FAILS.  Far wider than
+#: the budget below, so a budget that does not cut is a loud red rather than a hung suite.
+_FAILSAFE_SECONDS = 120.0
+
+#: A format whose strategy does not terminate, so the draw it rides in has no end of its
+#: own and the only thing that can stop it is the budget.  The spin is ordinary Python, so
+#: the alarm lands between bytecodes in a frame this file owns and propagates at once.
+_DOES_NOT_FINISH = "x-a-draw-that-does-not-finish"
+
+
+def _spin(value: Any) -> Any:
+    until = time.monotonic() + _FAILSAFE_SECONDS
+    while time.monotonic() < until:
+        pass
+    raise AssertionError(
+        f"the draw spun for {_FAILSAFE_SECONDS} s and nothing cut it, so the budget did "
+        "not bound it"
+    )
 
 
 def test_a_draw_the_budget_cut_is_not_held_because_a_cut_is_not_an_answer() -> None:
     """**The clause the accepts store has had all along and this one did not**
-    (``adcp-client-python-pjc``).
+    (``adcp-client-python-pjc``), established by an INJECTED raise.
 
     The paragraph above holds a FAILED draw, which is right: an ``Unsatisfiable`` is a
     whole generation budget spent on filtered cases and it is a fact about the position.
@@ -457,16 +481,112 @@ def test_a_draw_the_budget_cut_is_not_held_because_a_cut_is_not_an_answer() -> N
     with it removed the same pair did not finish in 600 s -- so the entry was the only
     thing making an unbounded draw look graded.
 
-    Read through the REAL budget and the REAL draw, and both halves: the store holds
-    nothing, and the cut reaches the caller as a cut rather than as a position that cannot
-    be drawn.
+    **The raise is injected at :func:`harness.one_instance`, which is where a real cut
+    arrives**: :meth:`harness._Draws._draw` wraps exactly that call in
+    ``except Exception -> [None, _why(e)]``, and :meth:`harness._Draws.one` is what decides
+    whether the answer is held.  So both halves of the reading are read, and both are
+    properties of the code rather than of the clock: the cut crosses ``_draw``'s broad
+    handler without being spelled as "this position cannot be drawn", and ``one`` holds
+    nothing.
+
+    Where the ``OverBudget`` came from is immaterial to that sentence.  On the old code --
+    ``OverBudget`` an ``Exception`` -- an injected one is caught by ``_draw`` and held by
+    ``one`` exactly as a timed one was, so the injection fails over the same defect.
     """
     store = Held()
     draws = harness._Draws(corpus=store, identity=DOC)  # noqa: SLF001
-    position = ("class", AT, "uniqueItems", "an unbounded draw")
+    position = ("class", AT, "uniqueItems", "a cut injected where a real one arrives")
+    cut = harness.OverBudget("injected where the draw would raise one")
+    drawn = harness.one_instance
+    harness.one_instance = lambda *a, **k: (_ for _ in ()).throw(cut)
+    try:
+        with pytest.raises(harness.OverBudget) as raised:
+            draws.one({"type": "string"}, position, {})
+    finally:
+        harness.one_instance = drawn
+    assert raised.value is cut, (
+        f"the cut did not reach the caller as itself; `_draw` spelled it as a failed draw: "
+        f"{raised.value!r}"
+    )
+    assert store.puts == [], f"a budget cut was held as an answer: {store.entries}"
+    assert store.entries == {}
+
+
+def test_an_answer_RECORDING_a_cut_is_returned_to_the_caller_and_held_by_nothing() -> None:
+    """:meth:`harness._Draws.one`'s hold decision, which the two checks around it do NOT
+    read -- and the probe that found that is why this exists.
+
+    **A propagating cut never reaches the hold decision**, because it unwinds past it: with
+    ``OverBudget`` a ``BaseException``, ``_draw``'s ``except Exception`` does not catch it,
+    ``one`` never returns, and the ``store.puts == []`` beside those checks is true because
+    nothing got that far rather than because the clause works.  Measured: breaking
+    :func:`harness.records_a_cut` to answer ``False`` leaves both of them GREEN.
+
+    So the clause is read where it is actually reachable: an answer that RECORDS a cut.
+    ``_draw`` produces one whenever the cut arrives as an ``Exception`` -- which is the
+    pre-``pjc`` class, and is also the spelling a STALE ENTRY carries: ``records_a_cut``'s
+    own docstring reports 46 entries of the shared cache recording a 30 s budget, 99 a 20 s
+    one, and one from 2026-10-31 spelling the class ``_OverBudget``.  The guard is what
+    keeps those out of this store, so it is graded against the shape they have.
+
+    Both halves: the answer is RETURNED, because this call's caller asked a question and the
+    cut is the honest answer to it for this run; and NOTHING HOLDS IT, because the next run
+    must not read it back as evidence.
+    """
+
+    class OverBudget(Exception):
+        """The spelling a stale entry carries, and the class before ``pjc`` landed."""
+
+    store = Held()
+    draws = harness._Draws(corpus=store, identity=DOC)  # noqa: SLF001
+    position = ("class", AT, "uniqueItems", "an answer recording a cut")
+    drawn = harness.one_instance
+    harness.one_instance = lambda *a, **k: (_ for _ in ()).throw(
+        OverBudget("the grade did not finish inside 20 s")
+    )
+    try:
+        answer = draws.one({"type": "string"}, position, {})
+    finally:
+        harness.one_instance = drawn
+    assert len(answer) == 2 and answer[0] is None, answer
+    assert "OverBudget" in answer[1], answer
+    assert harness.records_a_cut(answer), (
+        f"the predicate does not read this as a cut, so the hold decision below is "
+        f"not about a cut: {answer!r}"
+    )
+    assert store.puts == [], f"a budget cut was held as an answer: {store.entries}"
+    assert store.entries == {}
+    assert (draws.drawn, draws.replayed) == (1, 0), (draws.drawn, draws.replayed)
+
+
+def test_the_real_alarm_cuts_a_draw_that_cannot_END_and_holds_nothing() -> None:
+    """The END-TO-END path, with the real ``SIGALRM`` -- and it is not the check above.
+
+    The clause is already established without a clock; this covers the wiring that delivers
+    a cut in production -- :func:`harness.within`'s repeating ``setitimer``, its handler, and
+    an ``OverBudget`` raised by a TIMER crossing ``_draw``'s broad handler and ``one``'s
+    hold decision.
+
+    **The draw cannot end on its own, which is the whole of why this does not flake.**  The
+    format's strategy spins in ordinary Python, so there is no ``Unsatisfiable``, no buffer
+    overrun and no early return for load to bring forward: the only thing that can end this
+    call is the alarm.  Measured at 30 of 30 under 48-way CPU load in the sibling file's
+    form of the same check, propagating in 2.01 s every time.
+    """
+    store = Held()
+    draws = harness._Draws(corpus=store, identity=DOC)  # noqa: SLF001
+    position = ("class", AT, "uniqueItems", "a draw that does not finish")
+    started = time.monotonic()
     with pytest.raises(harness.OverBudget):
-        with harness.within(1):
-            draws.one(UNBOUNDED_DRAW, position, {})
+        with harness.within(2):
+            draws.one(
+                {"type": "string", "format": _DOES_NOT_FINISH},
+                position,
+                {_DOES_NOT_FINISH: st.just("x").map(_spin)},
+            )
+    assert time.monotonic() - started < _FAILSAFE_SECONDS, (
+        "the alarm did not cut the draw; the strategy's own failsafe did"
+    )
     assert store.puts == [], f"a budget cut was held as an answer: {store.entries}"
     assert store.entries == {}
 
