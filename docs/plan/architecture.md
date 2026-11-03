@@ -603,6 +603,43 @@ is the second miss and the more expensive one.
 
 The cost of the prohibition is that the compiler reproduces the defect it was built to escape.
 
+### §3a's ENTRY KEY IS THE VALUE LIST, AND AN UNTITLED ENTRY IS NAMED FROM ITS HOME (2026-11-03)
+
+**THE KEY IS THE VALUE LIST, not the structural identity §3a named.** The reading is *"each
+distinct vocabulary is one type"*, and a vocabulary is a set of admitted values. Measured over the
+bundle: of the value lists stated at more than one position, the overwhelming majority carry one
+structural identity, and in **every** case where two identities appeared over one value list the
+whole of the difference was a redundant `type: "string"` beside an all-string enum — a keyword that
+admits not one value more. Keying on structural identity therefore split entries that are one
+vocabulary, on a distinction no payload can see.
+
+**And the guard that makes this safe rather than loose is the converse:** a group whose members
+differ in a keyword that **narrows** must redden a check, not collapse in the compiler. Two value
+lists that look alike and admit differently are two vocabularies, and the compiler must never be
+the thing that decides they are one.
+
+**AN UNTITLED ENTRY WITH NO NAMING POSITION LIVES IN A MODULE WITH NO DOCUMENT**, which the export
+record already permits now that it is keyed on the module. The module sits in the namespace §3a's
+scope rule names — the domain's where every reference is within one domain, the shared one
+otherwise — and is re-exported from the matching consumer namespace like any other.
+
+**ITS HOME IS THE STATING POSITION THE OTHER STATING POSITIONS REACH THROUGH A REFERENCE.** Three
+orders over the stating positions are equally functions of the bundle; measured, first-in-bundle-order
+and last-in-bundle-order each close reference cycles, and this one closes none. §3a asks that a
+cycle be **unrepresentable rather than avoided by care**, and a home chosen this way is cycle-free
+by derivation. Where a future bundle breaks the property the failure is a refusal and a red report,
+never a wrong answer — which is the only acceptable failure mode for a rule that cannot be proved
+for all future inputs.
+
+**AND ITS NAME LENGTHENS BY ITS HOME'S CHAIN, NEVER BY AN ARBITRARY STATING POSITION.** §4 lengthens
+a collision by the nearest ancestor segment, and an entry stated at six positions has six such
+segments — so without this sentence the name is a function of which position a walk happened to
+visit. Measured: a handful of untitled entries collide inside the namespace the scope rule sends
+them to, with several distinct value lists all deriving one short noun in the shared namespace.
+Because the home is unique and derived, lengthening by the home's chain is order-independent, and
+where two entries share both a home and a derived name §4's own axes decide as they already do for
+every other position.
+
 ### THREE CORRECTIONS TO §3a, EACH FROM A LANE THAT REFUSED TO DECIDE IT (2026-11-02)
 
 **A DOCUMENT ROOT BEATS A RESTATING TITLE, so a CONFLICT with a rooted vocabulary is not one.**
