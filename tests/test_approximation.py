@@ -599,61 +599,51 @@ def test_the_accepts_obligation_passes_a_real_widening_and_fails_a_narrowing() -
     assert "the class refuses it" in caught.narrowings[0]
 
 
-#: **Row ``.10``'s live narrowing, AT THE NODE IT WAS MEASURED ON.**  The epic's note:
-#: ``core/attestation-capabilities.json``, property ``accepted_claim_types``: "the element
-#: states ``{"type":"string","format":"uri"}`` and nothing about length, while the model's
-#: element carries ``minLength: 1, maxLength: 2083``.  Those are pydantic ``HttpUrl``'s own
-#: bounds, which section 5's ``format`` row brought in with the type, and they made the
-#: model NARROWER than its document."
+#: **Row ``.10``'s LIVE NARROWING, and what this row's obligation measures about it.**
+#: The epic's note: ``core/attestation-capabilities.json``, property
+#: ``accepted_claim_types``: "the element states ``{"type":"string","format":"uri"}`` and
+#: nothing about length, while the model's element carries ``minLength: 1, maxLength:
+#: 2083``.  Those are pydantic ``HttpUrl``'s own bounds, which section 5's ``format`` row
+#: brings in with the type, and they make the model NARROWER than its document."
 #:
-#: Section 2 withdrew the type on 2026-11-02 and the node is kept here as the measurement
-#: of that, in the one direction that can still be taken: the class is offered every value
-#: the row reported it refusing.
+#: ``test_emit.py::test_an_arrays_bound_is_the_lists_and_not_its_elements`` is the
+#: known-red test that documents it and row ``.10`` owns the fix.  This is the measurement
+#: this row owes: does the accepts obligation CATCH it.
 NARROWED = "core/attestation-capabilities.json"
 NARROWED_AT = "#/properties/accepted_claim_types/items"
 
-#: The four values row ``.10``'s obligation reported the class refusing and the document
-#: admitting, each an RFC 3986 URI, which is what ``format: uri`` references.  Three were
-#: ``url_scheme`` -- ``HttpUrl`` admitted neither ``urn:``, ``file:`` nor ``mailto:`` --
-#: and the fourth was ``url_too_long``, that type's unstated ``maxLength: 2083``.  Written
-#: down rather than drawn, for section 2's own reason: ``hypothesis_jsonschema`` honours
-#: ``format: uri`` by drawing a short ``http://``, which the class accepted, so the accepts
-#: check was green on this node forever.  "A sampling draw reports only the values it drew
-#: -- so it can run green forever against a type that refuses a whole class of admissible
-#: value."
-ROW_10_REFUSED = (
-    ("a URN", "urn:ietf:rfc:3986"),
-    ("a file URL", "file:///tmp/a"),
-    ("a mailto URI", "mailto:a@example.com"),
-    ("a URL longer than 2,083 characters", "https://example.com/" + "a" * 2200),
-)
 
+def test_the_accepts_obligation_catches_row_10s_live_narrowing() -> None:
+    """**It does, by value and by pointer, and it finds three more of the same shape.**
 
-def test_row_10s_live_narrowing_is_gone_at_the_node_it_was_measured_on() -> None:
-    """**The four values the class refused, offered to the class, which now takes them.**
+    Measured through the PRODUCTION entry point -- ``strict_validate`` on the emitted
+    class, against the document of record -- with the same declaration row ``.10`` would
+    write when its ``format`` cell widens.  The obligation reports four narrowings where
+    the document admits the value and the class refuses it:
 
-    This test asserted the opposite and was green for it: given the declaration row
-    ``.10`` would write when its ``format`` cell widened, the obligation REFUSED the
-    declaration, because the class was narrower than its document at that element and
-    section 9 forbids declaring a narrowing -- "Widen by another rung -- to ``Any`` if
-    nothing else carries it -- rather than declaring the narrowing."  Section 2 took the
-    other rung on 2026-11-02 and withdrew the type, so there is no narrowing to declare
-    and the measurement runs the other way.
+    * ``urn:ietf:rfc:3986``, ``file:///tmp/a`` and ``mailto:a@example.com`` -- ``url_scheme``.
+      These are the NAMED CEILING ``render.CONSTRAINTS_DOCSTRING`` already records:
+      "``HttpUrl`` still refuses ``urn:`` and ``file:``, which is a named ceiling rather
+      than an oversight."  The obligation does not know a ceiling from a defect and should
+      not: it reports that the class refuses a value RFC 3986 admits, which is true of all
+      four, and whose of the four are decided is the reading a row makes of the report.
+    * a 2,220-character ``https`` URL -- ``url_too_long``, which is row ``.10``'s own
+      defect and the one the known-red test is about.
+    *
+    **Why the ANSWER IS NOT A PASS TODAY, and this test is green anyway.**  The obligation
+    fires only where a declaration claims something, and this row declares nothing: the
+    ``format`` cell is unwidened, ``APPROXIMATED`` is 0, and the four narrowings are
+    therefore not reported by any run.  What is asserted here is the INSTRUMENT: given the
+    declaration row ``.10`` will write, the obligation refuses it.  So the answer row
+    ``.10`` inherits is that it cannot declare this widening -- section 9's "an
+    approximation that narrows is not an approximation ... Widen by another rung -- to
+    ``Any`` if nothing else carries it -- rather than declaring the narrowing."
 
-    Three assertions per value, and the middle one is the obligation:
-
-    * the DOCUMENT admits it -- read through the document of record, so a value the
-      document refuses cannot make the class's refusal look like a defect;
-    * the CLASS accepts it, through the production entry point;
-    * the DUMP is the value, unchanged, which is the half a scheme check alone would miss:
-      the type that stood here rewrote ``https://A.com`` to ``https://a.com/`` and would
-      have accepted every one of these four while still losing the author's string.
-
-    The declaration path those values used to be reached through is gone with them:
-    ``harness.FORMAT_SHAPES`` no longer holds ``uri``, because a shape census measures
-    what a SELECTED type refuses and nothing is selected for ``uri`` now
-    (:func:`test_the_format_shapes_cover_every_format_that_selects_a_python_type`).  So
-    the values are named here and offered directly.
+    **And the three classes the draw alone would never have reached is the whole of section
+    8's covering rule.**  ``hypothesis_jsonschema`` honours ``format: uri`` and draws a
+    short ``http://``, which the class accepts: the accepts check has been green on this
+    node forever.  "A sampling draw reports only the values it drew -- so it can run green
+    forever against a type that refuses a whole class of admissible value."
     """
     record = schema_at(SchemaRef(NARROWED, "#"))
     node = harness.at(record, NARROWED_AT[1:])
@@ -670,13 +660,23 @@ def test_row_10s_live_narrowing_is_gone_at_the_node_it_was_measured_on() -> None
     assert accepts.outcome == "pass", accepts.detail  # the SAMPLING draw is green
     assert seen, "the measurement needs one instance the document admits"
 
-    assert ROW_10_REFUSED, "the denominator is empty: no value would be offered"
-    for label, value in ROW_10_REFUSED:
-        instance = {**seen[0], "accepted_claim_types": [value]}
-        assert harness.conforms(drawn_from, instance) is True, (label, value)
-        built = model.strict_validate(instance)
-        dumped = harness._wire_dump(built)  # noqa: SLF001 -- the production dump
-        assert dumped["accepted_claim_types"] == [value], (label, dumped)
+    declaration = approximate(SchemaRef(NARROWED, NARROWED_AT), "format", Position.ELEM, "uri")
+    res = harness.check_widening(
+        drawn_from, model.strict_validate, (declaration,), instances=seen[:1]
+    )
+    assert res.outcome == "narrowing_wearing_a_declaration", (res.unproved, res.narrowings)
+    refused = {line.split(" -- ")[0].split(": ", 1)[1] for line in res.narrowings}
+    assert refused == {
+        "a URN (uri)",
+        "a file URL (uri)",
+        "a mailto URI (uri)",
+        "a URL longer than 2,083 characters (uri)",
+    }, sorted(refused)
+    # Row ``.10``'s own defect, named by the pydantic error the epic's note names.
+    assert [line for line in res.narrowings if "url_too_long" in line], res.narrowings
+    # And the pointer is the element's and not the list's, which is what the known-red
+    # test's own name is about.
+    assert all(NARROWED_AT in line for line in res.narrowings), res.narrowings
 
 
 def test_a_declaration_whose_classes_cannot_be_enumerated_is_unproved_and_not_a_pass() -> None:
@@ -825,17 +825,9 @@ def test_the_value_classes_cover_the_three_families_section_8_names() -> None:
         "minLength", {"type": "string", "minLength": 3, "maxLength": 3}
     )
     assert [label for label, _ in pinned] == ["minLength exactly (3)"]
-    # The ``format`` family, over a format that SELECTS a type -- which is the whole of
-    # what :data:`harness.FORMAT_SHAPES` is for, and the set it ranges over moved: ``uri``
-    # left it when section 2 withdrew the URL type, because the shapes measured what a
-    # selected type refused and nothing is selected for ``uri`` now.  Asked of the table
-    # rather than of a format named here, so a format joining or leaving moves this with
-    # it and a table that emptied would redden on the non-emptiness instead of passing.
-    assert harness.FORMAT_SHAPES, "no format selects a type: the family is not graded"
-    for fmt in harness.FORMAT_SHAPES:
-        assert len(harness.value_classes("format", {"type": "string", "format": fmt})) == len(
-            harness.FORMAT_SHAPES[fmt]
-        ), fmt
+    assert len(harness.value_classes("format", {"type": "string", "format": "uri"})) == len(
+        harness.FORMAT_SHAPES["uri"]
+    )
 
 
 def test_every_format_shape_is_one_the_drafts_own_checker_admits() -> None:
@@ -856,15 +848,10 @@ def test_every_format_shape_is_one_the_drafts_own_checker_admits() -> None:
 def test_the_format_shapes_cover_every_format_that_selects_a_python_type() -> None:
     """``FORMAT_SHAPES``'s population is ``lower.scalars.FORMAT_TYPES``, derived.
 
-    A selected type brings its own constraints with it -- which was the whole mechanism of
-    row ``.10``'s live narrowing -- so a format that selects one arrives here with its
-    shapes or reddens.  Read off the walk's declaration in a TEST, which may import both
-    halves where section 9 forbids the verifier itself.
-
-    **It also reddens when a format STOPS selecting one and its shapes are left behind**,
-    which is the direction that fired: section 2 withdrew the URL type on 2026-11-02 and
-    ``uri``'s seven shapes had nothing left to measure, since the annotation is now the
-    node's own ``str`` and admits every one of them.
+    A selected type brings its own constraints with it -- which is the whole mechanism of
+    row ``.10``'s live narrowing -- so a fourth format that selects one arrives here with
+    its shapes or reddens.  Read off the walk's declaration in a TEST, which may import
+    both halves where section 9 forbids the verifier itself.
     """
     from codegen.lower.scalars import FORMAT_TYPES
 

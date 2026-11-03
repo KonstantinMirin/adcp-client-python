@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import StrMatchingD4A41027, StrMinLen1
+from adcp.types.constraints import HttpUrl, StrMatchingD4A41027, StrMinLen1
 
 from .registry_event import GradingProfile
 
@@ -43,12 +43,12 @@ class AgenticAdvertisingOrgVerificationTokenClaims(AdCPBaseModel):
         UniqueItems('verification_modes'),
     )
     iss: Literal['https://aao.org']
-    sub: Annotated[str, Field(json_schema_extra={'format': 'uri'})]
+    sub: HttpUrl
     aud: Literal['aao-verification']
     jti: StrMinLen1
     iat: NonNegativeInt
     exp: NonNegativeInt
-    agent_url: Annotated[str, Field(json_schema_extra={'format': 'uri'})]
+    agent_url: HttpUrl
     role: Role
     verified_specialisms: Annotated[list[str], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
     verification_modes: Annotated[list[VerificationMode], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]

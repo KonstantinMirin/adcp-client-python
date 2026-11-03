@@ -23,36 +23,41 @@ every content type.  ``NonEmptyList[T]`` is declared whatever a run met, because
 design names it and a consumer annotating a non-empty list of their own imports it from
 here.
 
-**A ``format: uri`` field is a ``str``, and no URL type is declared here.**  Two were:
-``AdCPUrl``, ours and https-only, and a re-exported ``HttpUrl``, chosen per field by the
-document's own ``pattern``.  Both are withdrawn, because a pydantic URL type is not
-injective -- it lowercases the host and gives an empty path a ``/``, so two distinct
-strings a document admits become one value and what the field dumps is not the string it
-was given.  A field carries the document's own string instead, and its ``pattern`` and
-its bounds are named here like any other string constraint -- with the ``format`` named
-alongside them, because a node stating both is one shape: ``StrFormatUriMatching1875B31F``
-is a URI matching that pattern.  A node stating a ``format`` and NOTHING else has no shape
-to name and the format rides on its field.  Either way the model's own rendered schema
-states it at the pointer the document does.
+Two names here are DECISIONS rather than derivations, and together they are this
+SDK's whole answer for ``format: uri``: a field's type FOLLOWS THE DOCUMENT'S OWN
+PATTERN.
 
-The URL GRAMMAR is asserted by the document rather than by the annotation:
-``strict_validate`` runs the document's own draft with that draft's format checker before
-anything is constructed, so a value ``format: uri`` refuses never reaches a constructor.
-What a consumer gives up is a parsed URL object; what they get back is the string they
-sent.
+``AdCPUrl`` annotates a field whose document restricts the scheme to https
+(``pattern: ^https://``, 47 of the bundle's 300 ``uri`` positions).  There the type
+and the document agree.
+
+``HttpUrl`` -- pydantic's own, re-exported here so that both arms are named in one
+place -- annotates every other ``uri`` field.  ``AdCPUrl`` everywhere was tried and
+withdrawn: ``format: uri`` is RFC 3986, so a document stating only
+``{"type": "string", "format": "uri"}`` admits ``http://``, ``urn:`` and
+``file:///`` as well, and refusing those made the SDK stricter than the spec it
+implements -- at 228 of 300 positions.  ``HttpUrl`` still refuses ``urn:`` and
+``file:``, which is a named ceiling rather than an oversight.
+
+Either way the document's own ``pattern`` stays with the schema half: the bundle
+states eight distinct ones across 73 of its 300 ``uri`` uses, and no URL type can
+carry a ``pattern`` at all -- pydantic refuses to build one.  ``strict_validate``
+applies the document before the constructor ever runs, so the accepted set at the
+entry point is the document's.
 """
 
 from __future__ import annotations
 
 from typing import Annotated, TypeVar
 
-from pydantic import Field
+from pydantic import AnyUrl, Field, HttpUrl, UrlConstraints
 
 
 K = TypeVar("K")
 T = TypeVar("T")
 V = TypeVar("V")
 
+AdCPUrl = Annotated[AnyUrl, UrlConstraints(allowed_schemes=["https"])]
 DictMaxProperties32 = Annotated[dict[K, V], Field(max_length=32)]
 DictMinProperties1 = Annotated[dict[K, V], Field(min_length=1)]
 DictMinProperties1MaxProperties1 = Annotated[dict[K, V], Field(max_length=1, min_length=1)]
@@ -113,22 +118,7 @@ IntMin86400Max604800 = Annotated[int, Field(ge=86400, le=604800)]
 IntMin90 = Annotated[int, Field(ge=90)]
 ListMaxItems32 = Annotated[list[T], Field(max_length=32)]
 NonEmptyList = Annotated[list[T], Field(min_length=1)]
-StrFormatEmailMaxLen254 = Annotated[str, Field(json_schema_extra={'format': 'email'}, max_length=254)]
-StrFormatEmailMaxLen255 = Annotated[str, Field(json_schema_extra={'format': 'email'}, max_length=255)]
-StrFormatEmailMinLen1MaxLen255 = Annotated[str, Field(json_schema_extra={'format': 'email'}, max_length=255, min_length=1)]
 StrFormatHostname = Annotated[str, Field(json_schema_extra={'format': 'hostname'})]
-StrFormatHostnameMaxLen253 = Annotated[str, Field(json_schema_extra={'format': 'hostname'}, max_length=253)]
-StrFormatUri = Annotated[str, Field(json_schema_extra={'format': 'uri'})]
-StrFormatUriMatching03786FB9 = Annotated[str, Field(json_schema_extra={'format': 'uri'}, pattern="^https?://(?:[A-Za-z0-9._~!$&'()*+,;=:%-]+@)?(?:[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?|\\[[0-9A-Fa-f:.]+\\])(?::[0-9]{1,5})?(?:[/?#]|$)")]
-StrFormatUriMatching1875B31F = Annotated[str, Field(json_schema_extra={'format': 'uri'}, pattern='^https://[!$&-;=@-~]+$')]
-StrFormatUriMatching2E1F4D86 = Annotated[str, Field(json_schema_extra={'format': 'uri'}, pattern='^https://[^/?#@]+$')]
-StrFormatUriMatching339ABAF8 = Annotated[str, Field(json_schema_extra={'format': 'uri'}, pattern='^https://[^/?#@]+(?:/[^?#]*)?(?:\\?[^#]*)?$')]
-StrFormatUriMatching3AC8B861 = Annotated[str, Field(json_schema_extra={'format': 'uri'}, pattern='^https://(?![^/]*@)(?!localhost(?:[:/]|$))(?!\\[)(?!\\d+(?:\\.\\d+){3}(?::|/|$))(?:[A-Za-z0-9-]+\\.)+[A-Za-z]{2,}(?::\\d+)?(?:/|$)')]
-StrFormatUriMatching5E721644 = Annotated[str, Field(json_schema_extra={'format': 'uri'}, pattern='^https://')]
-StrFormatUriMatching7958BAD4 = Annotated[str, Field(json_schema_extra={'format': 'uri'}, pattern='^https://github\\.com/')]
-StrFormatUriMaxLen2048Matching2E1F4D86 = Annotated[str, Field(json_schema_extra={'format': 'uri'}, max_length=2048, pattern='^https://[^/?#@]+$')]
-StrFormatUriMaxLen2048Matching3AC8B861 = Annotated[str, Field(json_schema_extra={'format': 'uri'}, max_length=2048, pattern='^https://(?![^/]*@)(?!localhost(?:[:/]|$))(?!\\[)(?!\\d+(?:\\.\\d+){3}(?::|/|$))(?:[A-Za-z0-9-]+\\.)+[A-Za-z]{2,}(?::\\d+)?(?:/|$)')]
-StrFormatUriMaxLen2048MatchingFE5FDE4A = Annotated[str, Field(json_schema_extra={'format': 'uri'}, max_length=2048, pattern='^https://[^/?#@]+(?:/[^?#]*)?$')]
 StrFormatUriTemplate = Annotated[str, Field(json_schema_extra={'format': 'uri-template'})]
 StrFormatUuid = Annotated[str, Field(json_schema_extra={'format': 'uuid'})]
 StrMatching02AE7B1E = Annotated[str, Field(pattern='^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$')]
@@ -214,7 +204,12 @@ StrMaxLen20 = Annotated[str, Field(max_length=20)]
 StrMaxLen200 = Annotated[str, Field(max_length=200)]
 StrMaxLen2000 = Annotated[str, Field(max_length=2000)]
 StrMaxLen200000 = Annotated[str, Field(max_length=200000)]
+StrMaxLen2048Matching2E1F4D86 = Annotated[str, Field(max_length=2048, pattern='^https://[^/?#@]+$')]
+StrMaxLen2048Matching3AC8B861 = Annotated[str, Field(max_length=2048, pattern='^https://(?![^/]*@)(?!localhost(?:[:/]|$))(?!\\[)(?!\\d+(?:\\.\\d+){3}(?::|/|$))(?:[A-Za-z0-9-]+\\.)+[A-Za-z]{2,}(?::\\d+)?(?:/|$)')]
+StrMaxLen2048MatchingFE5FDE4A = Annotated[str, Field(max_length=2048, pattern='^https://[^/?#@]+(?:/[^?#]*)?$')]
 StrMaxLen25 = Annotated[str, Field(max_length=25)]
+StrMaxLen253 = Annotated[str, Field(max_length=253)]
+StrMaxLen254 = Annotated[str, Field(max_length=254)]
 StrMaxLen255 = Annotated[str, Field(max_length=255)]
 StrMaxLen256 = Annotated[str, Field(max_length=256)]
 StrMaxLen256Matching4B53B494 = Annotated[str, Field(max_length=256, pattern='^(?:/(?:[^~/\\u0000-\\u001F\\u007F]|~0|~1)*)*$')]

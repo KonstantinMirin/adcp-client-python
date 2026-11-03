@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule, UniqueItems
-from adcp.types.constraints import IntMin1, IntMin1Max90, StrFormatHostnameMaxLen253, StrFormatUriMatching5E721644, StrMatchingEFC12812, StrMaxLen500, StrMinLen1
+from adcp.types.constraints import AdCPUrl, HttpUrl, IntMin1, IntMin1Max90, StrMatchingEFC12812, StrMaxLen253, StrMaxLen500, StrMinLen1
 
 from ..enums.consent_basis import ConsentBasis
 from ..enums.restricted_attribute import RestrictedAttribute
@@ -51,7 +51,7 @@ class Taxonomy(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-definition-enrichment.json', pointer='#/properties/taxonomy')
-    ref: Annotated[str, Field(json_schema_extra={'format': 'uri'})]
+    ref: HttpUrl
     version: str | None = None
     segtax: IntMin1 | None = None
     etag: str | None = None
@@ -203,7 +203,7 @@ class ChannelsItem(AdCPBaseModel):
         UniqueItems('rights'),
     )
     rights: Annotated[list[RightsItem], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
-    url: StrFormatUriMatching5E721644 | None = None
+    url: AdCPUrl | None = None
     email: Annotated[str | None, Field(json_schema_extra={'format': 'email'})] = None
     languages: list[str] | None = None
     countries: list[StrMatchingEFC12812] | None = None
@@ -217,10 +217,10 @@ class DataSubjectRights(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-definition-enrichment.json', pointer='#/properties/data_subject_rights')
-    upstream_source_domain: StrFormatHostnameMaxLen253 | None = None
+    upstream_source_domain: Annotated[StrMaxLen253 | None, Field(json_schema_extra={'format': 'hostname'})] = None
     channels: Annotated[list[ChannelsItem], Field(min_length=1)]
     response_sla_days: IntMin1Max90 | None = None
-    ccpa_opt_out_url: StrFormatUriMatching5E721644 | None = None
+    ccpa_opt_out_url: AdCPUrl | None = None
 
 
 class SignalDefinitionEnrichment(AdCPBaseModel):
@@ -239,7 +239,7 @@ class SignalDefinitionEnrichment(AdCPBaseModel):
     policy_categories: Annotated[list[str] | None, Field(description='Policy categories this signal is sensitive for.', min_length=1)] = None
     taxonomy: Annotated[Taxonomy | None, Field(description='Optional taxonomy metadata describing what this signal means in an external audience, content, retail-media, or provider-owned taxonomy.')] = None
     segmentation_criteria: StrMaxLen500 | None = None
-    criteria_url: Annotated[str | None, Field(json_schema_extra={'format': 'uri'})] = None
+    criteria_url: HttpUrl | None = None
     data_sources: Annotated[list[DataSourcesItem] | None, Field(min_length=1)] = None
     methodology: Methodology | None = None
     audience_expansion: bool | None = None

@@ -7,7 +7,7 @@ from typing import Annotated, Any, ClassVar, Literal
 from pydantic import ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import StrMatching2F959EB5, StrMatching325DEB97, StrMatching32F5291C
+from adcp.types.constraints import HttpUrl, StrMatching2F959EB5, StrMatching325DEB97, StrMatching32F5291C
 
 
 class Task(StrEnum):
@@ -26,7 +26,7 @@ class ResponsePayload(AdCPBaseModel):
     typ: Annotated[Literal['adcp-response-payload+jws'], Field(description='Type discriminator preventing cross-profile replay.')]
     task: Annotated[Task, Field(description='Designated task whose response payload is signed.')]
     brand_domain: Annotated[StrMatching32F5291C, Field(description='Brand tenant whose policy store produced the answer. The signer MUST derive this from server-side tenant resolution, not caller-supplied request fields.')]
-    agent_url: Annotated[str, Field(description='Canonical URL of the responding brand agent entry whose response-signing key verifies this envelope.', json_schema_extra={'format': 'uri'})]
+    agent_url: Annotated[HttpUrl, Field(description='Canonical URL of the responding brand agent entry whose response-signing key verifies this envelope.')]
     request_hash: Annotated[StrMatching325DEB97, Field(description='sha256: prefix plus unpadded base64url SHA-256 of the canonical request-binding object for this call.')]
     iat: Annotated[NonNegativeInt, Field(description='Issued-at time as Unix epoch seconds.')]
     exp: Annotated[NonNegativeInt, Field(description='Expiration time as Unix epoch seconds. Online verifiers reject envelopes after this time, allowing only implementation-defined clock skew.')]

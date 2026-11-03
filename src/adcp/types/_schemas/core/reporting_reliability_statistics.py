@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule, UniqueItems
-from adcp.types.constraints import IntMin1, StrFormatUriMatching3AC8B861, StrMatching564F6F3C, StrMatching5E987613, StrMinLen1MaxLen128, StrMinLen1MaxLen128MatchingB577C746, StrMinLen1MaxLen32
+from adcp.types.constraints import HttpUrl, IntMin1, StrMatching564F6F3C, StrMatching5E987613, StrMinLen1MaxLen128, StrMinLen1MaxLen128MatchingB577C746, StrMinLen1MaxLen32
 
 
 class ReportingReliabilityMeasurementPeriod(AdCPBaseModel):
@@ -57,7 +57,7 @@ class Evidence(AdCPBaseModel):
     )
     basis: Basis
     generated_at: AwareDatetime
-    attestation_uri: StrFormatUriMatching3AC8B861 | None = None
+    attestation_uri: HttpUrl | None = None
     attestation_sha256: StrMatching5E987613 | None = None
 
 

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import StrFormatUriMatching5E721644, StrMinLen16MaxLen255Matching1E5CF9EB, StrMinLen32
+from adcp.types.constraints import AdCPUrl, StrMinLen16MaxLen255Matching1E5CF9EB, StrMinLen32
 
 from ..core.account_ref import AccountReference
 from ..core.context import ContextObject
@@ -31,7 +31,7 @@ class GovernanceAgentsItem(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='account/sync-governance-request.json', pointer='#/properties/accounts/items/properties/governance_agents/items')
-    url: Annotated[StrFormatUriMatching5E721644, Field(description='Governance agent endpoint URL. Must use HTTPS.')]
+    url: Annotated[AdCPUrl, Field(description='Governance agent endpoint URL. Must use HTTPS.')]
     authentication: Annotated[Authentication, Field(description='Authentication the seller presents when calling this governance agent.')]
 
 

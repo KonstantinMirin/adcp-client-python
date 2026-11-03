@@ -444,12 +444,32 @@ The refusal argument survives in exactly two places, and the design keeps both.
   incident this rule exists for, so the guard switches each admission mechanism off in turn and
   pins which keywords reappear.
 
-  **The registry is EMPTY, because the URL type that filled it is withdrawn (decided
-  2026-11-02).** It held two facts a pydantic URL type renders of its own — `minLength: 1`,
-  `maxLength: 2083` — and those were the registered part. The type's NORMALISATION was never
-  registered, and by the sentence above that makes it the defect: a pydantic URL lowercases the
-  host and gives an empty path a `/`, so two distinct strings the document admits become one
-  value, and the value dumped is not the string supplied.
+  **THE WITHDRAWAL IS REVERSED AND THE TWO URL TYPES STAND (decided by the owner, 2026-11-03,
+  for the second time). This is not reopened again.** A lane executed the withdrawal on the
+  strength of the paragraphs below, and I briefed it without asking what the diff reversed, which
+  is my own rule. **The reversal is a decision about which artifact is authoritative, and the
+  answer is not the document.**
+
+  **THE BUNDLE IS WRONG ABOUT URLs, and that is the whole premise.** It spells "a URL" many
+  different ways across its `uri` positions — a bare `format: uri`, an `^https://` pattern, a
+  length bound, several combinations — for what is one concept. **Where the schema states one
+  concept inconsistently, the SDK states it consistently**, and consistency across the bundle is
+  what a consumer experiences. There are exactly **two** URL types and there will not be a third:
+  `AdCPUrl` where the document pins `^https://`, which is the agent-facing form, and `HttpUrl`
+  everywhere else, which is the identity form.
+
+  **SO THE NORMALISATION IS A NARROWING TAKEN ON PURPOSE, not a defect**, and §2's rule about
+  deliberate narrowings applies to it in full: it must be **admitted by the enumerated registry
+  and by nothing else**, because an unadmitted narrowing is invisible and permanent. The
+  registry's own mechanism does not express it yet — an entry is compared by equality so that it
+  admits one fact and not its kind, and a normalisation is a kind — so **the mechanism is what
+  changes, not the decision.** Until it does, the narrowing is live and unadmitted, which is a
+  defect of the registry and not of the type.
+
+  What follows below is the measurement that made the withdrawal look right, and it is kept
+  because every figure in it is true. **It is evidence, not a decision**: the facts a pydantic URL
+  type adds, the values it rewrites, and the reach — all hold, and all are now the cost of a
+  deliberate choice rather than the symptom of an accident. Read it that way.
 
   It cannot be registered either, and the reason is the one this subsection already gives: an
   entry is compared by EQUALITY so that it admits that fact and not its kind, and a
@@ -1102,9 +1122,9 @@ is the one place a keyword decision lives, and a grid is its rendering.
 <!-- generated from codegen/keywords.py -->
 | keyword | compiles to |
 | --- | --- |
-| `pattern` | `pattern` on the type, as a named alias — including beside `format: uri`, where it used to stay with the schema half because the URL type it lost to could carry no regex. The regex engine is derived per class, because a pattern using look-around needs Python's engine rather than Rust's. ROOT → the root alias over it. ELEM / BRANCH → the alias as the element or member type. KEY → an annotated `str` key. RULE → nothing. |
-| `format` | Selects a TYPE where the document's draft asserts the format and a type is named: `date-time` → `AwareDatetime`, `date` → `datetime.date`. `uri` names NO type: a pydantic URL rewrites the value, so the string dumped is not the string supplied and two URIs the document calls distinct become one, and the grammar is asserted by the document's own format checker instead. Where no type is selected the format is part of the SHAPE and the named alias carries it (`StrFormatUriMatching1875B31F`); a node stating a format and nothing else has no shape to name and rides as `json_schema_extra={"format": …}` on the field. ELEM / MAPV with no type selected → a named alias carries it. BRANCH → the selected type as the member. |
-| `minLength`, `maxLength` | `min_length` / `max_length` on the type, as a named alias. A node stating the bound and **no `type`** is `Any` (§5's `type` row, "absent → `Any`"), which carries no bound: the keyword is dropped at rung KEYWORD — the type is unchanged, which is what that rung is — and the drop is declared. Selecting the type the bound implies instead would NARROW, because a typeless node admits an instance of every type and the bound constrains only one of them. ROOT → the root alias. ELEM / MAPV → the alias inside the container. KEY → the key type, which Pydantic renders back as `propertyNames.minLength`. RULE → nothing. |
+| `pattern` | `pattern` on the type, as a named alias. On `format: uri` → selects the type instead, and the pattern stays with the schema half. The regex engine is derived per class, because a pattern using look-around needs Python's engine rather than Rust's. ROOT → the root alias over it. ELEM / BRANCH → the alias as the element or member type. KEY → an annotated `str` key. RULE → nothing. |
+| `format` | Selects a TYPE where the document's draft asserts the format and a type is named: `date-time` → `AwareDatetime`, `date` → `datetime.date`, `uri` → a URL type chosen by `pattern`. Otherwise rides as `json_schema_extra={"format": …}` on the field. A `uri` beside another string constraint → refused: a URL type carries none. ELEM / MAPV with no type selected → a named alias carries it. BRANCH → the selected type as the member. |
+| `minLength`, `maxLength` | `min_length` / `max_length` on the type, as a named alias. On a URL type → refused, not representable. A node stating the bound and **no `type`** is `Any` (§5's `type` row, "absent → `Any`"), which carries no bound: the keyword is dropped at rung KEYWORD — the type is unchanged, which is what that rung is — and the drop is declared. Selecting the type the bound implies instead would NARROW, because a typeless node admits an instance of every type and the bound constrains only one of them. ROOT → the root alias. ELEM / MAPV → the alias inside the container. KEY → the key type, which Pydantic renders back as `propertyNames.minLength`. RULE → nothing. |
 <!-- end generated -->
 
 ### Numbers

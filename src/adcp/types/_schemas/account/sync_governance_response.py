@@ -8,7 +8,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule
-from adcp.types.constraints import StrFormatUriMatching5E721644
+from adcp.types.constraints import AdCPUrl
 from adcp.types.envelopes import FailedResponse
 
 from ..core.account_ref import AccountReference
@@ -48,7 +48,7 @@ class GovernanceAgentsItem(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='account/sync-governance-response.json', pointer='#/oneOf/0/properties/accounts/items/properties/governance_agents/items')
-    url: Annotated[StrFormatUriMatching5E721644, Field(description='Governance agent endpoint URL.')]
+    url: Annotated[AdCPUrl, Field(description='Governance agent endpoint URL.')]
 
 
 class AccountsItem(AdCPBaseModel):

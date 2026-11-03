@@ -704,7 +704,8 @@ _ITEM_BOUND_COMPILES = (
 )
 
 _STRING_BOUND_COMPILES = (
-    "`min_length` / `max_length` on the type, as a named alias." + _TYPELESS_DROPS
+    "`min_length` / `max_length` on the type, as a named alias. On a URL type → "
+    "refused, not representable." + _TYPELESS_DROPS
 )
 
 
@@ -714,10 +715,10 @@ _STRINGS: dict[str, Row] = {
             Effect.TYPE,
             True,
             None,
-            "`pattern` on the type, as a named alias — including beside `format: uri`, "
-            "where it used to stay with the schema half because the URL type it lost to "
-            "could carry no regex. The regex engine is derived per class, because a "
-            "pattern using look-around needs Python's engine rather than Rust's.",
+            "`pattern` on the type, as a named alias. On `format: uri` → selects the "
+            "type instead, and the pattern stays with the schema half. The regex "
+            "engine is derived per class, because a pattern using look-around needs "
+            "Python's engine rather than Rust's.",
         ),
         {
             Position.ROOT: Cell(Effect.TYPE, True, None, " → the root alias over it."),
@@ -741,14 +742,10 @@ _STRINGS: dict[str, Row] = {
             True,
             None,
             "Selects a TYPE where the document's draft asserts the format and a type "
-            "is named: `date-time` → `AwareDatetime`, `date` → `datetime.date`. `uri` "
-            "names NO type: a pydantic URL rewrites the value, so the string dumped is "
-            "not the string supplied and two URIs the document calls distinct become "
-            "one, and the grammar is asserted by the document's own format checker "
-            "instead. Where no type is selected the format is part of the SHAPE and the "
-            "named alias carries it (`StrFormatUriMatching1875B31F`); a node stating a "
-            'format and nothing else has no shape to name and rides as '
-            '`json_schema_extra={"format": …}` on the field.',
+            "is named: `date-time` → `AwareDatetime`, `date` → `datetime.date`, `uri` "
+            "→ a URL type chosen by `pattern`. Otherwise rides as "
+            '`json_schema_extra={"format": …}` on the field. A `uri` beside another '
+            "string constraint → refused: a URL type carries none.",
         ),
         {
             **_group(

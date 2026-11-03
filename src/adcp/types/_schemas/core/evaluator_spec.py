@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field, NonNegativeFloat, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
-from adcp.types.constraints import IntMin1, StrFormatUriMatching5E721644
+from adcp.types.constraints import AdCPUrl, IntMin1
 
 from ..content_standards.artifact import Artifact
 from .ext import ExtensionObject
@@ -39,7 +39,7 @@ class FeatureAgent(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/evaluator-spec.json', pointer='#/properties/feature_agent')
-    agent_url: Annotated[StrFormatUriMatching5E721644, Field(description="URL of the get_creative_features-capable agent the producing agent calls to obtain creative-feature values for the gate. MUST use https:// and MUST match an entry in the seller's `creative_policy.accepted_verifiers[].agent_url`; off-list → `EVALUATOR_AGENT_NOT_ACCEPTED`.")]
+    agent_url: Annotated[AdCPUrl, Field(description="URL of the get_creative_features-capable agent the producing agent calls to obtain creative-feature values for the gate. MUST use https:// and MUST match an entry in the seller's `creative_policy.accepted_verifiers[].agent_url`; off-list → `EVALUATOR_AGENT_NOT_ACCEPTED`.")]
     feature_id: Annotated[str | None, Field(description="Optional canonical feature_id the producing agent SHOULD request against this agent. When present it SHOULD match the agent's `accepted_verifiers[].feature_id` or be omitted; when absent the seller selects a feature at evaluation time. Resolves selector ambiguity exactly as the provenance verify_agent.feature_id does.")] = None
 
 
@@ -128,7 +128,7 @@ class EvaluatorSpecAgentUrl(EvaluatorSpec):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/evaluator-spec.json', pointer='#/oneOf/2')
-    agent_url: Annotated[StrFormatUriMatching5E721644, Field(description="URL of an external get_creative_features-capable judge agent the seller calls to score the produced leaves. MUST match an entry in the seller's `creative_policy.accepted_verifiers[].agent_url` (off-list → `EVALUATOR_AGENT_NOT_ACCEPTED`); an on-list agent that is unreachable or rejects the producing agent's transport authentication degrades to seller-default ranking (advisory errors[] note), not a failure. Authentication and trust material for this call belongs on the transport or in account provisioning, not in the evaluator payload.")]
+    agent_url: Annotated[AdCPUrl, Field(description="URL of an external get_creative_features-capable judge agent the seller calls to score the produced leaves. MUST match an entry in the seller's `creative_policy.accepted_verifiers[].agent_url` (off-list → `EVALUATOR_AGENT_NOT_ACCEPTED`); an on-list agent that is unreachable or rejects the producing agent's transport authentication degrades to seller-default ranking (advisory errors[] note), not a failure. Authentication and trust material for this call belongs on the transport or in account provisioning, not in the evaluator payload.")]
 
 
 EvaluatorSpec._branch_models = (EvaluatorSpecExemplars, EvaluatorSpecEvaluatorId, EvaluatorSpecAgentUrl,)

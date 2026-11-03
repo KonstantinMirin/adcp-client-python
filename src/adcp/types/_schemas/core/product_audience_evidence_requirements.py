@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
-from adcp.types.constraints import FloatMin0Max1, StrFormatUri, StrFormatUriMatching2E1F4D86, StrFormatUriMatching339ABAF8
+from adcp.types.constraints import FloatMin0Max1, HttpUrl
 
 from ..enums.audience_evidence_methodology import AudienceEvidenceMethodology
 from ..enums.audience_resolution_method import AudienceResolutionMethod
@@ -45,7 +45,7 @@ class AcceptedAttestationIssuersItemAgent(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-audience-evidence-requirements.json', pointer='#/properties/accepted_attestation_issuers/items/oneOf/1')
     type: Literal['agent']
-    agent_url: StrFormatUriMatching339ABAF8
+    agent_url: HttpUrl
     ext: ExtensionObject | None = None
 
 
@@ -55,7 +55,7 @@ class AcceptedAttestationIssuersItemOrigin(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-audience-evidence-requirements.json', pointer='#/properties/accepted_attestation_issuers/items/oneOf/2')
     type: Literal['origin']
-    origin: StrFormatUriMatching2E1F4D86
+    origin: HttpUrl
     ext: ExtensionObject | None = None
 
 
@@ -91,7 +91,7 @@ class ProductAudienceEvidenceRequirements(AdCPBaseModel):
     methodology_documentation_required: bool | None = False
     independent_attestation_required: bool | None = False
     accepted_attestation_issuers: Annotated[list[AcceptedAttestationIssuersItemBrand | AcceptedAttestationIssuersItemAgent | AcceptedAttestationIssuersItemOrigin] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    accepted_attestation_claim_types: Annotated[list[StrFormatUri] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    accepted_attestation_claim_types: Annotated[list[HttpUrl] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     ext: ExtensionObject | None = None
 
 

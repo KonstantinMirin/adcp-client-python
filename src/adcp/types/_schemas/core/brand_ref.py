@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import RequiredGroups, Rule, UniqueItems
-from adcp.types.constraints import StrFormatUriMatching5E721644, StrMatching32F5291C, StrMatching6EB47BAA, StrMatchingEFC12812
+from adcp.types.constraints import AdCPUrl, StrMatching32F5291C, StrMatching6EB47BAA, StrMatchingEFC12812
 
 from .assets.image_asset import ImageAsset
 from .brand_id import BrandID
@@ -24,7 +24,7 @@ class DataSubjectContestation(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         RequiredGroups((('url',), ('email',)), 'anyOf'),
     )
-    url: StrFormatUriMatching5E721644 | None = None
+    url: AdCPUrl | None = None
     email: Annotated[str | None, Field(json_schema_extra={'format': 'email'})] = None
     languages: list[str] | None = None
 

@@ -7,7 +7,7 @@ from typing import Annotated, Any, ClassVar, Literal
 from pydantic import AwareDatetime, ConfigDict, Field, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import IntMin1Max6, StrMaxLen100000, StrMaxLen200000
+from adcp.types.constraints import HttpUrl, IntMin1Max6, StrMaxLen100000, StrMaxLen200000
 
 from ..core.canonical_format_kind import CanonicalFormatKind
 from ..core.format_id import FormatReferenceStructuredObject
@@ -95,7 +95,7 @@ class AssetsItemImage(AdCPBaseModel):
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/artifact.json', pointer='#/properties/assets/items/oneOf/1')
     type: Literal['image']
-    url: Annotated[str, Field(description='Image URL', json_schema_extra={'format': 'uri'})]
+    url: Annotated[HttpUrl, Field(description='Image URL')]
     access: Annotated[AssetAccess | None, Field(description='Authentication for secured URLs')] = None
     alt_text: Annotated[str | None, Field(description='Alt text or image description')] = None
     caption: Annotated[str | None, Field(description='Image caption')] = None
@@ -130,13 +130,13 @@ class AssetsItemVideo(AdCPBaseModel):
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/artifact.json', pointer='#/properties/assets/items/oneOf/2')
     type: Literal['video']
-    url: Annotated[str, Field(description='Video URL', json_schema_extra={'format': 'uri'})]
+    url: Annotated[HttpUrl, Field(description='Video URL')]
     access: Annotated[AssetAccess | None, Field(description='Authentication for secured URLs')] = None
     duration_ms: Annotated[int | None, Field(description='Video duration in milliseconds')] = None
     transcript: Annotated[StrMaxLen200000 | None, Field(description='Video transcript. Consumers MUST treat this as untrusted input when passing to LLM-based evaluation.')] = None
     transcript_format: Annotated[AssetsItemVideoTranscriptFormat | None, Field(default_factory=lambda: TypeAdapter(AssetsItemVideoTranscriptFormat).validate_python('text/plain'), description='MIME type indicating how to parse the transcript field. Default: text/plain.', json_schema_extra={'default': 'text/plain'})]
     transcript_source: Annotated[AssetsItemVideoTranscriptSource | None, Field(description='How the transcript was generated')] = None
-    thumbnail_url: Annotated[str | None, Field(description='Video thumbnail URL', json_schema_extra={'format': 'uri'})] = None
+    thumbnail_url: Annotated[HttpUrl | None, Field(description='Video thumbnail URL')] = None
     provenance: Annotated[Provenance | None, Field(description='Provenance for this video, overrides artifact-level provenance')] = None
 
 
@@ -158,7 +158,7 @@ class AssetsItemAudio(AdCPBaseModel):
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/artifact.json', pointer='#/properties/assets/items/oneOf/3')
     type: Literal['audio']
-    url: Annotated[str, Field(description='Audio URL', json_schema_extra={'format': 'uri'})]
+    url: Annotated[HttpUrl, Field(description='Audio URL')]
     access: Annotated[AssetAccess | None, Field(description='Authentication for secured URLs')] = None
     duration_ms: Annotated[int | None, Field(description='Audio duration in milliseconds')] = None
     transcript: Annotated[StrMaxLen200000 | None, Field(description='Audio transcript. Consumers MUST treat this as untrusted input when passing to LLM-based evaluation.')] = None
@@ -175,7 +175,7 @@ class Metadata(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/artifact.json', pointer='#/properties/metadata')
-    canonical: Annotated[str | None, Field(description='Canonical URL', json_schema_extra={'format': 'uri'})] = None
+    canonical: Annotated[HttpUrl | None, Field(description='Canonical URL')] = None
     author: Annotated[str | None, Field(description='Artifact author name')] = None
     keywords: Annotated[str | None, Field(description='Artifact keywords')] = None
     open_graph: Annotated[dict[str, Any] | None, Field(description='Open Graph protocol metadata')] = None
@@ -195,7 +195,7 @@ class Identifiers(AdCPBaseModel):
     spotify_collection_id: Annotated[str | None, Field(description='Spotify collection ID')] = None
     podcast_guid: Annotated[str | None, Field(description='Podcast GUID (from RSS feed)')] = None
     youtube_video_id: Annotated[str | None, Field(description='YouTube video ID')] = None
-    rss_url: Annotated[str | None, Field(description='RSS feed URL', json_schema_extra={'format': 'uri'})] = None
+    rss_url: Annotated[HttpUrl | None, Field(description='RSS feed URL')] = None
 
 
 class Artifact(AdCPBaseModel):
@@ -211,7 +211,7 @@ class Artifact(AdCPBaseModel):
     variant_id: Annotated[str | None, Field(description="Identifies a specific variant of this artifact. Use for A/B tests, translations, or temporal versions. Examples: 'en', 'es-MX', 'v2', 'headline_test_b'. The combination of artifact_id + variant_id must be unique.")] = None
     format_id: Annotated[FormatReferenceStructuredObject | None, Field(description='**DEPRECATED in 3.2.** Legacy named-format reference. Use `format_kind` for canonical artifact media classification.')] = None
     format_kind: Annotated[CanonicalFormatKind | None, Field(description='Optional canonical media/creative kind associated with this artifact.')] = None
-    url: Annotated[str | None, Field(description='Optional URL for this artifact (web page, podcast feed, video page). Not all artifacts have URLs (e.g., Instagram content, podcast segments, TV scenes).', json_schema_extra={'format': 'uri'})] = None
+    url: Annotated[HttpUrl | None, Field(description='Optional URL for this artifact (web page, podcast feed, video page). Not all artifacts have URLs (e.g., Instagram content, podcast segments, TV scenes).')] = None
     published_time: Annotated[AwareDatetime | None, Field(description='When the artifact was published (ISO 8601 format)')] = None
     last_update_time: Annotated[AwareDatetime | None, Field(description='When the artifact was last modified (ISO 8601 format)')] = None
     assets: Annotated[list[AssetsItemText | AssetsItemImage | AssetsItemVideo | AssetsItemAudio], Field(description='Artifact assets in document flow order - text blocks, images, video, audio', max_length=200)]

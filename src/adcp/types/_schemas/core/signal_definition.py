@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule, UniqueItems
-from adcp.types.constraints import IntMin1, IntMin1Max90, StrFormatHostnameMaxLen253, StrFormatUriMatching5E721644, StrMatching59861E88, StrMatchingA828669D, StrMatchingEFC12812, StrMaxLen2000, StrMaxLen500, StrMinLen1, StrMinLen1MaxLen255
+from adcp.types.constraints import AdCPUrl, HttpUrl, IntMin1, IntMin1Max90, StrMatching59861E88, StrMatchingA828669D, StrMatchingEFC12812, StrMaxLen2000, StrMaxLen253, StrMaxLen500, StrMinLen1, StrMinLen1MaxLen255
 
 from ..enums.audience_resolution_method import AudienceResolutionMethod
 from ..enums.audience_subject_type import AudienceSubjectType
@@ -62,7 +62,7 @@ class Taxonomy(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-definition.json', pointer='#/properties/taxonomy')
-    ref: Annotated[str, Field(description='URI identifying the taxonomy or taxonomy documentation.', json_schema_extra={'format': 'uri'})]
+    ref: Annotated[HttpUrl, Field(description='URI identifying the taxonomy or taxonomy documentation.')]
     version: Annotated[str | None, Field(description='Version identifier for the taxonomy when the taxonomy has versioned definitions.')] = None
     segtax: Annotated[IntMin1 | None, Field(description='OpenRTB segtax code when the taxonomy maps to an OpenRTB segment taxonomy.')] = None
     etag: Annotated[str | None, Field(description='Optional validator for custom taxonomy definitions so consumers can detect drift between signal publication and taxonomy resolution.')] = None
@@ -164,7 +164,7 @@ class ChannelsItem(AdCPBaseModel):
         UniqueItems('rights'),
     )
     rights: Annotated[list[RightsItem], Field(description='Rights supported by this channel.', json_schema_extra={'uniqueItems': True}, min_length=1)]
-    url: Annotated[StrFormatUriMatching5E721644 | None, Field(description='HTTPS URL for submitting the rights request.')] = None
+    url: Annotated[AdCPUrl | None, Field(description='HTTPS URL for submitting the rights request.')] = None
     email: Annotated[str | None, Field(description='Email address for submitting the rights request.', json_schema_extra={'format': 'email'})] = None
     languages: Annotated[list[str] | None, Field(description='BCP 47 language tags supported by this channel.')] = None
     countries: Annotated[list[StrMatchingEFC12812] | None, Field(description='ISO 3166-1 alpha-2 countries this channel serves, when the provider routes rights by country.')] = None
@@ -178,10 +178,10 @@ class DataSubjectRights(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-definition.json', pointer='#/properties/data_subject_rights')
-    upstream_source_domain: Annotated[StrFormatHostnameMaxLen253 | None, Field(description='Domain of the upstream data source whose rights process these channels reach, when different from the publishing domain.')] = None
+    upstream_source_domain: Annotated[StrMaxLen253 | None, Field(description='Domain of the upstream data source whose rights process these channels reach, when different from the publishing domain.', json_schema_extra={'format': 'hostname'})] = None
     channels: Annotated[list[ChannelsItem], Field(description='Rights request channels and the rights each channel supports. At least one declared channel MUST support one or more of access, erasure, or objection; schema validators enforce this with draft-07 contains, and consumers whose SDK drops contains need an equivalent runtime check.', min_length=1)]
     response_sla_days: Annotated[IntMin1Max90 | None, Field(description="Maximum response time in days for rights requests handled through the declared rights channels. For provider-published signals, providers SHOULD avoid duplicating this field across every signal unless the value varies by signal or upstream source; consumers MAY also consult the provider's public privacy policy or registry disclosures when present.")] = None
-    ccpa_opt_out_url: Annotated[StrFormatUriMatching5E721644 | None, Field(description="US-specific 'Do Not Sell or Share' opt-out URL where required.")] = None
+    ccpa_opt_out_url: Annotated[AdCPUrl | None, Field(description="US-specific 'Do Not Sell or Share' opt-out URL where required.")] = None
 
 
 class SignalDefinition(AdCPBaseModel):
@@ -210,7 +210,7 @@ class SignalDefinition(AdCPBaseModel):
     range: Annotated[Range | None, Field(description='For numeric signals, the valid value range')] = None
     taxonomy: Annotated[Taxonomy | None, Field(description='Optional taxonomy metadata describing what this signal means in an external audience, content, retail-media, or provider-owned taxonomy. Taxonomy metadata does not create a new value_type and does not change package targeting grammar: buyers still target the named signal according to value_type. When a taxonomy value is a parent node, parent/descendant expansion is seller behavior and must be declared through parent_match_behavior rather than assumed.')] = None
     segmentation_criteria: Annotated[StrMaxLen500 | None, Field(description='Rules governing inclusion of identifiers in the segment. Aligns with IAB Data Transparency Standard audience criteria disclosure.')] = None
-    criteria_url: Annotated[str | None, Field(description='Optional URL to a longer-form methodology or criteria document. This is a disclosure pointer; buyers should not branch programmatically on the linked content.', json_schema_extra={'format': 'uri'})] = None
+    criteria_url: Annotated[HttpUrl | None, Field(description='Optional URL to a longer-form methodology or criteria document. This is a disclosure pointer; buyers should not branch programmatically on the linked content.')] = None
     data_sources: Annotated[list[DataSourcesItem] | None, Field(description="Origin categories of the raw data used to compile the signal, aligned with IAB Data Transparency Standard source disclosure. Use 'panel' for respondent-panel or JIC-style audience sources. Offline and public-record sources require onboarder disclosure. Co-viewing projection and reconciliation of seller claims against a JIC or measurement vendor belong in measurement reporting/vendor metrics rather than package signal targeting.", min_length=1)] = None
     methodology: Annotated[Methodology | None, Field(description="How the signal's audience membership or attribute was determined. 'modeled' requires the modeling block.")] = None
     audience_expansion: Annotated[bool | None, Field(description='Whether look-alike or similar-audience expansion was used to include additional identifiers. When true, modeling is required.')] = None

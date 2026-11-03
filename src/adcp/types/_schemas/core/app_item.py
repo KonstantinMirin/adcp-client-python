@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import FloatMin0Max5, StrFormatUri, StrMatchingB0B1C6A4
+from adcp.types.constraints import FloatMin0Max5, HttpUrl, StrMatchingB0B1C6A4
 
 from .ext import ExtensionObject
 from .offering_asset_group import OfferingAssetGroup
@@ -38,11 +38,11 @@ class AppItem(AdCPBaseModel):
     description: Annotated[str | None, Field(description='App description. Platforms typically pull this from the store listing automatically; supply here to override or for platforms that require it in the request.')] = None
     category: Annotated[str | None, Field(description="Primary store category (e.g., 'games', 'productivity', 'finance', 'health_fitness', 'social_networking').")] = None
     genre: Annotated[str | None, Field(description="Sub-genre within the category. Particularly relevant for games (e.g., 'puzzle', 'strategy', 'rpg', 'casual', 'simulation', 'action').")] = None
-    icon_url: Annotated[str | None, Field(description='App icon image URL. Typically 1024×1024 px.', json_schema_extra={'format': 'uri'})] = None
-    screenshots: Annotated[list[StrFormatUri] | None, Field(description='App store screenshot URLs. Used by platforms for creative generation when native store assets are not available.', min_length=1)] = None
-    preview_video_url: Annotated[str | None, Field(description='App preview or gameplay video URL for use in video ad creatives.', json_schema_extra={'format': 'uri'})] = None
-    store_url: Annotated[str | None, Field(description="Direct link to the app's store listing (Apple App Store or Google Play).", json_schema_extra={'format': 'uri'})] = None
-    deep_link_url: Annotated[str | None, Field(description="Deep link URI for re-engagement campaigns targeting existing users. Use Universal Links (iOS) or App Links (Android) where available (e.g., 'https://acmegames.com/app/level/5'). Falls back to URI scheme (e.g., 'acmegames://level/5') when universal links are not configured.", json_schema_extra={'format': 'uri'})] = None
+    icon_url: Annotated[HttpUrl | None, Field(description='App icon image URL. Typically 1024×1024 px.')] = None
+    screenshots: Annotated[list[HttpUrl] | None, Field(description='App store screenshot URLs. Used by platforms for creative generation when native store assets are not available.', min_length=1)] = None
+    preview_video_url: Annotated[HttpUrl | None, Field(description='App preview or gameplay video URL for use in video ad creatives.')] = None
+    store_url: Annotated[HttpUrl | None, Field(description="Direct link to the app's store listing (Apple App Store or Google Play).")] = None
+    deep_link_url: Annotated[HttpUrl | None, Field(description="Deep link URI for re-engagement campaigns targeting existing users. Use Universal Links (iOS) or App Links (Android) where available (e.g., 'https://acmegames.com/app/level/5'). Falls back to URI scheme (e.g., 'acmegames://level/5') when universal links are not configured.")] = None
     price: Annotated[Price | None, Field(description='App download price. Set amount to 0 for free apps.')] = None
     rating: Annotated[FloatMin0Max5 | None, Field(description='Average store rating (0–5). Use 0 to indicate no ratings yet.')] = None
     rating_count: Annotated[NonNegativeInt | None, Field(description='Total number of store ratings.')] = None

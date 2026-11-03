@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import IntMin1
+from adcp.types.constraints import HttpUrl, IntMin1
 
 from ...enums.audio_channel_layout import AudioChannelLayout
 from ..provenance import Provenance
@@ -31,7 +31,7 @@ class AudioAsset(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/audio-asset.json', pointer='#')
     asset_type: Annotated[Literal['audio'], Field(description='Discriminator identifying this as an audio asset. See /schemas/creative/asset-types for the registry.')]
-    url: Annotated[str, Field(description='URL to the audio asset', json_schema_extra={'format': 'uri'})]
+    url: Annotated[HttpUrl, Field(description='URL to the audio asset')]
     duration_ms: Annotated[NonNegativeInt | None, Field(description='Audio duration in milliseconds')] = None
     file_size_bytes: Annotated[IntMin1 | None, Field(description='File size in bytes')] = None
     container_format: Annotated[str | None, Field(description='Audio container/file format (mp3, m4a, aac, wav, ogg, flac, etc.)')] = None
@@ -42,7 +42,7 @@ class AudioAsset(AdCPBaseModel):
     bitrate_kbps: Annotated[IntMin1 | None, Field(description='Bitrate in kilobits per second')] = None
     loudness_lufs: Annotated[float | None, Field(description='Integrated loudness in LUFS')] = None
     true_peak_dbfs: Annotated[float | None, Field(description='True peak level in dBFS')] = None
-    transcript_url: Annotated[str | None, Field(description='URL to text transcript of the audio content', json_schema_extra={'format': 'uri'})] = None
+    transcript_url: Annotated[HttpUrl | None, Field(description='URL to text transcript of the audio content')] = None
     provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this asset, overrides manifest-level provenance')] = None
 
 

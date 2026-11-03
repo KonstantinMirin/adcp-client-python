@@ -9,7 +9,7 @@ from pydantic import ConfigDict, Field, NonNegativeFloat, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Presence, PresenceGroups, RequiredGroups, Rule, UniqueItems
-from adcp.types.constraints import FloatGt0, FloatMin1, FloatMinNeg180Max180, FloatMinNeg90Max90, IntMin1, StrFormatUri, StrMatching157DF383, StrMatching43E30B32, StrMatchingEFC12812, StrMinLen1
+from adcp.types.constraints import FloatGt0, FloatMin1, FloatMinNeg180Max180, FloatMinNeg90Max90, HttpUrl, IntMin1, StrMatching157DF383, StrMatching43E30B32, StrMatchingEFC12812, StrMinLen1
 
 from ..enums.audio_distribution_type import AudioDistributionType
 from ..enums.available_metric import AvailableMetric
@@ -76,7 +76,7 @@ class ProvidersItem(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-filters.json', pointer='#/properties/trusted_match/properties/providers/items')
-    agent_url: Annotated[str, Field(description="Provider's agent URL from the registry.", json_schema_extra={'format': 'uri'})]
+    agent_url: Annotated[HttpUrl, Field(description="Provider's agent URL from the registry.")]
     context_match: Annotated[bool | None, Field(description='When true, require this provider to support context match.')] = None
     identity_match: Annotated[bool | None, Field(description='When true, require this provider to support identity match.')] = None
 
@@ -112,7 +112,7 @@ class BuyerAgent(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-filters.json', pointer='#/properties/audience_activation_methods/items/oneOf/1/properties/buyer_agent')
-    agent_url: Annotated[str, Field(json_schema_extra={'format': 'uri'})]
+    agent_url: HttpUrl
 
 
 class AudienceActivationMethodsItemTmpIdentityMatch(AdCPBaseModel):
@@ -362,7 +362,7 @@ class ProductFilters(AdCPBaseModel):
     audio_distribution_types: Annotated[list[AudioDistributionType] | None, Field(description='Filter product metadata by declared audio distribution types, using IAB Tech Lab/OpenRTB 2.6 audio.feed definitions with AdCP-native names. A product matches when its declared array intersects the requested array. This is discovery classification only and does not promise delivery exclusively on a requested type. This filter has set semantics for wholesale feed canonicalization.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     sponsored_placement_types: Annotated[list[SponsoredPlacementType] | None, Field(description='Filter retail-media product metadata by declared sponsored-placement types (sponsored search, sponsored display, or sponsored native). A product matches when its declared array intersects the requested array. This is discovery classification only and does not promise delivery exclusively on a requested type. This filter has set semantics for wholesale feed canonicalization.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     social_placement_surfaces: Annotated[list[SocialPlacementSurface] | None, Field(description='Filter social-product metadata by declared placement surfaces (feed, stories, short_video, explore, or search). A product matches when its declared array intersects the requested array. This is discovery classification only and does not promise delivery exclusively on a requested surface; buyers needing an exact public placement use targeting_overlay.placement_selection. This filter has set semantics for wholesale feed canonicalization.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    required_axe_integrations: Annotated[list[StrFormatUri] | None, Field(description='Deprecated: Use trusted_match filter instead. Filter to products executable through specific agentic ad exchanges. URLs are canonical identifiers.', min_length=1)] = None
+    required_axe_integrations: Annotated[list[HttpUrl] | None, Field(description='Deprecated: Use trusted_match filter instead. Filter to products executable through specific agentic ad exchanges. URLs are canonical identifiers.', min_length=1)] = None
     trusted_match: Annotated[TrustedMatch | None, Field(description='Filter products by Trusted Match Protocol capabilities. Only products with matching TMP support are returned.')] = None
     audience_activation_methods: Annotated[list[AudienceActivationMethodsItemSyncAudiences | AudienceActivationMethodsItemTmpIdentityMatch | AudienceActivationMethodsItemFileTransfer | AudienceActivationMethodsItemDatasetQuery | AudienceActivationMethodsItemCleanRoom | AudienceActivationMethodsItemPlatformDistribution] | None, Field(description="Filter to products whose audience_activation.methods matches at least one requested entry (OR across entries). Within an entry every specified field must match (AND); omitted optional fields are wildcards; directions matches on non-empty intersection, and a method that omits directions matches any requested directions; vendor matches on domain, plus brand_id when specified. Fields inapplicable to the requested pattern (e.g. transport on a clean_room entry) make that entry unsatisfiable. Sellers MUST exclude products with no audience_activation declaration when this filter is present; exclusions MAY be reported via filter_diagnostics.excluded_by. Experimental: part of the media_buy.audience_activation surface — buyers SHOULD check the seller's experimental_features before filtering on it; sellers that do not list the feature ignore this filter.", json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     required_features: Annotated[MediaBuyFeatures | None, Field(description='Filter to products from sellers supporting specific protocol features. Only features set to true are used for filtering.')] = None

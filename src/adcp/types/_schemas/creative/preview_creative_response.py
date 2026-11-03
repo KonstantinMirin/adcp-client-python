@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
-from adcp.types.constraints import StrMaxLen2000
+from adcp.types.constraints import HttpUrl, StrMaxLen2000
 
 from ..core.context import ContextObject
 from ..core.creative_manifest import CreativeManifest
@@ -66,7 +66,7 @@ class PreviewCreativeSingleResponse(PreviewCreativeResponse):
     response_type: Annotated[Literal['single'], Field(description='Discriminator indicating this is a single preview response')]
     previews: Annotated[list[PreviewCreativeSingleResponsePreviewsItem], Field(description='Array of preview variants. Each preview corresponds to an input set from the request. If no inputs were provided, returns a single default preview.', min_length=1)]
     quality_used: Annotated[CreativeQuality | None, Field(description='Actual render quality applied to every preview in this response. This field MUST be present when the corresponding request supplied `quality`, and SHOULD be present otherwise. It may differ from the requested value when the agent cannot provide that tier, allowing buyers to detect a downgrade before approval.')] = None
-    interactive_url: Annotated[str | None, Field(description='Optional URL to an interactive testing page that shows all preview variants with controls to switch between them, modify macro values, and test different scenarios.', json_schema_extra={'format': 'uri'})] = None
+    interactive_url: Annotated[HttpUrl | None, Field(description='Optional URL to an interactive testing page that shows all preview variants with controls to switch between them, modify macro values, and test different scenarios.')] = None
     expires_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp when preview links expire. **Optional.** Omit when preview URLs do not expire (some creative agents serve perpetually-valid preview URLs — e.g., signed asset URLs with no TTL, or session-scoped previews that the agent retires explicitly via revocation). When present, consumers MUST treat the URLs as invalid after this timestamp; when omitted, consumers MAY assume the preview URLs are valid until the creative agent revokes them out-of-band (no protocol-level revocation signal exists in 3.x — buyers requiring expiry guarantees SHOULD require sellers that publish `expires_at`).')] = None
     context: ContextObject | None = None
     ext: ExtensionObject | None = None
@@ -92,7 +92,7 @@ class Response(AdCPBaseModel):
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/preview-creative-response.json', pointer='#/oneOf/1/properties/results/items/properties/response')
     previews: Annotated[list[ResponsePreviewsItem], Field(description='Array of preview variants for this creative', min_length=1)]
-    interactive_url: Annotated[str | None, Field(json_schema_extra={'format': 'uri'})] = None
+    interactive_url: HttpUrl | None = None
     expires_at: Annotated[AwareDatetime | None, Field(description="When the preview URLs expire. **Optional** — omit for non-expiring preview URLs. See the single-preview branch's `expires_at` description for the full convention.")] = None
 
 

@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNega
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
-from adcp.types.constraints import FloatGt0, FloatMin0Max1, IntMin1, StrMatching3CBDBB74, StrMatching43E30B32, StrMatchingE9418C71, StrMinLen1MaxLen255
+from adcp.types.constraints import FloatGt0, FloatMin0Max1, HttpUrl, IntMin1, StrMatching3CBDBB74, StrMatching43E30B32, StrMatchingE9418C71, StrMinLen1MaxLen255
 
 from ..core.attestation_evaluation import AttestationEvaluation
 from ..core.attestation_reference import AttestationReference
@@ -340,7 +340,7 @@ class EntriesItem(AdCPBaseModel):
     type: Annotated[EntriesItemType, Field(description='Entry type.')]
     timestamp: Annotated[AwareDatetime, Field(description='ISO 8601 timestamp.')]
     plan_id: Annotated[str | None, Field(description='Plan this entry belongs to. Present when querying multiple plans or a portfolio.')] = None
-    caller: Annotated[str | None, Field(description='URL of the agent that made the request. Resolved from the credentials used on the governance callback.', json_schema_extra={'format': 'uri'})] = None
+    caller: Annotated[HttpUrl | None, Field(description='URL of the agent that made the request. Resolved from the credentials used on the governance callback.')] = None
     tool: Annotated[str | None, Field(description='The AdCP tool (present for check entries).')] = None
     verdict: Annotated[GovernanceDecision | None, Field(description='Governance verdict (present for check entries). Renamed from `status` in 3.1 alongside check-governance-response for vocabulary consistency.')] = None
     check_type: Annotated[CheckType | None, Field(description='Whether the check was an intent check (orchestrator) or execution check (seller). Inferred from the fields present on the original check request. Present for check entries.')] = None
@@ -374,7 +374,7 @@ class EntriesItem(AdCPBaseModel):
     adjustment_state: AdjustmentState | None = None
     verified_amount: NonNegativeFloat | None = None
     evidence: Evidence | None = None
-    reviewed_by: Annotated[str | None, Field(json_schema_extra={'format': 'uri'})] = None
+    reviewed_by: HttpUrl | None = None
     reviewed_at: AwareDatetime | None = None
     review_reason: str | None = None
 

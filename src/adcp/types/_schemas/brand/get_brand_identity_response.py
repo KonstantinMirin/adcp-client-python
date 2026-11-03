@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, PropertyCount, Rule
-from adcp.types.constraints import DictMinProperties1, DictMinProperties1MaxProperties1, IntMin100Max900, NonEmptyList, StrFormatUriMatching5E721644, StrMatching83577F62, StrMatchingEFC12812, StrMatchingF01B4765, StrMaxLen100, StrMinLen1
+from adcp.types.constraints import AdCPUrl, DictMinProperties1, DictMinProperties1MaxProperties1, HttpUrl, IntMin100Max900, NonEmptyList, StrMatching83577F62, StrMatchingEFC12812, StrMatchingF01B4765, StrMaxLen100, StrMinLen1
 from adcp.types.envelopes import FailedResponse
 
 from ..brand import Background, FontFileStyle, KellerType, LogoOrientation, LogoVariant
@@ -54,7 +54,7 @@ class LogosItem(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/get-brand-identity-response.json', pointer='#/oneOf/0/properties/logos/items')
-    url: Annotated[str, Field(description='URL to the logo asset', json_schema_extra={'format': 'uri'})]
+    url: Annotated[HttpUrl, Field(description='URL to the logo asset')]
     orientation: Annotated[LogoOrientation | None, Field(description='Logo aspect ratio orientation')] = None
     background: Annotated[Background | None, Field(description='Background compatibility')] = None
     variant: Annotated[LogoVariant | None, Field(description='Logo variant type')] = None
@@ -84,7 +84,7 @@ class FilesItem(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/get-brand-identity-response.json', pointer='#/oneOf/0/properties/fonts/definitions/font_role/oneOf/1/properties/files/items')
-    url: Annotated[StrFormatUriMatching5E721644, Field(description='HTTPS URL to the font file')]
+    url: Annotated[AdCPUrl, Field(description='HTTPS URL to the font file')]
     weight: Annotated[IntMin100Max900 | None, Field(description='CSS numeric font-weight')] = None
     weight_range: Annotated[list[IntMin100Max900] | None, Field(description='Variable font weight axis range as [min, max]', max_length=2, min_length=2)] = None
     style: Annotated[FontFileStyle | None, Field(description='CSS font-style')] = None
@@ -155,7 +155,7 @@ class AssetsItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/get-brand-identity-response.json', pointer='#/oneOf/0/properties/assets/items')
     asset_id: Annotated[str, Field(description='Unique identifier')]
     asset_type: Annotated[AssetContentType, Field(description='Type of asset content')]
-    url: Annotated[str, Field(description='URL to CDN-hosted asset file', json_schema_extra={'format': 'uri'})]
+    url: Annotated[HttpUrl, Field(description='URL to CDN-hosted asset file')]
     tags: Annotated[list[str] | None, Field(description='Tags for discovery')] = None
     name: Annotated[str | None, Field(description='Human-readable name')] = None
     description: Annotated[str | None, Field(description='Asset description or usage notes')] = None

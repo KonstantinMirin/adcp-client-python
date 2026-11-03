@@ -51,57 +51,77 @@ from codegen.schema import nodes
 #: narrowing behind: the row stops selecting and the node falls back to its own
 #: scalar type with the format as an annotation.
 #:
-#: **``uri`` HAS NO ROW, because a pydantic URL type is not INJECTIVE** (§2, decided
-#: 2026-11-02).  It held one -- a chooser reading the document's own ``pattern``, which is
-#: why this table holds choosers and not paths -- and the whole of that is withdrawn:
+#: **``uri`` SELECTS ITS TYPE FROM THE NODE, which is why this table holds
+#: choosers rather than paths.**  D5 makes a ``format: uri`` field's type follow the
+#: DOCUMENT'S OWN PATTERN -- ``AdCPUrl`` where the document restricts the scheme to
+#: https, ``HttpUrl`` everywhere else -- so the answer is a function of the node and
+#: not of the format alone.  ``date-time`` and ``date`` ignore their node, and they
+#: are expressed as choosers too rather than as a second shape beside one: a table
+#: with two kinds of value is a table every reader has to case-split.
 #:
-#:     a pydantic URL lowercases the host and gives an empty path a ``/``, so two
-#:     distinct strings the document admits become one value, and the value dumped is
-#:     not the string supplied.
+#: The former entry read ``uri`` -> ``AdCPUrl`` and it was WRONG, measured. D5 now
+#: records the whole of it; the short form is below.
 #:
-#: Measured in BOTH directions at once, which is what makes it a defect and not a trade
-#: (``adcp-client-python-82m.19``; ``tests/test_the_value_is_the_documents_own.py`` holds
-#: every payload): ``core/attestation-capabilities.json#`` admits
-#: ``accepted_proof_formats: ["https://A.com", "https://a.com"]`` -- two distinct strings
-#: -- and the class REFUSED it on its own ``uniqueItems``, because both coerced to
-#: ``https://a.com/``; and ``core/product-offer-filters.json#`` accepted
-#: ``https://Qo1P.here`` and dumped ``https://qo1p.here/``, which the document then
-#: refused on its own ``pattern: ^https://[^/?#@]+$``.
+#: **``AdCPUrl`` everywhere narrowed the SDK below the pinned spec.**  ``format: uri``
+#: references RFC 3986, which admits every scheme, so a bare
+#: ``{"type": "string", "format": "uri"}`` admits ``https://``, ``http://``, ``urn:``
+#: and ``file:///`` alike -- and ``AdCPUrl`` refuses three of the four. Measured at
+#: **228 of the bundle's 300 ``uri`` positions, in 128 of 160 documents**, and at
+#: **26 of 27** positions in documents the emitter emits. End to end on a shipped
+#: class: ``core/placement-evidence.json#/properties/url`` states only the bare pair,
+#: the document admits ``{"url": "http://x.example/p"}``, and
+#: ``PlacementEvidence.strict_validate`` raised ``URL scheme should be 'https'``.
 #:
-#: **A rule-level repair was measured and is provably wrong**: neutralise the
-#: ``uniqueItems`` comparison and the same pair fails the other way, because the dump then
-#: carries the duplicate and the document refuses it on ``uniqueItems``.  The rule is not
-#: the defect; the non-injective type is.
+#: **No check saw it**, which is why it stood: the accepts draw is the instrument that
+#: names a class narrower than its document, and it only ever offered the one scheme --
+#: ``hypothesis_jsonschema``'s ``uri`` strategy drew ``https`` in 200 of 200
+#: derandomized examples, so the three schemes ``AdCPUrl`` refuses never reached a
+#: constructor; and ``format`` is not a step keyword, so ``steps()`` returns ``[]``.
+#: That instrument gap is ``salesagent-j3k2l.10``'s, not this module's.
 #:
-#: **And it cannot be REGISTERED either**, which is why this is a withdrawal rather than an
-#: entry in §2's narrowing registry: an entry there is compared by EQUALITY so that it
-#: admits that fact and not its kind, and a normalisation is a kind.  "The sort of
-#: rewriting a URL type performs" is exactly the invisible, permanent admission that rule
-#: forbids.
+#: **``HttpUrl``'s two ceilings are accepted deliberately and named at D5**: it still
+#: refuses ``urn:`` and ``file:``, so 227 of 300 positions stay narrower than their
+#: document, and it carries a ``maxLength: 2083`` and a ``minLength: 1`` no document
+#: states -- bounds the constructor enforces, so a document admitting a URI outside
+#: them is a narrowing the accepts draw names by value.
 #:
-#: **So ``format: uri`` carries the document's own string with the URL grammar asserted
-#: beside it**, and the grammar is the SCHEMA half's: ``uri`` is in the draft's own format
-#: checker (``_base._refuse_at``, and :func:`asserted_formats` is the gate below), so
-#: ``strict_validate`` refuses a non-URI before anything is constructed.  The annotation is
-#: the node's own ``str``, the document's ``pattern`` goes ON that type as a named alias,
-#: and the ``format`` rides as ``json_schema_extra`` -- which are the three answers every
-#: other unselected format has always taken, and are now ``format``'s, ``pattern``'s and
-#: ``minLength``/``maxLength``'s cells in ``codegen/keywords.py``.
+#: What follows is the reasoning for the type being ours rather than pydantic's at
+#: the https branch, which the amendment did not change.  D5 admits
+#: a STANDARD type only when it states the document's own facts AND accepts the
+#: document's own set, and no pydantic URL type passes: ``AnyUrl`` and
+#: ``AnyHttpUrl`` both render a ``minLength: 1`` no ``format: uri`` document
+#: states, ``HttpUrl`` adds a ``maxLength: 2083`` as well, and all three admit
+#: ``http://``.  So the type is one we emit --
+#: ``Annotated[AnyUrl, UrlConstraints(allowed_schemes=["https"])]``, declared once
+#: in ``codegen.constraints`` -- and the ``minLength: 1`` it renders is left where a
+#: reader can see it rather than hidden with a ``WithJsonSchema``, which would make
+#: the model's rendered schema disagree with what the annotation enforces.
 #:
-#: It is a widening TOWARD the document.  The URL type refused ``urn:`` and ``file:``,
-#: which ``format: uri`` admits -- RFC 3986 names every scheme -- and it rendered a
-#: ``minLength: 1`` and a ``maxLength: 2083`` no document states; all four stop narrowing.
-#: What is lost is a consumer receiving a parsed URL object instead of a string, and §2
-#: settles that trade where it always settles it: an annotation tighter than its document
-#: is the defect nothing may widen into.
+#: The document's own ``pattern`` stays with the SCHEMA half: the bundle states
+#: eight distinct patterns across 73 of its 300 ``uri`` uses and
+#: ``UrlConstraints`` expresses only the first (``^https://``, at 47 sites), so
+#: letting the field type vary by how strict a schema author happened to be is
+#: what this avoids.  ``strict_validate`` applies the document before the
+#: constructor runs, so nothing widens.
 #:
-#: Each value is ``(node) -> dotted path``.  Both remaining rows ignore their node, and
-#: they stay expressed as choosers rather than as paths because the signature is what lets
-#: a format's type be a function of the document that states it.
+#: Each value is ``(node) -> dotted path``.  ``date-time`` and ``date`` ignore the
+#: node; ``uri`` is ``constraints.url_type``, which reads the document's own
+#: ``pattern``.
 FORMAT_TYPES: dict[str, Callable[[Mapping[str, Any]], str]] = {
     "date-time": lambda node: "pydantic.AwareDatetime",
     "date": lambda node: "datetime.date",
+    "uri": constraints_module.url_type,
 }
+
+#: The formats whose selected type is a URL type, which is what the one refusal
+#: below is gated on.  DERIVED by asking each chooser rather than listed: a format
+#: whose chooser answers inside the alias module's namespace is a URL format, and a
+#: second list to keep in step would be a second place for this to drift.
+URL_FORMATS = frozenset(
+    fmt
+    for fmt, choose in FORMAT_TYPES.items()
+    if choose({}).startswith(f"{constraints_module.MODULE}.")
+)
 
 
 
@@ -155,10 +175,9 @@ def name_the_constraint(decided: ir.Decided, mod: compiler.Module) -> ir.TypeRef
     them:
 
     * a bare SCALAR carrying a ``format`` no type was selected for.  Constraints
-      alone never arrive here, and nor does a format BESIDE a constraint: :func:`lower`
-      has already resolved either to an alias naming the whole shape -- what arrives
-      with constraints on it is a shape the alias module declined, and the answer is the
-      same ``None``.
+      alone never arrive here, because :func:`lower` has already resolved a
+      spellable scalar shape to an alias -- what arrives with constraints on it is a
+      shape the alias module declined, and the answer is the same ``None``.
     * a CONTAINER carrying its own bound: ``minItems``/``maxItems`` on a list,
       ``minProperties``/``maxProperties`` on a mapping.  The alias is GENERIC and the
       container's own contents are its arguments, which is what lets it be named at
@@ -232,37 +251,44 @@ def lower(node: nodes.Scalar, mod: Module) -> ir.Decided | Refusal:
     constraints = dict(node.facts)
     fmt = node.format
     # A format SELECTS a type where one is named for it and the document's own draft can
-    # decide it (§5's ``format`` row, and the comment above FORMAT_TYPES).  The type then
-    # states the format in its own rendered schema, so ``format`` is left unset here and
-    # the compiler adds no annotation -- which is what keeps the fact in exactly one
-    # place.  Where no type is selected the format rides as an annotation on the node's
-    # own scalar type, so the document's keyword is carried either way.
+    # decide it (D5, and the comment above FORMAT_TYPES).  The type then states the format
+    # in its own rendered schema, so ``format`` is left unset here and the compiler adds no
+    # annotation -- which is what keeps the fact in exactly one place.  Where no type is
+    # selected the format rides as an annotation on the node's own scalar type, so the
+    # document's keyword is carried either way.
+    # **A ``uri`` beside another string constraint KEEPS BOTH HALVES, and the row's own
+    # fallback is what keeps them** (§14 step 9, and §5's group (a)): "The ``format`` row
+    # refuses a ``uri`` beside a string constraint because a URL type carries none.  The
+    # row's own fallback already answers it: the type is the constrained ``str`` and the
+    # ``format`` rides as ``json_schema_extra={"format": "uri"}``.  Both facts are kept
+    # and neither half narrows; what is given up is the URL type's parsing, which is not
+    # an acceptance fact."
     #
-    # **``uri`` SELECTS NOTHING and takes the two lines below**, which is §2's withdrawal
-    # of 2026-11-02 and the comment above FORMAT_TYPES carries the measurement.  There is
-    # no URL-type arm left, and with it go the two readings that only ever existed to say
-    # when the URL type stepped aside: a ``uri`` beside a bound, and a ``uri`` beside a
-    # pattern.  Both now take the ONE answer -- a named alias in
-    # ``adcp.types.constraints`` for whatever the node constrains, with ``format`` set,
-    # which ``render._field`` puts in ``json_schema_extra`` -- so every fact the document
-    # states at the node is carried, and none of them is carried by a type that rewrites
-    # the value.
-    if fmt is not None and fmt in mod.asserted and fmt in FORMAT_TYPES:
-        return ir.Decided(ir.TypeRef(FORMAT_TYPES[fmt](node.facts), validators=bound), constraints)
-    # **A format BESIDE a constraint is part of the SHAPE, and the alias naming the
-    # constraint names the format too.**  §5's ``format`` row gives an unselected format
-    # a field's ``json_schema_extra``, and a field is what an ELEM, a MAPV and a BRANCH do
-    # not have -- so a ``{type: string, format: uri, pattern: P}`` node resolved to
-    # ``StrMatching<P>`` with the format left on the side had nowhere to put the second
-    # half at those three positions, and ``compiler.carried`` refused it.  Naming the
-    # whole shape at every position answers that in one place: the alias declaration
-    # carries the bound AND the ``json_schema_extra``, so the format still reaches the
-    # model's own rendered schema at the pointer the document states it at, and no second
-    # alias is recorded for the half-shape.  A BARE format resolves to nothing here --
-    # ``resolve`` is asked without it -- so every ``format``-only node is untouched and
-    # still rides on its field.
-    shaped = fmt if constraints else None
-    path = constraints_module.resolve(word, constraints, format=shaped)
+    # So the URL type is not SELECTED here and the two lines below -- the row's second
+    # and third choices, which every other unselected format already takes -- answer: a
+    # named alias in ``adcp.types.constraints`` for the bound, with ``format`` set, which
+    # ``render._field`` puts in ``json_schema_extra`` -- so both of the document's facts
+    # are carried.  The refusal this replaced said the keyword would be dropped with
+    # nothing left to record it, and that was true of the URL type it was about: pydantic
+    # refuses to apply a string constraint to one, so the bound had nowhere to go.  It has
+    # somewhere to go on a ``str``.
+    #
+    # ``pattern`` is NOT in this set and the URL type still wins over it, which is §5's
+    # ``pattern`` row: "On ``format: uri`` -> selects the type instead, and the pattern
+    # stays with the schema half."  That is a different trade from this one -- there the
+    # document's two facts are a type and a regex and the row keeps the type; here they
+    # are a bound and a format and the fallback keeps both.
+    if (
+        fmt is not None
+        and fmt in mod.asserted
+        and fmt in FORMAT_TYPES
+        and (fmt not in URL_FORMATS or selects_a_url_type(fmt, constraints))
+    ):
+        selected = FORMAT_TYPES[fmt](node.facts)
+        if fmt in URL_FORMATS:
+            return ir.Decided(ir.TypeRef(selected, validators=bound))
+        return ir.Decided(ir.TypeRef(selected, validators=bound), constraints)
+    path = constraints_module.resolve(word, constraints)
     if path is not None:
         # **The rule goes on THIS SITE's type and never on the shared alias.**  An alias
         # in ``adcp.types.constraints`` names a CONSTRAINT and is reached by every node
@@ -270,10 +296,39 @@ def lower(node: nodes.Scalar, mod: Module) -> ir.Decided | Refusal:
         # narrow every other site -- which is the one direction D4 does not permit.  The
         # alias is the inner type and the ``Annotated`` around it is this node's own.
         return ir.Decided(
-            replace(_named_alias(path, word, constraints, mod, fmt=shaped), validators=bound),
-            format=None if shaped else fmt,
+            replace(_named_alias(path, word, constraints, mod), validators=bound), format=fmt
         )
     return ir.Decided(ir.TypeRef(SCALAR[word], validators=bound), constraints, format=fmt)
+
+
+def selects_a_url_type(fmt: str | None, constraints: Mapping[str, Any]) -> bool:
+    """Does a ``uri`` format select a URL TYPE here, or take the row's own fallback?
+
+    §5's ``format`` row names a URL type for ``uri``; §5's group (a) says what happens
+    where the node states another string constraint beside it: "the type is the
+    constrained ``str`` and the ``format`` rides as
+    ``json_schema_extra={"format": "uri"}``.  Both facts are kept and neither half
+    narrows; what is given up is the URL type's parsing, which is not an acceptance
+    fact."  pydantic refuses to apply a string constraint to a URL type at all, so the
+    two readings are exclusive and this is the one function that says which fires.
+
+    ``pattern`` is NOT a constraint for this question, and that is §5's ``pattern`` row
+    rather than an exception here: "On ``format: uri`` → selects the type instead, and
+    the pattern stays with the schema half."  There the document's two facts are a type
+    and a regex and the row keeps the type; here they are a bound and a format and the
+    fallback keeps both.
+
+    **Declared at module scope because a CHECK asks it too.**  ``tests/test_emit.py``'s
+    format check derives the type a format selects from :data:`FORMAT_TYPES` and asserts
+    the module imports it, so it needs the same answer to "is a type selected here" --
+    and a second reading of that is how a check comes to grade a document against a
+    compiler nobody runs.  One function, two readers.
+    """
+    return (
+        fmt is not None
+        and fmt in URL_FORMATS
+        and not sorted(set(constraints) - {"pattern"})
+    )
 
 
 def null(node: nodes.Null, mod: Module) -> ir.Decided | Refusal:

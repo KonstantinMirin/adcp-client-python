@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
-from adcp.types.constraints import FloatMin0Max1, StrMatchingEFC12812
+from adcp.types.constraints import FloatMin0Max1, HttpUrl, StrMatchingEFC12812
 from adcp.types.envelopes import FailedResponse
 
 from ..core.context import ContextObject
@@ -53,7 +53,7 @@ class PreviewAssetsItem(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/get-rights-response.json', pointer='#/oneOf/0/properties/rights/items/properties/preview_assets/items')
-    url: Annotated[str, Field(json_schema_extra={'format': 'uri'})]
+    url: HttpUrl
     usage: str | None = None
 
 

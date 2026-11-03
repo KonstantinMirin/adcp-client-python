@@ -8,7 +8,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
-from adcp.types.constraints import StrFormatUriMatching5E721644, StrMinLen1
+from adcp.types.constraints import AdCPUrl, StrMinLen1
 
 
 class Trust(StrEnum):
@@ -50,7 +50,7 @@ class BrandResponseAuthorizationResult(BranchDispatchMixin, AdCPBaseModel):
     trust: Annotated[Trust, Field(description='Whether the signing key was bound to the asserted brand_domain through an authorized brand-agent entry. An untrusted result MUST NOT extend or revoke relationship trust on its own.')]
     reason: Annotated[Reason | None, Field(description='Machine-readable reason for an untrusted result.')] = None
     kid: Annotated[StrMinLen1 | None, Field(description='JWS kid evaluated by the cross-check.')] = None
-    jwks_uri: Annotated[StrFormatUriMatching5E721644 | None, Field(description='JWKS URI selected only from the matched brand.json agent entry, or its same-origin default.')] = None
+    jwks_uri: Annotated[AdCPUrl | None, Field(description='JWKS URI selected only from the matched brand.json agent entry, or its same-origin default.')] = None
 
 
 class BrandResponseAuthorizationResultTrusted(BrandResponseAuthorizationResult):
@@ -62,7 +62,7 @@ class BrandResponseAuthorizationResultTrusted(BrandResponseAuthorizationResult):
         ForbiddenGroups((('reason',),)),
     )
     trust: Annotated[Literal[Trust.TRUSTED], Field(description='Whether the signing key was bound to the asserted brand_domain through an authorized brand-agent entry. An untrusted result MUST NOT extend or revoke relationship trust on its own.')]
-    jwks_uri: Annotated[StrFormatUriMatching5E721644, Field(description='JWKS URI selected only from the matched brand.json agent entry, or its same-origin default.')]
+    jwks_uri: Annotated[AdCPUrl, Field(description='JWKS URI selected only from the matched brand.json agent entry, or its same-origin default.')]
     kid: Annotated[StrMinLen1, Field(description='JWS kid evaluated by the cross-check.')]
 
 

@@ -8,7 +8,7 @@ from pydantic import AfterValidator, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, NotValue, Rule, UniqueItems
-from adcp.types.constraints import StrMinLen1
+from adcp.types.constraints import HttpUrl, StrMinLen1
 
 from ..enums.macro_dialect import MacroDialectFamily
 from ..enums.macro_resolver import MacroProcessingActor
@@ -48,7 +48,7 @@ class MacroProcessingCapability(AdCPBaseModel):
         ConditionalRequired((Match('operation', True, ('translate_to_native',)),), require=('translation_target',), forbid=('supported_encodings',)),
     )
     dialect: MacroDialectFamily
-    dialect_namespace: Annotated[str | None, Field(json_schema_extra={'format': 'uri'})] = None
+    dialect_namespace: HttpUrl | None = None
     dialect_revision: StrMinLen1 | None = None
     dialect_semantic: StrMinLen1
     mapping_status: MappingStatus

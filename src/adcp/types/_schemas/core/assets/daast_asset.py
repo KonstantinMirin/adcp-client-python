@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types.constraints import HttpUrl
 
 from ...enums.daast_tracking_event import DAASTTrackingEvent
 from ...enums.daast_version import DAASTVersion
@@ -34,7 +35,7 @@ class DAASTAsset(BranchDispatchMixin, AdCPBaseModel):
     duration_ms: Annotated[NonNegativeInt | None, Field(description='Expected audio duration in milliseconds (if known)')] = None
     tracking_events: Annotated[list[DAASTTrackingEvent] | None, Field(description='Tracking events supported by this DAAST tag')] = None
     companion_ads: Annotated[bool | None, Field(description='Whether companion display ads are included')] = None
-    transcript_url: Annotated[str | None, Field(description='URL to text transcript of the audio content', json_schema_extra={'format': 'uri'})] = None
+    transcript_url: Annotated[HttpUrl | None, Field(description='URL to text transcript of the audio content')] = None
     provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this asset, overrides manifest-level provenance')] = None
     macro_declarations: Annotated[list[MacroDeclaration] | None, Field(description='One declaration per occurrence in a field carried by this asset. URL-delivered assets declare only locator-URL occurrences; receivers do not infer declarations for tokens discovered later in a fetched document.', min_length=1)] = None
 

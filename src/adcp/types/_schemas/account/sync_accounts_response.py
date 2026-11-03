@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Dependencies, ForbiddenGroups, Match, NegatedConditional, Rule
-from adcp.types.constraints import IntMin1, StrMatching43E30B32, StrMinLen1
+from adcp.types.constraints import HttpUrl, IntMin1, StrMatching43E30B32, StrMinLen1
 from adcp.types.envelopes import FailedResponse
 
 from ..core.account_authorization import AccountAuthorization
@@ -65,7 +65,7 @@ class Setup(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='account/sync-accounts-response.json', pointer='#/oneOf/0/properties/accounts/items/properties/setup')
-    url: Annotated[str | None, Field(description='URL where the human can complete the required action (credit application, legal agreement, add funds)', json_schema_extra={'format': 'uri'})] = None
+    url: Annotated[HttpUrl | None, Field(description='URL where the human can complete the required action (credit application, legal agreement, add funds)')] = None
     message: Annotated[str, Field(description="Human-readable description of what's needed")]
     expires_at: Annotated[AwareDatetime | None, Field(description='When this setup link expires')] = None
 

@@ -8,7 +8,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule, UniqueItems
-from adcp.types.constraints import StrFormatUriMatching5E721644, StrMatching32F5291C, StrMinLen1
+from adcp.types.constraints import AdCPUrl, StrMatching32F5291C, StrMinLen1
 
 from ..enums.channels import MediaChannel
 from .creative_locale_policy import CreativeLocalePolicy
@@ -61,7 +61,7 @@ class CanonicalFormatOption(AdCPBaseModel):
     macro_resolution_capabilities: Annotated[list[MacroProcessingCapability] | None, Field(description='Binding format-option processing capabilities for exact macro dialect identities, semantics, operations, actors, contexts, and encodings. Absence means undeclared, not supported on the opt-in declared-token path. Seller-wide capabilities are only a ceiling. This field does not claim that a buyer tracker asset is honored or fired.', min_length=1)] = None
     technical_requirements_complete: Annotated[bool | None, Field(description='When true, every technical creative-acceptance constraint for this declaration layer is expressed and omitted technical fields mean no constraint. When false or absent, omitted technical fields are undeclared and MUST NOT be inferred. The effective contract is complete only when every applicable declaration layer asserts true.')] = None
     display_name: StrMinLen1 | None = None
-    sample_render_url: StrFormatUriMatching5E721644 | None = None
+    sample_render_url: AdCPUrl | None = None
     applies_to_channels: Annotated[list[MediaChannel] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     seller_preference: SellerPreference | None = None
     locale_policy: CreativeLocalePolicy | None = None

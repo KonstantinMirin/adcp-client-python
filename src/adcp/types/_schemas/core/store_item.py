@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import FloatMinNeg180Max180, FloatMinNeg90Max90, StrMatchingEFC12812
+from adcp.types.constraints import FloatMinNeg180Max180, FloatMinNeg90Max90, HttpUrl, StrMatchingEFC12812
 
 from .catchment import Catchment
 from .ext import ExtensionObject
@@ -56,7 +56,7 @@ class StoreItem(AdCPBaseModel):
     address: Annotated[Address | None, Field(description='Structured address for display and geocoding fallback.')] = None
     catchments: Annotated[list[Catchment] | None, Field(description='Catchment areas for this store. Each defines a reachable area using travel time (isochrone), simple radius, or pre-computed GeoJSON. Multiple catchments allow different modes — e.g., 15-minute drive AND 10-minute walk.', min_length=1)] = None
     phone: Annotated[str | None, Field(description="Store phone number in E.164 format (e.g., '+31201234567').")] = None
-    url: Annotated[str | None, Field(description='Store-specific page URL (e.g., store locator detail page).', json_schema_extra={'format': 'uri'})] = None
+    url: Annotated[HttpUrl | None, Field(description='Store-specific page URL (e.g., store locator detail page).')] = None
     hours: Annotated[dict[Literal['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'], HoursValue] | None, Field(description='Operating hours. Keys are ISO day names (monday–sunday), values are time ranges.')] = None
     tags: Annotated[list[str] | None, Field(description="Tags for filtering stores in targeting and creative selection (e.g., 'flagship', 'pickup', 'pharmacy').", min_length=1)] = None
     ext: ExtensionObject | None = None

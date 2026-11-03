@@ -60,21 +60,6 @@ correct form at a PROPERTY: measured on the tree this lands on, 21 such shapes o
 30 sites, 2 of them repeating (``list[str]`` at 8 sites and ``list[RightUse]`` at
 3), all of them field-bound and none of them reaching this module.
 
-**THIS MODULE DECLARES NO URL TYPE, and section 2's withdrawal of 2026-11-02 is why.**
-It declared two -- ``AdCPUrl`` (ours, https-only) and a re-exported ``HttpUrl``, chosen
-per node by the document's own ``pattern`` -- and both are gone with the decision that
-named them.  A pydantic URL type NORMALISES: the host is lowercased and an empty path
-gains a ``/``, so two distinct strings the document admits become one value and the value
-dumped is not the string supplied.  Both directions are measured, and
-``codegen.lower.scalars.FORMAT_TYPES`` carries the payloads.
-
-Nothing is left here for a ``format: uri`` node, and that is not a gap.  A ``format`` is
-part of a SHAPE in this module -- :func:`symbol` spells it ``StrFormatUri...`` -- so a
-``uri`` beside a ``pattern`` or a bound resolves to an alias exactly as ``hostname`` and
-``uri-template`` always have, and a bare ``uri`` is the node's own ``str`` with the format
-riding as ``json_schema_extra``.  The URL GRAMMAR is the SCHEMA half's: it runs the
-document's own draft with that draft's format checker before anything is constructed.
-
 An ELEM, a MAPV and a union BRANCH have no field, and section 5 puts the bound on
 the array's own type AT EVERY POSITION -- on a branch emphatically, because the
 field holds the other branches and a bound there refuses values the document
@@ -112,6 +97,56 @@ MODULE = "adcp.types.constraints"
 #: ``json_schema_extra`` and not a ``Field`` bound -- and folding it in would make every
 #: reader of a shape unfold it again.
 Shape = tuple[str, dict[str, Any], str | None]
+
+#: **A ``format: uri`` field's type FOLLOWS THE DOCUMENT'S OWN PATTERN** (D5), so
+#: there are two of them and :func:`url_type` chooses.  Both are decisions rather
+#: than derivations, so both are declared whatever the run met.
+#:
+#: ``AdCPUrl`` is ours: ``Annotated[AnyUrl, UrlConstraints(allowed_schemes=["https"])]``,
+#: named for provenance rather than after a standard, because pydantic exports 22
+#: URL types and none is https-only -- a name like ``HttpsUrl`` would read as an
+#: upstream export a reader cannot find.
+#: The STATEMENT it declares is ``render.URL_LINE``: a line of Python is text, and §7
+#: puts every one of those behind ``render.py``.
+URL = "AdCPUrl"
+
+#: ``HttpUrl`` is pydantic's own, RE-EXPORTED here rather than imported from
+#: ``pydantic`` at each site.  The import is the declaration: no assignment, so
+#: nothing in this package restates what pydantic defines.  It is here and not
+#: left to ``pydantic`` because the SDK's ``uri`` decision is a SPLIT, and a
+#: consumer reading a module that declared only ``AdCPUrl`` would read the
+#: https-only arm as the whole rule.  One place names both arms.
+HTTP_URL = "HttpUrl"
+
+#: The one pattern that restricts a ``uri`` node's SCHEME to https and says nothing
+#: else, which is the gate D5 states and the one it counts: ``^https://`` at **47
+#: of the bundle's 300 ``uri`` positions**.  Compared for EQUALITY and not by
+#: prefix, because 47 is the figure the plan states and a prefix test matches 72 --
+#: the other 25 are patterns that pin a host, forbid userinfo, or exclude
+#: ``localhost`` and IP literals as well, and at those the document already refuses
+#: every non-https value, so the type's own scheme rule changes no accepted set at
+#: the entry point.  A literal to compare against can be audited; a predicate that
+#: tried to decide "does this regex restrict the scheme" could not.
+HTTPS_ONLY = "^https://"
+
+
+def url_type(node: Mapping[str, Any]) -> str:
+    """Which URL type a ``format: uri`` node selects, from the DOCUMENT (D5).
+
+    ``AdCPUrl`` where the document's own ``pattern`` is :data:`HTTPS_ONLY`, because
+    there the type and the document agree about the scheme.  ``HttpUrl`` everywhere
+    else, because ``AdCPUrl`` everywhere **narrowed the SDK below the pinned spec**:
+    ``format: uri`` is RFC 3986 and a bare ``{"type": "string", "format": "uri"}``
+    admits ``https://``, ``http://``, ``urn:`` and ``file:///`` alike, of which
+    ``AdCPUrl`` refuses three -- measured at 228 of 300 positions in 128 of 160
+    documents, and at 26 of 27 positions in documents the emitter emits today.
+
+    ``HttpUrl``'s own two ceilings are named at D5 and are accepted deliberately:
+    it still refuses ``urn:`` and ``file:``, leaving 227 of 300 positions narrower
+    than their document, and it renders ``maxLength: 2083`` and ``minLength: 1``
+    that no document states.
+    """
+    return f"{MODULE}.{URL if node.get('pattern') == HTTPS_ONLY else HTTP_URL}"
 
 #: The constraint keywords a SCALAR can carry, in the order a symbol spells them,
 #: each with the word it contributes.  The ORDER is fixed here and not read off a
@@ -159,9 +194,9 @@ CONTAINER: dict[str, tuple[str, tuple[str, ...]]] = {
 #:
 #: A hand-written row beside a derivation, which is the same arrangement :func:`standard`
 #: already is -- rung 2 is a named type for a shape where one says exactly this, and
-#: this is that one level up.  It is a DECISION and so is declared whatever the run met:
-#: the plan names it, and a consumer annotating their own non-empty list imports it from
-#: here.  Keyed by the constraint, so the name is still a
+#: this is that one level up.  It is a DECISION and so is declared whatever the run met,
+#: for ``render.URL_LINE``'s reason: the plan names it, and a consumer annotating their own
+#: non-empty list imports it from here.  Keyed by the constraint, so the name is still a
 #: function of the constraint alone.
 NAMED_CONTAINERS: dict[tuple[str, tuple[tuple[str, Any], ...]], str] = {
     ("array", (("minItems", 1),)): "NonEmptyList",
@@ -198,11 +233,8 @@ def standard(kind: str, constraints: Mapping[str, Any]) -> str | None:
       document refuses**.  A widening, so it is banned rather than merely
       unqualified.
     * ``AnyUrl`` fails half one for a bare ``format: uri`` document: it renders a
-      ``minLength: 1`` no such document states.  It fails half TWO as well, which is
-      section 2's withdrawal of 2026-11-02 and the stronger objection: a URL type is not
-      INJECTIVE, so the value it accepts is not the value it was given and the dump is a
-      string the document may refuse.  No URL type qualifies here and none is declared;
-      a ``uri`` is the node's own ``str`` (see the module docstring).
+      ``minLength: 1`` no such document states.  ``AdCPUrl`` is rung 3 for that
+      reason and :data:`URL` carries it.
 
     So exactly one shape qualifies at each of the two numeric types, and the
     admission test is written as the shape rather than as a table of names: a new
@@ -412,9 +444,9 @@ def declarations(shapes: Mapping[str, Shape]) -> tuple[dict[str, ir.AliasDecl], 
     rather than a derivation: section 5 names ``NonEmptyList[T]`` and a consumer
     annotating a non-empty list of their own imports it from here.  The derived aliases
     are exactly the shapes the run resolved, so the module is a function of the run and
-    holds no alias nothing names.  It is the ONLY such decision now: the two URL types
-    that stood beside it are withdrawn (see the module docstring), so nothing in this
-    module is declared for a shape the run did not meet except that one.
+    holds no alias nothing names.  (:data:`URL` is the other such decision and its
+    statement is ``render.URL_LINE``, because the type it wraps is pydantic's own and has
+    no shape to derive.)
 
     A generic alias needs its type VARIABLES declared, and exactly the ones its lines use
     are: ``T`` is always one, because ``NonEmptyList`` is always declared, and ``K``/``V``

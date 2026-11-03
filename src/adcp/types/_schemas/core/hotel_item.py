@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import FloatMinNeg180Max180, FloatMinNeg90Max90, IntMin1Max5, StrMatching98571AF3, StrMatchingEFC12812
+from adcp.types.constraints import FloatMinNeg180Max180, FloatMinNeg90Max90, HttpUrl, IntMin1Max5, StrMatching98571AF3, StrMatchingEFC12812
 
 from .ext import ExtensionObject
 from .offering_asset_group import OfferingAssetGroup
@@ -56,8 +56,8 @@ class HotelItem(AdCPBaseModel):
     address: Annotated[Address | None, Field(description='Structured address for display and geocoding.')] = None
     star_rating: Annotated[IntMin1Max5 | None, Field(description='Official star rating (1–5).')] = None
     price: Annotated[Price | None, Field(description="Nightly rate or starting price. Use period 'night' for nightly rates.")] = None
-    image_url: Annotated[str | None, Field(description='Primary property image URL.', json_schema_extra={'format': 'uri'})] = None
-    url: Annotated[str | None, Field(description='Property landing page or booking URL.', json_schema_extra={'format': 'uri'})] = None
+    image_url: Annotated[HttpUrl | None, Field(description='Primary property image URL.')] = None
+    url: Annotated[HttpUrl | None, Field(description='Property landing page or booking URL.')] = None
     phone: Annotated[str | None, Field(description='Property phone number in E.164 format.')] = None
     amenities: Annotated[list[str] | None, Field(description="Property amenities (e.g., 'pool', 'wifi', 'spa', 'parking', 'restaurant').", min_length=1)] = None
     check_in_time: Annotated[StrMatching98571AF3 | None, Field(description="Standard check-in time in HH:MM format (e.g., '15:00').")] = None

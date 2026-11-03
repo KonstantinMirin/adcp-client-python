@@ -1501,23 +1501,13 @@ class _Draws:
             return [None, _why(e)]
 
 
-#: **Every shape the format's own checker admits**, for the formats section 5's ``format``
-#: row lets SELECT A PYTHON TYPE -- and those are the ones a narrowing can come from,
-#: because a selected type brings its own constraints with it where a format riding as
-#: ``json_schema_extra`` brings none.  ``codegen.lower.scalars.FORMAT_TYPES`` is the
-#: declaration of which; this is the shapes, and the two are asserted against each other
-#: in ``tests/test_approximation.py`` so a newly selected format arrives here with its
-#: shapes or reddens.
-#:
-#: **``uri`` LEFT with the type it was here for** (§2's withdrawal of 2026-11-02).  Its
-#: seven shapes -- a URN, a ``file:`` URL, a ``mailto:``, a URI past 2,083 characters --
-#: were each a value some pydantic URL type refused and the document admitted, and that
-#: is the whole of what they measured.  No type is selected for ``uri`` now, so there is
-#: no selected type's constraint for them to find: the annotation is the node's own
-#: ``str``, which admits every one of them, and the narrowing they would have caught is
-#: the one the withdrawal removed.  ``tests/test_the_value_is_the_documents_own.py`` holds
-#: the payloads that prove it, because the direction that remains -- a value the class
-#: REWRITES -- is one no shape census can state.
+#: **Every shape the format's own checker admits**, for the three formats section 5's
+#: ``format`` row lets SELECT A PYTHON TYPE -- and those are the three a narrowing can
+#: come from, because a selected type brings its own constraints with it where a format
+#: riding as ``json_schema_extra`` brings none.  ``codegen.lower.scalars.FORMAT_TYPES`` is
+#: the declaration of which three; this is the shapes, and the two are asserted against
+#: each other in ``tests/test_approximation.py`` so a fourth selected format arrives here
+#: with its shapes or reddens.
 #:
 #: Section 8: "for a ``format`` every shape the format's own checker admits rather than the
 #: shape a generator finds most likely".  A generator finds the LIKELY shape, which for
@@ -1529,6 +1519,17 @@ class _Draws:
 #: ``tests/test_approximation.py`` asserts that of every one of them against the checker
 #: rather than taking this comment's word for it.
 FORMAT_SHAPES: Mapping[str, tuple[tuple[str, Any], ...]] = {
+    "uri": (
+        ("an https URL", "https://example.com/a"),
+        ("a plain http URL", "http://example.com/a"),
+        ("a URN", "urn:ietf:rfc:3986"),
+        ("a file URL", "file:///tmp/a"),
+        ("a mailto URI", "mailto:a@example.com"),
+        # 2,220 characters, which is what row .10's live narrowing is measured on: the
+        # document states no length and ``HttpUrl`` renders ``maxLength: 2083``.
+        ("a URL longer than 2,083 characters", "https://example.com/" + "a" * 2200),
+        ("a URL with a port and a query", "https://example.com:8443/a?b=c#d"),
+    ),
     "date-time": (
         ("a UTC timestamp", "2026-10-26T12:00:00Z"),
         ("an offset timestamp", "2026-10-26T12:00:00+02:00"),

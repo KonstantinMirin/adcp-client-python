@@ -1,32 +1,19 @@
 """The exempt set, graded over the populations that justify it.
 
 ``codegen/dump_exemptions.py`` carries the positions where a document refuses the
-SDK's own correct output.  There is **one** such position, D8's ``minProperties`` node,
-and the defect is upstream (``adcontextprotocol/adcp#8398``).  An exemption inside the
-only check that reads generated code is the most dangerous thing in this build, so every
-claim the module makes is asserted here over a whole population rather than on an
-example:
+SDK's own correct output, because D5 and D8 both stay as written and the defect is
+upstream (``adcontextprotocol/adcp#8398``).  An exemption inside the only check that
+reads generated code is the most dangerous thing in this build, so every claim the
+module makes is asserted here over a whole population rather than on an example:
 
-* the set only SHRINKS, pinned by count, over the WHOLE set;
+* the set only SHRINKS, pinned by count;
 * every entry names its upstream issue;
 * every entry's pointer resolves in its packaged document AND the keyword still holds
   the value the entry states -- which is how the set shrinks on its own when upstream
   repairs a position, with no one watching;
-* **no ``format: uri`` position needs an exemption**, re-measured over every ``uri``
-  pattern the bundle states rather than taken on trust;
+* **exactly one** of the eight ``uri`` patterns the bundle states is refused by its own
+  type's output, re-measured over all eight rather than read off the module;
 * the strike explains every dump the document refuses today, and touches nothing else.
-
-**EIGHT ENTRIES LEFT THIS SET, and the measurement that justified them is inverted
-rather than deleted.**  They were ``format: uri`` positions on one pattern,
-``^https://[^/?#@]+$``, and the reading was that the pattern was unsatisfiable by a
-NORMALIZING URL library -- true -- and therefore upstream's.  Section 2 re-read it on
-2026-11-02: the SDK's own type decision was the defect, because a pydantic URL type
-rewrites the value, so what the class dumped was never the string it was handed.  With
-the type withdrawn every one of those dumps satisfies its own pattern with nothing
-struck.  :func:`test_no_uri_pattern_refuses_the_value_a_uri_field_now_carries` is the
-former census, over the same population, asserting the opposite -- so the eight cannot
-come back unnoticed and the instrument that was once their justification is now their
-refutation.
 
 D14: a check is exhaustive over a population or it does not exist.  Every denominator
 below is asserted non-empty.
@@ -42,11 +29,12 @@ from typing import Any, NamedTuple
 import pytest
 from hypothesis import HealthCheck, Phase, given, settings
 from hypothesis import strategies as st
-from pydantic import ConfigDict, TypeAdapter
+from pydantic import TypeAdapter
 
-from adcp.types._base import REGEX_ENGINE, SchemaRef, schema_at
-from codegen import bundle, constraints, dump_exemptions, harness, ir, render
-from codegen.dump_exemptions import EXEMPT, PIN, UPSTREAM, Exemption
+import adcp.types.constraints as public_constraints
+from adcp.types._base import SchemaRef, schema_at
+from codegen import bundle, constraints, dump_exemptions, harness
+from codegen.dump_exemptions import EXEMPT, ORIGIN_ONLY, PIN, UPSTREAM, Exemption
 
 import fresh
 from tests.nodeset import claimed
@@ -58,36 +46,26 @@ from tests.nodeset import claimed
 #:
 #: **The tree a FRESH run emits** (``docs/plan/architecture.md``, 2026-10-29), which is
 #: the same tree ``_class_for`` imports its classes out of: an entry's position space and
-#: the pair it is checked against have to be one tree, or a position's exemption is
-#: decided against one compiler and graded against another.  ``tests/fresh.py`` owns it.
+#: the pair it is checked against have to be one tree, or the ORIGIN_ONLY equality is a
+#: comparison between two compilers.  ``tests/fresh.py`` owns it.
 PACKAGED = fresh.TREE
 
 #: The bundle source, for the pattern census.  Every measurement in this build is
 #: taken over ``schemas/cache/<version>/`` (section 6).
 SOURCE = pathlib.Path("schemas/cache/3.2")
 
-#: The pairs the dump half refuses on the committed tree, named rather than discovered,
-#: so this file does not grade a population another lane is moving.  Each is
-#: ``(document, pointer, the exempt keyword the document refuses the dump on)``.
-#:
-#: **It was three and is one.**  The two that left were ``format: uri`` positions whose
-#: dump the document refused on its own ``pattern``, and they are not refused any more:
-#: the class carries the string it was given, so the dump satisfies the pattern and there
-#: is nothing to strike.  A tuple and not a count, so their absence is readable.
+#: The three pairs the dump half refuses on the committed tree, named rather than
+#: discovered, so this file does not grade a population another lane is moving.  Each
+#: is ``(document, pointer, the exempt keyword the document refuses the dump on)``.
 REFUSED_TODAY = (
+    ("core/attestation-issuer.json", "#/oneOf/2", "pattern"),
+    ("core/attestation-capabilities.json", "#", "pattern"),
     (
         "core/provenance.json",
         "#/properties/disclosure/properties/jurisdictions/items/properties/render_guidance",
         "minProperties",
     ),
 )
-
-#: The pattern the eight withdrawn entries stood on, named HERE now that
-#: ``codegen/dump_exemptions.py`` does not name it: it is the anchor of this file's
-#: ``uri`` census and no longer a value any entry holds.  ``$`` immediately after the
-#: authority, which RFC 3986 section 6.2.3 makes unsatisfiable by a normalizing URL
-#: library, and satisfiable with nothing struck by a field carrying the author's string.
-ORIGIN_ONLY = "^https://[^/?#@]+$"
 
 
 def _walk(node: Any, ptr: str = "") -> Any:
@@ -193,35 +171,41 @@ def test_the_exempt_set_only_shrinks() -> None:
     leaves this green; adding one reddens it, and the only way to raise the pin is to
     raise it deliberately in a diff a reviewer sees.
 
-    **It covers the WHOLE set again**, and that is the withdrawal's doing rather than a
-    loosening.  The pin was split because the number of positions one upstream pattern
-    reaches is a property of how much of the bundle is PACKAGED -- every row that emitted
-    a document carrying that authored node added a position, so an absolute count over
-    that part obliged each of them to raise a shrink-only pin, which is the one thing
-    such a pin may not do.  Those positions are gone with the type that needed them, so
-    nothing left here is a function of emission and the strongest form of the pin is
-    available again.
+    **It covers the entries that are NOT ``ORIGIN_ONLY``**, and the split is the fix for
+    a failure this pin could not express.  The number of positions one upstream pattern
+    reaches is a property of how much of the bundle is PACKAGED: every row that emits a
+    document carrying that authored node adds a position, so an absolute count over that
+    part obliges each of them to raise a shrink-only pin.  That part is derived by
+    :func:`test_the_origin_only_part_is_the_packaged_positions` instead, and what is
+    pinned here is the part that genuinely is not a function of emission.
     """
-    assert EXEMPT, "the set is empty: this assertion would hold vacuously"
-    assert len(EXEMPT) <= PIN, [f"{e.document}{e.pointer}" for e in EXEMPT]
+    pinned = [e for e in EXEMPT if e.value != ORIGIN_ONLY]
+    assert pinned, "the pinned part is empty: this assertion would hold vacuously"
+    assert len(pinned) <= PIN, [f"{e.document}{e.pointer}" for e in pinned]
 
 
-def test_no_position_stating_the_withdrawn_pattern_is_exempt() -> None:
-    """The ``ORIGIN_ONLY`` positions still exist and NONE of them is exempt.
+def test_the_origin_only_part_is_the_packaged_positions() -> None:
+    """The ``ORIGIN_ONLY`` entries ARE the packaged positions stating that pattern.
 
-    Both sides derived, neither a literal count, and the direction is the one that
-    changed.  This test asserted that the exempt entries ARE the packaged positions
-    stating that pattern; section 2's withdrawal of 2026-11-02 made the equality false in
-    the good direction -- the positions are all still there, upstream has repaired
-    nothing, and not one of them needs an exemption, because the class now dumps the
-    string it was handed.
+    Both sides derived, neither a literal count.  The entries were pinned by size, and
+    a size has no denominator here: when ``salesagent-j3k2l.43`` made
+    ``core/audience-evidence-requirements.json`` emit, its packaged form inlined an
+    already-exempted authored node a third time, so the set was one short of the
+    positions it exists to cover and the only way to say so was to raise a shrink-only
+    pin.
 
-    The first assertion is what keeps the second from being vacuous: the pattern is still
-    in the packaged tree at pairs this suite grades, so "no entry" is a statement about
-    live positions rather than about an empty set.  If an entry for one of them ever
-    comes back, it reddens here and a reader is sent to
-    :func:`test_no_uri_pattern_refuses_the_value_a_uri_field_now_carries`, which says
-    whether the type stopped carrying the document's own string.
+    What this buys, and each one is a thing the count could not do:
+
+    * it **reddens when a position is MISSED**, which is the real obligation, rather than
+      when a number moves;
+    * it **shrinks on its own** when upstream repairs the pattern -- the value stops
+      matching and both sides fall together, which is the mechanism this module already
+      relies on for every other entry;
+    * it **grows only with emission**, and the growth is explained by one upstream issue
+      rather than by a judgement call.
+
+    It compares one exact string against the packaged tree, so it is still the literal
+    set of positions this module's first rule requires and not a predicate over regexes.
     """
     import test_emit  # the tree reader, one reading for the whole suite
 
@@ -234,11 +218,14 @@ def test_no_position_stating_the_withdrawn_pattern_is_exempt() -> None:
             if isinstance(node, dict) and node.get("pattern") == ORIGIN_ONLY
         },
     )
-    exempted = {f"{e.document}#{e.pointer}" for e in EXEMPT}
-    assert not (positions & exempted), sorted(positions & exempted)
-    assert not [e for e in EXEMPT if e.value == ORIGIN_ONLY], [
-        f"{e.document}{e.pointer}" for e in EXEMPT if e.value == ORIGIN_ONLY
-    ]
+    exempted = claimed(
+        "ORIGIN_ONLY entries of EXEMPT",
+        {f"{e.document}#{e.pointer}" for e in EXEMPT if e.value == ORIGIN_ONLY},
+    )
+    assert exempted == positions, {
+        "reaches a pair and is not exempt": sorted(positions - exempted),
+        "exempt and reaches no pair": sorted(exempted - positions),
+    }
 
 
 def test_every_entry_names_its_upstream_issue() -> None:
@@ -300,7 +287,7 @@ def _graded_positions() -> set[str]:
 def test_the_minproperties_entry_is_the_only_copy_that_is_a_pairs_own_node() -> None:
     """The accepted exposure, asserted as the INVARIANT and not as a count.
 
-    The entry's authored node is inlined all over the packaged tree.  Only where a
+    Entry four's authored node is inlined all over the packaged tree.  Only where a
     copy is a graded pair's OWN node does the dump refuse with certainty -- the dump is
     then ``{}`` at the root.  Where the copy is nested inside a larger pair, a refusal
     needs a drawn instance that gives ``render_guidance`` exactly one key and that key
@@ -339,16 +326,18 @@ def test_the_minproperties_entry_is_the_only_copy_that_is_a_pairs_own_node() -> 
 
 
 # --------------------------------------------------------------------------- #
-# the measurement eight entries rested on, asserting the opposite
+# the measurement the pattern entries rest on
 # --------------------------------------------------------------------------- #
 def _uri_patterns() -> dict[str, int]:
     """Every ``pattern`` the bundle states at a ``format: uri`` node, with its count.
 
-    **The instrument is "any node carrying ``format: uri``"**, which is section 5's own
-    and gives its figures.  Additionally requiring ``type: string`` misses
-    ``core/macro-bearing-url.json#/anyOf/1`` -- the ``^https?://`` position whose author
-    admitted ``http`` deliberately -- because that node states no ``type`` of its own.
-    Narrowing the instrument here would drop the pattern most worth grading.
+    **The instrument is "any node carrying ``format: uri``"**, which is D5's own and
+    gives its figures: 8 distinct patterns over 73 sites.  Additionally requiring
+    ``type: string`` gives 7 over 71 and misses
+    ``core/macro-bearing-url.json#/anyOf/1`` -- the ``^https?://`` position D5 singles
+    out as the one whose author admitted ``http`` deliberately -- because that node
+    states no ``type`` of its own.  Narrowing the instrument here would drop the one
+    pattern most worth grading.
     """
     out: dict[str, int] = {}
     for document in sorted(bundle.portable(SOURCE)):
@@ -358,86 +347,60 @@ def _uri_patterns() -> dict[str, int]:
     return out
 
 
-def test_the_bundles_uri_pattern_population_is_the_one_the_census_draws_over() -> None:
-    """The distinct ``format: uri`` patterns, as the SET the census below ranges over.
+def test_the_bundles_uri_pattern_population_is_the_one_d5_states() -> None:
+    """D5's distinct ``format: uri`` patterns, as the SET the census below draws over.
 
-    Named and asserted non-empty rather than sized: :data:`ORIGIN_ONLY` is asserted BY
-    NAME, because it is the pattern the eight withdrawn entries stood on and the one the
-    census has to still meet for its verdict to mean anything.  A bundle version's
-    reading of how many sites each pattern occupies says nothing about that.
+    Named and asserted non-empty rather than sized: the two patterns the exemption
+    turns on are asserted BY NAME, which is what the three counts were standing in for
+    -- a bundle version's reading of how many sites each one occupies says nothing
+    about whether the two patterns the decision names are still there.
     """
     patterns = claimed("distinct format:uri patterns in the bundle", _uri_patterns())
+    assert constraints.HTTPS_ONLY in patterns, sorted(patterns)
     assert ORIGIN_ONLY in patterns, sorted(patterns)
 
 
 #: Draws per pattern.  **40 is not enough and the number was measured, not guessed.**
-#: At 40 draws two independent streams disagreed about how many of the patterns their own
-#: type's output refused -- one said one, the other said two -- which is the same "passes
-#: by luck of the draw" failure this file has met before, arriving in the instrument
-#: instead of in the dump half.  At 500 both streams agreed.  The number is kept at 500
-#: now that the expected answer is ZERO violations, because that is the direction a weak
-#: instrument passes by accident: a census that draws too little reports no violation
-#: whatever the type does.
+#: At 40 draws two independent streams disagreed about how many of the eight patterns
+#: their own type's output refuses -- one said one, the other said two -- which is the
+#: same "passes by luck of the draw" failure the latent entry exists for, arriving in
+#: the instrument instead of in the dump half.  At 500 the two violating patterns are
+#: found by both, and the rates separate them: one violates 96 of 96 round-tripped
+#: values and the other 15 of 348.
 DRAWS = 500
 
 
 class Roundtrip(NamedTuple):
-    """How a ``format: uri`` field's own type treats the strings its pattern admits.
+    """How a pattern's own type's output fares against it: a rate, not a verdict.
 
     ``refused_in`` is the count the TYPE rejected on the way in -- the input direction,
     which D4 gives to the schema half -- and it is carried so ``round_tripped`` can be
     asserted non-empty.  A pattern whose every draw was refused on the way in would
     report zero violations while measuring nothing.
-
-    ``rewritten`` is the count where the value came back DIFFERENT, and it is the
-    stronger half: section 2's defect was value identity, and a type could rewrite a
-    value into a form the pattern happens to admit while still having lost the author's
-    string.  ``violated`` is the count the pattern then refuses, which is the half that
-    made a dump fail.
     """
 
     round_tripped: int
-    rewritten: int
     violated: int
     refused_in: int
     examples: tuple[tuple[str, str], ...]
 
 
-def _uri_type(pattern: str) -> Any:
-    """The type the EMITTER gives a ``{type: string, format: uri, pattern: …}`` node.
-
-    Resolved and RENDERED by production -- ``constraints.resolve`` names the shape and
-    ``render.constraints_module`` writes the declaration -- then executed, which is the
-    same arrangement ``tests/test_emit.py`` uses to grade an alias module's text.  Two
-    things that matters for: the type is not restated here, so a lane that changes what a
-    ``uri`` node resolves to moves this census with it; and every pattern in the bundle
-    is graded, including the ones whose documents no run emits, where a lookup in the
-    emitted module would have found nothing and silently graded less.
-    """
-    path = constraints.resolve("string", {"pattern": pattern}, format="uri")
-    assert path is not None, pattern
-    name = path.rsplit(".", 1)[1]
-    namespace: dict[str, Any] = {}
-    exec(render.constraints_module({name: ("string", {"pattern": pattern}, "uri")}), namespace)  # noqa: S102
-    return namespace[name]
-
-
 def _roundtrip(pattern: str, examples: int = DRAWS) -> Roundtrip:
     """Strings the pattern admits, round-tripped through the type the EMITTER chooses.
 
-    Drawn rather than written: written candidates for every pattern would be a guess
-    about what each one means, and a wrong guess shows up as a pattern graded only on
-    values that happen to round-trip.  ``re.search`` and not ``fullmatch``, because
-    search is what JSON Schema's ``pattern`` means.
+    Drawn rather than written: written candidates for eight patterns would be eight
+    guesses about what each one means, and a wrong guess shows up as a pattern graded
+    only on values that happen to round-trip.  The type comes from
+    ``constraints.url_type``'s own rule, so this grades the emitter's choice and not a
+    type chosen here.  ``re.search`` and not ``fullmatch``, because search is what
+    JSON Schema's ``pattern`` means.
     """
-    # The ENGINE is production's too, and it has to be: ``regex_engine`` is a model
-    # config, so an ``Annotated`` alias has nowhere to carry one and
-    # ``_base.strict_alias`` passes it at the adapter -- the channel that exists for
-    # exactly this.  A bare adapter takes pydantic's Rust engine, which refuses a
-    # look-around ``pattern`` outright and disagrees with Python's about ``$``, so a
-    # census built on one would grade a type no class in the tree uses.
-    adapter = TypeAdapter(_uri_type(pattern), config=ConfigDict(regex_engine=REGEX_ENGINE))
-    counts = {"round_tripped": 0, "rewritten": 0, "violated": 0, "refused_in": 0}
+    adapter = TypeAdapter(
+        public_constraints.AdCPUrl
+        if pattern == constraints.HTTPS_ONLY
+        else public_constraints.HttpUrl
+    )
+    counts = {"round_tripped": 0, "violated": 0, "refused_in": 0}
     bad: list[tuple[str, str]] = []
 
     @settings(
@@ -456,10 +419,6 @@ def _roundtrip(pattern: str, examples: int = DRAWS) -> Roundtrip:
             counts["refused_in"] += 1
             return
         counts["round_tripped"] += 1
-        if out != value:
-            counts["rewritten"] += 1
-            if len(bad) < 2:
-                bad.append((value, out))
         if re.search(pattern, out) is None:
             counts["violated"] += 1
             if len(bad) < 2:
@@ -467,18 +426,14 @@ def _roundtrip(pattern: str, examples: int = DRAWS) -> Roundtrip:
 
     body()
     return Roundtrip(
-        counts["round_tripped"],
-        counts["rewritten"],
-        counts["violated"],
-        counts["refused_in"],
-        tuple(bad),
+        counts["round_tripped"], counts["violated"], counts["refused_in"], tuple(bad)
     )
 
 
 def _packaged_positions(pattern: str) -> list[str]:
     """Every packaged position stating ``pattern`` at a ``format: uri`` node.
 
-    The packaged tree is the only space that reaches a pair, which is what made a
+    The packaged tree is the only space that reaches a pair, which is what makes a
     violating pattern with no position here upstream's problem and not an exemption.
     """
     return sorted(
@@ -489,56 +444,65 @@ def _packaged_positions(pattern: str) -> list[str]:
     )
 
 
-def test_no_uri_pattern_refuses_the_value_a_uri_field_now_carries() -> None:
-    """**The census eight entries rested on, over every pattern, asserting the OPPOSITE.**
+def test_every_violating_uri_pattern_that_reaches_a_pair_is_exempt() -> None:
+    """**The measurement the pattern entries rest on, over all eight patterns.**
 
-    It used to read "every violating pattern that reaches a pair is exempt", and it found
-    two violators: ``ORIGIN_ONLY``, refused on 100% of round-tripped draws, and
-    ``^https://[!$&-;=@-~]+$``, refused on a few.  Both were properties of the TYPE and
-    not of the pattern: every pydantic URL type is backed by the Rust ``url`` crate,
-    which normalizes -- it gives an authority-only URL a path of ``/``, lowercases the
-    host, and percent-encodes a byte the authority may not carry raw -- so a pattern that
-    forbids what normalization PRODUCES cannot be satisfied by that type's output,
-    whatever it was handed.
+    Every pydantic URL type is backed by the Rust ``url`` crate, which normalizes:
+    it gives an authority-only URL a path of ``/`` -- RFC 3986 S6.2.3's normalized
+    form -- lowercases the host, and percent-encodes a byte the authority may not
+    carry raw.  So a pattern that forbids what normalization PRODUCES cannot be
+    satisfied by the type's output, whatever it was handed.
 
-    Section 2 withdrew the type (2026-11-02).  A ``format: uri`` field carries the
-    document's own string, so the output IS the input and no pattern can refuse it.  Two
-    assertions, and the first is the stronger one:
+    **Two of the eight are violated, not one**, and the earlier reading of "exactly
+    one" was a 40-draw artifact.  The property asserted is therefore not a count of
+    violating patterns but the one that decides the SDK's output: every violating
+    pattern that reaches a packaged document is exempt, and every exempt position
+    belongs to a violating pattern.  Both directions redden.
 
-    * **nothing is REWRITTEN.** Injectivity is the property section 2 named, and it is
-      what every fact depending on value identity rests on -- a ``uniqueItems`` over URI
-      items, a ``const``, an origin comparison a consumer makes.  A type that rewrote a
-      value into a form the pattern happens to admit would pass the second assertion and
-      fail reading 1 anyway.
-    * **nothing is VIOLATED**, which is the half that made a dump fail and the half the
-      eight entries excused.
+    * A second violating pattern in a later bundle, at a position the emitter emits,
+      reddens here rather than waiting for a draw to find it in the dump half.
+    * When upstream repairs a pattern, it leaves this set and
+      ``test_every_entry_resolves_and_still_states_its_value`` reddens on the entry
+      until it is removed.
 
-    Over EVERY pattern the bundle states at a ``uri`` node, including the ones whose
-    documents no run emits: the type is rendered from the shape rather than looked up in
-    the emitted module (:func:`_uri_type`), so the census does not shrink to whatever
-    happens to be packaged.  And the two patterns that used to violate are asserted
-    present by name, so this cannot pass because the bundle stopped stating them.
+    ``^https://[!$&-;=@-~]+$`` is the second violator and it is deliberately NOT
+    exempt.  The class forbids ``%``, so percent-encoding a ``{`` or an ``@`` breaks
+    it -- measured at 4 of 380 round-tripped draws of this function's own stream, a
+    RATE where the first is a certainty.  **The reason it is not exempt is reach, not
+    rate**: its one site is ``core/agent-reporting-destination-state.json#/properties/
+    setup/properties/setup_url``, that document is not emitted, so it reaches no pair
+    and no class emits a value against it.  That is what the last assertion states,
+    and it is read off the packaged tree rather than off a draw.  If the emitter
+    starts emitting the document, the first assertion reddens and a human decides
+    whether the set grows.
+
+    **No drawn RATE is asserted here, deliberately.**  A derandomized stream is a
+    function of this function's identity and of the pinned ``hypothesis`` version, so
+    a rate assertion would redden on a rename -- a defect in the instrument wearing
+    the clothes of a defect in the SDK.  What is asserted is a certainty (every
+    round-tripped value refused) and two facts read off documents.
     """
     patterns = _uri_patterns()
     assert patterns, "the denominator is empty: no uri pattern would be graded"
-    assert ORIGIN_ONLY in patterns, sorted(patterns)
-    assert "^https://[!$&-;=@-~]+$" in patterns, sorted(patterns)
     measured = {p: _roundtrip(p) for p in sorted(patterns)}
     for pattern, got in measured.items():
         assert got.round_tripped, (pattern, got, "no value survived the type: nothing graded")
-    assert {p: g for p, g in measured.items() if g.rewritten} == {}, {
-        p: (g.rewritten, g.round_tripped, g.examples) for p, g in measured.items() if g.rewritten
+    violating = {p: got for p, got in measured.items() if got.violated}
+    reaching = sorted(pos for p in violating for pos in _packaged_positions(p))
+    exempt = sorted(f"{e.document}#{e.pointer}" for e in EXEMPT if e.keyword == "pattern")
+    assert reaching == exempt, {
+        "violating patterns": {p: (g.violated, g.round_tripped) for p, g in violating.items()},
+        "positions they reach": reaching,
+        "exempt": exempt,
     }
-    assert {p: g for p, g in measured.items() if g.violated} == {}, {
-        p: (g.violated, g.round_tripped, g.examples) for p, g in measured.items() if g.violated
-    }
-    # And the consequence, read off the set rather than inferred: no entry is a
-    # ``pattern`` entry any more.  Both halves together are what makes the withdrawal
-    # checkable -- a census with no exempt set to compare against would pass while an
-    # entry sat there doing nothing.
-    assert [e for e in EXEMPT if e.keyword == "pattern"] == []
-    # The positions are still THERE, so neither assertion above is about an empty tree.
-    claimed("packaged positions stating ORIGIN_ONLY", _packaged_positions(ORIGIN_ONLY))
+    # ORIGIN_ONLY is not violated at a RATE: it is unsatisfiable, and that is the
+    # ground D5 keeps the URL type on.  Every value the type accepts and re-emits is
+    # refused by it, so no conforming URL library could satisfy it.
+    origin = measured[ORIGIN_ONLY]
+    assert origin.violated == origin.round_tripped, origin
+    # The second violator reaches no packaged document, which is why it is upstream's
+    # and not exempted here.  Read off the tree, so no draw decides it.
+    assert _packaged_positions("^https://[!$&-;=@-~]+$") == []
 
 
 # --------------------------------------------------------------------------- #
@@ -662,12 +626,10 @@ def test_an_unexempt_pair_reports_no_exemption_and_still_passes() -> None:
 #: The pairs an exempt position lies INSIDE but whose own dump does not need it: an
 #: ancestor whose drawn instance never reached the node.  Named, because the first
 #: version of the reported field recorded all eight pairs an entry applies to and that
-#: made a conditional pass unreadable -- five of the eight passed on their own merits.
-#:
-#: It was five and is three: the two that left were ancestors of a ``format: uri``
-#: position, and with those entries withdrawn ``applying_to`` matches nothing at either,
-#: so there is no longer an entry for them to decline to use.
+#: made a conditional pass unreadable -- five of the eight pass on their own merits.
 ANCESTORS = (
+    ("core/attestation-issuer.json", "#"),
+    ("core/attestation-capabilities.json", "#/properties/accepted_issuers/items"),
     ("core/provenance.json", "#"),
     ("core/provenance.json", "#/properties/disclosure"),
     (
@@ -683,10 +645,11 @@ def test_an_ancestor_of_an_exempt_position_reports_nothing_it_did_not_need(
 ) -> None:
     """An entry applies to every pair whose node CONTAINS it, and must.
 
-    An ancestor pair's dump carries the nested node, so ``applying_to`` matching by
-    prefix is right: a position inlined into a larger pair is still in that pair's dump.
+    An ancestor pair's dump carries the nested node, which is exactly why
+    ``core/attestation-capabilities.json#`` is refused for a position authored in
+    ``core/attestation-issuer.json``.  So ``applying_to`` matching by prefix is right.
 
-    What would be wrong is REPORTING it everywhere it applies.  These three pairs
+    What would be wrong is REPORTING it everywhere it applies.  These five pairs
     contain an exempt position and pass without it, because their drawn instance never
     reached the node -- so the strike is available to them and they do not use it.
     ``dump_exempt`` records what the dump NEEDED, which keeps a non-empty list meaning
@@ -700,7 +663,7 @@ def test_an_ancestor_of_an_exempt_position_reports_nothing_it_did_not_need(
 
 
 def test_a_pair_with_no_entry_is_returned_by_identity() -> None:
-    """Every pair that has no entry pays no copy and cannot be altered at all.
+    """The 1,051 pairs that have no entry pay no copy and cannot be altered at all.
 
     Identity and not equality, because that is the property the harness will rely on
     to tell an exempted pair from an ordinary one without asking twice -- and because

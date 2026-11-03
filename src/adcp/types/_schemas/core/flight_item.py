@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import StrMatching43E30B32
+from adcp.types.constraints import HttpUrl, StrMatching43E30B32
 
 from .ext import ExtensionObject
 from .offering_asset_group import OfferingAssetGroup
@@ -53,8 +53,8 @@ class FlightItem(AdCPBaseModel):
     description: Annotated[str | None, Field(description='Route description or promotional text.')] = None
     departure_time: Annotated[AwareDatetime | None, Field(description='Departure date and time (ISO 8601).')] = None
     arrival_time: Annotated[AwareDatetime | None, Field(description='Arrival date and time (ISO 8601).')] = None
-    image_url: Annotated[str | None, Field(description='Promotional image URL (typically a destination photo).', json_schema_extra={'format': 'uri'})] = None
-    url: Annotated[str | None, Field(description='Booking page URL for this route.', json_schema_extra={'format': 'uri'})] = None
+    image_url: Annotated[HttpUrl | None, Field(description='Promotional image URL (typically a destination photo).')] = None
+    url: Annotated[HttpUrl | None, Field(description='Booking page URL for this route.')] = None
     tags: Annotated[list[str] | None, Field(description="Tags for filtering (e.g., 'direct', 'red-eye', 'business-class').", min_length=1)] = None
     assets: Annotated[list[OfferingAssetGroup] | None, Field(description="Typed creative asset pools for this flight. Uses the same OfferingAssetGroup structure as offering-type catalogs. Standard group IDs: 'images_landscape' (destination hero), 'images_vertical' (9:16 for Stories), 'images_square' (1:1). Enables formats to declare typed image requirements that map unambiguously to the right asset regardless of platform.", min_length=1)] = None
     ext: ExtensionObject | None = None

@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import FloatMin1Max5, FloatMinNeg180Max180, FloatMinNeg90Max90, StrMatchingEFC12812
+from adcp.types.constraints import FloatMin1Max5, FloatMinNeg180Max180, FloatMinNeg90Max90, HttpUrl, StrMatchingEFC12812
 
 from .ext import ExtensionObject
 from .offering_asset_group import OfferingAssetGroup
@@ -56,8 +56,8 @@ class DestinationItem(AdCPBaseModel):
     location: Annotated[Location | None, Field(description='Geographic coordinates of the destination.')] = None
     destination_type: Annotated[DestinationType | None, Field(description='Destination category.')] = None
     price: Annotated[Price | None, Field(description='Starting price for a trip to this destination.')] = None
-    image_url: Annotated[str | None, Field(description='Destination hero image URL.', json_schema_extra={'format': 'uri'})] = None
-    url: Annotated[str | None, Field(description='Destination landing page or booking URL.', json_schema_extra={'format': 'uri'})] = None
+    image_url: Annotated[HttpUrl | None, Field(description='Destination hero image URL.')] = None
+    url: Annotated[HttpUrl | None, Field(description='Destination landing page or booking URL.')] = None
     rating: Annotated[FloatMin1Max5 | None, Field(description='Destination rating (1–5).')] = None
     tags: Annotated[list[str] | None, Field(description="Tags for filtering (e.g., 'family', 'romantic', 'solo', 'winter-sun').", min_length=1)] = None
     assets: Annotated[list[OfferingAssetGroup] | None, Field(description="Typed creative asset pools for this destination. Uses the same OfferingAssetGroup structure as offering-type catalogs. Standard group IDs: 'images_landscape' (destination hero), 'images_vertical' (9:16 for Snap, Stories), 'images_square' (1:1). Enables formats to declare typed image requirements that map unambiguously to the right asset regardless of platform.", min_length=1)] = None

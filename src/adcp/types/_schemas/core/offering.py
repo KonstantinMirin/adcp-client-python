@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import StrMatchingCE72C7C2, StrMatchingEFC12812
+from adcp.types.constraints import HttpUrl, StrMatchingCE72C7C2, StrMatchingEFC12812
 
 from ..enums.metro_system import MetroAreaSystem
 from .ext import ExtensionObject
@@ -51,8 +51,8 @@ class Offering(AdCPBaseModel):
     tagline: Annotated[str | None, Field(description='Short promotional tagline for the offering')] = None
     valid_from: Annotated[AwareDatetime | None, Field(description='When the offering becomes available. If not specified, offering is immediately available.')] = None
     valid_to: Annotated[AwareDatetime | None, Field(description='When the offering expires. If not specified, offering has no expiration.')] = None
-    checkout_url: Annotated[str | None, Field(description="URL for checkout/purchase flow when the brand doesn't support agentic checkout.", json_schema_extra={'format': 'uri'})] = None
-    landing_url: Annotated[str | None, Field(description="Landing page URL for this offering. For catalog-driven creatives, this is the per-item click-through destination that platforms map to the ad's link-out URL. Every offering in a catalog should have a landing_url unless the format provides its own destination logic.", json_schema_extra={'format': 'uri'})] = None
+    checkout_url: Annotated[HttpUrl | None, Field(description="URL for checkout/purchase flow when the brand doesn't support agentic checkout.")] = None
+    landing_url: Annotated[HttpUrl | None, Field(description="Landing page URL for this offering. For catalog-driven creatives, this is the per-item click-through destination that platforms map to the ad's link-out URL. Every offering in a catalog should have a landing_url unless the format provides its own destination logic.")] = None
     assets: Annotated[list[OfferingAssetGroup] | None, Field(description='Structured asset groups for this offering. Each group carries a typed pool of creative assets (headlines, images, videos, etc.) identified by a group ID that matches format-level vocabulary.')] = None
     geo_targets: Annotated[GeoTargets | None, Field(description="Geographic scope of this offering. Declares where the offering is relevant — for location-specific offerings such as job vacancies, in-store promotions, or local events. Platforms use this to target geographically appropriate audiences and to filter out offerings irrelevant to a user's location. Uses the same geographic structures as targeting_overlay in create_media_buy.")] = None
     keywords: Annotated[list[str] | None, Field(description='Keywords for matching this offering to user intent. Hosts use these for retrieval/relevance scoring.')] = None

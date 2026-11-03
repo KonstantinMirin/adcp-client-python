@@ -8,7 +8,7 @@ from pydantic import AfterValidator, ConfigDict, Field, NonNegativeInt, TypeAdap
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule, UniqueItems
-from adcp.types.constraints import FloatGt0, IntMin1, StrMatchingA1D8FDA8
+from adcp.types.constraints import FloatGt0, HttpUrl, IntMin1, StrMatchingA1D8FDA8
 
 from ..enums.available_metric import AvailableMetric
 from ..enums.dimension_unit import DimensionUnit
@@ -617,7 +617,7 @@ class Format(AdCPBaseModel):
     format_id: Annotated[FormatReferenceStructuredObject, Field(description="This format's own identifier — a structured object {agent_url, id}, not a string. See /schemas/core/format-id.json for the full shape.")]
     name: Annotated[str, Field(description='Human-readable format name')]
     description: Annotated[str | None, Field(description='Plain text explanation of what this format does and what assets it requires')] = None
-    example_url: Annotated[str | None, Field(description='Optional URL to showcase page with examples and interactive demos of this format', json_schema_extra={'format': 'uri'})] = None
+    example_url: Annotated[HttpUrl | None, Field(description='Optional URL to showcase page with examples and interactive demos of this format')] = None
     accepts_parameters: Annotated[list[FormatIDParameter] | None, Field(description='List of parameters this format accepts in format_id. Template formats define which parameters (dimensions, duration, etc.) can be specified when instantiating the format. Empty or omitted means this is a concrete format with fixed parameters.', json_schema_extra={'uniqueItems': True})] = None
     renders: Annotated[list[RendersItem] | None, Field(description='Specification of rendered pieces for this format. Most formats produce a single render. Companion ad formats (video + banner), adaptive formats, and multi-placement formats produce multiple renders. Each render specifies its role and dimensions.', min_length=1)] = None
     assets: Annotated[list[AssetsItemIndividual | RepeatableGroupAsset] | None, Field(description="Array of all assets supported for this format. Each asset is identified by its asset_id, which must be used as the key in creative manifests. Use the 'required' boolean on each asset to indicate whether it's mandatory.")] = None

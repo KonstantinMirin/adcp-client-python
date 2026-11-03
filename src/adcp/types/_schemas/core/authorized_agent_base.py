@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import AwareDatetime, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import StrMinLen1MaxLen500
+from adcp.types.constraints import HttpUrl, StrMinLen1MaxLen500
 
 from .agent_encryption_key import AgentEncryptionKey
 from .agent_signing_key import AgentSigningKey
@@ -17,7 +17,7 @@ class AuthorizedAgentBaseFields(AdCPBaseModel):
     Fields shared by every variant of `authorized_agents[*]` in adagents.json, regardless of authorization_type. Variants `allOf` this base and add their discriminator-specific fields. Centralized to prevent drift across all authorization-type variants.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/authorized-agent-base.json', pointer='#')
-    url: Annotated[str, Field(description="The authorized agent's protocol endpoint URL: the exact agent URL buyers are given and send AdCP requests to, including the path (e.g., `https://agent.example.com/mcp`). A bare origin matches only an agent served at the root. An agent reachable at more than one agent URL (for example, separate MCP and A2A endpoints) needs one entry per URL. Callers comparing this URL against a registry (sales-agent list, signal-provider registry, TMP provider lookup, etc.) MUST canonicalize both sides per the AdCP URL canonicalization rules, not byte-equality — two URLs that differ only in case, default port, or percent-encoding of unreserved characters are the same agent. See docs/reference/url-canonicalization.", json_schema_extra={'format': 'uri'})]
+    url: Annotated[HttpUrl, Field(description="The authorized agent's protocol endpoint URL: the exact agent URL buyers are given and send AdCP requests to, including the path (e.g., `https://agent.example.com/mcp`). A bare origin matches only an agent served at the root. An agent reachable at more than one agent URL (for example, separate MCP and A2A endpoints) needs one entry per URL. Callers comparing this URL against a registry (sales-agent list, signal-provider registry, TMP provider lookup, etc.) MUST canonicalize both sides per the AdCP URL canonicalization rules, not byte-equality — two URLs that differ only in case, default port, or percent-encoding of unreserved characters are the same agent. See docs/reference/url-canonicalization.")]
     authorized_for: Annotated[StrMinLen1MaxLen500, Field(description='Human-readable description of what this agent is authorized to do — what it sells (for sales/property agents) or what data it provides (for signal agents). The variant the entry uses (`property_ids`, `signal_tags`, etc.) tells consumers which inflection applies; this field carries the operator-supplied label.')]
     signing_keys: Annotated[list[AgentSigningKey] | None, Field(description='Optional publisher-attested public signing keys for this agent. Use these as the trust anchor for verifying signed agent responses instead of relying on key discovery from the agent domain alone.', min_length=1)] = None
     encryption_keys: Annotated[list[AgentEncryptionKey] | None, Field(description='X25519 public keys for TMPX exposure token encryption. Each key identifies a cluster master that can decrypt TMPX tokens. Used with HPKE mode_base — read replicas encrypt with this public key, only the master can decrypt.', min_length=1)] = None

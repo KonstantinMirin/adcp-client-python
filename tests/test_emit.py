@@ -1489,28 +1489,40 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
             # name, and would have passed unchanged while the other arm went
             # unimported.
             choose = scalars.FORMAT_TYPES.get(fmt) if fmt in checked else None
-            # **``uri`` SELECTS NOTHING and takes the ``choose is None`` arm**, which is
-            # §2's withdrawal of 2026-11-02: a pydantic URL type rewrites the value, so
-            # the string a class dumps is not the string it was handed and two URIs the
-            # document calls distinct become one.  The two readings that used to stand
-            # here -- ``scalars.URL_FORMATS`` and ``scalars.selects_a_url_type``, which
-            # said when the URL type stepped aside for a bound -- went with it, and
-            # ``uri`` is now graded by the same arm that already graded ``hostname``,
-            # ``email``, ``uri-template`` and ``uuid``: the format is carried by a
-            # ``json_schema_extra`` on the field, or by a named alias where the node
-            # states a constraint beside it or has no field of its own.
+            # **A URL format beside another string constraint takes the row's own
+            # FALLBACK and selects no type** (§5's group (a), landed at
+            # ``adcp-client-python-10l.20``): "the type is the constrained `str` and the
+            # `format` rides as `json_schema_extra={"format": "uri"}`.  Both facts are
+            # kept and neither half narrows."  So there is no URL type to import, and the
+            # carrier is whichever of the two arms below the position has -- which is
+            # what the ``choose is None`` branch already grades for every other
+            # unselected format.
+            #
+            # ``scalars.selects_a_url_type`` is the PRODUCTION reading, asked here rather
+            # than restated, for the reason the alias NAME is asked of the production
+            # function below: a second reading of "is a type selected here" is how a
+            # check comes to grade a document against a compiler nobody runs.  Measured:
+            # 1 site, ``core/reporting-delivery-capabilities.json`` at
+            # ``/properties/operations_contact/properties/url``, a ``format: uri`` beside
+            # a ``maxLength``.
+            if (
+                choose is not None
+                and fmt in scalars.URL_FORMATS
+                and not scalars.selects_a_url_type(
+                    fmt, {k: node[k] for k in ir.FACTS if k in node}
+                )
+            ):
+                choose = None
             if choose is None:
                 # **Where no type is selected, section 5's ``format`` row has TWO
-                # answers and the SHAPE and the POSITION decide which.**  A node
-                # stating a format and nothing else has no shape to name, so on a
-                # FIELD the format rides as ``json_schema_extra``.  A node stating a
-                # constraint beside it is one shape and the alias names both, and at a
-                # position with no field of its own -- an ELEM, a MAPV, a union BRANCH
-                # -- a named alias carries the format whatever else the node states,
-                # because a ``json_schema_extra`` written on the field holding a union
-                # would state the branch's format for every other branch too.  The
-                # alias NAME is asked of the production function rather than spelled
-                # here, so the two cannot disagree about what the module declares; the
+                # answers and the position decides which.**  On a FIELD the format
+                # rides as ``json_schema_extra``; at a position with no field of its
+                # own -- an ELEM, a MAPV, a union BRANCH -- a named alias in
+                # ``adcp.types.constraints`` carries it, because a
+                # ``json_schema_extra`` written on the field holding a union would
+                # state the branch's format for every other branch too.  The alias
+                # NAME is asked of the production function rather than spelled here,
+                # so the two cannot disagree about what the module declares; the
                 # constraints are read off the node for the same reason the name is a
                 # function of the whole shape.
                 stated_constraints = {k: node[k] for k in ir.FACTS if k in node}
@@ -1564,16 +1576,15 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
     # formats reach one, not how many sites there are in this tree.
     assert set(conditional) == {"uri", "date-time"}, conditional
     assert all(conditional.values()), conditional
-    # **Every format that SELECTS a type selects exactly one, and `uri` selects none.**
-    # `uri` had two arms here -- `AdCPUrl` where the document restricts the scheme to
-    # https and `HttpUrl` elsewhere -- and section 2 withdrew both on 2026-11-02: a
-    # pydantic URL type rewrites the value, so the string dumped is not the string
-    # supplied.  A `uri` site is therefore graded by the `choose is None` arm above,
-    # beside `hostname`, `email`, `uri-template` and `uuid`, and the two rows left are
-    # each a function of the format alone.
+    # **BOTH arms of D5's `uri` row are reached by this population**, so neither is
+    # graded by an empty loop: of the 131 `uri` sites, 15 state a `^https://` pattern
+    # and take `AdCPUrl` (across 12 documents, `core/platform-extension-ref.json`
+    # among them) and the other 116 take `HttpUrl`.  A format whose type is a
+    # function of the format alone selects exactly one.
     assert arms == {
         "date-time": {"AwareDatetime"},
         "date": {"date"},
+        "uri": {"AdCPUrl", "HttpUrl"},
     }, arms
 
     # Either way the fact is on the model's own schema, at the site the document
@@ -6323,12 +6334,10 @@ def test_every_alias_the_tree_names_is_declared_and_every_declared_alias_is_name
     REVERSE direction, the absolute-import spelling, and the denominators.
 
     The reverse direction is the one that catches the opposite defect: a module
-    holding an alias no document needs. It is EMPTY today, and it is emptier than it
-    was: ``AdCPUrl`` was the one name that could legitimately have sat in it -- D5
-    declared it whatever the run met, so a consumer could import it -- and section 2
-    withdrew it on 2026-11-02 with the whole URL-type decision, so there is no
-    exception left to make.  Every name the module declares is named by a module of
-    the tree.
+    holding an alias no document needs. It is EMPTY today, and ``AdCPUrl`` is
+    the one name that could legitimately sit in it -- D5 declares that one
+    whatever the run met, so a consumer can import it -- but it does not,
+    because ``FORMAT_TYPES`` points 12 modules' fields at it.
     """
     imported: dict[str, set[str]] = {}
     for module in sorted(TREE.rglob("*.py")):
@@ -6339,14 +6348,11 @@ def test_every_alias_the_tree_names_is_declared_and_every_declared_alias_is_name
                 for alias in node.names:
                     imported.setdefault(alias.name, set()).add(str(module.relative_to(TREE)))
 
-    # A name this module provides is one it ASSIGNS, and after section 2's withdrawal
-    # of 2026-11-02 that is the only way it provides one.  It also RE-EXPORTED
-    # ``HttpUrl`` -- pydantic's own, with no assignment, so that nothing in this
-    # package restated what pydantic defines -- and the import was the declaration.
-    # That name is gone with the decision that pointed fields at it, so what the module
-    # imports from ``pydantic`` is now the annotation machinery alone and declares
-    # nothing.  Asserted, because a re-export creeping back is a name this direction
-    # would otherwise report as imported-and-not-declared.
+    # A name this module provides is one it ASSIGNS or one it RE-EXPORTS.  D5's two
+    # URL arms are one of each: ``AdCPUrl`` is ours and is an assignment, and
+    # ``HttpUrl`` is pydantic's, re-exported here with no assignment so that nothing
+    # in this package restates what pydantic defines -- the import IS the
+    # declaration, and both arms are then named in the one module a consumer reads.
     module = ast.parse((TREE.parent / "constraints.py").read_text())
     declared = {
         node.targets[0].id
@@ -6361,7 +6367,8 @@ def test_every_alias_the_tree_names_is_declared_and_every_declared_alias_is_name
         if isinstance(node, ast.ImportFrom) and node.module == "pydantic"
         for alias in node.names
     }
-    assert reexported <= {"Field"}, reexported
+    assert constraints_module.HTTP_URL in reexported, reexported
+    declared |= {constraints_module.HTTP_URL}
     claimed("aliases the module declares", declared)
     claimed("aliases the tree imports", imported)
     assert set(imported) - declared == set(), "imported and not declared"
@@ -6378,15 +6385,10 @@ def test_every_alias_the_tree_names_is_declared_and_every_declared_alias_is_name
         "(module, alias) pairs",
         {(where, alias) for alias, wheres in imported.items() for where in wheres},
     )
-    # And the names a ``format: uri`` node now resolves to really are annotating
-    # fields, which is the half the two withdrawn URL arms used to be claimed for:
-    # section 2's widening is only toward the document if the document's own string
-    # actually reaches a field, and an empty set here would mean no ``uri`` position
-    # resolved to anything.
-    claimed(
-        "modules naming a uri-format alias",
-        {where for alias in imported if "FormatUri" in alias for where in imported[alias]},
-    )
+    # And the two names that are a DECISION really are annotating fields: ``AdCPUrl`` is
+    # ours and ``HttpUrl`` is pydantic's, and D5 points fields at both.
+    claimed("modules naming AdCPUrl", imported[constraints_module.URL])
+    claimed("modules naming HttpUrl", imported[constraints_module.HTTP_URL])
 
 
 def test_the_output_is_a_function_of_its_inputs_and_of_nothing_else() -> None:

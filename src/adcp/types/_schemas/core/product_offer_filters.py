@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, RequiredGroups, Rule, UniqueItems
-from adcp.types.constraints import FloatMin0Max1, IntMin1, StrMatching43E30B32, StrMatchingCE72C7C2, StrMatchingEFC12812
+from adcp.types.constraints import FloatMin0Max1, HttpUrl, IntMin1, StrMatching43E30B32, StrMatchingCE72C7C2, StrMatchingEFC12812
 
 from ..enums.audio_distribution_type import AudioDistributionType
 from ..enums.available_metric import AvailableMetric
@@ -62,7 +62,7 @@ class ProvidersItem(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-offer-filters.json', pointer='#/properties/trusted_match/properties/providers/items')
-    agent_url: Annotated[str, Field(json_schema_extra={'format': 'uri'})]
+    agent_url: HttpUrl
     context_match: bool | None = None
     identity_match: bool | None = None
 
