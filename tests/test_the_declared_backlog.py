@@ -128,7 +128,7 @@ def _carried() -> dict[tuple[str, str, str], Any]:
 #: (:func:`test_the_harness_result_is_counted_over_the_whole_population`) rather than as a
 #: second 130-entry literal, because its obligation is that it reaches zero.
 #:
-#: **RE-PINNED AT ``sdk/ident``: 178 IN 70 -> 126 IN 61, BY §8 SENTENCE 2 AND THE
+#: **RE-PINNED AT ``sdk/ident``: 178 IN 70 -> 128 IN 63, BY §8 SENTENCE 2 AND THE
 #: DECLARATION IT MADE AFFORDABLE.**  "A fact is
 #: declared ONCE, at the node the document STATES it, and never once per pointer the record
 #: inlines it to ... An approximation's identity is ``(stating document, stating pointer,
@@ -156,9 +156,9 @@ def _carried() -> dict[tuple[str, str, str], Any]:
 #: reader is what resolves an occurrence to the entry (``harness.inseparable_sites``, over
 #: the origin map ``bundle.recorded`` exports).
 #:
-#: **SIX SHAPES, and the sentence that keeps each -- per SHAPE, because that is the level
+#: **SEVEN SHAPES, and the sentence that keeps each -- per SHAPE, because that is the level
 #: at which a declaration is a decision.**  A site is a document's instance of one of
-#: these six and carries no argument of its own:
+#: these seven and carries no argument of its own:
 #:
 #: * ``oneOf`` at the JOIN rung, UNDERDETERMINED -- **15 sites in 13 documents**: §4's
 #:   dispatch cannot separate the branches, which is the one kind §8 gives an instrument of
@@ -175,7 +175,13 @@ def _carried() -> dict[tuple[str, str, str], Any]:
 #:   inside another conditional's ``else`` arm compiles to nothing on the model, and
 #:   ``docs/plan/final-state.md`` reading 2 makes every exception to reading 1 a DECLARED
 #:   widening rather than a named ceiling.
-#: * ``maxLength`` at the KEYWORD rung -- **1 site**, and it is the only one of the 37 that
+#: * ``maxProperties`` at the KEYWORD rung -- **2 sites**, ``/properties/ext`` in
+#:   ``core/account-change.json`` and its webhook twin: the class takes ``ignore`` and
+#:   counts over a smaller key set than the document counts over.  Declared nowhere
+#:   until ``sdk/ident``, because ``Rules.dropped`` had four producers and one
+#:   consumer and ``lower_composition`` read the screen and the distinct set and
+#:   never the dropped set.
+#: * ``maxLength`` at the KEYWORD rung -- **1 site**, and it is the only one of the 128 that
 #:   is a plain keyword rather than a structural answer:
 #:   ``compliance/comply-test-controller-response.json`` at
 #:   ``#/oneOf/6/properties/recorded_calls/items/properties/payload``.
@@ -183,9 +189,10 @@ def _carried() -> dict[tuple[str, str, str], Any]:
 #:   ``if`` row cannot reduce to a clause list and §8 sentence 3b's complement cannot
 #:   reach: it states no ``required``, and a clause tests a key that is PRESENT.
 #:
-#: **SIX CAUSES, NOT 126**, which is the reading ``codegen/dump_exemptions.py``'s own
+#: **SEVEN CAUSES, NOT 128**, which is the reading ``codegen/dump_exemptions.py``'s own
 #: instrument records for the same shape: one row at 89 conditions, one derivation at 25
-#: unions, one cell at 7 containers, one conditional shape at 4 nodes, one keyword at 1.  The pointer count and
+#: unions, one cell at 7 containers, one conditional shape at 4 nodes, one discarded drop
+#: set at 2, one keyword at 1.  The pointer count and
 #: the cause count are different numbers over different denominators and the report never
 #: adds them.
 DECLARED_WIDENINGS = {
@@ -323,6 +330,10 @@ DECLARED_WIDENINGS = {
     ('core/reporting-schedule.json', '#/allOf/0', 'else'),
     ('media-buy/get-products-response.json', '#', 'else'),
     ('signals/get-signals-response.json', '#', 'else'),
+
+    # maxProperties at KEYWORD: 2 sites in 2 documents
+    ('core/account-change-recorded-webhook.json', '#/properties/ext', 'maxProperties'),
+    ('core/account-change.json', '#/properties/ext', 'maxProperties'),
 
     # maxLength at KEYWORD: 1 sites in 1 documents
     ('compliance/comply-test-controller-response.json', '#/oneOf/6/properties/recorded_calls/items/properties/payload', 'maxLength'),

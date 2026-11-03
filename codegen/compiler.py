@@ -3797,6 +3797,38 @@ def lower_composition(
             kind=Kind.VERDICT,
         )
     stated = rules_at(node, position=position, resolve=mod.resolve_node, root=mod.record)
+    # **EVERY FACT A RULE SOURCE STATES AND THIS NODE DOES NOT CARRY IS DECLARED HERE, AND
+    # THIS IS WHERE :attr:`Rules.dropped`'s FOURTH PRODUCER FOUND ITS CONSUMER**
+    # (``docs/plan/final-state.md`` reading 2; ``adcp-client-python-gbo``'s sibling defect).
+    # The set had four producers and ONE consumer -- :func:`declare_object`'s funnel -- and
+    # this function read ``screen``, ``rules`` and ``distinct`` off the same carrier and
+    # never ``dropped``, so a fact dropped on a route that does not reach a class was
+    # recorded and discarded.  Measured: ``maxProperties: 20`` at ``/properties/ext`` in
+    # ``core/account-change.json`` and ``core/account-change-recorded-webhook.json``, where
+    # the node composes a reference to a document with no ``properties`` and this function
+    # answers with a MAPPING type before any class is declared.
+    #
+    # **A DECLARATION NEEDS NO CLASS AT ITS OWN NODE, which is why this is a fix and not a
+    # sentence.**  ``render.declared_at`` pairs a declaration with a class by a PREFIX test
+    # on the pointer -- "a declaration at ``#/properties/x/maxLength`` is reached from the
+    # root class's node as well as from the nested class's own" -- so a fact at
+    # ``#/properties/ext`` is carried by the enclosing class the walk did declare, and the
+    # widening obligation walks it from there.  The arm §5's row names for a mapping is a
+    # different question and is still unreachable; what this closes is the declaration.
+    #
+    # Here rather than at every ``return`` below, because the drop is known the moment
+    # ``rules_at`` answers and this function has many exits: a declaration per exit is the
+    # arrangement that let one of them discard the set in the first place.  A node that goes
+    # on to be a class declares the same facts again at :func:`declare_object`'s funnel and
+    # ``emit.declared_once`` collapses the pair -- §8 sentence 2's identity is
+    # ``(stating document, stating pointer, keyword)`` and two producers of one identity are
+    # one declaration.
+    if stated.dropped:
+        from codegen.lower.approximate import declare as _declare_widening
+
+        for drop in stated.dropped:
+            _declare_widening(mod, drop.pointer, drop.keyword, drop.position, drop.fact)
+
     if union is None:
         # A node that composes AND carries a combinator of shapes, where nobody is
         # declaring the branches: the conjunction of a conjunct list with a branch list
@@ -4586,7 +4618,6 @@ def lower_composition(
         at=tuple(conjunct_sites),
         root=mod.record,
     )
-
     own: dict[str, dict] = {}
     #: The keys whose field is the inherited one wearing this document's annotations.
     reuse: dict[str, ir.Field] = {}
