@@ -5,7 +5,7 @@
     {
       "properties": {
         "context_match": {
-          "const": true
+          "$ref": "#/definitions/Shared1"
         }
       },
       "required": [
@@ -13,26 +13,27 @@
       ]
     },
     {
+      "$ref": "#/definitions/Shared0"
+    }
+  ],
+  "definitions": {
+    "Shared0": {
       "properties": {
         "identity_match": {
-          "const": true
+          "$ref": "#/definitions/Shared1"
         }
       },
       "required": [
         "identity_match"
       ]
+    },
+    "Shared1": {
+      "const": true
     }
-  ],
+  },
   "description": "Declares a TMP provider's endpoint, capabilities, and operational parameters. Used in router configuration (static YAML or dynamic API) and referenced by product-level provider entries. The publisher controls which providers participate in their ad decisioning. Endpoint URLs MUST be validated against SSRF, and dynamic registration endpoints MUST authenticate callers \u2014 see docs/trusted-match/specification#provider-registration-security.",
   "if": {
-    "properties": {
-      "identity_match": {
-        "const": true
-      }
-    },
-    "required": [
-      "identity_match"
-    ]
+    "$ref": "#/definitions/Shared0"
   },
   "properties": {
     "context_match": {

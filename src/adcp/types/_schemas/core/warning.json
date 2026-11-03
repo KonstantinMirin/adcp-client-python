@@ -21,7 +21,7 @@
           "affected_resource": {
             "properties": {
               "resource_type": {
-                "const": "package"
+                "$ref": "#/definitions/Shared0"
               }
             }
           }
@@ -55,6 +55,11 @@
       }
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "const": "package"
+    }
+  },
   "description": "A non-blocking observation returned with a successful operation. The operation succeeded exactly as its success arm states. Warnings are immediate receipts, not durable lifecycle state; a continuing condition MUST also appear on its authoritative read surface as an indicator, defect, delivery issue, approval state, or other applicable resource state.",
   "properties": {
     "affected_resource": {
@@ -82,7 +87,7 @@
           "if": {
             "properties": {
               "resource_type": {
-                "const": "package"
+                "$ref": "#/definitions/Shared0"
               }
             },
             "required": [

@@ -1,6 +1,12 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": false,
+  "definitions": {
+    "Shared0": {
+      "format": "date-time",
+      "type": "string"
+    }
+  },
   "description": "Optional account-anchored invalidation fired by a seller that can detect when a package\u2013creative assignment is added, removed, or its aggregate/scoped approval outcome changes. Registered through sync_accounts notification_configs with event_types: [\"creative.assignment_changed\"]. Receivers verify signing, dedupe, and reread get_media_buys; a creative-library seller may also expose a bounded list_creatives reverse projection, but the webhook does not replace the authoritative relationship snapshot.",
   "examples": [
     {
@@ -45,8 +51,7 @@
       "type": "object"
     },
     "fired_at": {
-      "format": "date-time",
-      "type": "string"
+      "$ref": "#/definitions/Shared0"
     },
     "idempotency_key": {
       "maxLength": 255,
@@ -70,8 +75,7 @@
       "type": "string"
     },
     "observed_at": {
-      "format": "date-time",
-      "type": "string"
+      "$ref": "#/definitions/Shared0"
     },
     "package_id": {
       "type": "string",

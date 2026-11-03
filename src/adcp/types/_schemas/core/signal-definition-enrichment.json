@@ -22,6 +22,53 @@
       }
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "format": "uri",
+      "type": "string"
+    },
+    "Shared1": {
+      "type": "boolean"
+    },
+    "Shared2": {
+      "enum": [
+        "intra_day",
+        "daily",
+        "weekly",
+        "monthly",
+        "bi_monthly",
+        "quarterly",
+        "bi_annually",
+        "annually"
+      ],
+      "type": "string"
+    },
+    "Shared3": {
+      "items": {
+        "$ref": "#/definitions/Shared5"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "Shared4": {
+      "type": "string"
+    },
+    "Shared5": {
+      "pattern": "^[A-Z]{2}$",
+      "type": "string"
+    },
+    "Shared6": {
+      "format": "uri",
+      "pattern": "^https://",
+      "type": "string"
+    },
+    "Shared7": {
+      "items": {
+        "$ref": "#/definitions/Shared4"
+      },
+      "type": "array"
+    }
+  },
   "description": "Optional signal-definition enrichment fields that may be projected inline on signal listings when requested through get_signals.fields. This schema intentionally excludes signal identity and required definition fields so source-native, private, or compact listings can include typed partial disclosure without becoming a full adagents.json signal definition.",
   "properties": {
     "art9_basis": {
@@ -35,7 +82,7 @@
       "type": "string"
     },
     "audience_expansion": {
-      "type": "boolean"
+      "$ref": "#/definitions/Shared1"
     },
     "consent_basis": {
       "description": "Data provider's declared GDPR Article 6 lawful basis or consent basis for the underlying signal definition, projected into this get_signals response row when requested. Sellers and federating agents that pass through another provider's signal MUST NOT substitute their own processing basis for the provider-declared basis.",
@@ -55,16 +102,10 @@
       "type": "array"
     },
     "countries": {
-      "items": {
-        "pattern": "^[A-Z]{2}$",
-        "type": "string"
-      },
-      "minItems": 1,
-      "type": "array"
+      "$ref": "#/definitions/Shared3"
     },
     "criteria_url": {
-      "format": "uri",
-      "type": "string"
+      "$ref": "#/definitions/Shared0"
     },
     "data_sources": {
       "items": {
@@ -97,9 +138,7 @@
       "description": "Per-signal data-subject-rights routing. This is a contact/routing reference, not a machine-callable AdCP API.",
       "properties": {
         "ccpa_opt_out_url": {
-          "format": "uri",
-          "pattern": "^https://",
-          "type": "string"
+          "$ref": "#/definitions/Shared6"
         },
         "channels": {
           "contains": {
@@ -137,8 +176,7 @@
             "properties": {
               "countries": {
                 "items": {
-                  "pattern": "^[A-Z]{2}$",
-                  "type": "string"
+                  "$ref": "#/definitions/Shared5"
                 },
                 "type": "array"
               },
@@ -147,10 +185,7 @@
                 "type": "string"
               },
               "languages": {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
+                "$ref": "#/definitions/Shared7"
               },
               "rights": {
                 "items": {
@@ -168,9 +203,7 @@
                 "uniqueItems": true
               },
               "url": {
-                "format": "uri",
-                "pattern": "^https://",
-                "type": "string"
+                "$ref": "#/definitions/Shared6"
               }
             },
             "required": [
@@ -250,10 +283,10 @@
       "type": "object"
     },
     "device_expansion": {
-      "type": "boolean"
+      "$ref": "#/definitions/Shared1"
     },
     "dts_compliant_version": {
-      "type": "string"
+      "$ref": "#/definitions/Shared4"
     },
     "last_updated": {
       "description": "When this definition record was last updated. This indicates freshness of the definition record, not an attestation that the underlying data or model was refreshed at that time.",
@@ -261,17 +294,7 @@
       "type": "string"
     },
     "lookback_window": {
-      "enum": [
-        "intra_day",
-        "daily",
-        "weekly",
-        "monthly",
-        "bi_monthly",
-        "quarterly",
-        "bi_annually",
-        "annually"
-      ],
-      "type": "string"
+      "$ref": "#/definitions/Shared2"
     },
     "methodology": {
       "enum": [
@@ -415,12 +438,7 @@
           "type": "object"
         },
         "training_data_jurisdictions": {
-          "items": {
-            "pattern": "^[A-Z]{2}$",
-            "type": "string"
-          },
-          "minItems": 1,
-          "type": "array"
+          "$ref": "#/definitions/Shared3"
         }
       },
       "required": [
@@ -454,10 +472,10 @@
           "type": "array"
         },
         "pre_onboarding_audience_expansion": {
-          "type": "boolean"
+          "$ref": "#/definitions/Shared1"
         },
         "pre_onboarding_device_expansion": {
-          "type": "boolean"
+          "$ref": "#/definitions/Shared1"
         },
         "pre_onboarding_precision_level": {
           "enum": [
@@ -477,23 +495,13 @@
     "policy_categories": {
       "description": "Policy categories this signal is sensitive for.",
       "items": {
-        "type": "string"
+        "$ref": "#/definitions/Shared4"
       },
       "minItems": 1,
       "type": "array"
     },
     "refresh_cadence": {
-      "enum": [
-        "intra_day",
-        "daily",
-        "weekly",
-        "monthly",
-        "bi_monthly",
-        "quarterly",
-        "bi_annually",
-        "annually"
-      ],
-      "type": "string"
+      "$ref": "#/definitions/Shared2"
     },
     "restricted_attributes": {
       "description": "Restricted attribute categories this signal touches.",
@@ -539,7 +547,7 @@
       "description": "Optional taxonomy metadata describing what this signal means in an external audience, content, retail-media, or provider-owned taxonomy.",
       "properties": {
         "etag": {
-          "type": "string"
+          "$ref": "#/definitions/Shared4"
         },
         "parent_match_behavior": {
           "enum": [
@@ -550,8 +558,7 @@
           "type": "string"
         },
         "ref": {
-          "format": "uri",
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         },
         "segtax": {
           "minimum": 1,
@@ -562,19 +569,16 @@
             "additionalProperties": false,
             "properties": {
               "modifiers": {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
+                "$ref": "#/definitions/Shared7"
               },
               "path": {
-                "type": "string"
+                "$ref": "#/definitions/Shared4"
               },
               "taxonomy_value_id": {
-                "type": "string"
+                "$ref": "#/definitions/Shared4"
               },
               "value": {
-                "type": "string"
+                "$ref": "#/definitions/Shared4"
               }
             },
             "required": [
@@ -595,13 +599,10 @@
                 "type": "string"
               },
               "modifiers": {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
+                "$ref": "#/definitions/Shared7"
               },
               "path": {
-                "type": "string"
+                "$ref": "#/definitions/Shared4"
               }
             },
             "required": [
@@ -613,7 +614,7 @@
           "type": "array"
         },
         "version": {
-          "type": "string"
+          "$ref": "#/definitions/Shared4"
         }
       },
       "required": [

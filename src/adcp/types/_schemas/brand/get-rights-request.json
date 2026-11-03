@@ -29,6 +29,26 @@
       "type": "object"
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "Shared1": {
+      "pattern": "^[A-Z]{2}$",
+      "type": "string"
+    },
+    "Shared2": {
+      "type": "string"
+    },
+    "Shared3": {
+      "pattern": "^#[0-9a-fA-F]{6}$",
+      "type": "string"
+    }
+  },
   "description": "Search for licensable rights across a brand agent's roster. Returns matches with pricing. Discovery is natural-language-first \u2014 no taxonomy for categories. The agent interprets intent from the query and filters based on the buyer's brand compatibility.",
   "properties": {
     "brand_id": {
@@ -84,16 +104,13 @@
               "description": "Override brand colors (hex strings).",
               "properties": {
                 "accent": {
-                  "pattern": "^#[0-9a-fA-F]{6}$",
-                  "type": "string"
+                  "$ref": "#/definitions/Shared3"
                 },
                 "primary": {
-                  "pattern": "^#[0-9a-fA-F]{6}$",
-                  "type": "string"
+                  "$ref": "#/definitions/Shared3"
                 },
                 "secondary": {
-                  "pattern": "^#[0-9a-fA-F]{6}$",
-                  "type": "string"
+                  "$ref": "#/definitions/Shared3"
                 }
               },
               "type": "object"
@@ -284,11 +301,7 @@
                                 "minProperties": 1,
                                 "properties": {
                                   "ext": {
-                                    "$schema": "http://json-schema.org/draft-07/schema#",
-                                    "additionalProperties": true,
-                                    "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                                    "title": "Extension Object",
-                                    "type": "object"
+                                    "$ref": "#/definitions/Shared0"
                                   },
                                   "min_duration_ms": {
                                     "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial \u2014 without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available.",
@@ -418,11 +431,7 @@
                       "type": "array"
                     },
                     "ext": {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
-                      "additionalProperties": true,
-                      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                      "title": "Extension Object",
-                      "type": "object"
+                      "$ref": "#/definitions/Shared0"
                     },
                     "human_oversight": {
                       "description": "Level of human involvement in the AI-assisted creation process. Independent of `disclosure.required` \u2014 the protocol does not derive disclosure obligations from oversight level. Some regulations include carve-outs for human-edited or human-directed AI output, but those carve-outs have factual prerequisites the schema cannot evaluate. Asserting `edited` or `directed` does not by itself justify `disclosure.required: false`.",
@@ -607,8 +616,7 @@
         "countries": {
           "description": "Canonical set of ISO 3166-1 alpha-2 countries for this advertiser identity. Omit for a global/default identity. Array order is not meaningful; producers MUST sort codes lexicographically before computing keys or signatures. This qualifies account identity and is not delivery targeting.",
           "items": {
-            "pattern": "^[A-Z]{2}$",
-            "type": "string"
+            "$ref": "#/definitions/Shared1"
           },
           "minItems": 1,
           "type": "array",
@@ -636,7 +644,7 @@
             },
             "languages": {
               "items": {
-                "type": "string"
+                "$ref": "#/definitions/Shared2"
               },
               "type": "array"
             },
@@ -656,7 +664,7 @@
         "industries": {
           "description": "Inline override for the brand's industries. Useful when the caller cannot modify the brand's canonical brand.json but needs to declare industries for governance (e.g., Annex III vertical detection). brand.json remains the canonical source; when omitted here, governance agents SHOULD resolve from brand.json.",
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/Shared2"
           },
           "type": "array"
         }
@@ -677,17 +685,12 @@
     "countries": {
       "description": "Countries where rights are needed (ISO 3166-1 alpha-2). Filters to rights available in these markets.",
       "items": {
-        "pattern": "^[A-Z]{2}$",
-        "type": "string"
+        "$ref": "#/definitions/Shared1"
       },
       "type": "array"
     },
     "ext": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "additionalProperties": true,
-      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-      "title": "Extension Object",
-      "type": "object"
+      "$ref": "#/definitions/Shared0"
     },
     "include_excluded": {
       "default": false,

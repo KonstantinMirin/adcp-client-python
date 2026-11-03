@@ -2,17 +2,37 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": false,
   "definitions": {
+    "Shared0": {
+      "enum": [
+        "cap",
+        "target"
+      ],
+      "type": "string"
+    },
+    "Shared1": {
+      "enum": [
+        "floor",
+        "target"
+      ],
+      "type": "string"
+    },
+    "Shared2": {
+      "required": [
+        "cost_per_strengths"
+      ]
+    },
+    "Shared3": {
+      "required": [
+        "roas_strengths"
+      ]
+    },
     "max_bid_with_cost_per": {
       "additionalProperties": false,
       "properties": {
         "cost_per_strengths": {
           "description": "cost_per strengths supported when combined with max_bid.",
           "items": {
-            "enum": [
-              "cap",
-              "target"
-            ],
-            "type": "string"
+            "$ref": "#/definitions/Shared0"
           },
           "minItems": 1,
           "type": "array",
@@ -39,11 +59,7 @@
         "roas_strengths": {
           "description": "roas strengths supported when combined with max_bid.",
           "items": {
-            "enum": [
-              "floor",
-              "target"
-            ],
-            "type": "string"
+            "$ref": "#/definitions/Shared1"
           },
           "minItems": 1,
           "type": "array",
@@ -62,9 +78,7 @@
         {
           "else": {
             "not": {
-              "required": [
-                "cost_per_strengths"
-              ]
+              "$ref": "#/definitions/Shared2"
             }
           },
           "if": {
@@ -80,17 +94,13 @@
             ]
           },
           "then": {
-            "required": [
-              "cost_per_strengths"
-            ]
+            "$ref": "#/definitions/Shared2"
           }
         },
         {
           "else": {
             "not": {
-              "required": [
-                "roas_strengths"
-              ]
+              "$ref": "#/definitions/Shared3"
             }
           },
           "if": {
@@ -106,9 +116,7 @@
             ]
           },
           "then": {
-            "required": [
-              "roas_strengths"
-            ]
+            "$ref": "#/definitions/Shared3"
           }
         }
       ],
@@ -128,11 +136,7 @@
         "cost_per_strengths": {
           "description": "Supported standalone cost_per strengths in this profile. Required exactly when modes includes cost_per.",
           "items": {
-            "enum": [
-              "cap",
-              "target"
-            ],
-            "type": "string"
+            "$ref": "#/definitions/Shared0"
           },
           "minItems": 1,
           "type": "array",
@@ -157,11 +161,7 @@
         "roas_strengths": {
           "description": "Supported standalone roas strengths in this profile. Required exactly when modes includes roas.",
           "items": {
-            "enum": [
-              "floor",
-              "target"
-            ],
-            "type": "string"
+            "$ref": "#/definitions/Shared1"
           },
           "minItems": 1,
           "type": "array",

@@ -1,6 +1,22 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": false,
+  "definitions": {
+    "Shared0": {
+      "type": "string"
+    },
+    "Shared1": {
+      "pattern": "^#[0-9a-fA-F]{6}$",
+      "type": "string"
+    },
+    "Shared2": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    }
+  },
   "description": "Sent by publisher to evaluate user eligibility for packages using an opaque identity token. MUST NOT contain page context. The request_id MUST NOT correlate with any context match request_id. The buyer resolves the active package set for this seller from `seller_agent_url`; if `package_ids` is provided, its composition MUST be independent of the current placement (e.g., all-active or fuzzed; see field description) to prevent set-correlation attacks. Extension fields (ext, context) are intentionally omitted to prevent data leakage across the identity privacy boundary. The optional `attestation` (per identity) and `sealed_credentials` (top-level) fields carry verifiable proof ABOUT the identity \u2014 on the identity side of that boundary, not page context \u2014 so they are a deliberate, reviewed widening of this otherwise-closed schema, not a leak.",
   "properties": {
     "$schema": {
@@ -142,16 +158,13 @@
                         "description": "Override brand colors (hex strings).",
                         "properties": {
                           "accent": {
-                            "pattern": "^#[0-9a-fA-F]{6}$",
-                            "type": "string"
+                            "$ref": "#/definitions/Shared1"
                           },
                           "primary": {
-                            "pattern": "^#[0-9a-fA-F]{6}$",
-                            "type": "string"
+                            "$ref": "#/definitions/Shared1"
                           },
                           "secondary": {
-                            "pattern": "^#[0-9a-fA-F]{6}$",
-                            "type": "string"
+                            "$ref": "#/definitions/Shared1"
                           }
                         },
                         "type": "object"
@@ -342,11 +355,7 @@
                                           "minProperties": 1,
                                           "properties": {
                                             "ext": {
-                                              "$schema": "http://json-schema.org/draft-07/schema#",
-                                              "additionalProperties": true,
-                                              "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                                              "title": "Extension Object",
-                                              "type": "object"
+                                              "$ref": "#/definitions/Shared2"
                                             },
                                             "min_duration_ms": {
                                               "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial \u2014 without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available.",
@@ -476,11 +485,7 @@
                                 "type": "array"
                               },
                               "ext": {
-                                "$schema": "http://json-schema.org/draft-07/schema#",
-                                "additionalProperties": true,
-                                "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                                "title": "Extension Object",
-                                "type": "object"
+                                "$ref": "#/definitions/Shared2"
                               },
                               "human_oversight": {
                                 "description": "Level of human involvement in the AI-assisted creation process. Independent of `disclosure.required` \u2014 the protocol does not derive disclosure obligations from oversight level. Some regulations include carve-outs for human-edited or human-directed AI output, but those carve-outs have factual prerequisites the schema cannot evaluate. Asserting `edited` or `directed` does not by itself justify `disclosure.required: false`.",
@@ -694,7 +699,7 @@
                       },
                       "languages": {
                         "items": {
-                          "type": "string"
+                          "$ref": "#/definitions/Shared0"
                         },
                         "type": "array"
                       },
@@ -714,7 +719,7 @@
                   "industries": {
                     "description": "Inline override for the brand's industries. Useful when the caller cannot modify the brand's canonical brand.json but needs to declare industries for governance (e.g., Annex III vertical detection). brand.json remains the canonical source; when omitted here, governance agents SHOULD resolve from brand.json.",
                     "items": {
-                      "type": "string"
+                      "$ref": "#/definitions/Shared0"
                     },
                     "type": "array"
                   }
@@ -811,7 +816,7 @@
     "package_ids": {
       "description": "Optional. When omitted, the buyer evaluates eligibility against the full set of active packages it has registered for `seller_agent_url`. When provided, the composition of `package_ids` MUST be statistically independent of the current placement \u2014 sending only the page-specific subset would let the buyer correlate Identity Match with Context Match by comparing package sets. Two acceptable modes: (a) **all-active** \u2014 include every active package this buyer has at this publisher; (b) **fuzzed** \u2014 include a random sample of active packages, optionally padded with synthetic non-existent IDs, drawn from a distribution that does not depend on the current placement. The buyer's silent-drop behavior on unknown IDs (specified below) is what makes synthetic-ID padding safe \u2014 they do not affect the response shape and cannot leak registry membership. When both `seller_agent_url` and `package_ids` are present, the buyer evaluates against the intersection of its registered active set and `package_ids`; IDs in `package_ids` that the buyer has not registered for this seller MUST be silently ignored (not surfaced as errors) to avoid leaking registry membership back to the publisher.",
       "items": {
-        "type": "string"
+        "$ref": "#/definitions/Shared0"
       },
       "minItems": 1,
       "type": "array"

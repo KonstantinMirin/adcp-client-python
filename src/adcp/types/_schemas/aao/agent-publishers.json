@@ -20,7 +20,7 @@
           "then": {
             "properties": {
               "manager_domain": {
-                "type": "string"
+                "$ref": "#/definitions/Shared0"
               }
             },
             "required": [
@@ -66,7 +66,7 @@
         "property_ids": {
           "description": "Canonical list of `property_id`s under THIS `publisher_domain` that the agent's selectors resolve to. Present iff the request included `?include=properties`; absent otherwise. The set is the same population `properties_authorized` counts, surfaced as IDs so consumers can run full set-diff against a federated fetch (count-equality is not set-equality \u2014 a publisher rotating N properties leaves the count unchanged but the set entirely different). Per-publisher scope; never network-wide. Order is unspecified; consumers should treat as a set.",
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/Shared0"
           },
           "type": "array"
         },
@@ -97,6 +97,9 @@
         "last_verified_at"
       ],
       "type": "object"
+    },
+    "Shared0": {
+      "type": "string"
     }
   },
   "description": "Response envelope for `GET /v1/agents/{agent_url}/publishers` against an AAO-compatible directory. Returns the set of publishers whose adagents.json authorizes the given agent_url, with provenance (discovery_method, manager_domain), per-publisher property counts, and lifecycle status. The publisher's own adagents.json remains the trust root; this endpoint is discovery, not authorization. Each `publisher_domain` row tells the operator which publishers to verify directly via the SDK's per-domain primitives.",

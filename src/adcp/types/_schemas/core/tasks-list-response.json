@@ -457,6 +457,11 @@
       "type": "object"
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "type": "string"
+    }
+  },
   "description": "Response from task listing query with filtered results and state reconciliation data across all AdCP domains",
   "properties": {
     "context": {
@@ -527,7 +532,7 @@
         "filters_applied": {
           "description": "List of filters that were applied to the query",
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/Shared0"
           },
           "type": "array"
         },
@@ -548,7 +553,7 @@
               "type": "string"
             },
             "field": {
-              "type": "string"
+              "$ref": "#/definitions/Shared0"
             }
           },
           "required": [

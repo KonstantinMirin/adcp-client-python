@@ -45,17 +45,80 @@
         ]
       },
       "then": {
-        "properties": {
-          "discovery_mode": {
-            "const": "wholesale"
-          }
-        },
-        "required": [
-          "discovery_mode"
-        ]
+        "$ref": "#/definitions/Shared1"
       }
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "Shared1": {
+      "properties": {
+        "discovery_mode": {
+          "const": "wholesale"
+        }
+      },
+      "required": [
+        "discovery_mode"
+      ]
+    },
+    "Shared10": {
+      "required": [
+        "source"
+      ]
+    },
+    "Shared11": {
+      "required": [
+        "id"
+      ]
+    },
+    "Shared12": {
+      "pattern": "^#[0-9a-fA-F]{6}$",
+      "type": "string"
+    },
+    "Shared2": {
+      "pattern": "^[A-Z]{2}$",
+      "type": "string"
+    },
+    "Shared3": {
+      "required": [
+        "signal_spec"
+      ]
+    },
+    "Shared4": {
+      "required": [
+        "signal_refs"
+      ]
+    },
+    "Shared5": {
+      "required": [
+        "signal_ids"
+      ]
+    },
+    "Shared6": {
+      "type": "string"
+    },
+    "Shared7": {
+      "required": [
+        "data_provider_domain"
+      ]
+    },
+    "Shared8": {
+      "required": [
+        "signal_source_url"
+      ]
+    },
+    "Shared9": {
+      "required": [
+        "agent_url"
+      ]
+    }
+  },
   "dependencies": {
     "if_pricing_version": [
       "if_wholesale_feed_version"
@@ -65,32 +128,19 @@
   "else": {
     "anyOf": [
       {
-        "required": [
-          "signal_spec"
-        ]
+        "$ref": "#/definitions/Shared3"
       },
       {
-        "required": [
-          "signal_refs"
-        ]
+        "$ref": "#/definitions/Shared4"
       },
       {
-        "required": [
-          "signal_ids"
-        ]
+        "$ref": "#/definitions/Shared5"
       }
     ],
     "description": "Brief mode (default): signal_spec, signal_refs, or legacy signal_ids is required."
   },
   "if": {
-    "properties": {
-      "discovery_mode": {
-        "const": "wholesale"
-      }
-    },
-    "required": [
-      "discovery_mode"
-    ]
+    "$ref": "#/definitions/Shared1"
   },
   "properties": {
     "account": {
@@ -201,16 +251,13 @@
                       "description": "Override brand colors (hex strings).",
                       "properties": {
                         "accent": {
-                          "pattern": "^#[0-9a-fA-F]{6}$",
-                          "type": "string"
+                          "$ref": "#/definitions/Shared12"
                         },
                         "primary": {
-                          "pattern": "^#[0-9a-fA-F]{6}$",
-                          "type": "string"
+                          "$ref": "#/definitions/Shared12"
                         },
                         "secondary": {
-                          "pattern": "^#[0-9a-fA-F]{6}$",
-                          "type": "string"
+                          "$ref": "#/definitions/Shared12"
                         }
                       },
                       "type": "object"
@@ -401,11 +448,7 @@
                                         "minProperties": 1,
                                         "properties": {
                                           "ext": {
-                                            "$schema": "http://json-schema.org/draft-07/schema#",
-                                            "additionalProperties": true,
-                                            "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                                            "title": "Extension Object",
-                                            "type": "object"
+                                            "$ref": "#/definitions/Shared0"
                                           },
                                           "min_duration_ms": {
                                             "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial \u2014 without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available.",
@@ -535,11 +578,7 @@
                               "type": "array"
                             },
                             "ext": {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
-                              "additionalProperties": true,
-                              "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                              "title": "Extension Object",
-                              "type": "object"
+                              "$ref": "#/definitions/Shared0"
                             },
                             "human_oversight": {
                               "description": "Level of human involvement in the AI-assisted creation process. Independent of `disclosure.required` \u2014 the protocol does not derive disclosure obligations from oversight level. Some regulations include carve-outs for human-edited or human-directed AI output, but those carve-outs have factual prerequisites the schema cannot evaluate. Asserting `edited` or `directed` does not by itself justify `disclosure.required: false`.",
@@ -724,8 +763,7 @@
                 "countries": {
                   "description": "Canonical set of ISO 3166-1 alpha-2 countries for this advertiser identity. Omit for a global/default identity. Array order is not meaningful; producers MUST sort codes lexicographically before computing keys or signatures. This qualifies account identity and is not delivery targeting.",
                   "items": {
-                    "pattern": "^[A-Z]{2}$",
-                    "type": "string"
+                    "$ref": "#/definitions/Shared2"
                   },
                   "minItems": 1,
                   "type": "array",
@@ -753,7 +791,7 @@
                     },
                     "languages": {
                       "items": {
-                        "type": "string"
+                        "$ref": "#/definitions/Shared6"
                       },
                       "type": "array"
                     },
@@ -773,7 +811,7 @@
                 "industries": {
                   "description": "Inline override for the brand's industries. Useful when the caller cannot modify the brand's canonical brand.json but needs to declare industries for governance (e.g., Annex III vertical detection). brand.json remains the canonical source; when omitted here, governance agents SHOULD resolve from brand.json.",
                   "items": {
-                    "type": "string"
+                    "$ref": "#/definitions/Shared6"
                   },
                   "type": "array"
                 }
@@ -861,8 +899,7 @@
     "countries": {
       "description": "Countries where signals will be used (ISO 3166-1 alpha-2 codes). When omitted, no geographic filter is applied.",
       "items": {
-        "pattern": "^[A-Z]{2}$",
-        "type": "string"
+        "$ref": "#/definitions/Shared2"
       },
       "minItems": 1,
       "type": "array"
@@ -937,11 +974,7 @@
       "type": "string"
     },
     "ext": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "additionalProperties": true,
-      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-      "title": "Extension Object",
-      "type": "object"
+      "$ref": "#/definitions/Shared0"
     },
     "fields": {
       "description": "Specific signal fields to include in the response, aligned with get_products.fields. Required identity and activation fields such as signal_ref or signal_id, signal_agent_segment_id, name, description, signal_type, coverage_percentage, and deployments are always included when required by the response schema. Use for progressive disclosure of rich signal-definition metadata: request fields such as demographic_predicate, taxonomy, data_sources, methodology, segmentation_criteria, criteria_url, refresh_cadence, lookback_window, onboarder, modeling, audience_expansion, device_expansion, countries, consent_basis, restricted_attributes, policy_categories, art9_basis, data_subject_rights, and last_updated when the buyer needs them inline. Omit for the agent's default discovery projection. Agents SHOULD honor requested fields for exact lookup, refinement, small custom-signal result sets, and private/source-native signals when available. fields is a projection request, not an entitlement grant; agents MAY redact requested definition fields unless the caller is authorized for the underlying lineage, methodology, and rights-routing metadata. When demographic_predicate, consent_basis, or art9_basis is projected for another provider's signal, the value remains provider-declared signal-definition posture; sellers and federating agents MUST NOT substitute their own semantics or processing basis. For broad discovery and wholesale pages, agents MAY return compact pointers instead of inlining large resources, especially when provider-published definitions can be resolved from signal_ref, taxonomy.ref, criteria_url, disclosure_url, and validators such as resolved URL plus catalog_etag, HTTP ETag/Last-Modified, or taxonomy.etag.",
@@ -1015,7 +1048,7 @@
         "data_providers": {
           "description": "Filter by specific data providers",
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/Shared6"
           },
           "minItems": 1,
           "type": "array"
@@ -1232,29 +1265,19 @@
             "not": {
               "anyOf": [
                 {
-                  "required": [
-                    "data_provider_domain"
-                  ]
+                  "$ref": "#/definitions/Shared7"
                 },
                 {
-                  "required": [
-                    "signal_source_url"
-                  ]
+                  "$ref": "#/definitions/Shared8"
                 },
                 {
-                  "required": [
-                    "agent_url"
-                  ]
+                  "$ref": "#/definitions/Shared9"
                 },
                 {
-                  "required": [
-                    "source"
-                  ]
+                  "$ref": "#/definitions/Shared10"
                 },
                 {
-                  "required": [
-                    "id"
-                  ]
+                  "$ref": "#/definitions/Shared11"
                 }
               ]
             },
@@ -1282,24 +1305,16 @@
             "not": {
               "anyOf": [
                 {
-                  "required": [
-                    "agent_url"
-                  ]
+                  "$ref": "#/definitions/Shared9"
                 },
                 {
-                  "required": [
-                    "signal_source_url"
-                  ]
+                  "$ref": "#/definitions/Shared8"
                 },
                 {
-                  "required": [
-                    "source"
-                  ]
+                  "$ref": "#/definitions/Shared10"
                 },
                 {
-                  "required": [
-                    "id"
-                  ]
+                  "$ref": "#/definitions/Shared11"
                 }
               ]
             },
@@ -1333,24 +1348,16 @@
             "not": {
               "anyOf": [
                 {
-                  "required": [
-                    "data_provider_domain"
-                  ]
+                  "$ref": "#/definitions/Shared7"
                 },
                 {
-                  "required": [
-                    "agent_url"
-                  ]
+                  "$ref": "#/definitions/Shared9"
                 },
                 {
-                  "required": [
-                    "source"
-                  ]
+                  "$ref": "#/definitions/Shared10"
                 },
                 {
-                  "required": [
-                    "id"
-                  ]
+                  "$ref": "#/definitions/Shared11"
                 }
               ]
             },
@@ -1395,19 +1402,13 @@
     "not": {
       "anyOf": [
         {
-          "required": [
-            "signal_spec"
-          ]
+          "$ref": "#/definitions/Shared3"
         },
         {
-          "required": [
-            "signal_refs"
-          ]
+          "$ref": "#/definitions/Shared4"
         },
         {
-          "required": [
-            "signal_ids"
-          ]
+          "$ref": "#/definitions/Shared5"
         }
       ]
     }

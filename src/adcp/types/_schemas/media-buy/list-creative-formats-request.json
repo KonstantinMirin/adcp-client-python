@@ -29,6 +29,95 @@
       "type": "object"
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "Shared1": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "dependencies": {
+        "height": [
+          "width"
+        ],
+        "pixel_ratio": [
+          "width",
+          "height"
+        ],
+        "width": [
+          "height"
+        ]
+      },
+      "deprecated": true,
+      "description": "**DEPRECATED in 3.2.** Legacy named-format reference retained for 3.x compatibility. This JSON object \u2014 never a plain string \u2014 identifies a format by its declaring agent and local slug, and may carry legacy logical dimensions, pixel ratio, or duration parameters. New products and manifests use canonical `format_options`, `format_kind`, and `format_option_ref`; creative-agent build routing uses `creative.supported_formats[].capability_id`.",
+      "properties": {
+        "agent_url": {
+          "description": "URL of the agent that defines this format (e.g., 'https://creative.adcontextprotocol.org' for standard formats, or 'https://publisher.com/.well-known/adcp/sales' for custom formats). Callers comparing two `format-id` values MUST canonicalize `agent_url` per the AdCP URL canonicalization rules before treating two formats as the same. See docs/reference/url-canonicalization.",
+          "format": "uri",
+          "type": "string"
+        },
+        "duration_ms": {
+          "description": "Duration in milliseconds for time-based formats (video, audio). When specified, creates a parameterized format ID. Omit to reference a template format without parameters.",
+          "minimum": 1,
+          "type": "number"
+        },
+        "height": {
+          "description": "Height in pixels for visual formats. When specified, width must also be specified. Both fields together create a parameterized format ID for dimension-specific variants.",
+          "minimum": 1,
+          "type": "integer"
+        },
+        "id": {
+          "description": "Format identifier within the agent's namespace (e.g., 'display_static', 'video_hosted', 'audio_standard'). When used alone, references a template format. When combined with dimension/duration fields, creates a parameterized format ID for a specific variant.",
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "type": "string"
+        },
+        "pixel_ratio": {
+          "description": "Required intrinsic-pixel density for a parameterized visual format, expressed as intrinsic pixels per logical pixel. Requires `width` and `height`. Example: `{id: \"display_image\", width: 300, height: 250, pixel_ratio: 2}` identifies a 300\u00d7250 logical render supplied by a 600\u00d7500 image. Omit for the backward-compatible 1x variant.",
+          "exclusiveMinimum": 0,
+          "type": "number"
+        },
+        "width": {
+          "description": "Width in pixels for visual formats. When specified, height must also be specified. Both fields together create a parameterized format ID for dimension-specific variants.",
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "agent_url",
+        "id"
+      ],
+      "title": "Format Reference (Structured Object)",
+      "type": "object",
+      "x-entity": "creative_format"
+    },
+    "Shared2": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Where a required disclosure should appear within a creative. Used by creative briefs to specify disclosure placement and by formats to declare which positions they can render.",
+      "enum": [
+        "prominent",
+        "footer",
+        "audio",
+        "subtitle",
+        "overlay",
+        "end_card",
+        "pre_roll",
+        "companion"
+      ],
+      "title": "Disclosure Position",
+      "type": "string"
+    },
+    "Shared3": {
+      "type": "string"
+    },
+    "Shared4": {
+      "pattern": "^#[0-9a-fA-F]{6}$",
+      "type": "string"
+    }
+  },
   "deprecated": true,
   "description": "**DEPRECATED in 3.2.** Compatibility request for legacy named-format discovery. Sales agents expose purchasable canonical declarations on get_products `Product.format_options[]`; publisher acceptance comes from adagents.json `formats[]`; creative agents advertise build/validation/preview capabilities on get_adcp_capabilities `creative.supported_formats[]`.",
   "properties": {
@@ -141,16 +230,13 @@
                       "description": "Override brand colors (hex strings).",
                       "properties": {
                         "accent": {
-                          "pattern": "^#[0-9a-fA-F]{6}$",
-                          "type": "string"
+                          "$ref": "#/definitions/Shared4"
                         },
                         "primary": {
-                          "pattern": "^#[0-9a-fA-F]{6}$",
-                          "type": "string"
+                          "$ref": "#/definitions/Shared4"
                         },
                         "secondary": {
-                          "pattern": "^#[0-9a-fA-F]{6}$",
-                          "type": "string"
+                          "$ref": "#/definitions/Shared4"
                         }
                       },
                       "type": "object"
@@ -341,11 +427,7 @@
                                         "minProperties": 1,
                                         "properties": {
                                           "ext": {
-                                            "$schema": "http://json-schema.org/draft-07/schema#",
-                                            "additionalProperties": true,
-                                            "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                                            "title": "Extension Object",
-                                            "type": "object"
+                                            "$ref": "#/definitions/Shared0"
                                           },
                                           "min_duration_ms": {
                                             "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial \u2014 without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available.",
@@ -371,20 +453,7 @@
                                           "positions": {
                                             "description": "Preferred disclosure positions in priority order. The first position a format supports should be used.",
                                             "items": {
-                                              "$schema": "http://json-schema.org/draft-07/schema#",
-                                              "description": "Where a required disclosure should appear within a creative. Used by creative briefs to specify disclosure placement and by formats to declare which positions they can render.",
-                                              "enum": [
-                                                "prominent",
-                                                "footer",
-                                                "audio",
-                                                "subtitle",
-                                                "overlay",
-                                                "end_card",
-                                                "pre_roll",
-                                                "companion"
-                                              ],
-                                              "title": "Disclosure Position",
-                                              "type": "string"
+                                              "$ref": "#/definitions/Shared2"
                                             },
                                             "minItems": 1,
                                             "type": "array",
@@ -475,11 +544,7 @@
                               "type": "array"
                             },
                             "ext": {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
-                              "additionalProperties": true,
-                              "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                              "title": "Extension Object",
-                              "type": "object"
+                              "$ref": "#/definitions/Shared0"
                             },
                             "human_oversight": {
                               "description": "Level of human involvement in the AI-assisted creation process. Independent of `disclosure.required` \u2014 the protocol does not derive disclosure obligations from oversight level. Some regulations include carve-outs for human-edited or human-directed AI output, but those carve-outs have factual prerequisites the schema cannot evaluate. Asserting `edited` or `directed` does not by itself justify `disclosure.required: false`.",
@@ -693,7 +758,7 @@
                     },
                     "languages": {
                       "items": {
-                        "type": "string"
+                        "$ref": "#/definitions/Shared3"
                       },
                       "type": "array"
                     },
@@ -713,7 +778,7 @@
                 "industries": {
                   "description": "Inline override for the brand's industries. Useful when the caller cannot modify the brand's canonical brand.json but needs to declare industries for governance (e.g., Annex III vertical detection). brand.json remains the canonical source; when omitted here, governance agents SHOULD resolve from brand.json.",
                   "items": {
-                    "type": "string"
+                    "$ref": "#/definitions/Shared3"
                   },
                   "type": "array"
                 }
@@ -852,91 +917,20 @@
     "disclosure_positions": {
       "description": "Filter to formats that support all of these disclosure positions. When a format has disclosure_capabilities, match against those positions. Otherwise fall back to supported_disclosure_positions. Use to find formats compatible with a brief's compliance requirements.",
       "items": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "description": "Where a required disclosure should appear within a creative. Used by creative briefs to specify disclosure placement and by formats to declare which positions they can render.",
-        "enum": [
-          "prominent",
-          "footer",
-          "audio",
-          "subtitle",
-          "overlay",
-          "end_card",
-          "pre_roll",
-          "companion"
-        ],
-        "title": "Disclosure Position",
-        "type": "string"
+        "$ref": "#/definitions/Shared2"
       },
       "minItems": 1,
       "type": "array",
       "uniqueItems": true
     },
     "ext": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "additionalProperties": true,
-      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-      "title": "Extension Object",
-      "type": "object"
+      "$ref": "#/definitions/Shared0"
     },
     "format_ids": {
       "deprecated": true,
       "description": "Deprecated in AdCP 3.2; removed in AdCP 4.0. Return only these specific named-format IDs (for example, from a 3.x get_products response). Use canonical-format discovery in 4.0.",
       "items": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "additionalProperties": true,
-        "dependencies": {
-          "height": [
-            "width"
-          ],
-          "pixel_ratio": [
-            "width",
-            "height"
-          ],
-          "width": [
-            "height"
-          ]
-        },
-        "deprecated": true,
-        "description": "**DEPRECATED in 3.2.** Legacy named-format reference retained for 3.x compatibility. This JSON object \u2014 never a plain string \u2014 identifies a format by its declaring agent and local slug, and may carry legacy logical dimensions, pixel ratio, or duration parameters. New products and manifests use canonical `format_options`, `format_kind`, and `format_option_ref`; creative-agent build routing uses `creative.supported_formats[].capability_id`.",
-        "properties": {
-          "agent_url": {
-            "description": "URL of the agent that defines this format (e.g., 'https://creative.adcontextprotocol.org' for standard formats, or 'https://publisher.com/.well-known/adcp/sales' for custom formats). Callers comparing two `format-id` values MUST canonicalize `agent_url` per the AdCP URL canonicalization rules before treating two formats as the same. See docs/reference/url-canonicalization.",
-            "format": "uri",
-            "type": "string"
-          },
-          "duration_ms": {
-            "description": "Duration in milliseconds for time-based formats (video, audio). When specified, creates a parameterized format ID. Omit to reference a template format without parameters.",
-            "minimum": 1,
-            "type": "number"
-          },
-          "height": {
-            "description": "Height in pixels for visual formats. When specified, width must also be specified. Both fields together create a parameterized format ID for dimension-specific variants.",
-            "minimum": 1,
-            "type": "integer"
-          },
-          "id": {
-            "description": "Format identifier within the agent's namespace (e.g., 'display_static', 'video_hosted', 'audio_standard'). When used alone, references a template format. When combined with dimension/duration fields, creates a parameterized format ID for a specific variant.",
-            "pattern": "^[a-zA-Z0-9_-]+$",
-            "type": "string"
-          },
-          "pixel_ratio": {
-            "description": "Required intrinsic-pixel density for a parameterized visual format, expressed as intrinsic pixels per logical pixel. Requires `width` and `height`. Example: `{id: \"display_image\", width: 300, height: 250, pixel_ratio: 2}` identifies a 300\u00d7250 logical render supplied by a 600\u00d7500 image. Omit for the backward-compatible 1x variant.",
-            "exclusiveMinimum": 0,
-            "type": "number"
-          },
-          "width": {
-            "description": "Width in pixels for visual formats. When specified, height must also be specified. Both fields together create a parameterized format ID for dimension-specific variants.",
-            "minimum": 1,
-            "type": "integer"
-          }
-        },
-        "required": [
-          "agent_url",
-          "id"
-        ],
-        "title": "Format Reference (Structured Object)",
-        "type": "object",
-        "x-entity": "creative_format"
+        "$ref": "#/definitions/Shared1"
       },
       "minItems": 1,
       "type": "array"
@@ -944,61 +938,7 @@
     "input_format_ids": {
       "description": "Filter to formats whose input_format_ids includes any of these format IDs. Returns formats that accept these creatives as input \u2014 inspect each result's output_format_ids to see what they can produce.",
       "items": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "additionalProperties": true,
-        "dependencies": {
-          "height": [
-            "width"
-          ],
-          "pixel_ratio": [
-            "width",
-            "height"
-          ],
-          "width": [
-            "height"
-          ]
-        },
-        "deprecated": true,
-        "description": "**DEPRECATED in 3.2.** Legacy named-format reference retained for 3.x compatibility. This JSON object \u2014 never a plain string \u2014 identifies a format by its declaring agent and local slug, and may carry legacy logical dimensions, pixel ratio, or duration parameters. New products and manifests use canonical `format_options`, `format_kind`, and `format_option_ref`; creative-agent build routing uses `creative.supported_formats[].capability_id`.",
-        "properties": {
-          "agent_url": {
-            "description": "URL of the agent that defines this format (e.g., 'https://creative.adcontextprotocol.org' for standard formats, or 'https://publisher.com/.well-known/adcp/sales' for custom formats). Callers comparing two `format-id` values MUST canonicalize `agent_url` per the AdCP URL canonicalization rules before treating two formats as the same. See docs/reference/url-canonicalization.",
-            "format": "uri",
-            "type": "string"
-          },
-          "duration_ms": {
-            "description": "Duration in milliseconds for time-based formats (video, audio). When specified, creates a parameterized format ID. Omit to reference a template format without parameters.",
-            "minimum": 1,
-            "type": "number"
-          },
-          "height": {
-            "description": "Height in pixels for visual formats. When specified, width must also be specified. Both fields together create a parameterized format ID for dimension-specific variants.",
-            "minimum": 1,
-            "type": "integer"
-          },
-          "id": {
-            "description": "Format identifier within the agent's namespace (e.g., 'display_static', 'video_hosted', 'audio_standard'). When used alone, references a template format. When combined with dimension/duration fields, creates a parameterized format ID for a specific variant.",
-            "pattern": "^[a-zA-Z0-9_-]+$",
-            "type": "string"
-          },
-          "pixel_ratio": {
-            "description": "Required intrinsic-pixel density for a parameterized visual format, expressed as intrinsic pixels per logical pixel. Requires `width` and `height`. Example: `{id: \"display_image\", width: 300, height: 250, pixel_ratio: 2}` identifies a 300\u00d7250 logical render supplied by a 600\u00d7500 image. Omit for the backward-compatible 1x variant.",
-            "exclusiveMinimum": 0,
-            "type": "number"
-          },
-          "width": {
-            "description": "Width in pixels for visual formats. When specified, height must also be specified. Both fields together create a parameterized format ID for dimension-specific variants.",
-            "minimum": 1,
-            "type": "integer"
-          }
-        },
-        "required": [
-          "agent_url",
-          "id"
-        ],
-        "title": "Format Reference (Structured Object)",
-        "type": "object",
-        "x-entity": "creative_format"
+        "$ref": "#/definitions/Shared1"
       },
       "minItems": 1,
       "type": "array"
@@ -1030,61 +970,7 @@
     "output_format_ids": {
       "description": "Filter to formats whose output_format_ids includes any of these format IDs. Returns formats that can produce these outputs \u2014 inspect each result's input_format_ids to see what inputs they accept.",
       "items": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "additionalProperties": true,
-        "dependencies": {
-          "height": [
-            "width"
-          ],
-          "pixel_ratio": [
-            "width",
-            "height"
-          ],
-          "width": [
-            "height"
-          ]
-        },
-        "deprecated": true,
-        "description": "**DEPRECATED in 3.2.** Legacy named-format reference retained for 3.x compatibility. This JSON object \u2014 never a plain string \u2014 identifies a format by its declaring agent and local slug, and may carry legacy logical dimensions, pixel ratio, or duration parameters. New products and manifests use canonical `format_options`, `format_kind`, and `format_option_ref`; creative-agent build routing uses `creative.supported_formats[].capability_id`.",
-        "properties": {
-          "agent_url": {
-            "description": "URL of the agent that defines this format (e.g., 'https://creative.adcontextprotocol.org' for standard formats, or 'https://publisher.com/.well-known/adcp/sales' for custom formats). Callers comparing two `format-id` values MUST canonicalize `agent_url` per the AdCP URL canonicalization rules before treating two formats as the same. See docs/reference/url-canonicalization.",
-            "format": "uri",
-            "type": "string"
-          },
-          "duration_ms": {
-            "description": "Duration in milliseconds for time-based formats (video, audio). When specified, creates a parameterized format ID. Omit to reference a template format without parameters.",
-            "minimum": 1,
-            "type": "number"
-          },
-          "height": {
-            "description": "Height in pixels for visual formats. When specified, width must also be specified. Both fields together create a parameterized format ID for dimension-specific variants.",
-            "minimum": 1,
-            "type": "integer"
-          },
-          "id": {
-            "description": "Format identifier within the agent's namespace (e.g., 'display_static', 'video_hosted', 'audio_standard'). When used alone, references a template format. When combined with dimension/duration fields, creates a parameterized format ID for a specific variant.",
-            "pattern": "^[a-zA-Z0-9_-]+$",
-            "type": "string"
-          },
-          "pixel_ratio": {
-            "description": "Required intrinsic-pixel density for a parameterized visual format, expressed as intrinsic pixels per logical pixel. Requires `width` and `height`. Example: `{id: \"display_image\", width: 300, height: 250, pixel_ratio: 2}` identifies a 300\u00d7250 logical render supplied by a 600\u00d7500 image. Omit for the backward-compatible 1x variant.",
-            "exclusiveMinimum": 0,
-            "type": "number"
-          },
-          "width": {
-            "description": "Width in pixels for visual formats. When specified, height must also be specified. Both fields together create a parameterized format ID for dimension-specific variants.",
-            "minimum": 1,
-            "type": "integer"
-          }
-        },
-        "required": [
-          "agent_url",
-          "id"
-        ],
-        "title": "Format Reference (Structured Object)",
-        "type": "object",
-        "x-entity": "creative_format"
+        "$ref": "#/definitions/Shared1"
       },
       "minItems": 1,
       "type": "array"

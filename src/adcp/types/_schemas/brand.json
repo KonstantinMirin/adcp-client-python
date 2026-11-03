@@ -1,6 +1,151 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "definitions": {
+    "Shared0": {
+      "type": "string"
+    },
+    "Shared1": {
+      "items": {
+        "$ref": "#/definitions/Shared0"
+      },
+      "type": "array"
+    },
+    "Shared10": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "Shared11": {
+      "required": [
+        "brands"
+      ]
+    },
+    "Shared12": {
+      "required": [
+        "brand_refs"
+      ]
+    },
+    "Shared13": {
+      "additionalProperties": true,
+      "type": "object"
+    },
+    "Shared14": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Types of rights usage that can be licensed through the brand protocol. Aligned with DDEX UseType direction for interoperability with music and media rights systems.",
+      "enum": [
+        "likeness",
+        "voice",
+        "name",
+        "endorsement",
+        "motion_capture",
+        "signature",
+        "catchphrase",
+        "sync",
+        "background_music",
+        "editorial",
+        "commercial",
+        "ai_generated_image"
+      ],
+      "enumDescriptions": {
+        "ai_generated_image": "License to produce AI-generated still imagery derived from the rights holder's IP (brand assets, character designs, talent likeness). Distinct from likeness/voice by output modality \u2014 a get_rights query filtered on ai_generated_image returns rights whose pricing options cover image generation, regardless of the underlying IP category.",
+        "background_music": "Use of music as background audio in advertising",
+        "catchphrase": "Use of a person's well-known phrases or sayings",
+        "commercial": "Use in commercial advertising and promotional contexts",
+        "editorial": "Use in editorial or informational contexts",
+        "endorsement": "Implied or explicit endorsement of a product or service by a person",
+        "likeness": "Visual representation of a person's appearance, including AI-generated imagery",
+        "motion_capture": "Use of a person's movement patterns for animation or video",
+        "name": "Use of a person's name in advertising or promotional materials",
+        "signature": "Use of a person's signature or autograph",
+        "sync": "Synchronization of music with visual media (ads, video)",
+        "voice": "Audio reproduction of a person's voice, including AI-generated speech"
+      },
+      "title": "Right Use",
+      "type": "string",
+      "x-status": "experimental"
+    },
+    "Shared15": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Categories of intellectual property rights that can be licensed through the brand protocol.",
+      "enum": [
+        "talent",
+        "character",
+        "brand_ip",
+        "music",
+        "stock_media"
+      ],
+      "enumDescriptions": {
+        "brand_ip": "Rights to brand intellectual property (logos, trademarks, trade dress)",
+        "character": "Rights to fictional characters for advertising or co-branding",
+        "music": "Rights to musical compositions or recordings (sync, background music)",
+        "stock_media": "Rights to stock photography, video, or audio collections",
+        "talent": "Rights to a real person's likeness, voice, name, or endorsement (athletes, celebrities, influencers)"
+      },
+      "title": "Right Type",
+      "type": "string",
+      "x-status": "experimental"
+    },
+    "Shared16": {
+      "pattern": "^[A-Z]{2}$",
+      "type": "string"
+    },
+    "Shared17": {
+      "pattern": "^#[0-9a-fA-F]{6}$",
+      "type": "string"
+    },
+    "Shared18": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "Shared2": {
+      "pattern": "^#[0-9A-Fa-f]{6}$",
+      "type": "string"
+    },
+    "Shared3": {
+      "required": [
+        "url"
+      ]
+    },
+    "Shared4": {
+      "required": [
+        "email"
+      ]
+    },
+    "Shared5": {
+      "description": "Additional style descriptors",
+      "items": {
+        "$ref": "#/definitions/Shared0"
+      },
+      "type": "array"
+    },
+    "Shared6": {
+      "description": "Human-readable rationale or source-language summary for the rule.",
+      "type": "string"
+    },
+    "Shared7": {
+      "description": "Optional structured signal indicating why this redirect was put in place. Consumers SHOULD use this to inform cache TTL decisions: 'acquisition' / 'divestiture' / 'rebrand' / 'consolidation' suggest the resolved target is in transition and consumers SHOULD shorten cache TTL until stable. 'regional' / 'legacy' suggest a stable redirect with no special cache handling needed. Free-text rationale belongs in 'note'.",
+      "enum": [
+        "acquisition",
+        "divestiture",
+        "rebrand",
+        "regional",
+        "legacy",
+        "consolidation",
+        "other"
+      ],
+      "type": "string"
+    },
+    "Shared8": {
+      "description": "Optional timestamp when this redirect became effective. Caches MUST treat any entry cached before this timestamp as stale and re-fetch through the redirect.",
+      "format": "date-time",
+      "type": "string"
+    },
+    "Shared9": {
+      "description": "Optional human-readable rationale for the redirect.",
+      "type": "string"
+    },
     "agents": {
       "description": "Agents declared by this brand or house. Multiple entries with the same type are permitted when they have distinct url values, such as one endpoint URL per tenant or property scope. Agent url values MUST be unique within this array; duplicate urls are invalid because signature verifiers resolve a signing key by matching one agent url to one agents[] entry and reject ambiguous matches.",
       "items": {
@@ -72,7 +217,7 @@
         "tags": {
           "description": "Tags for discovery (e.g., 'hero', 'lifestyle', 'product', 'holiday')",
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/Shared0"
           },
           "type": "array"
         },
@@ -129,7 +274,7 @@
             "roles": {
               "description": "Named color roles used in the library (e.g., base, shadow_1, highlight_1, stroke)",
               "items": {
-                "type": "string"
+                "$ref": "#/definitions/Shared0"
               },
               "type": "array"
             }
@@ -183,8 +328,7 @@
         "countries": {
           "description": "ISO 3166-1 alpha-2 country codes where this authorization applies. Omit for global authorization.",
           "items": {
-            "pattern": "^[A-Z]{2}$",
-            "type": "string"
+            "$ref": "#/definitions/Shared16"
           },
           "type": "array"
         },
@@ -229,7 +373,7 @@
     },
     "border_radius": {
       "additionalProperties": {
-        "type": "string"
+        "$ref": "#/definitions/Shared0"
       },
       "description": "Named border radius presets for UI components and layout elements. One of the most visible brand differentiators \u2014 Airbnb uses generous 20px, Stripe uses precise 4\u20138px, Spotify uses pill/999px.",
       "properties": {
@@ -276,14 +420,13 @@
           "description": "Visual avatar configuration",
           "properties": {
             "avatar_id": {
-              "type": "string"
+              "$ref": "#/definitions/Shared0"
             },
             "provider": {
-              "type": "string"
+              "$ref": "#/definitions/Shared0"
             },
             "settings": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/definitions/Shared13"
             }
           },
           "type": "object"
@@ -377,14 +520,14 @@
           "items": {
             "properties": {
               "context": {
-                "type": "string"
+                "$ref": "#/definitions/Shared0"
               },
               "required": {
                 "default": true,
                 "type": "boolean"
               },
               "text": {
-                "type": "string"
+                "$ref": "#/definitions/Shared0"
               }
             },
             "required": [
@@ -411,7 +554,7 @@
         "industries": {
           "description": "Brand industries (e.g., ['automotive'] or ['pharmaceutical', 'cpg'] for a consumer health company). Describes what the company does \u2014 not what regulatory regimes apply (use policy_categories for that).",
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/Shared0"
           },
           "minItems": 1,
           "type": "array"
@@ -531,14 +674,13 @@
           "description": "TTS voice synthesis configuration for AI-generated audio",
           "properties": {
             "provider": {
-              "type": "string"
+              "$ref": "#/definitions/Shared0"
             },
             "settings": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/definitions/Shared13"
             },
             "voice_id": {
-              "type": "string"
+              "$ref": "#/definitions/Shared0"
             }
           },
           "type": "object"
@@ -579,39 +721,7 @@
         "available_uses": {
           "description": "For rights agents: rights uses available for licensing",
           "items": {
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "description": "Types of rights usage that can be licensed through the brand protocol. Aligned with DDEX UseType direction for interoperability with music and media rights systems.",
-            "enum": [
-              "likeness",
-              "voice",
-              "name",
-              "endorsement",
-              "motion_capture",
-              "signature",
-              "catchphrase",
-              "sync",
-              "background_music",
-              "editorial",
-              "commercial",
-              "ai_generated_image"
-            ],
-            "enumDescriptions": {
-              "ai_generated_image": "License to produce AI-generated still imagery derived from the rights holder's IP (brand assets, character designs, talent likeness). Distinct from likeness/voice by output modality \u2014 a get_rights query filtered on ai_generated_image returns rights whose pricing options cover image generation, regardless of the underlying IP category.",
-              "background_music": "Use of music as background audio in advertising",
-              "catchphrase": "Use of a person's well-known phrases or sayings",
-              "commercial": "Use in commercial advertising and promotional contexts",
-              "editorial": "Use in editorial or informational contexts",
-              "endorsement": "Implied or explicit endorsement of a product or service by a person",
-              "likeness": "Visual representation of a person's appearance, including AI-generated imagery",
-              "motion_capture": "Use of a person's movement patterns for animation or video",
-              "name": "Use of a person's name in advertising or promotional materials",
-              "signature": "Use of a person's signature or autograph",
-              "sync": "Synchronization of music with visual media (ads, video)",
-              "voice": "Audio reproduction of a person's voice, including AI-generated speech"
-            },
-            "title": "Right Use",
-            "type": "string",
-            "x-status": "experimental"
+            "$ref": "#/definitions/Shared14"
           },
           "minItems": 1,
           "type": "array"
@@ -619,8 +729,7 @@
         "countries": {
           "description": "ISO 3166-1 alpha-2 country codes where this agent operates. Omit for global scope.",
           "items": {
-            "pattern": "^[A-Z]{2}$",
-            "type": "string"
+            "$ref": "#/definitions/Shared16"
           },
           "type": "array"
         },
@@ -644,25 +753,7 @@
         "right_types": {
           "description": "For rights agents: types of rights available",
           "items": {
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "description": "Categories of intellectual property rights that can be licensed through the brand protocol.",
-            "enum": [
-              "talent",
-              "character",
-              "brand_ip",
-              "music",
-              "stock_media"
-            ],
-            "enumDescriptions": {
-              "brand_ip": "Rights to brand intellectual property (logos, trademarks, trade dress)",
-              "character": "Rights to fictional characters for advertising or co-branding",
-              "music": "Rights to musical compositions or recordings (sync, background music)",
-              "stock_media": "Rights to stock photography, video, or audio collections",
-              "talent": "Rights to a real person's likeness, voice, name, or endorsement (athletes, celebrities, influencers)"
-            },
-            "title": "Right Type",
-            "type": "string",
-            "x-status": "experimental"
+            "$ref": "#/definitions/Shared15"
           },
           "minItems": 1,
           "type": "array"
@@ -723,7 +814,7 @@
         "secondary_shapes": {
           "description": "Secondary shapes in the brand vocabulary",
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/Shared0"
           },
           "type": "array"
         },
@@ -781,13 +872,12 @@
         "contexts": {
           "description": "Channels or creative contexts where this constraint applies, such as digital, print, social, or ctv_end_card.",
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/Shared0"
           },
           "type": "array"
         },
         "description": {
-          "description": "Human-readable rationale or source-language summary for the rule.",
-          "type": "string"
+          "$ref": "#/definitions/Shared6"
         },
         "forbidden_on": {
           "description": "Backgrounds, surfaces, or color roles where this color is forbidden.",
@@ -889,13 +979,11 @@
     "color_value": {
       "oneOf": [
         {
-          "pattern": "^#[0-9A-Fa-f]{6}$",
-          "type": "string"
+          "$ref": "#/definitions/Shared2"
         },
         {
           "items": {
-            "pattern": "^#[0-9A-Fa-f]{6}$",
-            "type": "string"
+            "$ref": "#/definitions/Shared2"
           },
           "minItems": 1,
           "type": "array"
@@ -963,7 +1051,7 @@
         "channels": {
           "description": "Channels or contexts where this colorway applies (e.g., 'online', 'print', 'pos', 'social', 'outdoor'). Omit for universal colorways.",
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/Shared0"
           },
           "type": "array"
         },
@@ -1100,14 +1188,10 @@
       "additionalProperties": false,
       "anyOf": [
         {
-          "required": [
-            "url"
-          ]
+          "$ref": "#/definitions/Shared3"
         },
         {
-          "required": [
-            "email"
-          ]
+          "$ref": "#/definitions/Shared4"
         }
       ],
       "description": "Contact point where a data subject can request human intervention, express their view, or contest an automated decision \u2014 satisfying GDPR Article 22(3) and EU AI Act Article 26(11) transparency obligations. This is a contact reference (URL, email, or both), not a machine-callable API. AdCP surfaces the pointer; the deployer runs the contestation workflow.",
@@ -1120,7 +1204,7 @@
         "languages": {
           "description": "BCP 47 language tags the contestation channel supports (e.g., ['en', 'de', 'fr']). At minimum SHOULD include a language spoken in every jurisdiction where the brand runs regulated-vertical campaigns.",
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/Shared0"
           },
           "type": "array"
         },
@@ -1171,7 +1255,7 @@
     },
     "elevation": {
       "additionalProperties": {
-        "type": "string"
+        "$ref": "#/definitions/Shared0"
       },
       "description": "Named shadow/elevation levels. Brands use elevation as identity \u2014 from Stripe's blue-tinted multi-layer shadows to Apple's single diffuse shadow. Values are CSS box-shadow syntax.",
       "properties": {
@@ -1392,11 +1476,7 @@
           "type": "string"
         },
         "tags": {
-          "description": "Additional style descriptors",
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
+          "$ref": "#/definitions/Shared5"
         }
       },
       "type": "object"
@@ -1564,16 +1644,13 @@
                   "description": "Override brand colors (hex strings).",
                   "properties": {
                     "accent": {
-                      "pattern": "^#[0-9a-fA-F]{6}$",
-                      "type": "string"
+                      "$ref": "#/definitions/Shared17"
                     },
                     "primary": {
-                      "pattern": "^#[0-9a-fA-F]{6}$",
-                      "type": "string"
+                      "$ref": "#/definitions/Shared17"
                     },
                     "secondary": {
-                      "pattern": "^#[0-9a-fA-F]{6}$",
-                      "type": "string"
+                      "$ref": "#/definitions/Shared17"
                     }
                   },
                   "type": "object"
@@ -1764,11 +1841,7 @@
                                     "minProperties": 1,
                                     "properties": {
                                       "ext": {
-                                        "$schema": "http://json-schema.org/draft-07/schema#",
-                                        "additionalProperties": true,
-                                        "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                                        "title": "Extension Object",
-                                        "type": "object"
+                                        "$ref": "#/definitions/Shared18"
                                       },
                                       "min_duration_ms": {
                                         "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial \u2014 without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available.",
@@ -1898,11 +1971,7 @@
                           "type": "array"
                         },
                         "ext": {
-                          "$schema": "http://json-schema.org/draft-07/schema#",
-                          "additionalProperties": true,
-                          "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                          "title": "Extension Object",
-                          "type": "object"
+                          "$ref": "#/definitions/Shared18"
                         },
                         "human_oversight": {
                           "description": "Level of human involvement in the AI-assisted creation process. Independent of `disclosure.required` \u2014 the protocol does not derive disclosure obligations from oversight level. Some regulations include carve-outs for human-edited or human-directed AI output, but those carve-outs have factual prerequisites the schema cannot evaluate. Asserting `edited` or `directed` does not by itself justify `disclosure.required: false`.",
@@ -2087,8 +2156,7 @@
             "countries": {
               "description": "Canonical set of ISO 3166-1 alpha-2 countries for this advertiser identity. Omit for a global/default identity. Array order is not meaningful; producers MUST sort codes lexicographically before computing keys or signatures. This qualifies account identity and is not delivery targeting.",
               "items": {
-                "pattern": "^[A-Z]{2}$",
-                "type": "string"
+                "$ref": "#/definitions/Shared16"
               },
               "minItems": 1,
               "type": "array",
@@ -2098,14 +2166,10 @@
               "additionalProperties": false,
               "anyOf": [
                 {
-                  "required": [
-                    "url"
-                  ]
+                  "$ref": "#/definitions/Shared3"
                 },
                 {
-                  "required": [
-                    "email"
-                  ]
+                  "$ref": "#/definitions/Shared4"
                 }
               ],
               "description": "Inline override for the brand's contestation contact point. Useful when the operator does not control brand.json but needs to discharge Art 22(3) for this plan. brand.json is canonical; when omitted, governance agents resolve brand \u2192 house \u2192 missing.",
@@ -2115,10 +2179,7 @@
                   "type": "string"
                 },
                 "languages": {
-                  "items": {
-                    "type": "string"
-                  },
-                  "type": "array"
+                  "$ref": "#/definitions/Shared1"
                 },
                 "url": {
                   "format": "uri",
@@ -2136,7 +2197,7 @@
             "industries": {
               "description": "Inline override for the brand's industries. Useful when the caller cannot modify the brand's canonical brand.json but needs to declare industries for governance (e.g., Annex III vertical detection). brand.json remains the canonical source; when omitted here, governance agents SHOULD resolve from brand.json.",
               "items": {
-                "type": "string"
+                "$ref": "#/definitions/Shared0"
               },
               "type": "array"
             }
@@ -2195,7 +2256,7 @@
       "description": "A legacy plain string or an ordered set of one-locale string maps. Producers MUST NOT repeat a locale after replacing '_' with '-' and applying the AdCP locale-tag canonicalization profile. Readers resolve the requested locale using the document default_language fallback contract and MUST NOT choose an arbitrary available translation.",
       "oneOf": [
         {
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         },
         {
           "items": {
@@ -2210,10 +2271,7 @@
       "description": "A legacy plain string list or an ordered set of one-locale maps whose values are complete string lists. Producers MUST NOT repeat a locale after replacing '_' with '-' and applying the AdCP locale-tag canonicalization profile.",
       "oneOf": [
         {
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
+          "$ref": "#/definitions/Shared1"
         },
         {
           "items": {
@@ -2227,7 +2285,7 @@
     "localized_string_list_entry": {
       "additionalProperties": {
         "items": {
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         },
         "minItems": 1,
         "type": "array"
@@ -2279,7 +2337,7 @@
         "tags": {
           "description": "Additional semantic tags for custom categorization beyond the standard orientation, background, and variant fields",
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/Shared0"
           },
           "type": "array"
         },
@@ -2436,13 +2494,12 @@
         "contexts": {
           "description": "Creative contexts where this rule applies.",
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/Shared0"
           },
           "type": "array"
         },
         "description": {
-          "description": "Human-readable rationale or source-language summary for the rule.",
-          "type": "string"
+          "$ref": "#/definitions/Shared6"
         },
         "forbidden_backgrounds": {
           "description": "Background color roles, values, or surfaces where this logo must not be placed.",
@@ -2454,7 +2511,7 @@
         "forbidden_contexts": {
           "description": "Contexts where this logo must not be used, such as photography_without_knockout.",
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/Shared0"
           },
           "type": "array"
         },
@@ -2465,7 +2522,7 @@
         "logo_tags": {
           "description": "Logo tags this rule applies to.",
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/Shared0"
           },
           "minItems": 1,
           "type": "array"
@@ -2532,7 +2589,7 @@
         "contexts": {
           "description": "Creative contexts where this lockup rule applies.",
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/Shared0"
           },
           "type": "array"
         },
@@ -2649,7 +2706,7 @@
         "tags": {
           "description": "Additional motion style descriptors",
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/Shared0"
           },
           "type": "array"
         },
@@ -2771,7 +2828,7 @@
                 "mood": {
                   "description": "Mood descriptors (e.g., ['confident', 'relaxed'])",
                   "items": {
-                    "type": "string"
+                    "$ref": "#/definitions/Shared0"
                   },
                   "type": "array"
                 }
@@ -2796,11 +2853,7 @@
           "type": "object"
         },
         "tags": {
-          "description": "Additional style descriptors",
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
+          "$ref": "#/definitions/Shared5"
         }
       },
       "type": "object"
@@ -2852,7 +2905,7 @@
             "supported_payment_providers": {
               "description": "Payment providers supported by this checkout endpoint",
               "items": {
-                "type": "string"
+                "$ref": "#/definitions/Shared0"
               },
               "type": "array"
             }
@@ -2866,7 +2919,7 @@
         "categories": {
           "description": "Product categories available in the catalog",
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/Shared0"
           },
           "type": "array"
         },
@@ -3009,39 +3062,7 @@
         "available_uses": {
           "description": "Rights uses available for licensing through this agent",
           "items": {
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "description": "Types of rights usage that can be licensed through the brand protocol. Aligned with DDEX UseType direction for interoperability with music and media rights systems.",
-            "enum": [
-              "likeness",
-              "voice",
-              "name",
-              "endorsement",
-              "motion_capture",
-              "signature",
-              "catchphrase",
-              "sync",
-              "background_music",
-              "editorial",
-              "commercial",
-              "ai_generated_image"
-            ],
-            "enumDescriptions": {
-              "ai_generated_image": "License to produce AI-generated still imagery derived from the rights holder's IP (brand assets, character designs, talent likeness). Distinct from likeness/voice by output modality \u2014 a get_rights query filtered on ai_generated_image returns rights whose pricing options cover image generation, regardless of the underlying IP category.",
-              "background_music": "Use of music as background audio in advertising",
-              "catchphrase": "Use of a person's well-known phrases or sayings",
-              "commercial": "Use in commercial advertising and promotional contexts",
-              "editorial": "Use in editorial or informational contexts",
-              "endorsement": "Implied or explicit endorsement of a product or service by a person",
-              "likeness": "Visual representation of a person's appearance, including AI-generated imagery",
-              "motion_capture": "Use of a person's movement patterns for animation or video",
-              "name": "Use of a person's name in advertising or promotional materials",
-              "signature": "Use of a person's signature or autograph",
-              "sync": "Synchronization of music with visual media (ads, video)",
-              "voice": "Audio reproduction of a person's voice, including AI-generated speech"
-            },
-            "title": "Right Use",
-            "type": "string",
-            "x-status": "experimental"
+            "$ref": "#/definitions/Shared14"
           },
           "minItems": 1,
           "type": "array"
@@ -3049,8 +3070,7 @@
         "countries": {
           "description": "Countries where rights are available (ISO 3166-1 alpha-2)",
           "items": {
-            "pattern": "^[A-Z]{2}$",
-            "type": "string"
+            "$ref": "#/definitions/Shared16"
           },
           "type": "array"
         },
@@ -3062,25 +3082,7 @@
         "right_types": {
           "description": "Types of rights available",
           "items": {
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "description": "Categories of intellectual property rights that can be licensed through the brand protocol.",
-            "enum": [
-              "talent",
-              "character",
-              "brand_ip",
-              "music",
-              "stock_media"
-            ],
-            "enumDescriptions": {
-              "brand_ip": "Rights to brand intellectual property (logos, trademarks, trade dress)",
-              "character": "Rights to fictional characters for advertising or co-branding",
-              "music": "Rights to musical compositions or recordings (sync, background music)",
-              "stock_media": "Rights to stock photography, video, or audio collections",
-              "talent": "Rights to a real person's likeness, voice, name, or endorsement (athletes, celebrities, influencers)"
-            },
-            "title": "Right Type",
-            "type": "string",
-            "x-status": "experimental"
+            "$ref": "#/definitions/Shared15"
           },
           "minItems": 1,
           "type": "array"
@@ -3105,7 +3107,7 @@
       "properties": {
         "scale": {
           "additionalProperties": {
-            "type": "string"
+            "$ref": "#/definitions/Shared0"
           },
           "description": "Named spacing scale built from the base unit",
           "properties": {
@@ -3319,7 +3321,7 @@
         "restrictions": {
           "description": "Visual prohibitions and guardrails (e.g., 'Never use black backgrounds', 'Do not crop the logo', 'No stock photography of people on phones')",
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/Shared0"
           },
           "type": "array"
         },
@@ -4027,7 +4029,7 @@
       "description": "Redirects to a hosted brand.json file at another URL",
       "properties": {
         "$schema": {
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         },
         "authoritative_location": {
           "description": "HTTPS URL of the authoritative brand.json file",
@@ -4036,30 +4038,16 @@
           "type": "string"
         },
         "last_updated": {
-          "format": "date-time",
-          "type": "string"
+          "$ref": "#/definitions/Shared10"
         },
         "note": {
-          "description": "Optional human-readable rationale for the redirect.",
-          "type": "string"
+          "$ref": "#/definitions/Shared9"
         },
         "redirect_effective_at": {
-          "description": "Optional timestamp when this redirect became effective. Caches MUST treat any entry cached before this timestamp as stale and re-fetch through the redirect.",
-          "format": "date-time",
-          "type": "string"
+          "$ref": "#/definitions/Shared8"
         },
         "redirect_reason": {
-          "description": "Optional structured signal indicating why this redirect was put in place. Consumers SHOULD use this to inform cache TTL decisions: 'acquisition' / 'divestiture' / 'rebrand' / 'consolidation' suggest the resolved target is in transition and consumers SHOULD shorten cache TTL until stable. 'regional' / 'legacy' suggest a stable redirect with no special cache handling needed. Free-text rationale belongs in 'note'.",
-          "enum": [
-            "acquisition",
-            "divestiture",
-            "rebrand",
-            "regional",
-            "legacy",
-            "consolidation",
-            "other"
-          ],
-          "type": "string"
+          "$ref": "#/definitions/Shared7"
         }
       },
       "required": [
@@ -4073,37 +4061,23 @@
       "description": "Redirects to the house domain that contains the full brand portfolio",
       "properties": {
         "$schema": {
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         },
         "house": {
           "$ref": "#/definitions/domain",
           "description": "House domain to fetch brand portfolio from"
         },
         "last_updated": {
-          "format": "date-time",
-          "type": "string"
+          "$ref": "#/definitions/Shared10"
         },
         "note": {
-          "description": "Optional human-readable rationale for the redirect.",
-          "type": "string"
+          "$ref": "#/definitions/Shared9"
         },
         "redirect_effective_at": {
-          "description": "Optional timestamp when this redirect became effective. Caches MUST treat any entry cached before this timestamp as stale and re-fetch through the redirect.",
-          "format": "date-time",
-          "type": "string"
+          "$ref": "#/definitions/Shared8"
         },
         "redirect_reason": {
-          "description": "Optional structured signal indicating why this redirect was put in place. Consumers SHOULD use this to inform cache TTL decisions: 'acquisition' / 'divestiture' / 'rebrand' / 'consolidation' suggest the resolved target is in transition and consumers SHOULD shorten cache TTL until stable. 'regional' / 'legacy' suggest a stable redirect with no special cache handling needed. Free-text rationale belongs in 'note'.",
-          "enum": [
-            "acquisition",
-            "divestiture",
-            "rebrand",
-            "regional",
-            "legacy",
-            "consolidation",
-            "other"
-          ],
-          "type": "string"
+          "$ref": "#/definitions/Shared7"
         },
         "region": {
           "description": "ISO 3166-1 alpha-2 country code if this is a regional domain",
@@ -4134,7 +4108,7 @@
       "description": "Brand represented by agents that provide brand info via MCP",
       "properties": {
         "$schema": {
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         },
         "agents": {
           "$ref": "#/definitions/agents"
@@ -4150,11 +4124,10 @@
           "$ref": "#/definitions/data_subject_contestation"
         },
         "last_updated": {
-          "format": "date-time",
-          "type": "string"
+          "$ref": "#/definitions/Shared10"
         },
         "version": {
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         }
       },
       "title": "Brand Agent",
@@ -4164,20 +4137,16 @@
       "additionalProperties": false,
       "anyOf": [
         {
-          "required": [
-            "brands"
-          ]
+          "$ref": "#/definitions/Shared11"
         },
         {
-          "required": [
-            "brand_refs"
-          ]
+          "$ref": "#/definitions/Shared12"
         }
       ],
       "description": "Full house/brand portfolio with hierarchy, creative assets, and properties. May carry inline brands (parent-owned, brands[]) and/or pointer brands (child-owned canonical documents, brand_refs[]). At least one of brands[] or brand_refs[] is required. A brand_id MUST NOT appear in both. See docs/brand-protocol/brand-json.mdx",
       "properties": {
         "$schema": {
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         },
         "authorized_operators": {
           "description": "Entities authorized to represent brands from this house. Third parties (sellers, platforms) can verify an operator's authorization by checking this list. Operators are identified by domain.",
@@ -4212,8 +4181,7 @@
           "$ref": "#/definitions/house"
         },
         "last_updated": {
-          "format": "date-time",
-          "type": "string"
+          "$ref": "#/definitions/Shared10"
         },
         "trademarks": {
           "description": "House-level (corporate) registered trademarks. Brand-level marks live on individual brand entries; resolution is union.",
@@ -4223,7 +4191,7 @@
           "type": "array"
         },
         "version": {
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         }
       },
       "required": [
@@ -4243,14 +4211,10 @@
                 ]
               },
               {
-                "required": [
-                  "brands"
-                ]
+                "$ref": "#/definitions/Shared11"
               },
               {
-                "required": [
-                  "brand_refs"
-                ]
+                "$ref": "#/definitions/Shared12"
               },
               {
                 "required": [
@@ -4286,7 +4250,7 @@
           },
           "properties": {
             "$schema": {
-              "type": "string"
+              "$ref": "#/definitions/Shared0"
             },
             "default_language": {
               "$ref": "#/definitions/default_language"
@@ -4296,11 +4260,10 @@
               "description": "Optional pointer to the corporate house this brand belongs to. The named house's brand_refs[] MUST reciprocate for mutual-assertion trust. Single-hop only \u2014 a brand cannot itself declare brand_refs[]. Omit for standalone brands (no house)."
             },
             "last_updated": {
-              "format": "date-time",
-              "type": "string"
+              "$ref": "#/definitions/Shared10"
             },
             "version": {
-              "type": "string"
+              "$ref": "#/definitions/Shared0"
             }
           },
           "type": "object"

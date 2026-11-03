@@ -1,6 +1,25 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
+  "definitions": {
+    "Shared0": {
+      "required": [
+        "supported_verification_methods"
+      ]
+    },
+    "Shared1": {
+      "properties": {
+        "supported_bases": {
+          "contains": {
+            "const": "verified"
+          }
+        }
+      },
+      "required": [
+        "supported_bases"
+      ]
+    }
+  },
   "description": "Product-scoped demographic execution capability. This declaration is product-scoped because one seller may route products through different ad servers. Buyers compare a requested canonical predicate with these capabilities before purchase; sellers MUST reject predicates they cannot compile exactly. A buyer that chooses a supported alternative submits that predicate as a new request.",
   "properties": {
     "age": {
@@ -49,40 +68,18 @@
         },
         {
           "if": {
-            "required": [
-              "supported_verification_methods"
-            ]
+            "$ref": "#/definitions/Shared0"
           },
           "then": {
-            "properties": {
-              "supported_bases": {
-                "contains": {
-                  "const": "verified"
-                }
-              }
-            },
-            "required": [
-              "supported_bases"
-            ]
+            "$ref": "#/definitions/Shared1"
           }
         },
         {
           "if": {
-            "properties": {
-              "supported_bases": {
-                "contains": {
-                  "const": "verified"
-                }
-              }
-            },
-            "required": [
-              "supported_bases"
-            ]
+            "$ref": "#/definitions/Shared1"
           },
           "then": {
-            "required": [
-              "supported_verification_methods"
-            ]
+            "$ref": "#/definitions/Shared0"
           }
         }
       ],

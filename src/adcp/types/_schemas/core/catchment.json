@@ -1,6 +1,23 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
+  "definitions": {
+    "Shared0": {
+      "required": [
+        "radius"
+      ]
+    },
+    "Shared1": {
+      "required": [
+        "geometry"
+      ]
+    },
+    "Shared2": {
+      "required": [
+        "travel_time"
+      ]
+    }
+  },
   "description": "A catchment area definition for a store or location. Defines the geographic area from which a store draws customers. Three methods are supported: isochrone inputs (travel time + transport mode, platform resolves the shape), simple radius (distance from location), or pre-computed GeoJSON geometry (buyer provides the exact boundary). Provide exactly one method per catchment.",
   "examples": [
     {
@@ -78,14 +95,10 @@
       "not": {
         "anyOf": [
           {
-            "required": [
-              "radius"
-            ]
+            "$ref": "#/definitions/Shared0"
           },
           {
-            "required": [
-              "geometry"
-            ]
+            "$ref": "#/definitions/Shared1"
           }
         ]
       },
@@ -98,14 +111,10 @@
       "not": {
         "anyOf": [
           {
-            "required": [
-              "travel_time"
-            ]
+            "$ref": "#/definitions/Shared2"
           },
           {
-            "required": [
-              "geometry"
-            ]
+            "$ref": "#/definitions/Shared1"
           }
         ]
       },
@@ -117,14 +126,10 @@
       "not": {
         "anyOf": [
           {
-            "required": [
-              "travel_time"
-            ]
+            "$ref": "#/definitions/Shared2"
           },
           {
-            "required": [
-              "radius"
-            ]
+            "$ref": "#/definitions/Shared0"
           }
         ]
       },

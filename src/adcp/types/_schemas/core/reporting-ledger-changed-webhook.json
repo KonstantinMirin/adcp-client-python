@@ -60,6 +60,15 @@
       }
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "maxLength": 255,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]{1,255}$",
+      "type": "string",
+      "x-entity": "reporting_revision"
+    }
+  },
   "description": "Optional account-anchored invalidation fired for every newly committed reporting revision or post-official adjustment, whether or not health changes. Valid in every reporting tier. Receivers repair from their own durable changes_after checkpoint through get_reporting_status; this event is never the source of truth.",
   "properties": {
     "account_id": {
@@ -68,11 +77,7 @@
       "x-entity": "account"
     },
     "adjusts_reporting_revision_id": {
-      "maxLength": 255,
-      "minLength": 1,
-      "pattern": "^[A-Za-z0-9_.:-]{1,255}$",
-      "type": "string",
-      "x-entity": "reporting_revision"
+      "$ref": "#/definitions/Shared0"
     },
     "change_kind": {
       "enum": [
@@ -132,11 +137,7 @@
       "x-entity": "reporting_adjustment"
     },
     "reporting_revision_id": {
-      "maxLength": 255,
-      "minLength": 1,
-      "pattern": "^[A-Za-z0-9_.:-]{1,255}$",
-      "type": "string",
-      "x-entity": "reporting_revision"
+      "$ref": "#/definitions/Shared0"
     },
     "subscriber_id": {
       "maxLength": 64,
@@ -145,11 +146,7 @@
       "type": "string"
     },
     "supersedes_reporting_revision_id": {
-      "maxLength": 255,
-      "minLength": 1,
-      "pattern": "^[A-Za-z0-9_.:-]{1,255}$",
-      "type": "string",
-      "x-entity": "reporting_revision"
+      "$ref": "#/definitions/Shared0"
     }
   },
   "required": [

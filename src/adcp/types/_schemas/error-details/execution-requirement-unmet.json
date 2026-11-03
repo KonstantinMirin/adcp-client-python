@@ -1,6 +1,15 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
+  "definitions": {
+    "Shared0": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    }
+  },
   "description": "Experimental (`media_buy.execution_requirements`). Details shape a seller that declares `execution_requirements` MUST use for a `VALIDATION_ERROR` returned because a buyer-supplied package does not satisfy an `event_source` or `catalog` entry in its product's `execution_requirements`. Unmet `downstream_connection` requirements use `AUTHORIZATION_REQUIRED` with `error-details/authorization-required.json` instead. `error.field` names the first unmet binding; `unmet_requirements[]` lists every unmet requirement found. A seller that also emits `issues[]` SHOULD emit one entry per unmet requirement, in the same order.",
   "examples": [
     {
@@ -142,11 +151,7 @@
                     "uniqueItems": true
                   },
                   "ext": {
-                    "$schema": "http://json-schema.org/draft-07/schema#",
-                    "additionalProperties": true,
-                    "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                    "title": "Extension Object",
-                    "type": "object"
+                    "$ref": "#/definitions/Shared0"
                   },
                   "kind": {
                     "const": "event_source",
@@ -191,11 +196,7 @@
                     "uniqueItems": true
                   },
                   "ext": {
-                    "$schema": "http://json-schema.org/draft-07/schema#",
-                    "additionalProperties": true,
-                    "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                    "title": "Extension Object",
-                    "type": "object"
+                    "$ref": "#/definitions/Shared0"
                   },
                   "kind": {
                     "const": "catalog",
@@ -426,11 +427,7 @@
                     "description": "The required connection. Account-independent: `status` is omitted or `unknown`; `resource_ref`, `connection_id`, and `expires_at` MUST be omitted; `required_for`, when present, includes `create_media_buy`."
                   },
                   "ext": {
-                    "$schema": "http://json-schema.org/draft-07/schema#",
-                    "additionalProperties": true,
-                    "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                    "title": "Extension Object",
-                    "type": "object"
+                    "$ref": "#/definitions/Shared0"
                   },
                   "kind": {
                     "const": "downstream_connection",

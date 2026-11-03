@@ -174,138 +174,37 @@
           "description": "Transport-envelope error signal for fatal task failures. Per the two-layer model in `error-handling.mdx#envelope-vs-payload-errors-the-two-layer-model`, a fatal task failure SHOULD populate both this envelope-level field AND the payload's `errors[]` array \u2014 the envelope carries a typed, extractable error so MCP/A2A clients can dispatch without re-parsing the payload, while the payload's structured `errors[]` remains the canonical normative shape. Non-fatal warnings populate ONLY `payload.errors[]` with `severity: warning` \u2014 the envelope MUST NOT carry `adcp_error` for non-failures.",
           "properties": {
             "buyer_reason": {
-              "additionalProperties": true,
-              "description": "Optional buyer-actionable classification of the failure. Use this when the enclosing error code or message is too coarse or contains producer-internal context that must not cross the buyer trust boundary. `code` reuses the comprehensive standard vocabulary and recovery classifications published in `enums/error-code.json`, including policy, governance, account, commercial, inventory, and creative failures. The wire field remains open for forward compatibility. `message` MUST be safe to show to the buyer and MUST NOT contain vendor identifiers, ad-server type names, internal object names, internal IDs, stack traces, or other producer-private implementation details. When present, the enclosing `error.recovery` MUST classify the buyer-actionable reason. If both the enclosing code and buyer reason are registered, their standard recovery classifications MUST agree with each other and with `error.recovery`; sellers MUST choose the closest compatible enclosing code rather than retain a conflicting upstream transport wrapper. One buyer_reason classifies one error object. If a rejection contains independently actionable failures from different classes, sellers MUST emit separate error objects or omit buyer_reason rather than select a misleading single class.",
-              "properties": {
-                "code": {
-                  "description": "Machine-readable buyer-actionable reason from the standard `enums/error-code.json` vocabulary or a producer-specific extension. Extensions MUST follow the standard `X_{VENDOR}_{CODE}` naming rule. The wire field is open for forward compatibility. Receivers MUST accept unknown values and use the enclosing `error.recovery` plus this object's `message` as the fallback.",
-                  "maxLength": 64,
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "message": {
-                  "description": "Buyer-safe explanation of the actionable failure. MUST NOT expose vendor identifiers, ad-server type names, internal object names, internal IDs, stack traces, or other producer-private implementation details.",
-                  "minLength": 1,
-                  "type": "string"
-                }
-              },
-              "required": [
-                "code",
-                "message"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared3"
             },
             "code": {
-              "description": "Error code for programmatic handling. The error-code vocabulary is open: `error.code` is wire-typed `string` (not a closed enum), the standard codes published in `enums/error-code.json` are documentary, and senders MAY emit codes outside that set (platform-specific codes, or codes introduced in a later AdCP version). Receivers MUST decode unknown codes \u2014 treat the response as well-formed, read `error.recovery` for the recovery classification, and fall back to `transient` when `recovery` is absent. See `error-handling.mdx#forward-compatible-decoding-normative` for the full forward-compat contract \u2014 this rule is what lets future maintenance lines ship new codes additively.",
-              "maxLength": 64,
-              "minLength": 1,
-              "type": "string"
+              "$ref": "#/definitions/Shared1"
             },
             "details": {
-              "additionalProperties": true,
-              "description": "Additional task-specific error details. Sellers MAY mirror `issues[]` here as `details.issues` for backward compatibility with pre-3.1 consumers reading from `details`; new consumers SHOULD prefer the top-level `issues` field.\n\n**Canonical rejection-set shape (3.1+).** When the error reports a rejected value against a closed set of accepted values (e.g., enum mismatch, unsupported pricing option, invalid signal id), sellers SHOULD use the canonical key `accepted_values: <array>` under `details` rather than seller-specific variants observed in the wild (`available`, `allowed`, `accepted_values` at the error root, etc.). The canonical shape:\n\n```json\n{\n  \"code\": \"INVALID_PRICING_OPTION\",\n  \"message\": \"Pricing option not found: po_prism_abandoner_cpm\",\n  \"field\": \"pricing_option_id\",\n  \"details\": {\n    \"rejected_value\": \"po_prism_abandoner_cpm\",\n    \"accepted_values\": [\"po_prism_cart_cpm\", \"po_prism_view_cpm\"]\n  }\n}\n```\n\n- `rejected_value` (optional): the offending value the buyer supplied, echoed for buyer-side diagnostic clarity (especially when the offending field is nested or transformed before validation).\n- `accepted_values` (optional): the closed set the seller would have accepted at this field on this call. Sellers MUST NOT enumerate the full ecosystem-wide accepted set if it differs from what's accepted for *this caller in this context* (account, brand, scope) \u2014 leaking ecosystem-wide accepted sets to a per-caller rejection turns the error into an enumeration oracle.\n\nThis is **SHOULD-level guidance**, not MUST: `details` remains `additionalProperties: true` and pre-3.1 sellers using `available` / `allowed` / `accepted_values` at the error root remain conformant. The canonical shape lets buyer-side diagnostic tooling (SDK runner hints, dashboards, error classifiers) reliably surface the accepted-set without per-seller pattern matching. SDKs SHOULD accept any of the legacy variants and normalize on read; the canonical shape is what new sellers and 3.1+ adopters should emit going forward.",
-              "type": "object"
+              "$ref": "#/definitions/Shared8"
             },
             "field": {
-              "description": "Field path associated with the error in JSONPath-lite format (e.g., 'packages[0].targeting'). When `issues[]` is also present, sellers MUST set this to `issues[0].pointer` translated from RFC 6901 to JSONPath-lite (e.g., '/packages/0/targeting' \u2192 'packages[0].targeting') so pre-3.1 consumers reading `field` only get deterministic behavior. Will be deprecated in a future major version in favor of `issues[].pointer`.",
-              "type": "string"
+              "$ref": "#/definitions/Shared4"
             },
             "issues": {
-              "description": "Structured list of validation failures. Primary use is `VALIDATION_ERROR`, where multi-field rejections are common and `field` (singular) cannot carry the full pointer map. MAY appear on other error codes that reject multiple fields at once. When `issues` is present, sellers MUST also populate `field` from `issues[0]` for backward compatibility with pre-3.1 consumers that read `field` only \u2014 translating the RFC 6901 `pointer` format to the JSONPath-lite format `field` uses (e.g., `/packages/0/targeting` \u2192 `packages[0].targeting`). MUST (not SHOULD) so consumers reading `field` get deterministic behavior across sellers \u2014 the cost is one line of dual-write per seller; the cost of SHOULD is a long tail of seller-A-vs-seller-B inconsistency. Future major versions will deprecate `field` in favor of `issues[].pointer`.",
-              "items": {
-                "additionalProperties": true,
-                "properties": {
-                  "discriminator": {
-                    "description": "Optional. Const-discriminator property/value pair(s) identifying the variant the validator selected from values present in the payload. Sellers MUST populate only when (a) the rejecting schema is a const-discriminated `oneOf` / `anyOf` and (b) the discriminator property is present in the payload \u2014 emission on partial-match inference would fingerprint the seller's validator implementation. MUST omit when zero variants survive. Compound discriminators (e.g. `(type, value_type)`) produce multiple entries ordered by declaration in the rejecting schema's `properties` block. Same private-extensions / version-skew carve-out as `schema_id`. See error-handling.mdx.",
-                    "items": {
-                      "additionalProperties": false,
-                      "properties": {
-                        "property_name": {
-                          "description": "Discriminator property name (e.g., `type`, `value_type`). Aligns with OpenAPI 3.x `discriminator.propertyName`.",
-                          "type": "string"
-                        },
-                        "value": {
-                          "description": "Value the caller sent at `property_name`. Typically a string for const-discriminated unions; numeric/boolean/null permitted. Object and array values are forbidden \u2014 const discriminators are scalars, and emitting a structured value would conflate 'caller sent a complex shape' with 'validator inferred from a structural match'.",
-                          "type": [
-                            "string",
-                            "number",
-                            "boolean",
-                            "null"
-                          ]
-                        }
-                      },
-                      "required": [
-                        "property_name",
-                        "value"
-                      ],
-                      "type": "object"
-                    },
-                    "type": "array"
-                  },
-                  "keyword": {
-                    "description": "Schema keyword that rejected the payload, drawn from the JSON Schema vocabulary (e.g., 'required', 'type', 'format', 'enum', 'pattern', 'minimum', 'maxLength'). Matches the keyword names emitted by JSON Schema validators (Ajv, jsonschema, etc.) so agents can pattern-match on rejection class without parsing message text. Implementers SHOULD use the validator's native keyword name; do not invent custom values here.",
-                    "type": "string"
-                  },
-                  "message": {
-                    "description": "Human-readable description of why this specific field was rejected.",
-                    "type": "string"
-                  },
-                  "pointer": {
-                    "description": "RFC 6901 JSON Pointer to the offending field in the request payload (e.g., '/packages/0/targeting/geo_countries/2'). Format chosen to match Ajv's native validation output (`instancePath`); standardized and unambiguous on keys containing `/` or `~`. NOTE: this differs from the legacy top-level `field` which uses JSONPath-lite (`packages[0].targeting.geo_countries[2]`). When sellers populate `field` from `issues[0].pointer` for backward compatibility (see `field` description), they MUST translate the format \u2014 `/packages/0/x` \u2192 `packages[0].x`. Future major versions will deprecate `field` in favor of `issues[].pointer`.",
-                    "type": "string"
-                  },
-                  "schemaPath": {
-                    "description": "Optional. JSON Schema tree path of the rejecting keyword (e.g. '#/properties/packages/items/oneOf/1'). 3.1+ consumers SHOULD prefer `schema_id`; `schemaPath` is retained for 3.0.x compatibility (renamed to `schema_path` in a future major). See error-handling.mdx for the validator-internals production-emit rules.",
-                    "type": "string"
-                  },
-                  "schema_id": {
-                    "description": "Optional. `$id` of the rejecting (sub-)schema (e.g. `/schemas/3.1.0/core/activation-key.json`). MUST resolve to a `$id` published in the spec at the version the seller advertises via `get_adcp_capabilities` \u2014 either a deep sub-schema (the typical case) or the response-root `$id` (the bundled-tree fallback for tools served from bundles built before #3868). Sellers MUST NOT emit when the rejection occurred against a private extension, server-only sub-schema, or pre-release element \u2014 the public-spec replay rationale only holds when the rejecting element is reachable from the public bundle. Sellers populating `schemaPath` SHOULD also populate `schema_id` when they have it so 3.1+ readers don't get strictly less than 3.0.x readers. See error-handling.mdx for resolution guidance and the bundled-tree caveat.",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "pointer",
-                  "message",
-                  "keyword"
-                ],
-                "type": "object"
-              },
-              "type": "array"
+              "$ref": "#/definitions/Shared7"
             },
             "message": {
-              "description": "Human-readable error message",
-              "type": "string"
+              "$ref": "#/definitions/Shared2"
             },
             "recovery": {
-              "description": "Agent recovery classification. transient: retry after delay (rate limit, service unavailable, timeout). correctable: fix the request and resend (invalid field, budget too low, creative rejected). terminal: requires human action (account suspended, payment required, account not found). AdCP 3.2 producers MUST populate `recovery` on every error; 3.1 producers SHOULD populate it. The shared 3.x schema intentionally does not add `recovery` to `required` so retained and live errors from earlier 3.x producers remain decodable. When `buyer_reason` is present, `recovery` is required and MUST classify that buyer-actionable reason. If the enclosing code and buyer reason are both registered, their standard recovery classifications MUST agree with each other and with this field. A receiver that does not recognize `error.code` (a newer code, or a platform-specific code) MUST still be able to classify the error from `recovery`. When a legacy error omits `recovery`, receivers use the registered classification for a known code and fall back to `transient` for an unknown code, subject to the bounded retry budget. The `enumMetadata.recovery` block in `enums/error-code.json` is the documentary mirror for known top-level and buyer-reason codes; `error.recovery` on the wire is authoritative when present.",
-              "enum": [
-                "transient",
-                "correctable",
-                "terminal"
-              ],
-              "type": "string"
+              "$ref": "#/definitions/Shared9"
             },
             "retry_after": {
-              "description": "Seconds to wait before retrying the operation. AdCP 3.2 producers MUST emit an integer from 1 through 3600. The 3.x schema continues to accept finite fractional values for backward compatibility with earlier producers; consumers receiving one MUST round up to the next whole second before clamping so the retry is never scheduled earlier than intended. Non-finite values are treated as absent.",
-              "maximum": 3600,
-              "minimum": 1,
-              "type": "number"
+              "$ref": "#/definitions/Shared6"
             },
             "sdk_id": {
-              "description": "Optional identifier for the SDK that augmented this error entry. Format: `<sdk_package_name>@<version>` (e.g., `@adcontextprotocol/adcp@7.3.0`, `adcontextprotocol-adcp-python@1.2.0`). MUST be set when `source: \"sdk\"`; MUST be absent when `source: \"producer\"` or absent. Lets downstream consumers identify which intermediate processor inserted the entry, useful for debugging cross-SDK divergence (e.g., one SDK detects a projection failure that another SDK's registry version doesn't).",
-              "type": "string"
+              "$ref": "#/definitions/Shared11"
             },
             "source": {
-              "description": "Who emitted this error entry. `producer` (default when absent): emitted by the response's authoring agent (the seller for `get_products`, the creative agent for `build_creative`, etc.). `sdk`: augmented by a consuming SDK that detected a non-fatal advisory condition on consumption (e.g., `FORMAT_PROJECTION_FAILED` when the buyer SDK couldn't project a v1 format to a canonical, or `FORMAT_DECLARATION_DIVERGENT` when the SDK detected a producer bug on read). SDK-augmented entries SHOULD also set `sdk_id` so downstream consumers can identify which intermediate processor inserted the entry.\n\n**Multi-hop propagation (normative).** AdCP is a federated agent network \u2014 responses commonly traverse multiple SDKs (e.g., sales agent \u2192 interchange \u2192 DSP \u2192 buyer). When an SDK augments `errors[]` with a consumption-detected entry, the augmented response carries the entry forward to subsequent hops. Each hop that detects the same condition independently SHOULD deduplicate by `(code, field)` rather than re-emit; the existing entry's `sdk_id` identifies which earlier processor saw it first. Producer entries (those without `source: \"sdk\"`) are authoritative for what the response's authoring agent self-detected; SDK entries are observations made on top.\n\n**Replay/audit safety.** Persisted or replayed responses carry `source` and `sdk_id` so the audit trail can distinguish seller-emitted entries from SDK-augmented ones. Without `source`, a downstream consumer can't tell whether a code came from the seller or an intermediate SDK, which corrupts attribution.",
-              "enum": [
-                "producer",
-                "sdk"
-              ],
-              "type": "string"
+              "$ref": "#/definitions/Shared10"
             },
             "suggestion": {
-              "description": "Suggested fix for the error",
-              "type": "string"
+              "$ref": "#/definitions/Shared5"
             }
           },
           "required": [
@@ -360,15 +259,7 @@
                 "schemes": {
                   "description": "Array of authentication schemes. Supported: ['Bearer'] for simple token auth, ['HMAC-SHA256'] for legacy shared-secret signing. Both are deprecated; new integrations SHOULD omit `authentication` and use the RFC 9421 webhook profile.",
                   "items": {
-                    "$schema": "http://json-schema.org/draft-07/schema#",
-                    "deprecated": true,
-                    "description": "Legacy authentication schemes for the webhook auth block. Bearer: token sent in Authorization header. HMAC-SHA256: legacy shared-secret signing. Both are deprecated; new integrations SHOULD omit the authentication block and use the RFC 9421 webhook signing profile (applicable on schemas where authentication is optional). Removed in AdCP 4.0.",
-                    "enum": [
-                      "Bearer",
-                      "HMAC-SHA256"
-                    ],
-                    "title": "Authentication Scheme",
-                    "type": "string"
+                    "$ref": "#/definitions/Shared14"
                   },
                   "maxItems": 1,
                   "minItems": 1,
@@ -457,6 +348,328 @@
       "type": "object"
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "Shared1": {
+      "description": "Error code for programmatic handling. The error-code vocabulary is open: `error.code` is wire-typed `string` (not a closed enum), the standard codes published in `enums/error-code.json` are documentary, and senders MAY emit codes outside that set (platform-specific codes, or codes introduced in a later AdCP version). Receivers MUST decode unknown codes \u2014 treat the response as well-formed, read `error.recovery` for the recovery classification, and fall back to `transient` when `recovery` is absent. See `error-handling.mdx#forward-compatible-decoding-normative` for the full forward-compat contract \u2014 this rule is what lets future maintenance lines ship new codes additively.",
+      "maxLength": 64,
+      "minLength": 1,
+      "type": "string"
+    },
+    "Shared10": {
+      "description": "Who emitted this error entry. `producer` (default when absent): emitted by the response's authoring agent (the seller for `get_products`, the creative agent for `build_creative`, etc.). `sdk`: augmented by a consuming SDK that detected a non-fatal advisory condition on consumption (e.g., `FORMAT_PROJECTION_FAILED` when the buyer SDK couldn't project a v1 format to a canonical, or `FORMAT_DECLARATION_DIVERGENT` when the SDK detected a producer bug on read). SDK-augmented entries SHOULD also set `sdk_id` so downstream consumers can identify which intermediate processor inserted the entry.\n\n**Multi-hop propagation (normative).** AdCP is a federated agent network \u2014 responses commonly traverse multiple SDKs (e.g., sales agent \u2192 interchange \u2192 DSP \u2192 buyer). When an SDK augments `errors[]` with a consumption-detected entry, the augmented response carries the entry forward to subsequent hops. Each hop that detects the same condition independently SHOULD deduplicate by `(code, field)` rather than re-emit; the existing entry's `sdk_id` identifies which earlier processor saw it first. Producer entries (those without `source: \"sdk\"`) are authoritative for what the response's authoring agent self-detected; SDK entries are observations made on top.\n\n**Replay/audit safety.** Persisted or replayed responses carry `source` and `sdk_id` so the audit trail can distinguish seller-emitted entries from SDK-augmented ones. Without `source`, a downstream consumer can't tell whether a code came from the seller or an intermediate SDK, which corrupts attribution.",
+      "enum": [
+        "producer",
+        "sdk"
+      ],
+      "type": "string"
+    },
+    "Shared11": {
+      "description": "Optional identifier for the SDK that augmented this error entry. Format: `<sdk_package_name>@<version>` (e.g., `@adcontextprotocol/adcp@7.3.0`, `adcontextprotocol-adcp-python@1.2.0`). MUST be set when `source: \"sdk\"`; MUST be absent when `source: \"producer\"` or absent. Lets downstream consumers identify which intermediate processor inserted the entry, useful for debugging cross-SDK divergence (e.g., one SDK detects a projection failure that another SDK's registry version doesn't).",
+      "type": "string"
+    },
+    "Shared12": {
+      "items": {
+        "$ref": "#/definitions/Shared13"
+      },
+      "maxItems": 16,
+      "type": "array"
+    },
+    "Shared13": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "dependencies": {
+        "buyer_reason": [
+          "recovery"
+        ]
+      },
+      "description": "Standard error structure for task-specific errors and warnings",
+      "properties": {
+        "buyer_reason": {
+          "$ref": "#/definitions/Shared3"
+        },
+        "code": {
+          "$ref": "#/definitions/Shared1"
+        },
+        "details": {
+          "$ref": "#/definitions/Shared8"
+        },
+        "field": {
+          "$ref": "#/definitions/Shared4"
+        },
+        "issues": {
+          "$ref": "#/definitions/Shared7"
+        },
+        "message": {
+          "$ref": "#/definitions/Shared2"
+        },
+        "recovery": {
+          "$ref": "#/definitions/Shared9"
+        },
+        "retry_after": {
+          "$ref": "#/definitions/Shared6"
+        },
+        "sdk_id": {
+          "$ref": "#/definitions/Shared11"
+        },
+        "source": {
+          "$ref": "#/definitions/Shared10"
+        },
+        "suggestion": {
+          "$ref": "#/definitions/Shared5"
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "title": "Error",
+      "type": "object"
+    },
+    "Shared14": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "deprecated": true,
+      "description": "Legacy authentication schemes for the webhook auth block. Bearer: token sent in Authorization header. HMAC-SHA256: legacy shared-secret signing. Both are deprecated; new integrations SHOULD omit the authentication block and use the RFC 9421 webhook signing profile (applicable on schemas where authentication is optional). Removed in AdCP 4.0.",
+      "enum": [
+        "Bearer",
+        "HMAC-SHA256"
+      ],
+      "title": "Authentication Scheme",
+      "type": "string"
+    },
+    "Shared15": {
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]{1,64}$",
+      "type": "string"
+    },
+    "Shared16": {
+      "description": "AdCP minor versions, such as 3.2, whose asynchronous payload shapes (webhooks and other seller-initiated pushes) the caller can parse. The seller selects payload shapes from the accepted intersection; without a declaration the seller uses its advertised default.",
+      "items": {
+        "pattern": "^\\d+\\.\\d+$",
+        "type": "string"
+      },
+      "maxItems": 8,
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "Shared17": {
+      "description": "RFC 9421 webhook-signing algorithms the caller can verify. The accepted intersection with the seller's webhook_signing.algorithms MUST be non-empty when the caller has any active webhook subscriber; an empty intersection fails the sync request with UNSUPPORTED_FEATURE because delivery would be unverifiable.",
+      "items": {
+        "enum": [
+          "ed25519",
+          "ecdsa-p256-sha256"
+        ],
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "Shared18": {
+      "description": "Experimental feature identifiers, matching the seller's experimental_features vocabulary, that the caller opts into receiving in asynchronous payloads. Unknown identifiers are accepted and excluded from the intersection rather than rejected, so a caller can declare once across sellers with different surfaces.",
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Dot-separated lowercase identifier for an experimental AdCP surface, such as protocol.principal or media_buy.reporting_delivery.",
+        "maxLength": 128,
+        "minLength": 1,
+        "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)*$",
+        "title": "Experimental Feature ID",
+        "type": "string"
+      },
+      "maxItems": 32,
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "Shared19": {
+      "maxLength": 255,
+      "minLength": 1,
+      "type": "string"
+    },
+    "Shared2": {
+      "description": "Human-readable error message",
+      "type": "string"
+    },
+    "Shared20": {
+      "maxLength": 128,
+      "minLength": 1,
+      "type": "string"
+    },
+    "Shared21": {
+      "description": "Caller-selected stable logical key, unique within this seller relationship. Reusing it replaces desired configuration; when proof-bound coordinates or the accepted delivery contract change, the seller issues a new immutable destination_ref generation while retaining the old reference for existing account bindings and reporting history.",
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]{1,64}$",
+      "type": "string"
+    },
+    "Shared22": {
+      "description": "Optional agent-scoped label naming the operator this destination serves, for per-operator isolation, audit, and offboarding under an agent principal. It is the principal's own bookkeeping and confers no identity or authority: sellers MUST NOT link, dedupe, or authorize across principals based on matching operator labels or domains.",
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]{1,64}$",
+      "type": "string"
+    },
+    "Shared23": {
+      "description": "True permits use. False suspends the destination: the seller MUST stop initiating new deliveries to every generation of this destination_id within the advertised suspension interval, and new account-level delivery configurations MUST NOT select it. Suspension does not delete caller-owned data already delivered.",
+      "type": "boolean"
+    },
+    "Shared24": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "description": "Provider namespace for an external delivery or data-sharing service. This identifies a platform; it is not a credential, trust root, or authorization statement.",
+      "properties": {
+        "domain": {
+          "description": "Lowercase dotted provider domain, such as a provider's operating domain. Single-label and localhost-style names are invalid.",
+          "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "domain"
+      ],
+      "title": "Delivery Provider",
+      "type": "object"
+    },
+    "Shared25": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Verification profiles the destination can accept. native_commit requires provider-native transaction/version evidence plus counts and control totals; manifest_checksums requires a committed file manifest with cryptographic checksums; canonical_digest requires recomputation of the canonical logical-content digest. A reporting feed selects one profile from this allowed set according to the seller offering and the feed's strictness requirements.",
+      "items": {
+        "enum": [
+          "native_commit",
+          "manifest_checksums",
+          "canonical_digest"
+        ],
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Reporting Verification Profile Set",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "Shared26": {
+      "const": false
+    },
+    "Shared3": {
+      "additionalProperties": true,
+      "description": "Optional buyer-actionable classification of the failure. Use this when the enclosing error code or message is too coarse or contains producer-internal context that must not cross the buyer trust boundary. `code` reuses the comprehensive standard vocabulary and recovery classifications published in `enums/error-code.json`, including policy, governance, account, commercial, inventory, and creative failures. The wire field remains open for forward compatibility. `message` MUST be safe to show to the buyer and MUST NOT contain vendor identifiers, ad-server type names, internal object names, internal IDs, stack traces, or other producer-private implementation details. When present, the enclosing `error.recovery` MUST classify the buyer-actionable reason. If both the enclosing code and buyer reason are registered, their standard recovery classifications MUST agree with each other and with `error.recovery`; sellers MUST choose the closest compatible enclosing code rather than retain a conflicting upstream transport wrapper. One buyer_reason classifies one error object. If a rejection contains independently actionable failures from different classes, sellers MUST emit separate error objects or omit buyer_reason rather than select a misleading single class.",
+      "properties": {
+        "code": {
+          "description": "Machine-readable buyer-actionable reason from the standard `enums/error-code.json` vocabulary or a producer-specific extension. Extensions MUST follow the standard `X_{VENDOR}_{CODE}` naming rule. The wire field is open for forward compatibility. Receivers MUST accept unknown values and use the enclosing `error.recovery` plus this object's `message` as the fallback.",
+          "maxLength": 64,
+          "minLength": 1,
+          "type": "string"
+        },
+        "message": {
+          "description": "Buyer-safe explanation of the actionable failure. MUST NOT expose vendor identifiers, ad-server type names, internal object names, internal IDs, stack traces, or other producer-private implementation details.",
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "type": "object"
+    },
+    "Shared4": {
+      "description": "Field path associated with the error in JSONPath-lite format (e.g., 'packages[0].targeting'). When `issues[]` is also present, sellers MUST set this to `issues[0].pointer` translated from RFC 6901 to JSONPath-lite (e.g., '/packages/0/targeting' \u2192 'packages[0].targeting') so pre-3.1 consumers reading `field` only get deterministic behavior. Will be deprecated in a future major version in favor of `issues[].pointer`.",
+      "type": "string"
+    },
+    "Shared5": {
+      "description": "Suggested fix for the error",
+      "type": "string"
+    },
+    "Shared6": {
+      "description": "Seconds to wait before retrying the operation. AdCP 3.2 producers MUST emit an integer from 1 through 3600. The 3.x schema continues to accept finite fractional values for backward compatibility with earlier producers; consumers receiving one MUST round up to the next whole second before clamping so the retry is never scheduled earlier than intended. Non-finite values are treated as absent.",
+      "maximum": 3600,
+      "minimum": 1,
+      "type": "number"
+    },
+    "Shared7": {
+      "description": "Structured list of validation failures. Primary use is `VALIDATION_ERROR`, where multi-field rejections are common and `field` (singular) cannot carry the full pointer map. MAY appear on other error codes that reject multiple fields at once. When `issues` is present, sellers MUST also populate `field` from `issues[0]` for backward compatibility with pre-3.1 consumers that read `field` only \u2014 translating the RFC 6901 `pointer` format to the JSONPath-lite format `field` uses (e.g., `/packages/0/targeting` \u2192 `packages[0].targeting`). MUST (not SHOULD) so consumers reading `field` get deterministic behavior across sellers \u2014 the cost is one line of dual-write per seller; the cost of SHOULD is a long tail of seller-A-vs-seller-B inconsistency. Future major versions will deprecate `field` in favor of `issues[].pointer`.",
+      "items": {
+        "additionalProperties": true,
+        "properties": {
+          "discriminator": {
+            "description": "Optional. Const-discriminator property/value pair(s) identifying the variant the validator selected from values present in the payload. Sellers MUST populate only when (a) the rejecting schema is a const-discriminated `oneOf` / `anyOf` and (b) the discriminator property is present in the payload \u2014 emission on partial-match inference would fingerprint the seller's validator implementation. MUST omit when zero variants survive. Compound discriminators (e.g. `(type, value_type)`) produce multiple entries ordered by declaration in the rejecting schema's `properties` block. Same private-extensions / version-skew carve-out as `schema_id`. See error-handling.mdx.",
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "property_name": {
+                  "description": "Discriminator property name (e.g., `type`, `value_type`). Aligns with OpenAPI 3.x `discriminator.propertyName`.",
+                  "type": "string"
+                },
+                "value": {
+                  "description": "Value the caller sent at `property_name`. Typically a string for const-discriminated unions; numeric/boolean/null permitted. Object and array values are forbidden \u2014 const discriminators are scalars, and emitting a structured value would conflate 'caller sent a complex shape' with 'validator inferred from a structural match'.",
+                  "type": [
+                    "string",
+                    "number",
+                    "boolean",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "property_name",
+                "value"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "keyword": {
+            "description": "Schema keyword that rejected the payload, drawn from the JSON Schema vocabulary (e.g., 'required', 'type', 'format', 'enum', 'pattern', 'minimum', 'maxLength'). Matches the keyword names emitted by JSON Schema validators (Ajv, jsonschema, etc.) so agents can pattern-match on rejection class without parsing message text. Implementers SHOULD use the validator's native keyword name; do not invent custom values here.",
+            "type": "string"
+          },
+          "message": {
+            "description": "Human-readable description of why this specific field was rejected.",
+            "type": "string"
+          },
+          "pointer": {
+            "description": "RFC 6901 JSON Pointer to the offending field in the request payload (e.g., '/packages/0/targeting/geo_countries/2'). Format chosen to match Ajv's native validation output (`instancePath`); standardized and unambiguous on keys containing `/` or `~`. NOTE: this differs from the legacy top-level `field` which uses JSONPath-lite (`packages[0].targeting.geo_countries[2]`). When sellers populate `field` from `issues[0].pointer` for backward compatibility (see `field` description), they MUST translate the format \u2014 `/packages/0/x` \u2192 `packages[0].x`. Future major versions will deprecate `field` in favor of `issues[].pointer`.",
+            "type": "string"
+          },
+          "schemaPath": {
+            "description": "Optional. JSON Schema tree path of the rejecting keyword (e.g. '#/properties/packages/items/oneOf/1'). 3.1+ consumers SHOULD prefer `schema_id`; `schemaPath` is retained for 3.0.x compatibility (renamed to `schema_path` in a future major). See error-handling.mdx for the validator-internals production-emit rules.",
+            "type": "string"
+          },
+          "schema_id": {
+            "description": "Optional. `$id` of the rejecting (sub-)schema (e.g. `/schemas/3.1.0/core/activation-key.json`). MUST resolve to a `$id` published in the spec at the version the seller advertises via `get_adcp_capabilities` \u2014 either a deep sub-schema (the typical case) or the response-root `$id` (the bundled-tree fallback for tools served from bundles built before #3868). Sellers MUST NOT emit when the rejection occurred against a private extension, server-only sub-schema, or pre-release element \u2014 the public-spec replay rationale only holds when the rejecting element is reachable from the public bundle. Sellers populating `schemaPath` SHOULD also populate `schema_id` when they have it so 3.1+ readers don't get strictly less than 3.0.x readers. See error-handling.mdx for resolution guidance and the bundled-tree caveat.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pointer",
+          "message",
+          "keyword"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "Shared8": {
+      "additionalProperties": true,
+      "description": "Additional task-specific error details. Sellers MAY mirror `issues[]` here as `details.issues` for backward compatibility with pre-3.1 consumers reading from `details`; new consumers SHOULD prefer the top-level `issues` field.\n\n**Canonical rejection-set shape (3.1+).** When the error reports a rejected value against a closed set of accepted values (e.g., enum mismatch, unsupported pricing option, invalid signal id), sellers SHOULD use the canonical key `accepted_values: <array>` under `details` rather than seller-specific variants observed in the wild (`available`, `allowed`, `accepted_values` at the error root, etc.). The canonical shape:\n\n```json\n{\n  \"code\": \"INVALID_PRICING_OPTION\",\n  \"message\": \"Pricing option not found: po_prism_abandoner_cpm\",\n  \"field\": \"pricing_option_id\",\n  \"details\": {\n    \"rejected_value\": \"po_prism_abandoner_cpm\",\n    \"accepted_values\": [\"po_prism_cart_cpm\", \"po_prism_view_cpm\"]\n  }\n}\n```\n\n- `rejected_value` (optional): the offending value the buyer supplied, echoed for buyer-side diagnostic clarity (especially when the offending field is nested or transformed before validation).\n- `accepted_values` (optional): the closed set the seller would have accepted at this field on this call. Sellers MUST NOT enumerate the full ecosystem-wide accepted set if it differs from what's accepted for *this caller in this context* (account, brand, scope) \u2014 leaking ecosystem-wide accepted sets to a per-caller rejection turns the error into an enumeration oracle.\n\nThis is **SHOULD-level guidance**, not MUST: `details` remains `additionalProperties: true` and pre-3.1 sellers using `available` / `allowed` / `accepted_values` at the error root remain conformant. The canonical shape lets buyer-side diagnostic tooling (SDK runner hints, dashboards, error classifiers) reliably surface the accepted-set without per-seller pattern matching. SDKs SHOULD accept any of the legacy variants and normalize on read; the canonical shape is what new sellers and 3.1+ adopters should emit going forward.",
+      "type": "object"
+    },
+    "Shared9": {
+      "description": "Agent recovery classification. transient: retry after delay (rate limit, service unavailable, timeout). correctable: fix the request and resend (invalid field, budget too low, creative rejected). terminal: requires human action (account suspended, payment required, account not found). AdCP 3.2 producers MUST populate `recovery` on every error; 3.1 producers SHOULD populate it. The shared 3.x schema intentionally does not add `recovery` to `required` so retained and live errors from earlier 3.x producers remain decodable. When `buyer_reason` is present, `recovery` is required and MUST classify that buyer-actionable reason. If the enclosing code and buyer reason are both registered, their standard recovery classifications MUST agree with each other and with this field. A receiver that does not recognize `error.code` (a newer code, or a platform-specific code) MUST still be able to classify the error from `recovery`. When a legacy error omits `recovery`, receivers use the registered classification for a known code and fall back to `transient` for an unknown code, subject to the bounded retry budget. The `enumMetadata.recovery` block in `enums/error-code.json` is the documentary mirror for known top-level and buyer-reason codes; `error.recovery` on the wire is authoritative when present.",
+      "enum": [
+        "transient",
+        "correctable",
+        "terminal"
+      ],
+      "type": "string"
+    }
+  },
   "description": "Result of synchronizing selected sections of the principal's standing configuration. Applied responses return the complete current credential-free configuration. Validated dry-run responses report the would-be action without issuing durable identifiers. Failed responses deliberately cannot carry principal identifiers, versions, or configuration state.",
   "examples": [
     {
@@ -524,11 +737,7 @@
       "type": "object"
     },
     "ext": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "additionalProperties": true,
-      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-      "title": "Extension Object",
-      "type": "object"
+      "$ref": "#/definitions/Shared0"
     },
     "result": {
       "oneOf": [
@@ -561,44 +770,13 @@
                       "description": "The intersection of the declared set with the seller's objective support. Sellers select asynchronous payload versions, signing algorithms, and experimental behavior only from this set. A change to this set caused by seller-side evolution fires principal.changed with reason declarations_intersection_changed.",
                       "properties": {
                         "async_adcp_versions": {
-                          "description": "AdCP minor versions, such as 3.2, whose asynchronous payload shapes (webhooks and other seller-initiated pushes) the caller can parse. The seller selects payload shapes from the accepted intersection; without a declaration the seller uses its advertised default.",
-                          "items": {
-                            "pattern": "^\\d+\\.\\d+$",
-                            "type": "string"
-                          },
-                          "maxItems": 8,
-                          "minItems": 1,
-                          "type": "array",
-                          "uniqueItems": true
+                          "$ref": "#/definitions/Shared16"
                         },
                         "experimental_features": {
-                          "description": "Experimental feature identifiers, matching the seller's experimental_features vocabulary, that the caller opts into receiving in asynchronous payloads. Unknown identifiers are accepted and excluded from the intersection rather than rejected, so a caller can declare once across sellers with different surfaces.",
-                          "items": {
-                            "$schema": "http://json-schema.org/draft-07/schema#",
-                            "description": "Dot-separated lowercase identifier for an experimental AdCP surface, such as protocol.principal or media_buy.reporting_delivery.",
-                            "maxLength": 128,
-                            "minLength": 1,
-                            "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)*$",
-                            "title": "Experimental Feature ID",
-                            "type": "string"
-                          },
-                          "maxItems": 32,
-                          "minItems": 1,
-                          "type": "array",
-                          "uniqueItems": true
+                          "$ref": "#/definitions/Shared18"
                         },
                         "webhook_signing_algorithms": {
-                          "description": "RFC 9421 webhook-signing algorithms the caller can verify. The accepted intersection with the seller's webhook_signing.algorithms MUST be non-empty when the caller has any active webhook subscriber; an empty intersection fails the sync request with UNSUPPORTED_FEATURE because delivery would be unverifiable.",
-                          "items": {
-                            "enum": [
-                              "ed25519",
-                              "ecdsa-p256-sha256"
-                            ],
-                            "type": "string"
-                          },
-                          "minItems": 1,
-                          "type": "array",
-                          "uniqueItems": true
+                          "$ref": "#/definitions/Shared17"
                         }
                       },
                       "title": "Agent Declarations",
@@ -611,44 +789,13 @@
                       "description": "The caller's current declared set, echoed verbatim.",
                       "properties": {
                         "async_adcp_versions": {
-                          "description": "AdCP minor versions, such as 3.2, whose asynchronous payload shapes (webhooks and other seller-initiated pushes) the caller can parse. The seller selects payload shapes from the accepted intersection; without a declaration the seller uses its advertised default.",
-                          "items": {
-                            "pattern": "^\\d+\\.\\d+$",
-                            "type": "string"
-                          },
-                          "maxItems": 8,
-                          "minItems": 1,
-                          "type": "array",
-                          "uniqueItems": true
+                          "$ref": "#/definitions/Shared16"
                         },
                         "experimental_features": {
-                          "description": "Experimental feature identifiers, matching the seller's experimental_features vocabulary, that the caller opts into receiving in asynchronous payloads. Unknown identifiers are accepted and excluded from the intersection rather than rejected, so a caller can declare once across sellers with different surfaces.",
-                          "items": {
-                            "$schema": "http://json-schema.org/draft-07/schema#",
-                            "description": "Dot-separated lowercase identifier for an experimental AdCP surface, such as protocol.principal or media_buy.reporting_delivery.",
-                            "maxLength": 128,
-                            "minLength": 1,
-                            "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)*$",
-                            "title": "Experimental Feature ID",
-                            "type": "string"
-                          },
-                          "maxItems": 32,
-                          "minItems": 1,
-                          "type": "array",
-                          "uniqueItems": true
+                          "$ref": "#/definitions/Shared18"
                         },
                         "webhook_signing_algorithms": {
-                          "description": "RFC 9421 webhook-signing algorithms the caller can verify. The accepted intersection with the seller's webhook_signing.algorithms MUST be non-empty when the caller has any active webhook subscriber; an empty intersection fails the sync request with UNSUPPORTED_FEATURE because delivery would be unverifiable.",
-                          "items": {
-                            "enum": [
-                              "ed25519",
-                              "ecdsa-p256-sha256"
-                            ],
-                            "type": "string"
-                          },
-                          "minItems": 1,
-                          "type": "array",
-                          "uniqueItems": true
+                          "$ref": "#/definitions/Shared17"
                         }
                       },
                       "title": "Agent Declarations",
@@ -675,9 +822,7 @@
                             "type": "string"
                           },
                           "value": {
-                            "maxLength": 128,
-                            "minLength": 1,
-                            "type": "string"
+                            "$ref": "#/definitions/Shared20"
                           }
                         },
                         "required": [
@@ -725,15 +870,7 @@
                         "properties": {
                           "schemes": {
                             "items": {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
-                              "deprecated": true,
-                              "description": "Legacy authentication schemes for the webhook auth block. Bearer: token sent in Authorization header. HMAC-SHA256: legacy shared-secret signing. Both are deprecated; new integrations SHOULD omit the authentication block and use the RFC 9421 webhook signing profile (applicable on schemas where authentication is optional). Removed in AdCP 4.0.",
-                              "enum": [
-                                "Bearer",
-                                "HMAC-SHA256"
-                              ],
-                              "title": "Authentication Scheme",
-                              "type": "string"
+                              "$ref": "#/definitions/Shared14"
                             },
                             "maxItems": 1,
                             "minItems": 1,
@@ -829,21 +966,14 @@
                         "uniqueItems": true
                       },
                       "ext": {
-                        "$schema": "http://json-schema.org/draft-07/schema#",
-                        "additionalProperties": true,
-                        "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                        "title": "Extension Object",
-                        "type": "object"
+                        "$ref": "#/definitions/Shared0"
                       },
                       "include_future_event_types": {
                         "description": "Echoed from the desired configuration when set.",
                         "type": "boolean"
                       },
                       "subscriber_id": {
-                        "maxLength": 64,
-                        "minLength": 1,
-                        "pattern": "^[A-Za-z0-9_.:-]{1,64}$",
-                        "type": "string"
+                        "$ref": "#/definitions/Shared15"
                       },
                       "url": {
                         "format": "uri",
@@ -900,7 +1030,7 @@
                             "configuration": {
                               "properties": {
                                 "active": {
-                                  "const": false
+                                  "$ref": "#/definitions/Shared26"
                                 }
                               }
                             }
@@ -913,7 +1043,7 @@
                             "configuration": {
                               "properties": {
                                 "active": {
-                                  "const": false
+                                  "$ref": "#/definitions/Shared26"
                                 }
                               },
                               "required": [
@@ -963,31 +1093,13 @@
                                 "uniqueItems": true
                               },
                               "accepted_verification_profiles": {
-                                "$schema": "http://json-schema.org/draft-07/schema#",
-                                "description": "Verification profiles the destination can accept. native_commit requires provider-native transaction/version evidence plus counts and control totals; manifest_checksums requires a committed file manifest with cryptographic checksums; canonical_digest requires recomputation of the canonical logical-content digest. A reporting feed selects one profile from this allowed set according to the seller offering and the feed's strictness requirements.",
-                                "items": {
-                                  "enum": [
-                                    "native_commit",
-                                    "manifest_checksums",
-                                    "canonical_digest"
-                                  ],
-                                  "type": "string"
-                                },
-                                "minItems": 1,
-                                "title": "Reporting Verification Profile Set",
-                                "type": "array",
-                                "uniqueItems": true
+                                "$ref": "#/definitions/Shared25"
                               },
                               "active": {
-                                "description": "True permits use. False suspends the destination: the seller MUST stop initiating new deliveries to every generation of this destination_id within the advertised suspension interval, and new account-level delivery configurations MUST NOT select it. Suspension does not delete caller-owned data already delivered.",
-                                "type": "boolean"
+                                "$ref": "#/definitions/Shared23"
                               },
                               "destination_id": {
-                                "description": "Caller-selected stable logical key, unique within this seller relationship. Reusing it replaces desired configuration; when proof-bound coordinates or the accepted delivery contract change, the seller issues a new immutable destination_ref generation while retaining the old reference for existing account bindings and reporting history.",
-                                "maxLength": 64,
-                                "minLength": 1,
-                                "pattern": "^[A-Za-z0-9_.:-]{1,64}$",
-                                "type": "string"
+                                "$ref": "#/definitions/Shared21"
                               },
                               "location": {
                                 "description": "Provider-native bucket/prefix locator, such as s3://bucket/prefix/ or abfss://container@account.dfs.core.windows.net/path. Printable ASCII without whitespace, '?', '#', '%', '\"', '<', or '>'. Never a credential or signed URL; sellers additionally screen and normalize per the secret_rejection and normalization rules.",
@@ -997,11 +1109,7 @@
                                 "type": "string"
                               },
                               "operator_id": {
-                                "description": "Optional agent-scoped label naming the operator this destination serves, for per-operator isolation, audit, and offboarding under an agent principal. It is the principal's own bookkeeping and confers no identity or authority: sellers MUST NOT link, dedupe, or authorize across principals based on matching operator labels or domains.",
-                                "maxLength": 64,
-                                "minLength": 1,
-                                "pattern": "^[A-Za-z0-9_.:-]{1,64}$",
-                                "type": "string"
+                                "$ref": "#/definitions/Shared22"
                               },
                               "pattern": {
                                 "const": "file_transfer",
@@ -1009,21 +1117,7 @@
                                 "type": "string"
                               },
                               "provider": {
-                                "$schema": "http://json-schema.org/draft-07/schema#",
-                                "additionalProperties": false,
-                                "description": "Provider namespace for an external delivery or data-sharing service. This identifies a platform; it is not a credential, trust root, or authorization statement.",
-                                "properties": {
-                                  "domain": {
-                                    "description": "Lowercase dotted provider domain, such as a provider's operating domain. Single-label and localhost-style names are invalid.",
-                                    "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$",
-                                    "type": "string"
-                                  }
-                                },
-                                "required": [
-                                  "domain"
-                                ],
-                                "title": "Delivery Provider",
-                                "type": "object"
+                                "$ref": "#/definitions/Shared24"
                               },
                               "transport": {
                                 "description": "Open provider transport name, such as s3, gcs, or azure_blob.",
@@ -1050,31 +1144,13 @@
                             "additionalProperties": false,
                             "properties": {
                               "accepted_verification_profiles": {
-                                "$schema": "http://json-schema.org/draft-07/schema#",
-                                "description": "Verification profiles the destination can accept. native_commit requires provider-native transaction/version evidence plus counts and control totals; manifest_checksums requires a committed file manifest with cryptographic checksums; canonical_digest requires recomputation of the canonical logical-content digest. A reporting feed selects one profile from this allowed set according to the seller offering and the feed's strictness requirements.",
-                                "items": {
-                                  "enum": [
-                                    "native_commit",
-                                    "manifest_checksums",
-                                    "canonical_digest"
-                                  ],
-                                  "type": "string"
-                                },
-                                "minItems": 1,
-                                "title": "Reporting Verification Profile Set",
-                                "type": "array",
-                                "uniqueItems": true
+                                "$ref": "#/definitions/Shared25"
                               },
                               "active": {
-                                "description": "True permits use. False suspends the destination: the seller MUST stop initiating new deliveries to every generation of this destination_id within the advertised suspension interval, and new account-level delivery configurations MUST NOT select it. Suspension does not delete caller-owned data already delivered.",
-                                "type": "boolean"
+                                "$ref": "#/definitions/Shared23"
                               },
                               "destination_id": {
-                                "description": "Caller-selected stable logical key, unique within this seller relationship. Reusing it replaces desired configuration; when proof-bound coordinates or the accepted delivery contract change, the seller issues a new immutable destination_ref generation while retaining the old reference for existing account bindings and reporting history.",
-                                "maxLength": 64,
-                                "minLength": 1,
-                                "pattern": "^[A-Za-z0-9_.:-]{1,64}$",
-                                "type": "string"
+                                "$ref": "#/definitions/Shared21"
                               },
                               "location": {
                                 "description": "Provider-native project/dataset, database/schema, or catalog/schema locator. Printable ASCII without whitespace, '?', '#', '%', '\"', '<', or '>'. Never a credential or signed URL; sellers additionally screen and normalize per the secret_rejection and normalization rules.",
@@ -1084,11 +1160,7 @@
                                 "type": "string"
                               },
                               "operator_id": {
-                                "description": "Optional agent-scoped label naming the operator this destination serves, for per-operator isolation, audit, and offboarding under an agent principal. It is the principal's own bookkeeping and confers no identity or authority: sellers MUST NOT link, dedupe, or authorize across principals based on matching operator labels or domains.",
-                                "maxLength": 64,
-                                "minLength": 1,
-                                "pattern": "^[A-Za-z0-9_.:-]{1,64}$",
-                                "type": "string"
+                                "$ref": "#/definitions/Shared22"
                               },
                               "pattern": {
                                 "const": "warehouse_materialization",
@@ -1096,21 +1168,7 @@
                                 "type": "string"
                               },
                               "provider": {
-                                "$schema": "http://json-schema.org/draft-07/schema#",
-                                "additionalProperties": false,
-                                "description": "Provider namespace for an external delivery or data-sharing service. This identifies a platform; it is not a credential, trust root, or authorization statement.",
-                                "properties": {
-                                  "domain": {
-                                    "description": "Lowercase dotted provider domain, such as a provider's operating domain. Single-label and localhost-style names are invalid.",
-                                    "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$",
-                                    "type": "string"
-                                  }
-                                },
-                                "required": [
-                                  "domain"
-                                ],
-                                "title": "Delivery Provider",
-                                "type": "object"
+                                "$ref": "#/definitions/Shared24"
                               },
                               "transport": {
                                 "description": "Open provider transport name, such as bigquery, snowflake, or databricks_sql.",
@@ -1136,20 +1194,7 @@
                             "additionalProperties": false,
                             "properties": {
                               "accepted_verification_profiles": {
-                                "$schema": "http://json-schema.org/draft-07/schema#",
-                                "description": "Verification profiles the destination can accept. native_commit requires provider-native transaction/version evidence plus counts and control totals; manifest_checksums requires a committed file manifest with cryptographic checksums; canonical_digest requires recomputation of the canonical logical-content digest. A reporting feed selects one profile from this allowed set according to the seller offering and the feed's strictness requirements.",
-                                "items": {
-                                  "enum": [
-                                    "native_commit",
-                                    "manifest_checksums",
-                                    "canonical_digest"
-                                  ],
-                                  "type": "string"
-                                },
-                                "minItems": 1,
-                                "title": "Reporting Verification Profile Set",
-                                "type": "array",
-                                "uniqueItems": true
+                                "$ref": "#/definitions/Shared25"
                               },
                               "access_mode": {
                                 "description": "Dataset-share access family, such as databricks_to_databricks, open_sharing, or secure_data_sharing.",
@@ -1163,18 +1208,10 @@
                                 "type": "boolean"
                               },
                               "destination_id": {
-                                "description": "Caller-selected stable logical key, unique within this seller relationship. Reusing it replaces desired configuration; when proof-bound coordinates or the accepted delivery contract change, the seller issues a new immutable destination_ref generation while retaining the old reference for existing account bindings and reporting history.",
-                                "maxLength": 64,
-                                "minLength": 1,
-                                "pattern": "^[A-Za-z0-9_.:-]{1,64}$",
-                                "type": "string"
+                                "$ref": "#/definitions/Shared21"
                               },
                               "operator_id": {
-                                "description": "Optional agent-scoped label naming the operator this destination serves, for per-operator isolation, audit, and offboarding under an agent principal. It is the principal's own bookkeeping and confers no identity or authority: sellers MUST NOT link, dedupe, or authorize across principals based on matching operator labels or domains.",
-                                "maxLength": 64,
-                                "minLength": 1,
-                                "pattern": "^[A-Za-z0-9_.:-]{1,64}$",
-                                "type": "string"
+                                "$ref": "#/definitions/Shared22"
                               },
                               "pattern": {
                                 "const": "dataset_share",
@@ -1182,21 +1219,7 @@
                                 "type": "string"
                               },
                               "provider": {
-                                "$schema": "http://json-schema.org/draft-07/schema#",
-                                "additionalProperties": false,
-                                "description": "Provider namespace for an external delivery or data-sharing service. This identifies a platform; it is not a credential, trust root, or authorization statement.",
-                                "properties": {
-                                  "domain": {
-                                    "description": "Lowercase dotted provider domain, such as a provider's operating domain. Single-label and localhost-style names are invalid.",
-                                    "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$",
-                                    "type": "string"
-                                  }
-                                },
-                                "required": [
-                                  "domain"
-                                ],
-                                "title": "Delivery Provider",
-                                "type": "object"
+                                "$ref": "#/definitions/Shared24"
                               },
                               "recipient": {
                                 "$schema": "http://json-schema.org/draft-07/schema#",
@@ -1229,9 +1252,7 @@
                                     "type": "string"
                                   },
                                   "region": {
-                                    "maxLength": 128,
-                                    "minLength": 1,
-                                    "type": "string"
+                                    "$ref": "#/definitions/Shared20"
                                   }
                                 },
                                 "required": [
@@ -1292,156 +1313,7 @@
                       "issues": {
                         "description": "Structured validation or setup issues. Messages and details are untrusted display data and MUST NOT be executed as instructions.",
                         "items": {
-                          "$schema": "http://json-schema.org/draft-07/schema#",
-                          "additionalProperties": true,
-                          "dependencies": {
-                            "buyer_reason": [
-                              "recovery"
-                            ]
-                          },
-                          "description": "Standard error structure for task-specific errors and warnings",
-                          "properties": {
-                            "buyer_reason": {
-                              "additionalProperties": true,
-                              "description": "Optional buyer-actionable classification of the failure. Use this when the enclosing error code or message is too coarse or contains producer-internal context that must not cross the buyer trust boundary. `code` reuses the comprehensive standard vocabulary and recovery classifications published in `enums/error-code.json`, including policy, governance, account, commercial, inventory, and creative failures. The wire field remains open for forward compatibility. `message` MUST be safe to show to the buyer and MUST NOT contain vendor identifiers, ad-server type names, internal object names, internal IDs, stack traces, or other producer-private implementation details. When present, the enclosing `error.recovery` MUST classify the buyer-actionable reason. If both the enclosing code and buyer reason are registered, their standard recovery classifications MUST agree with each other and with `error.recovery`; sellers MUST choose the closest compatible enclosing code rather than retain a conflicting upstream transport wrapper. One buyer_reason classifies one error object. If a rejection contains independently actionable failures from different classes, sellers MUST emit separate error objects or omit buyer_reason rather than select a misleading single class.",
-                              "properties": {
-                                "code": {
-                                  "description": "Machine-readable buyer-actionable reason from the standard `enums/error-code.json` vocabulary or a producer-specific extension. Extensions MUST follow the standard `X_{VENDOR}_{CODE}` naming rule. The wire field is open for forward compatibility. Receivers MUST accept unknown values and use the enclosing `error.recovery` plus this object's `message` as the fallback.",
-                                  "maxLength": 64,
-                                  "minLength": 1,
-                                  "type": "string"
-                                },
-                                "message": {
-                                  "description": "Buyer-safe explanation of the actionable failure. MUST NOT expose vendor identifiers, ad-server type names, internal object names, internal IDs, stack traces, or other producer-private implementation details.",
-                                  "minLength": 1,
-                                  "type": "string"
-                                }
-                              },
-                              "required": [
-                                "code",
-                                "message"
-                              ],
-                              "type": "object"
-                            },
-                            "code": {
-                              "description": "Error code for programmatic handling. The error-code vocabulary is open: `error.code` is wire-typed `string` (not a closed enum), the standard codes published in `enums/error-code.json` are documentary, and senders MAY emit codes outside that set (platform-specific codes, or codes introduced in a later AdCP version). Receivers MUST decode unknown codes \u2014 treat the response as well-formed, read `error.recovery` for the recovery classification, and fall back to `transient` when `recovery` is absent. See `error-handling.mdx#forward-compatible-decoding-normative` for the full forward-compat contract \u2014 this rule is what lets future maintenance lines ship new codes additively.",
-                              "maxLength": 64,
-                              "minLength": 1,
-                              "type": "string"
-                            },
-                            "details": {
-                              "additionalProperties": true,
-                              "description": "Additional task-specific error details. Sellers MAY mirror `issues[]` here as `details.issues` for backward compatibility with pre-3.1 consumers reading from `details`; new consumers SHOULD prefer the top-level `issues` field.\n\n**Canonical rejection-set shape (3.1+).** When the error reports a rejected value against a closed set of accepted values (e.g., enum mismatch, unsupported pricing option, invalid signal id), sellers SHOULD use the canonical key `accepted_values: <array>` under `details` rather than seller-specific variants observed in the wild (`available`, `allowed`, `accepted_values` at the error root, etc.). The canonical shape:\n\n```json\n{\n  \"code\": \"INVALID_PRICING_OPTION\",\n  \"message\": \"Pricing option not found: po_prism_abandoner_cpm\",\n  \"field\": \"pricing_option_id\",\n  \"details\": {\n    \"rejected_value\": \"po_prism_abandoner_cpm\",\n    \"accepted_values\": [\"po_prism_cart_cpm\", \"po_prism_view_cpm\"]\n  }\n}\n```\n\n- `rejected_value` (optional): the offending value the buyer supplied, echoed for buyer-side diagnostic clarity (especially when the offending field is nested or transformed before validation).\n- `accepted_values` (optional): the closed set the seller would have accepted at this field on this call. Sellers MUST NOT enumerate the full ecosystem-wide accepted set if it differs from what's accepted for *this caller in this context* (account, brand, scope) \u2014 leaking ecosystem-wide accepted sets to a per-caller rejection turns the error into an enumeration oracle.\n\nThis is **SHOULD-level guidance**, not MUST: `details` remains `additionalProperties: true` and pre-3.1 sellers using `available` / `allowed` / `accepted_values` at the error root remain conformant. The canonical shape lets buyer-side diagnostic tooling (SDK runner hints, dashboards, error classifiers) reliably surface the accepted-set without per-seller pattern matching. SDKs SHOULD accept any of the legacy variants and normalize on read; the canonical shape is what new sellers and 3.1+ adopters should emit going forward.",
-                              "type": "object"
-                            },
-                            "field": {
-                              "description": "Field path associated with the error in JSONPath-lite format (e.g., 'packages[0].targeting'). When `issues[]` is also present, sellers MUST set this to `issues[0].pointer` translated from RFC 6901 to JSONPath-lite (e.g., '/packages/0/targeting' \u2192 'packages[0].targeting') so pre-3.1 consumers reading `field` only get deterministic behavior. Will be deprecated in a future major version in favor of `issues[].pointer`.",
-                              "type": "string"
-                            },
-                            "issues": {
-                              "description": "Structured list of validation failures. Primary use is `VALIDATION_ERROR`, where multi-field rejections are common and `field` (singular) cannot carry the full pointer map. MAY appear on other error codes that reject multiple fields at once. When `issues` is present, sellers MUST also populate `field` from `issues[0]` for backward compatibility with pre-3.1 consumers that read `field` only \u2014 translating the RFC 6901 `pointer` format to the JSONPath-lite format `field` uses (e.g., `/packages/0/targeting` \u2192 `packages[0].targeting`). MUST (not SHOULD) so consumers reading `field` get deterministic behavior across sellers \u2014 the cost is one line of dual-write per seller; the cost of SHOULD is a long tail of seller-A-vs-seller-B inconsistency. Future major versions will deprecate `field` in favor of `issues[].pointer`.",
-                              "items": {
-                                "additionalProperties": true,
-                                "properties": {
-                                  "discriminator": {
-                                    "description": "Optional. Const-discriminator property/value pair(s) identifying the variant the validator selected from values present in the payload. Sellers MUST populate only when (a) the rejecting schema is a const-discriminated `oneOf` / `anyOf` and (b) the discriminator property is present in the payload \u2014 emission on partial-match inference would fingerprint the seller's validator implementation. MUST omit when zero variants survive. Compound discriminators (e.g. `(type, value_type)`) produce multiple entries ordered by declaration in the rejecting schema's `properties` block. Same private-extensions / version-skew carve-out as `schema_id`. See error-handling.mdx.",
-                                    "items": {
-                                      "additionalProperties": false,
-                                      "properties": {
-                                        "property_name": {
-                                          "description": "Discriminator property name (e.g., `type`, `value_type`). Aligns with OpenAPI 3.x `discriminator.propertyName`.",
-                                          "type": "string"
-                                        },
-                                        "value": {
-                                          "description": "Value the caller sent at `property_name`. Typically a string for const-discriminated unions; numeric/boolean/null permitted. Object and array values are forbidden \u2014 const discriminators are scalars, and emitting a structured value would conflate 'caller sent a complex shape' with 'validator inferred from a structural match'.",
-                                          "type": [
-                                            "string",
-                                            "number",
-                                            "boolean",
-                                            "null"
-                                          ]
-                                        }
-                                      },
-                                      "required": [
-                                        "property_name",
-                                        "value"
-                                      ],
-                                      "type": "object"
-                                    },
-                                    "type": "array"
-                                  },
-                                  "keyword": {
-                                    "description": "Schema keyword that rejected the payload, drawn from the JSON Schema vocabulary (e.g., 'required', 'type', 'format', 'enum', 'pattern', 'minimum', 'maxLength'). Matches the keyword names emitted by JSON Schema validators (Ajv, jsonschema, etc.) so agents can pattern-match on rejection class without parsing message text. Implementers SHOULD use the validator's native keyword name; do not invent custom values here.",
-                                    "type": "string"
-                                  },
-                                  "message": {
-                                    "description": "Human-readable description of why this specific field was rejected.",
-                                    "type": "string"
-                                  },
-                                  "pointer": {
-                                    "description": "RFC 6901 JSON Pointer to the offending field in the request payload (e.g., '/packages/0/targeting/geo_countries/2'). Format chosen to match Ajv's native validation output (`instancePath`); standardized and unambiguous on keys containing `/` or `~`. NOTE: this differs from the legacy top-level `field` which uses JSONPath-lite (`packages[0].targeting.geo_countries[2]`). When sellers populate `field` from `issues[0].pointer` for backward compatibility (see `field` description), they MUST translate the format \u2014 `/packages/0/x` \u2192 `packages[0].x`. Future major versions will deprecate `field` in favor of `issues[].pointer`.",
-                                    "type": "string"
-                                  },
-                                  "schemaPath": {
-                                    "description": "Optional. JSON Schema tree path of the rejecting keyword (e.g. '#/properties/packages/items/oneOf/1'). 3.1+ consumers SHOULD prefer `schema_id`; `schemaPath` is retained for 3.0.x compatibility (renamed to `schema_path` in a future major). See error-handling.mdx for the validator-internals production-emit rules.",
-                                    "type": "string"
-                                  },
-                                  "schema_id": {
-                                    "description": "Optional. `$id` of the rejecting (sub-)schema (e.g. `/schemas/3.1.0/core/activation-key.json`). MUST resolve to a `$id` published in the spec at the version the seller advertises via `get_adcp_capabilities` \u2014 either a deep sub-schema (the typical case) or the response-root `$id` (the bundled-tree fallback for tools served from bundles built before #3868). Sellers MUST NOT emit when the rejection occurred against a private extension, server-only sub-schema, or pre-release element \u2014 the public-spec replay rationale only holds when the rejecting element is reachable from the public bundle. Sellers populating `schemaPath` SHOULD also populate `schema_id` when they have it so 3.1+ readers don't get strictly less than 3.0.x readers. See error-handling.mdx for resolution guidance and the bundled-tree caveat.",
-                                    "type": "string"
-                                  }
-                                },
-                                "required": [
-                                  "pointer",
-                                  "message",
-                                  "keyword"
-                                ],
-                                "type": "object"
-                              },
-                              "type": "array"
-                            },
-                            "message": {
-                              "description": "Human-readable error message",
-                              "type": "string"
-                            },
-                            "recovery": {
-                              "description": "Agent recovery classification. transient: retry after delay (rate limit, service unavailable, timeout). correctable: fix the request and resend (invalid field, budget too low, creative rejected). terminal: requires human action (account suspended, payment required, account not found). AdCP 3.2 producers MUST populate `recovery` on every error; 3.1 producers SHOULD populate it. The shared 3.x schema intentionally does not add `recovery` to `required` so retained and live errors from earlier 3.x producers remain decodable. When `buyer_reason` is present, `recovery` is required and MUST classify that buyer-actionable reason. If the enclosing code and buyer reason are both registered, their standard recovery classifications MUST agree with each other and with this field. A receiver that does not recognize `error.code` (a newer code, or a platform-specific code) MUST still be able to classify the error from `recovery`. When a legacy error omits `recovery`, receivers use the registered classification for a known code and fall back to `transient` for an unknown code, subject to the bounded retry budget. The `enumMetadata.recovery` block in `enums/error-code.json` is the documentary mirror for known top-level and buyer-reason codes; `error.recovery` on the wire is authoritative when present.",
-                              "enum": [
-                                "transient",
-                                "correctable",
-                                "terminal"
-                              ],
-                              "type": "string"
-                            },
-                            "retry_after": {
-                              "description": "Seconds to wait before retrying the operation. AdCP 3.2 producers MUST emit an integer from 1 through 3600. The 3.x schema continues to accept finite fractional values for backward compatibility with earlier producers; consumers receiving one MUST round up to the next whole second before clamping so the retry is never scheduled earlier than intended. Non-finite values are treated as absent.",
-                              "maximum": 3600,
-                              "minimum": 1,
-                              "type": "number"
-                            },
-                            "sdk_id": {
-                              "description": "Optional identifier for the SDK that augmented this error entry. Format: `<sdk_package_name>@<version>` (e.g., `@adcontextprotocol/adcp@7.3.0`, `adcontextprotocol-adcp-python@1.2.0`). MUST be set when `source: \"sdk\"`; MUST be absent when `source: \"producer\"` or absent. Lets downstream consumers identify which intermediate processor inserted the entry, useful for debugging cross-SDK divergence (e.g., one SDK detects a projection failure that another SDK's registry version doesn't).",
-                              "type": "string"
-                            },
-                            "source": {
-                              "description": "Who emitted this error entry. `producer` (default when absent): emitted by the response's authoring agent (the seller for `get_products`, the creative agent for `build_creative`, etc.). `sdk`: augmented by a consuming SDK that detected a non-fatal advisory condition on consumption (e.g., `FORMAT_PROJECTION_FAILED` when the buyer SDK couldn't project a v1 format to a canonical, or `FORMAT_DECLARATION_DIVERGENT` when the SDK detected a producer bug on read). SDK-augmented entries SHOULD also set `sdk_id` so downstream consumers can identify which intermediate processor inserted the entry.\n\n**Multi-hop propagation (normative).** AdCP is a federated agent network \u2014 responses commonly traverse multiple SDKs (e.g., sales agent \u2192 interchange \u2192 DSP \u2192 buyer). When an SDK augments `errors[]` with a consumption-detected entry, the augmented response carries the entry forward to subsequent hops. Each hop that detects the same condition independently SHOULD deduplicate by `(code, field)` rather than re-emit; the existing entry's `sdk_id` identifies which earlier processor saw it first. Producer entries (those without `source: \"sdk\"`) are authoritative for what the response's authoring agent self-detected; SDK entries are observations made on top.\n\n**Replay/audit safety.** Persisted or replayed responses carry `source` and `sdk_id` so the audit trail can distinguish seller-emitted entries from SDK-augmented ones. Without `source`, a downstream consumer can't tell whether a code came from the seller or an intermediate SDK, which corrupts attribution.",
-                              "enum": [
-                                "producer",
-                                "sdk"
-                              ],
-                              "type": "string"
-                            },
-                            "suggestion": {
-                              "description": "Suggested fix for the error",
-                              "type": "string"
-                            }
-                          },
-                          "required": [
-                            "code",
-                            "message"
-                          ],
-                          "title": "Error",
-                          "type": "object"
+                          "$ref": "#/definitions/Shared13"
                         },
                         "maxItems": 16,
                         "type": "array"
@@ -1449,9 +1321,7 @@
                       "prior_destination_refs": {
                         "description": "Retained superseded generation references for this destination_id, newest first, still resolvable for existing authorized account bindings and retained reporting history. Enumerable only by the owning principal. Suspension and revocation of the destination apply to these generations too.",
                         "items": {
-                          "maxLength": 255,
-                          "minLength": 1,
-                          "type": "string"
+                          "$ref": "#/definitions/Shared19"
                         },
                         "maxItems": 32,
                         "type": "array",
@@ -1521,17 +1391,12 @@
                     "additionalProperties": false,
                     "properties": {
                       "destination_id": {
-                        "maxLength": 64,
-                        "minLength": 1,
-                        "pattern": "^[A-Za-z0-9_.:-]{1,64}$",
-                        "type": "string"
+                        "$ref": "#/definitions/Shared15"
                       },
                       "destination_refs": {
                         "description": "Retained generation references of the revoked destination, newest first, still resolvable for retained reporting history but ineligible for delivery and for new bindings.",
                         "items": {
-                          "maxLength": 255,
-                          "minLength": 1,
-                          "type": "string"
+                          "$ref": "#/definitions/Shared19"
                         },
                         "maxItems": 32,
                         "minItems": 1,
@@ -1589,160 +1454,7 @@
               "x-status": "experimental"
             },
             "warnings": {
-              "items": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "additionalProperties": true,
-                "dependencies": {
-                  "buyer_reason": [
-                    "recovery"
-                  ]
-                },
-                "description": "Standard error structure for task-specific errors and warnings",
-                "properties": {
-                  "buyer_reason": {
-                    "additionalProperties": true,
-                    "description": "Optional buyer-actionable classification of the failure. Use this when the enclosing error code or message is too coarse or contains producer-internal context that must not cross the buyer trust boundary. `code` reuses the comprehensive standard vocabulary and recovery classifications published in `enums/error-code.json`, including policy, governance, account, commercial, inventory, and creative failures. The wire field remains open for forward compatibility. `message` MUST be safe to show to the buyer and MUST NOT contain vendor identifiers, ad-server type names, internal object names, internal IDs, stack traces, or other producer-private implementation details. When present, the enclosing `error.recovery` MUST classify the buyer-actionable reason. If both the enclosing code and buyer reason are registered, their standard recovery classifications MUST agree with each other and with `error.recovery`; sellers MUST choose the closest compatible enclosing code rather than retain a conflicting upstream transport wrapper. One buyer_reason classifies one error object. If a rejection contains independently actionable failures from different classes, sellers MUST emit separate error objects or omit buyer_reason rather than select a misleading single class.",
-                    "properties": {
-                      "code": {
-                        "description": "Machine-readable buyer-actionable reason from the standard `enums/error-code.json` vocabulary or a producer-specific extension. Extensions MUST follow the standard `X_{VENDOR}_{CODE}` naming rule. The wire field is open for forward compatibility. Receivers MUST accept unknown values and use the enclosing `error.recovery` plus this object's `message` as the fallback.",
-                        "maxLength": 64,
-                        "minLength": 1,
-                        "type": "string"
-                      },
-                      "message": {
-                        "description": "Buyer-safe explanation of the actionable failure. MUST NOT expose vendor identifiers, ad-server type names, internal object names, internal IDs, stack traces, or other producer-private implementation details.",
-                        "minLength": 1,
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "code",
-                      "message"
-                    ],
-                    "type": "object"
-                  },
-                  "code": {
-                    "description": "Error code for programmatic handling. The error-code vocabulary is open: `error.code` is wire-typed `string` (not a closed enum), the standard codes published in `enums/error-code.json` are documentary, and senders MAY emit codes outside that set (platform-specific codes, or codes introduced in a later AdCP version). Receivers MUST decode unknown codes \u2014 treat the response as well-formed, read `error.recovery` for the recovery classification, and fall back to `transient` when `recovery` is absent. See `error-handling.mdx#forward-compatible-decoding-normative` for the full forward-compat contract \u2014 this rule is what lets future maintenance lines ship new codes additively.",
-                    "maxLength": 64,
-                    "minLength": 1,
-                    "type": "string"
-                  },
-                  "details": {
-                    "additionalProperties": true,
-                    "description": "Additional task-specific error details. Sellers MAY mirror `issues[]` here as `details.issues` for backward compatibility with pre-3.1 consumers reading from `details`; new consumers SHOULD prefer the top-level `issues` field.\n\n**Canonical rejection-set shape (3.1+).** When the error reports a rejected value against a closed set of accepted values (e.g., enum mismatch, unsupported pricing option, invalid signal id), sellers SHOULD use the canonical key `accepted_values: <array>` under `details` rather than seller-specific variants observed in the wild (`available`, `allowed`, `accepted_values` at the error root, etc.). The canonical shape:\n\n```json\n{\n  \"code\": \"INVALID_PRICING_OPTION\",\n  \"message\": \"Pricing option not found: po_prism_abandoner_cpm\",\n  \"field\": \"pricing_option_id\",\n  \"details\": {\n    \"rejected_value\": \"po_prism_abandoner_cpm\",\n    \"accepted_values\": [\"po_prism_cart_cpm\", \"po_prism_view_cpm\"]\n  }\n}\n```\n\n- `rejected_value` (optional): the offending value the buyer supplied, echoed for buyer-side diagnostic clarity (especially when the offending field is nested or transformed before validation).\n- `accepted_values` (optional): the closed set the seller would have accepted at this field on this call. Sellers MUST NOT enumerate the full ecosystem-wide accepted set if it differs from what's accepted for *this caller in this context* (account, brand, scope) \u2014 leaking ecosystem-wide accepted sets to a per-caller rejection turns the error into an enumeration oracle.\n\nThis is **SHOULD-level guidance**, not MUST: `details` remains `additionalProperties: true` and pre-3.1 sellers using `available` / `allowed` / `accepted_values` at the error root remain conformant. The canonical shape lets buyer-side diagnostic tooling (SDK runner hints, dashboards, error classifiers) reliably surface the accepted-set without per-seller pattern matching. SDKs SHOULD accept any of the legacy variants and normalize on read; the canonical shape is what new sellers and 3.1+ adopters should emit going forward.",
-                    "type": "object"
-                  },
-                  "field": {
-                    "description": "Field path associated with the error in JSONPath-lite format (e.g., 'packages[0].targeting'). When `issues[]` is also present, sellers MUST set this to `issues[0].pointer` translated from RFC 6901 to JSONPath-lite (e.g., '/packages/0/targeting' \u2192 'packages[0].targeting') so pre-3.1 consumers reading `field` only get deterministic behavior. Will be deprecated in a future major version in favor of `issues[].pointer`.",
-                    "type": "string"
-                  },
-                  "issues": {
-                    "description": "Structured list of validation failures. Primary use is `VALIDATION_ERROR`, where multi-field rejections are common and `field` (singular) cannot carry the full pointer map. MAY appear on other error codes that reject multiple fields at once. When `issues` is present, sellers MUST also populate `field` from `issues[0]` for backward compatibility with pre-3.1 consumers that read `field` only \u2014 translating the RFC 6901 `pointer` format to the JSONPath-lite format `field` uses (e.g., `/packages/0/targeting` \u2192 `packages[0].targeting`). MUST (not SHOULD) so consumers reading `field` get deterministic behavior across sellers \u2014 the cost is one line of dual-write per seller; the cost of SHOULD is a long tail of seller-A-vs-seller-B inconsistency. Future major versions will deprecate `field` in favor of `issues[].pointer`.",
-                    "items": {
-                      "additionalProperties": true,
-                      "properties": {
-                        "discriminator": {
-                          "description": "Optional. Const-discriminator property/value pair(s) identifying the variant the validator selected from values present in the payload. Sellers MUST populate only when (a) the rejecting schema is a const-discriminated `oneOf` / `anyOf` and (b) the discriminator property is present in the payload \u2014 emission on partial-match inference would fingerprint the seller's validator implementation. MUST omit when zero variants survive. Compound discriminators (e.g. `(type, value_type)`) produce multiple entries ordered by declaration in the rejecting schema's `properties` block. Same private-extensions / version-skew carve-out as `schema_id`. See error-handling.mdx.",
-                          "items": {
-                            "additionalProperties": false,
-                            "properties": {
-                              "property_name": {
-                                "description": "Discriminator property name (e.g., `type`, `value_type`). Aligns with OpenAPI 3.x `discriminator.propertyName`.",
-                                "type": "string"
-                              },
-                              "value": {
-                                "description": "Value the caller sent at `property_name`. Typically a string for const-discriminated unions; numeric/boolean/null permitted. Object and array values are forbidden \u2014 const discriminators are scalars, and emitting a structured value would conflate 'caller sent a complex shape' with 'validator inferred from a structural match'.",
-                                "type": [
-                                  "string",
-                                  "number",
-                                  "boolean",
-                                  "null"
-                                ]
-                              }
-                            },
-                            "required": [
-                              "property_name",
-                              "value"
-                            ],
-                            "type": "object"
-                          },
-                          "type": "array"
-                        },
-                        "keyword": {
-                          "description": "Schema keyword that rejected the payload, drawn from the JSON Schema vocabulary (e.g., 'required', 'type', 'format', 'enum', 'pattern', 'minimum', 'maxLength'). Matches the keyword names emitted by JSON Schema validators (Ajv, jsonschema, etc.) so agents can pattern-match on rejection class without parsing message text. Implementers SHOULD use the validator's native keyword name; do not invent custom values here.",
-                          "type": "string"
-                        },
-                        "message": {
-                          "description": "Human-readable description of why this specific field was rejected.",
-                          "type": "string"
-                        },
-                        "pointer": {
-                          "description": "RFC 6901 JSON Pointer to the offending field in the request payload (e.g., '/packages/0/targeting/geo_countries/2'). Format chosen to match Ajv's native validation output (`instancePath`); standardized and unambiguous on keys containing `/` or `~`. NOTE: this differs from the legacy top-level `field` which uses JSONPath-lite (`packages[0].targeting.geo_countries[2]`). When sellers populate `field` from `issues[0].pointer` for backward compatibility (see `field` description), they MUST translate the format \u2014 `/packages/0/x` \u2192 `packages[0].x`. Future major versions will deprecate `field` in favor of `issues[].pointer`.",
-                          "type": "string"
-                        },
-                        "schemaPath": {
-                          "description": "Optional. JSON Schema tree path of the rejecting keyword (e.g. '#/properties/packages/items/oneOf/1'). 3.1+ consumers SHOULD prefer `schema_id`; `schemaPath` is retained for 3.0.x compatibility (renamed to `schema_path` in a future major). See error-handling.mdx for the validator-internals production-emit rules.",
-                          "type": "string"
-                        },
-                        "schema_id": {
-                          "description": "Optional. `$id` of the rejecting (sub-)schema (e.g. `/schemas/3.1.0/core/activation-key.json`). MUST resolve to a `$id` published in the spec at the version the seller advertises via `get_adcp_capabilities` \u2014 either a deep sub-schema (the typical case) or the response-root `$id` (the bundled-tree fallback for tools served from bundles built before #3868). Sellers MUST NOT emit when the rejection occurred against a private extension, server-only sub-schema, or pre-release element \u2014 the public-spec replay rationale only holds when the rejecting element is reachable from the public bundle. Sellers populating `schemaPath` SHOULD also populate `schema_id` when they have it so 3.1+ readers don't get strictly less than 3.0.x readers. See error-handling.mdx for resolution guidance and the bundled-tree caveat.",
-                          "type": "string"
-                        }
-                      },
-                      "required": [
-                        "pointer",
-                        "message",
-                        "keyword"
-                      ],
-                      "type": "object"
-                    },
-                    "type": "array"
-                  },
-                  "message": {
-                    "description": "Human-readable error message",
-                    "type": "string"
-                  },
-                  "recovery": {
-                    "description": "Agent recovery classification. transient: retry after delay (rate limit, service unavailable, timeout). correctable: fix the request and resend (invalid field, budget too low, creative rejected). terminal: requires human action (account suspended, payment required, account not found). AdCP 3.2 producers MUST populate `recovery` on every error; 3.1 producers SHOULD populate it. The shared 3.x schema intentionally does not add `recovery` to `required` so retained and live errors from earlier 3.x producers remain decodable. When `buyer_reason` is present, `recovery` is required and MUST classify that buyer-actionable reason. If the enclosing code and buyer reason are both registered, their standard recovery classifications MUST agree with each other and with this field. A receiver that does not recognize `error.code` (a newer code, or a platform-specific code) MUST still be able to classify the error from `recovery`. When a legacy error omits `recovery`, receivers use the registered classification for a known code and fall back to `transient` for an unknown code, subject to the bounded retry budget. The `enumMetadata.recovery` block in `enums/error-code.json` is the documentary mirror for known top-level and buyer-reason codes; `error.recovery` on the wire is authoritative when present.",
-                    "enum": [
-                      "transient",
-                      "correctable",
-                      "terminal"
-                    ],
-                    "type": "string"
-                  },
-                  "retry_after": {
-                    "description": "Seconds to wait before retrying the operation. AdCP 3.2 producers MUST emit an integer from 1 through 3600. The 3.x schema continues to accept finite fractional values for backward compatibility with earlier producers; consumers receiving one MUST round up to the next whole second before clamping so the retry is never scheduled earlier than intended. Non-finite values are treated as absent.",
-                    "maximum": 3600,
-                    "minimum": 1,
-                    "type": "number"
-                  },
-                  "sdk_id": {
-                    "description": "Optional identifier for the SDK that augmented this error entry. Format: `<sdk_package_name>@<version>` (e.g., `@adcontextprotocol/adcp@7.3.0`, `adcontextprotocol-adcp-python@1.2.0`). MUST be set when `source: \"sdk\"`; MUST be absent when `source: \"producer\"` or absent. Lets downstream consumers identify which intermediate processor inserted the entry, useful for debugging cross-SDK divergence (e.g., one SDK detects a projection failure that another SDK's registry version doesn't).",
-                    "type": "string"
-                  },
-                  "source": {
-                    "description": "Who emitted this error entry. `producer` (default when absent): emitted by the response's authoring agent (the seller for `get_products`, the creative agent for `build_creative`, etc.). `sdk`: augmented by a consuming SDK that detected a non-fatal advisory condition on consumption (e.g., `FORMAT_PROJECTION_FAILED` when the buyer SDK couldn't project a v1 format to a canonical, or `FORMAT_DECLARATION_DIVERGENT` when the SDK detected a producer bug on read). SDK-augmented entries SHOULD also set `sdk_id` so downstream consumers can identify which intermediate processor inserted the entry.\n\n**Multi-hop propagation (normative).** AdCP is a federated agent network \u2014 responses commonly traverse multiple SDKs (e.g., sales agent \u2192 interchange \u2192 DSP \u2192 buyer). When an SDK augments `errors[]` with a consumption-detected entry, the augmented response carries the entry forward to subsequent hops. Each hop that detects the same condition independently SHOULD deduplicate by `(code, field)` rather than re-emit; the existing entry's `sdk_id` identifies which earlier processor saw it first. Producer entries (those without `source: \"sdk\"`) are authoritative for what the response's authoring agent self-detected; SDK entries are observations made on top.\n\n**Replay/audit safety.** Persisted or replayed responses carry `source` and `sdk_id` so the audit trail can distinguish seller-emitted entries from SDK-augmented ones. Without `source`, a downstream consumer can't tell whether a code came from the seller or an intermediate SDK, which corrupts attribution.",
-                    "enum": [
-                      "producer",
-                      "sdk"
-                    ],
-                    "type": "string"
-                  },
-                  "suggestion": {
-                    "description": "Suggested fix for the error",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "code",
-                  "message"
-                ],
-                "title": "Error",
-                "type": "object"
-              },
-              "maxItems": 16,
-              "type": "array"
+              "$ref": "#/definitions/Shared12"
             }
           },
           "required": [
@@ -1777,160 +1489,7 @@
               "type": "string"
             },
             "warnings": {
-              "items": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "additionalProperties": true,
-                "dependencies": {
-                  "buyer_reason": [
-                    "recovery"
-                  ]
-                },
-                "description": "Standard error structure for task-specific errors and warnings",
-                "properties": {
-                  "buyer_reason": {
-                    "additionalProperties": true,
-                    "description": "Optional buyer-actionable classification of the failure. Use this when the enclosing error code or message is too coarse or contains producer-internal context that must not cross the buyer trust boundary. `code` reuses the comprehensive standard vocabulary and recovery classifications published in `enums/error-code.json`, including policy, governance, account, commercial, inventory, and creative failures. The wire field remains open for forward compatibility. `message` MUST be safe to show to the buyer and MUST NOT contain vendor identifiers, ad-server type names, internal object names, internal IDs, stack traces, or other producer-private implementation details. When present, the enclosing `error.recovery` MUST classify the buyer-actionable reason. If both the enclosing code and buyer reason are registered, their standard recovery classifications MUST agree with each other and with `error.recovery`; sellers MUST choose the closest compatible enclosing code rather than retain a conflicting upstream transport wrapper. One buyer_reason classifies one error object. If a rejection contains independently actionable failures from different classes, sellers MUST emit separate error objects or omit buyer_reason rather than select a misleading single class.",
-                    "properties": {
-                      "code": {
-                        "description": "Machine-readable buyer-actionable reason from the standard `enums/error-code.json` vocabulary or a producer-specific extension. Extensions MUST follow the standard `X_{VENDOR}_{CODE}` naming rule. The wire field is open for forward compatibility. Receivers MUST accept unknown values and use the enclosing `error.recovery` plus this object's `message` as the fallback.",
-                        "maxLength": 64,
-                        "minLength": 1,
-                        "type": "string"
-                      },
-                      "message": {
-                        "description": "Buyer-safe explanation of the actionable failure. MUST NOT expose vendor identifiers, ad-server type names, internal object names, internal IDs, stack traces, or other producer-private implementation details.",
-                        "minLength": 1,
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "code",
-                      "message"
-                    ],
-                    "type": "object"
-                  },
-                  "code": {
-                    "description": "Error code for programmatic handling. The error-code vocabulary is open: `error.code` is wire-typed `string` (not a closed enum), the standard codes published in `enums/error-code.json` are documentary, and senders MAY emit codes outside that set (platform-specific codes, or codes introduced in a later AdCP version). Receivers MUST decode unknown codes \u2014 treat the response as well-formed, read `error.recovery` for the recovery classification, and fall back to `transient` when `recovery` is absent. See `error-handling.mdx#forward-compatible-decoding-normative` for the full forward-compat contract \u2014 this rule is what lets future maintenance lines ship new codes additively.",
-                    "maxLength": 64,
-                    "minLength": 1,
-                    "type": "string"
-                  },
-                  "details": {
-                    "additionalProperties": true,
-                    "description": "Additional task-specific error details. Sellers MAY mirror `issues[]` here as `details.issues` for backward compatibility with pre-3.1 consumers reading from `details`; new consumers SHOULD prefer the top-level `issues` field.\n\n**Canonical rejection-set shape (3.1+).** When the error reports a rejected value against a closed set of accepted values (e.g., enum mismatch, unsupported pricing option, invalid signal id), sellers SHOULD use the canonical key `accepted_values: <array>` under `details` rather than seller-specific variants observed in the wild (`available`, `allowed`, `accepted_values` at the error root, etc.). The canonical shape:\n\n```json\n{\n  \"code\": \"INVALID_PRICING_OPTION\",\n  \"message\": \"Pricing option not found: po_prism_abandoner_cpm\",\n  \"field\": \"pricing_option_id\",\n  \"details\": {\n    \"rejected_value\": \"po_prism_abandoner_cpm\",\n    \"accepted_values\": [\"po_prism_cart_cpm\", \"po_prism_view_cpm\"]\n  }\n}\n```\n\n- `rejected_value` (optional): the offending value the buyer supplied, echoed for buyer-side diagnostic clarity (especially when the offending field is nested or transformed before validation).\n- `accepted_values` (optional): the closed set the seller would have accepted at this field on this call. Sellers MUST NOT enumerate the full ecosystem-wide accepted set if it differs from what's accepted for *this caller in this context* (account, brand, scope) \u2014 leaking ecosystem-wide accepted sets to a per-caller rejection turns the error into an enumeration oracle.\n\nThis is **SHOULD-level guidance**, not MUST: `details` remains `additionalProperties: true` and pre-3.1 sellers using `available` / `allowed` / `accepted_values` at the error root remain conformant. The canonical shape lets buyer-side diagnostic tooling (SDK runner hints, dashboards, error classifiers) reliably surface the accepted-set without per-seller pattern matching. SDKs SHOULD accept any of the legacy variants and normalize on read; the canonical shape is what new sellers and 3.1+ adopters should emit going forward.",
-                    "type": "object"
-                  },
-                  "field": {
-                    "description": "Field path associated with the error in JSONPath-lite format (e.g., 'packages[0].targeting'). When `issues[]` is also present, sellers MUST set this to `issues[0].pointer` translated from RFC 6901 to JSONPath-lite (e.g., '/packages/0/targeting' \u2192 'packages[0].targeting') so pre-3.1 consumers reading `field` only get deterministic behavior. Will be deprecated in a future major version in favor of `issues[].pointer`.",
-                    "type": "string"
-                  },
-                  "issues": {
-                    "description": "Structured list of validation failures. Primary use is `VALIDATION_ERROR`, where multi-field rejections are common and `field` (singular) cannot carry the full pointer map. MAY appear on other error codes that reject multiple fields at once. When `issues` is present, sellers MUST also populate `field` from `issues[0]` for backward compatibility with pre-3.1 consumers that read `field` only \u2014 translating the RFC 6901 `pointer` format to the JSONPath-lite format `field` uses (e.g., `/packages/0/targeting` \u2192 `packages[0].targeting`). MUST (not SHOULD) so consumers reading `field` get deterministic behavior across sellers \u2014 the cost is one line of dual-write per seller; the cost of SHOULD is a long tail of seller-A-vs-seller-B inconsistency. Future major versions will deprecate `field` in favor of `issues[].pointer`.",
-                    "items": {
-                      "additionalProperties": true,
-                      "properties": {
-                        "discriminator": {
-                          "description": "Optional. Const-discriminator property/value pair(s) identifying the variant the validator selected from values present in the payload. Sellers MUST populate only when (a) the rejecting schema is a const-discriminated `oneOf` / `anyOf` and (b) the discriminator property is present in the payload \u2014 emission on partial-match inference would fingerprint the seller's validator implementation. MUST omit when zero variants survive. Compound discriminators (e.g. `(type, value_type)`) produce multiple entries ordered by declaration in the rejecting schema's `properties` block. Same private-extensions / version-skew carve-out as `schema_id`. See error-handling.mdx.",
-                          "items": {
-                            "additionalProperties": false,
-                            "properties": {
-                              "property_name": {
-                                "description": "Discriminator property name (e.g., `type`, `value_type`). Aligns with OpenAPI 3.x `discriminator.propertyName`.",
-                                "type": "string"
-                              },
-                              "value": {
-                                "description": "Value the caller sent at `property_name`. Typically a string for const-discriminated unions; numeric/boolean/null permitted. Object and array values are forbidden \u2014 const discriminators are scalars, and emitting a structured value would conflate 'caller sent a complex shape' with 'validator inferred from a structural match'.",
-                                "type": [
-                                  "string",
-                                  "number",
-                                  "boolean",
-                                  "null"
-                                ]
-                              }
-                            },
-                            "required": [
-                              "property_name",
-                              "value"
-                            ],
-                            "type": "object"
-                          },
-                          "type": "array"
-                        },
-                        "keyword": {
-                          "description": "Schema keyword that rejected the payload, drawn from the JSON Schema vocabulary (e.g., 'required', 'type', 'format', 'enum', 'pattern', 'minimum', 'maxLength'). Matches the keyword names emitted by JSON Schema validators (Ajv, jsonschema, etc.) so agents can pattern-match on rejection class without parsing message text. Implementers SHOULD use the validator's native keyword name; do not invent custom values here.",
-                          "type": "string"
-                        },
-                        "message": {
-                          "description": "Human-readable description of why this specific field was rejected.",
-                          "type": "string"
-                        },
-                        "pointer": {
-                          "description": "RFC 6901 JSON Pointer to the offending field in the request payload (e.g., '/packages/0/targeting/geo_countries/2'). Format chosen to match Ajv's native validation output (`instancePath`); standardized and unambiguous on keys containing `/` or `~`. NOTE: this differs from the legacy top-level `field` which uses JSONPath-lite (`packages[0].targeting.geo_countries[2]`). When sellers populate `field` from `issues[0].pointer` for backward compatibility (see `field` description), they MUST translate the format \u2014 `/packages/0/x` \u2192 `packages[0].x`. Future major versions will deprecate `field` in favor of `issues[].pointer`.",
-                          "type": "string"
-                        },
-                        "schemaPath": {
-                          "description": "Optional. JSON Schema tree path of the rejecting keyword (e.g. '#/properties/packages/items/oneOf/1'). 3.1+ consumers SHOULD prefer `schema_id`; `schemaPath` is retained for 3.0.x compatibility (renamed to `schema_path` in a future major). See error-handling.mdx for the validator-internals production-emit rules.",
-                          "type": "string"
-                        },
-                        "schema_id": {
-                          "description": "Optional. `$id` of the rejecting (sub-)schema (e.g. `/schemas/3.1.0/core/activation-key.json`). MUST resolve to a `$id` published in the spec at the version the seller advertises via `get_adcp_capabilities` \u2014 either a deep sub-schema (the typical case) or the response-root `$id` (the bundled-tree fallback for tools served from bundles built before #3868). Sellers MUST NOT emit when the rejection occurred against a private extension, server-only sub-schema, or pre-release element \u2014 the public-spec replay rationale only holds when the rejecting element is reachable from the public bundle. Sellers populating `schemaPath` SHOULD also populate `schema_id` when they have it so 3.1+ readers don't get strictly less than 3.0.x readers. See error-handling.mdx for resolution guidance and the bundled-tree caveat.",
-                          "type": "string"
-                        }
-                      },
-                      "required": [
-                        "pointer",
-                        "message",
-                        "keyword"
-                      ],
-                      "type": "object"
-                    },
-                    "type": "array"
-                  },
-                  "message": {
-                    "description": "Human-readable error message",
-                    "type": "string"
-                  },
-                  "recovery": {
-                    "description": "Agent recovery classification. transient: retry after delay (rate limit, service unavailable, timeout). correctable: fix the request and resend (invalid field, budget too low, creative rejected). terminal: requires human action (account suspended, payment required, account not found). AdCP 3.2 producers MUST populate `recovery` on every error; 3.1 producers SHOULD populate it. The shared 3.x schema intentionally does not add `recovery` to `required` so retained and live errors from earlier 3.x producers remain decodable. When `buyer_reason` is present, `recovery` is required and MUST classify that buyer-actionable reason. If the enclosing code and buyer reason are both registered, their standard recovery classifications MUST agree with each other and with this field. A receiver that does not recognize `error.code` (a newer code, or a platform-specific code) MUST still be able to classify the error from `recovery`. When a legacy error omits `recovery`, receivers use the registered classification for a known code and fall back to `transient` for an unknown code, subject to the bounded retry budget. The `enumMetadata.recovery` block in `enums/error-code.json` is the documentary mirror for known top-level and buyer-reason codes; `error.recovery` on the wire is authoritative when present.",
-                    "enum": [
-                      "transient",
-                      "correctable",
-                      "terminal"
-                    ],
-                    "type": "string"
-                  },
-                  "retry_after": {
-                    "description": "Seconds to wait before retrying the operation. AdCP 3.2 producers MUST emit an integer from 1 through 3600. The 3.x schema continues to accept finite fractional values for backward compatibility with earlier producers; consumers receiving one MUST round up to the next whole second before clamping so the retry is never scheduled earlier than intended. Non-finite values are treated as absent.",
-                    "maximum": 3600,
-                    "minimum": 1,
-                    "type": "number"
-                  },
-                  "sdk_id": {
-                    "description": "Optional identifier for the SDK that augmented this error entry. Format: `<sdk_package_name>@<version>` (e.g., `@adcontextprotocol/adcp@7.3.0`, `adcontextprotocol-adcp-python@1.2.0`). MUST be set when `source: \"sdk\"`; MUST be absent when `source: \"producer\"` or absent. Lets downstream consumers identify which intermediate processor inserted the entry, useful for debugging cross-SDK divergence (e.g., one SDK detects a projection failure that another SDK's registry version doesn't).",
-                    "type": "string"
-                  },
-                  "source": {
-                    "description": "Who emitted this error entry. `producer` (default when absent): emitted by the response's authoring agent (the seller for `get_products`, the creative agent for `build_creative`, etc.). `sdk`: augmented by a consuming SDK that detected a non-fatal advisory condition on consumption (e.g., `FORMAT_PROJECTION_FAILED` when the buyer SDK couldn't project a v1 format to a canonical, or `FORMAT_DECLARATION_DIVERGENT` when the SDK detected a producer bug on read). SDK-augmented entries SHOULD also set `sdk_id` so downstream consumers can identify which intermediate processor inserted the entry.\n\n**Multi-hop propagation (normative).** AdCP is a federated agent network \u2014 responses commonly traverse multiple SDKs (e.g., sales agent \u2192 interchange \u2192 DSP \u2192 buyer). When an SDK augments `errors[]` with a consumption-detected entry, the augmented response carries the entry forward to subsequent hops. Each hop that detects the same condition independently SHOULD deduplicate by `(code, field)` rather than re-emit; the existing entry's `sdk_id` identifies which earlier processor saw it first. Producer entries (those without `source: \"sdk\"`) are authoritative for what the response's authoring agent self-detected; SDK entries are observations made on top.\n\n**Replay/audit safety.** Persisted or replayed responses carry `source` and `sdk_id` so the audit trail can distinguish seller-emitted entries from SDK-augmented ones. Without `source`, a downstream consumer can't tell whether a code came from the seller or an intermediate SDK, which corrupts attribution.",
-                    "enum": [
-                      "producer",
-                      "sdk"
-                    ],
-                    "type": "string"
-                  },
-                  "suggestion": {
-                    "description": "Suggested fix for the error",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "code",
-                  "message"
-                ],
-                "title": "Error",
-                "type": "object"
-              },
-              "maxItems": 16,
-              "type": "array"
+              "$ref": "#/definitions/Shared12"
             }
           },
           "required": [
@@ -1946,156 +1505,7 @@
           "properties": {
             "errors": {
               "items": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "additionalProperties": true,
-                "dependencies": {
-                  "buyer_reason": [
-                    "recovery"
-                  ]
-                },
-                "description": "Standard error structure for task-specific errors and warnings",
-                "properties": {
-                  "buyer_reason": {
-                    "additionalProperties": true,
-                    "description": "Optional buyer-actionable classification of the failure. Use this when the enclosing error code or message is too coarse or contains producer-internal context that must not cross the buyer trust boundary. `code` reuses the comprehensive standard vocabulary and recovery classifications published in `enums/error-code.json`, including policy, governance, account, commercial, inventory, and creative failures. The wire field remains open for forward compatibility. `message` MUST be safe to show to the buyer and MUST NOT contain vendor identifiers, ad-server type names, internal object names, internal IDs, stack traces, or other producer-private implementation details. When present, the enclosing `error.recovery` MUST classify the buyer-actionable reason. If both the enclosing code and buyer reason are registered, their standard recovery classifications MUST agree with each other and with `error.recovery`; sellers MUST choose the closest compatible enclosing code rather than retain a conflicting upstream transport wrapper. One buyer_reason classifies one error object. If a rejection contains independently actionable failures from different classes, sellers MUST emit separate error objects or omit buyer_reason rather than select a misleading single class.",
-                    "properties": {
-                      "code": {
-                        "description": "Machine-readable buyer-actionable reason from the standard `enums/error-code.json` vocabulary or a producer-specific extension. Extensions MUST follow the standard `X_{VENDOR}_{CODE}` naming rule. The wire field is open for forward compatibility. Receivers MUST accept unknown values and use the enclosing `error.recovery` plus this object's `message` as the fallback.",
-                        "maxLength": 64,
-                        "minLength": 1,
-                        "type": "string"
-                      },
-                      "message": {
-                        "description": "Buyer-safe explanation of the actionable failure. MUST NOT expose vendor identifiers, ad-server type names, internal object names, internal IDs, stack traces, or other producer-private implementation details.",
-                        "minLength": 1,
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "code",
-                      "message"
-                    ],
-                    "type": "object"
-                  },
-                  "code": {
-                    "description": "Error code for programmatic handling. The error-code vocabulary is open: `error.code` is wire-typed `string` (not a closed enum), the standard codes published in `enums/error-code.json` are documentary, and senders MAY emit codes outside that set (platform-specific codes, or codes introduced in a later AdCP version). Receivers MUST decode unknown codes \u2014 treat the response as well-formed, read `error.recovery` for the recovery classification, and fall back to `transient` when `recovery` is absent. See `error-handling.mdx#forward-compatible-decoding-normative` for the full forward-compat contract \u2014 this rule is what lets future maintenance lines ship new codes additively.",
-                    "maxLength": 64,
-                    "minLength": 1,
-                    "type": "string"
-                  },
-                  "details": {
-                    "additionalProperties": true,
-                    "description": "Additional task-specific error details. Sellers MAY mirror `issues[]` here as `details.issues` for backward compatibility with pre-3.1 consumers reading from `details`; new consumers SHOULD prefer the top-level `issues` field.\n\n**Canonical rejection-set shape (3.1+).** When the error reports a rejected value against a closed set of accepted values (e.g., enum mismatch, unsupported pricing option, invalid signal id), sellers SHOULD use the canonical key `accepted_values: <array>` under `details` rather than seller-specific variants observed in the wild (`available`, `allowed`, `accepted_values` at the error root, etc.). The canonical shape:\n\n```json\n{\n  \"code\": \"INVALID_PRICING_OPTION\",\n  \"message\": \"Pricing option not found: po_prism_abandoner_cpm\",\n  \"field\": \"pricing_option_id\",\n  \"details\": {\n    \"rejected_value\": \"po_prism_abandoner_cpm\",\n    \"accepted_values\": [\"po_prism_cart_cpm\", \"po_prism_view_cpm\"]\n  }\n}\n```\n\n- `rejected_value` (optional): the offending value the buyer supplied, echoed for buyer-side diagnostic clarity (especially when the offending field is nested or transformed before validation).\n- `accepted_values` (optional): the closed set the seller would have accepted at this field on this call. Sellers MUST NOT enumerate the full ecosystem-wide accepted set if it differs from what's accepted for *this caller in this context* (account, brand, scope) \u2014 leaking ecosystem-wide accepted sets to a per-caller rejection turns the error into an enumeration oracle.\n\nThis is **SHOULD-level guidance**, not MUST: `details` remains `additionalProperties: true` and pre-3.1 sellers using `available` / `allowed` / `accepted_values` at the error root remain conformant. The canonical shape lets buyer-side diagnostic tooling (SDK runner hints, dashboards, error classifiers) reliably surface the accepted-set without per-seller pattern matching. SDKs SHOULD accept any of the legacy variants and normalize on read; the canonical shape is what new sellers and 3.1+ adopters should emit going forward.",
-                    "type": "object"
-                  },
-                  "field": {
-                    "description": "Field path associated with the error in JSONPath-lite format (e.g., 'packages[0].targeting'). When `issues[]` is also present, sellers MUST set this to `issues[0].pointer` translated from RFC 6901 to JSONPath-lite (e.g., '/packages/0/targeting' \u2192 'packages[0].targeting') so pre-3.1 consumers reading `field` only get deterministic behavior. Will be deprecated in a future major version in favor of `issues[].pointer`.",
-                    "type": "string"
-                  },
-                  "issues": {
-                    "description": "Structured list of validation failures. Primary use is `VALIDATION_ERROR`, where multi-field rejections are common and `field` (singular) cannot carry the full pointer map. MAY appear on other error codes that reject multiple fields at once. When `issues` is present, sellers MUST also populate `field` from `issues[0]` for backward compatibility with pre-3.1 consumers that read `field` only \u2014 translating the RFC 6901 `pointer` format to the JSONPath-lite format `field` uses (e.g., `/packages/0/targeting` \u2192 `packages[0].targeting`). MUST (not SHOULD) so consumers reading `field` get deterministic behavior across sellers \u2014 the cost is one line of dual-write per seller; the cost of SHOULD is a long tail of seller-A-vs-seller-B inconsistency. Future major versions will deprecate `field` in favor of `issues[].pointer`.",
-                    "items": {
-                      "additionalProperties": true,
-                      "properties": {
-                        "discriminator": {
-                          "description": "Optional. Const-discriminator property/value pair(s) identifying the variant the validator selected from values present in the payload. Sellers MUST populate only when (a) the rejecting schema is a const-discriminated `oneOf` / `anyOf` and (b) the discriminator property is present in the payload \u2014 emission on partial-match inference would fingerprint the seller's validator implementation. MUST omit when zero variants survive. Compound discriminators (e.g. `(type, value_type)`) produce multiple entries ordered by declaration in the rejecting schema's `properties` block. Same private-extensions / version-skew carve-out as `schema_id`. See error-handling.mdx.",
-                          "items": {
-                            "additionalProperties": false,
-                            "properties": {
-                              "property_name": {
-                                "description": "Discriminator property name (e.g., `type`, `value_type`). Aligns with OpenAPI 3.x `discriminator.propertyName`.",
-                                "type": "string"
-                              },
-                              "value": {
-                                "description": "Value the caller sent at `property_name`. Typically a string for const-discriminated unions; numeric/boolean/null permitted. Object and array values are forbidden \u2014 const discriminators are scalars, and emitting a structured value would conflate 'caller sent a complex shape' with 'validator inferred from a structural match'.",
-                                "type": [
-                                  "string",
-                                  "number",
-                                  "boolean",
-                                  "null"
-                                ]
-                              }
-                            },
-                            "required": [
-                              "property_name",
-                              "value"
-                            ],
-                            "type": "object"
-                          },
-                          "type": "array"
-                        },
-                        "keyword": {
-                          "description": "Schema keyword that rejected the payload, drawn from the JSON Schema vocabulary (e.g., 'required', 'type', 'format', 'enum', 'pattern', 'minimum', 'maxLength'). Matches the keyword names emitted by JSON Schema validators (Ajv, jsonschema, etc.) so agents can pattern-match on rejection class without parsing message text. Implementers SHOULD use the validator's native keyword name; do not invent custom values here.",
-                          "type": "string"
-                        },
-                        "message": {
-                          "description": "Human-readable description of why this specific field was rejected.",
-                          "type": "string"
-                        },
-                        "pointer": {
-                          "description": "RFC 6901 JSON Pointer to the offending field in the request payload (e.g., '/packages/0/targeting/geo_countries/2'). Format chosen to match Ajv's native validation output (`instancePath`); standardized and unambiguous on keys containing `/` or `~`. NOTE: this differs from the legacy top-level `field` which uses JSONPath-lite (`packages[0].targeting.geo_countries[2]`). When sellers populate `field` from `issues[0].pointer` for backward compatibility (see `field` description), they MUST translate the format \u2014 `/packages/0/x` \u2192 `packages[0].x`. Future major versions will deprecate `field` in favor of `issues[].pointer`.",
-                          "type": "string"
-                        },
-                        "schemaPath": {
-                          "description": "Optional. JSON Schema tree path of the rejecting keyword (e.g. '#/properties/packages/items/oneOf/1'). 3.1+ consumers SHOULD prefer `schema_id`; `schemaPath` is retained for 3.0.x compatibility (renamed to `schema_path` in a future major). See error-handling.mdx for the validator-internals production-emit rules.",
-                          "type": "string"
-                        },
-                        "schema_id": {
-                          "description": "Optional. `$id` of the rejecting (sub-)schema (e.g. `/schemas/3.1.0/core/activation-key.json`). MUST resolve to a `$id` published in the spec at the version the seller advertises via `get_adcp_capabilities` \u2014 either a deep sub-schema (the typical case) or the response-root `$id` (the bundled-tree fallback for tools served from bundles built before #3868). Sellers MUST NOT emit when the rejection occurred against a private extension, server-only sub-schema, or pre-release element \u2014 the public-spec replay rationale only holds when the rejecting element is reachable from the public bundle. Sellers populating `schemaPath` SHOULD also populate `schema_id` when they have it so 3.1+ readers don't get strictly less than 3.0.x readers. See error-handling.mdx for resolution guidance and the bundled-tree caveat.",
-                          "type": "string"
-                        }
-                      },
-                      "required": [
-                        "pointer",
-                        "message",
-                        "keyword"
-                      ],
-                      "type": "object"
-                    },
-                    "type": "array"
-                  },
-                  "message": {
-                    "description": "Human-readable error message",
-                    "type": "string"
-                  },
-                  "recovery": {
-                    "description": "Agent recovery classification. transient: retry after delay (rate limit, service unavailable, timeout). correctable: fix the request and resend (invalid field, budget too low, creative rejected). terminal: requires human action (account suspended, payment required, account not found). AdCP 3.2 producers MUST populate `recovery` on every error; 3.1 producers SHOULD populate it. The shared 3.x schema intentionally does not add `recovery` to `required` so retained and live errors from earlier 3.x producers remain decodable. When `buyer_reason` is present, `recovery` is required and MUST classify that buyer-actionable reason. If the enclosing code and buyer reason are both registered, their standard recovery classifications MUST agree with each other and with this field. A receiver that does not recognize `error.code` (a newer code, or a platform-specific code) MUST still be able to classify the error from `recovery`. When a legacy error omits `recovery`, receivers use the registered classification for a known code and fall back to `transient` for an unknown code, subject to the bounded retry budget. The `enumMetadata.recovery` block in `enums/error-code.json` is the documentary mirror for known top-level and buyer-reason codes; `error.recovery` on the wire is authoritative when present.",
-                    "enum": [
-                      "transient",
-                      "correctable",
-                      "terminal"
-                    ],
-                    "type": "string"
-                  },
-                  "retry_after": {
-                    "description": "Seconds to wait before retrying the operation. AdCP 3.2 producers MUST emit an integer from 1 through 3600. The 3.x schema continues to accept finite fractional values for backward compatibility with earlier producers; consumers receiving one MUST round up to the next whole second before clamping so the retry is never scheduled earlier than intended. Non-finite values are treated as absent.",
-                    "maximum": 3600,
-                    "minimum": 1,
-                    "type": "number"
-                  },
-                  "sdk_id": {
-                    "description": "Optional identifier for the SDK that augmented this error entry. Format: `<sdk_package_name>@<version>` (e.g., `@adcontextprotocol/adcp@7.3.0`, `adcontextprotocol-adcp-python@1.2.0`). MUST be set when `source: \"sdk\"`; MUST be absent when `source: \"producer\"` or absent. Lets downstream consumers identify which intermediate processor inserted the entry, useful for debugging cross-SDK divergence (e.g., one SDK detects a projection failure that another SDK's registry version doesn't).",
-                    "type": "string"
-                  },
-                  "source": {
-                    "description": "Who emitted this error entry. `producer` (default when absent): emitted by the response's authoring agent (the seller for `get_products`, the creative agent for `build_creative`, etc.). `sdk`: augmented by a consuming SDK that detected a non-fatal advisory condition on consumption (e.g., `FORMAT_PROJECTION_FAILED` when the buyer SDK couldn't project a v1 format to a canonical, or `FORMAT_DECLARATION_DIVERGENT` when the SDK detected a producer bug on read). SDK-augmented entries SHOULD also set `sdk_id` so downstream consumers can identify which intermediate processor inserted the entry.\n\n**Multi-hop propagation (normative).** AdCP is a federated agent network \u2014 responses commonly traverse multiple SDKs (e.g., sales agent \u2192 interchange \u2192 DSP \u2192 buyer). When an SDK augments `errors[]` with a consumption-detected entry, the augmented response carries the entry forward to subsequent hops. Each hop that detects the same condition independently SHOULD deduplicate by `(code, field)` rather than re-emit; the existing entry's `sdk_id` identifies which earlier processor saw it first. Producer entries (those without `source: \"sdk\"`) are authoritative for what the response's authoring agent self-detected; SDK entries are observations made on top.\n\n**Replay/audit safety.** Persisted or replayed responses carry `source` and `sdk_id` so the audit trail can distinguish seller-emitted entries from SDK-augmented ones. Without `source`, a downstream consumer can't tell whether a code came from the seller or an intermediate SDK, which corrupts attribution.",
-                    "enum": [
-                      "producer",
-                      "sdk"
-                    ],
-                    "type": "string"
-                  },
-                  "suggestion": {
-                    "description": "Suggested fix for the error",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "code",
-                  "message"
-                ],
-                "title": "Error",
-                "type": "object"
+                "$ref": "#/definitions/Shared13"
               },
               "maxItems": 16,
               "minItems": 1,

@@ -2,6 +2,468 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "definitions": {
+    "Shared0": {
+      "const": true,
+      "type": "boolean"
+    },
+    "Shared1": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/supported"
+        },
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": false,
+          "description": "Country- and value-aware support for selecting canonical ISO 3166-2 subdivisions. all_values is exhaustive for the values active in the seller's support snapshot when the declaration is issued; it does not automatically include values introduced by a later catalog revision. values is an exact finite subset. In seller-wide capabilities, each declared value is individually supported within the response scope, but the declaration does not promise that values are jointly composable or available through the same execution route or account. In Product.overlay_support, the declared values form the binding set of executable targeting permissions for that Product, subject to its declared limits; support does not itself guarantee inventory for every selection.",
+          "properties": {
+            "as_of": {
+              "description": "Optional date on which the seller last validated this support declaration.",
+              "format": "date",
+              "type": "string"
+            },
+            "catalog_version": {
+              "description": "Optional opaque ISO subdivision catalog or seller-mapping version that identifies the support snapshot. It is provenance, not part of subdivision identity.",
+              "minLength": 1,
+              "type": "string"
+            },
+            "countries": {
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "all_values": {
+                        "const": true,
+                        "description": "Every protocol-valid ISO 3166-2 subdivision active in this declaration's support snapshot is selectable. Values introduced by a later catalog revision are not included automatically.",
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "all_values"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "values": {
+                        "description": "Exact finite selectable subset of ISO 3166-2 identifiers for this country.",
+                        "items": {
+                          "pattern": "^[A-Z]{2}-[A-Z0-9]{1,3}$",
+                          "type": "string"
+                        },
+                        "minItems": 1,
+                        "type": "array",
+                        "uniqueItems": true
+                      }
+                    },
+                    "required": [
+                      "values"
+                    ],
+                    "type": "object"
+                  }
+                ]
+              },
+              "description": "Selectable ISO subdivision values keyed by ISO 3166-1 alpha-2 country.",
+              "minProperties": 1,
+              "propertyNames": {
+                "$ref": "#/definitions/Shared5"
+              },
+              "type": "object"
+            },
+            "ext": {
+              "$ref": "#/definitions/Shared3"
+            },
+            "max_packages": {
+              "description": "Optional maximum number of independently region-targeted packages created from this configured product.",
+              "minimum": 1,
+              "type": "integer"
+            },
+            "max_values_per_package": {
+              "description": "Optional maximum number of region values selectable on one package.",
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "countries"
+          ],
+          "title": "Geographic Region Support",
+          "type": "object",
+          "x-adcp-validation": {
+            "spec": "docs/media-buy/advanced-topics/targeting.mdx#geo_regions",
+            "verifier_constraints": {
+              "country_prefix_matches_map_key": {
+                "map_field": "countries",
+                "values_field": "values"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "Shared10": {
+      "const": true
+    },
+    "Shared11": {
+      "items": {
+        "$ref": "#/definitions/Shared4"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "Shared12": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "description": "Exact supported intervals for one duration unit, declared as either an exhaustive preset list or an inclusive integer range. The two forms are mutually exclusive.",
+      "if": {
+        "properties": {
+          "unit": {
+            "const": "campaign"
+          }
+        },
+        "required": [
+          "unit"
+        ]
+      },
+      "oneOf": [
+        {
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "minimum_interval"
+                ]
+              },
+              {
+                "required": [
+                  "maximum_interval"
+                ]
+              }
+            ]
+          },
+          "required": [
+            "allowed_intervals"
+          ]
+        },
+        {
+          "not": {
+            "required": [
+              "allowed_intervals"
+            ]
+          },
+          "required": [
+            "minimum_interval",
+            "maximum_interval"
+          ]
+        }
+      ],
+      "properties": {
+        "allowed_intervals": {
+          "$ref": "#/definitions/Shared11"
+        },
+        "ext": {
+          "$ref": "#/definitions/Shared3"
+        },
+        "maximum_interval": {
+          "$ref": "#/definitions/Shared4"
+        },
+        "minimum_interval": {
+          "$ref": "#/definitions/Shared4"
+        },
+        "unit": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "A duration unit supported for a frequency-cap window or suppression period.",
+          "enum": [
+            "seconds",
+            "minutes",
+            "hours",
+            "days",
+            "campaign"
+          ],
+          "title": "Frequency Cap Duration Unit",
+          "type": "string"
+        }
+      },
+      "required": [
+        "unit"
+      ],
+      "then": {
+        "properties": {
+          "allowed_intervals": {
+            "items": {
+              "$ref": "#/definitions/Shared13"
+            }
+          },
+          "maximum_interval": {
+            "$ref": "#/definitions/Shared13"
+          },
+          "minimum_interval": {
+            "$ref": "#/definitions/Shared13"
+          }
+        }
+      },
+      "title": "Frequency Cap Interval Constraints",
+      "type": "object",
+      "x-adcp-hoist": true,
+      "x-adcp-validation": {
+        "ordered_bounds": "minimum_interval MUST be less than or equal to maximum_interval."
+      }
+    },
+    "Shared13": {
+      "const": 1
+    },
+    "Shared2": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/supported"
+        },
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "allOf": [
+            {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "additionalProperties": {
+                "items": {
+                  "enum": [
+                    "postal_code",
+                    "custom"
+                  ]
+                },
+                "minItems": 1,
+                "type": "array",
+                "uniqueItems": true
+              },
+              "description": "Declares supported postal area systems. Native support is keyed by ISO 3166-1 alpha-2 country with arrays of country-local postal systems. Deprecated country-fused boolean aliases may be included during migration.",
+              "properties": {
+                "AT": {
+                  "$ref": "#/definitions/Shared8"
+                },
+                "AU": {
+                  "items": {
+                    "const": "postcode"
+                  },
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "BR": {
+                  "items": {
+                    "const": "cep"
+                  },
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "CA": {
+                  "items": {
+                    "enum": [
+                      "fsa",
+                      "full"
+                    ]
+                  },
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "CH": {
+                  "$ref": "#/definitions/Shared8"
+                },
+                "DE": {
+                  "$ref": "#/definitions/Shared8"
+                },
+                "FR": {
+                  "items": {
+                    "const": "code_postal"
+                  },
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "GB": {
+                  "items": {
+                    "enum": [
+                      "outward",
+                      "full"
+                    ]
+                  },
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "IN": {
+                  "items": {
+                    "const": "pin"
+                  },
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "US": {
+                  "items": {
+                    "enum": [
+                      "zip",
+                      "zip_plus_four"
+                    ]
+                  },
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "ZA": {
+                  "items": {
+                    "const": "postal_code"
+                  },
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "at_plz": {
+                  "$ref": "#/definitions/Shared9"
+                },
+                "au_postcode": {
+                  "$ref": "#/definitions/Shared9"
+                },
+                "ca_fsa": {
+                  "$ref": "#/definitions/Shared9"
+                },
+                "ca_full": {
+                  "$ref": "#/definitions/Shared9"
+                },
+                "ch_plz": {
+                  "$ref": "#/definitions/Shared9"
+                },
+                "de_plz": {
+                  "$ref": "#/definitions/Shared9"
+                },
+                "fr_code_postal": {
+                  "$ref": "#/definitions/Shared9"
+                },
+                "gb_full": {
+                  "$ref": "#/definitions/Shared9"
+                },
+                "gb_outward": {
+                  "$ref": "#/definitions/Shared9"
+                },
+                "us_zip": {
+                  "$ref": "#/definitions/Shared9"
+                },
+                "us_zip_plus_four": {
+                  "$ref": "#/definitions/Shared9"
+                }
+              },
+              "propertyNames": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Shared5"
+                  },
+                  {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "deprecated": true,
+                    "description": "Deprecated country-fused postal code systems for geographic targeting. Prefer postal-system with an explicit ISO 3166-1 alpha-2 country on postal area objects.",
+                    "enum": [
+                      "us_zip",
+                      "us_zip_plus_four",
+                      "gb_outward",
+                      "gb_full",
+                      "ca_fsa",
+                      "ca_full",
+                      "de_plz",
+                      "fr_code_postal",
+                      "au_postcode",
+                      "ch_plz",
+                      "at_plz"
+                    ],
+                    "title": "Country-Fused Postal Code System",
+                    "type": "string"
+                  }
+                ]
+              },
+              "title": "Postal Area Support",
+              "type": "object"
+            },
+            {
+              "minProperties": 1,
+              "properties": {
+                "at_plz": {
+                  "$ref": "#/definitions/Shared10"
+                },
+                "au_postcode": {
+                  "$ref": "#/definitions/Shared10"
+                },
+                "ca_fsa": {
+                  "$ref": "#/definitions/Shared10"
+                },
+                "ca_full": {
+                  "$ref": "#/definitions/Shared10"
+                },
+                "ch_plz": {
+                  "$ref": "#/definitions/Shared10"
+                },
+                "de_plz": {
+                  "$ref": "#/definitions/Shared10"
+                },
+                "fr_code_postal": {
+                  "$ref": "#/definitions/Shared10"
+                },
+                "gb_full": {
+                  "$ref": "#/definitions/Shared10"
+                },
+                "gb_outward": {
+                  "$ref": "#/definitions/Shared10"
+                },
+                "us_zip": {
+                  "$ref": "#/definitions/Shared10"
+                },
+                "us_zip_plus_four": {
+                  "$ref": "#/definitions/Shared10"
+                }
+              },
+              "type": "object"
+            }
+          ],
+          "description": "Non-vacuous postal capability used for hard targeting requirements and product overlay support. At least one native system array or true-valued deprecated alias is required. The general seller-capabilities postal schema remains permissive for backward compatibility, but an empty or false-only map cannot satisfy a hard discovery requirement.",
+          "title": "Positive Postal Area Support"
+        }
+      ]
+    },
+    "Shared3": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "Shared4": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "Shared5": {
+      "pattern": "^[A-Z]{2}$"
+    },
+    "Shared6": {
+      "format": "uri",
+      "pattern": "^https://",
+      "type": "string"
+    },
+    "Shared7": {
+      "required": [
+        "iana_timezones"
+      ]
+    },
+    "Shared8": {
+      "items": {
+        "const": "plz"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "Shared9": {
+      "deprecated": true,
+      "type": "boolean"
+    },
     "browserSupport": {
       "anyOf": [
         {
@@ -12,11 +474,7 @@
           "description": "Canonical browser families that may be selected on packages later. This is executable targeting capability, not a guarantee of inventory for every family.",
           "properties": {
             "ext": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": true,
-              "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-              "title": "Extension Object",
-              "type": "object"
+              "$ref": "#/definitions/Shared3"
             },
             "families": {
               "items": {
@@ -58,11 +516,7 @@
           "description": "Binding support for protocol-valid ISO 3166-1 alpha-2 country values, subject to the declared per-package cardinality limit. This object does not enumerate or restrict individual country codes.",
           "properties": {
             "ext": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": true,
-              "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-              "title": "Extension Object",
-              "type": "object"
+              "$ref": "#/definitions/Shared3"
             },
             "max_values_per_package": {
               "description": "Maximum number of country values accepted in this targeting field on one package.",
@@ -90,9 +544,7 @@
             {
               "else": {
                 "not": {
-                  "required": [
-                    "iana_timezones"
-                  ]
+                  "$ref": "#/definitions/Shared7"
                 }
               },
               "if": {
@@ -108,26 +560,19 @@
                 ]
               },
               "then": {
-                "required": [
-                  "iana_timezones"
-                ]
+                "$ref": "#/definitions/Shared7"
               }
             }
           ],
           "description": "Binding timezone modes this product can apply to package-level daypart targeting. 'inventory_local' covers the default seller-assigned local clock for each inventory unit. 'iana' opts the product into concrete IANA timezone execution and requires iana_timezones to declare whether every valid identifier or an exact subset is supported.",
           "properties": {
             "ext": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": true,
-              "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-              "title": "Extension Object",
-              "type": "object"
+              "$ref": "#/definitions/Shared3"
             },
             "iana_timezones": {
               "anyOf": [
                 {
-                  "const": true,
-                  "type": "boolean"
+                  "$ref": "#/definitions/Shared0"
                 },
                 {
                   "items": {
@@ -186,11 +631,7 @@
           "additionalProperties": false,
           "properties": {
             "ext": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": true,
-              "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-              "title": "Extension Object",
-              "type": "object"
+              "$ref": "#/definitions/Shared3"
             },
             "supported_match_types": {
               "items": {
@@ -230,11 +671,7 @@
           "additionalProperties": false,
           "properties": {
             "ext": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": true,
-              "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-              "title": "Extension Object",
-              "type": "object"
+              "$ref": "#/definitions/Shared3"
             },
             "max_packages": {
               "description": "Optional maximum number of independently targeted packages the seller will create from this configured product.",
@@ -242,8 +679,7 @@
               "type": "integer"
             },
             "max_values_per_package": {
-              "minimum": 1,
-              "type": "integer"
+              "$ref": "#/definitions/Shared4"
             },
             "systems": {
               "items": {
@@ -302,9 +738,7 @@
                   "type": "string"
                 },
                 {
-                  "format": "uri",
-                  "pattern": "^https://",
-                  "type": "string"
+                  "$ref": "#/definitions/Shared6"
                 }
               ],
               "description": "Canonical place classification. Registered tokens have protocol-defined meanings. Catalog-specific classifications without a registered mapping MUST use an absolute HTTPS URI controlled by the vocabulary owner; consumers compare URI types as exact opaque strings.",
@@ -326,7 +760,7 @@
           },
           "minProperties": 1,
           "propertyNames": {
-            "pattern": "^[A-Z]{2}$"
+            "$ref": "#/definitions/Shared5"
           },
           "type": "object"
         },
@@ -336,11 +770,7 @@
           "type": "string"
         },
         "ext": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": true,
-          "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-          "title": "Extension Object",
-          "type": "object"
+          "$ref": "#/definitions/Shared3"
         },
         "system_versions": {
           "description": "Exact catalog versions selectable on later package overlays.",
@@ -372,11 +802,7 @@
       "description": "Binding permission to select named-place values later, keyed first by identifier system and then by country to avoid namespace and place-type collisions.",
       "properties": {
         "ext": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": true,
-          "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-          "title": "Extension Object",
-          "type": "object"
+          "$ref": "#/definitions/Shared3"
         },
         "max_packages": {
           "description": "Optional maximum number of independently place-targeted packages the seller will create from this configured product.",
@@ -384,8 +810,7 @@
           "type": "integer"
         },
         "max_values_per_package": {
-          "minimum": 1,
-          "type": "integer"
+          "$ref": "#/definitions/Shared4"
         },
         "systems": {
           "additionalProperties": {
@@ -404,9 +829,7 @@
                 "type": "string"
               },
               {
-                "format": "uri",
-                "pattern": "^https://",
-                "type": "string"
+                "$ref": "#/definitions/Shared6"
               }
             ],
             "description": "Collision-safe identifier namespace for geographic places. Registered tokens have protocol-defined semantics. Unregistered systems MUST use an absolute HTTPS URI controlled by the catalog owner; consumers compare URI systems as exact opaque strings.",
@@ -427,8 +850,7 @@
       "type": "object"
     },
     "supported": {
-      "const": true,
-      "type": "boolean"
+      "$ref": "#/definitions/Shared0"
     }
   },
   "description": "Product-scoped package targeting dimensions that may be supplied or changed after discovery. This is the seller response shape and may disclose seller limits such as max_values_per_package and max_packages. Product.overlay_support is the binding selectable-targeting contract: presence means the seller can apply protocol-valid values within the declared systems, countries, values, types, versions, and limits. Inherent product coverage alone does not satisfy a future-support requirement. Support does not guarantee inventory or a value-specific forecast before values are supplied; fixed prices and floors remain binding for supported selections. geo_regions and geo_regions_exclude are independent: structured support either exhaustively declares every value active in the seller's support snapshot for a country or lists the exact finite selectable subset. Buyer minimums use targeting-overlay-requirements.json. A requirement value of true matches true or any valid support object; an object requirement matches true or a containing support object. The daypart_targets boolean is the backward-compatible exception: true promises inventory_local only, and structured support opts into IANA zones. Every valid structured support object represents a positive capability; empty, extension-only, and false-only objects are invalid. Unrequested object fields and numeric seller limits do not participate in matching. A product declares at most one of frequency_cap: true and frequency_cap_support. Legacy frequency_cap: true keeps its broad meaning within seller-wide limits, including update support. A constrained or create-only product instead advertises frequency_cap_support, so older buyers safely treat it as unsupported.",
@@ -476,11 +898,7 @@
               "$ref": "#/definitions/supported"
             },
             "ext": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": true,
-              "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-              "title": "Extension Object",
-              "type": "object"
+              "$ref": "#/definitions/Shared3"
             }
           },
           "required": [
@@ -503,11 +921,7 @@
       "$ref": "#/definitions/supported"
     },
     "ext": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "additionalProperties": true,
-      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-      "title": "Extension Object",
-      "type": "object"
+      "$ref": "#/definitions/Shared3"
     },
     "frequency_cap": {
       "$ref": "#/definitions/supported"
@@ -552,11 +966,7 @@
           "description": "Structured frequency-cap constraints. Count and duration declarations are exact: each uses either an exhaustive preset list or an inclusive range, never a unit-only promise. At product scope, omitted fields inherit the applicable seller-wide capability and never broaden it. Product mutability describes implementation capability; MediaBuy.available_actions remains authoritative for a live buy.",
           "properties": {
             "ext": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": true,
-              "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-              "title": "Extension Object",
-              "type": "object"
+              "$ref": "#/definitions/Shared3"
             },
             "max_impressions_constraints": {
               "$schema": "http://json-schema.org/draft-07/schema#",
@@ -596,28 +1006,16 @@
               ],
               "properties": {
                 "allowed_values": {
-                  "items": {
-                    "minimum": 1,
-                    "type": "integer"
-                  },
-                  "minItems": 1,
-                  "type": "array",
-                  "uniqueItems": true
+                  "$ref": "#/definitions/Shared11"
                 },
                 "ext": {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
-                  "additionalProperties": true,
-                  "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                  "title": "Extension Object",
-                  "type": "object"
+                  "$ref": "#/definitions/Shared3"
                 },
                 "maximum": {
-                  "minimum": 1,
-                  "type": "integer"
+                  "$ref": "#/definitions/Shared4"
                 },
                 "minimum": {
-                  "minimum": 1,
-                  "type": "integer"
+                  "$ref": "#/definitions/Shared4"
                 }
               },
               "title": "Frequency Cap Impression Constraints",
@@ -691,114 +1089,7 @@
             "suppression_constraints": {
               "description": "Exact supported suppress cooldown intervals, one entry per duration unit.",
               "items": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "additionalProperties": false,
-                "description": "Exact supported intervals for one duration unit, declared as either an exhaustive preset list or an inclusive integer range. The two forms are mutually exclusive.",
-                "if": {
-                  "properties": {
-                    "unit": {
-                      "const": "campaign"
-                    }
-                  },
-                  "required": [
-                    "unit"
-                  ]
-                },
-                "oneOf": [
-                  {
-                    "not": {
-                      "anyOf": [
-                        {
-                          "required": [
-                            "minimum_interval"
-                          ]
-                        },
-                        {
-                          "required": [
-                            "maximum_interval"
-                          ]
-                        }
-                      ]
-                    },
-                    "required": [
-                      "allowed_intervals"
-                    ]
-                  },
-                  {
-                    "not": {
-                      "required": [
-                        "allowed_intervals"
-                      ]
-                    },
-                    "required": [
-                      "minimum_interval",
-                      "maximum_interval"
-                    ]
-                  }
-                ],
-                "properties": {
-                  "allowed_intervals": {
-                    "items": {
-                      "minimum": 1,
-                      "type": "integer"
-                    },
-                    "minItems": 1,
-                    "type": "array",
-                    "uniqueItems": true
-                  },
-                  "ext": {
-                    "$schema": "http://json-schema.org/draft-07/schema#",
-                    "additionalProperties": true,
-                    "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                    "title": "Extension Object",
-                    "type": "object"
-                  },
-                  "maximum_interval": {
-                    "minimum": 1,
-                    "type": "integer"
-                  },
-                  "minimum_interval": {
-                    "minimum": 1,
-                    "type": "integer"
-                  },
-                  "unit": {
-                    "$schema": "http://json-schema.org/draft-07/schema#",
-                    "description": "A duration unit supported for a frequency-cap window or suppression period.",
-                    "enum": [
-                      "seconds",
-                      "minutes",
-                      "hours",
-                      "days",
-                      "campaign"
-                    ],
-                    "title": "Frequency Cap Duration Unit",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "unit"
-                ],
-                "then": {
-                  "properties": {
-                    "allowed_intervals": {
-                      "items": {
-                        "const": 1
-                      }
-                    },
-                    "maximum_interval": {
-                      "const": 1
-                    },
-                    "minimum_interval": {
-                      "const": 1
-                    }
-                  }
-                },
-                "title": "Frequency Cap Interval Constraints",
-                "type": "object",
-                "x-adcp-hoist": true,
-                "x-adcp-validation": {
-                  "ordered_bounds": "minimum_interval MUST be less than or equal to maximum_interval."
-                }
+                "$ref": "#/definitions/Shared12"
               },
               "minItems": 1,
               "type": "array",
@@ -807,114 +1098,7 @@
             "window_constraints": {
               "description": "Exact supported max_impressions.window intervals, one entry per duration unit.",
               "items": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "additionalProperties": false,
-                "description": "Exact supported intervals for one duration unit, declared as either an exhaustive preset list or an inclusive integer range. The two forms are mutually exclusive.",
-                "if": {
-                  "properties": {
-                    "unit": {
-                      "const": "campaign"
-                    }
-                  },
-                  "required": [
-                    "unit"
-                  ]
-                },
-                "oneOf": [
-                  {
-                    "not": {
-                      "anyOf": [
-                        {
-                          "required": [
-                            "minimum_interval"
-                          ]
-                        },
-                        {
-                          "required": [
-                            "maximum_interval"
-                          ]
-                        }
-                      ]
-                    },
-                    "required": [
-                      "allowed_intervals"
-                    ]
-                  },
-                  {
-                    "not": {
-                      "required": [
-                        "allowed_intervals"
-                      ]
-                    },
-                    "required": [
-                      "minimum_interval",
-                      "maximum_interval"
-                    ]
-                  }
-                ],
-                "properties": {
-                  "allowed_intervals": {
-                    "items": {
-                      "minimum": 1,
-                      "type": "integer"
-                    },
-                    "minItems": 1,
-                    "type": "array",
-                    "uniqueItems": true
-                  },
-                  "ext": {
-                    "$schema": "http://json-schema.org/draft-07/schema#",
-                    "additionalProperties": true,
-                    "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                    "title": "Extension Object",
-                    "type": "object"
-                  },
-                  "maximum_interval": {
-                    "minimum": 1,
-                    "type": "integer"
-                  },
-                  "minimum_interval": {
-                    "minimum": 1,
-                    "type": "integer"
-                  },
-                  "unit": {
-                    "$schema": "http://json-schema.org/draft-07/schema#",
-                    "description": "A duration unit supported for a frequency-cap window or suppression period.",
-                    "enum": [
-                      "seconds",
-                      "minutes",
-                      "hours",
-                      "days",
-                      "campaign"
-                    ],
-                    "title": "Frequency Cap Duration Unit",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "unit"
-                ],
-                "then": {
-                  "properties": {
-                    "allowed_intervals": {
-                      "items": {
-                        "const": 1
-                      }
-                    },
-                    "maximum_interval": {
-                      "const": 1
-                    },
-                    "minimum_interval": {
-                      "const": 1
-                    }
-                  }
-                },
-                "title": "Frequency Cap Interval Constraints",
-                "type": "object",
-                "x-adcp-hoist": true,
-                "x-adcp-validation": {
-                  "ordered_bounds": "minimum_interval MUST be less than or equal to maximum_interval."
-                }
+                "$ref": "#/definitions/Shared12"
               },
               "minItems": 1,
               "type": "array",
@@ -951,484 +1135,10 @@
       "$ref": "#/definitions/placeSupport"
     },
     "geo_postal_areas": {
-      "anyOf": [
-        {
-          "$ref": "#/definitions/supported"
-        },
-        {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "allOf": [
-            {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": {
-                "items": {
-                  "enum": [
-                    "postal_code",
-                    "custom"
-                  ]
-                },
-                "minItems": 1,
-                "type": "array",
-                "uniqueItems": true
-              },
-              "description": "Declares supported postal area systems. Native support is keyed by ISO 3166-1 alpha-2 country with arrays of country-local postal systems. Deprecated country-fused boolean aliases may be included during migration.",
-              "properties": {
-                "AT": {
-                  "items": {
-                    "const": "plz"
-                  },
-                  "minItems": 1,
-                  "type": "array",
-                  "uniqueItems": true
-                },
-                "AU": {
-                  "items": {
-                    "const": "postcode"
-                  },
-                  "minItems": 1,
-                  "type": "array",
-                  "uniqueItems": true
-                },
-                "BR": {
-                  "items": {
-                    "const": "cep"
-                  },
-                  "minItems": 1,
-                  "type": "array",
-                  "uniqueItems": true
-                },
-                "CA": {
-                  "items": {
-                    "enum": [
-                      "fsa",
-                      "full"
-                    ]
-                  },
-                  "minItems": 1,
-                  "type": "array",
-                  "uniqueItems": true
-                },
-                "CH": {
-                  "items": {
-                    "const": "plz"
-                  },
-                  "minItems": 1,
-                  "type": "array",
-                  "uniqueItems": true
-                },
-                "DE": {
-                  "items": {
-                    "const": "plz"
-                  },
-                  "minItems": 1,
-                  "type": "array",
-                  "uniqueItems": true
-                },
-                "FR": {
-                  "items": {
-                    "const": "code_postal"
-                  },
-                  "minItems": 1,
-                  "type": "array",
-                  "uniqueItems": true
-                },
-                "GB": {
-                  "items": {
-                    "enum": [
-                      "outward",
-                      "full"
-                    ]
-                  },
-                  "minItems": 1,
-                  "type": "array",
-                  "uniqueItems": true
-                },
-                "IN": {
-                  "items": {
-                    "const": "pin"
-                  },
-                  "minItems": 1,
-                  "type": "array",
-                  "uniqueItems": true
-                },
-                "US": {
-                  "items": {
-                    "enum": [
-                      "zip",
-                      "zip_plus_four"
-                    ]
-                  },
-                  "minItems": 1,
-                  "type": "array",
-                  "uniqueItems": true
-                },
-                "ZA": {
-                  "items": {
-                    "const": "postal_code"
-                  },
-                  "minItems": 1,
-                  "type": "array",
-                  "uniqueItems": true
-                },
-                "at_plz": {
-                  "deprecated": true,
-                  "type": "boolean"
-                },
-                "au_postcode": {
-                  "deprecated": true,
-                  "type": "boolean"
-                },
-                "ca_fsa": {
-                  "deprecated": true,
-                  "type": "boolean"
-                },
-                "ca_full": {
-                  "deprecated": true,
-                  "type": "boolean"
-                },
-                "ch_plz": {
-                  "deprecated": true,
-                  "type": "boolean"
-                },
-                "de_plz": {
-                  "deprecated": true,
-                  "type": "boolean"
-                },
-                "fr_code_postal": {
-                  "deprecated": true,
-                  "type": "boolean"
-                },
-                "gb_full": {
-                  "deprecated": true,
-                  "type": "boolean"
-                },
-                "gb_outward": {
-                  "deprecated": true,
-                  "type": "boolean"
-                },
-                "us_zip": {
-                  "deprecated": true,
-                  "type": "boolean"
-                },
-                "us_zip_plus_four": {
-                  "deprecated": true,
-                  "type": "boolean"
-                }
-              },
-              "propertyNames": {
-                "anyOf": [
-                  {
-                    "pattern": "^[A-Z]{2}$"
-                  },
-                  {
-                    "$schema": "http://json-schema.org/draft-07/schema#",
-                    "deprecated": true,
-                    "description": "Deprecated country-fused postal code systems for geographic targeting. Prefer postal-system with an explicit ISO 3166-1 alpha-2 country on postal area objects.",
-                    "enum": [
-                      "us_zip",
-                      "us_zip_plus_four",
-                      "gb_outward",
-                      "gb_full",
-                      "ca_fsa",
-                      "ca_full",
-                      "de_plz",
-                      "fr_code_postal",
-                      "au_postcode",
-                      "ch_plz",
-                      "at_plz"
-                    ],
-                    "title": "Country-Fused Postal Code System",
-                    "type": "string"
-                  }
-                ]
-              },
-              "title": "Postal Area Support",
-              "type": "object"
-            },
-            {
-              "minProperties": 1,
-              "properties": {
-                "at_plz": {
-                  "const": true
-                },
-                "au_postcode": {
-                  "const": true
-                },
-                "ca_fsa": {
-                  "const": true
-                },
-                "ca_full": {
-                  "const": true
-                },
-                "ch_plz": {
-                  "const": true
-                },
-                "de_plz": {
-                  "const": true
-                },
-                "fr_code_postal": {
-                  "const": true
-                },
-                "gb_full": {
-                  "const": true
-                },
-                "gb_outward": {
-                  "const": true
-                },
-                "us_zip": {
-                  "const": true
-                },
-                "us_zip_plus_four": {
-                  "const": true
-                }
-              },
-              "type": "object"
-            }
-          ],
-          "description": "Non-vacuous postal capability used for hard targeting requirements and product overlay support. At least one native system array or true-valued deprecated alias is required. The general seller-capabilities postal schema remains permissive for backward compatibility, but an empty or false-only map cannot satisfy a hard discovery requirement.",
-          "title": "Positive Postal Area Support"
-        }
-      ]
+      "$ref": "#/definitions/Shared2"
     },
     "geo_postal_areas_exclude": {
-      "anyOf": [
-        {
-          "$ref": "#/definitions/supported"
-        },
-        {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "allOf": [
-            {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": {
-                "items": {
-                  "enum": [
-                    "postal_code",
-                    "custom"
-                  ]
-                },
-                "minItems": 1,
-                "type": "array",
-                "uniqueItems": true
-              },
-              "description": "Declares supported postal area systems. Native support is keyed by ISO 3166-1 alpha-2 country with arrays of country-local postal systems. Deprecated country-fused boolean aliases may be included during migration.",
-              "properties": {
-                "AT": {
-                  "items": {
-                    "const": "plz"
-                  },
-                  "minItems": 1,
-                  "type": "array",
-                  "uniqueItems": true
-                },
-                "AU": {
-                  "items": {
-                    "const": "postcode"
-                  },
-                  "minItems": 1,
-                  "type": "array",
-                  "uniqueItems": true
-                },
-                "BR": {
-                  "items": {
-                    "const": "cep"
-                  },
-                  "minItems": 1,
-                  "type": "array",
-                  "uniqueItems": true
-                },
-                "CA": {
-                  "items": {
-                    "enum": [
-                      "fsa",
-                      "full"
-                    ]
-                  },
-                  "minItems": 1,
-                  "type": "array",
-                  "uniqueItems": true
-                },
-                "CH": {
-                  "items": {
-                    "const": "plz"
-                  },
-                  "minItems": 1,
-                  "type": "array",
-                  "uniqueItems": true
-                },
-                "DE": {
-                  "items": {
-                    "const": "plz"
-                  },
-                  "minItems": 1,
-                  "type": "array",
-                  "uniqueItems": true
-                },
-                "FR": {
-                  "items": {
-                    "const": "code_postal"
-                  },
-                  "minItems": 1,
-                  "type": "array",
-                  "uniqueItems": true
-                },
-                "GB": {
-                  "items": {
-                    "enum": [
-                      "outward",
-                      "full"
-                    ]
-                  },
-                  "minItems": 1,
-                  "type": "array",
-                  "uniqueItems": true
-                },
-                "IN": {
-                  "items": {
-                    "const": "pin"
-                  },
-                  "minItems": 1,
-                  "type": "array",
-                  "uniqueItems": true
-                },
-                "US": {
-                  "items": {
-                    "enum": [
-                      "zip",
-                      "zip_plus_four"
-                    ]
-                  },
-                  "minItems": 1,
-                  "type": "array",
-                  "uniqueItems": true
-                },
-                "ZA": {
-                  "items": {
-                    "const": "postal_code"
-                  },
-                  "minItems": 1,
-                  "type": "array",
-                  "uniqueItems": true
-                },
-                "at_plz": {
-                  "deprecated": true,
-                  "type": "boolean"
-                },
-                "au_postcode": {
-                  "deprecated": true,
-                  "type": "boolean"
-                },
-                "ca_fsa": {
-                  "deprecated": true,
-                  "type": "boolean"
-                },
-                "ca_full": {
-                  "deprecated": true,
-                  "type": "boolean"
-                },
-                "ch_plz": {
-                  "deprecated": true,
-                  "type": "boolean"
-                },
-                "de_plz": {
-                  "deprecated": true,
-                  "type": "boolean"
-                },
-                "fr_code_postal": {
-                  "deprecated": true,
-                  "type": "boolean"
-                },
-                "gb_full": {
-                  "deprecated": true,
-                  "type": "boolean"
-                },
-                "gb_outward": {
-                  "deprecated": true,
-                  "type": "boolean"
-                },
-                "us_zip": {
-                  "deprecated": true,
-                  "type": "boolean"
-                },
-                "us_zip_plus_four": {
-                  "deprecated": true,
-                  "type": "boolean"
-                }
-              },
-              "propertyNames": {
-                "anyOf": [
-                  {
-                    "pattern": "^[A-Z]{2}$"
-                  },
-                  {
-                    "$schema": "http://json-schema.org/draft-07/schema#",
-                    "deprecated": true,
-                    "description": "Deprecated country-fused postal code systems for geographic targeting. Prefer postal-system with an explicit ISO 3166-1 alpha-2 country on postal area objects.",
-                    "enum": [
-                      "us_zip",
-                      "us_zip_plus_four",
-                      "gb_outward",
-                      "gb_full",
-                      "ca_fsa",
-                      "ca_full",
-                      "de_plz",
-                      "fr_code_postal",
-                      "au_postcode",
-                      "ch_plz",
-                      "at_plz"
-                    ],
-                    "title": "Country-Fused Postal Code System",
-                    "type": "string"
-                  }
-                ]
-              },
-              "title": "Postal Area Support",
-              "type": "object"
-            },
-            {
-              "minProperties": 1,
-              "properties": {
-                "at_plz": {
-                  "const": true
-                },
-                "au_postcode": {
-                  "const": true
-                },
-                "ca_fsa": {
-                  "const": true
-                },
-                "ca_full": {
-                  "const": true
-                },
-                "ch_plz": {
-                  "const": true
-                },
-                "de_plz": {
-                  "const": true
-                },
-                "fr_code_postal": {
-                  "const": true
-                },
-                "gb_full": {
-                  "const": true
-                },
-                "gb_outward": {
-                  "const": true
-                },
-                "us_zip": {
-                  "const": true
-                },
-                "us_zip_plus_four": {
-                  "const": true
-                }
-              },
-              "type": "object"
-            }
-          ],
-          "description": "Non-vacuous postal capability used for hard targeting requirements and product overlay support. At least one native system array or true-valued deprecated alias is required. The general seller-capabilities postal schema remains permissive for backward compatibility, but an empty or false-only map cannot satisfy a hard discovery requirement.",
-          "title": "Positive Postal Area Support"
-        }
-      ]
+      "$ref": "#/definitions/Shared2"
     },
     "geo_proximity": {
       "anyOf": [
@@ -1461,11 +1171,7 @@
           ],
           "properties": {
             "ext": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": true,
-              "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-              "title": "Extension Object",
-              "type": "object"
+              "$ref": "#/definitions/Shared3"
             },
             "geometry": {
               "$ref": "#/definitions/supported"
@@ -1510,204 +1216,10 @@
       ]
     },
     "geo_regions": {
-      "anyOf": [
-        {
-          "$ref": "#/definitions/supported"
-        },
-        {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
-          "description": "Country- and value-aware support for selecting canonical ISO 3166-2 subdivisions. all_values is exhaustive for the values active in the seller's support snapshot when the declaration is issued; it does not automatically include values introduced by a later catalog revision. values is an exact finite subset. In seller-wide capabilities, each declared value is individually supported within the response scope, but the declaration does not promise that values are jointly composable or available through the same execution route or account. In Product.overlay_support, the declared values form the binding set of executable targeting permissions for that Product, subject to its declared limits; support does not itself guarantee inventory for every selection.",
-          "properties": {
-            "as_of": {
-              "description": "Optional date on which the seller last validated this support declaration.",
-              "format": "date",
-              "type": "string"
-            },
-            "catalog_version": {
-              "description": "Optional opaque ISO subdivision catalog or seller-mapping version that identifies the support snapshot. It is provenance, not part of subdivision identity.",
-              "minLength": 1,
-              "type": "string"
-            },
-            "countries": {
-              "additionalProperties": {
-                "anyOf": [
-                  {
-                    "additionalProperties": false,
-                    "properties": {
-                      "all_values": {
-                        "const": true,
-                        "description": "Every protocol-valid ISO 3166-2 subdivision active in this declaration's support snapshot is selectable. Values introduced by a later catalog revision are not included automatically.",
-                        "type": "boolean"
-                      }
-                    },
-                    "required": [
-                      "all_values"
-                    ],
-                    "type": "object"
-                  },
-                  {
-                    "additionalProperties": false,
-                    "properties": {
-                      "values": {
-                        "description": "Exact finite selectable subset of ISO 3166-2 identifiers for this country.",
-                        "items": {
-                          "pattern": "^[A-Z]{2}-[A-Z0-9]{1,3}$",
-                          "type": "string"
-                        },
-                        "minItems": 1,
-                        "type": "array",
-                        "uniqueItems": true
-                      }
-                    },
-                    "required": [
-                      "values"
-                    ],
-                    "type": "object"
-                  }
-                ]
-              },
-              "description": "Selectable ISO subdivision values keyed by ISO 3166-1 alpha-2 country.",
-              "minProperties": 1,
-              "propertyNames": {
-                "pattern": "^[A-Z]{2}$"
-              },
-              "type": "object"
-            },
-            "ext": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": true,
-              "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-              "title": "Extension Object",
-              "type": "object"
-            },
-            "max_packages": {
-              "description": "Optional maximum number of independently region-targeted packages created from this configured product.",
-              "minimum": 1,
-              "type": "integer"
-            },
-            "max_values_per_package": {
-              "description": "Optional maximum number of region values selectable on one package.",
-              "minimum": 1,
-              "type": "integer"
-            }
-          },
-          "required": [
-            "countries"
-          ],
-          "title": "Geographic Region Support",
-          "type": "object",
-          "x-adcp-validation": {
-            "spec": "docs/media-buy/advanced-topics/targeting.mdx#geo_regions",
-            "verifier_constraints": {
-              "country_prefix_matches_map_key": {
-                "map_field": "countries",
-                "values_field": "values"
-              }
-            }
-          }
-        }
-      ]
+      "$ref": "#/definitions/Shared1"
     },
     "geo_regions_exclude": {
-      "anyOf": [
-        {
-          "$ref": "#/definitions/supported"
-        },
-        {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
-          "description": "Country- and value-aware support for selecting canonical ISO 3166-2 subdivisions. all_values is exhaustive for the values active in the seller's support snapshot when the declaration is issued; it does not automatically include values introduced by a later catalog revision. values is an exact finite subset. In seller-wide capabilities, each declared value is individually supported within the response scope, but the declaration does not promise that values are jointly composable or available through the same execution route or account. In Product.overlay_support, the declared values form the binding set of executable targeting permissions for that Product, subject to its declared limits; support does not itself guarantee inventory for every selection.",
-          "properties": {
-            "as_of": {
-              "description": "Optional date on which the seller last validated this support declaration.",
-              "format": "date",
-              "type": "string"
-            },
-            "catalog_version": {
-              "description": "Optional opaque ISO subdivision catalog or seller-mapping version that identifies the support snapshot. It is provenance, not part of subdivision identity.",
-              "minLength": 1,
-              "type": "string"
-            },
-            "countries": {
-              "additionalProperties": {
-                "anyOf": [
-                  {
-                    "additionalProperties": false,
-                    "properties": {
-                      "all_values": {
-                        "const": true,
-                        "description": "Every protocol-valid ISO 3166-2 subdivision active in this declaration's support snapshot is selectable. Values introduced by a later catalog revision are not included automatically.",
-                        "type": "boolean"
-                      }
-                    },
-                    "required": [
-                      "all_values"
-                    ],
-                    "type": "object"
-                  },
-                  {
-                    "additionalProperties": false,
-                    "properties": {
-                      "values": {
-                        "description": "Exact finite selectable subset of ISO 3166-2 identifiers for this country.",
-                        "items": {
-                          "pattern": "^[A-Z]{2}-[A-Z0-9]{1,3}$",
-                          "type": "string"
-                        },
-                        "minItems": 1,
-                        "type": "array",
-                        "uniqueItems": true
-                      }
-                    },
-                    "required": [
-                      "values"
-                    ],
-                    "type": "object"
-                  }
-                ]
-              },
-              "description": "Selectable ISO subdivision values keyed by ISO 3166-1 alpha-2 country.",
-              "minProperties": 1,
-              "propertyNames": {
-                "pattern": "^[A-Z]{2}$"
-              },
-              "type": "object"
-            },
-            "ext": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": true,
-              "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-              "title": "Extension Object",
-              "type": "object"
-            },
-            "max_packages": {
-              "description": "Optional maximum number of independently region-targeted packages created from this configured product.",
-              "minimum": 1,
-              "type": "integer"
-            },
-            "max_values_per_package": {
-              "description": "Optional maximum number of region values selectable on one package.",
-              "minimum": 1,
-              "type": "integer"
-            }
-          },
-          "required": [
-            "countries"
-          ],
-          "title": "Geographic Region Support",
-          "type": "object",
-          "x-adcp-validation": {
-            "spec": "docs/media-buy/advanced-topics/targeting.mdx#geo_regions",
-            "verifier_constraints": {
-              "country_prefix_matches_map_key": {
-                "map_field": "countries",
-                "values_field": "values"
-              }
-            }
-          }
-        }
-      ]
+      "$ref": "#/definitions/Shared1"
     },
     "keyword_targets": {
       "$ref": "#/definitions/keywordSupport"
@@ -1728,19 +1240,13 @@
           "minProperties": 1,
           "properties": {
             "ext": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": true,
-              "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-              "title": "Extension Object",
-              "type": "object"
+              "$ref": "#/definitions/Shared3"
             },
             "max_packages": {
-              "minimum": 1,
-              "type": "integer"
+              "$ref": "#/definitions/Shared4"
             },
             "max_values_per_package": {
-              "minimum": 1,
-              "type": "integer"
+              "$ref": "#/definitions/Shared4"
             }
           },
           "type": "object"

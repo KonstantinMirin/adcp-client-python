@@ -29,6 +29,11 @@
       "type": "object"
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "type": "string"
+    }
+  },
   "description": "Request parameters for listing content standards configurations",
   "properties": {
     "channels": {
@@ -96,7 +101,7 @@
     "countries": {
       "description": "Filter by ISO 3166-1 alpha-2 country codes",
       "items": {
-        "type": "string"
+        "$ref": "#/definitions/Shared0"
       },
       "minItems": 1,
       "type": "array"
@@ -111,7 +116,7 @@
     "languages": {
       "description": "Filter by BCP 47 language tags",
       "items": {
-        "type": "string"
+        "$ref": "#/definitions/Shared0"
       },
       "minItems": 1,
       "type": "array"

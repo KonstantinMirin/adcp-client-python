@@ -1,6 +1,31 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "definitions": {
+    "Shared0": {
+      "required": [
+        "minimum_notice"
+      ]
+    },
+    "Shared1": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "Shared2": {
+      "description": "Number of time units. Must be 1 when unit is 'campaign'.",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "Shared3": {
+      "description": "Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.",
+      "enum": [
+        "seconds",
+        "minutes",
+        "hours",
+        "days",
+        "campaign"
+      ],
+      "type": "string"
+    },
     "money": {
       "additionalProperties": false,
       "properties": {
@@ -97,9 +122,7 @@
           ]
         },
         {
-          "required": [
-            "minimum_notice"
-          ]
+          "$ref": "#/definitions/Shared0"
         }
       ],
       "properties": {
@@ -123,20 +146,10 @@
           "description": "Maximum extension, shortening, or shift in the direction named by the action.",
           "properties": {
             "interval": {
-              "description": "Number of time units. Must be 1 when unit is 'campaign'.",
-              "minimum": 1,
-              "type": "integer"
+              "$ref": "#/definitions/Shared2"
             },
             "unit": {
-              "description": "Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.",
-              "enum": [
-                "seconds",
-                "minutes",
-                "hours",
-                "days",
-                "campaign"
-              ],
-              "type": "string"
+              "$ref": "#/definitions/Shared3"
             }
           },
           "required": [
@@ -152,20 +165,10 @@
           "description": "Minimum elapsed notice before the requested flight change may take effect.",
           "properties": {
             "interval": {
-              "description": "Number of time units. Must be 1 when unit is 'campaign'.",
-              "minimum": 1,
-              "type": "integer"
+              "$ref": "#/definitions/Shared2"
             },
             "unit": {
-              "description": "Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.",
-              "enum": [
-                "seconds",
-                "minutes",
-                "hours",
-                "days",
-                "campaign"
-              ],
-              "type": "string"
+              "$ref": "#/definitions/Shared3"
             }
           },
           "required": [
@@ -232,9 +235,7 @@
       "additionalProperties": false,
       "anyOf": [
         {
-          "required": [
-            "minimum_notice"
-          ]
+          "$ref": "#/definitions/Shared0"
         },
         {
           "required": [
@@ -249,16 +250,14 @@
       ],
       "properties": {
         "earliest_effective_at": {
-          "format": "date-time",
-          "type": "string"
+          "$ref": "#/definitions/Shared1"
         },
         "kind": {
           "const": "effective_timing",
           "type": "string"
         },
         "latest_effective_at": {
-          "format": "date-time",
-          "type": "string"
+          "$ref": "#/definitions/Shared1"
         },
         "minimum_notice": {
           "$schema": "http://json-schema.org/draft-07/schema#",
@@ -266,20 +265,10 @@
           "description": "Minimum elapsed notice before pause, resume, cancellation, or another operational action may take effect.",
           "properties": {
             "interval": {
-              "description": "Number of time units. Must be 1 when unit is 'campaign'.",
-              "minimum": 1,
-              "type": "integer"
+              "$ref": "#/definitions/Shared2"
             },
             "unit": {
-              "description": "Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.",
-              "enum": [
-                "seconds",
-                "minutes",
-                "hours",
-                "days",
-                "campaign"
-              ],
-              "type": "string"
+              "$ref": "#/definitions/Shared3"
             }
           },
           "required": [

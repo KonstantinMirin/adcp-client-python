@@ -23,7 +23,7 @@
       "if": {
         "properties": {
           "status": {
-            "const": "accepted"
+            "$ref": "#/definitions/Shared1"
           },
           "verification_profile": {
             "const": "canonical_digest"
@@ -44,7 +44,7 @@
       "if": {
         "properties": {
           "status": {
-            "const": "accepted"
+            "$ref": "#/definitions/Shared1"
           },
           "verification_profile": {
             "const": "manifest_checksums"
@@ -65,7 +65,7 @@
       "if": {
         "properties": {
           "status": {
-            "const": "accepted"
+            "$ref": "#/definitions/Shared1"
           },
           "verification_profile": {
             "const": "native_commit"
@@ -83,6 +83,27 @@
       }
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "pattern": "^[A-Fa-f0-9]{64}$",
+      "type": "string"
+    },
+    "Shared1": {
+      "const": "accepted"
+    },
+    "Shared2": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$",
+      "type": "string"
+    },
+    "Shared3": {
+      "description": "Profile-defined unit such as impressions or an ISO 4217 currency code.",
+      "maxLength": 32,
+      "minLength": 1,
+      "type": "string"
+    }
+  },
   "description": "Authenticated consumer evidence for one materialization. A receipt closes the knowledge gap between producer availability and consumer reconciliation. Buyer and governance consumers submit independently; neither consumer's receipt implies acceptance by another principal.",
   "properties": {
     "consumer_commit_ref": {
@@ -110,8 +131,7 @@
           "type": "string"
         },
         "canonicalization_sha256": {
-          "pattern": "^[A-Fa-f0-9]{64}$",
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         },
         "canonicalization_uri": {
           "description": "Location of the exact immutable canonicalization contract. Consumers verify canonicalization_sha256 before applying it.",
@@ -120,8 +140,7 @@
           "type": "string"
         },
         "value": {
-          "pattern": "^[A-Fa-f0-9]{64}$",
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         }
       },
       "required": [
@@ -144,16 +163,10 @@
             "additionalProperties": false,
             "properties": {
               "name": {
-                "maxLength": 128,
-                "minLength": 1,
-                "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$",
-                "type": "string"
+                "$ref": "#/definitions/Shared2"
               },
               "unit": {
-                "description": "Profile-defined unit such as impressions or an ISO 4217 currency code.",
-                "maxLength": 32,
-                "minLength": 1,
-                "type": "string"
+                "$ref": "#/definitions/Shared3"
               },
               "value": {
                 "description": "Canonical base-10 integer with no exponent, grouping separator, decimal point, or insignificant leading zeroes.",
@@ -177,16 +190,10 @@
             "additionalProperties": false,
             "properties": {
               "name": {
-                "maxLength": 128,
-                "minLength": 1,
-                "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$",
-                "type": "string"
+                "$ref": "#/definitions/Shared2"
               },
               "unit": {
-                "description": "Profile-defined unit such as impressions or an ISO 4217 currency code.",
-                "maxLength": 32,
-                "minLength": 1,
-                "type": "string"
+                "$ref": "#/definitions/Shared3"
               },
               "value": {
                 "description": "Canonical base-10 decimal with no exponent, grouping separator, or insignificant leading zeroes.",
@@ -214,8 +221,7 @@
       "uniqueItems": true
     },
     "observed_manifest_sha256": {
-      "pattern": "^[A-Fa-f0-9]{64}$",
-      "type": "string"
+      "$ref": "#/definitions/Shared0"
     },
     "observed_native_version_ref": {
       "$schema": "http://json-schema.org/draft-07/schema#",

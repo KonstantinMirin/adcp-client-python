@@ -42,9 +42,7 @@
         "not": {
           "anyOf": [
             {
-              "required": [
-                "reporting_revision_id"
-              ]
+              "$ref": "#/definitions/Shared1"
             },
             {
               "required": [
@@ -52,14 +50,10 @@
               ]
             },
             {
-              "required": [
-                "health"
-              ]
+              "$ref": "#/definitions/Shared2"
             },
             {
-              "required": [
-                "changes_after"
-              ]
+              "$ref": "#/definitions/Shared3"
             }
           ]
         }
@@ -78,9 +72,7 @@
       },
       "then": {
         "not": {
-          "required": [
-            "reporting_revision_id"
-          ]
+          "$ref": "#/definitions/Shared1"
         }
       }
     },
@@ -119,9 +111,7 @@
               ]
             },
             {
-              "required": [
-                "health"
-              ]
+              "$ref": "#/definitions/Shared2"
             },
             {
               "required": [
@@ -129,9 +119,7 @@
               ]
             },
             {
-              "required": [
-                "changes_after"
-              ]
+              "$ref": "#/definitions/Shared3"
             }
           ]
         },
@@ -152,6 +140,25 @@
       "title": "Reporting Status View",
       "type": "string",
       "x-adcp-model-context-inline": true
+    },
+    "Shared0": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "Shared1": {
+      "required": [
+        "reporting_revision_id"
+      ]
+    },
+    "Shared2": {
+      "required": [
+        "health"
+      ]
+    },
+    "Shared3": {
+      "required": [
+        "changes_after"
+      ]
     }
   },
   "description": "Authoritative caller/account-isolated reporting reliability read. The authenticated caller identity comes only from transport authentication, never request fields. summary answers the operational question for independently selected delivery configurations/feeds; periods returns a cursor-paginated obligation ledger; revision resolves one exact retained revision and its materializations/resources. Unknown, unauthorized, cross-caller, and cross-account identifiers MUST be indistinguishable. Sellers implementing this task MUST advertise media_buy.reporting_delivery in experimental_features.",
@@ -438,12 +445,10 @@
       "description": "Half-open summary/periods horizon. Omit for the seller's documented operational default horizon; the response always echoes the evaluated scope.",
       "properties": {
         "end": {
-          "format": "date-time",
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         },
         "start": {
-          "format": "date-time",
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         }
       },
       "required": [

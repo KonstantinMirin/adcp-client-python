@@ -29,6 +29,12 @@
       "type": "object"
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "minimum": 0,
+      "type": "number"
+    }
+  },
   "description": "Append-only adjustment lifecycle result and attributed plan accounting state.",
   "properties": {
     "adjustment_id": {
@@ -102,35 +108,28 @@
           "type": "string"
         },
         "adjustments_reported": {
-          "minimum": 0,
-          "type": "number"
+          "$ref": "#/definitions/Shared0"
         },
         "adjustments_verified": {
-          "minimum": 0,
-          "type": "number"
+          "$ref": "#/definitions/Shared0"
         },
         "budget_remaining": {
           "type": "number"
         },
         "gross_committed": {
-          "minimum": 0,
-          "type": "number"
+          "$ref": "#/definitions/Shared0"
         },
         "headroom_restored": {
-          "minimum": 0,
-          "type": "number"
+          "$ref": "#/definitions/Shared0"
         },
         "ledger_committed": {
-          "minimum": 0,
-          "type": "number"
+          "$ref": "#/definitions/Shared0"
         },
         "net_committed": {
-          "minimum": 0,
-          "type": "number"
+          "$ref": "#/definitions/Shared0"
         },
         "net_cost": {
-          "minimum": 0,
-          "type": "number"
+          "$ref": "#/definitions/Shared0"
         }
       },
       "required": [

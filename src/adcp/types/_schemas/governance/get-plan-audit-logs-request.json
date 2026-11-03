@@ -46,6 +46,12 @@
       ]
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "type": "string",
+      "x-entity": "governance_plan"
+    }
+  },
   "description": "Retrieve governance state and audit trail for one or more plans.",
   "properties": {
     "context": {
@@ -78,8 +84,7 @@
     "plan_ids": {
       "description": "Plan IDs to retrieve. For a single plan, pass a one-element array. Plans uniquely scope account and operator; do not include a separate `account` field \u2014 the governance agent resolves account from each plan. Including `account` is rejected by `additionalProperties: false`.",
       "items": {
-        "type": "string",
-        "x-entity": "governance_plan"
+        "$ref": "#/definitions/Shared0"
       },
       "minItems": 1,
       "type": "array"
@@ -87,8 +92,7 @@
     "portfolio_plan_ids": {
       "description": "Portfolio plan IDs. The governance agent expands each to its member_plan_ids and returns combined audit data.",
       "items": {
-        "type": "string",
-        "x-entity": "governance_plan"
+        "$ref": "#/definitions/Shared0"
       },
       "minItems": 1,
       "type": "array"

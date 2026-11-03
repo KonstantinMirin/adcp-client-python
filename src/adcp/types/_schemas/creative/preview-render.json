@@ -1,5 +1,122 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "Shared0": {
+      "description": "Unique identifier for this rendered piece within the variant",
+      "type": "string"
+    },
+    "Shared1": {
+      "description": "Untrusted URL to an HTML page that renders this piece. Consumers MUST load it only in a cross-origin iframe with an empty sandbox token set and a caller-enforced restrictive CSP. Provider embedding metadata is advisory and MUST NOT loosen that policy.",
+      "format": "uri",
+      "type": "string"
+    },
+    "Shared10": {
+      "description": "Whether this output supports fullscreen mode",
+      "type": "boolean"
+    },
+    "Shared11": {
+      "description": "Content Security Policy requirements for embedding",
+      "type": "string"
+    },
+    "Shared2": {
+      "description": "Semantic role of this rendered piece. Use 'primary' for main content, 'companion' for associated banners, descriptive strings for device variants or custom roles.",
+      "type": "string"
+    },
+    "Shared3": {
+      "description": "Dimensions for this rendered piece",
+      "properties": {
+        "height": {
+          "$ref": "#/definitions/Shared7"
+        },
+        "width": {
+          "$ref": "#/definitions/Shared7"
+        }
+      },
+      "required": [
+        "width",
+        "height"
+      ],
+      "type": "object"
+    },
+    "Shared4": {
+      "description": "Optional security and embedding metadata for safe iframe integration",
+      "properties": {
+        "csp_policy": {
+          "$ref": "#/definitions/Shared11"
+        },
+        "recommended_sandbox": {
+          "$ref": "#/definitions/Shared8"
+        },
+        "requires_https": {
+          "$ref": "#/definitions/Shared9"
+        },
+        "supports_fullscreen": {
+          "$ref": "#/definitions/Shared10"
+        }
+      },
+      "type": "object"
+    },
+    "Shared5": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Optional renderer implementation and safety metadata for audit and reproducibility. Authority is still resolved from capability discovery and placement delegation.",
+      "properties": {
+        "export": {
+          "description": "Renderer export or entry-point name used for this render.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "renderer_id": {
+          "description": "Stable implementation identifier.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "rendering_origin": {
+          "description": "Informational implementation origin copied from the selected route. It does not grant authority.",
+          "enum": [
+            "platform_native",
+            "agent_approximation"
+          ],
+          "type": "string"
+        },
+        "tracking_suppressed": {
+          "description": "True only when the produced output cannot initiate impression, click, billing, conversion, viewability, or asset-fetch side effects. Renderers that retain any remote asset URL or navigation MUST emit false.",
+          "type": "boolean"
+        },
+        "version": {
+          "description": "Exact semantic version of the renderer implementation.",
+          "pattern": "^(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "renderer_id",
+        "version",
+        "export",
+        "rendering_origin",
+        "tracking_suppressed"
+      ],
+      "title": "Preview Renderer Metadata",
+      "type": "object"
+    },
+    "Shared6": {
+      "description": "Untrusted HTML. Consumers MUST NOT inject it into the host DOM. Render only as iframe srcdoc with an empty sandbox token set and a caller-enforced restrictive CSP; provider embedding metadata is advisory and MUST NOT loosen that policy.",
+      "type": "string"
+    },
+    "Shared7": {
+      "minimum": 0,
+      "type": "number"
+    },
+    "Shared8": {
+      "const": "",
+      "description": "Empty iframe sandbox token set. Provider metadata MUST NOT grant scripts, same-origin, navigation, popups, forms, downloads, or other capabilities.",
+      "type": "string"
+    },
+    "Shared9": {
+      "description": "Whether this output requires HTTPS for secure embedding",
+      "type": "boolean"
+    }
+  },
   "description": "A single rendered piece of a creative preview with discriminated output format",
   "discriminator": {
     "propertyName": "output_format"
@@ -10,45 +127,10 @@
       "description": "URL-only preview format",
       "properties": {
         "dimensions": {
-          "description": "Dimensions for this rendered piece",
-          "properties": {
-            "height": {
-              "minimum": 0,
-              "type": "number"
-            },
-            "width": {
-              "minimum": 0,
-              "type": "number"
-            }
-          },
-          "required": [
-            "width",
-            "height"
-          ],
-          "type": "object"
+          "$ref": "#/definitions/Shared3"
         },
         "embedding": {
-          "description": "Optional security and embedding metadata for safe iframe integration",
-          "properties": {
-            "csp_policy": {
-              "description": "Content Security Policy requirements for embedding",
-              "type": "string"
-            },
-            "recommended_sandbox": {
-              "const": "",
-              "description": "Empty iframe sandbox token set. Provider metadata MUST NOT grant scripts, same-origin, navigation, popups, forms, downloads, or other capabilities.",
-              "type": "string"
-            },
-            "requires_https": {
-              "description": "Whether this output requires HTTPS for secure embedding",
-              "type": "boolean"
-            },
-            "supports_fullscreen": {
-              "description": "Whether this output supports fullscreen mode",
-              "type": "boolean"
-            }
-          },
-          "type": "object"
+          "$ref": "#/definitions/Shared4"
         },
         "output_format": {
           "const": "url",
@@ -56,60 +138,16 @@
           "type": "string"
         },
         "preview_url": {
-          "description": "Untrusted URL to an HTML page that renders this piece. Consumers MUST load it only in a cross-origin iframe with an empty sandbox token set and a caller-enforced restrictive CSP. Provider embedding metadata is advisory and MUST NOT loosen that policy.",
-          "format": "uri",
-          "type": "string"
+          "$ref": "#/definitions/Shared1"
         },
         "render_id": {
-          "description": "Unique identifier for this rendered piece within the variant",
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         },
         "renderer": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": true,
-          "description": "Optional renderer implementation and safety metadata for audit and reproducibility. Authority is still resolved from capability discovery and placement delegation.",
-          "properties": {
-            "export": {
-              "description": "Renderer export or entry-point name used for this render.",
-              "minLength": 1,
-              "type": "string"
-            },
-            "renderer_id": {
-              "description": "Stable implementation identifier.",
-              "minLength": 1,
-              "type": "string"
-            },
-            "rendering_origin": {
-              "description": "Informational implementation origin copied from the selected route. It does not grant authority.",
-              "enum": [
-                "platform_native",
-                "agent_approximation"
-              ],
-              "type": "string"
-            },
-            "tracking_suppressed": {
-              "description": "True only when the produced output cannot initiate impression, click, billing, conversion, viewability, or asset-fetch side effects. Renderers that retain any remote asset URL or navigation MUST emit false.",
-              "type": "boolean"
-            },
-            "version": {
-              "description": "Exact semantic version of the renderer implementation.",
-              "pattern": "^(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$",
-              "type": "string"
-            }
-          },
-          "required": [
-            "renderer_id",
-            "version",
-            "export",
-            "rendering_origin",
-            "tracking_suppressed"
-          ],
-          "title": "Preview Renderer Metadata",
-          "type": "object"
+          "$ref": "#/definitions/Shared5"
         },
         "role": {
-          "description": "Semantic role of this rendered piece. Use 'primary' for main content, 'companion' for associated banners, descriptive strings for device variants or custom roles.",
-          "type": "string"
+          "$ref": "#/definitions/Shared2"
         }
       },
       "required": [
@@ -125,42 +163,22 @@
       "description": "HTML-only preview format",
       "properties": {
         "dimensions": {
-          "description": "Dimensions for this rendered piece",
-          "properties": {
-            "height": {
-              "minimum": 0,
-              "type": "number"
-            },
-            "width": {
-              "minimum": 0,
-              "type": "number"
-            }
-          },
-          "required": [
-            "width",
-            "height"
-          ],
-          "type": "object"
+          "$ref": "#/definitions/Shared3"
         },
         "embedding": {
           "description": "Optional security and embedding metadata",
           "properties": {
             "csp_policy": {
-              "description": "Content Security Policy requirements for embedding",
-              "type": "string"
+              "$ref": "#/definitions/Shared11"
             },
             "recommended_sandbox": {
-              "const": "",
-              "description": "Empty iframe sandbox token set. Provider metadata MUST NOT grant scripts, same-origin, navigation, popups, forms, downloads, or other capabilities.",
-              "type": "string"
+              "$ref": "#/definitions/Shared8"
             },
             "requires_https": {
-              "description": "Whether this output requires HTTPS for secure embedding",
-              "type": "boolean"
+              "$ref": "#/definitions/Shared9"
             },
             "supports_fullscreen": {
-              "description": "Whether this output supports fullscreen mode",
-              "type": "boolean"
+              "$ref": "#/definitions/Shared10"
             }
           },
           "type": "object"
@@ -171,59 +189,16 @@
           "type": "string"
         },
         "preview_html": {
-          "description": "Untrusted HTML. Consumers MUST NOT inject it into the host DOM. Render only as iframe srcdoc with an empty sandbox token set and a caller-enforced restrictive CSP; provider embedding metadata is advisory and MUST NOT loosen that policy.",
-          "type": "string"
+          "$ref": "#/definitions/Shared6"
         },
         "render_id": {
-          "description": "Unique identifier for this rendered piece within the variant",
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         },
         "renderer": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": true,
-          "description": "Optional renderer implementation and safety metadata for audit and reproducibility. Authority is still resolved from capability discovery and placement delegation.",
-          "properties": {
-            "export": {
-              "description": "Renderer export or entry-point name used for this render.",
-              "minLength": 1,
-              "type": "string"
-            },
-            "renderer_id": {
-              "description": "Stable implementation identifier.",
-              "minLength": 1,
-              "type": "string"
-            },
-            "rendering_origin": {
-              "description": "Informational implementation origin copied from the selected route. It does not grant authority.",
-              "enum": [
-                "platform_native",
-                "agent_approximation"
-              ],
-              "type": "string"
-            },
-            "tracking_suppressed": {
-              "description": "True only when the produced output cannot initiate impression, click, billing, conversion, viewability, or asset-fetch side effects. Renderers that retain any remote asset URL or navigation MUST emit false.",
-              "type": "boolean"
-            },
-            "version": {
-              "description": "Exact semantic version of the renderer implementation.",
-              "pattern": "^(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$",
-              "type": "string"
-            }
-          },
-          "required": [
-            "renderer_id",
-            "version",
-            "export",
-            "rendering_origin",
-            "tracking_suppressed"
-          ],
-          "title": "Preview Renderer Metadata",
-          "type": "object"
+          "$ref": "#/definitions/Shared5"
         },
         "role": {
-          "description": "Semantic role of this rendered piece. Use 'primary' for main content, 'companion' for associated banners, descriptive strings for device variants or custom roles.",
-          "type": "string"
+          "$ref": "#/definitions/Shared2"
         }
       },
       "required": [
@@ -239,45 +214,10 @@
       "description": "Both URL and HTML preview format",
       "properties": {
         "dimensions": {
-          "description": "Dimensions for this rendered piece",
-          "properties": {
-            "height": {
-              "minimum": 0,
-              "type": "number"
-            },
-            "width": {
-              "minimum": 0,
-              "type": "number"
-            }
-          },
-          "required": [
-            "width",
-            "height"
-          ],
-          "type": "object"
+          "$ref": "#/definitions/Shared3"
         },
         "embedding": {
-          "description": "Optional security and embedding metadata for safe iframe integration",
-          "properties": {
-            "csp_policy": {
-              "description": "Content Security Policy requirements for embedding",
-              "type": "string"
-            },
-            "recommended_sandbox": {
-              "const": "",
-              "description": "Empty iframe sandbox token set. Provider metadata MUST NOT grant scripts, same-origin, navigation, popups, forms, downloads, or other capabilities.",
-              "type": "string"
-            },
-            "requires_https": {
-              "description": "Whether this output requires HTTPS for secure embedding",
-              "type": "boolean"
-            },
-            "supports_fullscreen": {
-              "description": "Whether this output supports fullscreen mode",
-              "type": "boolean"
-            }
-          },
-          "type": "object"
+          "$ref": "#/definitions/Shared4"
         },
         "output_format": {
           "const": "both",
@@ -285,64 +225,19 @@
           "type": "string"
         },
         "preview_html": {
-          "description": "Untrusted HTML. Consumers MUST NOT inject it into the host DOM. Render only as iframe srcdoc with an empty sandbox token set and a caller-enforced restrictive CSP; provider embedding metadata is advisory and MUST NOT loosen that policy.",
-          "type": "string"
+          "$ref": "#/definitions/Shared6"
         },
         "preview_url": {
-          "description": "Untrusted URL to an HTML page that renders this piece. Consumers MUST load it only in a cross-origin iframe with an empty sandbox token set and a caller-enforced restrictive CSP. Provider embedding metadata is advisory and MUST NOT loosen that policy.",
-          "format": "uri",
-          "type": "string"
+          "$ref": "#/definitions/Shared1"
         },
         "render_id": {
-          "description": "Unique identifier for this rendered piece within the variant",
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         },
         "renderer": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": true,
-          "description": "Optional renderer implementation and safety metadata for audit and reproducibility. Authority is still resolved from capability discovery and placement delegation.",
-          "properties": {
-            "export": {
-              "description": "Renderer export or entry-point name used for this render.",
-              "minLength": 1,
-              "type": "string"
-            },
-            "renderer_id": {
-              "description": "Stable implementation identifier.",
-              "minLength": 1,
-              "type": "string"
-            },
-            "rendering_origin": {
-              "description": "Informational implementation origin copied from the selected route. It does not grant authority.",
-              "enum": [
-                "platform_native",
-                "agent_approximation"
-              ],
-              "type": "string"
-            },
-            "tracking_suppressed": {
-              "description": "True only when the produced output cannot initiate impression, click, billing, conversion, viewability, or asset-fetch side effects. Renderers that retain any remote asset URL or navigation MUST emit false.",
-              "type": "boolean"
-            },
-            "version": {
-              "description": "Exact semantic version of the renderer implementation.",
-              "pattern": "^(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$",
-              "type": "string"
-            }
-          },
-          "required": [
-            "renderer_id",
-            "version",
-            "export",
-            "rendering_origin",
-            "tracking_suppressed"
-          ],
-          "title": "Preview Renderer Metadata",
-          "type": "object"
+          "$ref": "#/definitions/Shared5"
         },
         "role": {
-          "description": "Semantic role of this rendered piece. Use 'primary' for main content, 'companion' for associated banners, descriptive strings for device variants or custom roles.",
-          "type": "string"
+          "$ref": "#/definitions/Shared2"
         }
       },
       "required": [

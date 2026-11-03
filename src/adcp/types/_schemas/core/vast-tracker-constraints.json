@@ -103,9 +103,7 @@
     {
       "else": {
         "not": {
-          "required": [
-            "offset"
-          ]
+          "$ref": "#/definitions/Shared0"
         }
       },
       "if": {
@@ -119,9 +117,7 @@
         ]
       },
       "then": {
-        "required": [
-          "offset"
-        ]
+        "$ref": "#/definitions/Shared0"
       }
     },
     {
@@ -311,6 +307,11 @@
     }
   ],
   "definitions": {
+    "Shared0": {
+      "required": [
+        "offset"
+      ]
+    },
     "vast_event": {
       "enum": [
         "creativeView",

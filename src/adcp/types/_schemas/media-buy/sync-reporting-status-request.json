@@ -7,28 +7,65 @@
       "description": "Release-precision AdCP protocol version negotiation fields. Composed via `allOf` into AdCP request schemas and shared response components so the version semantics live in one place. Strict (`additionalProperties: false`) request schemas also redeclare these two fields in their own `properties` via `$ref`, because draft-07 does not evaluate properties across `allOf`. The Trusted Match match requests are the exception: they inline both fields for their strict privacy boundary. Distinct from `core/protocol-envelope.json`, which wraps responses at the transport layer (context_id / task_id / status / payload). This envelope is part of the payload itself.",
       "properties": {
         "adcp_major_version": {
-          "deprecated": true,
-          "description": "DEPRECATED in favor of adcp_version (release-precision string). Servers MUST continue to honor this field through 3.x. Removed in 4.0. Original semantics: the AdCP major version the buyer's payloads conform to. Sellers validate against their supported major_versions and return VERSION_UNSUPPORTED if unsupported. When omitted, the seller assumes its highest supported version.",
-          "maximum": 99,
-          "minimum": 1,
-          "type": "integer"
+          "$ref": "#/definitions/Shared1"
         },
         "adcp_version": {
-          "description": "Release-precision AdCP version (VERSION.RELEASE, e.g. \"3.0\", \"3.1\", \"3.1-beta\"). On a request: the buyer's release pin \u2014 the seller validates against its supported_versions and returns VERSION_UNSUPPORTED on cross-major mismatch, or downshifts to the highest supported release within the same major. On a response: the release the seller actually served \u2014 clients SHOULD validate the response against that release's schema, not against their pin. Patches are not negotiated; surface them as build_version on capabilities for operational visibility. When omitted, falls back to adcp_major_version (deprecated) or server default. Buyers SHOULD emit both adcp_version and adcp_major_version through 3.x to remain compatible with sellers that only read the legacy field. NORMALIZATION: SDKs that read full-semver values from bundle metadata (e.g. ComplianceIndex.published_version = \"3.1.0-beta.1\") MUST normalize to release-precision (\"3.1-beta.1\") before emitting on the wire \u2014 meta-field values are NOT valid wire values.",
-          "examples": [
-            "3.0",
-            "3.1",
-            "3.1-beta",
-            "3.1-rc.1"
-          ],
-          "pattern": "^(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[a-zA-Z0-9](?:[a-zA-Z0-9.-]*[a-zA-Z0-9])?)?$",
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         }
       },
       "title": "AdCP Version Envelope",
       "type": "object"
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "description": "Release-precision AdCP version (VERSION.RELEASE, e.g. \"3.0\", \"3.1\", \"3.1-beta\"). On a request: the buyer's release pin \u2014 the seller validates against its supported_versions and returns VERSION_UNSUPPORTED on cross-major mismatch, or downshifts to the highest supported release within the same major. On a response: the release the seller actually served \u2014 clients SHOULD validate the response against that release's schema, not against their pin. Patches are not negotiated; surface them as build_version on capabilities for operational visibility. When omitted, falls back to adcp_major_version (deprecated) or server default. Buyers SHOULD emit both adcp_version and adcp_major_version through 3.x to remain compatible with sellers that only read the legacy field. NORMALIZATION: SDKs that read full-semver values from bundle metadata (e.g. ComplianceIndex.published_version = \"3.1.0-beta.1\") MUST normalize to release-precision (\"3.1-beta.1\") before emitting on the wire \u2014 meta-field values are NOT valid wire values.",
+      "examples": [
+        "3.0",
+        "3.1",
+        "3.1-beta",
+        "3.1-rc.1"
+      ],
+      "pattern": "^(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[a-zA-Z0-9](?:[a-zA-Z0-9.-]*[a-zA-Z0-9])?)?$",
+      "type": "string"
+    },
+    "Shared1": {
+      "deprecated": true,
+      "description": "DEPRECATED in favor of adcp_version (release-precision string). Servers MUST continue to honor this field through 3.x. Removed in 4.0. Original semantics: the AdCP major version the buyer's payloads conform to. Sellers validate against their supported major_versions and return VERSION_UNSUPPORTED if unsupported. When omitted, the seller assumes its highest supported version.",
+      "maximum": 99,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "Shared2": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "Shared3": {
+      "required": [
+        "seller_ledger_as_of"
+      ]
+    },
+    "Shared4": {
+      "required": [
+        "failure_code"
+      ]
+    },
+    "Shared5": {
+      "required": [
+        "mismatch_code"
+      ]
+    },
+    "Shared6": {
+      "required": [
+        "reporting_revision_id"
+      ]
+    },
+    "Shared7": {
+      "required": [
+        "observed_revision_content_sha256"
+      ]
+    }
+  },
   "description": "Submit the authenticated consumer's operational reporting status for expected configuration periods. This is a batched idempotent append-only sync over seller-hosted task transport, not a webhook registration, measurement-data feed, or billing receipt. Identity comes from authenticated transport; the request MUST NOT assert a buyer or consumer principal.",
   "properties": {
     "account": {
@@ -179,22 +216,10 @@
       "type": "object"
     },
     "adcp_major_version": {
-      "deprecated": true,
-      "description": "DEPRECATED in favor of adcp_version (release-precision string). Servers MUST continue to honor this field through 3.x. Removed in 4.0. Original semantics: the AdCP major version the buyer's payloads conform to. Sellers validate against their supported major_versions and return VERSION_UNSUPPORTED if unsupported. When omitted, the seller assumes its highest supported version.",
-      "maximum": 99,
-      "minimum": 1,
-      "type": "integer"
+      "$ref": "#/definitions/Shared1"
     },
     "adcp_version": {
-      "description": "Release-precision AdCP version (VERSION.RELEASE, e.g. \"3.0\", \"3.1\", \"3.1-beta\"). On a request: the buyer's release pin \u2014 the seller validates against its supported_versions and returns VERSION_UNSUPPORTED on cross-major mismatch, or downshifts to the highest supported release within the same major. On a response: the release the seller actually served \u2014 clients SHOULD validate the response against that release's schema, not against their pin. Patches are not negotiated; surface them as build_version on capabilities for operational visibility. When omitted, falls back to adcp_major_version (deprecated) or server default. Buyers SHOULD emit both adcp_version and adcp_major_version through 3.x to remain compatible with sellers that only read the legacy field. NORMALIZATION: SDKs that read full-semver values from bundle metadata (e.g. ComplianceIndex.published_version = \"3.1.0-beta.1\") MUST normalize to release-precision (\"3.1-beta.1\") before emitting on the wire \u2014 meta-field values are NOT valid wire values.",
-      "examples": [
-        "3.0",
-        "3.1",
-        "3.1-beta",
-        "3.1-rc.1"
-      ],
-      "pattern": "^(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[a-zA-Z0-9](?:[a-zA-Z0-9.-]*[a-zA-Z0-9])?)?$",
-      "type": "string"
+      "$ref": "#/definitions/Shared0"
     },
     "context": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -240,14 +265,10 @@
                   "not": {
                     "anyOf": [
                       {
-                        "required": [
-                          "failure_code"
-                        ]
+                        "$ref": "#/definitions/Shared4"
                       },
                       {
-                        "required": [
-                          "mismatch_code"
-                        ]
+                        "$ref": "#/definitions/Shared5"
                       }
                     ]
                   },
@@ -278,24 +299,16 @@
                         ]
                       },
                       {
-                        "required": [
-                          "reporting_revision_id"
-                        ]
+                        "$ref": "#/definitions/Shared6"
                       },
                       {
-                        "required": [
-                          "observed_revision_content_sha256"
-                        ]
+                        "$ref": "#/definitions/Shared7"
                       },
                       {
-                        "required": [
-                          "failure_code"
-                        ]
+                        "$ref": "#/definitions/Shared4"
                       },
                       {
-                        "required": [
-                          "mismatch_code"
-                        ]
+                        "$ref": "#/definitions/Shared5"
                       }
                     ]
                   }
@@ -316,24 +329,16 @@
                   "not": {
                     "anyOf": [
                       {
-                        "required": [
-                          "reporting_revision_id"
-                        ]
+                        "$ref": "#/definitions/Shared6"
                       },
                       {
-                        "required": [
-                          "observed_revision_content_sha256"
-                        ]
+                        "$ref": "#/definitions/Shared7"
                       },
                       {
-                        "required": [
-                          "failure_code"
-                        ]
+                        "$ref": "#/definitions/Shared4"
                       },
                       {
-                        "required": [
-                          "mismatch_code"
-                        ]
+                        "$ref": "#/definitions/Shared5"
                       }
                     ]
                   },
@@ -357,14 +362,10 @@
                   "not": {
                     "anyOf": [
                       {
-                        "required": [
-                          "observed_revision_content_sha256"
-                        ]
+                        "$ref": "#/definitions/Shared7"
                       },
                       {
-                        "required": [
-                          "mismatch_code"
-                        ]
+                        "$ref": "#/definitions/Shared5"
                       }
                     ]
                   },
@@ -388,9 +389,7 @@
                 },
                 "then": {
                   "not": {
-                    "required": [
-                      "failure_code"
-                    ]
+                    "$ref": "#/definitions/Shared4"
                   },
                   "required": [
                     "reporting_obligation_id",
@@ -403,9 +402,7 @@
               {
                 "else": {
                   "not": {
-                    "required": [
-                      "seller_ledger_as_of"
-                    ]
+                    "$ref": "#/definitions/Shared3"
                   }
                 },
                 "if": {
@@ -414,9 +411,7 @@
                   ]
                 },
                 "then": {
-                  "required": [
-                    "seller_ledger_as_of"
-                  ]
+                  "$ref": "#/definitions/Shared3"
                 }
               }
             ],
@@ -484,16 +479,14 @@
                 "description": "Expected half-open reporting period derived from the accepted configuration generation. This identity works even when the seller omitted the corresponding obligation.",
                 "properties": {
                   "end": {
-                    "format": "date-time",
-                    "type": "string"
+                    "$ref": "#/definitions/Shared2"
                   },
                   "source_timezone": {
                     "minLength": 1,
                     "type": "string"
                   },
                   "start": {
-                    "format": "date-time",
-                    "type": "string"
+                    "$ref": "#/definitions/Shared2"
                   }
                 },
                 "required": [

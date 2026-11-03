@@ -5,9 +5,7 @@
     {
       "else": {
         "not": {
-          "required": [
-            "custom_event_name"
-          ]
+          "$ref": "#/definitions/Shared0"
         }
       },
       "if": {
@@ -21,9 +19,7 @@
         ]
       },
       "then": {
-        "required": [
-          "custom_event_name"
-        ]
+        "$ref": "#/definitions/Shared0"
       }
     },
     {
@@ -53,6 +49,13 @@
       }
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "required": [
+        "custom_event_name"
+      ]
+    }
+  },
   "description": "Revenue-share pricing. The advertiser pays a fixed decimal commission rate applied to settled commissionable_value attributed to the declared conversion event and event source. Spend is rounded once to the ISO 4217 minor-unit precision of currency after multiplication: spend = round_currency(commissionable_value \u00d7 commission_rate). This is contingent pricing, not fixed-unit pricing or an auction.",
   "properties": {
     "commission_basis_description": {

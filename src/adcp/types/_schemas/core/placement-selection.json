@@ -1,5 +1,14 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "Shared0": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    }
+  },
   "description": "Complete purchased placement set within a product. This is inventory targeting, not creative routing: creative_assignments[].placement_refs route a creative only within this purchased set. Requests use mode selected to name the complete required set or mode default to accept the product/seller default. Across discovery, create, and update, a selected set is satisfied inherently when it exactly equals a fixed product's complete included placement set; this exact restatement does not require overlay_support.placement_selection, while partial selection does. Included placements are never independently selectable. Products with any fixed mode:included placement cannot advertise selectable placement overlay support because the fixed placement would make a partial buyer-selected set incomplete; sellers expose separately selectable inventory when needed. Successful package readback MUST echo the committed selected set. Sellers reject unknown, duplicate, cross-publisher, incompatible, or partially applicable refs rather than silently changing the selection.",
   "discriminator": {
     "propertyName": "mode"
@@ -9,11 +18,7 @@
       "additionalProperties": false,
       "properties": {
         "ext": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": true,
-          "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-          "title": "Extension Object",
-          "type": "object"
+          "$ref": "#/definitions/Shared0"
         },
         "mode": {
           "const": "selected",
@@ -156,11 +161,7 @@
       "additionalProperties": false,
       "properties": {
         "ext": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": true,
-          "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-          "title": "Extension Object",
-          "type": "object"
+          "$ref": "#/definitions/Shared0"
         },
         "mode": {
           "const": "default",

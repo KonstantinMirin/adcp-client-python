@@ -1,5 +1,54 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "Shared0": {
+      "description": "ISO 3166-1 alpha-2 country code.",
+      "pattern": "^[A-Z]{2}$",
+      "type": "string"
+    },
+    "Shared1": {
+      "anyOf": [
+        {
+          "required": [
+            "system"
+          ]
+        },
+        {
+          "$ref": "#/definitions/Shared2"
+        }
+      ]
+    },
+    "Shared2": {
+      "required": [
+        "country"
+      ]
+    },
+    "Shared3": {
+      "required": [
+        "data_provider_domain"
+      ]
+    },
+    "Shared4": {
+      "required": [
+        "signal_source_url"
+      ]
+    },
+    "Shared5": {
+      "required": [
+        "agent_url"
+      ]
+    },
+    "Shared6": {
+      "required": [
+        "source"
+      ]
+    },
+    "Shared7": {
+      "required": [
+        "id"
+      ]
+    }
+  },
   "description": "Dimension constraints represented by a ForecastPoint. Use this when one product, proposal, or signal coverage forecast needs to expose availability or forecasted delivery by country, region, placement, device, audience, signal value, time window, or intersections such as placement x country without creating separate products solely for each slice. Each item declares one dimension family via `kind`; when multiple items are present, the point represents their intersection. Sellers MUST NOT emit more than one item for each `kind` in a point. Consumers MUST NOT treat repeated kinds as OR semantics; repeated peer values such as two countries are a seller conformance issue. Dimension values are descriptors of the forecast row and are independent of pricing_options.",
   "items": {
     "oneOf": [
@@ -20,24 +69,11 @@
             },
             "then": {
               "not": {
-                "anyOf": [
-                  {
-                    "required": [
-                      "system"
-                    ]
-                  },
-                  {
-                    "required": [
-                      "country"
-                    ]
-                  }
-                ]
+                "$ref": "#/definitions/Shared1"
               },
               "properties": {
                 "geo_code": {
-                  "description": "ISO 3166-1 alpha-2 country code.",
-                  "pattern": "^[A-Z]{2}$",
-                  "type": "string"
+                  "$ref": "#/definitions/Shared0"
                 }
               }
             }
@@ -55,18 +91,7 @@
             },
             "then": {
               "not": {
-                "anyOf": [
-                  {
-                    "required": [
-                      "system"
-                    ]
-                  },
-                  {
-                    "required": [
-                      "country"
-                    ]
-                  }
-                ]
+                "$ref": "#/definitions/Shared1"
               },
               "properties": {
                 "geo_code": {
@@ -90,9 +115,7 @@
             },
             "then": {
               "not": {
-                "required": [
-                  "country"
-                ]
+                "$ref": "#/definitions/Shared2"
               },
               "properties": {
                 "system": {
@@ -264,9 +287,7 @@
                   "description": "Valid country-local postal system pairing. Registered countries only accept their registered local systems; countries without a registered local system use postal_code or custom.",
                   "properties": {
                     "country": {
-                      "description": "ISO 3166-1 alpha-2 country code.",
-                      "pattern": "^[A-Z]{2}$",
-                      "type": "string"
+                      "$ref": "#/definitions/Shared0"
                     },
                     "system": {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -309,9 +330,7 @@
                 },
                 {
                   "not": {
-                    "required": [
-                      "country"
-                    ]
+                    "$ref": "#/definitions/Shared2"
                   },
                   "properties": {
                     "system": {
@@ -644,29 +663,19 @@
                 "not": {
                   "anyOf": [
                     {
-                      "required": [
-                        "data_provider_domain"
-                      ]
+                      "$ref": "#/definitions/Shared3"
                     },
                     {
-                      "required": [
-                        "signal_source_url"
-                      ]
+                      "$ref": "#/definitions/Shared4"
                     },
                     {
-                      "required": [
-                        "agent_url"
-                      ]
+                      "$ref": "#/definitions/Shared5"
                     },
                     {
-                      "required": [
-                        "source"
-                      ]
+                      "$ref": "#/definitions/Shared6"
                     },
                     {
-                      "required": [
-                        "id"
-                      ]
+                      "$ref": "#/definitions/Shared7"
                     }
                   ]
                 },
@@ -694,24 +703,16 @@
                 "not": {
                   "anyOf": [
                     {
-                      "required": [
-                        "agent_url"
-                      ]
+                      "$ref": "#/definitions/Shared5"
                     },
                     {
-                      "required": [
-                        "signal_source_url"
-                      ]
+                      "$ref": "#/definitions/Shared4"
                     },
                     {
-                      "required": [
-                        "source"
-                      ]
+                      "$ref": "#/definitions/Shared6"
                     },
                     {
-                      "required": [
-                        "id"
-                      ]
+                      "$ref": "#/definitions/Shared7"
                     }
                   ]
                 },
@@ -745,24 +746,16 @@
                 "not": {
                   "anyOf": [
                     {
-                      "required": [
-                        "data_provider_domain"
-                      ]
+                      "$ref": "#/definitions/Shared3"
                     },
                     {
-                      "required": [
-                        "agent_url"
-                      ]
+                      "$ref": "#/definitions/Shared5"
                     },
                     {
-                      "required": [
-                        "source"
-                      ]
+                      "$ref": "#/definitions/Shared6"
                     },
                     {
-                      "required": [
-                        "id"
-                      ]
+                      "$ref": "#/definitions/Shared7"
                     }
                   ]
                 },

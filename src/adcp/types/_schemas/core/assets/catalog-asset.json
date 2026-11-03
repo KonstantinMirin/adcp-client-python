@@ -424,7 +424,7 @@
         "ids": {
           "description": "Filter catalog to exact canonical item keys. The key field is offering_id for offering, store_id for store, hotel_id for hotel, flight_id for flight, job_id for job, vehicle_id for vehicle, listing_id for real_estate, program_id for education, destination_id for destination, and app_id for app. Product, inventory, and promotion catalogs use the stable normalized source identifier retained during ingestion (for example a retailer SKU). The same canonical key is used by catalog availability item_id.",
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/Shared0"
           },
           "minItems": 1,
           "type": "array"
@@ -448,7 +448,7 @@
         "tags": {
           "description": "Filter catalog to items with these tags. Tags are matched using OR logic \u2014 items matching any tag are included.",
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/Shared0"
           },
           "minItems": 1,
           "type": "array"
@@ -499,6 +499,11 @@
       "type": "object"
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "type": "string"
+    }
+  },
   "description": "A typed data feed as a creative asset. Carries catalog context (products, stores, jobs, etc.) within the manifest's assets map.",
   "properties": {
     "asset_type": {

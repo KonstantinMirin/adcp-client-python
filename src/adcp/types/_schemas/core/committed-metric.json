@@ -1,5 +1,37 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "Shared0": {
+      "description": "Number of time units. Must be 1 when unit is 'campaign'.",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "Shared1": {
+      "description": "Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.",
+      "enum": [
+        "seconds",
+        "minutes",
+        "hours",
+        "days",
+        "campaign"
+      ],
+      "type": "string"
+    },
+    "Shared2": {
+      "type": "string"
+    },
+    "Shared3": {
+      "pattern": "^#[0-9a-fA-F]{6}$",
+      "type": "string"
+    },
+    "Shared4": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    }
+  },
   "description": "One metric in a package's binding reporting contract. Each entry uses `scope` as the discriminator and identifies a standard or vendor-defined metric that the seller has committed to populate in delivery reports.",
   "discriminator": {
     "propertyName": "scope"
@@ -98,20 +130,10 @@
               "description": "Time window over which outcome attribution is computed. **Object-valued, not string** \u2014 MUST be a structured duration object like `{interval: 14, unit: 'days'}`, NEVER a shorthand string like `'14d'`. SHOULD be set when `metric_id` is an outcome metric and the seller commits to a specific window. Common windows: `{interval: 7, unit: 'days'}`, `{interval: 14, unit: 'days'}`, `{interval: 30, unit: 'days'}`, `{interval: 90, unit: 'days'}`. Two outcome rows with the same `metric_id` and `attribution_methodology` but different `attribution_window` represent the same metric measured over different periods \u2014 the join on `(metric_id, qualifier)` keeps them as separate rows so buyers don't accidentally aggregate across windows.",
               "properties": {
                 "interval": {
-                  "description": "Number of time units. Must be 1 when unit is 'campaign'.",
-                  "minimum": 1,
-                  "type": "integer"
+                  "$ref": "#/definitions/Shared0"
                 },
                 "unit": {
-                  "description": "Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.",
-                  "enum": [
-                    "seconds",
-                    "minutes",
-                    "hours",
-                    "days",
-                    "campaign"
-                  ],
-                  "type": "string"
+                  "$ref": "#/definitions/Shared1"
                 }
               },
               "required": [
@@ -241,20 +263,10 @@
               "description": "Attribution window for this vendor outcome metric, as a structured duration.",
               "properties": {
                 "interval": {
-                  "description": "Number of time units. Must be 1 when unit is 'campaign'.",
-                  "minimum": 1,
-                  "type": "integer"
+                  "$ref": "#/definitions/Shared0"
                 },
                 "unit": {
-                  "description": "Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.",
-                  "enum": [
-                    "seconds",
-                    "minutes",
-                    "hours",
-                    "days",
-                    "campaign"
-                  ],
-                  "type": "string"
+                  "$ref": "#/definitions/Shared1"
                 }
               },
               "required": [
@@ -368,16 +380,13 @@
                   "description": "Override brand colors (hex strings).",
                   "properties": {
                     "accent": {
-                      "pattern": "^#[0-9a-fA-F]{6}$",
-                      "type": "string"
+                      "$ref": "#/definitions/Shared3"
                     },
                     "primary": {
-                      "pattern": "^#[0-9a-fA-F]{6}$",
-                      "type": "string"
+                      "$ref": "#/definitions/Shared3"
                     },
                     "secondary": {
-                      "pattern": "^#[0-9a-fA-F]{6}$",
-                      "type": "string"
+                      "$ref": "#/definitions/Shared3"
                     }
                   },
                   "type": "object"
@@ -568,11 +577,7 @@
                                     "minProperties": 1,
                                     "properties": {
                                       "ext": {
-                                        "$schema": "http://json-schema.org/draft-07/schema#",
-                                        "additionalProperties": true,
-                                        "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                                        "title": "Extension Object",
-                                        "type": "object"
+                                        "$ref": "#/definitions/Shared4"
                                       },
                                       "min_duration_ms": {
                                         "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial \u2014 without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available.",
@@ -702,11 +707,7 @@
                           "type": "array"
                         },
                         "ext": {
-                          "$schema": "http://json-schema.org/draft-07/schema#",
-                          "additionalProperties": true,
-                          "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                          "title": "Extension Object",
-                          "type": "object"
+                          "$ref": "#/definitions/Shared4"
                         },
                         "human_oversight": {
                           "description": "Level of human involvement in the AI-assisted creation process. Independent of `disclosure.required` \u2014 the protocol does not derive disclosure obligations from oversight level. Some regulations include carve-outs for human-edited or human-directed AI output, but those carve-outs have factual prerequisites the schema cannot evaluate. Asserting `edited` or `directed` does not by itself justify `disclosure.required: false`.",
@@ -920,7 +921,7 @@
                 },
                 "languages": {
                   "items": {
-                    "type": "string"
+                    "$ref": "#/definitions/Shared2"
                   },
                   "type": "array"
                 },
@@ -940,7 +941,7 @@
             "industries": {
               "description": "Inline override for the brand's industries. Useful when the caller cannot modify the brand's canonical brand.json but needs to declare industries for governance (e.g., Annex III vertical detection). brand.json remains the canonical source; when omitted here, governance agents SHOULD resolve from brand.json.",
               "items": {
-                "type": "string"
+                "$ref": "#/definitions/Shared2"
               },
               "type": "array"
             }

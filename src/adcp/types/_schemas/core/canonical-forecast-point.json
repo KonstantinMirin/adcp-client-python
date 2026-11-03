@@ -1,6 +1,160 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": false,
+  "definitions": {
+    "Shared0": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Shared1"
+        },
+        {
+          "properties": {
+            "high": {
+              "$ref": "#/definitions/Shared3"
+            },
+            "low": {
+              "$ref": "#/definitions/Shared3"
+            },
+            "mid": {
+              "$ref": "#/definitions/Shared3"
+            }
+          }
+        }
+      ],
+      "description": "A forecast range whose low, midpoint, and high values are rates in the inclusive interval from 0 to 1.",
+      "title": "Forecast Rate Range"
+    },
+    "Shared1": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "anyOf": [
+        {
+          "required": [
+            "mid"
+          ]
+        },
+        {
+          "required": [
+            "low",
+            "high"
+          ]
+        }
+      ],
+      "description": "A forecast value with optional confidence bounds. Either mid (point estimate) or both low and high (range) must be provided. mid represents the most likely outcome. low and high represent conservative and optimistic estimates. All three can be provided together.",
+      "properties": {
+        "high": {
+          "description": "Optimistic (high-end) forecast value",
+          "minimum": 0,
+          "type": "number"
+        },
+        "low": {
+          "description": "Conservative (low-end) forecast value",
+          "minimum": 0,
+          "type": "number"
+        },
+        "mid": {
+          "description": "Expected (most likely) forecast value",
+          "minimum": 0,
+          "type": "number"
+        }
+      },
+      "title": "Forecast Range",
+      "type": "object"
+    },
+    "Shared10": {
+      "required": [
+        "source"
+      ]
+    },
+    "Shared11": {
+      "required": [
+        "id"
+      ]
+    },
+    "Shared2": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "description": "Stable brand identity used to resolve the canonical brand manifest, optionally qualified by the countries of a commercial advertiser entity. The manifest URL is derived from domain; callers do not send brand assets or per-call brand overrides. Countries do not target delivery.",
+      "properties": {
+        "brand_id": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Brand within a house-of-brands manifest. Omit for a single-brand domain.",
+          "examples": [
+            "tide",
+            "cheerios",
+            "air_jordan",
+            "nike",
+            "pampers"
+          ],
+          "pattern": "^[a-z0-9_]+$",
+          "title": "Brand ID",
+          "type": "string",
+          "x-entity": "advertiser_brand"
+        },
+        "countries": {
+          "description": "Canonical set of ISO 3166-1 alpha-2 countries for this advertiser identity. Omit when the identity is global or the house does not split the brand geographically. Array order is not meaningful; producers MUST sort codes lexicographically before computing keys or signatures. This qualifies account and proposal identity and is not delivery targeting.",
+          "items": {
+            "pattern": "^[A-Z]{2}$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "domain": {
+          "description": "Domain that hosts /.well-known/brand.json or is registered for the brand.",
+          "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "domain"
+      ],
+      "title": "Brand Key",
+      "type": "object"
+    },
+    "Shared3": {
+      "maximum": 1
+    },
+    "Shared4": {
+      "description": "ISO 3166-1 alpha-2 country code.",
+      "pattern": "^[A-Z]{2}$",
+      "type": "string"
+    },
+    "Shared5": {
+      "anyOf": [
+        {
+          "required": [
+            "system"
+          ]
+        },
+        {
+          "$ref": "#/definitions/Shared6"
+        }
+      ]
+    },
+    "Shared6": {
+      "required": [
+        "country"
+      ]
+    },
+    "Shared7": {
+      "required": [
+        "data_provider_domain"
+      ]
+    },
+    "Shared8": {
+      "required": [
+        "signal_source_url"
+      ]
+    },
+    "Shared9": {
+      "required": [
+        "agent_url"
+      ]
+    }
+  },
   "description": "Compact forecast row with numeric ranges and identity-only measurement-vendor references.",
   "properties": {
     "availability_status": {
@@ -43,24 +197,11 @@
                 },
                 "then": {
                   "not": {
-                    "anyOf": [
-                      {
-                        "required": [
-                          "system"
-                        ]
-                      },
-                      {
-                        "required": [
-                          "country"
-                        ]
-                      }
-                    ]
+                    "$ref": "#/definitions/Shared5"
                   },
                   "properties": {
                     "geo_code": {
-                      "description": "ISO 3166-1 alpha-2 country code.",
-                      "pattern": "^[A-Z]{2}$",
-                      "type": "string"
+                      "$ref": "#/definitions/Shared4"
                     }
                   }
                 }
@@ -78,18 +219,7 @@
                 },
                 "then": {
                   "not": {
-                    "anyOf": [
-                      {
-                        "required": [
-                          "system"
-                        ]
-                      },
-                      {
-                        "required": [
-                          "country"
-                        ]
-                      }
-                    ]
+                    "$ref": "#/definitions/Shared5"
                   },
                   "properties": {
                     "geo_code": {
@@ -113,9 +243,7 @@
                 },
                 "then": {
                   "not": {
-                    "required": [
-                      "country"
-                    ]
+                    "$ref": "#/definitions/Shared6"
                   },
                   "properties": {
                     "system": {
@@ -287,9 +415,7 @@
                       "description": "Valid country-local postal system pairing. Registered countries only accept their registered local systems; countries without a registered local system use postal_code or custom.",
                       "properties": {
                         "country": {
-                          "description": "ISO 3166-1 alpha-2 country code.",
-                          "pattern": "^[A-Z]{2}$",
-                          "type": "string"
+                          "$ref": "#/definitions/Shared4"
                         },
                         "system": {
                           "$schema": "http://json-schema.org/draft-07/schema#",
@@ -332,9 +458,7 @@
                     },
                     {
                       "not": {
-                        "required": [
-                          "country"
-                        ]
+                        "$ref": "#/definitions/Shared6"
                       },
                       "properties": {
                         "system": {
@@ -667,29 +791,19 @@
                     "not": {
                       "anyOf": [
                         {
-                          "required": [
-                            "data_provider_domain"
-                          ]
+                          "$ref": "#/definitions/Shared7"
                         },
                         {
-                          "required": [
-                            "signal_source_url"
-                          ]
+                          "$ref": "#/definitions/Shared8"
                         },
                         {
-                          "required": [
-                            "agent_url"
-                          ]
+                          "$ref": "#/definitions/Shared9"
                         },
                         {
-                          "required": [
-                            "source"
-                          ]
+                          "$ref": "#/definitions/Shared10"
                         },
                         {
-                          "required": [
-                            "id"
-                          ]
+                          "$ref": "#/definitions/Shared11"
                         }
                       ]
                     },
@@ -717,24 +831,16 @@
                     "not": {
                       "anyOf": [
                         {
-                          "required": [
-                            "agent_url"
-                          ]
+                          "$ref": "#/definitions/Shared9"
                         },
                         {
-                          "required": [
-                            "signal_source_url"
-                          ]
+                          "$ref": "#/definitions/Shared8"
                         },
                         {
-                          "required": [
-                            "source"
-                          ]
+                          "$ref": "#/definitions/Shared10"
                         },
                         {
-                          "required": [
-                            "id"
-                          ]
+                          "$ref": "#/definitions/Shared11"
                         }
                       ]
                     },
@@ -768,24 +874,16 @@
                     "not": {
                       "anyOf": [
                         {
-                          "required": [
-                            "data_provider_domain"
-                          ]
+                          "$ref": "#/definitions/Shared7"
                         },
                         {
-                          "required": [
-                            "agent_url"
-                          ]
+                          "$ref": "#/definitions/Shared9"
                         },
                         {
-                          "required": [
-                            "source"
-                          ]
+                          "$ref": "#/definitions/Shared10"
                         },
                         {
-                          "required": [
-                            "id"
-                          ]
+                          "$ref": "#/definitions/Shared11"
                         }
                       ]
                     },
@@ -886,99 +984,11 @@
     },
     "metrics": {
       "additionalProperties": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "additionalProperties": true,
-        "anyOf": [
-          {
-            "required": [
-              "mid"
-            ]
-          },
-          {
-            "required": [
-              "low",
-              "high"
-            ]
-          }
-        ],
-        "description": "A forecast value with optional confidence bounds. Either mid (point estimate) or both low and high (range) must be provided. mid represents the most likely outcome. low and high represent conservative and optimistic estimates. All three can be provided together.",
-        "properties": {
-          "high": {
-            "description": "Optimistic (high-end) forecast value",
-            "minimum": 0,
-            "type": "number"
-          },
-          "low": {
-            "description": "Conservative (low-end) forecast value",
-            "minimum": 0,
-            "type": "number"
-          },
-          "mid": {
-            "description": "Expected (most likely) forecast value",
-            "minimum": 0,
-            "type": "number"
-          }
-        },
-        "title": "Forecast Range",
-        "type": "object"
+        "$ref": "#/definitions/Shared1"
       },
       "properties": {
         "coverage_rate": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "allOf": [
-            {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": true,
-              "anyOf": [
-                {
-                  "required": [
-                    "mid"
-                  ]
-                },
-                {
-                  "required": [
-                    "low",
-                    "high"
-                  ]
-                }
-              ],
-              "description": "A forecast value with optional confidence bounds. Either mid (point estimate) or both low and high (range) must be provided. mid represents the most likely outcome. low and high represent conservative and optimistic estimates. All three can be provided together.",
-              "properties": {
-                "high": {
-                  "description": "Optimistic (high-end) forecast value",
-                  "minimum": 0,
-                  "type": "number"
-                },
-                "low": {
-                  "description": "Conservative (low-end) forecast value",
-                  "minimum": 0,
-                  "type": "number"
-                },
-                "mid": {
-                  "description": "Expected (most likely) forecast value",
-                  "minimum": 0,
-                  "type": "number"
-                }
-              },
-              "title": "Forecast Range",
-              "type": "object"
-            },
-            {
-              "properties": {
-                "high": {
-                  "maximum": 1
-                },
-                "low": {
-                  "maximum": 1
-                },
-                "mid": {
-                  "maximum": 1
-                }
-              }
-            }
-          ],
-          "description": "A forecast range whose low, midpoint, and high values are rates in the inclusive interval from 0 to 1.",
-          "title": "Forecast Rate Range"
+          "$ref": "#/definitions/Shared0"
         }
       },
       "type": "object"
@@ -998,41 +1008,7 @@
             "type": "object"
           },
           "measurable_impressions": {
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "additionalProperties": true,
-            "anyOf": [
-              {
-                "required": [
-                  "mid"
-                ]
-              },
-              {
-                "required": [
-                  "low",
-                  "high"
-                ]
-              }
-            ],
-            "description": "A forecast value with optional confidence bounds. Either mid (point estimate) or both low and high (range) must be provided. mid represents the most likely outcome. low and high represent conservative and optimistic estimates. All three can be provided together.",
-            "properties": {
-              "high": {
-                "description": "Optimistic (high-end) forecast value",
-                "minimum": 0,
-                "type": "number"
-              },
-              "low": {
-                "description": "Conservative (low-end) forecast value",
-                "minimum": 0,
-                "type": "number"
-              },
-              "mid": {
-                "description": "Expected (most likely) forecast value",
-                "minimum": 0,
-                "type": "number"
-              }
-            },
-            "title": "Forecast Range",
-            "type": "object"
+            "$ref": "#/definitions/Shared1"
           },
           "metric_id": {
             "$schema": "http://json-schema.org/draft-07/schema#",
@@ -1055,83 +1031,10 @@
             "type": "string"
           },
           "value": {
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "additionalProperties": true,
-            "anyOf": [
-              {
-                "required": [
-                  "mid"
-                ]
-              },
-              {
-                "required": [
-                  "low",
-                  "high"
-                ]
-              }
-            ],
-            "description": "A forecast value with optional confidence bounds. Either mid (point estimate) or both low and high (range) must be provided. mid represents the most likely outcome. low and high represent conservative and optimistic estimates. All three can be provided together.",
-            "properties": {
-              "high": {
-                "description": "Optimistic (high-end) forecast value",
-                "minimum": 0,
-                "type": "number"
-              },
-              "low": {
-                "description": "Conservative (low-end) forecast value",
-                "minimum": 0,
-                "type": "number"
-              },
-              "mid": {
-                "description": "Expected (most likely) forecast value",
-                "minimum": 0,
-                "type": "number"
-              }
-            },
-            "title": "Forecast Range",
-            "type": "object"
+            "$ref": "#/definitions/Shared1"
           },
           "vendor": {
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "additionalProperties": false,
-            "description": "Stable brand identity used to resolve the canonical brand manifest, optionally qualified by the countries of a commercial advertiser entity. The manifest URL is derived from domain; callers do not send brand assets or per-call brand overrides. Countries do not target delivery.",
-            "properties": {
-              "brand_id": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "description": "Brand within a house-of-brands manifest. Omit for a single-brand domain.",
-                "examples": [
-                  "tide",
-                  "cheerios",
-                  "air_jordan",
-                  "nike",
-                  "pampers"
-                ],
-                "pattern": "^[a-z0-9_]+$",
-                "title": "Brand ID",
-                "type": "string",
-                "x-entity": "advertiser_brand"
-              },
-              "countries": {
-                "description": "Canonical set of ISO 3166-1 alpha-2 countries for this advertiser identity. Omit when the identity is global or the house does not split the brand geographically. Array order is not meaningful; producers MUST sort codes lexicographically before computing keys or signatures. This qualifies account and proposal identity and is not delivery targeting.",
-                "items": {
-                  "pattern": "^[A-Z]{2}$",
-                  "type": "string"
-                },
-                "minItems": 1,
-                "type": "array",
-                "uniqueItems": true
-              },
-              "domain": {
-                "description": "Domain that hosts /.well-known/brand.json or is registered for the brand.",
-                "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-                "type": "string"
-              }
-            },
-            "required": [
-              "domain"
-            ],
-            "title": "Brand Key",
-            "type": "object"
+            "$ref": "#/definitions/Shared2"
           }
         },
         "required": [
@@ -1181,41 +1084,7 @@
       ],
       "properties": {
         "measurable_impressions": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": true,
-          "anyOf": [
-            {
-              "required": [
-                "mid"
-              ]
-            },
-            {
-              "required": [
-                "low",
-                "high"
-              ]
-            }
-          ],
-          "description": "A forecast value with optional confidence bounds. Either mid (point estimate) or both low and high (range) must be provided. mid represents the most likely outcome. low and high represent conservative and optimistic estimates. All three can be provided together.",
-          "properties": {
-            "high": {
-              "description": "Optimistic (high-end) forecast value",
-              "minimum": 0,
-              "type": "number"
-            },
-            "low": {
-              "description": "Conservative (low-end) forecast value",
-              "minimum": 0,
-              "type": "number"
-            },
-            "mid": {
-              "description": "Expected (most likely) forecast value",
-              "minimum": 0,
-              "type": "number"
-            }
-          },
-          "title": "Forecast Range",
-          "type": "object"
+          "$ref": "#/definitions/Shared1"
         },
         "standard": {
           "$schema": "http://json-schema.org/draft-07/schema#",
@@ -1232,177 +1101,16 @@
           "type": "string"
         },
         "vendor": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
-          "description": "Stable brand identity used to resolve the canonical brand manifest, optionally qualified by the countries of a commercial advertiser entity. The manifest URL is derived from domain; callers do not send brand assets or per-call brand overrides. Countries do not target delivery.",
-          "properties": {
-            "brand_id": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "description": "Brand within a house-of-brands manifest. Omit for a single-brand domain.",
-              "examples": [
-                "tide",
-                "cheerios",
-                "air_jordan",
-                "nike",
-                "pampers"
-              ],
-              "pattern": "^[a-z0-9_]+$",
-              "title": "Brand ID",
-              "type": "string",
-              "x-entity": "advertiser_brand"
-            },
-            "countries": {
-              "description": "Canonical set of ISO 3166-1 alpha-2 countries for this advertiser identity. Omit when the identity is global or the house does not split the brand geographically. Array order is not meaningful; producers MUST sort codes lexicographically before computing keys or signatures. This qualifies account and proposal identity and is not delivery targeting.",
-              "items": {
-                "pattern": "^[A-Z]{2}$",
-                "type": "string"
-              },
-              "minItems": 1,
-              "type": "array",
-              "uniqueItems": true
-            },
-            "domain": {
-              "description": "Domain that hosts /.well-known/brand.json or is registered for the brand.",
-              "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-              "type": "string"
-            }
-          },
-          "required": [
-            "domain"
-          ],
-          "title": "Brand Key",
-          "type": "object"
+          "$ref": "#/definitions/Shared2"
         },
         "viewable_impressions": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": true,
-          "anyOf": [
-            {
-              "required": [
-                "mid"
-              ]
-            },
-            {
-              "required": [
-                "low",
-                "high"
-              ]
-            }
-          ],
-          "description": "A forecast value with optional confidence bounds. Either mid (point estimate) or both low and high (range) must be provided. mid represents the most likely outcome. low and high represent conservative and optimistic estimates. All three can be provided together.",
-          "properties": {
-            "high": {
-              "description": "Optimistic (high-end) forecast value",
-              "minimum": 0,
-              "type": "number"
-            },
-            "low": {
-              "description": "Conservative (low-end) forecast value",
-              "minimum": 0,
-              "type": "number"
-            },
-            "mid": {
-              "description": "Expected (most likely) forecast value",
-              "minimum": 0,
-              "type": "number"
-            }
-          },
-          "title": "Forecast Range",
-          "type": "object"
+          "$ref": "#/definitions/Shared1"
         },
         "viewable_rate": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "allOf": [
-            {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": true,
-              "anyOf": [
-                {
-                  "required": [
-                    "mid"
-                  ]
-                },
-                {
-                  "required": [
-                    "low",
-                    "high"
-                  ]
-                }
-              ],
-              "description": "A forecast value with optional confidence bounds. Either mid (point estimate) or both low and high (range) must be provided. mid represents the most likely outcome. low and high represent conservative and optimistic estimates. All three can be provided together.",
-              "properties": {
-                "high": {
-                  "description": "Optimistic (high-end) forecast value",
-                  "minimum": 0,
-                  "type": "number"
-                },
-                "low": {
-                  "description": "Conservative (low-end) forecast value",
-                  "minimum": 0,
-                  "type": "number"
-                },
-                "mid": {
-                  "description": "Expected (most likely) forecast value",
-                  "minimum": 0,
-                  "type": "number"
-                }
-              },
-              "title": "Forecast Range",
-              "type": "object"
-            },
-            {
-              "properties": {
-                "high": {
-                  "maximum": 1
-                },
-                "low": {
-                  "maximum": 1
-                },
-                "mid": {
-                  "maximum": 1
-                }
-              }
-            }
-          ],
-          "description": "A forecast range whose low, midpoint, and high values are rates in the inclusive interval from 0 to 1.",
-          "title": "Forecast Rate Range"
+          "$ref": "#/definitions/Shared0"
         },
         "viewed_seconds": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": true,
-          "anyOf": [
-            {
-              "required": [
-                "mid"
-              ]
-            },
-            {
-              "required": [
-                "low",
-                "high"
-              ]
-            }
-          ],
-          "description": "A forecast value with optional confidence bounds. Either mid (point estimate) or both low and high (range) must be provided. mid represents the most likely outcome. low and high represent conservative and optimistic estimates. All three can be provided together.",
-          "properties": {
-            "high": {
-              "description": "Optimistic (high-end) forecast value",
-              "minimum": 0,
-              "type": "number"
-            },
-            "low": {
-              "description": "Conservative (low-end) forecast value",
-              "minimum": 0,
-              "type": "number"
-            },
-            "mid": {
-              "description": "Expected (most likely) forecast value",
-              "minimum": 0,
-              "type": "number"
-            }
-          },
-          "title": "Forecast Range",
-          "type": "object"
+          "$ref": "#/definitions/Shared1"
         }
       },
       "type": "object"

@@ -1,5 +1,38 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "Shared0": {
+      "description": "Domain where publisher's adagents.json is hosted (e.g., 'cnn.com'). XOR with `publisher_domains` \u2014 exactly one MUST be present on each `publisher_properties[]` entry; both-present and neither-present both fail validation.",
+      "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+      "type": "string"
+    },
+    "Shared1": {
+      "not": {
+        "required": [
+          "publisher_domain",
+          "publisher_domains"
+        ]
+      }
+    },
+    "Shared2": {
+      "anyOf": [
+        {
+          "required": [
+            "publisher_domain"
+          ]
+        },
+        {
+          "required": [
+            "publisher_domains"
+          ]
+        }
+      ]
+    },
+    "Shared3": {
+      "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+      "type": "string"
+    }
+  },
   "description": "Selects properties from a publisher's adagents.json. Used for both product definitions and agent authorization. Supports three selection patterns: all properties, specific IDs, or by tags. Each selector targets one publisher via `publisher_domain` (string) or a fan-out across many publishers that share the same selector via `publisher_domains` (array). Exactly one of `publisher_domain` or `publisher_domains` MUST be present. When `publisher_domains` is used, the selector is logically equivalent to repeating the same entry once per listed domain.",
   "discriminator": {
     "propertyName": "selection_type"
@@ -9,40 +42,21 @@
       "additionalProperties": true,
       "allOf": [
         {
-          "not": {
-            "required": [
-              "publisher_domain",
-              "publisher_domains"
-            ]
-          }
+          "$ref": "#/definitions/Shared1"
         },
         {
-          "anyOf": [
-            {
-              "required": [
-                "publisher_domain"
-              ]
-            },
-            {
-              "required": [
-                "publisher_domains"
-              ]
-            }
-          ]
+          "$ref": "#/definitions/Shared2"
         }
       ],
       "description": "Select all properties from one publisher domain, or from each publisher domain when `publisher_domains` is used. Consumers MAY satisfy the selector from the parent file's top-level `properties[]` when those properties carry a `publisher_domain` matching one of the listed domains (see Resolution paths in the spec).",
       "properties": {
         "publisher_domain": {
-          "description": "Domain where publisher's adagents.json is hosted (e.g., 'cnn.com'). XOR with `publisher_domains` \u2014 exactly one MUST be present on each `publisher_properties[]` entry; both-present and neither-present both fail validation.",
-          "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         },
         "publisher_domains": {
           "description": "Compact form for fanning the same selector across many publishers (e.g., a managed network listing every publisher it represents). Each entry is the domain where that publisher's adagents.json is hosted. Each listed domain MUST be canonicalized to lowercase (the `pattern` already rejects uppercase). Mutually exclusive with `publisher_domain`. Each listed domain counts as explicitly scoped for the `managerdomain` fallback safety rule.",
           "items": {
-            "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-            "type": "string"
+            "$ref": "#/definitions/Shared3"
           },
           "minItems": 1,
           "type": "array",
@@ -104,26 +118,10 @@
       "additionalProperties": true,
       "allOf": [
         {
-          "not": {
-            "required": [
-              "publisher_domain",
-              "publisher_domains"
-            ]
-          }
+          "$ref": "#/definitions/Shared1"
         },
         {
-          "anyOf": [
-            {
-              "required": [
-                "publisher_domain"
-              ]
-            },
-            {
-              "required": [
-                "publisher_domains"
-              ]
-            }
-          ]
+          "$ref": "#/definitions/Shared2"
         }
       ],
       "description": "Select properties by tag membership. With `publisher_domains`, the same `property_tags` predicate is resolved against each listed publisher's adagents.json \u2014 the common managed-network case where every represented site tags inventory with a shared label. Consumers MAY also satisfy the predicate from the parent file's top-level `properties[]` when those properties carry a `publisher_domain` matching one of the selector's `publisher_domains[]` (see Resolution paths in the spec).",
@@ -149,15 +147,12 @@
           "type": "array"
         },
         "publisher_domain": {
-          "description": "Domain where publisher's adagents.json is hosted (e.g., 'cnn.com'). XOR with `publisher_domains` \u2014 exactly one MUST be present on each `publisher_properties[]` entry; both-present and neither-present both fail validation.",
-          "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         },
         "publisher_domains": {
           "description": "Compact form for fanning the same tag predicate across many publishers (canonical managed-network shape). Each entry is the domain where that publisher's adagents.json is hosted. Each listed domain MUST be canonicalized to lowercase (the `pattern` already rejects uppercase). Mutually exclusive with `publisher_domain`. Each listed domain counts as explicitly scoped for the `managerdomain` fallback safety rule.",
           "items": {
-            "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-            "type": "string"
+            "$ref": "#/definitions/Shared3"
           },
           "minItems": 1,
           "type": "array",

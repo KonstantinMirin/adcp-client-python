@@ -65,9 +65,8 @@
       "title": "Supported versions compatibility details"
     }
   ],
-  "description": "Required compatibility details for VAST_VERSION_MISMATCH. Modern emitters discriminate an asset-versus-acceptance mismatch from an inspected-document mismatch. The legacy supported_versions-only arm remains accepted for older 3.x peers.",
-  "properties": {
-    "asset_vast_version": {
+  "definitions": {
+    "Shared0": {
       "$comment": "VAST 4.3 ships no XSD of its own: IAB's `vast_4.2.xsd` remains the authoritative schema for 4.3 documents, so a validator MUST NOT reject a tag declaring `version=\"4.3\"` for want of a 4.3 schema. VAST 4.4 is deliberately absent because `vast_4.4.xsd` is annotated 'DRAFT for working group discussion' and is not a published specification; add it once IAB publishes it, not before. This file is the single source of truth for the roster, per the Enum Consolidation rule in docs/spec-guidelines.md, and other schemas `$ref` it rather than restating the list.",
       "$schema": "http://json-schema.org/draft-07/schema#",
       "description": "Supported VAST (Video Ad Serving Template) specification versions. Covers every version published by IAB Tech Lab, through VAST 4.3 (released December 2022). The value mirrors the `version` attribute a VAST document declares on its root element.",
@@ -81,6 +80,20 @@
       ],
       "title": "VAST Version",
       "type": "string"
+    },
+    "Shared1": {
+      "items": {
+        "$ref": "#/definitions/Shared0"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    }
+  },
+  "description": "Required compatibility details for VAST_VERSION_MISMATCH. Modern emitters discriminate an asset-versus-acceptance mismatch from an inspected-document mismatch. The legacy supported_versions-only arm remains accepted for older 3.x peers.",
+  "properties": {
+    "asset_vast_version": {
+      "$ref": "#/definitions/Shared0"
     },
     "document_role": {
       "description": "Role of the inspected document. Only the submitted document is required to equal the asset declaration; wrapper and terminal documents are checked against the applicable acceptance sets.",
@@ -173,62 +186,16 @@
       "description": "Raw version observed on the inspected VAST document whose root is being validated. `null` means the required version attribute was missing. This field is intentionally not limited to the governed supported-version enum so diagnostics can report future or invalid document values."
     },
     "product_vast_versions": {
-      "items": {
-        "$comment": "VAST 4.3 ships no XSD of its own: IAB's `vast_4.2.xsd` remains the authoritative schema for 4.3 documents, so a validator MUST NOT reject a tag declaring `version=\"4.3\"` for want of a 4.3 schema. VAST 4.4 is deliberately absent because `vast_4.4.xsd` is annotated 'DRAFT for working group discussion' and is not a published specification; add it once IAB publishes it, not before. This file is the single source of truth for the roster, per the Enum Consolidation rule in docs/spec-guidelines.md, and other schemas `$ref` it rather than restating the list.",
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "description": "Supported VAST (Video Ad Serving Template) specification versions. Covers every version published by IAB Tech Lab, through VAST 4.3 (released December 2022). The value mirrors the `version` attribute a VAST document declares on its root element.",
-        "enum": [
-          "2.0",
-          "3.0",
-          "4.0",
-          "4.1",
-          "4.2",
-          "4.3"
-        ],
-        "title": "VAST Version",
-        "type": "string"
-      },
-      "minItems": 1,
-      "type": "array",
-      "uniqueItems": true
+      "$ref": "#/definitions/Shared1"
     },
     "seller_vast_versions": {
-      "items": {
-        "$comment": "VAST 4.3 ships no XSD of its own: IAB's `vast_4.2.xsd` remains the authoritative schema for 4.3 documents, so a validator MUST NOT reject a tag declaring `version=\"4.3\"` for want of a 4.3 schema. VAST 4.4 is deliberately absent because `vast_4.4.xsd` is annotated 'DRAFT for working group discussion' and is not a published specification; add it once IAB publishes it, not before. This file is the single source of truth for the roster, per the Enum Consolidation rule in docs/spec-guidelines.md, and other schemas `$ref` it rather than restating the list.",
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "description": "Supported VAST (Video Ad Serving Template) specification versions. Covers every version published by IAB Tech Lab, through VAST 4.3 (released December 2022). The value mirrors the `version` attribute a VAST document declares on its root element.",
-        "enum": [
-          "2.0",
-          "3.0",
-          "4.0",
-          "4.1",
-          "4.2",
-          "4.3"
-        ],
-        "title": "VAST Version",
-        "type": "string"
-      },
-      "minItems": 1,
-      "type": "array",
-      "uniqueItems": true
+      "$ref": "#/definitions/Shared1"
     },
     "supported_versions": {
       "deprecated": true,
       "description": "Deprecated 3.x compatibility field. For an acceptance mismatch, this is the effective product/seller intersection when known. Modern emitters use the typed sets and mismatch_reason.",
       "items": {
-        "$comment": "VAST 4.3 ships no XSD of its own: IAB's `vast_4.2.xsd` remains the authoritative schema for 4.3 documents, so a validator MUST NOT reject a tag declaring `version=\"4.3\"` for want of a 4.3 schema. VAST 4.4 is deliberately absent because `vast_4.4.xsd` is annotated 'DRAFT for working group discussion' and is not a published specification; add it once IAB publishes it, not before. This file is the single source of truth for the roster, per the Enum Consolidation rule in docs/spec-guidelines.md, and other schemas `$ref` it rather than restating the list.",
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "description": "Supported VAST (Video Ad Serving Template) specification versions. Covers every version published by IAB Tech Lab, through VAST 4.3 (released December 2022). The value mirrors the `version` attribute a VAST document declares on its root element.",
-        "enum": [
-          "2.0",
-          "3.0",
-          "4.0",
-          "4.1",
-          "4.2",
-          "4.3"
-        ],
-        "title": "VAST Version",
-        "type": "string"
+        "$ref": "#/definitions/Shared0"
       },
       "minItems": 1,
       "type": "array",

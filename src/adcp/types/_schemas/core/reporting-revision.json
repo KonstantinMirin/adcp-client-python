@@ -6,8 +6,7 @@
       "else": {
         "properties": {
           "data_through": {
-            "format": "date-time",
-            "type": "string"
+            "$ref": "#/definitions/Shared2"
           }
         }
       },
@@ -70,6 +69,61 @@
       }
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "pattern": "^[A-Fa-f0-9]{64}$",
+      "type": "string"
+    },
+    "Shared1": {
+      "maxLength": 128,
+      "minLength": 1,
+      "type": "string"
+    },
+    "Shared2": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "Shared3": {
+      "minLength": 1,
+      "title": "Reporting Media Buy ID",
+      "type": "string",
+      "x-adcp-model-context-inline": true,
+      "x-entity": "media_buy"
+    },
+    "Shared4": {
+      "minLength": 1,
+      "title": "Reporting Package ID",
+      "type": "string",
+      "x-adcp-model-context-inline": true,
+      "x-entity": "package"
+    },
+    "Shared5": {
+      "items": {
+        "$ref": "#/definitions/Shared3"
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    "Shared6": {
+      "items": {
+        "$ref": "#/definitions/Shared4"
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    "Shared7": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$",
+      "type": "string"
+    },
+    "Shared8": {
+      "description": "Profile-defined unit such as impressions or an ISO 4217 currency code.",
+      "maxLength": 32,
+      "minLength": 1,
+      "type": "string"
+    }
+  },
   "description": "One immutable emitted version of logical reporting content. The revision is destination-independent: one canonical revision may fan out through many caller/account-bound obligations and materializations, including file, warehouse, and dataset-share destinations. The report_definition_id plus period and scope identify the logical slice; provisional restatements create a new snapshot revision and preserve the superseded snapshot for the advertised retention window. An official revision is terminal; later corrections are separate reporting adjustments.",
   "properties": {
     "account_id": {
@@ -87,13 +141,10 @@
           "type": "string"
         },
         "canonicalization_id": {
-          "maxLength": 128,
-          "minLength": 1,
-          "type": "string"
+          "$ref": "#/definitions/Shared1"
         },
         "canonicalization_sha256": {
-          "pattern": "^[A-Fa-f0-9]{64}$",
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         },
         "canonicalization_uri": {
           "description": "Location of the exact immutable canonicalization contract. Consumers verify canonicalization_sha256 before applying it.",
@@ -102,8 +153,7 @@
           "type": "string"
         },
         "value": {
-          "pattern": "^[A-Fa-f0-9]{64}$",
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         }
       },
       "required": [
@@ -127,16 +177,10 @@
             "additionalProperties": false,
             "properties": {
               "name": {
-                "maxLength": 128,
-                "minLength": 1,
-                "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$",
-                "type": "string"
+                "$ref": "#/definitions/Shared7"
               },
               "unit": {
-                "description": "Profile-defined unit such as impressions or an ISO 4217 currency code.",
-                "maxLength": 32,
-                "minLength": 1,
-                "type": "string"
+                "$ref": "#/definitions/Shared8"
               },
               "value": {
                 "description": "Canonical base-10 integer with no exponent, grouping separator, decimal point, or insignificant leading zeroes.",
@@ -160,16 +204,10 @@
             "additionalProperties": false,
             "properties": {
               "name": {
-                "maxLength": 128,
-                "minLength": 1,
-                "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$",
-                "type": "string"
+                "$ref": "#/definitions/Shared7"
               },
               "unit": {
-                "description": "Profile-defined unit such as impressions or an ISO 4217 currency code.",
-                "maxLength": 32,
-                "minLength": 1,
-                "type": "string"
+                "$ref": "#/definitions/Shared8"
               },
               "value": {
                 "description": "Canonical base-10 decimal with no exponent, grouping separator, or insignificant leading zeroes.",
@@ -201,47 +239,22 @@
       "additionalProperties": false,
       "definitions": {
         "ReportingMediaBuyId": {
-          "minLength": 1,
-          "title": "Reporting Media Buy ID",
-          "type": "string",
-          "x-adcp-model-context-inline": true,
-          "x-entity": "media_buy"
+          "$ref": "#/definitions/Shared3"
         },
         "ReportingPackageId": {
-          "minLength": 1,
-          "title": "Reporting Package ID",
-          "type": "string",
-          "x-adcp-model-context-inline": true,
-          "x-entity": "package"
+          "$ref": "#/definitions/Shared4"
         }
       },
       "description": "Frozen product/package denominator represented by this logical content. The same coverage follows the revision to every destination.",
       "properties": {
         "covered_package_ids": {
-          "items": {
-            "minLength": 1,
-            "title": "Reporting Package ID",
-            "type": "string",
-            "x-adcp-model-context-inline": true,
-            "x-entity": "package"
-          },
-          "type": "array",
-          "uniqueItems": true
+          "$ref": "#/definitions/Shared6"
         },
         "evaluated_at": {
-          "format": "date-time",
-          "type": "string"
+          "$ref": "#/definitions/Shared2"
         },
         "fully_covered_media_buy_ids": {
-          "items": {
-            "minLength": 1,
-            "title": "Reporting Media Buy ID",
-            "type": "string",
-            "x-adcp-model-context-inline": true,
-            "x-entity": "media_buy"
-          },
-          "type": "array",
-          "uniqueItems": true
+          "$ref": "#/definitions/Shared5"
         },
         "limitations": {
           "description": "Stable reasons that some requested scope is not covered by the exact selected offering. These are capability facts, not delivery failures.",
@@ -249,19 +262,11 @@
             "additionalProperties": false,
             "properties": {
               "media_buy_id": {
-                "minLength": 1,
-                "title": "Reporting Media Buy ID",
-                "type": "string",
-                "x-adcp-model-context-inline": true,
-                "x-entity": "media_buy"
+                "$ref": "#/definitions/Shared3"
               },
               "package_ids": {
                 "items": {
-                  "minLength": 1,
-                  "title": "Reporting Package ID",
-                  "type": "string",
-                  "x-adcp-model-context-inline": true,
-                  "x-entity": "package"
+                  "$ref": "#/definitions/Shared4"
                 },
                 "minItems": 1,
                 "type": "array",
@@ -289,11 +294,7 @@
         "media_buy_ids": {
           "description": "Exact media-buy denominator, including unsupported and unknown buys. An empty array is an explicitly evaluated zero-buy scope.",
           "items": {
-            "minLength": 1,
-            "title": "Reporting Media Buy ID",
-            "type": "string",
-            "x-adcp-model-context-inline": true,
-            "x-entity": "media_buy"
+            "$ref": "#/definitions/Shared3"
           },
           "type": "array",
           "uniqueItems": true
@@ -301,25 +302,13 @@
         "package_ids": {
           "description": "Exact package denominator for the evaluated media buys.",
           "items": {
-            "minLength": 1,
-            "title": "Reporting Package ID",
-            "type": "string",
-            "x-adcp-model-context-inline": true,
-            "x-entity": "package"
+            "$ref": "#/definitions/Shared4"
           },
           "type": "array",
           "uniqueItems": true
         },
         "partially_covered_media_buy_ids": {
-          "items": {
-            "minLength": 1,
-            "title": "Reporting Media Buy ID",
-            "type": "string",
-            "x-adcp-model-context-inline": true,
-            "x-entity": "media_buy"
-          },
-          "type": "array",
-          "uniqueItems": true
+          "$ref": "#/definitions/Shared5"
         },
         "status": {
           "enum": [
@@ -331,48 +320,16 @@
           "type": "string"
         },
         "unknown_media_buy_ids": {
-          "items": {
-            "minLength": 1,
-            "title": "Reporting Media Buy ID",
-            "type": "string",
-            "x-adcp-model-context-inline": true,
-            "x-entity": "media_buy"
-          },
-          "type": "array",
-          "uniqueItems": true
+          "$ref": "#/definitions/Shared5"
         },
         "unknown_package_ids": {
-          "items": {
-            "minLength": 1,
-            "title": "Reporting Package ID",
-            "type": "string",
-            "x-adcp-model-context-inline": true,
-            "x-entity": "package"
-          },
-          "type": "array",
-          "uniqueItems": true
+          "$ref": "#/definitions/Shared6"
         },
         "unsupported_media_buy_ids": {
-          "items": {
-            "minLength": 1,
-            "title": "Reporting Media Buy ID",
-            "type": "string",
-            "x-adcp-model-context-inline": true,
-            "x-entity": "media_buy"
-          },
-          "type": "array",
-          "uniqueItems": true
+          "$ref": "#/definitions/Shared5"
         },
         "unsupported_package_ids": {
-          "items": {
-            "minLength": 1,
-            "title": "Reporting Package ID",
-            "type": "string",
-            "x-adcp-model-context-inline": true,
-            "x-entity": "package"
-          },
-          "type": "array",
-          "uniqueItems": true
+          "$ref": "#/definitions/Shared6"
         }
       },
       "required": [
@@ -399,8 +356,7 @@
       "x-status": "experimental"
     },
     "created_at": {
-      "format": "date-time",
-      "type": "string"
+      "$ref": "#/definitions/Shared2"
     },
     "data_through": {
       "description": "Latest event time conservatively included, or null when precision is unknown.",
@@ -456,11 +412,7 @@
     "media_buy_ids": {
       "description": "Exact frozen media-buy denominator inherited from the obligation, including buys with zero rows. An empty array proves a zero-buy period rather than an unknown denominator.",
       "items": {
-        "minLength": 1,
-        "title": "Reporting Media Buy ID",
-        "type": "string",
-        "x-adcp-model-context-inline": true,
-        "x-entity": "media_buy"
+        "$ref": "#/definitions/Shared3"
       },
       "type": "array",
       "uniqueItems": true
@@ -475,16 +427,14 @@
       "description": "Half-open reporting interval with its source calendar boundary.",
       "properties": {
         "end": {
-          "format": "date-time",
-          "type": "string"
+          "$ref": "#/definitions/Shared2"
         },
         "source_timezone": {
           "minLength": 1,
           "type": "string"
         },
         "start": {
-          "format": "date-time",
-          "type": "string"
+          "$ref": "#/definitions/Shared2"
         }
       },
       "required": [
@@ -503,8 +453,7 @@
       "x-entity": "reporting_definition"
     },
     "report_definition_sha256": {
-      "pattern": "^[A-Fa-f0-9]{64}$",
-      "type": "string"
+      "$ref": "#/definitions/Shared0"
     },
     "report_definition_uri": {
       "format": "uri",
@@ -512,9 +461,7 @@
       "type": "string"
     },
     "reporting_profile": {
-      "maxLength": 128,
-      "minLength": 1,
-      "type": "string"
+      "$ref": "#/definitions/Shared1"
     },
     "reporting_revision_id": {
       "description": "Portable AdCP identity for this immutable report publication. Distinct from package delivery_revision_id and provider-native versions.",

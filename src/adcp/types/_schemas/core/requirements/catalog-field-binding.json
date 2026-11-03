@@ -10,15 +10,10 @@
           "type": "string"
         },
         "asset_id": {
-          "description": "The asset_id from the format's assets array. Identifies which individual template slot this binding applies to.",
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         },
         "ext": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": true,
-          "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-          "title": "Extension Object",
-          "type": "object"
+          "$ref": "#/definitions/Shared1"
         },
         "kind": {
           "const": "asset_pool",
@@ -37,19 +32,14 @@
       "description": "Maps an individual format asset to a catalog item field via dot-notation path.",
       "properties": {
         "asset_id": {
-          "description": "The asset_id from the format's assets array. Identifies which individual template slot this binding applies to.",
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         },
         "catalog_field": {
           "description": "Dot-notation path to the field on the catalog item (e.g., 'name', 'price.amount', 'location.city').",
           "type": "string"
         },
         "ext": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": true,
-          "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-          "title": "Extension Object",
-          "type": "object"
+          "$ref": "#/definitions/Shared1"
         },
         "kind": {
           "const": "scalar",
@@ -61,6 +51,17 @@
         "asset_id",
         "catalog_field"
       ],
+      "type": "object"
+    },
+    "Shared0": {
+      "description": "The asset_id from the format's assets array. Identifies which individual template slot this binding applies to.",
+      "type": "string"
+    },
+    "Shared1": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
       "type": "object"
     }
   },
@@ -144,11 +145,7 @@
           "type": "boolean"
         },
         "ext": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": true,
-          "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-          "title": "Extension Object",
-          "type": "object"
+          "$ref": "#/definitions/Shared1"
         },
         "format_group_id": {
           "description": "The asset_group_id of a repeatable_group in the format's assets array.",

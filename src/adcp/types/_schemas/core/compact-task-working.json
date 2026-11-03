@@ -1,6 +1,12 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
+  "definitions": {
+    "Shared0": {
+      "minimum": 1,
+      "type": "integer"
+    }
+  },
   "description": "Bounded progress payload shared by the compact lifecycle tools.",
   "properties": {
     "context": {
@@ -27,12 +33,10 @@
       "type": "number"
     },
     "step_number": {
-      "minimum": 1,
-      "type": "integer"
+      "$ref": "#/definitions/Shared0"
     },
     "total_steps": {
-      "minimum": 1,
-      "type": "integer"
+      "$ref": "#/definitions/Shared0"
     }
   },
   "title": "Compact Task Working",

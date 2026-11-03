@@ -29,6 +29,22 @@
       "type": "object"
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "Shared1": {
+      "type": "string"
+    },
+    "Shared2": {
+      "pattern": "^#[0-9a-fA-F]{6}$",
+      "type": "string"
+    }
+  },
   "description": "Request parameters for activating or deactivating a signal on deployment targets",
   "properties": {
     "account": {
@@ -139,16 +155,13 @@
                       "description": "Override brand colors (hex strings).",
                       "properties": {
                         "accent": {
-                          "pattern": "^#[0-9a-fA-F]{6}$",
-                          "type": "string"
+                          "$ref": "#/definitions/Shared2"
                         },
                         "primary": {
-                          "pattern": "^#[0-9a-fA-F]{6}$",
-                          "type": "string"
+                          "$ref": "#/definitions/Shared2"
                         },
                         "secondary": {
-                          "pattern": "^#[0-9a-fA-F]{6}$",
-                          "type": "string"
+                          "$ref": "#/definitions/Shared2"
                         }
                       },
                       "type": "object"
@@ -339,11 +352,7 @@
                                         "minProperties": 1,
                                         "properties": {
                                           "ext": {
-                                            "$schema": "http://json-schema.org/draft-07/schema#",
-                                            "additionalProperties": true,
-                                            "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                                            "title": "Extension Object",
-                                            "type": "object"
+                                            "$ref": "#/definitions/Shared0"
                                           },
                                           "min_duration_ms": {
                                             "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial \u2014 without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available.",
@@ -473,11 +482,7 @@
                               "type": "array"
                             },
                             "ext": {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
-                              "additionalProperties": true,
-                              "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                              "title": "Extension Object",
-                              "type": "object"
+                              "$ref": "#/definitions/Shared0"
                             },
                             "human_oversight": {
                               "description": "Level of human involvement in the AI-assisted creation process. Independent of `disclosure.required` \u2014 the protocol does not derive disclosure obligations from oversight level. Some regulations include carve-outs for human-edited or human-directed AI output, but those carve-outs have factual prerequisites the schema cannot evaluate. Asserting `edited` or `directed` does not by itself justify `disclosure.required: false`.",
@@ -691,7 +696,7 @@
                     },
                     "languages": {
                       "items": {
-                        "type": "string"
+                        "$ref": "#/definitions/Shared1"
                       },
                       "type": "array"
                     },
@@ -711,7 +716,7 @@
                 "industries": {
                   "description": "Inline override for the brand's industries. Useful when the caller cannot modify the brand's canonical brand.json but needs to declare industries for governance (e.g., Annex III vertical detection). brand.json remains the canonical source; when omitted here, governance agents SHOULD resolve from brand.json.",
                   "items": {
-                    "type": "string"
+                    "$ref": "#/definitions/Shared1"
                   },
                   "type": "array"
                 }
@@ -866,11 +871,7 @@
       "type": "array"
     },
     "ext": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "additionalProperties": true,
-      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-      "title": "Extension Object",
-      "type": "object"
+      "$ref": "#/definitions/Shared0"
     },
     "governance_context": {
       "description": "Opaque authorization context returned by an approved check_governance decision for this signal activation. Required when the account has a registered governance agent; signal agents MUST reject governed activations that omit a valid context. Conditions and denied decisions never produce this value.",

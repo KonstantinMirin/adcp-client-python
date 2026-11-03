@@ -24,11 +24,11 @@
               "properties": {
                 "replaced_by_values": {
                   "items": {
-                    "pattern": "^[0-9]+$"
+                    "$ref": "#/definitions/Shared3"
                   }
                 },
                 "value": {
-                  "pattern": "^[0-9]+$"
+                  "$ref": "#/definitions/Shared3"
                 }
               }
             }
@@ -37,6 +37,61 @@
       }
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "Shared1": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "anyOf": [
+        {
+          "enum": [
+            "airport",
+            "borough",
+            "city",
+            "city_region",
+            "commune",
+            "county",
+            "district",
+            "municipality",
+            "neighborhood",
+            "post_town",
+            "prefecture",
+            "province",
+            "quarter",
+            "state",
+            "territory",
+            "ward"
+          ],
+          "type": "string"
+        },
+        {
+          "$ref": "#/definitions/Shared2"
+        }
+      ],
+      "description": "Canonical place classification. Registered tokens have protocol-defined meanings. Catalog-specific classifications without a registered mapping MUST use an absolute HTTPS URI controlled by the vocabulary owner; consumers compare URI types as exact opaque strings.",
+      "examples": [
+        "city",
+        "municipality",
+        "borough",
+        "neighborhood",
+        "post_town",
+        "city_region",
+        "county",
+        "https://seller.example/geo/place-types/trade-area"
+      ],
+      "title": "Geographic Place Type"
+    },
+    "Shared2": {
+      "format": "uri",
+      "pattern": "^https://",
+      "type": "string"
+    },
+    "Shared3": {
+      "pattern": "^[0-9]+$"
+    }
+  },
   "description": "Paginated read-only resolver response containing seller-accepted place identifiers from one exact system version and echoing the request used to produce them.",
   "properties": {
     "matches": {
@@ -69,60 +124,18 @@
           "parent_labels": {
             "description": "Ordered human-readable parent hierarchy for disambiguation only. Must include at least the containing country.",
             "items": {
-              "minLength": 1,
-              "type": "string"
+              "$ref": "#/definitions/Shared0"
             },
             "minItems": 1,
             "type": "array"
           },
           "place_type": {
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "anyOf": [
-              {
-                "enum": [
-                  "airport",
-                  "borough",
-                  "city",
-                  "city_region",
-                  "commune",
-                  "county",
-                  "district",
-                  "municipality",
-                  "neighborhood",
-                  "post_town",
-                  "prefecture",
-                  "province",
-                  "quarter",
-                  "state",
-                  "territory",
-                  "ward"
-                ],
-                "type": "string"
-              },
-              {
-                "format": "uri",
-                "pattern": "^https://",
-                "type": "string"
-              }
-            ],
-            "description": "Canonical place classification. Registered tokens have protocol-defined meanings. Catalog-specific classifications without a registered mapping MUST use an absolute HTTPS URI controlled by the vocabulary owner; consumers compare URI types as exact opaque strings.",
-            "examples": [
-              "city",
-              "municipality",
-              "borough",
-              "neighborhood",
-              "post_town",
-              "city_region",
-              "county",
-              "https://seller.example/geo/place-types/trade-area"
-            ],
-            "title": "Geographic Place Type"
+            "$ref": "#/definitions/Shared1"
           },
           "replaced_by_values": {
             "description": "Replacement identifiers in the same system and response system_version.",
             "items": {
-              "minLength": 1,
-              "type": "string"
+              "$ref": "#/definitions/Shared0"
             },
             "minItems": 1,
             "type": "array",
@@ -167,8 +180,7 @@
       "type": "array"
     },
     "next_cursor": {
-      "minLength": 1,
-      "type": "string"
+      "$ref": "#/definitions/Shared0"
     },
     "request": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -199,8 +211,7 @@
           "type": "string"
         },
         "cursor": {
-          "minLength": 1,
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         },
         "limit": {
           "default": 20,
@@ -234,47 +245,7 @@
           }
         },
         "place_type": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "anyOf": [
-            {
-              "enum": [
-                "airport",
-                "borough",
-                "city",
-                "city_region",
-                "commune",
-                "county",
-                "district",
-                "municipality",
-                "neighborhood",
-                "post_town",
-                "prefecture",
-                "province",
-                "quarter",
-                "state",
-                "territory",
-                "ward"
-              ],
-              "type": "string"
-            },
-            {
-              "format": "uri",
-              "pattern": "^https://",
-              "type": "string"
-            }
-          ],
-          "description": "Canonical place classification. Registered tokens have protocol-defined meanings. Catalog-specific classifications without a registered mapping MUST use an absolute HTTPS URI controlled by the vocabulary owner; consumers compare URI types as exact opaque strings.",
-          "examples": [
-            "city",
-            "municipality",
-            "borough",
-            "neighborhood",
-            "post_town",
-            "city_region",
-            "county",
-            "https://seller.example/geo/place-types/trade-area"
-          ],
-          "title": "Geographic Place Type"
+          "$ref": "#/definitions/Shared1"
         },
         "q": {
           "description": "Unresolved place name or alias supplied by the user.",
@@ -315,9 +286,7 @@
           "type": "string"
         },
         {
-          "format": "uri",
-          "pattern": "^https://",
-          "type": "string"
+          "$ref": "#/definitions/Shared2"
         }
       ],
       "description": "Collision-safe identifier namespace for geographic places. Registered tokens have protocol-defined semantics. Unregistered systems MUST use an absolute HTTPS URI controlled by the catalog owner; consumers compare URI systems as exact opaque strings.",
@@ -330,8 +299,7 @@
       "title": "Geographic Place Identifier System"
     },
     "system_version": {
-      "minLength": 1,
-      "type": "string"
+      "$ref": "#/definitions/Shared0"
     }
   },
   "required": [

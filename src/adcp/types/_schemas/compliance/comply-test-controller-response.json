@@ -456,6 +456,68 @@
       "type": "object"
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "const": true,
+      "type": "boolean"
+    },
+    "Shared1": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Opaque correlation data that is echoed unchanged in responses. Used for internal tracking, UI session IDs, trace IDs, and other caller-specific identifiers that don't affect protocol behavior. Context data is never parsed by AdCP agents - it's simply preserved and returned.",
+      "title": "Context Object",
+      "type": "object"
+    },
+    "Shared10": {
+      "required": [
+        "audit_observations"
+      ]
+    },
+    "Shared11": {
+      "required": [
+        "scenarios"
+      ]
+    },
+    "Shared2": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "Shared3": {
+      "type": "string"
+    },
+    "Shared4": {
+      "description": "Human-readable acknowledgement.",
+      "type": "string"
+    },
+    "Shared5": {
+      "required": [
+        "error"
+      ]
+    },
+    "Shared6": {
+      "required": [
+        "previous_state"
+      ]
+    },
+    "Shared7": {
+      "required": [
+        "simulated"
+      ]
+    },
+    "Shared8": {
+      "required": [
+        "forced"
+      ]
+    },
+    "Shared9": {
+      "required": [
+        "recorded_calls"
+      ]
+    }
+  },
   "description": "Response from the comply_test_controller tool. Shape varies by scenario type: list_scenarios returns available scenarios, force_* returns state transition results, simulate_* returns simulation results.",
   "examples": [
     {
@@ -643,62 +705,41 @@
       "not": {
         "anyOf": [
           {
-            "required": [
-              "error"
-            ]
+            "$ref": "#/definitions/Shared5"
           },
           {
-            "required": [
-              "previous_state"
-            ]
+            "$ref": "#/definitions/Shared6"
           },
           {
-            "required": [
-              "simulated"
-            ]
+            "$ref": "#/definitions/Shared7"
           },
           {
-            "required": [
-              "forced"
-            ]
+            "$ref": "#/definitions/Shared8"
           },
           {
-            "required": [
-              "recorded_calls"
-            ]
+            "$ref": "#/definitions/Shared9"
           },
           {
-            "required": [
-              "audit_observations"
-            ]
+            "$ref": "#/definitions/Shared10"
           }
         ]
       },
       "properties": {
         "context": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": true,
-          "description": "Opaque correlation data that is echoed unchanged in responses. Used for internal tracking, UI session IDs, trace IDs, and other caller-specific identifiers that don't affect protocol behavior. Context data is never parsed by AdCP agents - it's simply preserved and returned.",
-          "title": "Context Object",
-          "type": "object"
+          "$ref": "#/definitions/Shared1"
         },
         "ext": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": true,
-          "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-          "title": "Extension Object",
-          "type": "object"
+          "$ref": "#/definitions/Shared2"
         },
         "scenarios": {
           "description": "Scenarios this seller has implemented. Runners and sellers MUST accept unknown scenario strings (open-for-extension) \u2014 new scenarios may be added in additive releases. Adopters who advertise `catalog_item_availability_probe` support deterministic cross-principal reference, eligibility-gate, expiry-clock, and catalog-generation tests for the catalog availability storyboard. Adopters who advertise `compact_product_lifecycle_probe` support deterministic synchronous list/request/finalize/decline/accept/control/readback behavior for a prepared product and strict post-deadline expiry of a committed proposal. Adopters who advertise `compact_direct_buy_lifecycle_probe` support deterministic synchronous list/buy/control/readback behavior for a prepared product. Adopters who advertise `reporting_core_lifecycle_probe` support deterministic obligation-before-report, clock-health, zero-row reporting, provisional-restatement, and post-received restatement-grace tests without wall-clock waits. `reliable_reporting_core_integrity_probe`, `reliable_reporting_managed_delivery_probe`, and `reliable_reporting_reconciled_billing_probe` seed the source-calendar/checkpoint, managed-resource, and receipt/adjustment workflows used by the Reliable Reporting tier storyboards. Adopters who advertise `force_creative_purge` opt in to deterministic creative purge coverage for account-level lifecycle webhooks. Adopters who advertise `force_media_buy_purge` opt in to deterministic deletion-independent idempotency replay coverage. Adopters who advertise `seed_measurement_catalog` opt in to deterministic measurement-catalog fixtures used by vendor_metric precondition storyboards. Adopters who advertise `query_upstream_traffic` opt in to the upstream-traffic conformance contract; storyboards that declare `check: upstream_traffic` grade not_applicable against adopters who do not advertise it. Adopters who advertise `query_provenance_audit_observations` opt in to sandbox-only audit-observation assertions for accepted creatives. Adopters who advertise `force_upstream_unavailable` opt in to stale-cache conformance testing via the `stale_response_advisory` storyboard.",
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/Shared3"
           },
           "type": "array"
         },
         "success": {
-          "const": true,
-          "type": "boolean"
+          "$ref": "#/definitions/Shared0"
         }
       },
       "required": [
@@ -714,55 +755,35 @@
       "not": {
         "anyOf": [
           {
-            "required": [
-              "error"
-            ]
+            "$ref": "#/definitions/Shared5"
           },
           {
-            "required": [
-              "scenarios"
-            ]
+            "$ref": "#/definitions/Shared11"
           },
           {
-            "required": [
-              "simulated"
-            ]
+            "$ref": "#/definitions/Shared7"
           },
           {
-            "required": [
-              "forced"
-            ]
+            "$ref": "#/definitions/Shared8"
           },
           {
-            "required": [
-              "recorded_calls"
-            ]
+            "$ref": "#/definitions/Shared9"
           },
           {
-            "required": [
-              "audit_observations"
-            ]
+            "$ref": "#/definitions/Shared10"
           }
         ]
       },
       "properties": {
         "context": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": true,
-          "description": "Opaque correlation data that is echoed unchanged in responses. Used for internal tracking, UI session IDs, trace IDs, and other caller-specific identifiers that don't affect protocol behavior. Context data is never parsed by AdCP agents - it's simply preserved and returned.",
-          "title": "Context Object",
-          "type": "object"
+          "$ref": "#/definitions/Shared1"
         },
         "current_state": {
           "description": "State after this transition",
           "type": "string"
         },
         "ext": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": true,
-          "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-          "title": "Extension Object",
-          "type": "object"
+          "$ref": "#/definitions/Shared2"
         },
         "message": {
           "description": "Human-readable description of the transition",
@@ -773,8 +794,7 @@
           "type": "string"
         },
         "success": {
-          "const": true,
-          "type": "boolean"
+          "$ref": "#/definitions/Shared0"
         }
       },
       "required": [
@@ -791,44 +811,28 @@
       "not": {
         "anyOf": [
           {
-            "required": [
-              "error"
-            ]
+            "$ref": "#/definitions/Shared5"
           },
           {
-            "required": [
-              "scenarios"
-            ]
+            "$ref": "#/definitions/Shared11"
           },
           {
-            "required": [
-              "previous_state"
-            ]
+            "$ref": "#/definitions/Shared6"
           },
           {
-            "required": [
-              "forced"
-            ]
+            "$ref": "#/definitions/Shared8"
           },
           {
-            "required": [
-              "recorded_calls"
-            ]
+            "$ref": "#/definitions/Shared9"
           },
           {
-            "required": [
-              "audit_observations"
-            ]
+            "$ref": "#/definitions/Shared10"
           }
         ]
       },
       "properties": {
         "context": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": true,
-          "description": "Opaque correlation data that is echoed unchanged in responses. Used for internal tracking, UI session IDs, trace IDs, and other caller-specific identifiers that don't affect protocol behavior. Context data is never parsed by AdCP agents - it's simply preserved and returned.",
-          "title": "Context Object",
-          "type": "object"
+          "$ref": "#/definitions/Shared1"
         },
         "cumulative": {
           "additionalProperties": true,
@@ -836,14 +840,10 @@
           "type": "object"
         },
         "ext": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": true,
-          "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-          "title": "Extension Object",
-          "type": "object"
+          "$ref": "#/definitions/Shared2"
         },
         "message": {
-          "type": "string"
+          "$ref": "#/definitions/Shared3"
         },
         "simulated": {
           "additionalProperties": true,
@@ -851,8 +851,7 @@
           "type": "object"
         },
         "success": {
-          "const": true,
-          "type": "boolean"
+          "$ref": "#/definitions/Shared0"
         }
       },
       "required": [
@@ -868,51 +867,31 @@
       "not": {
         "anyOf": [
           {
-            "required": [
-              "error"
-            ]
+            "$ref": "#/definitions/Shared5"
           },
           {
-            "required": [
-              "scenarios"
-            ]
+            "$ref": "#/definitions/Shared11"
           },
           {
-            "required": [
-              "previous_state"
-            ]
+            "$ref": "#/definitions/Shared6"
           },
           {
-            "required": [
-              "simulated"
-            ]
+            "$ref": "#/definitions/Shared7"
           },
           {
-            "required": [
-              "recorded_calls"
-            ]
+            "$ref": "#/definitions/Shared9"
           },
           {
-            "required": [
-              "audit_observations"
-            ]
+            "$ref": "#/definitions/Shared10"
           }
         ]
       },
       "properties": {
         "context": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": true,
-          "description": "Opaque correlation data that is echoed unchanged in responses. Used for internal tracking, UI session IDs, trace IDs, and other caller-specific identifiers that don't affect protocol behavior. Context data is never parsed by AdCP agents - it's simply preserved and returned.",
-          "title": "Context Object",
-          "type": "object"
+          "$ref": "#/definitions/Shared1"
         },
         "ext": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": true,
-          "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-          "title": "Extension Object",
-          "type": "object"
+          "$ref": "#/definitions/Shared2"
         },
         "forced": {
           "additionalProperties": false,
@@ -1011,12 +990,10 @@
           "type": "object"
         },
         "message": {
-          "description": "Human-readable acknowledgement.",
-          "type": "string"
+          "$ref": "#/definitions/Shared4"
         },
         "success": {
-          "const": true,
-          "type": "boolean"
+          "$ref": "#/definitions/Shared0"
         }
       },
       "required": [
@@ -1032,64 +1009,40 @@
       "not": {
         "anyOf": [
           {
-            "required": [
-              "error"
-            ]
+            "$ref": "#/definitions/Shared5"
           },
           {
-            "required": [
-              "scenarios"
-            ]
+            "$ref": "#/definitions/Shared11"
           },
           {
-            "required": [
-              "previous_state"
-            ]
+            "$ref": "#/definitions/Shared6"
           },
           {
-            "required": [
-              "simulated"
-            ]
+            "$ref": "#/definitions/Shared7"
           },
           {
-            "required": [
-              "forced"
-            ]
+            "$ref": "#/definitions/Shared8"
           },
           {
-            "required": [
-              "recorded_calls"
-            ]
+            "$ref": "#/definitions/Shared9"
           },
           {
-            "required": [
-              "audit_observations"
-            ]
+            "$ref": "#/definitions/Shared10"
           }
         ]
       },
       "properties": {
         "context": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": true,
-          "description": "Opaque correlation data that is echoed unchanged in responses. Used for internal tracking, UI session IDs, trace IDs, and other caller-specific identifiers that don't affect protocol behavior. Context data is never parsed by AdCP agents - it's simply preserved and returned.",
-          "title": "Context Object",
-          "type": "object"
+          "$ref": "#/definitions/Shared1"
         },
         "ext": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": true,
-          "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-          "title": "Extension Object",
-          "type": "object"
+          "$ref": "#/definitions/Shared2"
         },
         "message": {
-          "description": "Human-readable acknowledgement.",
-          "type": "string"
+          "$ref": "#/definitions/Shared4"
         },
         "success": {
-          "const": true,
-          "type": "boolean"
+          "$ref": "#/definitions/Shared0"
         }
       },
       "required": [
@@ -1104,34 +1057,22 @@
       "not": {
         "anyOf": [
           {
-            "required": [
-              "error"
-            ]
+            "$ref": "#/definitions/Shared5"
           },
           {
-            "required": [
-              "scenarios"
-            ]
+            "$ref": "#/definitions/Shared11"
           },
           {
-            "required": [
-              "previous_state"
-            ]
+            "$ref": "#/definitions/Shared6"
           },
           {
-            "required": [
-              "simulated"
-            ]
+            "$ref": "#/definitions/Shared7"
           },
           {
-            "required": [
-              "forced"
-            ]
+            "$ref": "#/definitions/Shared8"
           },
           {
-            "required": [
-              "recorded_calls"
-            ]
+            "$ref": "#/definitions/Shared9"
           }
         ]
       },
@@ -1215,11 +1156,7 @@
                 "type": "object"
               },
               "ext": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "additionalProperties": true,
-                "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                "title": "Extension Object",
-                "type": "object"
+                "$ref": "#/definitions/Shared2"
               },
               "field": {
                 "description": "Resolved creative manifest path for the risky claim side of the observation, for example `creative_manifest.provenance.disclosure.required`. Some observations are triggered by a combination of fields; `field` anchors the primary claim, not necessarily every field in the trigger condition.",
@@ -1258,11 +1195,7 @@
           "type": "array"
         },
         "context": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": true,
-          "description": "Opaque correlation data that is echoed unchanged in responses. Used for internal tracking, UI session IDs, trace IDs, and other caller-specific identifiers that don't affect protocol behavior. Context data is never parsed by AdCP agents - it's simply preserved and returned.",
-          "title": "Context Object",
-          "type": "object"
+          "$ref": "#/definitions/Shared1"
         },
         "creative_id": {
           "description": "Creative ID whose audit observations were queried.",
@@ -1270,15 +1203,10 @@
           "x-entity": "creative"
         },
         "ext": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": true,
-          "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-          "title": "Extension Object",
-          "type": "object"
+          "$ref": "#/definitions/Shared2"
         },
         "success": {
-          "const": true,
-          "type": "boolean"
+          "$ref": "#/definitions/Shared0"
         }
       },
       "required": [
@@ -1295,51 +1223,31 @@
       "not": {
         "anyOf": [
           {
-            "required": [
-              "error"
-            ]
+            "$ref": "#/definitions/Shared5"
           },
           {
-            "required": [
-              "scenarios"
-            ]
+            "$ref": "#/definitions/Shared11"
           },
           {
-            "required": [
-              "previous_state"
-            ]
+            "$ref": "#/definitions/Shared6"
           },
           {
-            "required": [
-              "simulated"
-            ]
+            "$ref": "#/definitions/Shared7"
           },
           {
-            "required": [
-              "forced"
-            ]
+            "$ref": "#/definitions/Shared8"
           },
           {
-            "required": [
-              "audit_observations"
-            ]
+            "$ref": "#/definitions/Shared10"
           }
         ]
       },
       "properties": {
         "context": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": true,
-          "description": "Opaque correlation data that is echoed unchanged in responses. Used for internal tracking, UI session IDs, trace IDs, and other caller-specific identifiers that don't affect protocol behavior. Context data is never parsed by AdCP agents - it's simply preserved and returned.",
-          "title": "Context Object",
-          "type": "object"
+          "$ref": "#/definitions/Shared1"
         },
         "ext": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": true,
-          "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-          "title": "Extension Object",
-          "type": "object"
+          "$ref": "#/definitions/Shared2"
         },
         "recorded_calls": {
           "description": "Outbound HTTP calls caused by the requesting principal in the requested window, ordered by `timestamp` ascending. Cross-caller calls MUST NOT appear here. Each item declares its `attestation_mode`: `raw` items carry the full `payload`; `digest` items carry `payload_digest_sha256` + `payload_length` + optional `identifier_match_proofs[]` instead, for adopters who can't return raw payloads under their privacy/data-residency policy.",
@@ -1520,8 +1428,7 @@
           "type": "string"
         },
         "success": {
-          "const": true,
-          "type": "boolean"
+          "$ref": "#/definitions/Shared0"
         },
         "total_count": {
           "description": "Total calls in the requested window before any pagination \u2014 `recorded_calls.length` may be smaller when `params.limit` truncated the response.",
@@ -1548,44 +1455,28 @@
       "not": {
         "anyOf": [
           {
-            "required": [
-              "scenarios"
-            ]
+            "$ref": "#/definitions/Shared11"
           },
           {
-            "required": [
-              "simulated"
-            ]
+            "$ref": "#/definitions/Shared7"
           },
           {
-            "required": [
-              "previous_state"
-            ]
+            "$ref": "#/definitions/Shared6"
           },
           {
-            "required": [
-              "forced"
-            ]
+            "$ref": "#/definitions/Shared8"
           },
           {
-            "required": [
-              "recorded_calls"
-            ]
+            "$ref": "#/definitions/Shared9"
           },
           {
-            "required": [
-              "audit_observations"
-            ]
+            "$ref": "#/definitions/Shared10"
           }
         ]
       },
       "properties": {
         "context": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": true,
-          "description": "Opaque correlation data that is echoed unchanged in responses. Used for internal tracking, UI session IDs, trace IDs, and other caller-specific identifiers that don't affect protocol behavior. Context data is never parsed by AdCP agents - it's simply preserved and returned.",
-          "title": "Context Object",
-          "type": "object"
+          "$ref": "#/definitions/Shared1"
         },
         "current_state": {
           "description": "Current state of the entity, or null if not found",
@@ -1613,11 +1504,7 @@
           "type": "string"
         },
         "ext": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": true,
-          "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-          "title": "Extension Object",
-          "type": "object"
+          "$ref": "#/definitions/Shared2"
         },
         "success": {
           "const": false,

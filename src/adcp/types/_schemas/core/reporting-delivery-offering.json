@@ -16,7 +16,7 @@
       "then": {
         "properties": {
           "reconciliation_mode": {
-            "const": "consumer_receipt"
+            "$ref": "#/definitions/Shared2"
           }
         }
       }
@@ -25,7 +25,7 @@
       "if": {
         "properties": {
           "reconciliation_mode": {
-            "const": "consumer_receipt"
+            "$ref": "#/definitions/Shared2"
           }
         },
         "required": [
@@ -70,6 +70,46 @@
       "title": "Reporting Feed Purpose",
       "type": "string",
       "x-adcp-model-context-inline": true
+    },
+    "Shared0": {
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[a-z][a-z0-9_.-]*$",
+      "type": "string"
+    },
+    "Shared1": {
+      "additionalProperties": false,
+      "properties": {
+        "domain": {
+          "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "domain"
+      ],
+      "type": "object"
+    },
+    "Shared2": {
+      "const": "consumer_receipt"
+    },
+    "Shared3": {
+      "const": "fixed"
+    },
+    "Shared4": {
+      "required": [
+        "period_anchor_policy"
+      ]
+    },
+    "Shared5": {
+      "required": [
+        "period_anchor"
+      ]
+    },
+    "Shared6": {
+      "required": [
+        "period_timezone"
+      ]
     }
   },
   "description": "One atomic combination a seller can honor. Buyers MUST NOT form a cross-product from separate capability arrays; each installed configuration selects one offering_id and values within that offering. A Core API-delivered offering requires no Managed external-materialization canonicalization code or contract, but every resulting revision still carries the fixed RFC 8785/JCS revision-binding canonicalization and digest.",
@@ -130,10 +170,7 @@
       "description": "Managed delivery method for this offering. Omit for a Core (API-delivered) offering: rows flow through existing get_media_buy_delivery and reporting_webhook transports and no destination is involved. Present only when the seller advertises managed_delivery.",
       "properties": {
         "access_mode": {
-          "maxLength": 64,
-          "minLength": 1,
-          "pattern": "^[a-z][a-z0-9_.-]*$",
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         },
         "destination_modes": {
           "items": {
@@ -198,17 +235,7 @@
               "type": "string"
             },
             "provider": {
-              "additionalProperties": false,
-              "properties": {
-                "domain": {
-                  "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "domain"
-              ],
-              "type": "object"
+              "$ref": "#/definitions/Shared1"
             },
             "region": {
               "maxLength": 128,
@@ -223,17 +250,7 @@
           "type": "object"
         },
         "provider": {
-          "additionalProperties": false,
-          "properties": {
-            "domain": {
-              "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-              "type": "string"
-            }
-          },
-          "required": [
-            "domain"
-          ],
-          "type": "object"
+          "$ref": "#/definitions/Shared1"
         },
         "reader_compatibility": {
           "items": {
@@ -247,10 +264,7 @@
           "uniqueItems": true
         },
         "transport": {
-          "maxLength": 64,
-          "minLength": 1,
-          "pattern": "^[a-z][a-z0-9_.-]*$",
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         }
       },
       "required": [
@@ -400,9 +414,7 @@
               "not": {
                 "anyOf": [
                   {
-                    "required": [
-                      "period_anchor_policy"
-                    ]
+                    "$ref": "#/definitions/Shared4"
                   },
                   {
                     "required": [
@@ -410,14 +422,10 @@
                     ]
                   },
                   {
-                    "required": [
-                      "period_anchor"
-                    ]
+                    "$ref": "#/definitions/Shared5"
                   },
                   {
-                    "required": [
-                      "period_timezone"
-                    ]
+                    "$ref": "#/definitions/Shared6"
                   }
                 ]
               }
@@ -437,15 +445,13 @@
                 {
                   "else": {
                     "not": {
-                      "required": [
-                        "period_timezone"
-                      ]
+                      "$ref": "#/definitions/Shared6"
                     }
                   },
                   "if": {
                     "properties": {
                       "period_timezone_policy": {
-                        "const": "fixed"
+                        "$ref": "#/definitions/Shared3"
                       }
                     },
                     "required": [
@@ -453,23 +459,17 @@
                     ]
                   },
                   "then": {
-                    "required": [
-                      "period_timezone"
-                    ]
+                    "$ref": "#/definitions/Shared6"
                   }
                 }
               ],
               "not": {
                 "anyOf": [
                   {
-                    "required": [
-                      "period_anchor_policy"
-                    ]
+                    "$ref": "#/definitions/Shared4"
                   },
                   {
-                    "required": [
-                      "period_anchor"
-                    ]
+                    "$ref": "#/definitions/Shared5"
                   }
                 ]
               },
@@ -495,14 +495,10 @@
                   "not": {
                     "anyOf": [
                       {
-                        "required": [
-                          "period_anchor"
-                        ]
+                        "$ref": "#/definitions/Shared5"
                       },
                       {
-                        "required": [
-                          "period_timezone"
-                        ]
+                        "$ref": "#/definitions/Shared6"
                       }
                     ]
                   }
@@ -510,7 +506,7 @@
                 "if": {
                   "properties": {
                     "period_anchor_policy": {
-                      "const": "fixed"
+                      "$ref": "#/definitions/Shared3"
                     }
                   },
                   "required": [

@@ -74,6 +74,10 @@
       "title": "Reporting Status Severity",
       "type": "string",
       "x-adcp-model-context-inline": true
+    },
+    "Shared0": {
+      "format": "date-time",
+      "type": "string"
     }
   },
   "description": "Structured reporting condition that explains delayed or action_required health without exposing credentials, provider response bodies, or internal stack traces.",
@@ -110,8 +114,7 @@
       "type": "integer"
     },
     "expected_at": {
-      "format": "date-time",
-      "type": "string"
+      "$ref": "#/definitions/Shared0"
     },
     "external_ref": {
       "description": "Optional opaque, non-secret correlation string for the party's own tracker \u2014 a ticket key, incident ID, or case number. Untrusted display text only. The character class excludes whitespace and the solidus, so the value cannot express a URL or a sentence; receivers compare, store, and display it as inert text and never dereference, resolve, or execute it. It confers no authorization and MUST NOT be used to look up state across accounts or callers.",
@@ -183,12 +186,10 @@
       "uniqueItems": true
     },
     "period_end": {
-      "format": "date-time",
-      "type": "string"
+      "$ref": "#/definitions/Shared0"
     },
     "period_start": {
-      "format": "date-time",
-      "type": "string"
+      "$ref": "#/definitions/Shared0"
     },
     "recommended_action": {
       "enum": [

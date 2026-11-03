@@ -1,11 +1,58 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": false,
+  "definitions": {
+    "Shared0": {
+      "minLength": 1,
+      "type": "string",
+      "x-entity": "audience_evidence"
+    },
+    "Shared1": {
+      "minLength": 1,
+      "type": "string",
+      "x-entity": "audience_evidence_snapshot"
+    },
+    "Shared10": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "Shared2": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "Shared3": {
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "Shared4": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "Shared5": {
+      "format": "uri",
+      "pattern": "^https://",
+      "type": "string"
+    },
+    "Shared6": {
+      "type": "string"
+    },
+    "Shared7": {
+      "const": "age"
+    },
+    "Shared8": {
+      "type": "number"
+    },
+    "Shared9": {
+      "type": "boolean"
+    }
+  },
   "description": "Compact decision readback pinning the evidence snapshot that affected recommendation or eligibility.",
   "properties": {
     "content_digest": {
-      "pattern": "^sha256:[a-f0-9]{64}$",
-      "type": "string"
+      "$ref": "#/definitions/Shared3"
     },
     "decision_use": {
       "enum": [
@@ -88,8 +135,7 @@
         "attestation_digests": {
           "description": "Portable-attestation reference digests available through the evidence provider; credential bodies are not inlined into product discovery.",
           "items": {
-            "pattern": "^sha256:[a-f0-9]{64}$",
-            "type": "string"
+            "$ref": "#/definitions/Shared3"
           },
           "minItems": 1,
           "type": "array",
@@ -103,7 +149,7 @@
               "if": {
                 "properties": {
                   "dimension": {
-                    "const": "age"
+                    "$ref": "#/definitions/Shared7"
                   }
                 },
                 "required": [
@@ -117,12 +163,10 @@
                     "minProperties": 1,
                     "properties": {
                       "max": {
-                        "minimum": 0,
-                        "type": "integer"
+                        "$ref": "#/definitions/Shared10"
                       },
                       "min": {
-                        "minimum": 0,
-                        "type": "integer"
+                        "$ref": "#/definitions/Shared10"
                       }
                     },
                     "type": "object"
@@ -130,13 +174,11 @@
                   "value": {
                     "oneOf": [
                       {
-                        "minimum": 0,
-                        "type": "integer"
+                        "$ref": "#/definitions/Shared10"
                       },
                       {
                         "items": {
-                          "minimum": 0,
-                          "type": "integer"
+                          "$ref": "#/definitions/Shared10"
                         },
                         "minItems": 1,
                         "type": "array",
@@ -175,7 +217,7 @@
             "dimension": {
               "anyOf": [
                 {
-                  "const": "age"
+                  "$ref": "#/definitions/Shared7"
                 },
                 {
                   "format": "uri",
@@ -195,10 +237,10 @@
               "minProperties": 1,
               "properties": {
                 "max": {
-                  "type": "number"
+                  "$ref": "#/definitions/Shared8"
                 },
                 "min": {
-                  "type": "number"
+                  "$ref": "#/definitions/Shared8"
                 }
               },
               "type": "object"
@@ -208,17 +250,13 @@
               "description": "External system that defines the dimension or value. Taxonomy metadata is descriptive and does not create exact demographic targeting semantics.",
               "properties": {
                 "system": {
-                  "format": "uri",
-                  "pattern": "^https://",
-                  "type": "string"
+                  "$ref": "#/definitions/Shared5"
                 },
                 "value_id": {
-                  "minLength": 1,
-                  "type": "string"
+                  "$ref": "#/definitions/Shared2"
                 },
                 "version": {
-                  "minLength": 1,
-                  "type": "string"
+                  "$ref": "#/definitions/Shared2"
                 }
               },
               "required": [
@@ -230,25 +268,25 @@
               "description": "Scalar or set value for the dimension.",
               "oneOf": [
                 {
-                  "type": "string"
+                  "$ref": "#/definitions/Shared6"
                 },
                 {
-                  "type": "number"
+                  "$ref": "#/definitions/Shared8"
                 },
                 {
-                  "type": "boolean"
+                  "$ref": "#/definitions/Shared9"
                 },
                 {
                   "items": {
                     "oneOf": [
                       {
-                        "type": "string"
+                        "$ref": "#/definitions/Shared6"
                       },
                       {
-                        "type": "number"
+                        "$ref": "#/definitions/Shared8"
                       },
                       {
-                        "type": "boolean"
+                        "$ref": "#/definitions/Shared9"
                       }
                     ]
                   },
@@ -269,20 +307,16 @@
           "additionalProperties": false,
           "properties": {
             "description": {
-              "type": "string"
+              "$ref": "#/definitions/Shared6"
             },
             "population_id": {
-              "minLength": 1,
-              "type": "string"
+              "$ref": "#/definitions/Shared2"
             },
             "system": {
-              "format": "uri",
-              "pattern": "^https://",
-              "type": "string"
+              "$ref": "#/definitions/Shared5"
             },
             "version": {
-              "minLength": 1,
-              "type": "string"
+              "$ref": "#/definitions/Shared2"
             }
           },
           "required": [
@@ -298,13 +332,10 @@
           "type": "number"
         },
         "content_digest": {
-          "pattern": "^sha256:[a-f0-9]{64}$",
-          "type": "string"
+          "$ref": "#/definitions/Shared3"
         },
         "evidence_id": {
-          "minLength": 1,
-          "type": "string",
-          "x-entity": "audience_evidence"
+          "$ref": "#/definitions/Shared0"
         },
         "evidence_type": {
           "enum": [
@@ -315,11 +346,7 @@
           "type": "string"
         },
         "ext": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": true,
-          "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-          "title": "Extension Object",
-          "type": "object"
+          "$ref": "#/definitions/Shared4"
         },
         "last_updated": {
           "format": "date-time",
@@ -363,9 +390,7 @@
           "type": "string"
         },
         "methodology_url": {
-          "format": "uri",
-          "pattern": "^https://",
-          "type": "string"
+          "$ref": "#/definitions/Shared5"
         },
         "provider": {
           "$schema": "http://json-schema.org/draft-07/schema#",
@@ -436,9 +461,7 @@
           "type": "integer"
         },
         "snapshot_id": {
-          "minLength": 1,
-          "type": "string",
-          "x-entity": "audience_evidence_snapshot"
+          "$ref": "#/definitions/Shared1"
         },
         "subject_type": {
           "$schema": "http://json-schema.org/draft-07/schema#",
@@ -466,8 +489,7 @@
           "type": "number"
         },
         "version": {
-          "minLength": 1,
-          "type": "string"
+          "$ref": "#/definitions/Shared2"
         }
       },
       "required": [
@@ -491,34 +513,24 @@
       "type": "object"
     },
     "evidence_id": {
-      "minLength": 1,
-      "type": "string",
-      "x-entity": "audience_evidence"
+      "$ref": "#/definitions/Shared0"
     },
     "ext": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "additionalProperties": true,
-      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-      "title": "Extension Object",
-      "type": "object"
+      "$ref": "#/definitions/Shared4"
     },
     "snapshot_id": {
-      "minLength": 1,
-      "type": "string",
-      "x-entity": "audience_evidence_snapshot"
+      "$ref": "#/definitions/Shared1"
     },
     "verified_attestation_digests": {
       "items": {
-        "pattern": "^sha256:[a-f0-9]{64}$",
-        "type": "string"
+        "$ref": "#/definitions/Shared3"
       },
       "minItems": 1,
       "type": "array",
       "uniqueItems": true
     },
     "version": {
-      "minLength": 1,
-      "type": "string"
+      "$ref": "#/definitions/Shared2"
     }
   },
   "required": [

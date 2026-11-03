@@ -1,5 +1,82 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "Shared0": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Viewability standard under which this row was measured. MRC and GroupM define materially different thresholds; never sum across standards.",
+      "enum": [
+        "mrc",
+        "groupm"
+      ],
+      "enumDescriptions": {
+        "groupm": "GroupM standard: 100% of pixels in view for 1 continuous second (display) or 50% of video duration.",
+        "mrc": "MRC/IAB standard: 50% of pixels in view for 1 continuous second (display) or 2 continuous seconds (video)."
+      },
+      "title": "Viewability Standard",
+      "type": "string"
+    },
+    "Shared1": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Attribution methodology under which this outcome row was computed (`deterministic_purchase`, `probabilistic`, `panel_based`, `modeled`). Outcome metrics measured under different methodologies represent materially different numbers; never sum across methodologies.",
+      "enum": [
+        "deterministic_purchase",
+        "probabilistic",
+        "panel_based",
+        "modeled"
+      ],
+      "enumDescriptions": {
+        "deterministic_purchase": "1:1 deterministic match between exposed users and purchasers, typically via shared identifier (loyalty card, logged-in account, hashed email). Standard in retail-media closed-loop measurement (Walmart Connect, Kroger Precision, Amazon DSP attribution).",
+        "modeled": "Modeled output \u2014 Media Mix Modeling (MMM), Multi-Touch Attribution (MTA), incrementality testing, or other statistical inference that produces an estimated outcome rather than a directly-observed match. Includes most clean-room outputs.",
+        "panel_based": "Panel methodology \u2014 outcomes measured against a recruited respondent panel and projected to the population. Standard for Nielsen, comScore, Edison Research, and similar panel providers.",
+        "probabilistic": "Probabilistic match using statistical models over device graphs, IP/UA fingerprinting, or behavioral signals. No 1:1 identifier link."
+      },
+      "title": "Attribution Methodology",
+      "type": "string"
+    },
+    "Shared2": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "description": "Attribution window for this outcome row. Object-valued duration (`{interval, unit}`), not a shorthand string. Outcome metrics measured over different windows represent the same metric over different time periods; the partition keeps them as separate rows so buyers don't accidentally aggregate.",
+      "properties": {
+        "interval": {
+          "description": "Number of time units. Must be 1 when unit is 'campaign'.",
+          "minimum": 1,
+          "type": "integer"
+        },
+        "unit": {
+          "description": "Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.",
+          "enum": [
+            "seconds",
+            "minutes",
+            "hours",
+            "days",
+            "campaign"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "interval",
+        "unit"
+      ],
+      "title": "Duration",
+      "type": "object"
+    },
+    "Shared3": {
+      "type": "string"
+    },
+    "Shared4": {
+      "pattern": "^#[0-9a-fA-F]{6}$",
+      "type": "string"
+    },
+    "Shared5": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    }
+  },
   "description": "One delivery metric value partitioned by metric scope and qualifier. Its standard branch is used at package grain by `by_package[].metric_values`; both branches are retained for the deprecated cross-buy `aggregated_totals.metric_aggregates` compatibility field. Row-symmetric with `package.committed_metrics` and delivery `missing_metrics` so buyers can reconcile by `(scope, metric_id, qualifier)`.",
   "discriminator": {
     "propertyName": "scope"
@@ -179,51 +256,10 @@
           "description": "Qualifier keys disambiguating this row from sibling rows under the same `metric_id`. Symmetric with `committed_metrics.qualifier` today; expected to diverge in future minors as transparency disclosures buyers don't commit to ship delivery-only. Closed (`additionalProperties: false`) \u2014 new qualifier keys ship explicitly.",
           "properties": {
             "attribution_methodology": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "description": "Attribution methodology under which this outcome row was computed (`deterministic_purchase`, `probabilistic`, `panel_based`, `modeled`). Outcome metrics measured under different methodologies represent materially different numbers; never sum across methodologies.",
-              "enum": [
-                "deterministic_purchase",
-                "probabilistic",
-                "panel_based",
-                "modeled"
-              ],
-              "enumDescriptions": {
-                "deterministic_purchase": "1:1 deterministic match between exposed users and purchasers, typically via shared identifier (loyalty card, logged-in account, hashed email). Standard in retail-media closed-loop measurement (Walmart Connect, Kroger Precision, Amazon DSP attribution).",
-                "modeled": "Modeled output \u2014 Media Mix Modeling (MMM), Multi-Touch Attribution (MTA), incrementality testing, or other statistical inference that produces an estimated outcome rather than a directly-observed match. Includes most clean-room outputs.",
-                "panel_based": "Panel methodology \u2014 outcomes measured against a recruited respondent panel and projected to the population. Standard for Nielsen, comScore, Edison Research, and similar panel providers.",
-                "probabilistic": "Probabilistic match using statistical models over device graphs, IP/UA fingerprinting, or behavioral signals. No 1:1 identifier link."
-              },
-              "title": "Attribution Methodology",
-              "type": "string"
+              "$ref": "#/definitions/Shared1"
             },
             "attribution_window": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": false,
-              "description": "Attribution window for this outcome row. Object-valued duration (`{interval, unit}`), not a shorthand string. Outcome metrics measured over different windows represent the same metric over different time periods; the partition keeps them as separate rows so buyers don't accidentally aggregate.",
-              "properties": {
-                "interval": {
-                  "description": "Number of time units. Must be 1 when unit is 'campaign'.",
-                  "minimum": 1,
-                  "type": "integer"
-                },
-                "unit": {
-                  "description": "Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.",
-                  "enum": [
-                    "seconds",
-                    "minutes",
-                    "hours",
-                    "days",
-                    "campaign"
-                  ],
-                  "type": "string"
-                }
-              },
-              "required": [
-                "interval",
-                "unit"
-              ],
-              "title": "Duration",
-              "type": "object"
+              "$ref": "#/definitions/Shared2"
             },
             "completion_source": {
               "$schema": "http://json-schema.org/draft-07/schema#",
@@ -260,18 +296,7 @@
               "type": "string"
             },
             "viewability_standard": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "description": "Viewability standard under which this row was measured. MRC and GroupM define materially different thresholds; never sum across standards.",
-              "enum": [
-                "mrc",
-                "groupm"
-              ],
-              "enumDescriptions": {
-                "groupm": "GroupM standard: 100% of pixels in view for 1 continuous second (display) or 50% of video duration.",
-                "mrc": "MRC/IAB standard: 50% of pixels in view for 1 continuous second (display) or 2 continuous seconds (video)."
-              },
-              "title": "Viewability Standard",
-              "type": "string"
+              "$ref": "#/definitions/Shared0"
             }
           },
           "type": "object"
@@ -332,51 +357,10 @@
           "description": "Optional qualifier keys disambiguating this vendor-metric row from sibling rows under the same (vendor, metric_id) \u2014 e.g., attribution_window on a vendor outcome metric. Same closed key set as the standard branch; new keys ship explicitly.",
           "properties": {
             "attribution_methodology": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "description": "Attribution methodology under which this outcome row was computed (`deterministic_purchase`, `probabilistic`, `panel_based`, `modeled`). Outcome metrics measured under different methodologies represent materially different numbers; never sum across methodologies.",
-              "enum": [
-                "deterministic_purchase",
-                "probabilistic",
-                "panel_based",
-                "modeled"
-              ],
-              "enumDescriptions": {
-                "deterministic_purchase": "1:1 deterministic match between exposed users and purchasers, typically via shared identifier (loyalty card, logged-in account, hashed email). Standard in retail-media closed-loop measurement (Walmart Connect, Kroger Precision, Amazon DSP attribution).",
-                "modeled": "Modeled output \u2014 Media Mix Modeling (MMM), Multi-Touch Attribution (MTA), incrementality testing, or other statistical inference that produces an estimated outcome rather than a directly-observed match. Includes most clean-room outputs.",
-                "panel_based": "Panel methodology \u2014 outcomes measured against a recruited respondent panel and projected to the population. Standard for Nielsen, comScore, Edison Research, and similar panel providers.",
-                "probabilistic": "Probabilistic match using statistical models over device graphs, IP/UA fingerprinting, or behavioral signals. No 1:1 identifier link."
-              },
-              "title": "Attribution Methodology",
-              "type": "string"
+              "$ref": "#/definitions/Shared1"
             },
             "attribution_window": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": false,
-              "description": "Attribution window for this outcome row. Object-valued duration (`{interval, unit}`), not a shorthand string. Outcome metrics measured over different windows represent the same metric over different time periods; the partition keeps them as separate rows so buyers don't accidentally aggregate.",
-              "properties": {
-                "interval": {
-                  "description": "Number of time units. Must be 1 when unit is 'campaign'.",
-                  "minimum": 1,
-                  "type": "integer"
-                },
-                "unit": {
-                  "description": "Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.",
-                  "enum": [
-                    "seconds",
-                    "minutes",
-                    "hours",
-                    "days",
-                    "campaign"
-                  ],
-                  "type": "string"
-                }
-              },
-              "required": [
-                "interval",
-                "unit"
-              ],
-              "title": "Duration",
-              "type": "object"
+              "$ref": "#/definitions/Shared2"
             },
             "completion_source": {
               "$schema": "http://json-schema.org/draft-07/schema#",
@@ -413,18 +397,7 @@
               "type": "string"
             },
             "viewability_standard": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "description": "Viewability standard under which this row was measured. MRC and GroupM define materially different thresholds; never sum across standards.",
-              "enum": [
-                "mrc",
-                "groupm"
-              ],
-              "enumDescriptions": {
-                "groupm": "GroupM standard: 100% of pixels in view for 1 continuous second (display) or 50% of video duration.",
-                "mrc": "MRC/IAB standard: 50% of pixels in view for 1 continuous second (display) or 2 continuous seconds (video)."
-              },
-              "title": "Viewability Standard",
-              "type": "string"
+              "$ref": "#/definitions/Shared0"
             }
           },
           "type": "object"
@@ -486,16 +459,13 @@
                   "description": "Override brand colors (hex strings).",
                   "properties": {
                     "accent": {
-                      "pattern": "^#[0-9a-fA-F]{6}$",
-                      "type": "string"
+                      "$ref": "#/definitions/Shared4"
                     },
                     "primary": {
-                      "pattern": "^#[0-9a-fA-F]{6}$",
-                      "type": "string"
+                      "$ref": "#/definitions/Shared4"
                     },
                     "secondary": {
-                      "pattern": "^#[0-9a-fA-F]{6}$",
-                      "type": "string"
+                      "$ref": "#/definitions/Shared4"
                     }
                   },
                   "type": "object"
@@ -686,11 +656,7 @@
                                     "minProperties": 1,
                                     "properties": {
                                       "ext": {
-                                        "$schema": "http://json-schema.org/draft-07/schema#",
-                                        "additionalProperties": true,
-                                        "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                                        "title": "Extension Object",
-                                        "type": "object"
+                                        "$ref": "#/definitions/Shared5"
                                       },
                                       "min_duration_ms": {
                                         "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial \u2014 without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available.",
@@ -820,11 +786,7 @@
                           "type": "array"
                         },
                         "ext": {
-                          "$schema": "http://json-schema.org/draft-07/schema#",
-                          "additionalProperties": true,
-                          "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                          "title": "Extension Object",
-                          "type": "object"
+                          "$ref": "#/definitions/Shared5"
                         },
                         "human_oversight": {
                           "description": "Level of human involvement in the AI-assisted creation process. Independent of `disclosure.required` \u2014 the protocol does not derive disclosure obligations from oversight level. Some regulations include carve-outs for human-edited or human-directed AI output, but those carve-outs have factual prerequisites the schema cannot evaluate. Asserting `edited` or `directed` does not by itself justify `disclosure.required: false`.",
@@ -1038,7 +1000,7 @@
                 },
                 "languages": {
                   "items": {
-                    "type": "string"
+                    "$ref": "#/definitions/Shared3"
                   },
                   "type": "array"
                 },
@@ -1058,7 +1020,7 @@
             "industries": {
               "description": "Inline override for the brand's industries. Useful when the caller cannot modify the brand's canonical brand.json but needs to declare industries for governance (e.g., Annex III vertical detection). brand.json remains the canonical source; when omitted here, governance agents SHOULD resolve from brand.json.",
               "items": {
-                "type": "string"
+                "$ref": "#/definitions/Shared3"
               },
               "type": "array"
             }

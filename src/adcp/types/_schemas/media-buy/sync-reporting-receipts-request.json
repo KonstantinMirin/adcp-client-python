@@ -7,22 +7,10 @@
       "description": "Release-precision AdCP protocol version negotiation fields. Composed via `allOf` into AdCP request schemas and shared response components so the version semantics live in one place. Strict (`additionalProperties: false`) request schemas also redeclare these two fields in their own `properties` via `$ref`, because draft-07 does not evaluate properties across `allOf`. The Trusted Match match requests are the exception: they inline both fields for their strict privacy boundary. Distinct from `core/protocol-envelope.json`, which wraps responses at the transport layer (context_id / task_id / status / payload). This envelope is part of the payload itself.",
       "properties": {
         "adcp_major_version": {
-          "deprecated": true,
-          "description": "DEPRECATED in favor of adcp_version (release-precision string). Servers MUST continue to honor this field through 3.x. Removed in 4.0. Original semantics: the AdCP major version the buyer's payloads conform to. Sellers validate against their supported major_versions and return VERSION_UNSUPPORTED if unsupported. When omitted, the seller assumes its highest supported version.",
-          "maximum": 99,
-          "minimum": 1,
-          "type": "integer"
+          "$ref": "#/definitions/Shared1"
         },
         "adcp_version": {
-          "description": "Release-precision AdCP version (VERSION.RELEASE, e.g. \"3.0\", \"3.1\", \"3.1-beta\"). On a request: the buyer's release pin \u2014 the seller validates against its supported_versions and returns VERSION_UNSUPPORTED on cross-major mismatch, or downshifts to the highest supported release within the same major. On a response: the release the seller actually served \u2014 clients SHOULD validate the response against that release's schema, not against their pin. Patches are not negotiated; surface them as build_version on capabilities for operational visibility. When omitted, falls back to adcp_major_version (deprecated) or server default. Buyers SHOULD emit both adcp_version and adcp_major_version through 3.x to remain compatible with sellers that only read the legacy field. NORMALIZATION: SDKs that read full-semver values from bundle metadata (e.g. ComplianceIndex.published_version = \"3.1.0-beta.1\") MUST normalize to release-precision (\"3.1-beta.1\") before emitting on the wire \u2014 meta-field values are NOT valid wire values.",
-          "examples": [
-            "3.0",
-            "3.1",
-            "3.1-beta",
-            "3.1-rc.1"
-          ],
-          "pattern": "^(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[a-zA-Z0-9](?:[a-zA-Z0-9.-]*[a-zA-Z0-9])?)?$",
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         }
       },
       "title": "AdCP Version Envelope",
@@ -41,6 +29,111 @@
       ]
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "description": "Release-precision AdCP version (VERSION.RELEASE, e.g. \"3.0\", \"3.1\", \"3.1-beta\"). On a request: the buyer's release pin \u2014 the seller validates against its supported_versions and returns VERSION_UNSUPPORTED on cross-major mismatch, or downshifts to the highest supported release within the same major. On a response: the release the seller actually served \u2014 clients SHOULD validate the response against that release's schema, not against their pin. Patches are not negotiated; surface them as build_version on capabilities for operational visibility. When omitted, falls back to adcp_major_version (deprecated) or server default. Buyers SHOULD emit both adcp_version and adcp_major_version through 3.x to remain compatible with sellers that only read the legacy field. NORMALIZATION: SDKs that read full-semver values from bundle metadata (e.g. ComplianceIndex.published_version = \"3.1.0-beta.1\") MUST normalize to release-precision (\"3.1-beta.1\") before emitting on the wire \u2014 meta-field values are NOT valid wire values.",
+      "examples": [
+        "3.0",
+        "3.1",
+        "3.1-beta",
+        "3.1-rc.1"
+      ],
+      "pattern": "^(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[a-zA-Z0-9](?:[a-zA-Z0-9.-]*[a-zA-Z0-9])?)?$",
+      "type": "string"
+    },
+    "Shared1": {
+      "deprecated": true,
+      "description": "DEPRECATED in favor of adcp_version (release-precision string). Servers MUST continue to honor this field through 3.x. Removed in 4.0. Original semantics: the AdCP major version the buyer's payloads conform to. Sellers validate against their supported major_versions and return VERSION_UNSUPPORTED if unsupported. When omitted, the seller assumes its highest supported version.",
+      "maximum": 99,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "Shared10": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Z][A-Z0-9_]*$",
+      "type": "string"
+    },
+    "Shared11": {
+      "properties": {
+        "status": {
+          "const": "rejected"
+        }
+      },
+      "required": [
+        "status"
+      ]
+    },
+    "Shared12": {
+      "required": [
+        "rejection_codes"
+      ]
+    },
+    "Shared13": {
+      "const": "accepted"
+    },
+    "Shared14": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$",
+      "type": "string"
+    },
+    "Shared15": {
+      "description": "Profile-defined unit such as impressions or an ISO 4217 currency code.",
+      "maxLength": 32,
+      "minLength": 1,
+      "type": "string"
+    },
+    "Shared2": {
+      "not": {
+        "required": [
+          "received_at"
+        ]
+      }
+    },
+    "Shared3": {
+      "maxLength": 255,
+      "minLength": 16,
+      "pattern": "^[A-Za-z0-9_.:-]{16,255}$",
+      "type": "string",
+      "x-entity": "reporting_receipt"
+    },
+    "Shared4": {
+      "maxLength": 255,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]{1,255}$",
+      "type": "string",
+      "x-entity": "reporting_revision"
+    },
+    "Shared5": {
+      "enum": [
+        "accepted",
+        "rejected"
+      ],
+      "type": "string"
+    },
+    "Shared6": {
+      "pattern": "^[A-Fa-f0-9]{64}$",
+      "type": "string"
+    },
+    "Shared7": {
+      "items": {
+        "$ref": "#/definitions/Shared10"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "Shared8": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "Shared9": {
+      "format": "date-time",
+      "readOnly": true,
+      "type": "string"
+    }
+  },
   "description": "Submit durable authenticated consumer reconciliation results for reporting materializations and post-official adjustments. This is a batched idempotent upsert, not an acknowledgement of mere webhook receipt. Identity comes from authenticated transport; the request MUST NOT assert a buyer or governance principal.",
   "properties": {
     "account": {
@@ -191,22 +284,10 @@
       "type": "object"
     },
     "adcp_major_version": {
-      "deprecated": true,
-      "description": "DEPRECATED in favor of adcp_version (release-precision string). Servers MUST continue to honor this field through 3.x. Removed in 4.0. Original semantics: the AdCP major version the buyer's payloads conform to. Sellers validate against their supported major_versions and return VERSION_UNSUPPORTED if unsupported. When omitted, the seller assumes its highest supported version.",
-      "maximum": 99,
-      "minimum": 1,
-      "type": "integer"
+      "$ref": "#/definitions/Shared1"
     },
     "adcp_version": {
-      "description": "Release-precision AdCP version (VERSION.RELEASE, e.g. \"3.0\", \"3.1\", \"3.1-beta\"). On a request: the buyer's release pin \u2014 the seller validates against its supported_versions and returns VERSION_UNSUPPORTED on cross-major mismatch, or downshifts to the highest supported release within the same major. On a response: the release the seller actually served \u2014 clients SHOULD validate the response against that release's schema, not against their pin. Patches are not negotiated; surface them as build_version on capabilities for operational visibility. When omitted, falls back to adcp_major_version (deprecated) or server default. Buyers SHOULD emit both adcp_version and adcp_major_version through 3.x to remain compatible with sellers that only read the legacy field. NORMALIZATION: SDKs that read full-semver values from bundle metadata (e.g. ComplianceIndex.published_version = \"3.1.0-beta.1\") MUST normalize to release-precision (\"3.1-beta.1\") before emitting on the wire \u2014 meta-field values are NOT valid wire values.",
-      "examples": [
-        "3.0",
-        "3.1",
-        "3.1-beta",
-        "3.1-rc.1"
-      ],
-      "pattern": "^(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[a-zA-Z0-9](?:[a-zA-Z0-9.-]*[a-zA-Z0-9])?)?$",
-      "type": "string"
+      "$ref": "#/definitions/Shared0"
     },
     "adjustment_receipts": {
       "description": "Consumer acceptance or rejection of exact post-official adjustments.",
@@ -219,44 +300,26 @@
               {
                 "else": {
                   "not": {
-                    "required": [
-                      "rejection_codes"
-                    ]
+                    "$ref": "#/definitions/Shared12"
                   }
                 },
                 "if": {
-                  "properties": {
-                    "status": {
-                      "const": "rejected"
-                    }
-                  },
-                  "required": [
-                    "status"
-                  ]
+                  "$ref": "#/definitions/Shared11"
                 },
                 "then": {
-                  "required": [
-                    "rejection_codes"
-                  ]
+                  "$ref": "#/definitions/Shared12"
                 }
               }
             ],
             "definitions": {
               "ReportingAdjustmentRejectionCode": {
-                "maxLength": 128,
-                "minLength": 1,
-                "pattern": "^[A-Z][A-Z0-9_]*$",
-                "type": "string"
+                "$ref": "#/definitions/Shared10"
               }
             },
             "description": "Authenticated consumer acceptance or rejection of one exact post-official adjustment. It does not alter the original official revision or its receipt.",
             "properties": {
               "adjusts_reporting_revision_id": {
-                "maxLength": 255,
-                "minLength": 1,
-                "pattern": "^[A-Za-z0-9_.:-]{1,255}$",
-                "type": "string",
-                "x-entity": "reporting_revision"
+                "$ref": "#/definitions/Shared4"
               },
               "observed_adjustment_sha256": {
                 "description": "Digest recomputed from the adjustment using its canonical evidence rule.",
@@ -264,24 +327,13 @@
                 "type": "string"
               },
               "observed_at": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/definitions/Shared8"
               },
               "received_at": {
-                "format": "date-time",
-                "readOnly": true,
-                "type": "string"
+                "$ref": "#/definitions/Shared9"
               },
               "rejection_codes": {
-                "items": {
-                  "maxLength": 128,
-                  "minLength": 1,
-                  "pattern": "^[A-Z][A-Z0-9_]*$",
-                  "type": "string"
-                },
-                "minItems": 1,
-                "type": "array",
-                "uniqueItems": true
+                "$ref": "#/definitions/Shared7"
               },
               "reporting_adjustment_id": {
                 "maxLength": 255,
@@ -291,18 +343,10 @@
                 "x-entity": "reporting_adjustment"
               },
               "reporting_receipt_id": {
-                "maxLength": 255,
-                "minLength": 16,
-                "pattern": "^[A-Za-z0-9_.:-]{16,255}$",
-                "type": "string",
-                "x-entity": "reporting_receipt"
+                "$ref": "#/definitions/Shared3"
               },
               "status": {
-                "enum": [
-                  "accepted",
-                  "rejected"
-                ],
-                "type": "string"
+                "$ref": "#/definitions/Shared5"
               },
               "supersedes_reporting_receipt_id": {
                 "description": "Optional immutable rejected receipt replaced by this new receipt for the same adjustment. Accepted current receipts are terminal.",
@@ -331,11 +375,7 @@
             "x-status": "experimental"
           },
           {
-            "not": {
-              "required": [
-                "received_at"
-              ]
-            }
+            "$ref": "#/definitions/Shared2"
           }
         ]
       },
@@ -373,26 +413,17 @@
             "allOf": [
               {
                 "if": {
-                  "properties": {
-                    "status": {
-                      "const": "rejected"
-                    }
-                  },
-                  "required": [
-                    "status"
-                  ]
+                  "$ref": "#/definitions/Shared11"
                 },
                 "then": {
-                  "required": [
-                    "rejection_codes"
-                  ]
+                  "$ref": "#/definitions/Shared12"
                 }
               },
               {
                 "if": {
                   "properties": {
                     "status": {
-                      "const": "accepted"
+                      "$ref": "#/definitions/Shared13"
                     },
                     "verification_profile": {
                       "const": "canonical_digest"
@@ -413,7 +444,7 @@
                 "if": {
                   "properties": {
                     "status": {
-                      "const": "accepted"
+                      "$ref": "#/definitions/Shared13"
                     },
                     "verification_profile": {
                       "const": "manifest_checksums"
@@ -434,7 +465,7 @@
                 "if": {
                   "properties": {
                     "status": {
-                      "const": "accepted"
+                      "$ref": "#/definitions/Shared13"
                     },
                     "verification_profile": {
                       "const": "native_commit"
@@ -461,8 +492,7 @@
                 "type": "string"
               },
               "observed_at": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/definitions/Shared8"
               },
               "observed_canonical_content_digest": {
                 "$schema": "http://json-schema.org/draft-07/schema#",
@@ -479,8 +509,7 @@
                     "type": "string"
                   },
                   "canonicalization_sha256": {
-                    "pattern": "^[A-Fa-f0-9]{64}$",
-                    "type": "string"
+                    "$ref": "#/definitions/Shared6"
                   },
                   "canonicalization_uri": {
                     "description": "Location of the exact immutable canonicalization contract. Consumers verify canonicalization_sha256 before applying it.",
@@ -489,8 +518,7 @@
                     "type": "string"
                   },
                   "value": {
-                    "pattern": "^[A-Fa-f0-9]{64}$",
-                    "type": "string"
+                    "$ref": "#/definitions/Shared6"
                   }
                 },
                 "required": [
@@ -513,16 +541,10 @@
                       "additionalProperties": false,
                       "properties": {
                         "name": {
-                          "maxLength": 128,
-                          "minLength": 1,
-                          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$",
-                          "type": "string"
+                          "$ref": "#/definitions/Shared14"
                         },
                         "unit": {
-                          "description": "Profile-defined unit such as impressions or an ISO 4217 currency code.",
-                          "maxLength": 32,
-                          "minLength": 1,
-                          "type": "string"
+                          "$ref": "#/definitions/Shared15"
                         },
                         "value": {
                           "description": "Canonical base-10 integer with no exponent, grouping separator, decimal point, or insignificant leading zeroes.",
@@ -546,16 +568,10 @@
                       "additionalProperties": false,
                       "properties": {
                         "name": {
-                          "maxLength": 128,
-                          "minLength": 1,
-                          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$",
-                          "type": "string"
+                          "$ref": "#/definitions/Shared14"
                         },
                         "unit": {
-                          "description": "Profile-defined unit such as impressions or an ISO 4217 currency code.",
-                          "maxLength": 32,
-                          "minLength": 1,
-                          "type": "string"
+                          "$ref": "#/definitions/Shared15"
                         },
                         "value": {
                           "description": "Canonical base-10 decimal with no exponent, grouping separator, or insignificant leading zeroes.",
@@ -583,8 +599,7 @@
                 "uniqueItems": true
               },
               "observed_manifest_sha256": {
-                "pattern": "^[A-Fa-f0-9]{64}$",
-                "type": "string"
+                "$ref": "#/definitions/Shared6"
               },
               "observed_native_version_ref": {
                 "$schema": "http://json-schema.org/draft-07/schema#",
@@ -600,20 +615,10 @@
                 "type": "integer"
               },
               "received_at": {
-                "format": "date-time",
-                "readOnly": true,
-                "type": "string"
+                "$ref": "#/definitions/Shared9"
               },
               "rejection_codes": {
-                "items": {
-                  "maxLength": 128,
-                  "minLength": 1,
-                  "pattern": "^[A-Z][A-Z0-9_]*$",
-                  "type": "string"
-                },
-                "minItems": 1,
-                "type": "array",
-                "uniqueItems": true
+                "$ref": "#/definitions/Shared7"
               },
               "reporting_materialization_id": {
                 "maxLength": 255,
@@ -630,25 +635,13 @@
                 "x-entity": "reporting_obligation"
               },
               "reporting_receipt_id": {
-                "maxLength": 255,
-                "minLength": 16,
-                "pattern": "^[A-Za-z0-9_.:-]{16,255}$",
-                "type": "string",
-                "x-entity": "reporting_receipt"
+                "$ref": "#/definitions/Shared3"
               },
               "reporting_revision_id": {
-                "maxLength": 255,
-                "minLength": 1,
-                "pattern": "^[A-Za-z0-9_.:-]{1,255}$",
-                "type": "string",
-                "x-entity": "reporting_revision"
+                "$ref": "#/definitions/Shared4"
               },
               "status": {
-                "enum": [
-                  "accepted",
-                  "rejected"
-                ],
-                "type": "string"
+                "$ref": "#/definitions/Shared5"
               },
               "supersedes_reporting_receipt_id": {
                 "description": "Optional immutable rejected receipt replaced by this new receipt. It MUST name the caller's current rejected receipt for this obligation and revision; accepted current receipts are terminal.",
@@ -692,11 +685,7 @@
             "x-status": "experimental"
           },
           {
-            "not": {
-              "required": [
-                "received_at"
-              ]
-            }
+            "$ref": "#/definitions/Shared2"
           }
         ]
       },

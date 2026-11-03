@@ -1,6 +1,12 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": false,
+  "definitions": {
+    "Shared0": {
+      "pattern": "^[A-Z]{2}$",
+      "type": "string"
+    }
+  },
   "description": "Buyer-declared facts used for coarse seller acceptance matching during product and proposal discovery. Sellers may infer omitted facts, but uncertainty never implies acceptance.",
   "minProperties": 1,
   "properties": {
@@ -181,8 +187,7 @@
     "advertiser_jurisdictions": {
       "description": "Jurisdictions in which the advertiser is established or legally organized. This is distinct from where an ad will be delivered.",
       "items": {
-        "pattern": "^[A-Z]{2}$",
-        "type": "string"
+        "$ref": "#/definitions/Shared0"
       },
       "minItems": 1,
       "type": "array",
@@ -200,8 +205,7 @@
     "delivery_jurisdictions": {
       "description": "Jurisdictions in which the proposed advertising will be delivered. Seller acceptance rules' jurisdictions and jurisdiction_groups match this field.",
       "items": {
-        "pattern": "^[A-Z]{2}$",
-        "type": "string"
+        "$ref": "#/definitions/Shared0"
       },
       "minItems": 1,
       "type": "array",

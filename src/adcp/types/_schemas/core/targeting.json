@@ -68,9 +68,7 @@
               "age": {
                 "properties": {
                   "accepted_bases": {
-                    "contains": {
-                      "const": "verified"
-                    }
+                    "$ref": "#/definitions/Shared32"
                   }
                 }
               }
@@ -81,6 +79,908 @@
       "title": "Targeting Verified Age Basis Constraint"
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "pattern": "^[A-Z]{2}$",
+      "type": "string"
+    },
+    "Shared1": {
+      "pattern": "^[A-Z]{2}-[A-Z0-9]{1,3}$",
+      "type": "string"
+    },
+    "Shared10": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Operating system platforms for device targeting. Browser values from Sec-CH-UA-Platform standard, extended for CTV.",
+      "enum": [
+        "ios",
+        "android",
+        "windows",
+        "macos",
+        "linux",
+        "chromeos",
+        "tvos",
+        "tizen",
+        "webos",
+        "fire_os",
+        "roku_os",
+        "unknown"
+      ],
+      "title": "Device Platform",
+      "type": "string"
+    },
+    "Shared11": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Device form factor categories for targeting and reporting. Complements device-platform (operating system) with hardware classification. OpenRTB mapping: 1 (Mobile/Tablet General) \u2192 mobile, 2 (PC) \u2192 desktop, 4 (Phone) \u2192 mobile, 5 (Tablet) \u2192 tablet, 6 (Connected Device) \u2192 ctv, 7 (Set Top Box) \u2192 ctv. DOOH inventory uses dooh.",
+      "enum": [
+        "desktop",
+        "mobile",
+        "tablet",
+        "ctv",
+        "dooh",
+        "unknown"
+      ],
+      "title": "Device Type",
+      "type": "string"
+    },
+    "Shared12": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Portable browser families for targeting the impression delivery and rendering environment, not a post-click landing-page browser. Values identify browser families, not versions or seller-native browser IDs, and MUST NOT be inferred solely from operating system, device, web/mobile-web inventory, or placement. android_webview means an impression reliably classified as rendering in Android WebView. other means a seller-recognized browser family that is not explicitly enumerated; unknown means the seller cannot classify the browser into a recognized family.",
+      "enum": [
+        "chrome",
+        "safari",
+        "firefox",
+        "edge",
+        "opera",
+        "samsung_internet",
+        "android_webview",
+        "other",
+        "unknown"
+      ],
+      "title": "Browser Family",
+      "type": "string"
+    },
+    "Shared13": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Metro area classification system (e.g., 'nielsen_dma', 'uk_itl2')",
+      "enum": [
+        "nielsen_dma",
+        "uk_itl1",
+        "uk_itl2",
+        "eurostat_nuts2",
+        "custom"
+      ],
+      "title": "Metro Area System",
+      "type": "string"
+    },
+    "Shared14": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "Shared15": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "description": "A time duration expressed as an interval and unit. Used for frequency cap windows, attribution windows, reach optimization windows, time budgets, and other time-based settings. When unit is 'campaign', interval must be 1 \u2014 the window spans the full campaign flight.",
+      "properties": {
+        "interval": {
+          "description": "Number of time units. Must be 1 when unit is 'campaign'.",
+          "minimum": 1,
+          "type": "integer"
+        },
+        "unit": {
+          "description": "Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.",
+          "enum": [
+            "seconds",
+            "minutes",
+            "hours",
+            "days",
+            "campaign"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "interval",
+        "unit"
+      ],
+      "title": "Duration",
+      "type": "object"
+    },
+    "Shared16": {
+      "const": "selected",
+      "type": "string"
+    },
+    "Shared17": {
+      "const": "default",
+      "type": "string"
+    },
+    "Shared18": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Methods for verifying user age for compliance. Does not include 'inferred' as it is not accepted for regulatory compliance.",
+      "enum": [
+        "facial_age_estimation",
+        "id_document",
+        "digital_id",
+        "credit_card",
+        "world_id"
+      ],
+      "title": "Age Verification Method",
+      "type": "string"
+    },
+    "Shared19": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Keyword targeting match type. broad: ads may serve on queries semantically related to the keyword. phrase: ads serve when the query contains the keyword phrase. exact: ads serve only when the query matches the keyword exactly.",
+      "enum": [
+        "broad",
+        "phrase",
+        "exact"
+      ],
+      "enumDescriptions": {
+        "broad": "Ads may serve on queries semantically related to the keyword",
+        "exact": "Ads serve only when the query matches the keyword exactly",
+        "phrase": "Ads serve when the query contains the keyword phrase in order"
+      },
+      "title": "Match Type",
+      "type": "string"
+    },
+    "Shared2": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "anyOf": [
+        {
+          "additionalProperties": false,
+          "allOf": [
+            {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "anyOf": [
+                {
+                  "properties": {
+                    "country": {
+                      "const": "US"
+                    },
+                    "system": {
+                      "enum": [
+                        "zip",
+                        "zip_plus_four"
+                      ]
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "country": {
+                      "const": "GB"
+                    },
+                    "system": {
+                      "enum": [
+                        "outward",
+                        "full"
+                      ]
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "country": {
+                      "const": "CA"
+                    },
+                    "system": {
+                      "enum": [
+                        "fsa",
+                        "full"
+                      ]
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "country": {
+                      "enum": [
+                        "DE",
+                        "CH",
+                        "AT"
+                      ]
+                    },
+                    "system": {
+                      "const": "plz"
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "country": {
+                      "const": "FR"
+                    },
+                    "system": {
+                      "const": "code_postal"
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "country": {
+                      "const": "AU"
+                    },
+                    "system": {
+                      "const": "postcode"
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "country": {
+                      "const": "BR"
+                    },
+                    "system": {
+                      "const": "cep"
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "country": {
+                      "const": "IN"
+                    },
+                    "system": {
+                      "const": "pin"
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "country": {
+                      "const": "ZA"
+                    },
+                    "system": {
+                      "const": "postal_code"
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "country": {
+                      "not": {
+                        "enum": [
+                          "US",
+                          "GB",
+                          "CA",
+                          "DE",
+                          "CH",
+                          "AT",
+                          "FR",
+                          "AU",
+                          "BR",
+                          "IN",
+                          "ZA"
+                        ]
+                      }
+                    },
+                    "system": {
+                      "enum": [
+                        "postal_code",
+                        "custom"
+                      ]
+                    }
+                  }
+                }
+              ],
+              "description": "Valid country-local postal system pairing. Registered countries only accept their registered local systems; countries without a registered local system use postal_code or custom.",
+              "properties": {
+                "country": {
+                  "description": "ISO 3166-1 alpha-2 country code.",
+                  "pattern": "^[A-Z]{2}$",
+                  "type": "string"
+                },
+                "system": {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "description": "Country-local postal code system.",
+                  "enum": [
+                    "postal_code",
+                    "zip",
+                    "zip_plus_four",
+                    "outward",
+                    "full",
+                    "fsa",
+                    "plz",
+                    "code_postal",
+                    "postcode",
+                    "cep",
+                    "pin",
+                    "custom",
+                    "us_zip",
+                    "us_zip_plus_four",
+                    "gb_outward",
+                    "gb_full",
+                    "ca_fsa",
+                    "ca_full",
+                    "de_plz",
+                    "fr_code_postal",
+                    "au_postcode",
+                    "ch_plz",
+                    "at_plz"
+                  ],
+                  "title": "Postal Code System",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "country",
+                "system"
+              ],
+              "title": "Postal Country System",
+              "type": "object"
+            }
+          ],
+          "properties": {
+            "country": {
+              "description": "ISO 3166-1 alpha-2 country code for the postal values.",
+              "pattern": "^[A-Z]{2}$",
+              "type": "string"
+            },
+            "system": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "description": "Country-local postal code system (e.g., 'zip', 'outward', 'plz', 'postal_code').",
+              "enum": [
+                "postal_code",
+                "zip",
+                "zip_plus_four",
+                "outward",
+                "full",
+                "fsa",
+                "plz",
+                "code_postal",
+                "postcode",
+                "cep",
+                "pin",
+                "custom",
+                "us_zip",
+                "us_zip_plus_four",
+                "gb_outward",
+                "gb_full",
+                "ca_fsa",
+                "ca_full",
+                "de_plz",
+                "fr_code_postal",
+                "au_postcode",
+                "ch_plz",
+                "at_plz"
+              ],
+              "title": "Postal Code System",
+              "type": "string"
+            },
+            "values": {
+              "description": "Postal codes within the country and system.",
+              "items": {
+                "$ref": "#/definitions/Shared4"
+              },
+              "minItems": 1,
+              "type": "array"
+            }
+          },
+          "required": [
+            "country",
+            "system",
+            "values"
+          ],
+          "title": "PostalArea",
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "deprecated": true,
+          "properties": {
+            "system": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "deprecated": true,
+              "description": "Deprecated country-fused postal code system (e.g., 'us_zip', 'gb_outward'). Prefer country + postal-system.",
+              "enum": [
+                "us_zip",
+                "us_zip_plus_four",
+                "gb_outward",
+                "gb_full",
+                "ca_fsa",
+                "ca_full",
+                "de_plz",
+                "fr_code_postal",
+                "au_postcode",
+                "ch_plz",
+                "at_plz"
+              ],
+              "title": "Country-Fused Postal Code System",
+              "type": "string"
+            },
+            "values": {
+              "description": "Postal codes within the legacy system.",
+              "items": {
+                "$ref": "#/definitions/Shared4"
+              },
+              "minItems": 1,
+              "type": "array"
+            }
+          },
+          "required": [
+            "system",
+            "values"
+          ],
+          "title": "PostalAreaWithFusedSystem",
+          "type": "object"
+        }
+      ],
+      "description": "Postal area values. Prefer the native country + postal system form. Deprecated legacy country-fused postal-system tokens remain accepted for compatibility.",
+      "title": "Postal Area"
+    },
+    "Shared20": {
+      "format": "uri",
+      "pattern": "^https://",
+      "type": "string"
+    },
+    "Shared21": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "Shared22": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "The signal to target. New targeting constraints SHOULD use signal_ref.",
+      "discriminator": {
+        "propertyName": "scope"
+      },
+      "oneOf": [
+        {
+          "$ref": "#/definitions/Shared26"
+        },
+        {
+          "$ref": "#/definitions/Shared27"
+        },
+        {
+          "$ref": "#/definitions/Shared28"
+        }
+      ],
+      "title": "Signal Ref",
+      "x-entity": "signal"
+    },
+    "Shared23": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "deprecated": true,
+      "description": "DEPRECATED. Use signal_ref instead. Legacy SignalId retained for compatibility with older clients.",
+      "discriminator": {
+        "propertyName": "source"
+      },
+      "oneOf": [
+        {
+          "additionalProperties": true,
+          "description": "Data-provider signal - references a signal from a data provider's published adagents.json signals[]. Buyers can verify authorization by checking the data provider's adagents.json.",
+          "properties": {
+            "data_provider_domain": {
+              "description": "Domain of the data provider that owns this signal (e.g., 'pinnacle-data.example'). The signal definition is published at this domain's /.well-known/adagents.json",
+              "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+              "type": "string"
+            },
+            "id": {
+              "description": "Signal identifier within the data provider's catalog (e.g., 'likely_ev_buyers', 'income_100k_plus')",
+              "pattern": "^[a-zA-Z0-9_-]+$",
+              "type": "string"
+            },
+            "source": {
+              "const": "catalog",
+              "description": "Discriminator indicating this signal is from a data provider's published adagents.json signals[]",
+              "type": "string"
+            }
+          },
+          "required": [
+            "source",
+            "data_provider_domain",
+            "id"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": true,
+          "description": "Agent signal - references a signal native to a signal source identified by agent_url. Not externally verifiable through an upstream catalog; buyer trusts the issuing signal source's claim about the signal.",
+          "properties": {
+            "agent_url": {
+              "description": "URL of the signal source that provides this signal (e.g., 'https://signals.example/.well-known/adcp/signals')",
+              "format": "uri",
+              "type": "string"
+            },
+            "id": {
+              "description": "Signal identifier within the agent's signal set (e.g., 'custom_auto_intenders')",
+              "pattern": "^[a-zA-Z0-9_-]+$",
+              "type": "string"
+            },
+            "source": {
+              "const": "agent",
+              "description": "Discriminator indicating this signal is native to the signal source identified by agent_url, not from a data provider's published signal definitions.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "source",
+            "agent_url",
+            "id"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "Signal ID",
+      "x-entity": "signal"
+    },
+    "Shared24": {
+      "required": [
+        "signal_ref"
+      ]
+    },
+    "Shared25": {
+      "required": [
+        "signal_id"
+      ]
+    },
+    "Shared26": {
+      "additionalProperties": true,
+      "description": "Product-scoped signal. The signal_id is meaningful only within the selected product/package context and MUST match a Product.included_signals[].signal_ref.signal_id or Product.signal_targeting_options[].signal_ref.signal_id for that product, depending on whether the signal is descriptive or selectable.",
+      "not": {
+        "anyOf": [
+          {
+            "$ref": "#/definitions/Shared33"
+          },
+          {
+            "$ref": "#/definitions/Shared34"
+          },
+          {
+            "$ref": "#/definitions/Shared35"
+          },
+          {
+            "$ref": "#/definitions/Shared36"
+          },
+          {
+            "$ref": "#/definitions/Shared37"
+          }
+        ]
+      },
+      "properties": {
+        "scope": {
+          "const": "product",
+          "description": "Discriminator indicating the signal resolves through the selected product's included_signals or signal_targeting_options.",
+          "type": "string"
+        },
+        "signal_id": {
+          "description": "Product-local signal identifier. For local signals exposed on both get_signals and get_products, this MUST match get_signals.signals[].signal_ref.signal_id for the same signal.",
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "scope",
+        "signal_id"
+      ],
+      "type": "object"
+    },
+    "Shared27": {
+      "additionalProperties": true,
+      "description": "Data-provider-scoped signal. The signal_id resolves through the data provider's published adagents.json signals[] and can be authorization-verified there.",
+      "not": {
+        "anyOf": [
+          {
+            "$ref": "#/definitions/Shared35"
+          },
+          {
+            "$ref": "#/definitions/Shared34"
+          },
+          {
+            "$ref": "#/definitions/Shared36"
+          },
+          {
+            "$ref": "#/definitions/Shared37"
+          }
+        ]
+      },
+      "properties": {
+        "data_provider_domain": {
+          "description": "Domain that publishes the signal definition in its adagents.json signals[].",
+          "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+          "type": "string"
+        },
+        "scope": {
+          "const": "data_provider",
+          "description": "Discriminator indicating the signal resolves through a data provider's published adagents.json signals[].",
+          "type": "string"
+        },
+        "signal_id": {
+          "description": "Signal identifier within the data provider's published adagents.json signals[].",
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "scope",
+        "data_provider_domain",
+        "signal_id"
+      ],
+      "type": "object"
+    },
+    "Shared28": {
+      "additionalProperties": true,
+      "description": "Signal-source-scoped signal. Use this for source-native signals that are not published in upstream adagents.json signals[]. The buyer trusts the issuing signal source for this identity; use scope 'data_provider' instead when the signal is published in adagents.json signals[], even if the publisher is also the seller or signal source.",
+      "not": {
+        "anyOf": [
+          {
+            "$ref": "#/definitions/Shared33"
+          },
+          {
+            "$ref": "#/definitions/Shared35"
+          },
+          {
+            "$ref": "#/definitions/Shared36"
+          },
+          {
+            "$ref": "#/definitions/Shared37"
+          }
+        ]
+      },
+      "properties": {
+        "scope": {
+          "const": "signal_source",
+          "description": "Discriminator indicating the signal resolves through the issuing signal source.",
+          "type": "string"
+        },
+        "signal_id": {
+          "description": "Signal identifier within the issuing signal source's signal set.",
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "type": "string"
+        },
+        "signal_source_url": {
+          "description": "URL of the signal source that issues this source-native signal.",
+          "format": "uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "scope",
+        "signal_source_url",
+        "signal_id"
+      ],
+      "type": "object"
+    },
+    "Shared29": {
+      "required": [
+        "radius"
+      ]
+    },
+    "Shared3": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "system": {
+                "enum": [
+                  "geonames",
+                  "google_ads",
+                  "microsoft_ads"
+                ]
+              }
+            },
+            "required": [
+              "system"
+            ]
+          },
+          "then": {
+            "properties": {
+              "values": {
+                "items": {
+                  "pattern": "^[0-9]+$",
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "description": "A catalog-backed named place target. Values are stable identifiers in the declared system. Entries within geo_places form a union; different geographic inclusion dimensions intersect. value_labels are diagnostic only and MUST NOT be used to resolve targeting.",
+      "properties": {
+        "country": {
+          "description": "ISO 3166-1 alpha-2 country code containing the place.",
+          "pattern": "^[A-Z]{2}$",
+          "type": "string"
+        },
+        "ext": {
+          "$ref": "#/definitions/Shared14"
+        },
+        "place_type": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "anyOf": [
+            {
+              "enum": [
+                "airport",
+                "borough",
+                "city",
+                "city_region",
+                "commune",
+                "county",
+                "district",
+                "municipality",
+                "neighborhood",
+                "post_town",
+                "prefecture",
+                "province",
+                "quarter",
+                "state",
+                "territory",
+                "ward"
+              ],
+              "type": "string"
+            },
+            {
+              "$ref": "#/definitions/Shared20"
+            }
+          ],
+          "description": "Canonical place classification. Registered tokens have protocol-defined meanings. Catalog-specific classifications without a registered mapping MUST use an absolute HTTPS URI controlled by the vocabulary owner; consumers compare URI types as exact opaque strings.",
+          "examples": [
+            "city",
+            "municipality",
+            "borough",
+            "neighborhood",
+            "post_town",
+            "city_region",
+            "county",
+            "https://seller.example/geo/place-types/trade-area"
+          ],
+          "title": "Geographic Place Type"
+        },
+        "system": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "anyOf": [
+            {
+              "enum": [
+                "geonames",
+                "google_ads",
+                "microsoft_ads"
+              ],
+              "type": "string"
+            },
+            {
+              "$ref": "#/definitions/Shared20"
+            }
+          ],
+          "description": "Collision-safe identifier namespace for geographic places. Registered tokens have protocol-defined semantics. Unregistered systems MUST use an absolute HTTPS URI controlled by the catalog owner; consumers compare URI systems as exact opaque strings.",
+          "examples": [
+            "geonames",
+            "google_ads",
+            "microsoft_ads",
+            "https://seller.example/geo/catalogs/places"
+          ],
+          "title": "Geographic Place Identifier System"
+        },
+        "system_version": {
+          "description": "Optional exact catalog version from the seller's declared supported_versions. When omitted, the seller applies catalog.current_version and MUST echo that version on persisted package state.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "value_labels": {
+          "additionalProperties": {
+            "$ref": "#/definitions/Shared21"
+          },
+          "description": "Optional human-readable diagnostic labels keyed by identifiers present in values. Extra keys are a conformance error. Labels are non-authoritative and MUST NOT be used to resolve or apply targeting.",
+          "type": "object"
+        },
+        "values": {
+          "description": "Stable place identifiers in the declared system. Display names are not valid targeting values.",
+          "items": {
+            "$ref": "#/definitions/Shared21"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "country",
+        "system",
+        "place_type",
+        "values"
+      ],
+      "title": "Geographic Place Area",
+      "type": "object",
+      "x-adcp-schema-uri": "/schemas/core/geo-place-area.json",
+      "x-adcp-validation": {
+        "description": "Every value_labels key MUST also appear in values. JSON Schema draft-07 cannot express this sibling-field key membership constraint, so conformance tooling must enforce it.",
+        "map_keys_subset_of_array": {
+          "array_field": "values",
+          "map_field": "value_labels"
+        }
+      }
+    },
+    "Shared30": {
+      "required": [
+        "geometry"
+      ]
+    },
+    "Shared31": {
+      "required": [
+        "travel_time"
+      ]
+    },
+    "Shared32": {
+      "contains": {
+        "const": "verified"
+      }
+    },
+    "Shared33": {
+      "required": [
+        "data_provider_domain"
+      ]
+    },
+    "Shared34": {
+      "required": [
+        "signal_source_url"
+      ]
+    },
+    "Shared35": {
+      "required": [
+        "agent_url"
+      ]
+    },
+    "Shared36": {
+      "required": [
+        "source"
+      ]
+    },
+    "Shared37": {
+      "required": [
+        "id"
+      ]
+    },
+    "Shared38": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Named signal being targeted.",
+      "discriminator": {
+        "propertyName": "scope"
+      },
+      "oneOf": [
+        {
+          "$ref": "#/definitions/Shared26"
+        },
+        {
+          "$ref": "#/definitions/Shared27"
+        },
+        {
+          "$ref": "#/definitions/Shared28"
+        }
+      ],
+      "title": "Signal Ref",
+      "x-entity": "signal"
+    },
+    "Shared4": {
+      "type": "string"
+    },
+    "Shared5": {
+      "description": "URL of the agent managing the property list",
+      "format": "uri",
+      "type": "string"
+    },
+    "Shared6": {
+      "description": "Identifier for the property list within the agent",
+      "minLength": 1,
+      "type": "string",
+      "x-entity": "property_list"
+    },
+    "Shared7": {
+      "description": "JWT or other authorization token for accessing the list. Optional if the list is public or caller has implicit access.",
+      "type": "string"
+    },
+    "Shared8": {
+      "description": "URL of the agent managing the collection list",
+      "format": "uri",
+      "type": "string"
+    },
+    "Shared9": {
+      "description": "Identifier for the collection list within the agent",
+      "minLength": 1,
+      "type": "string",
+      "x-entity": "collection_list"
+    }
+  },
   "description": "Strict non-null targeting state used during product discovery, commercial snapshots, and media-buy readback. Targeting includes both audience eligibility and purchased-inventory selection: geography, demographics, placements, properties, collections, device compatibility, language, keywords, and other explicit controls. Sellers resolve requested outcomes against inherent product scope or selectable execution. Request-side create and update mutations use targeting-input.json so null can explicitly clear one dimension; resolved effective targeting omits cleared dimensions and MUST NOT contain null. A fresh create/update request MUST be applied exactly or rejected; get_products may instead return a request-scoped configured product with sparse, buyer-reviewable targeting_resolution modifications.",
   "properties": {
     "age_restriction": {
@@ -90,17 +990,7 @@
         "accepted_methods": {
           "description": "Accepted verification methods. If omitted, any method the platform supports is acceptable.",
           "items": {
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "description": "Methods for verifying user age for compliance. Does not include 'inferred' as it is not accepted for regulatory compliance.",
-            "enum": [
-              "facial_age_estimation",
-              "id_document",
-              "digital_id",
-              "credit_card",
-              "world_id"
-            ],
-            "title": "Age Verification Method",
-            "type": "string"
+            "$ref": "#/definitions/Shared18"
           },
           "minItems": 1,
           "type": "array"
@@ -125,7 +1015,7 @@
     "audience_exclude": {
       "description": "Suppress delivery to members of these first-party CRM audiences. Matched users are excluded regardless of other targeting. References audience_id values from sync_audiences on the same seller account \u2014 audience IDs are not portable across sellers. Seller must declare support in get_adcp_capabilities.",
       "items": {
-        "type": "string"
+        "$ref": "#/definitions/Shared4"
       },
       "minItems": 1,
       "type": "array"
@@ -133,7 +1023,7 @@
     "audience_include": {
       "description": "Restrict delivery to members of these first-party CRM audiences. Only users present in the uploaded lists are eligible. References audience_id values from sync_audiences on the same seller account \u2014 audience IDs are not portable across sellers. Not for lookalike expansion \u2014 express that intent in the campaign brief. Seller must declare support in get_adcp_capabilities.",
       "items": {
-        "type": "string"
+        "$ref": "#/definitions/Shared4"
       },
       "minItems": 1,
       "type": "array"
@@ -151,21 +1041,7 @@
     "browser": {
       "description": "Restrict delivery to specific canonical browser families in the impression delivery and rendering environment, not the post-click landing-page browser. Values MUST NOT be inferred solely from operating system, device, web/mobile-web inventory, or placement. Values in this array use OR semantics. When browser is supplied, families not listed are ineligible: other includes a seller-recognized family that is not explicitly enumerated, while unknown includes a browser the seller cannot classify into a recognized family. When the same family appears in browser and browser_exclude, exclusion wins. Browser and device constraints intersect; a seller that cannot enforce the exact combination MUST exclude or explicitly reconfigure the product during discovery and MUST reject it at create or update rather than silently widening delivery. Browser versions and seller-native IDs are intentionally unsupported.",
       "items": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "description": "Portable browser families for targeting the impression delivery and rendering environment, not a post-click landing-page browser. Values identify browser families, not versions or seller-native browser IDs, and MUST NOT be inferred solely from operating system, device, web/mobile-web inventory, or placement. android_webview means an impression reliably classified as rendering in Android WebView. other means a seller-recognized browser family that is not explicitly enumerated; unknown means the seller cannot classify the browser into a recognized family.",
-        "enum": [
-          "chrome",
-          "safari",
-          "firefox",
-          "edge",
-          "opera",
-          "samsung_internet",
-          "android_webview",
-          "other",
-          "unknown"
-        ],
-        "title": "Browser Family",
-        "type": "string"
+        "$ref": "#/definitions/Shared12"
       },
       "minItems": 1,
       "type": "array",
@@ -174,21 +1050,7 @@
     "browser_exclude": {
       "description": "Exclude specific canonical browser families from delivery. other excludes seller-recognized families that are not explicitly enumerated; unknown excludes browsers the seller cannot classify into a recognized family. When the same family appears in browser and browser_exclude, exclusion wins. Sellers MUST reject a request they cannot enforce rather than silently dropping the exclusion.",
       "items": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "description": "Portable browser families for targeting the impression delivery and rendering environment, not a post-click landing-page browser. Values identify browser families, not versions or seller-native browser IDs, and MUST NOT be inferred solely from operating system, device, web/mobile-web inventory, or placement. android_webview means an impression reliably classified as rendering in Android WebView. other means a seller-recognized browser family that is not explicitly enumerated; unknown means the seller cannot classify the browser into a recognized family.",
-        "enum": [
-          "chrome",
-          "safari",
-          "firefox",
-          "edge",
-          "opera",
-          "samsung_internet",
-          "android_webview",
-          "other",
-          "unknown"
-        ],
-        "title": "Browser Family",
-        "type": "string"
+        "$ref": "#/definitions/Shared12"
       },
       "minItems": 1,
       "type": "array",
@@ -200,19 +1062,13 @@
       "description": "Reference to a collection list for including specific collections (programs, publications, channels) within this product. The package runs on the intersection of matched collections and this list. Use for inclusion-based collection targeting. Seller must declare support in get_adcp_capabilities.",
       "properties": {
         "agent_url": {
-          "description": "URL of the agent managing the collection list",
-          "format": "uri",
-          "type": "string"
+          "$ref": "#/definitions/Shared8"
         },
         "auth_token": {
-          "description": "JWT or other authorization token for accessing the list. Optional if the list is public or caller has implicit access.",
-          "type": "string"
+          "$ref": "#/definitions/Shared7"
         },
         "list_id": {
-          "description": "Identifier for the collection list within the agent",
-          "minLength": 1,
-          "type": "string",
-          "x-entity": "collection_list"
+          "$ref": "#/definitions/Shared9"
         }
       },
       "required": [
@@ -228,19 +1084,13 @@
       "description": "Reference to a collection list for excluding specific collections (programs, publications, channels) from this product. Matched collections must not carry the buyer's ads. Use for brand safety do-not-air lists. Seller must declare support in get_adcp_capabilities.",
       "properties": {
         "agent_url": {
-          "description": "URL of the agent managing the collection list",
-          "format": "uri",
-          "type": "string"
+          "$ref": "#/definitions/Shared8"
         },
         "auth_token": {
-          "description": "JWT or other authorization token for accessing the list. Optional if the list is public or caller has implicit access.",
-          "type": "string"
+          "$ref": "#/definitions/Shared7"
         },
         "list_id": {
-          "description": "Identifier for the collection list within the agent",
-          "minLength": 1,
-          "type": "string",
-          "x-entity": "collection_list"
+          "$ref": "#/definitions/Shared9"
         }
       },
       "required": [
@@ -302,15 +1152,10 @@
               "uniqueItems": true
             },
             "ext": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": true,
-              "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-              "title": "Extension Object",
-              "type": "object"
+              "$ref": "#/definitions/Shared14"
             },
             "mode": {
-              "const": "selected",
-              "type": "string"
+              "$ref": "#/definitions/Shared16"
             }
           },
           "required": [
@@ -324,15 +1169,10 @@
           "additionalProperties": false,
           "properties": {
             "ext": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": true,
-              "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-              "title": "Extension Object",
-              "type": "object"
+              "$ref": "#/definitions/Shared14"
             },
             "mode": {
-              "const": "default",
-              "type": "string"
+              "$ref": "#/definitions/Shared17"
             }
           },
           "required": [
@@ -486,9 +1326,7 @@
                   "then": {
                     "properties": {
                       "accepted_bases": {
-                        "contains": {
-                          "const": "verified"
-                        }
+                        "$ref": "#/definitions/Shared32"
                       }
                     },
                     "required": [
@@ -523,17 +1361,7 @@
                 "accepted_verification_methods": {
                   "description": "Verification methods acceptable when verified is an accepted basis. This field narrows verified demographic execution; age_restriction.accepted_methods independently governs legal eligibility and the two sets are intersected when both are present.",
                   "items": {
-                    "$schema": "http://json-schema.org/draft-07/schema#",
-                    "description": "Methods for verifying user age for compliance. Does not include 'inferred' as it is not accepted for regulatory compliance.",
-                    "enum": [
-                      "facial_age_estimation",
-                      "id_document",
-                      "digital_id",
-                      "credit_card",
-                      "world_id"
-                    ],
-                    "title": "Age Verification Method",
-                    "type": "string"
+                    "$ref": "#/definitions/Shared18"
                   },
                   "minItems": 1,
                   "type": "array",
@@ -554,24 +1382,7 @@
     "device_platform": {
       "description": "Restrict to specific platforms. Use for technical compatibility (app only works on iOS). Values from Sec-CH-UA-Platform standard, extended for CTV.",
       "items": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "description": "Operating system platforms for device targeting. Browser values from Sec-CH-UA-Platform standard, extended for CTV.",
-        "enum": [
-          "ios",
-          "android",
-          "windows",
-          "macos",
-          "linux",
-          "chromeos",
-          "tvos",
-          "tizen",
-          "webos",
-          "fire_os",
-          "roku_os",
-          "unknown"
-        ],
-        "title": "Device Platform",
-        "type": "string"
+        "$ref": "#/definitions/Shared10"
       },
       "minItems": 1,
       "type": "array"
@@ -579,24 +1390,7 @@
     "device_platform_exclude": {
       "description": "Exclude specific operating-system platforms from delivery. When a platform appears in both device_platform and device_platform_exclude, exclusion wins. Sellers MUST reject a request they cannot enforce rather than silently dropping the exclusion.",
       "items": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "description": "Operating system platforms for device targeting. Browser values from Sec-CH-UA-Platform standard, extended for CTV.",
-        "enum": [
-          "ios",
-          "android",
-          "windows",
-          "macos",
-          "linux",
-          "chromeos",
-          "tvos",
-          "tizen",
-          "webos",
-          "fire_os",
-          "roku_os",
-          "unknown"
-        ],
-        "title": "Device Platform",
-        "type": "string"
+        "$ref": "#/definitions/Shared10"
       },
       "minItems": 1,
       "type": "array"
@@ -604,18 +1398,7 @@
     "device_type": {
       "description": "Restrict to specific device form factors. Use for campaigns targeting hardware categories rather than operating systems (e.g., mobile-only promotions, CTV campaigns).",
       "items": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "description": "Device form factor categories for targeting and reporting. Complements device-platform (operating system) with hardware classification. OpenRTB mapping: 1 (Mobile/Tablet General) \u2192 mobile, 2 (PC) \u2192 desktop, 4 (Phone) \u2192 mobile, 5 (Tablet) \u2192 tablet, 6 (Connected Device) \u2192 ctv, 7 (Set Top Box) \u2192 ctv. DOOH inventory uses dooh.",
-        "enum": [
-          "desktop",
-          "mobile",
-          "tablet",
-          "ctv",
-          "dooh",
-          "unknown"
-        ],
-        "title": "Device Type",
-        "type": "string"
+        "$ref": "#/definitions/Shared11"
       },
       "minItems": 1,
       "type": "array"
@@ -623,18 +1406,7 @@
     "device_type_exclude": {
       "description": "Exclude specific device form factors from delivery (e.g., exclude CTV for app-install campaigns).",
       "items": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "description": "Device form factor categories for targeting and reporting. Complements device-platform (operating system) with hardware classification. OpenRTB mapping: 1 (Mobile/Tablet General) \u2192 mobile, 2 (PC) \u2192 desktop, 4 (Phone) \u2192 mobile, 5 (Tablet) \u2192 tablet, 6 (Connected Device) \u2192 ctv, 7 (Set Top Box) \u2192 ctv. DOOH inventory uses dooh.",
-        "enum": [
-          "desktop",
-          "mobile",
-          "tablet",
-          "ctv",
-          "dooh",
-          "unknown"
-        ],
-        "title": "Device Type",
-        "type": "string"
+        "$ref": "#/definitions/Shared11"
       },
       "minItems": 1,
       "type": "array"
@@ -708,33 +1480,7 @@
         "suppress": {
           "allOf": [
             {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": false,
-              "description": "A time duration expressed as an interval and unit. Used for frequency cap windows, attribution windows, reach optimization windows, time budgets, and other time-based settings. When unit is 'campaign', interval must be 1 \u2014 the window spans the full campaign flight.",
-              "properties": {
-                "interval": {
-                  "description": "Number of time units. Must be 1 when unit is 'campaign'.",
-                  "minimum": 1,
-                  "type": "integer"
-                },
-                "unit": {
-                  "description": "Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.",
-                  "enum": [
-                    "seconds",
-                    "minutes",
-                    "hours",
-                    "days",
-                    "campaign"
-                  ],
-                  "type": "string"
-                }
-              },
-              "required": [
-                "interval",
-                "unit"
-              ],
-              "title": "Duration",
-              "type": "object"
+              "$ref": "#/definitions/Shared15"
             }
           ],
           "description": "Cooldown period between consecutive exposures to the same entity. Prevents back-to-back ad delivery (e.g. {\"interval\": 60, \"unit\": \"minutes\"} for a 1-hour cooldown). Preferred over suppress_minutes."
@@ -748,33 +1494,7 @@
         "window": {
           "allOf": [
             {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": false,
-              "description": "A time duration expressed as an interval and unit. Used for frequency cap windows, attribution windows, reach optimization windows, time budgets, and other time-based settings. When unit is 'campaign', interval must be 1 \u2014 the window spans the full campaign flight.",
-              "properties": {
-                "interval": {
-                  "description": "Number of time units. Must be 1 when unit is 'campaign'.",
-                  "minimum": 1,
-                  "type": "integer"
-                },
-                "unit": {
-                  "description": "Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.",
-                  "enum": [
-                    "seconds",
-                    "minutes",
-                    "hours",
-                    "days",
-                    "campaign"
-                  ],
-                  "type": "string"
-                }
-              },
-              "required": [
-                "interval",
-                "unit"
-              ],
-              "title": "Duration",
-              "type": "object"
+              "$ref": "#/definitions/Shared15"
             }
           ],
           "description": "Time window for the max_impressions cap (e.g. {\"interval\": 7, \"unit\": \"days\"} or {\"interval\": 1, \"unit\": \"campaign\"} for the full flight). Required when max_impressions is set."
@@ -786,8 +1506,7 @@
     "geo_countries": {
       "description": "Restrict delivery to specific countries. ISO 3166-1 alpha-2 codes (e.g., 'US', 'GB', 'DE').",
       "items": {
-        "pattern": "^[A-Z]{2}$",
-        "type": "string"
+        "$ref": "#/definitions/Shared0"
       },
       "minItems": 1,
       "type": "array"
@@ -795,8 +1514,7 @@
     "geo_countries_exclude": {
       "description": "Exclude specific countries from delivery. ISO 3166-1 alpha-2 codes (e.g., 'US', 'GB', 'DE').",
       "items": {
-        "pattern": "^[A-Z]{2}$",
-        "type": "string"
+        "$ref": "#/definitions/Shared0"
       },
       "minItems": 1,
       "type": "array"
@@ -809,22 +1527,12 @@
         "description": "A targeted metro area.",
         "properties": {
           "system": {
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "description": "Metro area classification system (e.g., 'nielsen_dma', 'uk_itl2')",
-            "enum": [
-              "nielsen_dma",
-              "uk_itl1",
-              "uk_itl2",
-              "eurostat_nuts2",
-              "custom"
-            ],
-            "title": "Metro Area System",
-            "type": "string"
+            "$ref": "#/definitions/Shared13"
           },
           "values": {
             "description": "Metro codes within the system (e.g., ['501', '602'] for Nielsen DMAs)",
             "items": {
-              "type": "string"
+              "$ref": "#/definitions/Shared4"
             },
             "minItems": 1,
             "type": "array"
@@ -847,22 +1555,12 @@
         "additionalProperties": false,
         "properties": {
           "system": {
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "description": "Metro area classification system (e.g., 'nielsen_dma', 'uk_itl2')",
-            "enum": [
-              "nielsen_dma",
-              "uk_itl1",
-              "uk_itl2",
-              "eurostat_nuts2",
-              "custom"
-            ],
-            "title": "Metro Area System",
-            "type": "string"
+            "$ref": "#/definitions/Shared13"
           },
           "values": {
             "description": "Metro codes to exclude within the system (e.g., ['501', '602'] for Nielsen DMAs)",
             "items": {
-              "type": "string"
+              "$ref": "#/definitions/Shared4"
             },
             "minItems": 1,
             "type": "array"
@@ -880,159 +1578,7 @@
     "geo_places": {
       "description": "Restrict delivery to catalog-backed named places. Values MUST be stable identifiers in the declared system, not display names. Sellers must declare supported systems, countries, and place types in get_adcp_capabilities and reject unsupported entries rather than silently dropping them.",
       "items": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "additionalProperties": false,
-        "allOf": [
-          {
-            "if": {
-              "properties": {
-                "system": {
-                  "enum": [
-                    "geonames",
-                    "google_ads",
-                    "microsoft_ads"
-                  ]
-                }
-              },
-              "required": [
-                "system"
-              ]
-            },
-            "then": {
-              "properties": {
-                "values": {
-                  "items": {
-                    "pattern": "^[0-9]+$",
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          }
-        ],
-        "description": "A catalog-backed named place target. Values are stable identifiers in the declared system. Entries within geo_places form a union; different geographic inclusion dimensions intersect. value_labels are diagnostic only and MUST NOT be used to resolve targeting.",
-        "properties": {
-          "country": {
-            "description": "ISO 3166-1 alpha-2 country code containing the place.",
-            "pattern": "^[A-Z]{2}$",
-            "type": "string"
-          },
-          "ext": {
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "additionalProperties": true,
-            "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-            "title": "Extension Object",
-            "type": "object"
-          },
-          "place_type": {
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "anyOf": [
-              {
-                "enum": [
-                  "airport",
-                  "borough",
-                  "city",
-                  "city_region",
-                  "commune",
-                  "county",
-                  "district",
-                  "municipality",
-                  "neighborhood",
-                  "post_town",
-                  "prefecture",
-                  "province",
-                  "quarter",
-                  "state",
-                  "territory",
-                  "ward"
-                ],
-                "type": "string"
-              },
-              {
-                "format": "uri",
-                "pattern": "^https://",
-                "type": "string"
-              }
-            ],
-            "description": "Canonical place classification. Registered tokens have protocol-defined meanings. Catalog-specific classifications without a registered mapping MUST use an absolute HTTPS URI controlled by the vocabulary owner; consumers compare URI types as exact opaque strings.",
-            "examples": [
-              "city",
-              "municipality",
-              "borough",
-              "neighborhood",
-              "post_town",
-              "city_region",
-              "county",
-              "https://seller.example/geo/place-types/trade-area"
-            ],
-            "title": "Geographic Place Type"
-          },
-          "system": {
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "anyOf": [
-              {
-                "enum": [
-                  "geonames",
-                  "google_ads",
-                  "microsoft_ads"
-                ],
-                "type": "string"
-              },
-              {
-                "format": "uri",
-                "pattern": "^https://",
-                "type": "string"
-              }
-            ],
-            "description": "Collision-safe identifier namespace for geographic places. Registered tokens have protocol-defined semantics. Unregistered systems MUST use an absolute HTTPS URI controlled by the catalog owner; consumers compare URI systems as exact opaque strings.",
-            "examples": [
-              "geonames",
-              "google_ads",
-              "microsoft_ads",
-              "https://seller.example/geo/catalogs/places"
-            ],
-            "title": "Geographic Place Identifier System"
-          },
-          "system_version": {
-            "description": "Optional exact catalog version from the seller's declared supported_versions. When omitted, the seller applies catalog.current_version and MUST echo that version on persisted package state.",
-            "minLength": 1,
-            "type": "string"
-          },
-          "value_labels": {
-            "additionalProperties": {
-              "minLength": 1,
-              "type": "string"
-            },
-            "description": "Optional human-readable diagnostic labels keyed by identifiers present in values. Extra keys are a conformance error. Labels are non-authoritative and MUST NOT be used to resolve or apply targeting.",
-            "type": "object"
-          },
-          "values": {
-            "description": "Stable place identifiers in the declared system. Display names are not valid targeting values.",
-            "items": {
-              "minLength": 1,
-              "type": "string"
-            },
-            "minItems": 1,
-            "type": "array",
-            "uniqueItems": true
-          }
-        },
-        "required": [
-          "country",
-          "system",
-          "place_type",
-          "values"
-        ],
-        "title": "Geographic Place Area",
-        "type": "object",
-        "x-adcp-schema-uri": "/schemas/core/geo-place-area.json",
-        "x-adcp-validation": {
-          "description": "Every value_labels key MUST also appear in values. JSON Schema draft-07 cannot express this sibling-field key membership constraint, so conformance tooling must enforce it.",
-          "map_keys_subset_of_array": {
-            "array_field": "values",
-            "map_field": "value_labels"
-          }
-        }
+        "$ref": "#/definitions/Shared3"
       },
       "minItems": 1,
       "type": "array"
@@ -1040,159 +1586,7 @@
     "geo_places_exclude": {
       "description": "Exclude catalog-backed named places. Uses the same identifier-based shape as geo_places. Sellers MUST reject overlap with geo_places for the same country, system, place_type, and value.",
       "items": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "additionalProperties": false,
-        "allOf": [
-          {
-            "if": {
-              "properties": {
-                "system": {
-                  "enum": [
-                    "geonames",
-                    "google_ads",
-                    "microsoft_ads"
-                  ]
-                }
-              },
-              "required": [
-                "system"
-              ]
-            },
-            "then": {
-              "properties": {
-                "values": {
-                  "items": {
-                    "pattern": "^[0-9]+$",
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          }
-        ],
-        "description": "A catalog-backed named place target. Values are stable identifiers in the declared system. Entries within geo_places form a union; different geographic inclusion dimensions intersect. value_labels are diagnostic only and MUST NOT be used to resolve targeting.",
-        "properties": {
-          "country": {
-            "description": "ISO 3166-1 alpha-2 country code containing the place.",
-            "pattern": "^[A-Z]{2}$",
-            "type": "string"
-          },
-          "ext": {
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "additionalProperties": true,
-            "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-            "title": "Extension Object",
-            "type": "object"
-          },
-          "place_type": {
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "anyOf": [
-              {
-                "enum": [
-                  "airport",
-                  "borough",
-                  "city",
-                  "city_region",
-                  "commune",
-                  "county",
-                  "district",
-                  "municipality",
-                  "neighborhood",
-                  "post_town",
-                  "prefecture",
-                  "province",
-                  "quarter",
-                  "state",
-                  "territory",
-                  "ward"
-                ],
-                "type": "string"
-              },
-              {
-                "format": "uri",
-                "pattern": "^https://",
-                "type": "string"
-              }
-            ],
-            "description": "Canonical place classification. Registered tokens have protocol-defined meanings. Catalog-specific classifications without a registered mapping MUST use an absolute HTTPS URI controlled by the vocabulary owner; consumers compare URI types as exact opaque strings.",
-            "examples": [
-              "city",
-              "municipality",
-              "borough",
-              "neighborhood",
-              "post_town",
-              "city_region",
-              "county",
-              "https://seller.example/geo/place-types/trade-area"
-            ],
-            "title": "Geographic Place Type"
-          },
-          "system": {
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "anyOf": [
-              {
-                "enum": [
-                  "geonames",
-                  "google_ads",
-                  "microsoft_ads"
-                ],
-                "type": "string"
-              },
-              {
-                "format": "uri",
-                "pattern": "^https://",
-                "type": "string"
-              }
-            ],
-            "description": "Collision-safe identifier namespace for geographic places. Registered tokens have protocol-defined semantics. Unregistered systems MUST use an absolute HTTPS URI controlled by the catalog owner; consumers compare URI systems as exact opaque strings.",
-            "examples": [
-              "geonames",
-              "google_ads",
-              "microsoft_ads",
-              "https://seller.example/geo/catalogs/places"
-            ],
-            "title": "Geographic Place Identifier System"
-          },
-          "system_version": {
-            "description": "Optional exact catalog version from the seller's declared supported_versions. When omitted, the seller applies catalog.current_version and MUST echo that version on persisted package state.",
-            "minLength": 1,
-            "type": "string"
-          },
-          "value_labels": {
-            "additionalProperties": {
-              "minLength": 1,
-              "type": "string"
-            },
-            "description": "Optional human-readable diagnostic labels keyed by identifiers present in values. Extra keys are a conformance error. Labels are non-authoritative and MUST NOT be used to resolve or apply targeting.",
-            "type": "object"
-          },
-          "values": {
-            "description": "Stable place identifiers in the declared system. Display names are not valid targeting values.",
-            "items": {
-              "minLength": 1,
-              "type": "string"
-            },
-            "minItems": 1,
-            "type": "array",
-            "uniqueItems": true
-          }
-        },
-        "required": [
-          "country",
-          "system",
-          "place_type",
-          "values"
-        ],
-        "title": "Geographic Place Area",
-        "type": "object",
-        "x-adcp-schema-uri": "/schemas/core/geo-place-area.json",
-        "x-adcp-validation": {
-          "description": "Every value_labels key MUST also appear in values. JSON Schema draft-07 cannot express this sibling-field key membership constraint, so conformance tooling must enforce it.",
-          "map_keys_subset_of_array": {
-            "array_field": "values",
-            "map_field": "value_labels"
-          }
-        }
+        "$ref": "#/definitions/Shared3"
       },
       "minItems": 1,
       "type": "array"
@@ -1200,289 +1594,7 @@
     "geo_postal_areas": {
       "description": "Restrict delivery to specific postal areas. Prefer the native country + postal system form. The deprecated legacy country-fused postal-system tokens remain accepted for compatibility. Seller must declare supported systems in get_adcp_capabilities.",
       "items": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "anyOf": [
-          {
-            "additionalProperties": false,
-            "allOf": [
-              {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "anyOf": [
-                  {
-                    "properties": {
-                      "country": {
-                        "const": "US"
-                      },
-                      "system": {
-                        "enum": [
-                          "zip",
-                          "zip_plus_four"
-                        ]
-                      }
-                    }
-                  },
-                  {
-                    "properties": {
-                      "country": {
-                        "const": "GB"
-                      },
-                      "system": {
-                        "enum": [
-                          "outward",
-                          "full"
-                        ]
-                      }
-                    }
-                  },
-                  {
-                    "properties": {
-                      "country": {
-                        "const": "CA"
-                      },
-                      "system": {
-                        "enum": [
-                          "fsa",
-                          "full"
-                        ]
-                      }
-                    }
-                  },
-                  {
-                    "properties": {
-                      "country": {
-                        "enum": [
-                          "DE",
-                          "CH",
-                          "AT"
-                        ]
-                      },
-                      "system": {
-                        "const": "plz"
-                      }
-                    }
-                  },
-                  {
-                    "properties": {
-                      "country": {
-                        "const": "FR"
-                      },
-                      "system": {
-                        "const": "code_postal"
-                      }
-                    }
-                  },
-                  {
-                    "properties": {
-                      "country": {
-                        "const": "AU"
-                      },
-                      "system": {
-                        "const": "postcode"
-                      }
-                    }
-                  },
-                  {
-                    "properties": {
-                      "country": {
-                        "const": "BR"
-                      },
-                      "system": {
-                        "const": "cep"
-                      }
-                    }
-                  },
-                  {
-                    "properties": {
-                      "country": {
-                        "const": "IN"
-                      },
-                      "system": {
-                        "const": "pin"
-                      }
-                    }
-                  },
-                  {
-                    "properties": {
-                      "country": {
-                        "const": "ZA"
-                      },
-                      "system": {
-                        "const": "postal_code"
-                      }
-                    }
-                  },
-                  {
-                    "properties": {
-                      "country": {
-                        "not": {
-                          "enum": [
-                            "US",
-                            "GB",
-                            "CA",
-                            "DE",
-                            "CH",
-                            "AT",
-                            "FR",
-                            "AU",
-                            "BR",
-                            "IN",
-                            "ZA"
-                          ]
-                        }
-                      },
-                      "system": {
-                        "enum": [
-                          "postal_code",
-                          "custom"
-                        ]
-                      }
-                    }
-                  }
-                ],
-                "description": "Valid country-local postal system pairing. Registered countries only accept their registered local systems; countries without a registered local system use postal_code or custom.",
-                "properties": {
-                  "country": {
-                    "description": "ISO 3166-1 alpha-2 country code.",
-                    "pattern": "^[A-Z]{2}$",
-                    "type": "string"
-                  },
-                  "system": {
-                    "$schema": "http://json-schema.org/draft-07/schema#",
-                    "description": "Country-local postal code system.",
-                    "enum": [
-                      "postal_code",
-                      "zip",
-                      "zip_plus_four",
-                      "outward",
-                      "full",
-                      "fsa",
-                      "plz",
-                      "code_postal",
-                      "postcode",
-                      "cep",
-                      "pin",
-                      "custom",
-                      "us_zip",
-                      "us_zip_plus_four",
-                      "gb_outward",
-                      "gb_full",
-                      "ca_fsa",
-                      "ca_full",
-                      "de_plz",
-                      "fr_code_postal",
-                      "au_postcode",
-                      "ch_plz",
-                      "at_plz"
-                    ],
-                    "title": "Postal Code System",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "country",
-                  "system"
-                ],
-                "title": "Postal Country System",
-                "type": "object"
-              }
-            ],
-            "properties": {
-              "country": {
-                "description": "ISO 3166-1 alpha-2 country code for the postal values.",
-                "pattern": "^[A-Z]{2}$",
-                "type": "string"
-              },
-              "system": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "description": "Country-local postal code system (e.g., 'zip', 'outward', 'plz', 'postal_code').",
-                "enum": [
-                  "postal_code",
-                  "zip",
-                  "zip_plus_four",
-                  "outward",
-                  "full",
-                  "fsa",
-                  "plz",
-                  "code_postal",
-                  "postcode",
-                  "cep",
-                  "pin",
-                  "custom",
-                  "us_zip",
-                  "us_zip_plus_four",
-                  "gb_outward",
-                  "gb_full",
-                  "ca_fsa",
-                  "ca_full",
-                  "de_plz",
-                  "fr_code_postal",
-                  "au_postcode",
-                  "ch_plz",
-                  "at_plz"
-                ],
-                "title": "Postal Code System",
-                "type": "string"
-              },
-              "values": {
-                "description": "Postal codes within the country and system.",
-                "items": {
-                  "type": "string"
-                },
-                "minItems": 1,
-                "type": "array"
-              }
-            },
-            "required": [
-              "country",
-              "system",
-              "values"
-            ],
-            "title": "PostalArea",
-            "type": "object"
-          },
-          {
-            "additionalProperties": false,
-            "deprecated": true,
-            "properties": {
-              "system": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "deprecated": true,
-                "description": "Deprecated country-fused postal code system (e.g., 'us_zip', 'gb_outward'). Prefer country + postal-system.",
-                "enum": [
-                  "us_zip",
-                  "us_zip_plus_four",
-                  "gb_outward",
-                  "gb_full",
-                  "ca_fsa",
-                  "ca_full",
-                  "de_plz",
-                  "fr_code_postal",
-                  "au_postcode",
-                  "ch_plz",
-                  "at_plz"
-                ],
-                "title": "Country-Fused Postal Code System",
-                "type": "string"
-              },
-              "values": {
-                "description": "Postal codes within the legacy system.",
-                "items": {
-                  "type": "string"
-                },
-                "minItems": 1,
-                "type": "array"
-              }
-            },
-            "required": [
-              "system",
-              "values"
-            ],
-            "title": "PostalAreaWithFusedSystem",
-            "type": "object"
-          }
-        ],
-        "description": "Postal area values. Prefer the native country + postal system form. Deprecated legacy country-fused postal-system tokens remain accepted for compatibility.",
-        "title": "Postal Area"
+        "$ref": "#/definitions/Shared2"
       },
       "minItems": 1,
       "type": "array"
@@ -1490,289 +1602,7 @@
     "geo_postal_areas_exclude": {
       "description": "Exclude specific postal areas from delivery. Prefer the native country + postal system form. The deprecated legacy country-fused postal-system tokens remain accepted for compatibility. Seller must declare supported systems in get_adcp_capabilities.",
       "items": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "anyOf": [
-          {
-            "additionalProperties": false,
-            "allOf": [
-              {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "anyOf": [
-                  {
-                    "properties": {
-                      "country": {
-                        "const": "US"
-                      },
-                      "system": {
-                        "enum": [
-                          "zip",
-                          "zip_plus_four"
-                        ]
-                      }
-                    }
-                  },
-                  {
-                    "properties": {
-                      "country": {
-                        "const": "GB"
-                      },
-                      "system": {
-                        "enum": [
-                          "outward",
-                          "full"
-                        ]
-                      }
-                    }
-                  },
-                  {
-                    "properties": {
-                      "country": {
-                        "const": "CA"
-                      },
-                      "system": {
-                        "enum": [
-                          "fsa",
-                          "full"
-                        ]
-                      }
-                    }
-                  },
-                  {
-                    "properties": {
-                      "country": {
-                        "enum": [
-                          "DE",
-                          "CH",
-                          "AT"
-                        ]
-                      },
-                      "system": {
-                        "const": "plz"
-                      }
-                    }
-                  },
-                  {
-                    "properties": {
-                      "country": {
-                        "const": "FR"
-                      },
-                      "system": {
-                        "const": "code_postal"
-                      }
-                    }
-                  },
-                  {
-                    "properties": {
-                      "country": {
-                        "const": "AU"
-                      },
-                      "system": {
-                        "const": "postcode"
-                      }
-                    }
-                  },
-                  {
-                    "properties": {
-                      "country": {
-                        "const": "BR"
-                      },
-                      "system": {
-                        "const": "cep"
-                      }
-                    }
-                  },
-                  {
-                    "properties": {
-                      "country": {
-                        "const": "IN"
-                      },
-                      "system": {
-                        "const": "pin"
-                      }
-                    }
-                  },
-                  {
-                    "properties": {
-                      "country": {
-                        "const": "ZA"
-                      },
-                      "system": {
-                        "const": "postal_code"
-                      }
-                    }
-                  },
-                  {
-                    "properties": {
-                      "country": {
-                        "not": {
-                          "enum": [
-                            "US",
-                            "GB",
-                            "CA",
-                            "DE",
-                            "CH",
-                            "AT",
-                            "FR",
-                            "AU",
-                            "BR",
-                            "IN",
-                            "ZA"
-                          ]
-                        }
-                      },
-                      "system": {
-                        "enum": [
-                          "postal_code",
-                          "custom"
-                        ]
-                      }
-                    }
-                  }
-                ],
-                "description": "Valid country-local postal system pairing. Registered countries only accept their registered local systems; countries without a registered local system use postal_code or custom.",
-                "properties": {
-                  "country": {
-                    "description": "ISO 3166-1 alpha-2 country code.",
-                    "pattern": "^[A-Z]{2}$",
-                    "type": "string"
-                  },
-                  "system": {
-                    "$schema": "http://json-schema.org/draft-07/schema#",
-                    "description": "Country-local postal code system.",
-                    "enum": [
-                      "postal_code",
-                      "zip",
-                      "zip_plus_four",
-                      "outward",
-                      "full",
-                      "fsa",
-                      "plz",
-                      "code_postal",
-                      "postcode",
-                      "cep",
-                      "pin",
-                      "custom",
-                      "us_zip",
-                      "us_zip_plus_four",
-                      "gb_outward",
-                      "gb_full",
-                      "ca_fsa",
-                      "ca_full",
-                      "de_plz",
-                      "fr_code_postal",
-                      "au_postcode",
-                      "ch_plz",
-                      "at_plz"
-                    ],
-                    "title": "Postal Code System",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "country",
-                  "system"
-                ],
-                "title": "Postal Country System",
-                "type": "object"
-              }
-            ],
-            "properties": {
-              "country": {
-                "description": "ISO 3166-1 alpha-2 country code for the postal values.",
-                "pattern": "^[A-Z]{2}$",
-                "type": "string"
-              },
-              "system": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "description": "Country-local postal code system (e.g., 'zip', 'outward', 'plz', 'postal_code').",
-                "enum": [
-                  "postal_code",
-                  "zip",
-                  "zip_plus_four",
-                  "outward",
-                  "full",
-                  "fsa",
-                  "plz",
-                  "code_postal",
-                  "postcode",
-                  "cep",
-                  "pin",
-                  "custom",
-                  "us_zip",
-                  "us_zip_plus_four",
-                  "gb_outward",
-                  "gb_full",
-                  "ca_fsa",
-                  "ca_full",
-                  "de_plz",
-                  "fr_code_postal",
-                  "au_postcode",
-                  "ch_plz",
-                  "at_plz"
-                ],
-                "title": "Postal Code System",
-                "type": "string"
-              },
-              "values": {
-                "description": "Postal codes within the country and system.",
-                "items": {
-                  "type": "string"
-                },
-                "minItems": 1,
-                "type": "array"
-              }
-            },
-            "required": [
-              "country",
-              "system",
-              "values"
-            ],
-            "title": "PostalArea",
-            "type": "object"
-          },
-          {
-            "additionalProperties": false,
-            "deprecated": true,
-            "properties": {
-              "system": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "deprecated": true,
-                "description": "Deprecated country-fused postal code system (e.g., 'us_zip', 'gb_outward'). Prefer country + postal-system.",
-                "enum": [
-                  "us_zip",
-                  "us_zip_plus_four",
-                  "gb_outward",
-                  "gb_full",
-                  "ca_fsa",
-                  "ca_full",
-                  "de_plz",
-                  "fr_code_postal",
-                  "au_postcode",
-                  "ch_plz",
-                  "at_plz"
-                ],
-                "title": "Country-Fused Postal Code System",
-                "type": "string"
-              },
-              "values": {
-                "description": "Postal codes within the legacy system.",
-                "items": {
-                  "type": "string"
-                },
-                "minItems": 1,
-                "type": "array"
-              }
-            },
-            "required": [
-              "system",
-              "values"
-            ],
-            "title": "PostalAreaWithFusedSystem",
-            "type": "object"
-          }
-        ],
-        "description": "Postal area values. Prefer the native country + postal system form. Deprecated legacy country-fused postal-system tokens remain accepted for compatibility.",
-        "title": "Postal Area"
+        "$ref": "#/definitions/Shared2"
       },
       "minItems": 1,
       "type": "array"
@@ -1786,14 +1616,10 @@
             "not": {
               "anyOf": [
                 {
-                  "required": [
-                    "radius"
-                  ]
+                  "$ref": "#/definitions/Shared29"
                 },
                 {
-                  "required": [
-                    "geometry"
-                  ]
+                  "$ref": "#/definitions/Shared30"
                 }
               ]
             },
@@ -1808,14 +1634,10 @@
             "not": {
               "anyOf": [
                 {
-                  "required": [
-                    "travel_time"
-                  ]
+                  "$ref": "#/definitions/Shared31"
                 },
                 {
-                  "required": [
-                    "geometry"
-                  ]
+                  "$ref": "#/definitions/Shared30"
                 }
               ]
             },
@@ -1829,14 +1651,10 @@
             "not": {
               "anyOf": [
                 {
-                  "required": [
-                    "travel_time"
-                  ]
+                  "$ref": "#/definitions/Shared31"
                 },
                 {
-                  "required": [
-                    "radius"
-                  ]
+                  "$ref": "#/definitions/Shared29"
                 }
               ]
             },
@@ -1847,11 +1665,7 @@
         ],
         "properties": {
           "ext": {
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "additionalProperties": true,
-            "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-            "title": "Extension Object",
-            "type": "object"
+            "$ref": "#/definitions/Shared14"
           },
           "geometry": {
             "additionalProperties": false,
@@ -1981,8 +1795,7 @@
     "geo_regions": {
       "description": "Restrict delivery to exact canonical ISO 3166-2 subdivisions (states, provinces, regions, departments, or other subdivision categories). Unknown identifiers are invalid. At create or update, sellers MUST reject unsupported identifiers and MUST NOT silently widen, drop, or partially apply the list. During get_products, a seller may instead return a sparse, buyer-reviewable targeting_resolution modification for a valid but unsupported requested outcome. Exact internal translation preserves accepted identifiers in package readback.",
       "items": {
-        "pattern": "^[A-Z]{2}-[A-Z0-9]{1,3}$",
-        "type": "string"
+        "$ref": "#/definitions/Shared1"
       },
       "minItems": 1,
       "type": "array"
@@ -1990,8 +1803,7 @@
     "geo_regions_exclude": {
       "description": "Exclude exact canonical ISO 3166-2 subdivisions. Support is independent from geo_regions inclusion support. Unknown identifiers and values also present in geo_regions are invalid. At create or update, sellers MUST reject unsupported identifiers and partial application; during get_products, a seller may instead return a sparse, buyer-reviewable targeting_resolution modification for a valid but unsupported requested outcome.",
       "items": {
-        "pattern": "^[A-Z]{2}-[A-Z0-9]{1,3}$",
-        "type": "string"
+        "$ref": "#/definitions/Shared1"
       },
       "minItems": 1,
       "type": "array",
@@ -2016,20 +1828,7 @@
             "type": "string"
           },
           "match_type": {
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "description": "Keyword targeting match type. broad: ads may serve on queries semantically related to the keyword. phrase: ads serve when the query contains the keyword phrase. exact: ads serve only when the query matches the keyword exactly.",
-            "enum": [
-              "broad",
-              "phrase",
-              "exact"
-            ],
-            "enumDescriptions": {
-              "broad": "Ads may serve on queries semantically related to the keyword",
-              "exact": "Ads serve only when the query matches the keyword exactly",
-              "phrase": "Ads serve when the query contains the keyword phrase in order"
-            },
-            "title": "Match Type",
-            "type": "string"
+            "$ref": "#/definitions/Shared19"
           }
         },
         "required": [
@@ -2086,20 +1885,7 @@
             "type": "string"
           },
           "match_type": {
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "description": "Keyword targeting match type. broad: ads may serve on queries semantically related to the keyword. phrase: ads serve when the query contains the keyword phrase. exact: ads serve only when the query matches the keyword exactly.",
-            "enum": [
-              "broad",
-              "phrase",
-              "exact"
-            ],
-            "enumDescriptions": {
-              "broad": "Ads may serve on queries semantically related to the keyword",
-              "exact": "Ads serve only when the query matches the keyword exactly",
-              "phrase": "Ads serve when the query contains the keyword phrase in order"
-            },
-            "title": "Match Type",
-            "type": "string"
+            "$ref": "#/definitions/Shared19"
           }
         },
         "required": [
@@ -2124,15 +1910,10 @@
           "additionalProperties": false,
           "properties": {
             "ext": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": true,
-              "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-              "title": "Extension Object",
-              "type": "object"
+              "$ref": "#/definitions/Shared14"
             },
             "mode": {
-              "const": "selected",
-              "type": "string"
+              "$ref": "#/definitions/Shared16"
             },
             "placement_refs": {
               "description": "Complete required placement set. A reference normally identifies a mode targetable placement. It MAY identify a mode included placement only when the set exactly equals the product's complete fixed included set, which is an inherent match rather than independent selection. Legacy publisher refs use {publisher_domain, placement_id}; authority-discriminated 3.2 identities use placement-identity.json so seller-inline inventory is selected by {seller_agent, placement_id}. An item that exactly matches placement-identity uses that canonical identity; otherwise a released-compatible item with publisher_domain and placement_id uses legacy product-context matching, and tolerated product metadata such as kind, name, or mode has no selection effect.",
@@ -2271,15 +2052,10 @@
           "additionalProperties": false,
           "properties": {
             "ext": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": true,
-              "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-              "title": "Extension Object",
-              "type": "object"
+              "$ref": "#/definitions/Shared14"
             },
             "mode": {
-              "const": "default",
-              "type": "string"
+              "$ref": "#/definitions/Shared17"
             }
           },
           "required": [
@@ -2298,19 +2074,13 @@
       "description": "Reference to a property list for targeting specific properties within this product. The package runs on the intersection of the product's publisher_properties and this list. Sellers SHOULD return a validation error if the product has property_targeting_allowed: false.",
       "properties": {
         "agent_url": {
-          "description": "URL of the agent managing the property list",
-          "format": "uri",
-          "type": "string"
+          "$ref": "#/definitions/Shared5"
         },
         "auth_token": {
-          "description": "JWT or other authorization token for accessing the list. Optional if the list is public or caller has implicit access.",
-          "type": "string"
+          "$ref": "#/definitions/Shared7"
         },
         "list_id": {
-          "description": "Identifier for the property list within the agent",
-          "minLength": 1,
-          "type": "string",
-          "x-entity": "property_list"
+          "$ref": "#/definitions/Shared6"
         }
       },
       "required": [
@@ -2326,19 +2096,13 @@
       "description": "Reference to a property list whose properties must not carry the buyer's ads. Matched properties are removed from delivery. Use for brand-safety do-not-run lists (apps, sites). Exclude wins on overlap with property_list, and applies regardless of the product's property_targeting_allowed flag. Seller must declare support in get_adcp_capabilities.",
       "properties": {
         "agent_url": {
-          "description": "URL of the agent managing the property list",
-          "format": "uri",
-          "type": "string"
+          "$ref": "#/definitions/Shared5"
         },
         "auth_token": {
-          "description": "JWT or other authorization token for accessing the list. Optional if the list is public or caller has implicit access.",
-          "type": "string"
+          "$ref": "#/definitions/Shared7"
         },
         "list_id": {
-          "description": "Identifier for the property list within the agent",
-          "minLength": 1,
-          "type": "string",
-          "x-entity": "property_list"
+          "$ref": "#/definitions/Shared6"
         }
       },
       "required": [
@@ -2362,246 +2126,19 @@
             "additionalProperties": true,
             "anyOf": [
               {
-                "required": [
-                  "signal_ref"
-                ]
+                "$ref": "#/definitions/Shared24"
               },
               {
-                "required": [
-                  "signal_id"
-                ]
+                "$ref": "#/definitions/Shared25"
               }
             ],
             "description": "Binary signal targeting - user either matches or doesn't",
             "properties": {
               "signal_id": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "deprecated": true,
-                "description": "DEPRECATED. Use signal_ref instead. Legacy SignalId retained for compatibility with older clients.",
-                "discriminator": {
-                  "propertyName": "source"
-                },
-                "oneOf": [
-                  {
-                    "additionalProperties": true,
-                    "description": "Data-provider signal - references a signal from a data provider's published adagents.json signals[]. Buyers can verify authorization by checking the data provider's adagents.json.",
-                    "properties": {
-                      "data_provider_domain": {
-                        "description": "Domain of the data provider that owns this signal (e.g., 'pinnacle-data.example'). The signal definition is published at this domain's /.well-known/adagents.json",
-                        "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-                        "type": "string"
-                      },
-                      "id": {
-                        "description": "Signal identifier within the data provider's catalog (e.g., 'likely_ev_buyers', 'income_100k_plus')",
-                        "pattern": "^[a-zA-Z0-9_-]+$",
-                        "type": "string"
-                      },
-                      "source": {
-                        "const": "catalog",
-                        "description": "Discriminator indicating this signal is from a data provider's published adagents.json signals[]",
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "source",
-                      "data_provider_domain",
-                      "id"
-                    ],
-                    "type": "object"
-                  },
-                  {
-                    "additionalProperties": true,
-                    "description": "Agent signal - references a signal native to a signal source identified by agent_url. Not externally verifiable through an upstream catalog; buyer trusts the issuing signal source's claim about the signal.",
-                    "properties": {
-                      "agent_url": {
-                        "description": "URL of the signal source that provides this signal (e.g., 'https://signals.example/.well-known/adcp/signals')",
-                        "format": "uri",
-                        "type": "string"
-                      },
-                      "id": {
-                        "description": "Signal identifier within the agent's signal set (e.g., 'custom_auto_intenders')",
-                        "pattern": "^[a-zA-Z0-9_-]+$",
-                        "type": "string"
-                      },
-                      "source": {
-                        "const": "agent",
-                        "description": "Discriminator indicating this signal is native to the signal source identified by agent_url, not from a data provider's published signal definitions.",
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "source",
-                      "agent_url",
-                      "id"
-                    ],
-                    "type": "object"
-                  }
-                ],
-                "title": "Signal ID",
-                "x-entity": "signal"
+                "$ref": "#/definitions/Shared23"
               },
               "signal_ref": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "description": "The signal to target. New targeting constraints SHOULD use signal_ref.",
-                "discriminator": {
-                  "propertyName": "scope"
-                },
-                "oneOf": [
-                  {
-                    "additionalProperties": true,
-                    "description": "Product-scoped signal. The signal_id is meaningful only within the selected product/package context and MUST match a Product.included_signals[].signal_ref.signal_id or Product.signal_targeting_options[].signal_ref.signal_id for that product, depending on whether the signal is descriptive or selectable.",
-                    "not": {
-                      "anyOf": [
-                        {
-                          "required": [
-                            "data_provider_domain"
-                          ]
-                        },
-                        {
-                          "required": [
-                            "signal_source_url"
-                          ]
-                        },
-                        {
-                          "required": [
-                            "agent_url"
-                          ]
-                        },
-                        {
-                          "required": [
-                            "source"
-                          ]
-                        },
-                        {
-                          "required": [
-                            "id"
-                          ]
-                        }
-                      ]
-                    },
-                    "properties": {
-                      "scope": {
-                        "const": "product",
-                        "description": "Discriminator indicating the signal resolves through the selected product's included_signals or signal_targeting_options.",
-                        "type": "string"
-                      },
-                      "signal_id": {
-                        "description": "Product-local signal identifier. For local signals exposed on both get_signals and get_products, this MUST match get_signals.signals[].signal_ref.signal_id for the same signal.",
-                        "pattern": "^[a-zA-Z0-9_-]+$",
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "scope",
-                      "signal_id"
-                    ],
-                    "type": "object"
-                  },
-                  {
-                    "additionalProperties": true,
-                    "description": "Data-provider-scoped signal. The signal_id resolves through the data provider's published adagents.json signals[] and can be authorization-verified there.",
-                    "not": {
-                      "anyOf": [
-                        {
-                          "required": [
-                            "agent_url"
-                          ]
-                        },
-                        {
-                          "required": [
-                            "signal_source_url"
-                          ]
-                        },
-                        {
-                          "required": [
-                            "source"
-                          ]
-                        },
-                        {
-                          "required": [
-                            "id"
-                          ]
-                        }
-                      ]
-                    },
-                    "properties": {
-                      "data_provider_domain": {
-                        "description": "Domain that publishes the signal definition in its adagents.json signals[].",
-                        "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-                        "type": "string"
-                      },
-                      "scope": {
-                        "const": "data_provider",
-                        "description": "Discriminator indicating the signal resolves through a data provider's published adagents.json signals[].",
-                        "type": "string"
-                      },
-                      "signal_id": {
-                        "description": "Signal identifier within the data provider's published adagents.json signals[].",
-                        "pattern": "^[a-zA-Z0-9_-]+$",
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "scope",
-                      "data_provider_domain",
-                      "signal_id"
-                    ],
-                    "type": "object"
-                  },
-                  {
-                    "additionalProperties": true,
-                    "description": "Signal-source-scoped signal. Use this for source-native signals that are not published in upstream adagents.json signals[]. The buyer trusts the issuing signal source for this identity; use scope 'data_provider' instead when the signal is published in adagents.json signals[], even if the publisher is also the seller or signal source.",
-                    "not": {
-                      "anyOf": [
-                        {
-                          "required": [
-                            "data_provider_domain"
-                          ]
-                        },
-                        {
-                          "required": [
-                            "agent_url"
-                          ]
-                        },
-                        {
-                          "required": [
-                            "source"
-                          ]
-                        },
-                        {
-                          "required": [
-                            "id"
-                          ]
-                        }
-                      ]
-                    },
-                    "properties": {
-                      "scope": {
-                        "const": "signal_source",
-                        "description": "Discriminator indicating the signal resolves through the issuing signal source.",
-                        "type": "string"
-                      },
-                      "signal_id": {
-                        "description": "Signal identifier within the issuing signal source's signal set.",
-                        "pattern": "^[a-zA-Z0-9_-]+$",
-                        "type": "string"
-                      },
-                      "signal_source_url": {
-                        "description": "URL of the signal source that issues this source-native signal.",
-                        "format": "uri",
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "scope",
-                      "signal_source_url",
-                      "signal_id"
-                    ],
-                    "type": "object"
-                  }
-                ],
-                "title": "Signal Ref",
-                "x-entity": "signal"
+                "$ref": "#/definitions/Shared22"
               },
               "value": {
                 "description": "Whether to include (true) or exclude (false) users matching this signal",
@@ -2623,246 +2160,19 @@
             "additionalProperties": true,
             "anyOf": [
               {
-                "required": [
-                  "signal_ref"
-                ]
+                "$ref": "#/definitions/Shared24"
               },
               {
-                "required": [
-                  "signal_id"
-                ]
+                "$ref": "#/definitions/Shared25"
               }
             ],
             "description": "Categorical signal targeting - target users with specific values",
             "properties": {
               "signal_id": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "deprecated": true,
-                "description": "DEPRECATED. Use signal_ref instead. Legacy SignalId retained for compatibility with older clients.",
-                "discriminator": {
-                  "propertyName": "source"
-                },
-                "oneOf": [
-                  {
-                    "additionalProperties": true,
-                    "description": "Data-provider signal - references a signal from a data provider's published adagents.json signals[]. Buyers can verify authorization by checking the data provider's adagents.json.",
-                    "properties": {
-                      "data_provider_domain": {
-                        "description": "Domain of the data provider that owns this signal (e.g., 'pinnacle-data.example'). The signal definition is published at this domain's /.well-known/adagents.json",
-                        "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-                        "type": "string"
-                      },
-                      "id": {
-                        "description": "Signal identifier within the data provider's catalog (e.g., 'likely_ev_buyers', 'income_100k_plus')",
-                        "pattern": "^[a-zA-Z0-9_-]+$",
-                        "type": "string"
-                      },
-                      "source": {
-                        "const": "catalog",
-                        "description": "Discriminator indicating this signal is from a data provider's published adagents.json signals[]",
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "source",
-                      "data_provider_domain",
-                      "id"
-                    ],
-                    "type": "object"
-                  },
-                  {
-                    "additionalProperties": true,
-                    "description": "Agent signal - references a signal native to a signal source identified by agent_url. Not externally verifiable through an upstream catalog; buyer trusts the issuing signal source's claim about the signal.",
-                    "properties": {
-                      "agent_url": {
-                        "description": "URL of the signal source that provides this signal (e.g., 'https://signals.example/.well-known/adcp/signals')",
-                        "format": "uri",
-                        "type": "string"
-                      },
-                      "id": {
-                        "description": "Signal identifier within the agent's signal set (e.g., 'custom_auto_intenders')",
-                        "pattern": "^[a-zA-Z0-9_-]+$",
-                        "type": "string"
-                      },
-                      "source": {
-                        "const": "agent",
-                        "description": "Discriminator indicating this signal is native to the signal source identified by agent_url, not from a data provider's published signal definitions.",
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "source",
-                      "agent_url",
-                      "id"
-                    ],
-                    "type": "object"
-                  }
-                ],
-                "title": "Signal ID",
-                "x-entity": "signal"
+                "$ref": "#/definitions/Shared23"
               },
               "signal_ref": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "description": "The signal to target. New targeting constraints SHOULD use signal_ref.",
-                "discriminator": {
-                  "propertyName": "scope"
-                },
-                "oneOf": [
-                  {
-                    "additionalProperties": true,
-                    "description": "Product-scoped signal. The signal_id is meaningful only within the selected product/package context and MUST match a Product.included_signals[].signal_ref.signal_id or Product.signal_targeting_options[].signal_ref.signal_id for that product, depending on whether the signal is descriptive or selectable.",
-                    "not": {
-                      "anyOf": [
-                        {
-                          "required": [
-                            "data_provider_domain"
-                          ]
-                        },
-                        {
-                          "required": [
-                            "signal_source_url"
-                          ]
-                        },
-                        {
-                          "required": [
-                            "agent_url"
-                          ]
-                        },
-                        {
-                          "required": [
-                            "source"
-                          ]
-                        },
-                        {
-                          "required": [
-                            "id"
-                          ]
-                        }
-                      ]
-                    },
-                    "properties": {
-                      "scope": {
-                        "const": "product",
-                        "description": "Discriminator indicating the signal resolves through the selected product's included_signals or signal_targeting_options.",
-                        "type": "string"
-                      },
-                      "signal_id": {
-                        "description": "Product-local signal identifier. For local signals exposed on both get_signals and get_products, this MUST match get_signals.signals[].signal_ref.signal_id for the same signal.",
-                        "pattern": "^[a-zA-Z0-9_-]+$",
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "scope",
-                      "signal_id"
-                    ],
-                    "type": "object"
-                  },
-                  {
-                    "additionalProperties": true,
-                    "description": "Data-provider-scoped signal. The signal_id resolves through the data provider's published adagents.json signals[] and can be authorization-verified there.",
-                    "not": {
-                      "anyOf": [
-                        {
-                          "required": [
-                            "agent_url"
-                          ]
-                        },
-                        {
-                          "required": [
-                            "signal_source_url"
-                          ]
-                        },
-                        {
-                          "required": [
-                            "source"
-                          ]
-                        },
-                        {
-                          "required": [
-                            "id"
-                          ]
-                        }
-                      ]
-                    },
-                    "properties": {
-                      "data_provider_domain": {
-                        "description": "Domain that publishes the signal definition in its adagents.json signals[].",
-                        "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-                        "type": "string"
-                      },
-                      "scope": {
-                        "const": "data_provider",
-                        "description": "Discriminator indicating the signal resolves through a data provider's published adagents.json signals[].",
-                        "type": "string"
-                      },
-                      "signal_id": {
-                        "description": "Signal identifier within the data provider's published adagents.json signals[].",
-                        "pattern": "^[a-zA-Z0-9_-]+$",
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "scope",
-                      "data_provider_domain",
-                      "signal_id"
-                    ],
-                    "type": "object"
-                  },
-                  {
-                    "additionalProperties": true,
-                    "description": "Signal-source-scoped signal. Use this for source-native signals that are not published in upstream adagents.json signals[]. The buyer trusts the issuing signal source for this identity; use scope 'data_provider' instead when the signal is published in adagents.json signals[], even if the publisher is also the seller or signal source.",
-                    "not": {
-                      "anyOf": [
-                        {
-                          "required": [
-                            "data_provider_domain"
-                          ]
-                        },
-                        {
-                          "required": [
-                            "agent_url"
-                          ]
-                        },
-                        {
-                          "required": [
-                            "source"
-                          ]
-                        },
-                        {
-                          "required": [
-                            "id"
-                          ]
-                        }
-                      ]
-                    },
-                    "properties": {
-                      "scope": {
-                        "const": "signal_source",
-                        "description": "Discriminator indicating the signal resolves through the issuing signal source.",
-                        "type": "string"
-                      },
-                      "signal_id": {
-                        "description": "Signal identifier within the issuing signal source's signal set.",
-                        "pattern": "^[a-zA-Z0-9_-]+$",
-                        "type": "string"
-                      },
-                      "signal_source_url": {
-                        "description": "URL of the signal source that issues this source-native signal.",
-                        "format": "uri",
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "scope",
-                      "signal_source_url",
-                      "signal_id"
-                    ],
-                    "type": "object"
-                  }
-                ],
-                "title": "Signal Ref",
-                "x-entity": "signal"
+                "$ref": "#/definitions/Shared22"
               },
               "value_type": {
                 "const": "categorical",
@@ -2872,7 +2182,7 @@
               "values": {
                 "description": "Values to target. Users with any of these values will be included.",
                 "items": {
-                  "type": "string"
+                  "$ref": "#/definitions/Shared4"
                 },
                 "minItems": 1,
                 "type": "array"
@@ -2888,14 +2198,10 @@
             "additionalProperties": true,
             "anyOf": [
               {
-                "required": [
-                  "signal_ref"
-                ]
+                "$ref": "#/definitions/Shared24"
               },
               {
-                "required": [
-                  "signal_id"
-                ]
+                "$ref": "#/definitions/Shared25"
               }
             ],
             "description": "Numeric signal targeting - target users within a value range. If min_value is provided, it must be <= max_value. Values should be within the signal's defined range (see signal definition).",
@@ -2909,233 +2215,10 @@
                 "type": "number"
               },
               "signal_id": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "deprecated": true,
-                "description": "DEPRECATED. Use signal_ref instead. Legacy SignalId retained for compatibility with older clients.",
-                "discriminator": {
-                  "propertyName": "source"
-                },
-                "oneOf": [
-                  {
-                    "additionalProperties": true,
-                    "description": "Data-provider signal - references a signal from a data provider's published adagents.json signals[]. Buyers can verify authorization by checking the data provider's adagents.json.",
-                    "properties": {
-                      "data_provider_domain": {
-                        "description": "Domain of the data provider that owns this signal (e.g., 'pinnacle-data.example'). The signal definition is published at this domain's /.well-known/adagents.json",
-                        "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-                        "type": "string"
-                      },
-                      "id": {
-                        "description": "Signal identifier within the data provider's catalog (e.g., 'likely_ev_buyers', 'income_100k_plus')",
-                        "pattern": "^[a-zA-Z0-9_-]+$",
-                        "type": "string"
-                      },
-                      "source": {
-                        "const": "catalog",
-                        "description": "Discriminator indicating this signal is from a data provider's published adagents.json signals[]",
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "source",
-                      "data_provider_domain",
-                      "id"
-                    ],
-                    "type": "object"
-                  },
-                  {
-                    "additionalProperties": true,
-                    "description": "Agent signal - references a signal native to a signal source identified by agent_url. Not externally verifiable through an upstream catalog; buyer trusts the issuing signal source's claim about the signal.",
-                    "properties": {
-                      "agent_url": {
-                        "description": "URL of the signal source that provides this signal (e.g., 'https://signals.example/.well-known/adcp/signals')",
-                        "format": "uri",
-                        "type": "string"
-                      },
-                      "id": {
-                        "description": "Signal identifier within the agent's signal set (e.g., 'custom_auto_intenders')",
-                        "pattern": "^[a-zA-Z0-9_-]+$",
-                        "type": "string"
-                      },
-                      "source": {
-                        "const": "agent",
-                        "description": "Discriminator indicating this signal is native to the signal source identified by agent_url, not from a data provider's published signal definitions.",
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "source",
-                      "agent_url",
-                      "id"
-                    ],
-                    "type": "object"
-                  }
-                ],
-                "title": "Signal ID",
-                "x-entity": "signal"
+                "$ref": "#/definitions/Shared23"
               },
               "signal_ref": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "description": "The signal to target. New targeting constraints SHOULD use signal_ref.",
-                "discriminator": {
-                  "propertyName": "scope"
-                },
-                "oneOf": [
-                  {
-                    "additionalProperties": true,
-                    "description": "Product-scoped signal. The signal_id is meaningful only within the selected product/package context and MUST match a Product.included_signals[].signal_ref.signal_id or Product.signal_targeting_options[].signal_ref.signal_id for that product, depending on whether the signal is descriptive or selectable.",
-                    "not": {
-                      "anyOf": [
-                        {
-                          "required": [
-                            "data_provider_domain"
-                          ]
-                        },
-                        {
-                          "required": [
-                            "signal_source_url"
-                          ]
-                        },
-                        {
-                          "required": [
-                            "agent_url"
-                          ]
-                        },
-                        {
-                          "required": [
-                            "source"
-                          ]
-                        },
-                        {
-                          "required": [
-                            "id"
-                          ]
-                        }
-                      ]
-                    },
-                    "properties": {
-                      "scope": {
-                        "const": "product",
-                        "description": "Discriminator indicating the signal resolves through the selected product's included_signals or signal_targeting_options.",
-                        "type": "string"
-                      },
-                      "signal_id": {
-                        "description": "Product-local signal identifier. For local signals exposed on both get_signals and get_products, this MUST match get_signals.signals[].signal_ref.signal_id for the same signal.",
-                        "pattern": "^[a-zA-Z0-9_-]+$",
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "scope",
-                      "signal_id"
-                    ],
-                    "type": "object"
-                  },
-                  {
-                    "additionalProperties": true,
-                    "description": "Data-provider-scoped signal. The signal_id resolves through the data provider's published adagents.json signals[] and can be authorization-verified there.",
-                    "not": {
-                      "anyOf": [
-                        {
-                          "required": [
-                            "agent_url"
-                          ]
-                        },
-                        {
-                          "required": [
-                            "signal_source_url"
-                          ]
-                        },
-                        {
-                          "required": [
-                            "source"
-                          ]
-                        },
-                        {
-                          "required": [
-                            "id"
-                          ]
-                        }
-                      ]
-                    },
-                    "properties": {
-                      "data_provider_domain": {
-                        "description": "Domain that publishes the signal definition in its adagents.json signals[].",
-                        "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-                        "type": "string"
-                      },
-                      "scope": {
-                        "const": "data_provider",
-                        "description": "Discriminator indicating the signal resolves through a data provider's published adagents.json signals[].",
-                        "type": "string"
-                      },
-                      "signal_id": {
-                        "description": "Signal identifier within the data provider's published adagents.json signals[].",
-                        "pattern": "^[a-zA-Z0-9_-]+$",
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "scope",
-                      "data_provider_domain",
-                      "signal_id"
-                    ],
-                    "type": "object"
-                  },
-                  {
-                    "additionalProperties": true,
-                    "description": "Signal-source-scoped signal. Use this for source-native signals that are not published in upstream adagents.json signals[]. The buyer trusts the issuing signal source for this identity; use scope 'data_provider' instead when the signal is published in adagents.json signals[], even if the publisher is also the seller or signal source.",
-                    "not": {
-                      "anyOf": [
-                        {
-                          "required": [
-                            "data_provider_domain"
-                          ]
-                        },
-                        {
-                          "required": [
-                            "agent_url"
-                          ]
-                        },
-                        {
-                          "required": [
-                            "source"
-                          ]
-                        },
-                        {
-                          "required": [
-                            "id"
-                          ]
-                        }
-                      ]
-                    },
-                    "properties": {
-                      "scope": {
-                        "const": "signal_source",
-                        "description": "Discriminator indicating the signal resolves through the issuing signal source.",
-                        "type": "string"
-                      },
-                      "signal_id": {
-                        "description": "Signal identifier within the issuing signal source's signal set.",
-                        "pattern": "^[a-zA-Z0-9_-]+$",
-                        "type": "string"
-                      },
-                      "signal_source_url": {
-                        "description": "URL of the signal source that issues this source-native signal.",
-                        "format": "uri",
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "scope",
-                      "signal_source_url",
-                      "signal_id"
-                    ],
-                    "type": "object"
-                  }
-                ],
-                "title": "Signal Ref",
-                "x-entity": "signal"
+                "$ref": "#/definitions/Shared22"
               },
               "value_type": {
                 "const": "numeric",
@@ -3192,167 +2275,7 @@
                           "description": "Binary signal expression. In grouped package targeting, value is always true; use a parent group with operator 'none' for exclusion.",
                           "properties": {
                             "signal_ref": {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
-                              "description": "Named signal being targeted.",
-                              "discriminator": {
-                                "propertyName": "scope"
-                              },
-                              "oneOf": [
-                                {
-                                  "additionalProperties": true,
-                                  "description": "Product-scoped signal. The signal_id is meaningful only within the selected product/package context and MUST match a Product.included_signals[].signal_ref.signal_id or Product.signal_targeting_options[].signal_ref.signal_id for that product, depending on whether the signal is descriptive or selectable.",
-                                  "not": {
-                                    "anyOf": [
-                                      {
-                                        "required": [
-                                          "data_provider_domain"
-                                        ]
-                                      },
-                                      {
-                                        "required": [
-                                          "signal_source_url"
-                                        ]
-                                      },
-                                      {
-                                        "required": [
-                                          "agent_url"
-                                        ]
-                                      },
-                                      {
-                                        "required": [
-                                          "source"
-                                        ]
-                                      },
-                                      {
-                                        "required": [
-                                          "id"
-                                        ]
-                                      }
-                                    ]
-                                  },
-                                  "properties": {
-                                    "scope": {
-                                      "const": "product",
-                                      "description": "Discriminator indicating the signal resolves through the selected product's included_signals or signal_targeting_options.",
-                                      "type": "string"
-                                    },
-                                    "signal_id": {
-                                      "description": "Product-local signal identifier. For local signals exposed on both get_signals and get_products, this MUST match get_signals.signals[].signal_ref.signal_id for the same signal.",
-                                      "pattern": "^[a-zA-Z0-9_-]+$",
-                                      "type": "string"
-                                    }
-                                  },
-                                  "required": [
-                                    "scope",
-                                    "signal_id"
-                                  ],
-                                  "type": "object"
-                                },
-                                {
-                                  "additionalProperties": true,
-                                  "description": "Data-provider-scoped signal. The signal_id resolves through the data provider's published adagents.json signals[] and can be authorization-verified there.",
-                                  "not": {
-                                    "anyOf": [
-                                      {
-                                        "required": [
-                                          "agent_url"
-                                        ]
-                                      },
-                                      {
-                                        "required": [
-                                          "signal_source_url"
-                                        ]
-                                      },
-                                      {
-                                        "required": [
-                                          "source"
-                                        ]
-                                      },
-                                      {
-                                        "required": [
-                                          "id"
-                                        ]
-                                      }
-                                    ]
-                                  },
-                                  "properties": {
-                                    "data_provider_domain": {
-                                      "description": "Domain that publishes the signal definition in its adagents.json signals[].",
-                                      "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-                                      "type": "string"
-                                    },
-                                    "scope": {
-                                      "const": "data_provider",
-                                      "description": "Discriminator indicating the signal resolves through a data provider's published adagents.json signals[].",
-                                      "type": "string"
-                                    },
-                                    "signal_id": {
-                                      "description": "Signal identifier within the data provider's published adagents.json signals[].",
-                                      "pattern": "^[a-zA-Z0-9_-]+$",
-                                      "type": "string"
-                                    }
-                                  },
-                                  "required": [
-                                    "scope",
-                                    "data_provider_domain",
-                                    "signal_id"
-                                  ],
-                                  "type": "object"
-                                },
-                                {
-                                  "additionalProperties": true,
-                                  "description": "Signal-source-scoped signal. Use this for source-native signals that are not published in upstream adagents.json signals[]. The buyer trusts the issuing signal source for this identity; use scope 'data_provider' instead when the signal is published in adagents.json signals[], even if the publisher is also the seller or signal source.",
-                                  "not": {
-                                    "anyOf": [
-                                      {
-                                        "required": [
-                                          "data_provider_domain"
-                                        ]
-                                      },
-                                      {
-                                        "required": [
-                                          "agent_url"
-                                        ]
-                                      },
-                                      {
-                                        "required": [
-                                          "source"
-                                        ]
-                                      },
-                                      {
-                                        "required": [
-                                          "id"
-                                        ]
-                                      }
-                                    ]
-                                  },
-                                  "properties": {
-                                    "scope": {
-                                      "const": "signal_source",
-                                      "description": "Discriminator indicating the signal resolves through the issuing signal source.",
-                                      "type": "string"
-                                    },
-                                    "signal_id": {
-                                      "description": "Signal identifier within the issuing signal source's signal set.",
-                                      "pattern": "^[a-zA-Z0-9_-]+$",
-                                      "type": "string"
-                                    },
-                                    "signal_source_url": {
-                                      "description": "URL of the signal source that issues this source-native signal.",
-                                      "format": "uri",
-                                      "type": "string"
-                                    }
-                                  },
-                                  "required": [
-                                    "scope",
-                                    "signal_source_url",
-                                    "signal_id"
-                                  ],
-                                  "type": "object"
-                                }
-                              ],
-                              "title": "Signal Ref",
-                              "x-entity": "signal"
+                              "$ref": "#/definitions/Shared38"
                             },
                             "value": {
                               "const": true,
@@ -3377,167 +2300,7 @@
                           "description": "Categorical signal expression - target users with one of the listed values.",
                           "properties": {
                             "signal_ref": {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
-                              "description": "Named signal being targeted.",
-                              "discriminator": {
-                                "propertyName": "scope"
-                              },
-                              "oneOf": [
-                                {
-                                  "additionalProperties": true,
-                                  "description": "Product-scoped signal. The signal_id is meaningful only within the selected product/package context and MUST match a Product.included_signals[].signal_ref.signal_id or Product.signal_targeting_options[].signal_ref.signal_id for that product, depending on whether the signal is descriptive or selectable.",
-                                  "not": {
-                                    "anyOf": [
-                                      {
-                                        "required": [
-                                          "data_provider_domain"
-                                        ]
-                                      },
-                                      {
-                                        "required": [
-                                          "signal_source_url"
-                                        ]
-                                      },
-                                      {
-                                        "required": [
-                                          "agent_url"
-                                        ]
-                                      },
-                                      {
-                                        "required": [
-                                          "source"
-                                        ]
-                                      },
-                                      {
-                                        "required": [
-                                          "id"
-                                        ]
-                                      }
-                                    ]
-                                  },
-                                  "properties": {
-                                    "scope": {
-                                      "const": "product",
-                                      "description": "Discriminator indicating the signal resolves through the selected product's included_signals or signal_targeting_options.",
-                                      "type": "string"
-                                    },
-                                    "signal_id": {
-                                      "description": "Product-local signal identifier. For local signals exposed on both get_signals and get_products, this MUST match get_signals.signals[].signal_ref.signal_id for the same signal.",
-                                      "pattern": "^[a-zA-Z0-9_-]+$",
-                                      "type": "string"
-                                    }
-                                  },
-                                  "required": [
-                                    "scope",
-                                    "signal_id"
-                                  ],
-                                  "type": "object"
-                                },
-                                {
-                                  "additionalProperties": true,
-                                  "description": "Data-provider-scoped signal. The signal_id resolves through the data provider's published adagents.json signals[] and can be authorization-verified there.",
-                                  "not": {
-                                    "anyOf": [
-                                      {
-                                        "required": [
-                                          "agent_url"
-                                        ]
-                                      },
-                                      {
-                                        "required": [
-                                          "signal_source_url"
-                                        ]
-                                      },
-                                      {
-                                        "required": [
-                                          "source"
-                                        ]
-                                      },
-                                      {
-                                        "required": [
-                                          "id"
-                                        ]
-                                      }
-                                    ]
-                                  },
-                                  "properties": {
-                                    "data_provider_domain": {
-                                      "description": "Domain that publishes the signal definition in its adagents.json signals[].",
-                                      "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-                                      "type": "string"
-                                    },
-                                    "scope": {
-                                      "const": "data_provider",
-                                      "description": "Discriminator indicating the signal resolves through a data provider's published adagents.json signals[].",
-                                      "type": "string"
-                                    },
-                                    "signal_id": {
-                                      "description": "Signal identifier within the data provider's published adagents.json signals[].",
-                                      "pattern": "^[a-zA-Z0-9_-]+$",
-                                      "type": "string"
-                                    }
-                                  },
-                                  "required": [
-                                    "scope",
-                                    "data_provider_domain",
-                                    "signal_id"
-                                  ],
-                                  "type": "object"
-                                },
-                                {
-                                  "additionalProperties": true,
-                                  "description": "Signal-source-scoped signal. Use this for source-native signals that are not published in upstream adagents.json signals[]. The buyer trusts the issuing signal source for this identity; use scope 'data_provider' instead when the signal is published in adagents.json signals[], even if the publisher is also the seller or signal source.",
-                                  "not": {
-                                    "anyOf": [
-                                      {
-                                        "required": [
-                                          "data_provider_domain"
-                                        ]
-                                      },
-                                      {
-                                        "required": [
-                                          "agent_url"
-                                        ]
-                                      },
-                                      {
-                                        "required": [
-                                          "source"
-                                        ]
-                                      },
-                                      {
-                                        "required": [
-                                          "id"
-                                        ]
-                                      }
-                                    ]
-                                  },
-                                  "properties": {
-                                    "scope": {
-                                      "const": "signal_source",
-                                      "description": "Discriminator indicating the signal resolves through the issuing signal source.",
-                                      "type": "string"
-                                    },
-                                    "signal_id": {
-                                      "description": "Signal identifier within the issuing signal source's signal set.",
-                                      "pattern": "^[a-zA-Z0-9_-]+$",
-                                      "type": "string"
-                                    },
-                                    "signal_source_url": {
-                                      "description": "URL of the signal source that issues this source-native signal.",
-                                      "format": "uri",
-                                      "type": "string"
-                                    }
-                                  },
-                                  "required": [
-                                    "scope",
-                                    "signal_source_url",
-                                    "signal_id"
-                                  ],
-                                  "type": "object"
-                                }
-                              ],
-                              "title": "Signal Ref",
-                              "x-entity": "signal"
+                              "$ref": "#/definitions/Shared38"
                             },
                             "value_type": {
                               "const": "categorical",
@@ -3547,7 +2310,7 @@
                             "values": {
                               "description": "Values to target. Users with any of these values match the expression.",
                               "items": {
-                                "type": "string"
+                                "$ref": "#/definitions/Shared4"
                               },
                               "minItems": 1,
                               "type": "array"
@@ -3585,167 +2348,7 @@
                               "type": "number"
                             },
                             "signal_ref": {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
-                              "description": "Named signal being targeted.",
-                              "discriminator": {
-                                "propertyName": "scope"
-                              },
-                              "oneOf": [
-                                {
-                                  "additionalProperties": true,
-                                  "description": "Product-scoped signal. The signal_id is meaningful only within the selected product/package context and MUST match a Product.included_signals[].signal_ref.signal_id or Product.signal_targeting_options[].signal_ref.signal_id for that product, depending on whether the signal is descriptive or selectable.",
-                                  "not": {
-                                    "anyOf": [
-                                      {
-                                        "required": [
-                                          "data_provider_domain"
-                                        ]
-                                      },
-                                      {
-                                        "required": [
-                                          "signal_source_url"
-                                        ]
-                                      },
-                                      {
-                                        "required": [
-                                          "agent_url"
-                                        ]
-                                      },
-                                      {
-                                        "required": [
-                                          "source"
-                                        ]
-                                      },
-                                      {
-                                        "required": [
-                                          "id"
-                                        ]
-                                      }
-                                    ]
-                                  },
-                                  "properties": {
-                                    "scope": {
-                                      "const": "product",
-                                      "description": "Discriminator indicating the signal resolves through the selected product's included_signals or signal_targeting_options.",
-                                      "type": "string"
-                                    },
-                                    "signal_id": {
-                                      "description": "Product-local signal identifier. For local signals exposed on both get_signals and get_products, this MUST match get_signals.signals[].signal_ref.signal_id for the same signal.",
-                                      "pattern": "^[a-zA-Z0-9_-]+$",
-                                      "type": "string"
-                                    }
-                                  },
-                                  "required": [
-                                    "scope",
-                                    "signal_id"
-                                  ],
-                                  "type": "object"
-                                },
-                                {
-                                  "additionalProperties": true,
-                                  "description": "Data-provider-scoped signal. The signal_id resolves through the data provider's published adagents.json signals[] and can be authorization-verified there.",
-                                  "not": {
-                                    "anyOf": [
-                                      {
-                                        "required": [
-                                          "agent_url"
-                                        ]
-                                      },
-                                      {
-                                        "required": [
-                                          "signal_source_url"
-                                        ]
-                                      },
-                                      {
-                                        "required": [
-                                          "source"
-                                        ]
-                                      },
-                                      {
-                                        "required": [
-                                          "id"
-                                        ]
-                                      }
-                                    ]
-                                  },
-                                  "properties": {
-                                    "data_provider_domain": {
-                                      "description": "Domain that publishes the signal definition in its adagents.json signals[].",
-                                      "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-                                      "type": "string"
-                                    },
-                                    "scope": {
-                                      "const": "data_provider",
-                                      "description": "Discriminator indicating the signal resolves through a data provider's published adagents.json signals[].",
-                                      "type": "string"
-                                    },
-                                    "signal_id": {
-                                      "description": "Signal identifier within the data provider's published adagents.json signals[].",
-                                      "pattern": "^[a-zA-Z0-9_-]+$",
-                                      "type": "string"
-                                    }
-                                  },
-                                  "required": [
-                                    "scope",
-                                    "data_provider_domain",
-                                    "signal_id"
-                                  ],
-                                  "type": "object"
-                                },
-                                {
-                                  "additionalProperties": true,
-                                  "description": "Signal-source-scoped signal. Use this for source-native signals that are not published in upstream adagents.json signals[]. The buyer trusts the issuing signal source for this identity; use scope 'data_provider' instead when the signal is published in adagents.json signals[], even if the publisher is also the seller or signal source.",
-                                  "not": {
-                                    "anyOf": [
-                                      {
-                                        "required": [
-                                          "data_provider_domain"
-                                        ]
-                                      },
-                                      {
-                                        "required": [
-                                          "agent_url"
-                                        ]
-                                      },
-                                      {
-                                        "required": [
-                                          "source"
-                                        ]
-                                      },
-                                      {
-                                        "required": [
-                                          "id"
-                                        ]
-                                      }
-                                    ]
-                                  },
-                                  "properties": {
-                                    "scope": {
-                                      "const": "signal_source",
-                                      "description": "Discriminator indicating the signal resolves through the issuing signal source.",
-                                      "type": "string"
-                                    },
-                                    "signal_id": {
-                                      "description": "Signal identifier within the issuing signal source's signal set.",
-                                      "pattern": "^[a-zA-Z0-9_-]+$",
-                                      "type": "string"
-                                    },
-                                    "signal_source_url": {
-                                      "description": "URL of the signal source that issues this source-native signal.",
-                                      "format": "uri",
-                                      "type": "string"
-                                    }
-                                  },
-                                  "required": [
-                                    "scope",
-                                    "signal_source_url",
-                                    "signal_id"
-                                  ],
-                                  "type": "object"
-                                }
-                              ],
-                              "title": "Signal Ref",
-                              "x-entity": "signal"
+                              "$ref": "#/definitions/Shared38"
                             },
                             "value_type": {
                               "const": "numeric",
@@ -3872,7 +2475,7 @@
           "catchment_ids": {
             "description": "Catchment zone IDs to target (e.g., 'walk', 'drive'). Omit to target all catchment zones.",
             "items": {
-              "type": "string"
+              "$ref": "#/definitions/Shared4"
             },
             "minItems": 1,
             "type": "array"
@@ -3880,7 +2483,7 @@
           "store_ids": {
             "description": "Filter to specific stores within the catalog. Omit to target all stores.",
             "items": {
-              "type": "string"
+              "$ref": "#/definitions/Shared4"
             },
             "minItems": 1,
             "type": "array"

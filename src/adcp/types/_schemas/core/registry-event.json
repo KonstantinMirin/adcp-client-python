@@ -4,17 +4,13 @@
       "additionalProperties": true,
       "properties": {
         "agent_url": {
-          "format": "uri",
-          "type": "string"
+          "$ref": "#/definitions/Shared12"
         },
         "categories": {
           "$ref": "#/$defs/stringArray"
         },
         "category_taxonomy": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "$ref": "#/definitions/Shared10"
         },
         "channels": {
           "$ref": "#/$defs/stringArray"
@@ -113,29 +109,26 @@
           "uniqueItems": true
         },
         "has_tmp": {
-          "type": "boolean"
+          "$ref": "#/definitions/Shared13"
         },
         "markets": {
           "items": {
-            "pattern": "^[A-Z]{2}$",
-            "type": "string"
+            "$ref": "#/definitions/Shared15"
           },
           "type": "array",
           "uniqueItems": true
         },
         "name": {
-          "type": "string"
+          "$ref": "#/definitions/Shared9"
         },
         "property_count": {
-          "minimum": 0,
-          "type": "integer"
+          "$ref": "#/definitions/Shared7"
         },
         "property_types": {
           "$ref": "#/$defs/stringArray"
         },
         "publisher_count": {
-          "minimum": 0,
-          "type": "integer"
+          "$ref": "#/definitions/Shared7"
         },
         "tags": {
           "$ref": "#/$defs/stringArray"
@@ -152,8 +145,7 @@
           "type": "string"
         },
         "updated_at": {
-          "format": "date-time",
-          "type": "string"
+          "$ref": "#/definitions/Shared14"
         }
       },
       "type": "object"
@@ -162,8 +154,7 @@
       "additionalProperties": true,
       "properties": {
         "agent_url": {
-          "format": "uri",
-          "type": "string"
+          "$ref": "#/definitions/Shared12"
         },
         "agent_url_canonical": {
           "description": "Registry-canonicalized form of agent_url for equality checks.",
@@ -182,10 +173,7 @@
           "type": "string"
         },
         "authorized_for": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "$ref": "#/definitions/Shared10"
         },
         "collections": {
           "description": "Collection constraints from authorized_agents[*].collections. When set, the event does NOT authorize the property unqualified \u2014 consumers building a local authorization index MUST scope the grant to these selectors and fail closed when a query carries no collection scope. A selector without collection_ids is a bulk grant for all collections declared at that publisher_domain.",
@@ -222,17 +210,10 @@
           "$ref": "#/$defs/countries"
         },
         "created_at": {
-          "format": "date-time",
-          "type": [
-            "string",
-            "null"
-          ]
+          "$ref": "#/definitions/Shared17"
         },
         "created_by": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "$ref": "#/definitions/Shared10"
         },
         "delegation_type": {
           "enum": [
@@ -243,15 +224,13 @@
           "type": "string"
         },
         "disputed": {
-          "type": "boolean"
+          "$ref": "#/definitions/Shared13"
         },
         "effective_from": {
-          "format": "date-time",
-          "type": "string"
+          "$ref": "#/definitions/Shared14"
         },
         "effective_until": {
-          "format": "date-time",
-          "type": "string"
+          "$ref": "#/definitions/Shared14"
         },
         "evidence": {
           "enum": [
@@ -263,14 +242,10 @@
           "type": "string"
         },
         "exclusive": {
-          "type": "boolean"
+          "$ref": "#/definitions/Shared13"
         },
         "expires_at": {
-          "format": "date-time",
-          "type": [
-            "string",
-            "null"
-          ]
+          "$ref": "#/definitions/Shared17"
         },
         "id": {
           "description": "Registry authorization row id when the event is backed by a materialized effective authorization row.",
@@ -278,24 +253,17 @@
           "type": "string"
         },
         "override_applied": {
-          "type": "boolean"
+          "$ref": "#/definitions/Shared13"
         },
         "override_reason": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "$ref": "#/definitions/Shared10"
         },
         "placement_ids": {
-          "items": {
-            "type": "string"
-          },
-          "minItems": 1,
-          "type": "array"
+          "$ref": "#/definitions/Shared16"
         },
         "placement_tags": {
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/Shared9"
           },
           "minItems": 1,
           "type": "array",
@@ -308,210 +276,25 @@
             "description": "An advertising property that can be validated via adagents.json",
             "properties": {
               "identifiers": {
-                "description": "Array of identifiers for this property",
-                "items": {
-                  "additionalProperties": true,
-                  "properties": {
-                    "type": {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
-                      "description": "Type of identifier for this property",
-                      "enum": [
-                        "domain",
-                        "subdomain",
-                        "network_id",
-                        "ios_bundle",
-                        "android_package",
-                        "apple_app_store_id",
-                        "google_play_id",
-                        "roku_store_id",
-                        "fire_tv_asin",
-                        "samsung_app_id",
-                        "apple_tv_bundle",
-                        "bundle_id",
-                        "venue_id",
-                        "screen_id",
-                        "openooh_venue_type",
-                        "rss_url",
-                        "apple_podcast_id",
-                        "spotify_collection_id",
-                        "podcast_guid",
-                        "station_id",
-                        "facility_id"
-                      ],
-                      "enumDescriptions": {
-                        "android_package": "Android package name (e.g., com.example.app)",
-                        "apple_app_store_id": "Apple App Store numeric ID",
-                        "apple_podcast_id": "Apple Podcasts numeric ID",
-                        "apple_tv_bundle": "Apple TV app bundle identifier",
-                        "bundle_id": "Generic app bundle identifier",
-                        "domain": "Web domain (e.g., example.com)",
-                        "facility_id": "Broadcast facility or license ID from a national regulator, prefixed with authority slug (e.g., fcc:73953, ofcom:AL000001). Known prefixes: fcc (US), crtc (Canada), ift (Mexico), ofcom (UK), arcom (France), bnetza/medienanstalt (Germany), acma (Australia), mic (Japan), kcc (South Korea), anatel (Brazil), enacom (Argentina), trai (India)",
-                        "fire_tv_asin": "Amazon Fire TV ASIN",
-                        "google_play_id": "Google Play Store package ID",
-                        "ios_bundle": "iOS app bundle identifier (e.g., com.example.app)",
-                        "network_id": "Network or platform-specific identifier",
-                        "openooh_venue_type": "OpenOOH Venue Taxonomy enumeration ID, prefixed with the taxonomy authority and version for unambiguous interchange (for example openooh-1.1:20501 for Retail / Malls / Concourse). Bare or dotted hierarchy values are ambiguous and SHOULD NOT be emitted by new senders.",
-                        "podcast_guid": "Podcast GUID (podcasting 2.0 namespace)",
-                        "roku_store_id": "Roku Channel Store identifier",
-                        "rss_url": "RSS feed URL for podcast or content feed",
-                        "samsung_app_id": "Samsung TV app identifier",
-                        "screen_id": "DOOH screen identifier within a venue",
-                        "spotify_collection_id": "Spotify show or collection URI",
-                        "station_id": "Broadcast station identifier \u2014 call sign, station name, or other locally recognized identifier (e.g., WCBS-FM, BBC Radio 4, France Inter, 2GB)",
-                        "subdomain": "Specific subdomain (e.g., news.example.com)",
-                        "venue_id": "DOOH venue identifier"
-                      },
-                      "examples": [
-                        "domain",
-                        "ios_bundle",
-                        "venue_id",
-                        "apple_podcast_id",
-                        "station_id",
-                        "facility_id"
-                      ],
-                      "title": "Property Identifier Types",
-                      "type": "string"
-                    },
-                    "value": {
-                      "description": "The identifier value. For domain type: 'example.com' matches base domain plus www and m subdomains; 'edition.example.com' matches that specific subdomain; '*.example.com' matches ALL subdomains but NOT base domain",
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "type",
-                    "value"
-                  ],
-                  "type": "object"
-                },
-                "minItems": 1,
-                "type": "array"
+                "$ref": "#/definitions/Shared22"
               },
               "name": {
-                "description": "Human-readable property name",
-                "type": "string"
+                "$ref": "#/definitions/Shared21"
               },
               "property_id": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "description": "Unique identifier for this property (optional). Enables referencing properties by ID instead of repeating full objects.",
-                "examples": [
-                  "cnn_ctv_app",
-                  "homepage",
-                  "mobile_ios",
-                  "instagram"
-                ],
-                "pattern": "^[a-z0-9_]+$",
-                "title": "Property ID",
-                "type": "string",
-                "x-entity": "property"
+                "$ref": "#/definitions/Shared19"
               },
               "property_type": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "description": "Type of advertising property",
-                "enum": [
-                  "website",
-                  "mobile_app",
-                  "ctv_app",
-                  "desktop_app",
-                  "dooh",
-                  "podcast",
-                  "radio",
-                  "linear_tv",
-                  "streaming_audio",
-                  "ai_assistant"
-                ],
-                "enumDescriptions": {
-                  "ai_assistant": "AI-powered conversational interfaces including chatbots, AI assistants, and conversational AI platforms, identified by platform-specific IDs",
-                  "ctv_app": "Connected TV applications, identified by platform-specific store IDs",
-                  "desktop_app": "Desktop applications (Electron, native, Chromium wrappers), identified by application bundle IDs",
-                  "dooh": "Venue-operated digital endpoint networks, including screens and audio players, identified by network/venue IDs",
-                  "linear_tv": "Linear television stations and networks, identified by station ID or facility ID",
-                  "mobile_app": "Native mobile applications, identified by app store IDs or bundle identifiers",
-                  "podcast": "Podcast feeds and episodes, identified by RSS feed URLs or podcast IDs",
-                  "radio": "Radio station properties, identified by station ID or facility ID",
-                  "streaming_audio": "Digital audio streaming properties, identified by platform-specific IDs",
-                  "website": "Web properties accessible via browser, identified by domain"
-                },
-                "title": "Property Type",
-                "type": "string"
+                "$ref": "#/definitions/Shared20"
               },
               "publisher_domain": {
-                "description": "Domain where adagents.json should be checked for authorization validation. Optional in adagents.json (file location implies domain).",
-                "type": "string"
+                "$ref": "#/definitions/Shared25"
               },
               "supported_channels": {
-                "description": "Advertising channels this property supports (e.g., ['display', 'olv', 'social']). Publishers declare which channels their inventory aligns with. Properties may support multiple channels. See the Media Channel Taxonomy for definitions.",
-                "items": {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
-                  "description": "Standardized advertising media channels describing how buyers allocate budget. Channels are planning abstractions, not technical substrates. See the Media Channel Taxonomy specification for detailed definitions.",
-                  "enum": [
-                    "display",
-                    "olv",
-                    "social",
-                    "search",
-                    "ctv",
-                    "linear_tv",
-                    "radio",
-                    "streaming_audio",
-                    "podcast",
-                    "dooh",
-                    "ooh",
-                    "print",
-                    "cinema",
-                    "email",
-                    "gaming",
-                    "retail_media",
-                    "influencer",
-                    "affiliate",
-                    "product_placement",
-                    "sponsored_intelligence"
-                  ],
-                  "enumDescriptions": {
-                    "affiliate": "Affiliate networks, comparison sites, and performance-based partnerships",
-                    "cinema": "Movie theater advertising",
-                    "ctv": "Connected TV and streaming on television screens",
-                    "display": "Digital display advertising (banners, native, rich media) across web and app",
-                    "dooh": "Digital out-of-home buying context, including inventory on venue-operated screens and audio players",
-                    "email": "Email advertising and sponsored newsletter content",
-                    "gaming": "In-game advertising across platforms",
-                    "influencer": "Creator and influencer marketing partnerships",
-                    "linear_tv": "Traditional broadcast and cable television",
-                    "olv": "Online video advertising outside CTV (pre-roll, outstream, in-app video)",
-                    "ooh": "Classic out-of-home (physical billboards, transit, etc.)",
-                    "podcast": "Podcast advertising (host-read or dynamically inserted)",
-                    "print": "Newspapers, magazines, and other print publications",
-                    "product_placement": "Product placement, branded content, and sponsorship integrations",
-                    "radio": "Traditional AM/FM radio broadcast",
-                    "retail_media": "Retail media networks and commerce marketplaces (Amazon, Walmart, Instacart)",
-                    "search": "Search engine advertising and search networks",
-                    "social": "Social media platforms (Facebook, Instagram, TikTok, LinkedIn, etc.)",
-                    "sponsored_intelligence": "Sponsored Intelligence \u2014 advertising within AI assistants, AI search, and generative AI experiences via the reversed data flow",
-                    "streaming_audio": "Digital audio streaming services (Spotify, Pandora, etc.)"
-                  },
-                  "title": "Media Channel",
-                  "type": "string"
-                },
-                "type": "array",
-                "uniqueItems": true
+                "$ref": "#/definitions/Shared24"
               },
               "tags": {
-                "description": "Tags for categorization and grouping (e.g., network membership, content categories)",
-                "items": {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
-                  "description": "Tag for categorizing publisher properties. Must be lowercase alphanumeric with underscores only.",
-                  "examples": [
-                    "ctv",
-                    "premium",
-                    "news",
-                    "sports",
-                    "meta_network",
-                    "social_media"
-                  ],
-                  "pattern": "^[a-z0-9_]+$",
-                  "title": "Property Tag",
-                  "type": "string"
-                },
-                "type": "array",
-                "uniqueItems": true
+                "$ref": "#/definitions/Shared23"
               }
             },
             "required": [
@@ -534,18 +317,7 @@
         },
         "property_ids": {
           "items": {
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "description": "Identifier for a publisher property. Must be lowercase alphanumeric with underscores only.",
-            "examples": [
-              "cnn_ctv_app",
-              "homepage",
-              "mobile_ios",
-              "instagram"
-            ],
-            "pattern": "^[a-z0-9_]+$",
-            "title": "Property ID",
-            "type": "string",
-            "x-entity": "property"
+            "$ref": "#/definitions/Shared26"
           },
           "minItems": 1,
           "type": "array"
@@ -560,19 +332,7 @@
         },
         "property_tags": {
           "items": {
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "description": "Tag for categorizing publisher properties. Must be lowercase alphanumeric with underscores only.",
-            "examples": [
-              "ctv",
-              "premium",
-              "news",
-              "sports",
-              "meta_network",
-              "social_media"
-            ],
-            "pattern": "^[a-z0-9_]+$",
-            "title": "Property Tag",
-            "type": "string"
+            "$ref": "#/definitions/Shared27"
           },
           "minItems": 1,
           "type": "array"
@@ -592,40 +352,21 @@
                 "additionalProperties": true,
                 "allOf": [
                   {
-                    "not": {
-                      "required": [
-                        "publisher_domain",
-                        "publisher_domains"
-                      ]
-                    }
+                    "$ref": "#/definitions/Shared30"
                   },
                   {
-                    "anyOf": [
-                      {
-                        "required": [
-                          "publisher_domain"
-                        ]
-                      },
-                      {
-                        "required": [
-                          "publisher_domains"
-                        ]
-                      }
-                    ]
+                    "$ref": "#/definitions/Shared31"
                   }
                 ],
                 "description": "Select all properties from one publisher domain, or from each publisher domain when `publisher_domains` is used. Consumers MAY satisfy the selector from the parent file's top-level `properties[]` when those properties carry a `publisher_domain` matching one of the listed domains (see Resolution paths in the spec).",
                 "properties": {
                   "publisher_domain": {
-                    "description": "Domain where publisher's adagents.json is hosted (e.g., 'cnn.com'). XOR with `publisher_domains` \u2014 exactly one MUST be present on each `publisher_properties[]` entry; both-present and neither-present both fail validation.",
-                    "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-                    "type": "string"
+                    "$ref": "#/definitions/Shared29"
                   },
                   "publisher_domains": {
                     "description": "Compact form for fanning the same selector across many publishers (e.g., a managed network listing every publisher it represents). Each entry is the domain where that publisher's adagents.json is hosted. Each listed domain MUST be canonicalized to lowercase (the `pattern` already rejects uppercase). Mutually exclusive with `publisher_domain`. Each listed domain counts as explicitly scoped for the `managerdomain` fallback safety rule.",
                     "items": {
-                      "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-                      "type": "string"
+                      "$ref": "#/definitions/Shared0"
                     },
                     "minItems": 1,
                     "type": "array",
@@ -649,18 +390,7 @@
                   "property_ids": {
                     "description": "Specific property IDs from the publisher's adagents.json",
                     "items": {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
-                      "description": "Identifier for a publisher property. Must be lowercase alphanumeric with underscores only.",
-                      "examples": [
-                        "cnn_ctv_app",
-                        "homepage",
-                        "mobile_ios",
-                        "instagram"
-                      ],
-                      "pattern": "^[a-z0-9_]+$",
-                      "title": "Property ID",
-                      "type": "string",
-                      "x-entity": "property"
+                      "$ref": "#/definitions/Shared26"
                     },
                     "minItems": 1,
                     "type": "array"
@@ -687,26 +417,10 @@
                 "additionalProperties": true,
                 "allOf": [
                   {
-                    "not": {
-                      "required": [
-                        "publisher_domain",
-                        "publisher_domains"
-                      ]
-                    }
+                    "$ref": "#/definitions/Shared30"
                   },
                   {
-                    "anyOf": [
-                      {
-                        "required": [
-                          "publisher_domain"
-                        ]
-                      },
-                      {
-                        "required": [
-                          "publisher_domains"
-                        ]
-                      }
-                    ]
+                    "$ref": "#/definitions/Shared31"
                   }
                 ],
                 "description": "Select properties by tag membership. With `publisher_domains`, the same `property_tags` predicate is resolved against each listed publisher's adagents.json \u2014 the common managed-network case where every represented site tags inventory with a shared label. Consumers MAY also satisfy the predicate from the parent file's top-level `properties[]` when those properties carry a `publisher_domain` matching one of the selector's `publisher_domains[]` (see Resolution paths in the spec).",
@@ -714,33 +428,18 @@
                   "property_tags": {
                     "description": "Property tags resolved against each addressed publisher's adagents.json, OR against the parent file's top-level `properties[]` when those properties carry a `publisher_domain` matching the selector. Selector covers all properties carrying any of these tags.",
                     "items": {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
-                      "description": "Tag for categorizing publisher properties. Must be lowercase alphanumeric with underscores only.",
-                      "examples": [
-                        "ctv",
-                        "premium",
-                        "news",
-                        "sports",
-                        "meta_network",
-                        "social_media"
-                      ],
-                      "pattern": "^[a-z0-9_]+$",
-                      "title": "Property Tag",
-                      "type": "string"
+                      "$ref": "#/definitions/Shared27"
                     },
                     "minItems": 1,
                     "type": "array"
                   },
                   "publisher_domain": {
-                    "description": "Domain where publisher's adagents.json is hosted (e.g., 'cnn.com'). XOR with `publisher_domains` \u2014 exactly one MUST be present on each `publisher_properties[]` entry; both-present and neither-present both fail validation.",
-                    "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-                    "type": "string"
+                    "$ref": "#/definitions/Shared29"
                   },
                   "publisher_domains": {
                     "description": "Compact form for fanning the same tag predicate across many publishers (canonical managed-network shape). Each entry is the domain where that publisher's adagents.json is hosted. Each listed domain MUST be canonicalized to lowercase (the `pattern` already rejects uppercase). Mutually exclusive with `publisher_domain`. Each listed domain counts as explicitly scoped for the `managerdomain` fallback safety rule.",
                     "items": {
-                      "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-                      "type": "string"
+                      "$ref": "#/definitions/Shared0"
                     },
                     "minItems": 1,
                     "type": "array",
@@ -824,11 +523,7 @@
           "type": "array"
         },
         "updated_at": {
-          "format": "date-time",
-          "type": [
-            "string",
-            "null"
-          ]
+          "$ref": "#/definitions/Shared17"
         }
       },
       "required": [
@@ -864,7 +559,7 @@
     "changedFields": {
       "description": "Advisory list of changed top-level field names from the source document. Example values for publisher.adagents_changed include \"formats\", \"placements\", and \"authorized_agents\"; for agent.profile_updated these are profile field names such as \"channels\" or \"format_kinds\". Producers SHOULD enumerate every changed semantic field, explicitly including formats and placements for catalog-only revisions (additive from 3.2). Consumers MAY use this for targeted index refresh but MUST re-resolve every depended-on field when reading an older retained event that lacks this list.",
       "items": {
-        "type": "string"
+        "$ref": "#/definitions/Shared9"
       },
       "minItems": 1,
       "type": "array",
@@ -946,7 +641,7 @@
           "type": "string"
         },
         "value": {
-          "type": "string"
+          "$ref": "#/definitions/Shared9"
         }
       },
       "required": [
@@ -1203,18 +898,7 @@
                   "property_ids": {
                     "description": "Publisher-scoped property IDs from publisher_domain's adagents.json that carry this collection. For owner-sold channel inventory, these identify the host apps without requiring the host to publish channel-owner placement definitions.",
                     "items": {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
-                      "description": "Identifier for a publisher property. Must be lowercase alphanumeric with underscores only.",
-                      "examples": [
-                        "cnn_ctv_app",
-                        "homepage",
-                        "mobile_ios",
-                        "instagram"
-                      ],
-                      "pattern": "^[a-z0-9_]+$",
-                      "title": "Property ID",
-                      "type": "string",
-                      "x-entity": "property"
+                      "$ref": "#/definitions/Shared26"
                     },
                     "minItems": 1,
                     "type": "array",
@@ -1243,7 +927,7 @@
             "genre": {
               "description": "Genre tags. When genre_taxonomy is present, values are taxonomy IDs (e.g., IAB Content Taxonomy 3.0 codes). Otherwise free-form.",
               "items": {
-                "type": "string"
+                "$ref": "#/definitions/Shared9"
               },
               "type": "array"
             },
@@ -1518,8 +1202,7 @@
           ]
         },
         "collection_rid": {
-          "format": "uuid",
-          "type": "string"
+          "$ref": "#/definitions/Shared11"
         },
         "identifiers": {
           "description": "Distribution identifiers that alias this collection across platforms.",
@@ -1556,10 +1239,7 @@
           ]
         },
         "name": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "$ref": "#/definitions/Shared10"
         },
         "publisher_domain": {
           "$ref": "#/$defs/domain"
@@ -1582,17 +1262,13 @@
       "additionalProperties": true,
       "properties": {
         "agent_url": {
-          "format": "uri",
-          "type": "string"
+          "$ref": "#/definitions/Shared12"
         },
         "current_status": {
           "$ref": "#/$defs/complianceStatus"
         },
         "headline": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "$ref": "#/definitions/Shared10"
         },
         "previous_status": {
           "$ref": "#/$defs/complianceStatus"
@@ -1605,15 +1281,13 @@
                 "$ref": "#/$defs/storyboardStatus"
               },
               "steps_passed": {
-                "minimum": 0,
-                "type": "integer"
+                "$ref": "#/definitions/Shared7"
               },
               "steps_total": {
-                "minimum": 0,
-                "type": "integer"
+                "$ref": "#/definitions/Shared7"
               },
               "storyboard_id": {
-                "type": "string"
+                "$ref": "#/definitions/Shared9"
               }
             },
             "required": [
@@ -1625,12 +1299,10 @@
           "type": "array"
         },
         "storyboards_passing": {
-          "minimum": 0,
-          "type": "integer"
+          "$ref": "#/definitions/Shared7"
         },
         "storyboards_total": {
-          "minimum": 0,
-          "type": "integer"
+          "$ref": "#/definitions/Shared7"
         },
         "tracks": {
           "additionalProperties": {
@@ -1671,16 +1343,14 @@
     },
     "countries": {
       "items": {
-        "pattern": "^[A-Z]{2}$",
-        "type": "string"
+        "$ref": "#/definitions/Shared15"
       },
       "minItems": 1,
       "type": "array",
       "uniqueItems": true
     },
     "domain": {
-      "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-      "type": "string"
+      "$ref": "#/definitions/Shared0"
     },
     "propertyPayload": {
       "additionalProperties": true,
@@ -1758,8 +1428,7 @@
                 "type": "string"
               },
               "value": {
-                "description": "The identifier value. For domain type: 'example.com' matches base domain plus www and m subdomains; 'edition.example.com' matches that specific subdomain; '*.example.com' matches ALL subdomains but NOT base domain",
-                "type": "string"
+                "$ref": "#/definitions/Shared28"
               }
             },
             "required": [
@@ -1778,210 +1447,25 @@
           "description": "Optional full post-change property object when available.",
           "properties": {
             "identifiers": {
-              "description": "Array of identifiers for this property",
-              "items": {
-                "additionalProperties": true,
-                "properties": {
-                  "type": {
-                    "$schema": "http://json-schema.org/draft-07/schema#",
-                    "description": "Type of identifier for this property",
-                    "enum": [
-                      "domain",
-                      "subdomain",
-                      "network_id",
-                      "ios_bundle",
-                      "android_package",
-                      "apple_app_store_id",
-                      "google_play_id",
-                      "roku_store_id",
-                      "fire_tv_asin",
-                      "samsung_app_id",
-                      "apple_tv_bundle",
-                      "bundle_id",
-                      "venue_id",
-                      "screen_id",
-                      "openooh_venue_type",
-                      "rss_url",
-                      "apple_podcast_id",
-                      "spotify_collection_id",
-                      "podcast_guid",
-                      "station_id",
-                      "facility_id"
-                    ],
-                    "enumDescriptions": {
-                      "android_package": "Android package name (e.g., com.example.app)",
-                      "apple_app_store_id": "Apple App Store numeric ID",
-                      "apple_podcast_id": "Apple Podcasts numeric ID",
-                      "apple_tv_bundle": "Apple TV app bundle identifier",
-                      "bundle_id": "Generic app bundle identifier",
-                      "domain": "Web domain (e.g., example.com)",
-                      "facility_id": "Broadcast facility or license ID from a national regulator, prefixed with authority slug (e.g., fcc:73953, ofcom:AL000001). Known prefixes: fcc (US), crtc (Canada), ift (Mexico), ofcom (UK), arcom (France), bnetza/medienanstalt (Germany), acma (Australia), mic (Japan), kcc (South Korea), anatel (Brazil), enacom (Argentina), trai (India)",
-                      "fire_tv_asin": "Amazon Fire TV ASIN",
-                      "google_play_id": "Google Play Store package ID",
-                      "ios_bundle": "iOS app bundle identifier (e.g., com.example.app)",
-                      "network_id": "Network or platform-specific identifier",
-                      "openooh_venue_type": "OpenOOH Venue Taxonomy enumeration ID, prefixed with the taxonomy authority and version for unambiguous interchange (for example openooh-1.1:20501 for Retail / Malls / Concourse). Bare or dotted hierarchy values are ambiguous and SHOULD NOT be emitted by new senders.",
-                      "podcast_guid": "Podcast GUID (podcasting 2.0 namespace)",
-                      "roku_store_id": "Roku Channel Store identifier",
-                      "rss_url": "RSS feed URL for podcast or content feed",
-                      "samsung_app_id": "Samsung TV app identifier",
-                      "screen_id": "DOOH screen identifier within a venue",
-                      "spotify_collection_id": "Spotify show or collection URI",
-                      "station_id": "Broadcast station identifier \u2014 call sign, station name, or other locally recognized identifier (e.g., WCBS-FM, BBC Radio 4, France Inter, 2GB)",
-                      "subdomain": "Specific subdomain (e.g., news.example.com)",
-                      "venue_id": "DOOH venue identifier"
-                    },
-                    "examples": [
-                      "domain",
-                      "ios_bundle",
-                      "venue_id",
-                      "apple_podcast_id",
-                      "station_id",
-                      "facility_id"
-                    ],
-                    "title": "Property Identifier Types",
-                    "type": "string"
-                  },
-                  "value": {
-                    "description": "The identifier value. For domain type: 'example.com' matches base domain plus www and m subdomains; 'edition.example.com' matches that specific subdomain; '*.example.com' matches ALL subdomains but NOT base domain",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "type",
-                  "value"
-                ],
-                "type": "object"
-              },
-              "minItems": 1,
-              "type": "array"
+              "$ref": "#/definitions/Shared22"
             },
             "name": {
-              "description": "Human-readable property name",
-              "type": "string"
+              "$ref": "#/definitions/Shared21"
             },
             "property_id": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "description": "Unique identifier for this property (optional). Enables referencing properties by ID instead of repeating full objects.",
-              "examples": [
-                "cnn_ctv_app",
-                "homepage",
-                "mobile_ios",
-                "instagram"
-              ],
-              "pattern": "^[a-z0-9_]+$",
-              "title": "Property ID",
-              "type": "string",
-              "x-entity": "property"
+              "$ref": "#/definitions/Shared19"
             },
             "property_type": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "description": "Type of advertising property",
-              "enum": [
-                "website",
-                "mobile_app",
-                "ctv_app",
-                "desktop_app",
-                "dooh",
-                "podcast",
-                "radio",
-                "linear_tv",
-                "streaming_audio",
-                "ai_assistant"
-              ],
-              "enumDescriptions": {
-                "ai_assistant": "AI-powered conversational interfaces including chatbots, AI assistants, and conversational AI platforms, identified by platform-specific IDs",
-                "ctv_app": "Connected TV applications, identified by platform-specific store IDs",
-                "desktop_app": "Desktop applications (Electron, native, Chromium wrappers), identified by application bundle IDs",
-                "dooh": "Venue-operated digital endpoint networks, including screens and audio players, identified by network/venue IDs",
-                "linear_tv": "Linear television stations and networks, identified by station ID or facility ID",
-                "mobile_app": "Native mobile applications, identified by app store IDs or bundle identifiers",
-                "podcast": "Podcast feeds and episodes, identified by RSS feed URLs or podcast IDs",
-                "radio": "Radio station properties, identified by station ID or facility ID",
-                "streaming_audio": "Digital audio streaming properties, identified by platform-specific IDs",
-                "website": "Web properties accessible via browser, identified by domain"
-              },
-              "title": "Property Type",
-              "type": "string"
+              "$ref": "#/definitions/Shared20"
             },
             "publisher_domain": {
-              "description": "Domain where adagents.json should be checked for authorization validation. Optional in adagents.json (file location implies domain).",
-              "type": "string"
+              "$ref": "#/definitions/Shared25"
             },
             "supported_channels": {
-              "description": "Advertising channels this property supports (e.g., ['display', 'olv', 'social']). Publishers declare which channels their inventory aligns with. Properties may support multiple channels. See the Media Channel Taxonomy for definitions.",
-              "items": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "description": "Standardized advertising media channels describing how buyers allocate budget. Channels are planning abstractions, not technical substrates. See the Media Channel Taxonomy specification for detailed definitions.",
-                "enum": [
-                  "display",
-                  "olv",
-                  "social",
-                  "search",
-                  "ctv",
-                  "linear_tv",
-                  "radio",
-                  "streaming_audio",
-                  "podcast",
-                  "dooh",
-                  "ooh",
-                  "print",
-                  "cinema",
-                  "email",
-                  "gaming",
-                  "retail_media",
-                  "influencer",
-                  "affiliate",
-                  "product_placement",
-                  "sponsored_intelligence"
-                ],
-                "enumDescriptions": {
-                  "affiliate": "Affiliate networks, comparison sites, and performance-based partnerships",
-                  "cinema": "Movie theater advertising",
-                  "ctv": "Connected TV and streaming on television screens",
-                  "display": "Digital display advertising (banners, native, rich media) across web and app",
-                  "dooh": "Digital out-of-home buying context, including inventory on venue-operated screens and audio players",
-                  "email": "Email advertising and sponsored newsletter content",
-                  "gaming": "In-game advertising across platforms",
-                  "influencer": "Creator and influencer marketing partnerships",
-                  "linear_tv": "Traditional broadcast and cable television",
-                  "olv": "Online video advertising outside CTV (pre-roll, outstream, in-app video)",
-                  "ooh": "Classic out-of-home (physical billboards, transit, etc.)",
-                  "podcast": "Podcast advertising (host-read or dynamically inserted)",
-                  "print": "Newspapers, magazines, and other print publications",
-                  "product_placement": "Product placement, branded content, and sponsorship integrations",
-                  "radio": "Traditional AM/FM radio broadcast",
-                  "retail_media": "Retail media networks and commerce marketplaces (Amazon, Walmart, Instacart)",
-                  "search": "Search engine advertising and search networks",
-                  "social": "Social media platforms (Facebook, Instagram, TikTok, LinkedIn, etc.)",
-                  "sponsored_intelligence": "Sponsored Intelligence \u2014 advertising within AI assistants, AI search, and generative AI experiences via the reversed data flow",
-                  "streaming_audio": "Digital audio streaming services (Spotify, Pandora, etc.)"
-                },
-                "title": "Media Channel",
-                "type": "string"
-              },
-              "type": "array",
-              "uniqueItems": true
+              "$ref": "#/definitions/Shared24"
             },
             "tags": {
-              "description": "Tags for categorization and grouping (e.g., network membership, content categories)",
-              "items": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "description": "Tag for categorizing publisher properties. Must be lowercase alphanumeric with underscores only.",
-                "examples": [
-                  "ctv",
-                  "premium",
-                  "news",
-                  "sports",
-                  "meta_network",
-                  "social_media"
-                ],
-                "pattern": "^[a-z0-9_]+$",
-                "title": "Property Tag",
-                "type": "string"
-              },
-              "type": "array",
-              "uniqueItems": true
+              "$ref": "#/definitions/Shared23"
             }
           },
           "required": [
@@ -1993,8 +1477,7 @@
           "type": "object"
         },
         "property_rid": {
-          "format": "uuid",
-          "type": "string"
+          "$ref": "#/definitions/Shared11"
         },
         "publisher_domain": {
           "$ref": "#/$defs/domain"
@@ -2017,9 +1500,7 @@
       "additionalProperties": true,
       "anyOf": [
         {
-          "required": [
-            "publisher_domain"
-          ]
+          "$ref": "#/definitions/Shared6"
         },
         {
           "required": [
@@ -2029,32 +1510,22 @@
       ],
       "properties": {
         "agent_count": {
-          "minimum": 0,
-          "type": "integer"
+          "$ref": "#/definitions/Shared7"
         },
         "agents_added": {
-          "items": {
-            "format": "uri",
-            "type": "string"
-          },
-          "type": "array"
+          "$ref": "#/definitions/Shared8"
         },
         "agents_removed": {
-          "items": {
-            "format": "uri",
-            "type": "string"
-          },
-          "type": "array"
+          "$ref": "#/definitions/Shared8"
         },
         "changed_fields": {
           "$ref": "#/$defs/changedFields"
         },
         "collection_count": {
-          "minimum": 0,
-          "type": "integer"
+          "$ref": "#/definitions/Shared7"
         },
         "discovery_method": {
-          "type": "string"
+          "$ref": "#/definitions/Shared9"
         },
         "domain": {
           "$ref": "#/$defs/domain",
@@ -2067,10 +1538,7 @@
           "type": "integer"
         },
         "manager_domain": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "$ref": "#/definitions/Shared10"
         },
         "placement_count": {
           "description": "Number of top-level placements[] declarations after this revision.",
@@ -2078,22 +1546,19 @@
           "type": "integer"
         },
         "properties_added": {
-          "minimum": 0,
-          "type": "integer"
+          "$ref": "#/definitions/Shared7"
         },
         "properties_removed": {
-          "minimum": 0,
-          "type": "integer"
+          "$ref": "#/definitions/Shared7"
         },
         "property_count": {
-          "minimum": 0,
-          "type": "integer"
+          "$ref": "#/definitions/Shared7"
         },
         "publisher_domain": {
           "$ref": "#/$defs/domain"
         },
         "source": {
-          "type": "string"
+          "$ref": "#/definitions/Shared9"
         }
       },
       "type": "object"
@@ -2112,12 +1577,350 @@
     },
     "stringArray": {
       "items": {
-        "type": "string"
+        "$ref": "#/definitions/Shared9"
       },
       "type": "array"
     }
   },
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "Shared0": {
+      "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+      "type": "string"
+    },
+    "Shared1": {
+      "const": "property",
+      "type": "string"
+    },
+    "Shared10": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "Shared11": {
+      "format": "uuid",
+      "type": "string"
+    },
+    "Shared12": {
+      "format": "uri",
+      "type": "string"
+    },
+    "Shared13": {
+      "type": "boolean"
+    },
+    "Shared14": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "Shared15": {
+      "pattern": "^[A-Z]{2}$",
+      "type": "string"
+    },
+    "Shared16": {
+      "items": {
+        "$ref": "#/definitions/Shared9"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "Shared17": {
+      "format": "date-time",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "Shared18": {
+      "description": "Registry evidence source for the merge, such as adagents_json or manual_review.",
+      "type": "string"
+    },
+    "Shared19": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Unique identifier for this property (optional). Enables referencing properties by ID instead of repeating full objects.",
+      "examples": [
+        "cnn_ctv_app",
+        "homepage",
+        "mobile_ios",
+        "instagram"
+      ],
+      "pattern": "^[a-z0-9_]+$",
+      "title": "Property ID",
+      "type": "string",
+      "x-entity": "property"
+    },
+    "Shared2": {
+      "const": "collection",
+      "type": "string"
+    },
+    "Shared20": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Type of advertising property",
+      "enum": [
+        "website",
+        "mobile_app",
+        "ctv_app",
+        "desktop_app",
+        "dooh",
+        "podcast",
+        "radio",
+        "linear_tv",
+        "streaming_audio",
+        "ai_assistant"
+      ],
+      "enumDescriptions": {
+        "ai_assistant": "AI-powered conversational interfaces including chatbots, AI assistants, and conversational AI platforms, identified by platform-specific IDs",
+        "ctv_app": "Connected TV applications, identified by platform-specific store IDs",
+        "desktop_app": "Desktop applications (Electron, native, Chromium wrappers), identified by application bundle IDs",
+        "dooh": "Venue-operated digital endpoint networks, including screens and audio players, identified by network/venue IDs",
+        "linear_tv": "Linear television stations and networks, identified by station ID or facility ID",
+        "mobile_app": "Native mobile applications, identified by app store IDs or bundle identifiers",
+        "podcast": "Podcast feeds and episodes, identified by RSS feed URLs or podcast IDs",
+        "radio": "Radio station properties, identified by station ID or facility ID",
+        "streaming_audio": "Digital audio streaming properties, identified by platform-specific IDs",
+        "website": "Web properties accessible via browser, identified by domain"
+      },
+      "title": "Property Type",
+      "type": "string"
+    },
+    "Shared21": {
+      "description": "Human-readable property name",
+      "type": "string"
+    },
+    "Shared22": {
+      "description": "Array of identifiers for this property",
+      "items": {
+        "additionalProperties": true,
+        "properties": {
+          "type": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Type of identifier for this property",
+            "enum": [
+              "domain",
+              "subdomain",
+              "network_id",
+              "ios_bundle",
+              "android_package",
+              "apple_app_store_id",
+              "google_play_id",
+              "roku_store_id",
+              "fire_tv_asin",
+              "samsung_app_id",
+              "apple_tv_bundle",
+              "bundle_id",
+              "venue_id",
+              "screen_id",
+              "openooh_venue_type",
+              "rss_url",
+              "apple_podcast_id",
+              "spotify_collection_id",
+              "podcast_guid",
+              "station_id",
+              "facility_id"
+            ],
+            "enumDescriptions": {
+              "android_package": "Android package name (e.g., com.example.app)",
+              "apple_app_store_id": "Apple App Store numeric ID",
+              "apple_podcast_id": "Apple Podcasts numeric ID",
+              "apple_tv_bundle": "Apple TV app bundle identifier",
+              "bundle_id": "Generic app bundle identifier",
+              "domain": "Web domain (e.g., example.com)",
+              "facility_id": "Broadcast facility or license ID from a national regulator, prefixed with authority slug (e.g., fcc:73953, ofcom:AL000001). Known prefixes: fcc (US), crtc (Canada), ift (Mexico), ofcom (UK), arcom (France), bnetza/medienanstalt (Germany), acma (Australia), mic (Japan), kcc (South Korea), anatel (Brazil), enacom (Argentina), trai (India)",
+              "fire_tv_asin": "Amazon Fire TV ASIN",
+              "google_play_id": "Google Play Store package ID",
+              "ios_bundle": "iOS app bundle identifier (e.g., com.example.app)",
+              "network_id": "Network or platform-specific identifier",
+              "openooh_venue_type": "OpenOOH Venue Taxonomy enumeration ID, prefixed with the taxonomy authority and version for unambiguous interchange (for example openooh-1.1:20501 for Retail / Malls / Concourse). Bare or dotted hierarchy values are ambiguous and SHOULD NOT be emitted by new senders.",
+              "podcast_guid": "Podcast GUID (podcasting 2.0 namespace)",
+              "roku_store_id": "Roku Channel Store identifier",
+              "rss_url": "RSS feed URL for podcast or content feed",
+              "samsung_app_id": "Samsung TV app identifier",
+              "screen_id": "DOOH screen identifier within a venue",
+              "spotify_collection_id": "Spotify show or collection URI",
+              "station_id": "Broadcast station identifier \u2014 call sign, station name, or other locally recognized identifier (e.g., WCBS-FM, BBC Radio 4, France Inter, 2GB)",
+              "subdomain": "Specific subdomain (e.g., news.example.com)",
+              "venue_id": "DOOH venue identifier"
+            },
+            "examples": [
+              "domain",
+              "ios_bundle",
+              "venue_id",
+              "apple_podcast_id",
+              "station_id",
+              "facility_id"
+            ],
+            "title": "Property Identifier Types",
+            "type": "string"
+          },
+          "value": {
+            "$ref": "#/definitions/Shared28"
+          }
+        },
+        "required": [
+          "type",
+          "value"
+        ],
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "Shared23": {
+      "description": "Tags for categorization and grouping (e.g., network membership, content categories)",
+      "items": {
+        "$ref": "#/definitions/Shared27"
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    "Shared24": {
+      "description": "Advertising channels this property supports (e.g., ['display', 'olv', 'social']). Publishers declare which channels their inventory aligns with. Properties may support multiple channels. See the Media Channel Taxonomy for definitions.",
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Standardized advertising media channels describing how buyers allocate budget. Channels are planning abstractions, not technical substrates. See the Media Channel Taxonomy specification for detailed definitions.",
+        "enum": [
+          "display",
+          "olv",
+          "social",
+          "search",
+          "ctv",
+          "linear_tv",
+          "radio",
+          "streaming_audio",
+          "podcast",
+          "dooh",
+          "ooh",
+          "print",
+          "cinema",
+          "email",
+          "gaming",
+          "retail_media",
+          "influencer",
+          "affiliate",
+          "product_placement",
+          "sponsored_intelligence"
+        ],
+        "enumDescriptions": {
+          "affiliate": "Affiliate networks, comparison sites, and performance-based partnerships",
+          "cinema": "Movie theater advertising",
+          "ctv": "Connected TV and streaming on television screens",
+          "display": "Digital display advertising (banners, native, rich media) across web and app",
+          "dooh": "Digital out-of-home buying context, including inventory on venue-operated screens and audio players",
+          "email": "Email advertising and sponsored newsletter content",
+          "gaming": "In-game advertising across platforms",
+          "influencer": "Creator and influencer marketing partnerships",
+          "linear_tv": "Traditional broadcast and cable television",
+          "olv": "Online video advertising outside CTV (pre-roll, outstream, in-app video)",
+          "ooh": "Classic out-of-home (physical billboards, transit, etc.)",
+          "podcast": "Podcast advertising (host-read or dynamically inserted)",
+          "print": "Newspapers, magazines, and other print publications",
+          "product_placement": "Product placement, branded content, and sponsorship integrations",
+          "radio": "Traditional AM/FM radio broadcast",
+          "retail_media": "Retail media networks and commerce marketplaces (Amazon, Walmart, Instacart)",
+          "search": "Search engine advertising and search networks",
+          "social": "Social media platforms (Facebook, Instagram, TikTok, LinkedIn, etc.)",
+          "sponsored_intelligence": "Sponsored Intelligence \u2014 advertising within AI assistants, AI search, and generative AI experiences via the reversed data flow",
+          "streaming_audio": "Digital audio streaming services (Spotify, Pandora, etc.)"
+        },
+        "title": "Media Channel",
+        "type": "string"
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    "Shared25": {
+      "description": "Domain where adagents.json should be checked for authorization validation. Optional in adagents.json (file location implies domain).",
+      "type": "string"
+    },
+    "Shared26": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Identifier for a publisher property. Must be lowercase alphanumeric with underscores only.",
+      "examples": [
+        "cnn_ctv_app",
+        "homepage",
+        "mobile_ios",
+        "instagram"
+      ],
+      "pattern": "^[a-z0-9_]+$",
+      "title": "Property ID",
+      "type": "string",
+      "x-entity": "property"
+    },
+    "Shared27": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Tag for categorizing publisher properties. Must be lowercase alphanumeric with underscores only.",
+      "examples": [
+        "ctv",
+        "premium",
+        "news",
+        "sports",
+        "meta_network",
+        "social_media"
+      ],
+      "pattern": "^[a-z0-9_]+$",
+      "title": "Property Tag",
+      "type": "string"
+    },
+    "Shared28": {
+      "description": "The identifier value. For domain type: 'example.com' matches base domain plus www and m subdomains; 'edition.example.com' matches that specific subdomain; '*.example.com' matches ALL subdomains but NOT base domain",
+      "type": "string"
+    },
+    "Shared29": {
+      "description": "Domain where publisher's adagents.json is hosted (e.g., 'cnn.com'). XOR with `publisher_domains` \u2014 exactly one MUST be present on each `publisher_properties[]` entry; both-present and neither-present both fail validation.",
+      "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+      "type": "string"
+    },
+    "Shared3": {
+      "const": "agent",
+      "type": "string"
+    },
+    "Shared30": {
+      "not": {
+        "required": [
+          "publisher_domain",
+          "publisher_domains"
+        ]
+      }
+    },
+    "Shared31": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Shared6"
+        },
+        {
+          "required": [
+            "publisher_domains"
+          ]
+        }
+      ]
+    },
+    "Shared4": {
+      "const": "publisher",
+      "type": "string"
+    },
+    "Shared5": {
+      "const": "authorization",
+      "type": "string"
+    },
+    "Shared6": {
+      "required": [
+        "publisher_domain"
+      ]
+    },
+    "Shared7": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "Shared8": {
+      "items": {
+        "$ref": "#/definitions/Shared12"
+      },
+      "type": "array"
+    },
+    "Shared9": {
+      "type": "string"
+    }
+  },
   "description": "A single cursor-ordered event from the AgenticAdvertising.org registry change feed. Events are denormalized so RegistrySync clients can update local property, agent, publisher, and authorization indexes without re-reading the full registry. The discriminator is event_type; each branch defines the event-specific payload shape. See specs/registry-change-feed.md.",
   "discriminator": {
     "propertyName": "event_type"
@@ -2127,8 +1930,7 @@
       "description": "property.created - a new property_rid was assigned.",
       "properties": {
         "entity_type": {
-          "const": "property",
-          "type": "string"
+          "$ref": "#/definitions/Shared1"
         },
         "event_type": {
           "const": "property.created",
@@ -2158,8 +1960,7 @@
       "description": "property.updated - classification, identifiers, or metadata changed.",
       "properties": {
         "entity_type": {
-          "const": "property",
-          "type": "string"
+          "$ref": "#/definitions/Shared1"
         },
         "event_type": {
           "const": "property.updated",
@@ -2187,8 +1988,7 @@
       "description": "property.merged - one property_rid became an alias of another.",
       "properties": {
         "entity_type": {
-          "const": "property",
-          "type": "string"
+          "$ref": "#/definitions/Shared1"
         },
         "event_type": {
           "const": "property.merged",
@@ -2208,8 +2008,7 @@
               "type": "string"
             },
             "evidence": {
-              "description": "Registry evidence source for the merge, such as adagents_json or manual_review.",
-              "type": "string"
+              "$ref": "#/definitions/Shared18"
             }
           },
           "required": [
@@ -2227,8 +2026,7 @@
       "description": "property.stale - a property has aged out of active resolution.",
       "properties": {
         "entity_type": {
-          "const": "property",
-          "type": "string"
+          "$ref": "#/definitions/Shared1"
         },
         "event_type": {
           "const": "property.stale",
@@ -2238,15 +2036,13 @@
           "additionalProperties": true,
           "properties": {
             "last_resolved_at": {
-              "format": "date-time",
-              "type": "string"
+              "$ref": "#/definitions/Shared14"
             },
             "property_rid": {
-              "format": "uuid",
-              "type": "string"
+              "$ref": "#/definitions/Shared11"
             },
             "reason": {
-              "type": "string"
+              "$ref": "#/definitions/Shared9"
             }
           },
           "required": [
@@ -2263,8 +2059,7 @@
       "description": "property.reactivated - a stale property was resolved again.",
       "properties": {
         "entity_type": {
-          "const": "property",
-          "type": "string"
+          "$ref": "#/definitions/Shared1"
         },
         "event_type": {
           "const": "property.reactivated",
@@ -2278,8 +2073,7 @@
             {
               "properties": {
                 "reactivated_at": {
-                  "format": "date-time",
-                  "type": "string"
+                  "$ref": "#/definitions/Shared14"
                 }
               },
               "required": [
@@ -2298,8 +2092,7 @@
       "description": "collection.created - a new collection_rid was assigned.",
       "properties": {
         "entity_type": {
-          "const": "collection",
-          "type": "string"
+          "$ref": "#/definitions/Shared2"
         },
         "event_type": {
           "const": "collection.created",
@@ -2330,8 +2123,7 @@
       "description": "collection.updated - collection metadata or distribution identifiers changed.",
       "properties": {
         "entity_type": {
-          "const": "collection",
-          "type": "string"
+          "$ref": "#/definitions/Shared2"
         },
         "event_type": {
           "const": "collection.updated",
@@ -2359,8 +2151,7 @@
       "description": "collection.merged - one collection_rid became an alias of another.",
       "properties": {
         "entity_type": {
-          "const": "collection",
-          "type": "string"
+          "$ref": "#/definitions/Shared2"
         },
         "event_type": {
           "const": "collection.merged",
@@ -2380,8 +2171,7 @@
               "type": "string"
             },
             "evidence": {
-              "description": "Registry evidence source for the merge, such as adagents_json or manual_review.",
-              "type": "string"
+              "$ref": "#/definitions/Shared18"
             }
           },
           "required": [
@@ -2399,8 +2189,7 @@
       "description": "collection.removed - a collection is no longer visible in the publisher's authoritative catalog.",
       "properties": {
         "entity_type": {
-          "const": "collection",
-          "type": "string"
+          "$ref": "#/definitions/Shared2"
         },
         "event_type": {
           "const": "collection.removed",
@@ -2436,8 +2225,7 @@
       "description": "agent.discovered - a new agent appeared in crawled registry data.",
       "properties": {
         "entity_type": {
-          "const": "agent",
-          "type": "string"
+          "$ref": "#/definitions/Shared3"
         },
         "event_type": {
           "const": "agent.discovered",
@@ -2465,8 +2253,7 @@
       "description": "agent.removed - an agent no longer appears in any crawled adagents.json authorization graph.",
       "properties": {
         "entity_type": {
-          "const": "agent",
-          "type": "string"
+          "$ref": "#/definitions/Shared3"
         },
         "event_type": {
           "const": "agent.removed",
@@ -2476,8 +2263,7 @@
           "additionalProperties": true,
           "properties": {
             "agent_url": {
-              "format": "uri",
-              "type": "string"
+              "$ref": "#/definitions/Shared12"
             },
             "removed_from_publishers": {
               "items": {
@@ -2501,8 +2287,7 @@
       "description": "agent.profile_updated - an agent inventory profile changed.",
       "properties": {
         "entity_type": {
-          "const": "agent",
-          "type": "string"
+          "$ref": "#/definitions/Shared3"
         },
         "event_type": {
           "const": "agent.profile_updated",
@@ -2535,8 +2320,7 @@
       "description": "agent.compliance_changed - an agent verification or compliance heartbeat changed status.",
       "properties": {
         "entity_type": {
-          "const": "agent",
-          "type": "string"
+          "$ref": "#/definitions/Shared3"
         },
         "event_type": {
           "const": "agent.compliance_changed",
@@ -2554,8 +2338,7 @@
       "description": "agent.verification_earned - an agent earned an AAO Verified badge.",
       "properties": {
         "entity_type": {
-          "const": "agent",
-          "type": "string"
+          "$ref": "#/definitions/Shared3"
         },
         "event_type": {
           "const": "agent.verification_earned",
@@ -2565,11 +2348,10 @@
           "additionalProperties": true,
           "properties": {
             "adcp_version": {
-              "type": "string"
+              "$ref": "#/definitions/Shared9"
             },
             "agent_url": {
-              "format": "uri",
-              "type": "string"
+              "$ref": "#/definitions/Shared12"
             },
             "grading_profile": {
               "description": "Grading profile that produced the badge. Historical events emitted before profile selection may omit this field and are Legacy.",
@@ -2583,11 +2365,7 @@
               "$ref": "#/$defs/badgeRole"
             },
             "verified_specialisms": {
-              "items": {
-                "type": "string"
-              },
-              "minItems": 1,
-              "type": "array"
+              "$ref": "#/definitions/Shared16"
             }
           },
           "required": [
@@ -2606,8 +2384,7 @@
       "description": "agent.verification_lost - an agent lost an AAO Verified badge.",
       "properties": {
         "entity_type": {
-          "const": "agent",
-          "type": "string"
+          "$ref": "#/definitions/Shared3"
         },
         "event_type": {
           "const": "agent.verification_lost",
@@ -2617,11 +2394,10 @@
           "additionalProperties": true,
           "properties": {
             "adcp_version": {
-              "type": "string"
+              "$ref": "#/definitions/Shared9"
             },
             "agent_url": {
-              "format": "uri",
-              "type": "string"
+              "$ref": "#/definitions/Shared12"
             },
             "grading_profile": {
               "description": "Grading profile in force when the badge was lost. Historical events emitted before profile selection may omit this field and are Legacy.",
@@ -2632,7 +2408,7 @@
               "type": "string"
             },
             "reason": {
-              "type": "string"
+              "$ref": "#/definitions/Shared9"
             },
             "role": {
               "$ref": "#/$defs/badgeRole"
@@ -2654,8 +2430,7 @@
       "description": "publisher.adagents_discovered - the crawler found a publisher adagents.json file and projected it into the registry.",
       "properties": {
         "entity_type": {
-          "const": "publisher",
-          "type": "string"
+          "$ref": "#/definitions/Shared4"
         },
         "event_type": {
           "const": "publisher.adagents_discovered",
@@ -2673,8 +2448,7 @@
       "description": "publisher.adagents_changed - the registry crawler detected a semantic change anywhere in a publisher adagents.json document, including formats-only or placements-only revisions. Transport metadata such as $schema and last_updated does not trigger this event by itself.",
       "properties": {
         "entity_type": {
-          "const": "publisher",
-          "type": "string"
+          "$ref": "#/definitions/Shared4"
         },
         "event_type": {
           "const": "publisher.adagents_changed",
@@ -2688,29 +2462,19 @@
             {
               "properties": {
                 "agents_added": {
-                  "items": {
-                    "format": "uri",
-                    "type": "string"
-                  },
-                  "type": "array"
+                  "$ref": "#/definitions/Shared8"
                 },
                 "agents_removed": {
-                  "items": {
-                    "format": "uri",
-                    "type": "string"
-                  },
-                  "type": "array"
+                  "$ref": "#/definitions/Shared8"
                 },
                 "changed_fields": {
                   "$ref": "#/$defs/changedFields"
                 },
                 "properties_added": {
-                  "minimum": 0,
-                  "type": "integer"
+                  "$ref": "#/definitions/Shared7"
                 },
                 "properties_removed": {
-                  "minimum": 0,
-                  "type": "integer"
+                  "$ref": "#/definitions/Shared7"
                 }
               },
               "type": "object"
@@ -2726,8 +2490,7 @@
       "description": "authorization.granted - an agent became authorized for a publisher or scoped inventory slice.",
       "properties": {
         "entity_type": {
-          "const": "authorization",
-          "type": "string"
+          "$ref": "#/definitions/Shared5"
         },
         "event_type": {
           "const": "authorization.granted",
@@ -2745,8 +2508,7 @@
       "description": "authorization.revoked - an agent authorization is no longer visible in the effective registry set.",
       "properties": {
         "entity_type": {
-          "const": "authorization",
-          "type": "string"
+          "$ref": "#/definitions/Shared5"
         },
         "event_type": {
           "const": "authorization.revoked",
@@ -2764,8 +2526,7 @@
       "description": "authorization.modified - an authorization row remained visible, but externally visible metadata changed.",
       "properties": {
         "entity_type": {
-          "const": "authorization",
-          "type": "string"
+          "$ref": "#/definitions/Shared5"
         },
         "event_type": {
           "const": "authorization.modified",

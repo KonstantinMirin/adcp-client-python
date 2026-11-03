@@ -1,6 +1,11 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
+  "definitions": {
+    "Shared0": {
+      "type": "string"
+    }
+  },
   "description": "Campaign-level creative context for AI-powered creative generation. Provides the layer between brand identity (stable across campaigns) and individual creative execution (per-request). A brand has one identity (defined in brand.json) but different creative briefs for each campaign or flight.",
   "properties": {
     "audience": {
@@ -14,7 +19,7 @@
         "prohibited_claims": {
           "description": "Claims that must not appear in creatives for this campaign. Creative agents should ensure generated content avoids these claims.",
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/Shared0"
           },
           "minItems": 1,
           "type": "array"
@@ -109,7 +114,7 @@
         "key_messages": {
           "description": "Key messages to communicate in priority order",
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/Shared0"
           },
           "type": "array"
         },

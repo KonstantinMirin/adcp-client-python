@@ -2,6 +2,11 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": false,
   "definitions": {
+    "Shared0": {
+      "format": "uri",
+      "pattern": "^https://",
+      "type": "string"
+    },
     "catalogRequirement": {
       "additionalProperties": false,
       "description": "Required country/type pairs and optional exact catalog versions for one identifier system. Country keys prevent a false Cartesian product between countries and place types.",
@@ -33,9 +38,7 @@
                   "type": "string"
                 },
                 {
-                  "format": "uri",
-                  "pattern": "^https://",
-                  "type": "string"
+                  "$ref": "#/definitions/Shared0"
                 }
               ],
               "description": "Canonical place classification. Registered tokens have protocol-defined meanings. Catalog-specific classifications without a registered mapping MUST use an absolute HTTPS URI controlled by the vocabulary owner; consumers compare URI types as exact opaque strings.",
@@ -97,9 +100,7 @@
             "type": "string"
           },
           {
-            "format": "uri",
-            "pattern": "^https://",
-            "type": "string"
+            "$ref": "#/definitions/Shared0"
           }
         ],
         "description": "Collision-safe identifier namespace for geographic places. Registered tokens have protocol-defined semantics. Unregistered systems MUST use an absolute HTTPS URI controlled by the catalog owner; consumers compare URI systems as exact opaque strings.",

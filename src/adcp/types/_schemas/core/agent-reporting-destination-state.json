@@ -35,7 +35,7 @@
           "configuration": {
             "properties": {
               "active": {
-                "const": false
+                "$ref": "#/definitions/Shared5"
               }
             }
           }
@@ -48,7 +48,7 @@
           "configuration": {
             "properties": {
               "active": {
-                "const": false
+                "$ref": "#/definitions/Shared5"
               }
             },
             "required": [
@@ -72,6 +72,62 @@
       }
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "description": "Caller-selected stable logical key, unique within this seller relationship. Reusing it replaces desired configuration; when proof-bound coordinates or the accepted delivery contract change, the seller issues a new immutable destination_ref generation while retaining the old reference for existing account bindings and reporting history.",
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]{1,64}$",
+      "type": "string"
+    },
+    "Shared1": {
+      "description": "Optional agent-scoped label naming the operator this destination serves, for per-operator isolation, audit, and offboarding under an agent principal. It is the principal's own bookkeeping and confers no identity or authority: sellers MUST NOT link, dedupe, or authorize across principals based on matching operator labels or domains.",
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]{1,64}$",
+      "type": "string"
+    },
+    "Shared2": {
+      "description": "True permits use. False suspends the destination: the seller MUST stop initiating new deliveries to every generation of this destination_id within the advertised suspension interval, and new account-level delivery configurations MUST NOT select it. Suspension does not delete caller-owned data already delivered.",
+      "type": "boolean"
+    },
+    "Shared3": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "description": "Provider namespace for an external delivery or data-sharing service. This identifies a platform; it is not a credential, trust root, or authorization statement.",
+      "properties": {
+        "domain": {
+          "description": "Lowercase dotted provider domain, such as a provider's operating domain. Single-label and localhost-style names are invalid.",
+          "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "domain"
+      ],
+      "title": "Delivery Provider",
+      "type": "object"
+    },
+    "Shared4": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Verification profiles the destination can accept. native_commit requires provider-native transaction/version evidence plus counts and control totals; manifest_checksums requires a committed file manifest with cryptographic checksums; canonical_digest requires recomputation of the canonical logical-content digest. A reporting feed selects one profile from this allowed set according to the seller offering and the feed's strictness requirements.",
+      "items": {
+        "enum": [
+          "native_commit",
+          "manifest_checksums",
+          "canonical_digest"
+        ],
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Reporting Verification Profile Set",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "Shared5": {
+      "const": false
+    }
+  },
   "description": "Seller readback for one caller-scoped reusable reporting destination. destination_ref is an opaque routing reference, not a credential or authorization grant. Account-level reporting configuration may use it only while the same authenticated principal remains authorized for that account.",
   "properties": {
     "configuration": {
@@ -98,31 +154,13 @@
               "uniqueItems": true
             },
             "accepted_verification_profiles": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "description": "Verification profiles the destination can accept. native_commit requires provider-native transaction/version evidence plus counts and control totals; manifest_checksums requires a committed file manifest with cryptographic checksums; canonical_digest requires recomputation of the canonical logical-content digest. A reporting feed selects one profile from this allowed set according to the seller offering and the feed's strictness requirements.",
-              "items": {
-                "enum": [
-                  "native_commit",
-                  "manifest_checksums",
-                  "canonical_digest"
-                ],
-                "type": "string"
-              },
-              "minItems": 1,
-              "title": "Reporting Verification Profile Set",
-              "type": "array",
-              "uniqueItems": true
+              "$ref": "#/definitions/Shared4"
             },
             "active": {
-              "description": "True permits use. False suspends the destination: the seller MUST stop initiating new deliveries to every generation of this destination_id within the advertised suspension interval, and new account-level delivery configurations MUST NOT select it. Suspension does not delete caller-owned data already delivered.",
-              "type": "boolean"
+              "$ref": "#/definitions/Shared2"
             },
             "destination_id": {
-              "description": "Caller-selected stable logical key, unique within this seller relationship. Reusing it replaces desired configuration; when proof-bound coordinates or the accepted delivery contract change, the seller issues a new immutable destination_ref generation while retaining the old reference for existing account bindings and reporting history.",
-              "maxLength": 64,
-              "minLength": 1,
-              "pattern": "^[A-Za-z0-9_.:-]{1,64}$",
-              "type": "string"
+              "$ref": "#/definitions/Shared0"
             },
             "location": {
               "description": "Provider-native bucket/prefix locator, such as s3://bucket/prefix/ or abfss://container@account.dfs.core.windows.net/path. Printable ASCII without whitespace, '?', '#', '%', '\"', '<', or '>'. Never a credential or signed URL; sellers additionally screen and normalize per the secret_rejection and normalization rules.",
@@ -132,11 +170,7 @@
               "type": "string"
             },
             "operator_id": {
-              "description": "Optional agent-scoped label naming the operator this destination serves, for per-operator isolation, audit, and offboarding under an agent principal. It is the principal's own bookkeeping and confers no identity or authority: sellers MUST NOT link, dedupe, or authorize across principals based on matching operator labels or domains.",
-              "maxLength": 64,
-              "minLength": 1,
-              "pattern": "^[A-Za-z0-9_.:-]{1,64}$",
-              "type": "string"
+              "$ref": "#/definitions/Shared1"
             },
             "pattern": {
               "const": "file_transfer",
@@ -144,21 +178,7 @@
               "type": "string"
             },
             "provider": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": false,
-              "description": "Provider namespace for an external delivery or data-sharing service. This identifies a platform; it is not a credential, trust root, or authorization statement.",
-              "properties": {
-                "domain": {
-                  "description": "Lowercase dotted provider domain, such as a provider's operating domain. Single-label and localhost-style names are invalid.",
-                  "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "domain"
-              ],
-              "title": "Delivery Provider",
-              "type": "object"
+              "$ref": "#/definitions/Shared3"
             },
             "transport": {
               "description": "Open provider transport name, such as s3, gcs, or azure_blob.",
@@ -185,31 +205,13 @@
           "additionalProperties": false,
           "properties": {
             "accepted_verification_profiles": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "description": "Verification profiles the destination can accept. native_commit requires provider-native transaction/version evidence plus counts and control totals; manifest_checksums requires a committed file manifest with cryptographic checksums; canonical_digest requires recomputation of the canonical logical-content digest. A reporting feed selects one profile from this allowed set according to the seller offering and the feed's strictness requirements.",
-              "items": {
-                "enum": [
-                  "native_commit",
-                  "manifest_checksums",
-                  "canonical_digest"
-                ],
-                "type": "string"
-              },
-              "minItems": 1,
-              "title": "Reporting Verification Profile Set",
-              "type": "array",
-              "uniqueItems": true
+              "$ref": "#/definitions/Shared4"
             },
             "active": {
-              "description": "True permits use. False suspends the destination: the seller MUST stop initiating new deliveries to every generation of this destination_id within the advertised suspension interval, and new account-level delivery configurations MUST NOT select it. Suspension does not delete caller-owned data already delivered.",
-              "type": "boolean"
+              "$ref": "#/definitions/Shared2"
             },
             "destination_id": {
-              "description": "Caller-selected stable logical key, unique within this seller relationship. Reusing it replaces desired configuration; when proof-bound coordinates or the accepted delivery contract change, the seller issues a new immutable destination_ref generation while retaining the old reference for existing account bindings and reporting history.",
-              "maxLength": 64,
-              "minLength": 1,
-              "pattern": "^[A-Za-z0-9_.:-]{1,64}$",
-              "type": "string"
+              "$ref": "#/definitions/Shared0"
             },
             "location": {
               "description": "Provider-native project/dataset, database/schema, or catalog/schema locator. Printable ASCII without whitespace, '?', '#', '%', '\"', '<', or '>'. Never a credential or signed URL; sellers additionally screen and normalize per the secret_rejection and normalization rules.",
@@ -219,11 +221,7 @@
               "type": "string"
             },
             "operator_id": {
-              "description": "Optional agent-scoped label naming the operator this destination serves, for per-operator isolation, audit, and offboarding under an agent principal. It is the principal's own bookkeeping and confers no identity or authority: sellers MUST NOT link, dedupe, or authorize across principals based on matching operator labels or domains.",
-              "maxLength": 64,
-              "minLength": 1,
-              "pattern": "^[A-Za-z0-9_.:-]{1,64}$",
-              "type": "string"
+              "$ref": "#/definitions/Shared1"
             },
             "pattern": {
               "const": "warehouse_materialization",
@@ -231,21 +229,7 @@
               "type": "string"
             },
             "provider": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": false,
-              "description": "Provider namespace for an external delivery or data-sharing service. This identifies a platform; it is not a credential, trust root, or authorization statement.",
-              "properties": {
-                "domain": {
-                  "description": "Lowercase dotted provider domain, such as a provider's operating domain. Single-label and localhost-style names are invalid.",
-                  "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "domain"
-              ],
-              "title": "Delivery Provider",
-              "type": "object"
+              "$ref": "#/definitions/Shared3"
             },
             "transport": {
               "description": "Open provider transport name, such as bigquery, snowflake, or databricks_sql.",
@@ -271,20 +255,7 @@
           "additionalProperties": false,
           "properties": {
             "accepted_verification_profiles": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "description": "Verification profiles the destination can accept. native_commit requires provider-native transaction/version evidence plus counts and control totals; manifest_checksums requires a committed file manifest with cryptographic checksums; canonical_digest requires recomputation of the canonical logical-content digest. A reporting feed selects one profile from this allowed set according to the seller offering and the feed's strictness requirements.",
-              "items": {
-                "enum": [
-                  "native_commit",
-                  "manifest_checksums",
-                  "canonical_digest"
-                ],
-                "type": "string"
-              },
-              "minItems": 1,
-              "title": "Reporting Verification Profile Set",
-              "type": "array",
-              "uniqueItems": true
+              "$ref": "#/definitions/Shared4"
             },
             "access_mode": {
               "description": "Dataset-share access family, such as databricks_to_databricks, open_sharing, or secure_data_sharing.",
@@ -298,18 +269,10 @@
               "type": "boolean"
             },
             "destination_id": {
-              "description": "Caller-selected stable logical key, unique within this seller relationship. Reusing it replaces desired configuration; when proof-bound coordinates or the accepted delivery contract change, the seller issues a new immutable destination_ref generation while retaining the old reference for existing account bindings and reporting history.",
-              "maxLength": 64,
-              "minLength": 1,
-              "pattern": "^[A-Za-z0-9_.:-]{1,64}$",
-              "type": "string"
+              "$ref": "#/definitions/Shared0"
             },
             "operator_id": {
-              "description": "Optional agent-scoped label naming the operator this destination serves, for per-operator isolation, audit, and offboarding under an agent principal. It is the principal's own bookkeeping and confers no identity or authority: sellers MUST NOT link, dedupe, or authorize across principals based on matching operator labels or domains.",
-              "maxLength": 64,
-              "minLength": 1,
-              "pattern": "^[A-Za-z0-9_.:-]{1,64}$",
-              "type": "string"
+              "$ref": "#/definitions/Shared1"
             },
             "pattern": {
               "const": "dataset_share",
@@ -317,21 +280,7 @@
               "type": "string"
             },
             "provider": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": false,
-              "description": "Provider namespace for an external delivery or data-sharing service. This identifies a platform; it is not a credential, trust root, or authorization statement.",
-              "properties": {
-                "domain": {
-                  "description": "Lowercase dotted provider domain, such as a provider's operating domain. Single-label and localhost-style names are invalid.",
-                  "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "domain"
-              ],
-              "title": "Delivery Provider",
-              "type": "object"
+              "$ref": "#/definitions/Shared3"
             },
             "recipient": {
               "$schema": "http://json-schema.org/draft-07/schema#",

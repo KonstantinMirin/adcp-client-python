@@ -4,13 +4,20 @@
     "$ref": "#/definitions/bounded_value"
   },
   "definitions": {
+    "Shared0": {
+      "maxLength": 4000,
+      "type": "string"
+    },
+    "Shared1": {
+      "maxLength": 128
+    },
     "bounded_object": {
       "additionalProperties": {
         "$ref": "#/definitions/bounded_value"
       },
       "maxProperties": 32,
       "propertyNames": {
-        "maxLength": 128
+        "$ref": "#/definitions/Shared1"
       },
       "type": "object"
     },
@@ -26,8 +33,7 @@
           "type": "number"
         },
         {
-          "maxLength": 4000,
-          "type": "string"
+          "$ref": "#/definitions/Shared0"
         }
       ]
     },
@@ -124,8 +130,7 @@
       "type": "string"
     },
     "message": {
-      "maxLength": 4000,
-      "type": "string"
+      "$ref": "#/definitions/Shared0"
     },
     "recovery": {
       "enum": [
@@ -136,12 +141,11 @@
       "type": "string"
     },
     "suggestion": {
-      "maxLength": 4000,
-      "type": "string"
+      "$ref": "#/definitions/Shared0"
     }
   },
   "propertyNames": {
-    "maxLength": 128
+    "$ref": "#/definitions/Shared1"
   },
   "title": "Reported Outcome Error",
   "type": "object"

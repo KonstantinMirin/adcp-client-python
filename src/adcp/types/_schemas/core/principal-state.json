@@ -1,6 +1,118 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": false,
+  "definitions": {
+    "Shared0": {
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]{1,64}$",
+      "type": "string"
+    },
+    "Shared1": {
+      "description": "AdCP minor versions, such as 3.2, whose asynchronous payload shapes (webhooks and other seller-initiated pushes) the caller can parse. The seller selects payload shapes from the accepted intersection; without a declaration the seller uses its advertised default.",
+      "items": {
+        "pattern": "^\\d+\\.\\d+$",
+        "type": "string"
+      },
+      "maxItems": 8,
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "Shared10": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Verification profiles the destination can accept. native_commit requires provider-native transaction/version evidence plus counts and control totals; manifest_checksums requires a committed file manifest with cryptographic checksums; canonical_digest requires recomputation of the canonical logical-content digest. A reporting feed selects one profile from this allowed set according to the seller offering and the feed's strictness requirements.",
+      "items": {
+        "enum": [
+          "native_commit",
+          "manifest_checksums",
+          "canonical_digest"
+        ],
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Reporting Verification Profile Set",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "Shared11": {
+      "const": false
+    },
+    "Shared2": {
+      "description": "RFC 9421 webhook-signing algorithms the caller can verify. The accepted intersection with the seller's webhook_signing.algorithms MUST be non-empty when the caller has any active webhook subscriber; an empty intersection fails the sync request with UNSUPPORTED_FEATURE because delivery would be unverifiable.",
+      "items": {
+        "enum": [
+          "ed25519",
+          "ecdsa-p256-sha256"
+        ],
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "Shared3": {
+      "description": "Experimental feature identifiers, matching the seller's experimental_features vocabulary, that the caller opts into receiving in asynchronous payloads. Unknown identifiers are accepted and excluded from the intersection rather than rejected, so a caller can declare once across sellers with different surfaces.",
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Dot-separated lowercase identifier for an experimental AdCP surface, such as protocol.principal or media_buy.reporting_delivery.",
+        "maxLength": 128,
+        "minLength": 1,
+        "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)*$",
+        "title": "Experimental Feature ID",
+        "type": "string"
+      },
+      "maxItems": 32,
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "Shared4": {
+      "maxLength": 255,
+      "minLength": 1,
+      "type": "string"
+    },
+    "Shared5": {
+      "maxLength": 128,
+      "minLength": 1,
+      "type": "string"
+    },
+    "Shared6": {
+      "description": "Caller-selected stable logical key, unique within this seller relationship. Reusing it replaces desired configuration; when proof-bound coordinates or the accepted delivery contract change, the seller issues a new immutable destination_ref generation while retaining the old reference for existing account bindings and reporting history.",
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]{1,64}$",
+      "type": "string"
+    },
+    "Shared7": {
+      "description": "Optional agent-scoped label naming the operator this destination serves, for per-operator isolation, audit, and offboarding under an agent principal. It is the principal's own bookkeeping and confers no identity or authority: sellers MUST NOT link, dedupe, or authorize across principals based on matching operator labels or domains.",
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]{1,64}$",
+      "type": "string"
+    },
+    "Shared8": {
+      "description": "True permits use. False suspends the destination: the seller MUST stop initiating new deliveries to every generation of this destination_id within the advertised suspension interval, and new account-level delivery configurations MUST NOT select it. Suspension does not delete caller-owned data already delivered.",
+      "type": "boolean"
+    },
+    "Shared9": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "description": "Provider namespace for an external delivery or data-sharing service. This identifies a platform; it is not a credential, trust root, or authorization statement.",
+      "properties": {
+        "domain": {
+          "description": "Lowercase dotted provider domain, such as a provider's operating domain. Single-label and localhost-style names are invalid.",
+          "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "domain"
+      ],
+      "title": "Delivery Provider",
+      "type": "object"
+    }
+  },
   "description": "Complete principal-scoped standing configuration visible after sync or read. Secrets are never returned. The seller keys this state by its own agent identity and the stable authenticated caller principal. Each section is present when and only when the seller advertises it in principal.supported_sections, so an empty supported array is distinguishable from an unsupported section.",
   "minProperties": 1,
   "properties": {
@@ -15,44 +127,13 @@
           "description": "The intersection of the declared set with the seller's objective support. Sellers select asynchronous payload versions, signing algorithms, and experimental behavior only from this set. A change to this set caused by seller-side evolution fires principal.changed with reason declarations_intersection_changed.",
           "properties": {
             "async_adcp_versions": {
-              "description": "AdCP minor versions, such as 3.2, whose asynchronous payload shapes (webhooks and other seller-initiated pushes) the caller can parse. The seller selects payload shapes from the accepted intersection; without a declaration the seller uses its advertised default.",
-              "items": {
-                "pattern": "^\\d+\\.\\d+$",
-                "type": "string"
-              },
-              "maxItems": 8,
-              "minItems": 1,
-              "type": "array",
-              "uniqueItems": true
+              "$ref": "#/definitions/Shared1"
             },
             "experimental_features": {
-              "description": "Experimental feature identifiers, matching the seller's experimental_features vocabulary, that the caller opts into receiving in asynchronous payloads. Unknown identifiers are accepted and excluded from the intersection rather than rejected, so a caller can declare once across sellers with different surfaces.",
-              "items": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "description": "Dot-separated lowercase identifier for an experimental AdCP surface, such as protocol.principal or media_buy.reporting_delivery.",
-                "maxLength": 128,
-                "minLength": 1,
-                "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)*$",
-                "title": "Experimental Feature ID",
-                "type": "string"
-              },
-              "maxItems": 32,
-              "minItems": 1,
-              "type": "array",
-              "uniqueItems": true
+              "$ref": "#/definitions/Shared3"
             },
             "webhook_signing_algorithms": {
-              "description": "RFC 9421 webhook-signing algorithms the caller can verify. The accepted intersection with the seller's webhook_signing.algorithms MUST be non-empty when the caller has any active webhook subscriber; an empty intersection fails the sync request with UNSUPPORTED_FEATURE because delivery would be unverifiable.",
-              "items": {
-                "enum": [
-                  "ed25519",
-                  "ecdsa-p256-sha256"
-                ],
-                "type": "string"
-              },
-              "minItems": 1,
-              "type": "array",
-              "uniqueItems": true
+              "$ref": "#/definitions/Shared2"
             }
           },
           "title": "Agent Declarations",
@@ -65,44 +146,13 @@
           "description": "The caller's current declared set, echoed verbatim.",
           "properties": {
             "async_adcp_versions": {
-              "description": "AdCP minor versions, such as 3.2, whose asynchronous payload shapes (webhooks and other seller-initiated pushes) the caller can parse. The seller selects payload shapes from the accepted intersection; without a declaration the seller uses its advertised default.",
-              "items": {
-                "pattern": "^\\d+\\.\\d+$",
-                "type": "string"
-              },
-              "maxItems": 8,
-              "minItems": 1,
-              "type": "array",
-              "uniqueItems": true
+              "$ref": "#/definitions/Shared1"
             },
             "experimental_features": {
-              "description": "Experimental feature identifiers, matching the seller's experimental_features vocabulary, that the caller opts into receiving in asynchronous payloads. Unknown identifiers are accepted and excluded from the intersection rather than rejected, so a caller can declare once across sellers with different surfaces.",
-              "items": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "description": "Dot-separated lowercase identifier for an experimental AdCP surface, such as protocol.principal or media_buy.reporting_delivery.",
-                "maxLength": 128,
-                "minLength": 1,
-                "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)*$",
-                "title": "Experimental Feature ID",
-                "type": "string"
-              },
-              "maxItems": 32,
-              "minItems": 1,
-              "type": "array",
-              "uniqueItems": true
+              "$ref": "#/definitions/Shared3"
             },
             "webhook_signing_algorithms": {
-              "description": "RFC 9421 webhook-signing algorithms the caller can verify. The accepted intersection with the seller's webhook_signing.algorithms MUST be non-empty when the caller has any active webhook subscriber; an empty intersection fails the sync request with UNSUPPORTED_FEATURE because delivery would be unverifiable.",
-              "items": {
-                "enum": [
-                  "ed25519",
-                  "ecdsa-p256-sha256"
-                ],
-                "type": "string"
-              },
-              "minItems": 1,
-              "type": "array",
-              "uniqueItems": true
+              "$ref": "#/definitions/Shared2"
             }
           },
           "title": "Agent Declarations",
@@ -129,9 +179,7 @@
                 "type": "string"
               },
               "value": {
-                "maxLength": 128,
-                "minLength": 1,
-                "type": "string"
+                "$ref": "#/definitions/Shared5"
               }
             },
             "required": [
@@ -294,10 +342,7 @@
             "type": "boolean"
           },
           "subscriber_id": {
-            "maxLength": 64,
-            "minLength": 1,
-            "pattern": "^[A-Za-z0-9_.:-]{1,64}$",
-            "type": "string"
+            "$ref": "#/definitions/Shared0"
           },
           "url": {
             "format": "uri",
@@ -354,7 +399,7 @@
                 "configuration": {
                   "properties": {
                     "active": {
-                      "const": false
+                      "$ref": "#/definitions/Shared11"
                     }
                   }
                 }
@@ -367,7 +412,7 @@
                 "configuration": {
                   "properties": {
                     "active": {
-                      "const": false
+                      "$ref": "#/definitions/Shared11"
                     }
                   },
                   "required": [
@@ -417,31 +462,13 @@
                     "uniqueItems": true
                   },
                   "accepted_verification_profiles": {
-                    "$schema": "http://json-schema.org/draft-07/schema#",
-                    "description": "Verification profiles the destination can accept. native_commit requires provider-native transaction/version evidence plus counts and control totals; manifest_checksums requires a committed file manifest with cryptographic checksums; canonical_digest requires recomputation of the canonical logical-content digest. A reporting feed selects one profile from this allowed set according to the seller offering and the feed's strictness requirements.",
-                    "items": {
-                      "enum": [
-                        "native_commit",
-                        "manifest_checksums",
-                        "canonical_digest"
-                      ],
-                      "type": "string"
-                    },
-                    "minItems": 1,
-                    "title": "Reporting Verification Profile Set",
-                    "type": "array",
-                    "uniqueItems": true
+                    "$ref": "#/definitions/Shared10"
                   },
                   "active": {
-                    "description": "True permits use. False suspends the destination: the seller MUST stop initiating new deliveries to every generation of this destination_id within the advertised suspension interval, and new account-level delivery configurations MUST NOT select it. Suspension does not delete caller-owned data already delivered.",
-                    "type": "boolean"
+                    "$ref": "#/definitions/Shared8"
                   },
                   "destination_id": {
-                    "description": "Caller-selected stable logical key, unique within this seller relationship. Reusing it replaces desired configuration; when proof-bound coordinates or the accepted delivery contract change, the seller issues a new immutable destination_ref generation while retaining the old reference for existing account bindings and reporting history.",
-                    "maxLength": 64,
-                    "minLength": 1,
-                    "pattern": "^[A-Za-z0-9_.:-]{1,64}$",
-                    "type": "string"
+                    "$ref": "#/definitions/Shared6"
                   },
                   "location": {
                     "description": "Provider-native bucket/prefix locator, such as s3://bucket/prefix/ or abfss://container@account.dfs.core.windows.net/path. Printable ASCII without whitespace, '?', '#', '%', '\"', '<', or '>'. Never a credential or signed URL; sellers additionally screen and normalize per the secret_rejection and normalization rules.",
@@ -451,11 +478,7 @@
                     "type": "string"
                   },
                   "operator_id": {
-                    "description": "Optional agent-scoped label naming the operator this destination serves, for per-operator isolation, audit, and offboarding under an agent principal. It is the principal's own bookkeeping and confers no identity or authority: sellers MUST NOT link, dedupe, or authorize across principals based on matching operator labels or domains.",
-                    "maxLength": 64,
-                    "minLength": 1,
-                    "pattern": "^[A-Za-z0-9_.:-]{1,64}$",
-                    "type": "string"
+                    "$ref": "#/definitions/Shared7"
                   },
                   "pattern": {
                     "const": "file_transfer",
@@ -463,21 +486,7 @@
                     "type": "string"
                   },
                   "provider": {
-                    "$schema": "http://json-schema.org/draft-07/schema#",
-                    "additionalProperties": false,
-                    "description": "Provider namespace for an external delivery or data-sharing service. This identifies a platform; it is not a credential, trust root, or authorization statement.",
-                    "properties": {
-                      "domain": {
-                        "description": "Lowercase dotted provider domain, such as a provider's operating domain. Single-label and localhost-style names are invalid.",
-                        "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$",
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "domain"
-                    ],
-                    "title": "Delivery Provider",
-                    "type": "object"
+                    "$ref": "#/definitions/Shared9"
                   },
                   "transport": {
                     "description": "Open provider transport name, such as s3, gcs, or azure_blob.",
@@ -504,31 +513,13 @@
                 "additionalProperties": false,
                 "properties": {
                   "accepted_verification_profiles": {
-                    "$schema": "http://json-schema.org/draft-07/schema#",
-                    "description": "Verification profiles the destination can accept. native_commit requires provider-native transaction/version evidence plus counts and control totals; manifest_checksums requires a committed file manifest with cryptographic checksums; canonical_digest requires recomputation of the canonical logical-content digest. A reporting feed selects one profile from this allowed set according to the seller offering and the feed's strictness requirements.",
-                    "items": {
-                      "enum": [
-                        "native_commit",
-                        "manifest_checksums",
-                        "canonical_digest"
-                      ],
-                      "type": "string"
-                    },
-                    "minItems": 1,
-                    "title": "Reporting Verification Profile Set",
-                    "type": "array",
-                    "uniqueItems": true
+                    "$ref": "#/definitions/Shared10"
                   },
                   "active": {
-                    "description": "True permits use. False suspends the destination: the seller MUST stop initiating new deliveries to every generation of this destination_id within the advertised suspension interval, and new account-level delivery configurations MUST NOT select it. Suspension does not delete caller-owned data already delivered.",
-                    "type": "boolean"
+                    "$ref": "#/definitions/Shared8"
                   },
                   "destination_id": {
-                    "description": "Caller-selected stable logical key, unique within this seller relationship. Reusing it replaces desired configuration; when proof-bound coordinates or the accepted delivery contract change, the seller issues a new immutable destination_ref generation while retaining the old reference for existing account bindings and reporting history.",
-                    "maxLength": 64,
-                    "minLength": 1,
-                    "pattern": "^[A-Za-z0-9_.:-]{1,64}$",
-                    "type": "string"
+                    "$ref": "#/definitions/Shared6"
                   },
                   "location": {
                     "description": "Provider-native project/dataset, database/schema, or catalog/schema locator. Printable ASCII without whitespace, '?', '#', '%', '\"', '<', or '>'. Never a credential or signed URL; sellers additionally screen and normalize per the secret_rejection and normalization rules.",
@@ -538,11 +529,7 @@
                     "type": "string"
                   },
                   "operator_id": {
-                    "description": "Optional agent-scoped label naming the operator this destination serves, for per-operator isolation, audit, and offboarding under an agent principal. It is the principal's own bookkeeping and confers no identity or authority: sellers MUST NOT link, dedupe, or authorize across principals based on matching operator labels or domains.",
-                    "maxLength": 64,
-                    "minLength": 1,
-                    "pattern": "^[A-Za-z0-9_.:-]{1,64}$",
-                    "type": "string"
+                    "$ref": "#/definitions/Shared7"
                   },
                   "pattern": {
                     "const": "warehouse_materialization",
@@ -550,21 +537,7 @@
                     "type": "string"
                   },
                   "provider": {
-                    "$schema": "http://json-schema.org/draft-07/schema#",
-                    "additionalProperties": false,
-                    "description": "Provider namespace for an external delivery or data-sharing service. This identifies a platform; it is not a credential, trust root, or authorization statement.",
-                    "properties": {
-                      "domain": {
-                        "description": "Lowercase dotted provider domain, such as a provider's operating domain. Single-label and localhost-style names are invalid.",
-                        "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$",
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "domain"
-                    ],
-                    "title": "Delivery Provider",
-                    "type": "object"
+                    "$ref": "#/definitions/Shared9"
                   },
                   "transport": {
                     "description": "Open provider transport name, such as bigquery, snowflake, or databricks_sql.",
@@ -590,20 +563,7 @@
                 "additionalProperties": false,
                 "properties": {
                   "accepted_verification_profiles": {
-                    "$schema": "http://json-schema.org/draft-07/schema#",
-                    "description": "Verification profiles the destination can accept. native_commit requires provider-native transaction/version evidence plus counts and control totals; manifest_checksums requires a committed file manifest with cryptographic checksums; canonical_digest requires recomputation of the canonical logical-content digest. A reporting feed selects one profile from this allowed set according to the seller offering and the feed's strictness requirements.",
-                    "items": {
-                      "enum": [
-                        "native_commit",
-                        "manifest_checksums",
-                        "canonical_digest"
-                      ],
-                      "type": "string"
-                    },
-                    "minItems": 1,
-                    "title": "Reporting Verification Profile Set",
-                    "type": "array",
-                    "uniqueItems": true
+                    "$ref": "#/definitions/Shared10"
                   },
                   "access_mode": {
                     "description": "Dataset-share access family, such as databricks_to_databricks, open_sharing, or secure_data_sharing.",
@@ -617,18 +577,10 @@
                     "type": "boolean"
                   },
                   "destination_id": {
-                    "description": "Caller-selected stable logical key, unique within this seller relationship. Reusing it replaces desired configuration; when proof-bound coordinates or the accepted delivery contract change, the seller issues a new immutable destination_ref generation while retaining the old reference for existing account bindings and reporting history.",
-                    "maxLength": 64,
-                    "minLength": 1,
-                    "pattern": "^[A-Za-z0-9_.:-]{1,64}$",
-                    "type": "string"
+                    "$ref": "#/definitions/Shared6"
                   },
                   "operator_id": {
-                    "description": "Optional agent-scoped label naming the operator this destination serves, for per-operator isolation, audit, and offboarding under an agent principal. It is the principal's own bookkeeping and confers no identity or authority: sellers MUST NOT link, dedupe, or authorize across principals based on matching operator labels or domains.",
-                    "maxLength": 64,
-                    "minLength": 1,
-                    "pattern": "^[A-Za-z0-9_.:-]{1,64}$",
-                    "type": "string"
+                    "$ref": "#/definitions/Shared7"
                   },
                   "pattern": {
                     "const": "dataset_share",
@@ -636,21 +588,7 @@
                     "type": "string"
                   },
                   "provider": {
-                    "$schema": "http://json-schema.org/draft-07/schema#",
-                    "additionalProperties": false,
-                    "description": "Provider namespace for an external delivery or data-sharing service. This identifies a platform; it is not a credential, trust root, or authorization statement.",
-                    "properties": {
-                      "domain": {
-                        "description": "Lowercase dotted provider domain, such as a provider's operating domain. Single-label and localhost-style names are invalid.",
-                        "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$",
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "domain"
-                    ],
-                    "title": "Delivery Provider",
-                    "type": "object"
+                    "$ref": "#/definitions/Shared9"
                   },
                   "recipient": {
                     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -683,9 +621,7 @@
                         "type": "string"
                       },
                       "region": {
-                        "maxLength": 128,
-                        "minLength": 1,
-                        "type": "string"
+                        "$ref": "#/definitions/Shared5"
                       }
                     },
                     "required": [
@@ -903,9 +839,7 @@
           "prior_destination_refs": {
             "description": "Retained superseded generation references for this destination_id, newest first, still resolvable for existing authorized account bindings and retained reporting history. Enumerable only by the owning principal. Suspension and revocation of the destination apply to these generations too.",
             "items": {
-              "maxLength": 255,
-              "minLength": 1,
-              "type": "string"
+              "$ref": "#/definitions/Shared4"
             },
             "maxItems": 32,
             "type": "array",
@@ -975,17 +909,12 @@
         "additionalProperties": false,
         "properties": {
           "destination_id": {
-            "maxLength": 64,
-            "minLength": 1,
-            "pattern": "^[A-Za-z0-9_.:-]{1,64}$",
-            "type": "string"
+            "$ref": "#/definitions/Shared0"
           },
           "destination_refs": {
             "description": "Retained generation references of the revoked destination, newest first, still resolvable for retained reporting history but ineligible for delivery and for new bindings.",
             "items": {
-              "maxLength": 255,
-              "minLength": 1,
-              "type": "string"
+              "$ref": "#/definitions/Shared4"
             },
             "maxItems": 32,
             "minItems": 1,

@@ -17,9 +17,7 @@
               ]
             },
             {
-              "required": [
-                "expires_at"
-              ]
+              "$ref": "#/definitions/Shared0"
             },
             {
               "required": [
@@ -67,9 +65,7 @@
     },
     {
       "if": {
-        "required": [
-          "expires_at"
-        ]
+        "$ref": "#/definitions/Shared0"
       },
       "then": {
         "properties": {
@@ -84,14 +80,7 @@
         "properties": {
           "errors": {
             "contains": {
-              "properties": {
-                "code": {
-                  "const": "REFERENCE_NOT_FOUND"
-                }
-              },
-              "required": [
-                "code"
-              ]
+              "$ref": "#/definitions/Shared1"
             }
           }
         },
@@ -103,30 +92,7 @@
         "properties": {
           "errors": {
             "items": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": false,
-              "description": "Privacy-preserving error for an unknown, inaccessible, unauthorized, or stale-generation catalog item reference. The invariant closed shape prevents resource enumeration.",
-              "properties": {
-                "code": {
-                  "const": "REFERENCE_NOT_FOUND",
-                  "type": "string"
-                },
-                "message": {
-                  "const": "Catalog item not found",
-                  "type": "string"
-                },
-                "recovery": {
-                  "const": "correctable",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "code",
-                "message",
-                "recovery"
-              ],
-              "title": "Catalog Item Reference Not Found Error",
-              "type": "object"
+              "$ref": "#/definitions/Shared2"
             },
             "maxItems": 1
           }
@@ -134,6 +100,49 @@
       }
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "required": [
+        "expires_at"
+      ]
+    },
+    "Shared1": {
+      "properties": {
+        "code": {
+          "const": "REFERENCE_NOT_FOUND"
+        }
+      },
+      "required": [
+        "code"
+      ]
+    },
+    "Shared2": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "description": "Privacy-preserving error for an unknown, inaccessible, unauthorized, or stale-generation catalog item reference. The invariant closed shape prevents resource enumeration.",
+      "properties": {
+        "code": {
+          "const": "REFERENCE_NOT_FOUND",
+          "type": "string"
+        },
+        "message": {
+          "const": "Catalog item not found",
+          "type": "string"
+        },
+        "recovery": {
+          "const": "correctable",
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "message",
+        "recovery"
+      ],
+      "title": "Catalog Item Reference Not Found Error",
+      "type": "object"
+    }
+  },
   "description": "Current buyer-authored availability overlay state for one requested catalog item. Results are returned in request order and identify their request position explicitly.",
   "properties": {
     "availability": {
@@ -314,40 +323,10 @@
           },
           {
             "if": {
-              "properties": {
-                "code": {
-                  "const": "REFERENCE_NOT_FOUND"
-                }
-              },
-              "required": [
-                "code"
-              ]
+              "$ref": "#/definitions/Shared1"
             },
             "then": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": false,
-              "description": "Privacy-preserving error for an unknown, inaccessible, unauthorized, or stale-generation catalog item reference. The invariant closed shape prevents resource enumeration.",
-              "properties": {
-                "code": {
-                  "const": "REFERENCE_NOT_FOUND",
-                  "type": "string"
-                },
-                "message": {
-                  "const": "Catalog item not found",
-                  "type": "string"
-                },
-                "recovery": {
-                  "const": "correctable",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "code",
-                "message",
-                "recovery"
-              ],
-              "title": "Catalog Item Reference Not Found Error",
-              "type": "object"
+              "$ref": "#/definitions/Shared2"
             }
           }
         ],
