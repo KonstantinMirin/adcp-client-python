@@ -663,6 +663,7 @@ def lower_document(
     vocabularies: Mapping[str, Target] | None = None,
     restatements: Mapping[tuple[object, ...], Target | str] | None = None,
     value_lists: Mapping[tuple[object, ...], ValuesImport | str] | None = None,
+    objects: Mapping[str, Target] | None = None,
 ) -> tuple[Module, str] | Refusal:
     """One document's module and root symbol, or the refusal the walk returned.
 
@@ -695,6 +696,11 @@ def lower_document(
         # not write (:attr:`Module.value_lists`).  Empty by the same rule -- a document
         # lowered outside a run writes every value list in its own class bodies.
         value_lists=value_lists if value_lists is not None else {},
+        # **§3a's catalogue layer L2** (:attr:`Module.objects`): the OBJECT TYPES this
+        # document restates, at the pointers that restate them.  Empty by the same rule
+        # the three tables above are -- §9 forbids a reading of the run, and a walk with
+        # no table mints no reference.
+        objects=objects if objects is not None else {},
         referenced=referenced if referenced is not None else {},
         reserved=reserved,
         # The run's own record of which sites this walk asked about, handed IN so that
@@ -1314,6 +1320,7 @@ def decidable(
     restatements: Mapping[tuple[object, ...], Target | str] = {},
     value_lists: Mapping[tuple[object, ...], ValuesImport | str] = {},
     judged: Mapping[str, str] = {},
+    objects: Mapping[str, Target] = {},
     *,
     known: Collection[str],
 ) -> tuple[Module, ir.Module] | Refusal:
@@ -1349,6 +1356,7 @@ def decidable(
         vocabularies,
         restatements,
         value_lists,
+        objects,
     )
     if isinstance(outcome, Refusal):
         return outcome
@@ -1585,6 +1593,28 @@ def emit(
     #: set."  The call takes ``bundle_dir`` and nothing else, which is that rule held by
     #: the signature -- a collection handed ``documents`` would be the census §9 forbids.
     l0 = catalogue.collect(bundle_dir)
+    #: **§3a's CATALOGUE, layer L2: the OBJECT TYPES**, read off the same bundle under the
+    #: key decided 2026-11-03 (``catalogue.Admitted``).  Reading 4 "ranges over ALL FOUR of
+    #: the catalogue's layers, not the first", and this is the second of them to be
+    #: collected; ``catalogue.Admitted`` is shared with the L3 census so the two layers
+    #: read one declaration of what the key is.
+    #:
+    #: **L3 IS CENSUSED AND NOT COLLECTED HERE, and the reason is derived rather than a
+    #: scope.**  Reading 4's own ``Decided by`` says an array type "renders as ``list[X]``
+    #: inside an annotation and declares no class", so the only thing an array position can
+    #: write twice is its ELEMENT -- and measured over this bundle's 240 cross-document
+    #: array groups, every one of them is owned by a layer beneath: 151 reach their element
+    #: through a ``$ref`` (so the element is already written once and referenced), 22 state
+    #: an inline object whose key is an L2 stating position's, 36 a constrained scalar
+    #: (L1), 14 an enumeration (L0), 10 a composition, and 7 a bare scalar there is no type
+    #: to write for.  ``list[X]`` is written once in Python by construction, so reading 4
+    #: at L3 is satisfied exactly when the layers beneath hold.  ``tests/test_catalogue.py``
+    #: is where that decomposition is the check rather than a sentence.
+    l2 = catalogue.collect_shapes(catalogue.Admitted(bundle_dir), "L2")
+    #: document -> pointer -> the L2 entry that position RESTATES
+    #: (``compiler.Module.objects``).  36 positions over 17 documents for this bundle's 17
+    #: named object types.
+    restating_objects = l2.restating()
     #: document -> pointer -> the entry that position RESTATES, which is the one thing
     #: the walk consults (``compiler.Module.vocabularies``).  22 positions over 21
     #: documents for this bundle's 15 named vocabularies.
@@ -2083,6 +2113,60 @@ def emit(
             )
         return out
 
+    def objects(document: str) -> dict[str, Target]:
+        """§3a's catalogue layer L2 entries this document RESTATES, as the walk's table.
+
+        :func:`vocabularies` is the same derivation at L0 and the three things derived
+        here are its three: the SPELLING, which D1 makes a function of the two document
+        paths; the SYMBOL, which is §4's and belongs to the module that DECLARED it (§10's
+        order puts that module in ``lowered`` before this one is parsed, so this is a
+        lookup); and the DOCUMENT, so a third module composing this one takes the symbol
+        from its declarer rather than from here.
+
+        **The KIND is the one field that differs, and it is the whole of what makes this
+        layer L2 rather than L0.**  An enumeration is an ``Annotated`` alias and never a
+        class, so L0's rows are :attr:`compiler.TargetKind.ANNOTATION`; an object type is a
+        class, which is what reading 4 ranges over here.  It is read off the home's own
+        DECLARATION (``compiler.target_kind``) rather than asserted, because a home that
+        turned out to be a union root is a union to every reader and §4's union row is what
+        decides where one may stand -- the same answer :func:`answer` derives for a
+        cross-document ``$ref``.
+
+        **A home whose own document REFUSED contributes nothing**, and the position then
+        declares its own class exactly as it does today: a refused document writes no
+        module, so there is no symbol to import, and refusing this document too would
+        charge it for a defect in another.
+        """
+        out: dict[str, Target] = {}
+        for pointer, home in sorted(restating_objects.get(document, {}).items()):
+            if home.document == document:
+                continue
+            held = lowered.get(home.document)
+            if held is None:
+                continue
+            mod, bound, _ = held
+            symbol = bound.symbols.get(home.pointer)
+            if symbol is None:
+                continue
+            # The SHAPE and the IMPORTABLES cross with the symbol, assembled the way
+            # :func:`answer` assembles them for a cross-document ``$ref`` -- the shape
+            # with the declarer's symbols BOUND, because a shape recorded by pointer is
+            # only readable in another module once its own symbol table has been applied,
+            # and the importables so that a third module composing this one takes each
+            # symbol from the module that DECLARED it (§1's one import path per class).
+            shape = mod.shapes.get(home.pointer)
+            out[pointer] = Target(
+                module=relative_module(document, home.document, package_roots),
+                symbol=symbol,
+                shape=None if shape is None else _bound_shape(shape, bound.symbols),
+                document=home.document,
+                kind=compiler.target_kind(mod.at.get(home.pointer)),
+                imports=_importable(
+                    document, home.document, bound.symbols, mod.imported, package_roots
+                ),
+            )
+        return out
+
     def restatements(document: str) -> dict[tuple[object, ...], Target | str]:
         """§3a's catalogue keyed on the VALUE LIST, for this document's own walk.
 
@@ -2225,6 +2309,7 @@ def emit(
             restatements(document),
             value_lists(document),
             judged(document),
+            objects(document),
             known=known,
         )
         if isinstance(outcome, Refusal):

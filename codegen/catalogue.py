@@ -839,6 +839,425 @@ def home(entry: Entry) -> str:
     return namespace(entry.documents)
 
 
+#: The keywords whose subschemas sit at a DEF position: a SECTION, not an admission.
+#:
+#: **OUT of the key** (:class:`Admitted`), which is the one consequence of §3a's
+#: admission test that §3a does not spell.  An entry no ``$ref`` names admits nothing, and
+#: an entry one DOES name is already in the key at the referring site because references
+#: resolve -- so keeping the section would make two nodes that admit exactly the same set
+#: differ on a side-car, which is the error the sentence exists to prevent.  Derived from
+#: the descent column's own child position, never listed: ``definitions`` and ``$defs``
+#: are the keywords whose subschemas occupy a DEF position, which is what a definitions
+#: section IS.
+SECTIONS = frozenset(k for k, p in bundle.DESCENDS.items() if p is keywords.Position.DEF)
+
+#: Subschema lists an instance reads as a SET: ``allOf``, ``anyOf``, ``oneOf``.  No payload
+#: can see which branch the document wrote first, so the key sorts them -- the same
+#: sentence that puts property ORDER out of the key (§3a: "order is the axis a census must
+#: be explicitly blind to or it reports a difference no payload can see").
+UNORDERED = bundle.HELD_IN_A_LIST
+#: The keywords holding a bag of named subschemas that IS an admission: ``properties`` and
+#: ``patternProperties``.  :data:`SECTIONS` is what the difference is.
+BY_NAME = bundle.HELD_BY_NAME - SECTIONS
+
+#: What a key records where a reference closes a cycle: the HOP COUNT back to the node the
+#: cycle returns to, which is a function of the structure and not of where the walk
+#: started.  A bundle whose references form a cycle has no finite inlining, and the key has
+#: to say "the same node, N hops up" rather than recurse.
+CYCLE = "<cycle>"
+
+
+class Admitted:
+    """**A LAYER'S KEY: exactly what changes the set of admitted instances** (§3a, 2026-11-03).
+
+    ``docs/plan/architecture.md`` §3a settles the recursion and the order -- an object's
+    identity is the identity of its property types, collected L0 upward -- and the section
+    of 2026-11-03 settles what the key CONTAINS:
+
+        "The test is admission-equivalence, and it is the one L0 already used.  Two nodes
+        are one entry exactly when no instance distinguishes them.  So the key holds the
+        property NAMES (a different name admits different instances), ``required``,
+        ``additionalProperties``, and every narrowing keyword -- each changes what is
+        admitted.  It does not hold a ``title``, a ``description``, an ``examples``, or the
+        ORDER of the properties."
+
+    Four readings of that sentence are applied here and each is the admission test asked
+    of one more keyword:
+
+    * **what is IN** is every key :data:`ANNOTATIONS` does not hold and the ``x-`` prefix
+      does not admit, which is L0's own screen (:func:`identity`) -- derived from
+      ``codegen/keywords.py``'s TABLE and never listed, so a keyword joining the table
+      joins the key by its own cell rather than by a second declaration here;
+    * **a reference RESOLVES to what it names before keying.**  §3a: "an unresolved key
+      UNDERCOUNTS, measurably so at the array layer."  Measured over this bundle's array
+      positions the unresolved key reads 918 identities and the resolved one 891, and the
+      difference is positions where one document spells a type inline that another reaches
+      through a ``$ref``;
+    * **ORDER is out** wherever no payload can see it: a property bag is sorted by name, a
+      ``required`` list is sorted, a combinator's branch list is sorted.  ``enum``'s order
+      stays IN, and that is not an inconsistency -- :func:`value_list`'s own docstring
+      measures the cost of dropping it (``["closed", "open"]`` and ``["open", "closed"]``
+      are two vocabularies the bundle means to keep apart) and the rendered member ORDER
+      is a fact a consumer meets;
+    * **a definitions SECTION is out** (:data:`SECTIONS`).
+
+    **A key read off the RENDERED ANNOTATION is not this key** and this class is why the
+    distinction has a name: a rendered annotation carries a ``description``, so a census
+    over it moves when the renderer does, and a figure that moves when the renderer changes
+    cannot be a layer's identity.  Every figure in §3a's L2/L3 row and in the 42 row's own
+    tables was taken over the tree; this is taken over the bundle.
+
+    **It reads the BUNDLE and never the run's document set**, which is :func:`collect`'s
+    own rule and §9's: the answer is the same for a one-document command and for a
+    whole-population emission.
+    """
+
+    def __init__(self, bundle_dir: Path) -> None:
+        self.dir = bundle_dir
+        self.documents = frozenset(bundle.portable(bundle_dir))
+        self._read: dict[str, dict] = {}
+        self._keys: dict[tuple[str, str], str] = {}
+
+    def document(self, name: str) -> dict:
+        if name not in self._read:
+            self._read[name] = bundle.read(self.dir, name)
+        return self._read[name]
+
+    def target(self, document: str, uri: object) -> tuple[str, str] | None:
+        """``(document, pointer)`` a ``$ref`` names, or ``None`` where nothing does.
+
+        A LOCAL reference (``#/definitions/x``) names a node of the REFERRER, which is
+        ``bundle.split_ref``'s empty document half; an absolute one is matched against the
+        bundle's own file set by ``bundle.document_for``.  ``None`` for a reference this
+        bundle does not hold, and the key then carries the URI unresolved -- which is
+        honest about what is known and keeps two unresolvable references to one URI equal.
+        """
+        if not isinstance(uri, str):
+            return None
+        head, pointer = bundle.split_ref(uri)
+        if head == "":
+            return (document, pointer)
+        named = bundle.document_for(head, self.documents)
+        return None if named is None else (named, pointer)
+
+    def of(self, document: str, node: object, stack: tuple[tuple[str, str], ...] = ()) -> object:
+        """The decided key of one node, as a hashable structure."""
+        if isinstance(node, list):
+            return ("[]", tuple(self.of(document, v, stack) for v in node))
+        if not isinstance(node, dict):
+            return json.dumps(node, sort_keys=True)
+        out: list[tuple[str, object]] = []
+        for word in sorted(node):
+            if word in ANNOTATIONS or word.startswith("x-") or word in SECTIONS:
+                continue
+            held = node[word]
+            if word == "$ref":
+                at = self.target(document, held)
+                if at is None:
+                    out.append((word, ("unresolved", json.dumps(held))))
+                elif at in stack:
+                    out.append((word, (CYCLE, len(stack) - stack.index(at))))
+                else:
+                    try:
+                        reached = bundle.node_at(self.document(at[0]), at[1])
+                    except (KeyError, IndexError, TypeError, ValueError):
+                        # A pointer naming no node: the reference is unresolvable in fact
+                        # whatever its spelling, and ``bundle.record`` is what refuses the
+                        # document for it.  A census is not a verdict (§3a), so the key
+                        # carries the URI and the run reports the refusal.
+                        out.append((word, ("unresolved", json.dumps(held))))
+                    else:
+                        out.append((word, self.of(at[0], reached, stack + (at,))))
+            elif word in BY_NAME and isinstance(held, dict):
+                out.append(
+                    (word, tuple(sorted((k, self.of(document, v, stack)) for k, v in held.items())))
+                )
+            elif word in UNORDERED and isinstance(held, list):
+                out.append((word, tuple(sorted(repr(self.of(document, e, stack)) for e in held))))
+            elif word in bundle.DESCENDS:
+                out.append((word, self.of(document, held, stack)))
+            elif word == "required" and isinstance(held, list):
+                out.append((word, tuple(sorted(map(str, held)))))
+            else:
+                out.append((word, json.dumps(held, sort_keys=True)))
+        return tuple(out)
+
+    def key(self, document: str, node: object) -> str:
+        """:meth:`of` as one string, which is what an entry is keyed on."""
+        return repr(self.of(document, node))
+
+
+@dataclass(frozen=True)
+class Shaped:
+    """One position that STATES an object type (L2) or an array type (L3).
+
+    :class:`Stated` is L0's, and this is the same fact at the layers whose identity is a
+    STRUCTURE rather than a value list: where it is, what it admits (:class:`Admitted`),
+    and the ``title`` §3a's naming split reads.
+    """
+
+    document: str
+    pointer: str
+    position: keywords.Position
+    #: The decided key (:class:`Admitted`).
+    key: str
+    #: The node's own ``title``, or ``None``.  §3a's naming rule reads this and nothing
+    #: else -- "a description states what a thing IS, not what it is CALLED, so it mints no
+    #: name".
+    title: str | None
+
+    @property
+    def is_a_root(self) -> bool:
+        """Is this position the document's own ROOT?  :attr:`Stated.is_a_root`'s reason."""
+        return self.pointer == ""
+
+
+@dataclass(frozen=True)
+class ShapeEntry:
+    """One L2 entry: a structure, the name the bundle gives it, and where it is declared."""
+
+    key: str
+    #: The ``title`` the bundle states.  Never ``None``: an untitled structure is §3a's
+    #: THIRD answer -- "separate types pending a name ... an upstream ask and not a local
+    #: answer" -- and is carried by :attr:`Shapes.untitled` instead.
+    title: str
+    #: Every position that states this structure, in bundle order.
+    positions: tuple[Shaped, ...]
+    #: The position this entry is DECLARED at.
+    at: Shaped
+
+    @property
+    def documents(self) -> frozenset[str]:
+        return frozenset(p.document for p in self.positions)
+
+    @property
+    def restating(self) -> tuple[Shaped, ...]:
+        """Every position that states this structure and is not the one that DECLARES it.
+
+        §3a's whole job for a catalogue layer: "to stop every other position minting a
+        copy".  The three exclusions are :attr:`Entry.restating`'s, verbatim and for the
+        same three reasons -- a document ROOT must declare because §1 says every portable
+        document contributes a symbol; a position in the home's own document is §4's
+        content dedup's and not this layer's; and the home itself declares.
+        """
+        home = (self.at.document, self.at.pointer)
+        return tuple(
+            p
+            for p in self.positions
+            if (p.document, p.pointer) != home
+            and not p.is_a_root
+            and p.document != self.at.document
+        )
+
+
+@dataclass(frozen=True)
+class ShapeConflict:
+    """A structure the bundle gives MORE THAN ONE title: §3a's third naming case at L2.
+
+    Not collapsed, not named, and brought to the owner -- :class:`Conflict` is L0's and the
+    rule is the same one.  Where exactly one of the titles belongs to a document ROOT that
+    root is the home and this is not a conflict, which is §3a's correction of 2026-11-02
+    and is :func:`the_name`'s own reading.
+    """
+
+    key: str
+    titles: tuple[str, ...]
+    positions: tuple[Shaped, ...]
+
+
+@dataclass(frozen=True)
+class Shapes:
+    """One STRUCTURAL layer over a bundle: L2's object types, or L3's array types.
+
+    The parts are a PARTITION of the structures stated at more than one position, and the
+    partition is what a check ranges over: a structure is stated in one document
+    (:attr:`restated`) or in several, and in the second case the bundle names it
+    (:attr:`entries`), names it nowhere (:attr:`untitled`), gives it two names neither of
+    which is a document's own (:attr:`conflicting`), or names it at nothing BUT document
+    roots (:attr:`duplicated`).
+
+    **The last of those is a part L0 has no members in and L2 does.**  Ten of this
+    bundle's object structures are stated at exactly two positions, both of them a document
+    ROOT, both carrying the SAME title -- the bundle ships one document at two paths, under
+    ``core/async-response-refs/`` and under the domain's own directory.  §1 obliges both to
+    export a symbol, so neither can become a reference to the other, and the decided key
+    says they admit identically.  **The decided key does not settle it**, so it is reported
+    and not chosen in: the local answer available is an ALIAS at the second root, which is
+    §3a's "a restated title that a consumer needs is an alias at its position, never a
+    second class", and the question of which root is the alias is §1's rather than this
+    layer's.
+    """
+
+    #: key -> the entry, for a structure the bundle states in more than one document and
+    #: names at exactly one name.
+    entries: Mapping[str, ShapeEntry]
+    #: The structures stated in more than one document with NO title anywhere.  §3a's THIRD
+    #: answer -- separate types pending a name, an upstream ask, never a local answer.
+    untitled: tuple[tuple[Shaped, ...], ...]
+    #: §3a's conflict case, for the owner.
+    conflicting: tuple[ShapeConflict, ...]
+    #: The structures a SINGLE document states at more than one position.  §4's content
+    #: dedup is the whole rule for them.
+    restated: tuple[tuple[Shaped, ...], ...]
+    #: The structures whose every stating position is a document ROOT.  See the class
+    #: docstring: §1 and reading 4 give different answers and the key settles neither.
+    duplicated: tuple[tuple[Shaped, ...], ...]
+    #: Every stating position, which is the set every count above partitions.
+    positions: tuple[Shaped, ...]
+
+    def restating(self) -> dict[str, dict[str, Reference]]:
+        """document -> pointer -> the entry's home, for every position that RESTATES one.
+
+        **The whole of what the walk consults**, and the same table shape
+        :meth:`Catalogue.restating` hands it for L0: a position in it is "a REFERENCE to a
+        catalogue entry" and every other object position is "a fresh type where the node is
+        genuinely unique".  Keyed by DOCUMENT first, because the run hands one document at
+        a time to the walk and §11's arrows forbid the walk knowing the run.
+        """
+        out: dict[str, dict[str, Reference]] = {}
+        for entry in self.entries.values():
+            home = Reference(
+                document=entry.at.document, pointer=entry.at.pointer, title=entry.title
+            )
+            for position in entry.restating:
+                out.setdefault(position.document, {})[position.pointer] = home
+        return out
+
+
+def shape_states(
+    admitted: Admitted, layer: str, documents: Collection[str] | None = None
+) -> Iterator[Shaped]:
+    """Every position of the bundle that STATES an object type (``"L2"``) or an array
+    type (``"L3"``).
+
+    **L2 is a node holding a non-empty ``properties``**, which is what an object type IS
+    and is the population the 42 row's split was asked of.  **L3 is a node whose ``items``
+    is a schema**, which is what an array type is.
+
+    **A RULE POSITION MINTS NO TYPE and is not a stating position.**  §3's RULE position is
+    where ``if``, ``then``, ``else`` and ``not`` hold their subschemas, and a conditional's
+    subschema compiles to a RULE rather than to a type -- so a node holding ``properties``
+    there constrains an instance of the ENCLOSING type and declares none of its own.
+    Measured: 806 of the 3,261 nodes of this bundle holding a non-empty ``properties`` sit
+    at a RULE, and excluding them reproduces the 42 row's 2,455 L2 positions exactly.
+
+    **A ``definitions`` entry no ``$ref`` names is not one either**, which is §5 ("a
+    position inside one declares nothing") and is :attr:`Stated.reached`'s own reading at
+    L0.  Sixteen L2 positions and three L3 positions of this bundle are of that kind, and
+    they are the whole of the difference between this population and the 42 row's.
+    """
+    names = bundle.named_nodes(admitted.dir)
+    for document in sorted(
+        documents if documents is not None else bundle.portable(admitted.dir)
+    ):
+        doc = admitted.document(document)
+        unreferenced = tuple(
+            sorted(bundle.section_entries(doc) - names.get(document, frozenset()))
+        )
+        for pointer, node, position in bundle.nodes_at(doc):
+            if position is keywords.Position.RULE:
+                continue
+            if any(pointer.startswith(entry) for entry in unreferenced):
+                continue
+            if layer == "L2":
+                held = node.get("properties")
+                if not isinstance(held, dict) or not held:
+                    continue
+            elif not isinstance(node.get("items"), dict):
+                continue
+            title = node.get("title")
+            yield Shaped(
+                document=document,
+                pointer=pointer,
+                position=position,
+                key=admitted.key(document, node),
+                title=title if isinstance(title, str) and title.strip() else None,
+            )
+
+
+def shape_ranked(position: Shaped, title: str) -> tuple[object, ...]:
+    """:attr:`ShapeEntry.at`'s order over the positions of one entry, best first.
+
+    :func:`ranked` is L0's and this is the same order: a root carrying the entry's own
+    title, then any position carrying it, then any root, then the bundle's own order.  §1
+    is what puts the roots first -- "every portable document contributes a symbol", so a
+    root cannot become a reference to another module's class and is the one position of its
+    group that MUST declare.
+    """
+    return (
+        not (position.is_a_root and position.title == title),
+        position.title != title,
+        not position.is_a_root,
+        position.document,
+        position.pointer,
+    )
+
+
+def collect_shapes(
+    admitted: Admitted, layer: str, documents: Collection[str] | None = None
+) -> Shapes:
+    """One STRUCTURAL layer over the bundle: §3a's L2 or L3, under the decided key.
+
+    §3a's three-way split, asked of each group of positions that state one structure and
+    answered exactly as L0 answers it:
+
+    * **one named type** where the bundle names the subject -- one title, or several of
+      which exactly one belongs to a document ROOT (:func:`the_name`'s rule);
+    * **separate types over one definition** where the names conflict
+      (:attr:`Shapes.conflicting`) or where every position is a root the bundle obliges to
+      declare (:attr:`Shapes.duplicated`);
+    * **separate types pending a name** where the bundle titles the structure nowhere
+      (:attr:`Shapes.untitled`), which is an upstream ask and never a local answer.
+    """
+    grouped: dict[str, list[Shaped]] = {}
+    every: list[Shaped] = []
+    for position in shape_states(admitted, layer, documents):
+        every.append(position)
+        grouped.setdefault(position.key, []).append(position)
+
+    entries: dict[str, ShapeEntry] = {}
+    untitled: list[tuple[Shaped, ...]] = []
+    conflicting: list[ShapeConflict] = []
+    restated: list[tuple[Shaped, ...]] = []
+    duplicated: list[tuple[Shaped, ...]] = []
+
+    for key, group in grouped.items():
+        if len(group) < 2:
+            continue
+        if len({p.document for p in group}) == 1:
+            restated.append(tuple(group))
+            continue
+        stated = frozenset(p.title for p in group if p.title is not None)
+        if not stated:
+            untitled.append(tuple(group))
+            continue
+        if len(stated) == 1:
+            title = next(iter(stated))
+        else:
+            rooted = {p.title for p in group if p.is_a_root and p.title is not None}
+            if len(rooted) != 1:
+                conflicting.append(ShapeConflict(key, tuple(sorted(stated)), tuple(group)))
+                continue
+            title = next(iter(rooted))
+        at = min(group, key=lambda p: shape_ranked(p, title))
+        entry = ShapeEntry(key=key, title=title, positions=tuple(group), at=at)
+        # Every position a ROOT: §1 obliges each to declare, so the entry has nothing to
+        # stop minting and the question the key cannot settle is reported instead.
+        if not entry.restating:
+            duplicated.append(tuple(group))
+            continue
+        entries[key] = entry
+
+    return Shapes(
+        entries=entries,
+        untitled=tuple(untitled),
+        conflicting=tuple(conflicting),
+        restated=tuple(restated),
+        duplicated=tuple(duplicated),
+        positions=tuple(every),
+    )
+
+
 def collect(bundle_dir: Path, documents: Collection[str] | None = None) -> Catalogue:
     """Layer L0 over the bundle: one pass, before naming (§3a).
 

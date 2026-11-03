@@ -1359,7 +1359,6 @@ from ._schemas.core.product_allowed_action import (
 from ._schemas.core.product_audience_evidence_requirements import (
     AcceptedAttestationIssuersItemAgent as AcceptedAttestationIssuersItemAgent,
     AcceptedAttestationIssuersItemBrand as AcceptedAttestationIssuersItemBrand,
-    AcceptedAttestationIssuersItemOrigin as AcceptedAttestationIssuersItemOrigin,
     ProductAudienceEvidenceRequirements as ProductAudienceEvidenceRequirements,
 )
 from ._schemas.core.product_card_reference_asset import (
@@ -1379,7 +1378,6 @@ from ._schemas.core.product_filters import (
     AudienceActivationMethodsItemDatasetQuery as AudienceActivationMethodsItemDatasetQuery,
     AudienceActivationMethodsItemFileTransfer as AudienceActivationMethodsItemFileTransfer,
     AudienceActivationMethodsItemPlatformDistribution as AudienceActivationMethodsItemPlatformDistribution,
-    AudienceActivationMethodsItemSyncAudiences as AudienceActivationMethodsItemSyncAudiences,
     AudienceActivationMethodsItemTmpIdentityMatch as AudienceActivationMethodsItemTmpIdentityMatch,
     PricingCurrenciesItem as PricingCurrenciesItem,
     ProductFilters as ProductFilters,
@@ -1986,7 +1984,6 @@ __all__ = [
     'AcceptancePolicyProfileIDs',
     'AcceptedAttestationIssuersItemAgent',
     'AcceptedAttestationIssuersItemBrand',
-    'AcceptedAttestationIssuersItemOrigin',
     'Account',
     'AccountAuthorization',
     'AccountChange',
@@ -2105,7 +2102,6 @@ __all__ = [
     'AudienceActivationMethodsItemDatasetQuery',
     'AudienceActivationMethodsItemFileTransfer',
     'AudienceActivationMethodsItemPlatformDistribution',
-    'AudienceActivationMethodsItemSyncAudiences',
     'AudienceActivationMethodsItemTmpIdentityMatch',
     'AudienceCharacteristic',
     'AudienceEvidence',

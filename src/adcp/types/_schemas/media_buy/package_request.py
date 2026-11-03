@@ -14,11 +14,11 @@ from ..core.audience_evidence_requirements import AudienceEvidenceRequirements
 from ..core.bidding_policy import BiddingPolicy
 from ..core.brand_ref import BrandReference
 from ..core.canonical_format_kind import CanonicalFormatKind
+from ..core.canonical_metric_qualifier import CanonicalMetricQualifier
 from ..core.catalog import Catalog
 from ..core.context import ContextObject
 from ..core.creative_asset import CreativeAsset
 from ..core.creative_assignment import CreativeAssignment
-from ..core.duration import Duration
 from ..core.ext import ExtensionObject
 from ..core.format_id import FormatReferenceStructuredObject
 from ..core.format_option_ref import FormatOptionReference
@@ -28,12 +28,8 @@ from ..core.performance_standard import PerformanceStandard
 from ..core.targeting_input import TargetingOverlayInput
 from ..core.vendor_metric_id import VendorMetricID
 from ..core.version_envelope import AdCPVersionEnvelope
-from ..enums.attribution_methodology import AttributionMethodology
 from ..enums.available_metric import AvailableMetric
-from ..enums.completion_source import CompletionSource
-from ..enums.lift_dimension import LiftDimension
 from ..enums.pacing import Pacing
-from ..enums.viewability_standard import ViewabilityStandard
 
 
 class Bidding(BiddingPolicy):
@@ -46,21 +42,6 @@ class Bidding(BiddingPolicy):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/package-request.json', pointer='#/properties/bidding')
 
 
-class CommittedMetricsItemStandardQualifier(AdCPBaseModel):
-    """
-    Disambiguator — same shape as on the response-side `committed_metrics`. Required when the buyer wants to pin a specific measurement path: `viewability_standard` for MRC vs GroupM viewability; `completion_source` for seller- vs vendor-attested `completion_rate`; `attribution_methodology` for how attribution was computed (deterministic_purchase, probabilistic, panel_based, modeled); `attribution_window` for the time window over which outcomes are attributed. See response-side description for full semantics.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/package-request.json', pointer='#/properties/committed_metrics/items/oneOf/0/properties/qualifier')
-    viewability_standard: ViewabilityStandard | None = None
-    completion_source: CompletionSource | None = None
-    attribution_methodology: AttributionMethodology | None = None
-    attribution_window: Duration | None = None
-    lift_dimension: LiftDimension | None = None
-
-
 class CommittedMetricsItemStandard(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -68,22 +49,7 @@ class CommittedMetricsItemStandard(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/package-request.json', pointer='#/properties/committed_metrics/items/oneOf/0')
     scope: Annotated[Literal['standard'], Field(description='Standard metric from the closed `available-metric.json` enum.')]
     metric_id: Annotated[AvailableMetric, Field(description="Identifier for the standard metric. MUST be present in the product's `reporting_capabilities.available_metrics`.")]
-    qualifier: Annotated[CommittedMetricsItemStandardQualifier | None, Field(description='Disambiguator — same shape as on the response-side `committed_metrics`. Required when the buyer wants to pin a specific measurement path: `viewability_standard` for MRC vs GroupM viewability; `completion_source` for seller- vs vendor-attested `completion_rate`; `attribution_methodology` for how attribution was computed (deterministic_purchase, probabilistic, panel_based, modeled); `attribution_window` for the time window over which outcomes are attributed. See response-side description for full semantics.')] = None
-
-
-class CommittedMetricsItemVendorQualifier(AdCPBaseModel):
-    """
-    Optional disambiguator for vendor metrics committed under more than one methodology or window — same closed key set as standard-scope entries.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/package-request.json', pointer='#/properties/committed_metrics/items/oneOf/1/properties/qualifier')
-    viewability_standard: ViewabilityStandard | None = None
-    completion_source: CompletionSource | None = None
-    attribution_methodology: AttributionMethodology | None = None
-    attribution_window: Duration | None = None
-    lift_dimension: LiftDimension | None = None
+    qualifier: Annotated[CanonicalMetricQualifier | None, Field(description='Disambiguator — same shape as on the response-side `committed_metrics`. Required when the buyer wants to pin a specific measurement path: `viewability_standard` for MRC vs GroupM viewability; `completion_source` for seller- vs vendor-attested `completion_rate`; `attribution_methodology` for how attribution was computed (deterministic_purchase, probabilistic, panel_based, modeled); `attribution_window` for the time window over which outcomes are attributed. See response-side description for full semantics.')] = None
 
 
 class CommittedMetricsItemVendor(AdCPBaseModel):
@@ -95,7 +61,7 @@ class CommittedMetricsItemVendor(AdCPBaseModel):
     vendor: Annotated[BrandReference, Field(description="Vendor that defines and computes this metric. The vendor's `brand.json` `agents[type='measurement']` is the canonical anchor.")]
     metric_id: Annotated[VendorMetricID, Field(description="Identifier for the metric within the vendor's vocabulary. MUST be present in the product's `reporting_capabilities.vendor_metrics` for the same vendor.")]
     methodology_version: Annotated[str | None, Field(description="Optional buyer-proposed pin of the vendor's `measurement.metrics[].methodology_version`. The seller accepts by echoing it on the confirmed package's `committed_metrics` entry, normalizes to the version it can actually deliver, or rejects with `TERMS_REJECTED`. Opaque string — equality comparison only.")] = None
-    qualifier: Annotated[CommittedMetricsItemVendorQualifier | None, Field(description='Optional disambiguator for vendor metrics committed under more than one methodology or window — same closed key set as standard-scope entries.')] = None
+    qualifier: Annotated[CanonicalMetricQualifier | None, Field(description='Optional disambiguator for vendor metrics committed under more than one methodology or window — same closed key set as standard-scope entries.')] = None
 
 
 class CreativesItem(CreativeAsset):

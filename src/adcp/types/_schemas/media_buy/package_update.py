@@ -7,7 +7,7 @@ from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field, NonNegati
 
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, NotValue, Rule
-from adcp.types.constraints import StrMaxLen500, StrMinLen1
+from adcp.types.constraints import StrMaxLen500
 
 from ..core.bidding_policy import BiddingPolicy
 from ..core.catalog import Catalog
@@ -15,47 +15,11 @@ from ..core.context import ContextObject
 from ..core.creative_asset import CreativeAsset
 from ..core.creative_assignment import CreativeAssignment
 from ..core.ext import ExtensionObject
+from ..core.keyword_target import KeywordTarget
+from ..core.negative_keyword import NegativeKeyword
 from ..core.optimization_goal import OptimizationGoal
 from ..core.targeting_input import TargetingOverlayInput
-from ..enums.match_type import MatchType
 from ..enums.pacing import Pacing
-
-
-class KeywordTargetsAddItem(AdCPBaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/package-update.json', pointer='#/properties/keyword_targets_add/items')
-    keyword: Annotated[StrMinLen1, Field(description='The keyword to target')]
-    match_type: MatchType
-    bid_price: Annotated[NonNegativeFloat | None, Field(description="Per-keyword bid price. Inherits currency and max_bid interpretation from the package's pricing option.")] = None
-
-
-class KeywordTargetsRemoveItem(AdCPBaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/package-update.json', pointer='#/properties/keyword_targets_remove/items')
-    keyword: Annotated[StrMinLen1, Field(description='The keyword to stop targeting')]
-    match_type: MatchType
-
-
-class NegativeKeywordsAddItem(AdCPBaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/package-update.json', pointer='#/properties/negative_keywords_add/items')
-    keyword: Annotated[StrMinLen1, Field(description='The keyword to exclude')]
-    match_type: MatchType
-
-
-class NegativeKeywordsRemoveItem(AdCPBaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/package-update.json', pointer='#/properties/negative_keywords_remove/items')
-    keyword: Annotated[StrMinLen1, Field(description='The keyword to stop excluding')]
-    match_type: MatchType
 
 
 class CreativesItem(CreativeAsset):
@@ -106,10 +70,10 @@ class PackageUpdate(AdCPBaseModel):
     catalogs: Annotated[list[Catalog] | None, Field(description='Replace the catalogs this package promotes. Uses replacement semantics — the provided array replaces the current list. Omit to leave catalogs unchanged.', min_length=1)] = None
     optimization_goals: Annotated[list[OptimizationGoal] | None, Field(description='Replace all optimization goals for this package. Uses replacement semantics — omit to leave goals unchanged.', min_length=1)] = None
     targeting_overlay: Annotated[TargetingOverlayInput | None, Field(description='Per-dimension targeting patch for this package. Omit targeting_overlay, or omit an individual dimension inside it, to leave the corresponding effective targeting unchanged. A non-null dimension replaces its current value; null clears it, including a value inherited from configured-product selection or a product default. Every resulting effective overlay must remain executable by the product. Sellers reject unsupported or partially applicable changes and use REQUOTE_REQUIRED when a change, including a broader inventory set, falls outside the priced envelope. placement_selection is purchased-inventory targeting; mode default restores the product default, null clears the dimension when the product permits it, and successful readback echoes the committed selected set when enumerable. If a patch removes a placement referenced by an existing creative assignment, the seller MUST reject the update unless the same atomic package mutation supplies a compatible complete creative_assignments replacement. Sellers MUST NOT silently delete assignments or retain orphan placement refs.')] = None
-    keyword_targets_add: Annotated[list[KeywordTargetsAddItem] | None, Field(description='Keyword targets to add or update on this package. Upserts by (keyword, match_type) identity: if the pair already exists, its bid_price is updated; if not, a new keyword target is added. Use targeting_overlay.keyword_targets in create_media_buy to set the initial list.', min_length=1)] = None
-    keyword_targets_remove: Annotated[list[KeywordTargetsRemoveItem] | None, Field(description='Keyword targets to remove from this package. Removes matching (keyword, match_type) pairs. If a specified pair is not present, sellers SHOULD treat it as a no-op for that entry.', min_length=1)] = None
-    negative_keywords_add: Annotated[list[NegativeKeywordsAddItem] | None, Field(description='Negative keywords to add to this package. Appends to the existing negative keyword list — does not replace it. If a keyword+match_type pair already exists, sellers SHOULD treat it as a no-op for that entry. Use targeting_overlay.negative_keywords in create_media_buy to set the initial list.', min_length=1)] = None
-    negative_keywords_remove: Annotated[list[NegativeKeywordsRemoveItem] | None, Field(description='Negative keywords to remove from this package. Removes matching keyword+match_type pairs from the existing list. If a specified pair is not present, sellers SHOULD treat it as a no-op for that entry.', min_length=1)] = None
+    keyword_targets_add: Annotated[list[KeywordTarget] | None, Field(description='Keyword targets to add or update on this package. Upserts by (keyword, match_type) identity: if the pair already exists, its bid_price is updated; if not, a new keyword target is added. Use targeting_overlay.keyword_targets in create_media_buy to set the initial list.', min_length=1)] = None
+    keyword_targets_remove: Annotated[list[NegativeKeyword] | None, Field(description='Keyword targets to remove from this package. Removes matching (keyword, match_type) pairs. If a specified pair is not present, sellers SHOULD treat it as a no-op for that entry.', min_length=1)] = None
+    negative_keywords_add: Annotated[list[NegativeKeyword] | None, Field(description='Negative keywords to add to this package. Appends to the existing negative keyword list — does not replace it. If a keyword+match_type pair already exists, sellers SHOULD treat it as a no-op for that entry. Use targeting_overlay.negative_keywords in create_media_buy to set the initial list.', min_length=1)] = None
+    negative_keywords_remove: Annotated[list[NegativeKeyword] | None, Field(description='Negative keywords to remove from this package. Removes matching keyword+match_type pairs from the existing list. If a specified pair is not present, sellers SHOULD treat it as a no-op for that entry.', min_length=1)] = None
     creative_assignments: Annotated[list[CreativeAssignment] | None, Field(description='Replace creative assignments for this package with optional rotation, grouping, weights, and placement routing. Uses replacement semantics - omit to leave assignments unchanged. rotation_mode is package-scoped: omission resolves to weighted, and every assignment MUST resolve to the same effective mode. In sequential mode, sequence_position MUST be unique within each package-local group. Sellers reject conflicts with VALIDATION_ERROR before mutation. When the same mutation narrows or clears targeting_overlay.placement_selection, this complete replacement MUST remove or reroute every assignment reference that would otherwise be orphaned; the seller validates both changes atomically.')] = None
     creatives: Annotated[list[CreativesItem] | None, Field(description="Replace this package's inline creative assets. Native localization is not accepted on this path; use sync_creatives before assigning the library creative. When the seller also advertises creative.has_creative_library: true, new inline creatives enter the seller's creative library and can be reused by creative_id while retained; inline-only sellers may store them as package-scoped assets. Use creative_assignments instead for existing library creatives.", max_length=100, min_length=1)] = None
     context: ContextObject | None = None

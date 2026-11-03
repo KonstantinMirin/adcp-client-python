@@ -15,7 +15,6 @@ from ..enums.device_platform import DevicePlatform
 from ..enums.device_type import DeviceType
 from ..enums.distance_unit import DistanceUnit
 from ..enums.match_type import MatchType
-from ..enums.metro_system import MetroAreaSystem
 from ..enums.transport_mode import TransportMode
 from ..enums.travel_time_unit import TravelTimeUnit
 from .catchment import GeometryType
@@ -50,16 +49,7 @@ GeoRegions = Annotated[list[StrMatchingCE72C7C2], Field(description='Restrict de
 GeoRegionsExclude = Annotated[list[StrMatchingCE72C7C2], Field(description='Exclude exact canonical ISO 3166-2 subdivisions. Support is independent from geo_regions inclusion support. Unknown identifiers and values also present in geo_regions are invalid. At create or update, sellers MUST reject unsupported identifiers and partial application; during get_products, a seller may instead return a sparse, buyer-reviewable targeting_resolution modification for a valid but unsupported requested outcome.', min_length=1)]
 
 
-class GeoMetrosExcludeItem(AdCPBaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/targeting.json', pointer='#/properties/geo_metros_exclude/items')
-    system: Annotated[MetroAreaSystem, Field(description="Metro area classification system (e.g., 'nielsen_dma', 'uk_itl2')")]
-    values: Annotated[list[str], Field(description="Metro codes to exclude within the system (e.g., ['501', '602'] for Nielsen DMAs)", min_length=1)]
-
-
-GeoMetrosExclude = Annotated[list[GeoMetrosExcludeItem], Field(description='Exclude specific metro areas from delivery. Each entry specifies the classification system and excluded values. Seller must declare supported systems in get_adcp_capabilities.', min_length=1)]
+GeoMetrosExclude = Annotated[list[GeoMetro], Field(description='Exclude specific metro areas from delivery. Each entry specifies the classification system and excluded values. Seller must declare supported systems in get_adcp_capabilities.', min_length=1)]
 
 
 GeoPostalAreas = Annotated[list[PostalArea], Field(description='Restrict delivery to specific postal areas. Prefer the native country + postal system form. The deprecated legacy country-fused postal-system tokens remain accepted for compatibility. Seller must declare supported systems in get_adcp_capabilities.', min_length=1)]

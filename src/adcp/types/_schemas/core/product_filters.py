@@ -29,7 +29,7 @@ from ..enums.transport_mode import TransportMode
 from ..enums.travel_time_unit import TravelTimeUnit
 from ..enums.video_placement_type import VideoPlacementType
 from ._vocabularies import _VALUES_INCLUDE_EXCLUDE
-from .audience_activation_method import DirectionsItem
+from .audience_activation_method import AdCPAudienceSync, DirectionsItem
 from .audience_evidence_requirements import AudienceEvidenceRequirements
 from .brand_ref import BrandReference
 from .canonical_format_kind import CanonicalFormatKind
@@ -92,17 +92,6 @@ class TrustedMatch(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-filters.json', pointer='#/properties/trusted_match')
     providers: Annotated[list[ProvidersItem] | None, Field(description='Filter to products with specific TMP providers and match types. Each entry identifies a provider by agent_url and optionally requires specific match capabilities. Products must match at least one entry.', min_length=1)] = None
     response_types: Annotated[list[TMPResponseType] | None, Field(description="Filter to products supporting specific TMP response types (e.g., 'activation', 'creative', 'catalog_items'). Products must support at least one of the listed types.", min_length=1)] = None
-
-
-class AudienceActivationMethodsItemSyncAudiences(AdCPBaseModel):
-    """
-    Filter by AdCP audience sync path.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-filters.json', pointer='#/properties/audience_activation_methods/items/oneOf/0')
-    pattern: Literal['sync_audiences']
 
 
 class BuyerAgent(AdCPBaseModel):
@@ -365,7 +354,7 @@ class ProductFilters(AdCPBaseModel):
     social_placement_surfaces: Annotated[list[SocialPlacementSurface] | None, Field(description='Filter social-product metadata by declared placement surfaces (feed, stories, short_video, explore, or search). A product matches when its declared array intersects the requested array. This is discovery classification only and does not promise delivery exclusively on a requested surface; buyers needing an exact public placement use targeting_overlay.placement_selection. This filter has set semantics for wholesale feed canonicalization.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     required_axe_integrations: Annotated[list[HttpUrl] | None, Field(description='Deprecated: Use trusted_match filter instead. Filter to products executable through specific agentic ad exchanges. URLs are canonical identifiers.', min_length=1)] = None
     trusted_match: Annotated[TrustedMatch | None, Field(description='Filter products by Trusted Match Protocol capabilities. Only products with matching TMP support are returned.')] = None
-    audience_activation_methods: Annotated[list[AudienceActivationMethodsItemSyncAudiences | AudienceActivationMethodsItemTmpIdentityMatch | AudienceActivationMethodsItemFileTransfer | AudienceActivationMethodsItemDatasetQuery | AudienceActivationMethodsItemCleanRoom | AudienceActivationMethodsItemPlatformDistribution] | None, Field(description="Filter to products whose audience_activation.methods matches at least one requested entry (OR across entries). Within an entry every specified field must match (AND); omitted optional fields are wildcards; directions matches on non-empty intersection, and a method that omits directions matches any requested directions; vendor matches on domain, plus brand_id when specified. Fields inapplicable to the requested pattern (e.g. transport on a clean_room entry) make that entry unsatisfiable. Sellers MUST exclude products with no audience_activation declaration when this filter is present; exclusions MAY be reported via filter_diagnostics.excluded_by. Experimental: part of the media_buy.audience_activation surface — buyers SHOULD check the seller's experimental_features before filtering on it; sellers that do not list the feature ignore this filter.", json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    audience_activation_methods: Annotated[list[AdCPAudienceSync | AudienceActivationMethodsItemTmpIdentityMatch | AudienceActivationMethodsItemFileTransfer | AudienceActivationMethodsItemDatasetQuery | AudienceActivationMethodsItemCleanRoom | AudienceActivationMethodsItemPlatformDistribution] | None, Field(description="Filter to products whose audience_activation.methods matches at least one requested entry (OR across entries). Within an entry every specified field must match (AND); omitted optional fields are wildcards; directions matches on non-empty intersection, and a method that omits directions matches any requested directions; vendor matches on domain, plus brand_id when specified. Fields inapplicable to the requested pattern (e.g. transport on a clean_room entry) make that entry unsatisfiable. Sellers MUST exclude products with no audience_activation declaration when this filter is present; exclusions MAY be reported via filter_diagnostics.excluded_by. Experimental: part of the media_buy.audience_activation surface — buyers SHOULD check the seller's experimental_features before filtering on it; sellers that do not list the feature ignore this filter.", json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     required_features: Annotated[MediaBuyFeatures | None, Field(description='Filter to products from sellers supporting specific protocol features. Only features set to true are used for filtering.')] = None
     required_geo_targeting: Annotated[list[RequiredGeoTargetingItem] | None, Field(description='DEPRECATED. Use get_products.required_overlay_support, which is product-scoped and applies consistently to geographic and non-geographic targeting dimensions.', min_length=1)] = None
     signal_targeting: Annotated[list[SignalTargetingItem] | None, Field(description='DEPRECATED legacy signal-option eligibility filter. Retained get_products handlers MUST preserve the signal identity, value predicate, and requested include/exclude capability. This does not activate delivery targeting. Native buyers use criteria.targeting_overlay.signal_targeting_groups only for concrete delivery selections, preserving exclusion through group operators; copying targeting_mode into targeting_overlay.signal_targeting does not preserve it.', min_length=1)] = None
