@@ -148,7 +148,7 @@ nobody can audit against the table that was supposed to hold it.
 
 ---
 
-### The seam collapse goes AFTER the declared-backlog equality, and the walk's per-node entry goes with the carriers (decided 2026-10-30)
+### The seam collapse goes AFTER the declared-backlog equality, and the walk's per-node entry goes with the carriers
 
 **Order.** §2 collapsed this seam in writing and stated the trade: *"A guarantee the type checker
 held is now held by a test, and saying so is better than pretending the trade did not happen."* It
@@ -180,12 +180,11 @@ now `ir.py`'s. As the rest follow, the entry is a thin module importing `ir` and
 handlers importing `ir` alone — and §11's table gains the row it is missing, naming that module and
 the one direction its arrow runs.
 
-### The drawn corpus is COMMITTED (decided 2026-10-30)
+### The drawn corpus is COMMITTED
 
-**The payloads for all 1,054 documents are 3,317 entries and 0.4 MB of content, mean 131 bytes.**
-Drawing them costs 151 to 2,356 seconds per pair. They live in a gitignored directory, so a fresh
-checkout, a new worktree, a CI job and every key-space change redraw all of them — and at the last
-reading **1,740 of 2,793 pairs held no entry at all.**
+**The payloads are kilobytes of content; drawing them costs minutes per pair.** They live in a
+gitignored directory, so a fresh checkout, a new worktree, a CI job and every key-space change
+redraw all of them — and a held entry is the exception rather than the rule.
 
 `tests/corpus.py` recorded the reason not to commit them, and the reason was sound when it was
 written:
@@ -209,7 +208,7 @@ What this buys: a payload is drawn **once per (document, draw version) in the pr
 not once per checkout per lane per key-space change. What it costs is 0.4 MB in the tree and a
 redraw step on a bundle bump, which is the same discipline the packaged records already carry.
 
-### The widening store's currency is the OBLIGATION, not a second gate (decided 2026-10-30)
+### The widening store's currency is the OBLIGATION, not a second gate
 
 §8's widening obligation draws too, at three sites, and those draws now have a store of their own
 in a separate key space and a separate directory. The accepts gate's case **does not transfer to
@@ -231,15 +230,14 @@ So the floor is committed as it fills, graded on its STRUCTURE, and **no second 
 minted to record which keys the population asks for.** That artifact would need its own equality,
 and that equality would need the same thing one level further out — the regress `tests/corpus.py`'s
 original argument was right to fear. Leaving the space cache-only is also refused: the saving is
-real and crosses checkouts, measured at 233.75 s against 0.47 s over 17 pairs with 0 verdicts
-changed.
+real, crosses checkouts, and changes no verdict — it buys back the draw and nothing else.
 
 A position whose draw never returns is held by nothing under any of these choices — two of them
 exceed 900 s on an 8,145,255-byte conjunction and one exceeds 600 s on a 6,832,209-byte node. That
 residue is not a currency question. It is the document-derived construction decision, and it is
 open.
 
-### The wheel SHIPS `py.typed`, and the gate is the CONSUMER'S checker (decided 2026-11-02, precondition withdrawn 2026-11-03)
+### The wheel SHIPS `py.typed`, and the gate is the CONSUMER'S checker
 
 **Nothing this project built reaches a consumer's type checker today.** Measured against the
 INSTALLED package rather than the source tree: `Skipping analyzing "adcp.types.core": module is
@@ -283,13 +281,12 @@ passing silently, which is the red state; green is both reported, by error code.
 tree proves nothing about this — the source tree is readable with or without a marker, which is
 exactly why the gap survived.
 
-### The suite's scratch goes on DISK, not in RAM (decided 2026-10-30)
+### The suite's scratch goes on DISK, not in RAM
 
 `/tmp` on this machine is a **63 GB tmpfs — it is RAM.** The suite materialises a fresh package per
-`tmp_path`, the tree is 841 MB of which 836 MB is the resolved JSON read through
-`importlib.resources`, and at ten workers that lands in memory. Measured during a full run:
-available RAM reached **3.1 GB of 125**, and the two earlier attempts at the same measurement died
-of worker OOM rather than of anything in the code.
+`tmp_path`, and almost all of that tree is resolved JSON read through `importlib.resources`, so
+at ten workers it lands in memory. A full run has taken this box to the edge of its RAM, and two
+attempts at measuring it died of worker OOM rather than of anything in the code.
 
 **So `TMPDIR` and pytest's `--basetemp` point at disk.** The scratch is large, write-once and read
 back by a child process; none of that wants a memory-backed filesystem, and the one property RAM
@@ -297,15 +294,15 @@ buys — speed — is irrelevant beside a run that cannot finish.
 
 Two readings go with it, and both were measured rather than assumed:
 
-* **`pyproject.toml`'s memory paragraph is stale by an order of magnitude.** It records a `-n 24`
-  peak of 10.35 GB across 25 processes with a 1,211 MB worst worker. At `-n 10` over the
-  2,793-pair tree the same measurement is **73.4 GB summed, worst worker 13.7 GB.**
-* **A finished lane's scratch is not free.** Four orphaned directories from merged, torn-down lanes
-  held 5 GB of tmpfs with zero open handles. Scratch under a memory-backed path is a resource the
+* **A memory figure written into a comment goes stale and is then believed.** `pyproject.toml`
+  carried one that was an order of magnitude low, and it read as a budget. Every such figure
+  belongs in the row that measured it.
+* **A finished lane's scratch is not free.** Orphaned directories from merged, torn-down lanes
+  have held gigabytes of tmpfs with zero open handles. Scratch under a memory-backed path is a resource the
   orchestrator owns, and the discipline that applies to a worktree applies to it: check that
   nothing holds it, then remove it.
 
-### The subject of grading is a FRESH EMIT, never the committed tree (decided 2026-10-29)
+### The subject of grading is a FRESH EMIT, never the committed tree
 
 The schema is pinned and the drawn instances are content-addressed, so what a class is graded
 against is a function of the bundle and the compiler alone. **Grading therefore reads the tree a
@@ -334,14 +331,14 @@ convenient, because an emitted module imports `adcp.types.constraints` by ABSOLU
 fresh tree imported in the suite's own interpreter resolves its aliases through the committed
 alias module.
 
-**`tests/fresh.py` is where a reader's BUNDLE-DERIVED constants live (decided 2026-10-30)**, beside
+**`tests/fresh.py` is where a reader's BUNDLE-DERIVED constants live**, beside
 `BUNDLE` and `TREE` which are already there. A reader that needs to ask the emitter where a
 document's module sits needs `bundle.package_roots` — a function of the bundle and never of the
 run, which is what makes it a constant rather than an argument. The alternative, measured when it
 came up, is threading one more parameter through 21 call sites in four files to carry a value none
 of them varies. One place holds it and the readers import it.
 
-### A check may not be downstream of its own precondition (decided 2026-10-29)
+### A check may not be downstream of its own precondition
 
 `tests/test_emit.py`'s `test_every_module_of_the_tree_imports_and_every_class_of_it_is_defined`
 is the obligation that an emitted tree builds, and its docstring names the failure mode it
@@ -378,7 +375,7 @@ report, and the suite's own failure summary spells them the same way. The two ar
 by reading the traceback for which LINE raised, so a red check is not evidence that its subject
 is what failed.
 
-### An approximation's pointer is the SchemaRef spelling (decided 2026-10-29)
+### An approximation's pointer is the SchemaRef spelling
 
 `render.declared_at` attaches a declaration to a class by a prefix test, and its own docstring
 fixes the rule: "the prefix test is on ONE spelling of a pointer — `SchemaRef`'s, which
@@ -387,10 +384,10 @@ spelling of the same node therefore attaches to the wrong class, or to none.**
 
 The spellings differ across an `allOf` conjunct. A class's `SchemaRef` keeps the conjunct —
 `#/anyOf/0/allOf/0/anyOf` — and the walk writes the approximation at the node reached through
-it, `#/anyOf/0/anyOf`. Measured: **144 of 235 declared pointers do not resolve in their own
-document**, even following `$ref` and merging `allOf`, and in `adagents.json` four `minItems`
-declarations land on the root and on an intermediate branch rather than on the class whose field
-actually drops the fact.
+it, `#/anyOf/0/anyOf`. **A majority of declared pointers do not resolve in their own document**,
+even following `$ref` and merging `allOf`: in `adagents.json` the `minItems` declarations land on
+the root and on an intermediate branch rather than on the class whose field actually drops the
+fact.
 
 **The approximation takes the `SchemaRef` spelling, because that is the one the reader of a
 declaration uses.** §2 asks a declaration to be a fact §8 can look for in the document and
@@ -634,7 +631,7 @@ array's key over a scalar element holds no name at all** — which is why the ob
 collapse on identity and the array layer must not.
 
 **A LAYER'S KEY CONTAINS EXACTLY WHAT CHANGES THE SET OF ADMITTED INSTANCES, AND NOTHING ELSE
-(decided 2026-11-03).** §3a settles the recursion and the order — an object's identity is the
+.** §3a settles the recursion and the order — an object's identity is the
 identity of its property types, collected L0 upward — but not what the key CONTAINS, and the gap is
 worth a third of the population: the letter of the sentence, types alone, and the strictest reading
 differ by tens of structures and hundreds of positions.
@@ -688,8 +685,8 @@ for all future inputs.
 **AND ITS NAME LENGTHENS BY ITS HOME'S CHAIN, NEVER BY AN ARBITRARY STATING POSITION.** §4 lengthens
 a collision by the nearest ancestor segment, and an entry stated at six positions has six such
 segments — so without this sentence the name is a function of which position a walk happened to
-visit. Measured: a handful of untitled entries collide inside the namespace the scope rule sends
-them to, with several distinct value lists all deriving one short noun in the shared namespace.
+visit. Untitled entries do collide inside the namespace the scope rule sends them to — distinct
+value lists deriving one short noun.
 Because the home is unique and derived, lengthening by the home's chain is order-independent, and
 where two entries share both a home and a derived name §4's own axes decide as they already do for
 every other position.
@@ -745,7 +742,7 @@ meets the module's namespace, not its syntax. Reading the emitted module's own b
 stricter and not a structural assertion — it stops caring how a name came to be bound, which is the
 property that let the functional form slip past it.
 
-**THE EXPORT RECORD IS KEYED ON THE MODULE, NOT ON THE DOCUMENT (decided 2026-11-02).** A
+**THE EXPORT RECORD IS KEYED ON THE MODULE, NOT ON THE DOCUMENT.** A
 vocabulary with no naming position needs a module of its own, and that module has no document
 behind it. **A pseudo-document path is refused**: it names a file the bundle does not contain, and
 every reader that resolves a record from a key would then be lying about where the schema came
@@ -754,7 +751,7 @@ produced, so the key becomes that module and a catalogue module is simply one wi
 The readers that take a document to answer a domain or a path take the module instead, which is
 what they were always asking about.
 
-### THE RECORD'S TEXT IS A DAG; ITS POINTERS ARE NOT (decided 2026-11-02)
+### THE RECORD'S TEXT IS A DAG; ITS POINTERS ARE NOT
 
 The record stores each distinct subtree once under its own `definitions` with a local reference at
 each occurrence. **Every pointer any reader SPELLS keeps the spelling it has today.** The hoisting
@@ -768,7 +765,7 @@ store that makes the first reading affordable is exactly what a renaming destroy
 is invisible to every pointer any reader spells, and a declared pointer that stops resolving is a
 defect of the hoisting rather than a consequence of it.
 
-**A READER ASKING WHAT THE DOCUMENT STATES READS THROUGH THE STORAGE (decided 2026-11-03).** The
+**A READER ASKING WHAT THE DOCUMENT STATES READS THROUGH THE STORAGE.** The
 hoisting is a storage representation, so a reference to a storage entry is not a fact the document
 states — it is where the fact is kept. **Any reader whose question is semantic therefore
 dereferences**, and a reader that walks the stored text raw is answering a different question and
@@ -801,7 +798,7 @@ breaks §1's *"a document compiles to a module at its own path"* and the record 
 The floor it reaches is the bundle's own size, because that is what the bundle states once. Take
 the within-record form first; decide the cross-record form against a weighed wheel.
 
-### A DERIVED READING OF THE BUNDLE IS AN ARGUMENT, NOT SOMETHING A CALLEE RECOMPUTES (decided 2026-11-02)
+### A DERIVED READING OF THE BUNDLE IS AN ARGUMENT, NOT SOMETHING A CALLEE RECOMPUTES
 
 §1 and §3 already say *"the bundle directory is an argument and nothing reads a hard-coded path"*.
 **That rule extends one level: a set derived from the directory is also an argument.**
@@ -837,7 +834,7 @@ consumer experiences.
 | **L2** object types, 2+ properties | 13,453 | 1,368 | 13,151 | 450 |
 | **L3** array types | 6,712 | 1,808 | 11,746 | 1,242 |
 
-**L0 is counted over STATING POSITIONS (decided 2026-11-02).** Three readings of the bundle are
+**L0 is counted over STATING POSITIONS.** Three readings of the bundle are
 reproducible and they disagree by more than an order of magnitude, so the row names which one
 governs:
 
@@ -854,9 +851,9 @@ untouched. The nameable population is therefore on the order of **15 entries, no
 thirteenfold overstatement, and the kind this document exists to prevent rather than produce.
 
 **Which reading L0 collects over is not yet decided, and it is the first question of the row.** It
-is not a detail: the raw reading names 15 entries and the record reading names 209, over the same
-bundle. §3a's TREE figures are unaffected and reproduce exactly — 897 enum classes carrying 715
-distinct member-sets, 128 of those emitted more than once across 310 classes.
+is not a detail: the raw reading and the record reading name different numbers of entries over
+the same bundle, because the record has inlined what the raw document references. §3a's readings
+over the TREE are unaffected, because a class exists or it does not.
 
 ### What the catalogue does NOT fix, measured before it was built
 
@@ -884,7 +881,7 @@ the IDENTITY instead of through the name. Measured both ways: the member-set rea
 titled member-sets under 42 names and is unfixable at that entry; a per-title reading gives 12 of
 15 entries under more than one name, 29 classes for 15 entries, and is fixable.
 
-### A CONFLICTING TITLE NEVER COLLAPSES, and the reason is §4's (decided 2026-11-02)
+### A CONFLICTING TITLE NEVER COLLAPSES, and the reason is §4's
 
 All three conflicts in the bundle resolve the same way, and the descriptions settle them:
 
@@ -909,7 +906,7 @@ one is what §4 refuses.
 So the three-way naming split's third arm is **decided, not deferred**: a conflict is reported and
 left alone, and the only judgement is whether to file it upstream.
 
-### A DOCUMENT ROOT IS ALREADY A HOME (decided 2026-11-02)
+### A DOCUMENT ROOT IS ALREADY A HOME
 
 13 of the 15 nameable entries are stated at a document ROOT. **§4 governs and the
 narrowest-namespace rule does not reach a root**: a root is not an entry looking for a home,
@@ -923,12 +920,13 @@ vocabulary inline instead. That is a smaller and better-defined change than a re
 explains the measurement that looked wrong: **`adcp.types.common` holds 1 entry for L0, not 653**,
 because 13 of 15 are already at home.
 
-### PASS B RUNS FIRST, and it needs no catalogue at all (decided 2026-11-02)
+### PASS B RUNS FIRST, and it needs no catalogue at all
 
-The order in this section is reversed on measurement. Pass B — a `const` pin naming its enum's
-member — carries **145 of the 457** type errors, and of its 145 sites **97 have the base's enum
-declared in the same module and 48 import it**. In both cases the class that types the base's
-field already exists and is already one object; the pin has only to name its member. `ir.TypeRef`
+The order in this section is reversed on measurement, and the row carries the figures. Pass B — a
+`const` pin naming its enum's member — carries the largest share of the type errors, and at nearly
+every one of its sites the base's enum is either declared in the same module or imported into it.
+In both cases the class that types the base's field already exists and is already one object; the
+pin has only to name its member. `ir.TypeRef`
 already carries the members, and the compiler already renders `Literal[Symbol.MEMBER, …]` for the
 `$ref`-target case. Pydantic renders `Literal[E.A]` as `{"const": …, "type": "string"}`,
 **byte-identical** to `Literal['…']`, so no accepts verdict and no dump moves.
@@ -937,12 +935,11 @@ L0's cross-document collapse reaches about **10**. So the normalisation is both 
 the one with no namespace question, no new ordering edge and no relocation — it goes first, and
 the collection follows it.
 
-### THE VALUE LIST IS WRITTEN ONCE; THE NAMED TYPE IS PER POSITION (decided 2026-11-02)
+### THE VALUE LIST IS WRITTEN ONCE; THE NAMED TYPE IS PER POSITION
 
-An identical value set is emitted repeatedly today. Measured over the tree: **128 value sets are
-emitted more than once, across 305 classes under 189 distinct names, restating 632 member strings
-that the bundle states once each.** That is the cost of compiling a position without asking what
-already exists.
+An identical value set is emitted repeatedly today: **one value set under several names, in
+several classes, restating member strings the bundle states once each.** That is the cost of
+compiling a position without asking what already exists.
 
 **But collapsing them into one type is the wrong repair**, and the reason is the untitled rule:
 nothing names those sets, so two positions sharing a member set may be two concepts that coincide.
@@ -980,7 +977,7 @@ Two are two concepts over one value set and keep both names. The third states on
 and is an upstream report. **None of them motivates machinery**: three cases and twelve member
 strings. The scale is entirely in the untitled 128.
 
-### EVERY REPEATED VALUE SET IS AN UPSTREAM QUESTION (decided 2026-11-02)
+### EVERY REPEATED VALUE SET IS AN UPSTREAM QUESTION
 
 "One concept stated twice" and "one concept we should name" are the same finding, so they are not
 two verdicts. A value set stated at more than one position is a defect in the SPECIFICATION
@@ -1011,7 +1008,7 @@ buries the finding; the same 128 analysed into the families they fall into is a 
 specification can act on. So the analysis completes first, the filings are grouped by family, and
 nothing is sent per set.
 
-### WHEN A NAME IS THE BUNDLE'S, AND WHEN IT IS MINTED (decided 2026-11-02)
+### WHEN A NAME IS THE BUNDLE'S, AND WHEN IT IS MINTED
 
 §4 refuses to mint a public name no document states, and judging 63 sets produced four distinct
 ways of arriving at one. The line is per TOKEN: **a name is the bundle's when every token in it is
@@ -1056,8 +1053,8 @@ not 4,127. The 120 declared facts are a per-site reading and will not survive th
 whatever they become must be re-derived and reported as a changed denominator rather than as
 progress.
 
-**And the near-duplicate constraint question is a different kind, not a smaller one.** 1,775
-distinct constrained-scalar types cover 59,873 positions. A `format: uri` position carrying a
+**And the near-duplicate constraint question is a different kind, not a smaller one.** A
+`format: uri` position carrying a
 `pattern` is not two rules that nearly agree — it is one rule compiled to a non-injective type,
 which is a NARROWING and already decided in the semantics document's §2. Two types differing in a
 single constraint keyword are a separate question, and **the census for it does not exist**: a
@@ -1085,7 +1082,7 @@ its own measurement:
 
 - **`const` against `enum`.** `core/registry-event.json` states `enum: [...]` at its root's
   `event_type` and `const: "property.created"` at its branch's. One vocabulary, two keywords.
-  This is the case that produced 362 of the generated tree's 440 type errors.
+  This is the case behind most of the generated tree's type errors.
 - **a single-member `enum` against a `const`** — the same fact from the other side.
 - **`format` against `pattern`.** `{type: string, format: uri}` and
   `{type: string, pattern: "^https://..."}` constrain overlapping sets by different keywords.
@@ -1543,9 +1540,9 @@ and the walk composes values rather than formatting strings.
 *This sentence said `repr` and now does not, settled 2026-10-25.* `repr` is one way to spell a
 constructor expression and it was named here as the mechanism rather than the goal. It is
 keyword-form, while the committed tree's rule calls are positional, so taking it literally
-rewrites 432 of the tree's 444 rule lines across 169 modules — measured on §14 step 4's branch.
-That step is marked *bytes* precisely because it is the largest relocation in the plan, and a
-cosmetic argument spelling that moves text in 169 modules would blind the one check able to
+rewrites nearly every rule line in the tree. That step is marked *bytes* precisely because it is
+the largest relocation in the plan, and a cosmetic argument spelling that moves text across the
+tree would blind the one check able to
 prove the relocation decided nothing. Keyword and positional arguments to a frozen dataclass
 construct the same object, so the spelling carries no meaning to trade for that.
 
@@ -1701,15 +1698,15 @@ constraints module, and prunes stale emitted files on a whole-bundle run, as tod
 in `codegen/__main__.py`, so `python -m codegen` is the command and no module of the compiler is
 ever bound as `__main__`.
 
-**The layout, and a document whose path is also a directory's (decided 2026-10-29).** A
+**The layout, and a document whose path is also a directory's.** A
 document's module is its bundle path with hyphens as underscores — `emit.module_path`, whose
 one-line docstring was the only record of it until now. Where the bundle holds both a document
 at path `P` and a directory at path `P`, **the two are one namespace and the document is its
 root**: the document emits `P/__init__.py` and the directory's documents are its submodules.
 `brand.json` beside `brand/` is the one such pair in bundle 3.2.
 
-The alternative that was measured and rejected is writing both — `brand.py` holding 113 classes
-beside a `brand/__init__.py` of 0 bytes, where Python resolves the name to the package and the
+The alternative that was measured and rejected is writing both — `brand.py` beside an empty
+`brand/__init__.py`, where Python resolves the name to the package and the
 module is UNIMPORTABLE. A written module no import can reach is the artifact defect §14's tree
 population row exists to remove, and it is silent: the run reports the document as emitted.
 
@@ -1729,7 +1726,7 @@ anything", and `M` did go to zero. **The pair is not a partition and was never d
 it is the KIND split, and the kind is what names who owns a refusal.** `emitted N / population N` moves
 one number when a document stops emitting and says nothing about which kind moved, so a reader
 cannot tell a document the bundle broke from a row nobody has written — which is the confusion
-that let `emitted + refused == 1054` read green over 385 documents waiting on unwritten rows. The
+that let `emitted + refused == 1054` read green while documents sat waiting on unwritten rows. The
 delivery report reads `emitted`, `refused` with its deferred/verdict split, `accounted`, and
 primary/chained off `Refusal.kind`, never off a sentence and never summed; the replacement drops
 the split, and dropping it narrows the report.
@@ -1802,7 +1799,7 @@ the ban was protecting: one module reached, and no module of the walk. The rule 
 
 **`refusal` is imported by `bundle`, `emit` and `attribution`, and by nothing in `lower/`**
 once step 10 lands: the lowering seam is total then, so a handler has no refusal to name. Until
-it does, `lower/` still names `Refusal` at 141 sites, which step 8's own note explains.
+it does, `lower/` still names `Refusal`, which step 8's own note explains.
 
 Four AST tests hold the graph, where there were three: no
 `pydantic`/`datamodel_code_generator` import outside `render.py` and `verify/`; no
@@ -2129,10 +2126,10 @@ condition, below.
    present deferral a compile error until its handler calls `approximate`". That cannot hold
    beside this step's own exit condition, and the row proved it by measurement rather than
    argument: `approximate` reads the widening off the cell, a `None` widening is a `BuildFailure`, and of
-   the **141 primary refusals exactly 1 sits on an `Effect.REFUSE` cell** — so 140 have no widening
-   yet. A total seam today therefore either widens those cells, which moves the counts this step
-   forbids moving, or crashes the run on 140 documents. The two sentences were written in one
-   step and only one of them can be true at a time.
+   the primary refusals **all but one sit on a cell that is not `Effect.REFUSE`** — so they have
+   no widening yet. A total seam today therefore either widens those cells, which moves the counts
+   this step forbids moving, or crashes the run on every document holding one. The two sentences
+   were written in one step and only one of them can be true at a time.
 
    So the seam stays a sum type until the last cell has a widening, which is **step 10**, and
    `Kind.DEFERRED` retires with it. The instrument is complete without the collapse: the widening
@@ -2167,9 +2164,9 @@ condition, below.
     enum, a container or a union root — and that clause is scoped, in its own words, to "a node
     that declares no fields of its own". These nodes declare some, so the node is at once a class
     (it has fields) and a type (the target), and §5 answers neither. Row `.20` found it by
-    landing the bare-`$ref` root and reported it rather than choosing; measured at **3 documents**,
-    all verdicts, all on `allOf`: `core/package-signal-targeting.json`,
-    `core/product-filters.json`, `core/vendor-pricing-option.json`.
+    landing the bare-`$ref` root and reported it rather than choosing. Every instance is a verdict
+    on `allOf`: `core/package-signal-targeting.json`, `core/product-filters.json`,
+    `core/vendor-pricing-option.json`.
 
     It is a WIDENED row and not a faithful one. Carrying it faithfully means the instance must
     satisfy the node's fields AND one of the target union's branches, and "also satisfies this
@@ -2202,7 +2199,7 @@ condition, below.
     producer in `bundle.record`, and `Kind.DEFERRED` retires — which is what turns any remaining
     deferral into a compile error rather than a report line. It belongs at the end rather than
     the beginning for the reason step 8 records: a total seam over cells with no widening is a
-    `BuildFailure` on every one of them, and 140 of 141 primary refusal sites were in that state
+    `BuildFailure` on every one of them, and all but one primary refusal site was in that state
     when the instrument was built. The collapse is the *consequence* of the widenings being complete,
     not the mechanism that completes them.
 
@@ -2221,7 +2218,7 @@ will not produce the same order. The upstream half is not a wave at all; it is t
 and it closes when upstream closes.
 
 **NO STEP OF THIS SECTION OWNS THE CONSUMER SURFACE, and that is deliberate rather than an
-omission (decided 2026-10-30).** `src/adcp/types/__init__.py` used to say its public surface was
+omission.** `src/adcp/types/__init__.py` used to say its public surface was
 "generated from the binding table in step 9". Step 9 has landed, it owns no binding table, and
 **nothing anywhere owns one** — `codegen/emit.py` says so in as many words. The question that
 docstring was answering is a real one and this section is the wrong place for it: §14 is the
