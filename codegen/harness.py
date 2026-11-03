@@ -4596,7 +4596,53 @@ def separates(
 
 
 def inseparable_unions(record: Mapping[str, Any]) -> tuple[str, ...]:
-    """Every union POINTER of this document whose branches the derivation cannot separate.
+    """Every union POINTER of this record whose branches the derivation cannot separate.
+
+    :func:`inseparable_sites` is the same derivation read as §8's IDENTITIES, and the two
+    share :func:`_inseparable` so there is one reading of "cannot separate" and two
+    spellings of where the answer is.
+    """
+    return tuple(sorted(at for at, _, _ in _inseparable(record)))
+
+
+def inseparable_sites(
+    record: Mapping[str, Any], origins: bundle.Origins
+) -> set[tuple[str, str]]:
+    """:func:`inseparable_unions` as §8's identity: ``(stating document, stating pointer)``.
+
+    **§8 sentence 2: "An approximation's identity is ``(stating document, stating pointer,
+    keyword)``, and every inlined occurrence resolves to it."**  This is the resolving, and
+    ``origins`` is what makes it possible: the record inlines a target at the REFERRING
+    pointer, so one inseparable union has as many record pointers as there are paths
+    through the reference graph that reach it, and the derivation run over a record alone
+    reports every one of them as a site owed a declaration.  Measured: with the
+    declaration at the stating site and the derivation over record pointers, the census's
+    silent direction reports 89 sites for 24 unions.
+
+    By IDENTITY and never by pointer arithmetic (``bundle.Origins``): the record places ONE
+    OBJECT at every occurrence of one target, so the occurrences of one stating site are
+    literally one object and the map answers in one lookup.  A pointer-keyed map cannot --
+    the relation is not a function in that direction.
+
+    A node with no origin is left out, which cannot arise over a record this package built
+    (the inliner records every node it makes) and is the fail-safe direction if it ever
+    does: a site nothing can locate is not a site this equality can hold anyone to.
+    """
+    out: set[tuple[str, str]] = set()
+    for _, kw, node in _inseparable(record):
+        site = origins.get(id(node))
+        if site is None:
+            continue
+        document, stated = site
+        out.add((document, f"#{stated}/{kw}"))
+    return out
+
+
+def _inseparable(
+    record: Mapping[str, Any],
+) -> Iterator[tuple[str, str, Mapping[str, Any]]]:
+    """``(pointer of the combinator, the combinator, the node stating it)``, per union of
+    this record whose branches §4's derivation cannot separate.
 
     Section 8: an UNDERDETERMINED approximation "is invisible to all three checks, and that
     is why it needs an instrument of its own ... Its check is section 4's disjointness
@@ -4626,7 +4672,6 @@ def inseparable_unions(record: Mapping[str, Any]) -> tuple[str, ...]:
     Measured over the emitted tree: 3 of this derivation's pointers are at a RULE position
     and all 3 leave with this clause.
     """
-    out: list[str] = []
     for pointer, node in _rule_free_nodes(record):
         for kw in _COMBINATORS:
             branches = node.get(kw)
@@ -4670,12 +4715,12 @@ def inseparable_unions(record: Mapping[str, Any]) -> tuple[str, ...]:
                 for i in range(len(branches))
                 for j in range(i + 1, len(branches))
             ):
-                out.append(f"#{base}/{kw}")
-    return tuple(sorted(out))
+                yield f"#{base}/{kw}", kw, node
 
 
 def underdetermined_census(
-    declared: Sequence[Approximation], records: Mapping[str, Mapping[str, Any]]
+    declared: Sequence[Approximation],
+    records: Mapping[str, tuple[Mapping[str, Any], bundle.Origins]],
 ) -> tuple[list[str], list[str]]:
     """Section 8's UNDERDETERMINED equality, in BOTH directions.
 
@@ -4685,8 +4730,19 @@ def underdetermined_census(
     separable carries no declaration at all and the value it constructs is then a property
     of declaration order with nothing saying so.
 
-    ``records`` is document -> document of record, which is the verifier's own reading of
-    what the document states (section 9).
+    ``records`` is document -> ``bundle.recorded``'s pair: the document of record, which is
+    the verifier's own reading of what the document states (section 9), and the origin map
+    beside it.
+
+    **BOTH SIDES ARE SETS OF §8's IDENTITY, which is what makes this an equality at all
+    (decided 2026-11-03).**  The declared side is identities by construction -- §8 sentence
+    2 declares a fact once, at the node the document states it -- so the derived side has to
+    be the same thing, and it is not what a record yields: a record spells one stating
+    pointer once per path through the reference graph that reaches it.  So the derivation is
+    read through :func:`inseparable_sites`, and an inlined occurrence resolves to the site it
+    states rather than being counted as a site of its own.  Without that resolution the
+    silent direction reports 89 sites for 24 unions and the equality is about the reference
+    graph instead of about the declarations.
     """
     declared_at = {
         (one.document, one.pointer)
@@ -4694,9 +4750,9 @@ def underdetermined_census(
         if one.kind == UNDERDETERMINED
     }
     inseparable = {
-        (document, pointer)
-        for document, record in records.items()
-        for pointer in inseparable_unions(record)
+        site
+        for record, origins in records.values()
+        for site in inseparable_sites(record, origins)
     }
     return (
         sorted(f"{d}{p}: declared UNDERDETERMINED and the derivation separates it" for d, p in declared_at - inseparable),

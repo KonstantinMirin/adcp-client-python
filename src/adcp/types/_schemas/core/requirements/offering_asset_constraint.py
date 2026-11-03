@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types.constraints import IntMin1
 
 from ...enums.asset_content_type import AssetContentType
@@ -21,9 +21,6 @@ class OfferingAssetConstraint(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/requirements/offering-asset-constraint.json', pointer='#')
-    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='core/requirements/offering-asset-constraint.json', pointer='#/properties/asset_requirements/anyOf', keyword='anyOf', kind='UNDERDETERMINED', rung='JOIN', fact=({'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/requirements/image-asset-requirements.json'}, {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/requirements/video-asset-requirements.json'}, {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/requirements/audio-asset-requirements.json'}, {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/requirements/text-asset-requirements.json'}, {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/requirements/markdown-asset-requirements.json'}, {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/requirements/html-asset-requirements.json'}, {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/requirements/css-asset-requirements.json'}, {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/requirements/javascript-asset-requirements.json'}, {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/requirements/vast-asset-requirements.json'}, {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/requirements/daast-asset-requirements.json'}, {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/requirements/url-asset-requirements.json'}, {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/requirements/webhook-asset-requirements.json'}), attribution='docs/plan/rebuild-plan.md §5 combinators/anyOf'),
-    )
     asset_group_id: Annotated[str, Field(description="The asset group this constraint applies to. Values are canonical-format vocabulary — each declaration chooses its own group IDs (e.g., 'headlines', 'images', 'videos'). Buyers discover them through Product.format_options[], publisher adagents.json formats[], or creative.supported_formats[] according to context.")]
     asset_type: Annotated[AssetContentType, Field(description='The expected content type for this group.')]
     required: Annotated[bool | None, Field(description='Whether this asset group must be present in each offering. Defaults to true.')] = True

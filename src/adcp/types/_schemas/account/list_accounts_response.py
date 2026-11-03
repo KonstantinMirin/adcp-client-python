@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import Approximation, SchemaRef
+from adcp.types._base import SchemaRef
 
 from ..core.account_with_authorization import AccountWithAuthorization
 from ..core.context import ContextObject
@@ -24,10 +24,6 @@ class ListAccountsResponse(AdCPVersionEnvelope, ProtocolEnvelope):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='account/list-accounts-response.json', pointer='#')
-    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='account/list-accounts-response.json', pointer='#/properties/accounts/items/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule/allOf/0', keyword='else', kind='WIDENED', rung='KEYWORD', fact={'if': {'properties': {'alignment': {'const': 'source_timezone'}}, 'required': ['alignment']}, 'then': {'required': ['period_timezone'], 'not': {'required': ['period_anchor']}}, 'else': {'not': {'anyOf': [{'required': ['period_anchor']}, {'required': ['period_timezone']}]}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/else'),
-        Approximation(document='account/list-accounts-response.json', pointer='#/properties/accounts/items/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule', keyword='else', kind='WIDENED', rung='KEYWORD', fact={'if': {'properties': {'alignment': {'const': 'source_timezone'}}, 'required': ['alignment']}, 'then': {'required': ['period_timezone'], 'not': {'required': ['period_anchor']}}, 'else': {'not': {'anyOf': [{'required': ['period_anchor']}, {'required': ['period_timezone']}]}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/else'),
-    )
     accounts: Annotated[list[AccountWithAuthorization], Field(description='Array of accounts accessible to the authenticated agent. Each entry is the full Account object plus optional authorization. Buyer-declared entries include brand, operator, and any operator_unit, fixed currency, buyer-selected account timezone, and sandbox qualifiers so the natural AccountRef round-trips after a cold start.')]
     errors: Annotated[list[Error] | None, Field(description='Task-specific errors and warnings')] = None
     pagination: PaginationResponse | None = None

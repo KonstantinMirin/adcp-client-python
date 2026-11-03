@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule, UniqueItems
 from adcp.types.constraints import IntMin1, StrMatching43E30B32, StrMaxLen2000, StrMinLen1, StrMinLen1MaxLen255Matching130C1C9D
 from adcp.types.envelopes import FailedResponse
@@ -43,10 +43,6 @@ class CreateMediaBuyResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolE
     @classmethod
     def _branch_combinator(cls) -> str:
         return "oneOf"
-    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='media-buy/create-media-buy-response.json', pointer='#/oneOf/0/properties/account/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule/allOf/0', keyword='else', kind='WIDENED', rung='KEYWORD', fact={'if': {'properties': {'alignment': {'const': 'source_timezone'}}, 'required': ['alignment']}, 'then': {'required': ['period_timezone'], 'not': {'required': ['period_anchor']}}, 'else': {'not': {'anyOf': [{'required': ['period_anchor']}, {'required': ['period_timezone']}]}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/else'),
-        Approximation(document='media-buy/create-media-buy-response.json', pointer='#/oneOf/0/properties/account/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule', keyword='else', kind='WIDENED', rung='KEYWORD', fact={'if': {'properties': {'alignment': {'const': 'source_timezone'}}, 'required': ['alignment']}, 'then': {'required': ['period_timezone'], 'not': {'required': ['period_anchor']}}, 'else': {'not': {'anyOf': [{'required': ['period_anchor']}, {'required': ['period_timezone']}]}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/else'),
-    )
 
 
 class Bidding(BiddingPolicy):
@@ -71,10 +67,6 @@ class CreateMediaBuySuccess(CreateMediaBuyResponse):
         ForbiddenGroups((('errors',),)),
         UniqueItems('available_actions'),
         UniqueItems('warnings'),
-    )
-    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='media-buy/create-media-buy-response.json', pointer='#/oneOf/0/properties/account/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule/allOf/0', keyword='else', kind='WIDENED', rung='KEYWORD', fact={'if': {'properties': {'alignment': {'const': 'source_timezone'}}, 'required': ['alignment']}, 'then': {'required': ['period_timezone'], 'not': {'required': ['period_anchor']}}, 'else': {'not': {'anyOf': [{'required': ['period_anchor']}, {'required': ['period_timezone']}]}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/else'),
-        Approximation(document='media-buy/create-media-buy-response.json', pointer='#/oneOf/0/properties/account/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule', keyword='else', kind='WIDENED', rung='KEYWORD', fact={'if': {'properties': {'alignment': {'const': 'source_timezone'}}, 'required': ['alignment']}, 'then': {'required': ['period_timezone'], 'not': {'required': ['period_anchor']}}, 'else': {'not': {'anyOf': [{'required': ['period_anchor']}, {'required': ['period_timezone']}]}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/else'),
     )
     proposal_id: Annotated[StrMinLen1 | None, Field(description='The immutable committed proposal executed by this media buy, echoed when proposal_id was supplied in the request.')] = None
     media_buy_id: Annotated[str, Field(description="Seller's unique identifier for the created media buy")]

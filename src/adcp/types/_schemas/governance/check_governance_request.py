@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNegativeInt, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Presence, PresenceGroups, Rule
 from adcp.types.constraints import FloatMin0Max100, HttpUrl, IntMin1, StrMatching3CBDBB74, StrMatching43E30B32, StrMatching75B417CF, StrMaxLen1000, StrMinLen1MaxLen255, StrMinLen1MaxLen255Matching71E52EB8, StrMinLen1MaxLen4096MatchingB34ADF3C
 
@@ -154,6 +154,10 @@ class CheckGovernanceRequest(AdCPVersionEnvelope):
         ConditionalRequired((Match('delivery_metrics', True, None),), require=('governance_context', 'planned_delivery'), forbid=()),
         ForbiddenGroups((('tool', 'planned_delivery'), ('tool', 'delivery_metrics'), ('payload', 'planned_delivery'), ('payload', 'delivery_metrics'))),
         ConditionalRequired((Match('runtime_attestations', True, None),), require=('purchase_type', 'tool', 'payload'), forbid=()),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='governance/check-governance-request.json', pointer='#/allOf/10', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'anyOf': [{'required': ['planned_delivery']}, {'required': ['delivery_metrics']}]}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='governance/check-governance-request.json', pointer='#/allOf/14', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'anyOf': [{'properties': {'phase': {'const': 'delivery'}}, 'required': ['phase']}, {'properties': {'governance_phase': {'const': 'delivery'}}, 'required': ['governance_phase']}]}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     plan_id: Annotated[str | None, Field(description="Campaign governance plan identifier. Required on the initial intent or availability check, before a governance_context exists. Optional on subsequent checks: the governance agent derives the plan from its own signed governance_context. If both are present, the governance agent MUST reject the request when plan_id does not match the token's plan binding. Services MUST treat governance_context as authoritative and MUST NOT require a buyer to disclose plan_id. A plan is owned by the authenticated buyer principal that synchronized it; plan_id is an identifier, not an account credential.")] = None
     caller: Annotated[HttpUrl, Field(description='Claimed URL of the agent making the request. The transport credential MUST resolve to an agent URL; the governance agent requires an exact match and uses only that resolved URL for authorization, audit, and signed context issuance. On intent checks the authenticated buyer must be the plan owner or hold an active delegation, while approved_sellers is evaluated against the target service that becomes the token audience. On execution checks the authenticated caller MUST equal that preserved audience. An unresolved body assertion never grants plan access or authorization.')]

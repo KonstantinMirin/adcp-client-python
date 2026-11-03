@@ -5,7 +5,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import Dependencies, ForbiddenGroups, NotValue, Rule
 from adcp.types.constraints import StrMaxLen100, StrMaxLen500
 
@@ -65,6 +65,9 @@ class Package(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         Dependencies('params', ('format_kind',)),
         ForbiddenGroups((('bidding', 'bid_price'),)),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/package.json', pointer='#/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'anyOf': [{'properties': {'formats_to_provide': {'contains': {'required': ['tracker_execution_contract']}}}, 'required': ['formats_to_provide']}, {'properties': {'formats_pending': {'contains': {'required': ['tracker_execution_contract']}}}, 'required': ['formats_pending']}]}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     package_id: Annotated[str, Field(description="Seller's unique identifier for the package")]
     product_id: Annotated[str | None, Field(description="ID of the product this package is based on. For packages created from an explicit create_media_buy package request, sellers MUST echo the request package's product_id on every response package object that represents that requested package.")] = None

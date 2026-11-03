@@ -123,7 +123,6 @@ from codegen.compiler import (
     class_name,
     declare_alias,
 )
-from codegen.lower import approximate as lower_approximate
 from codegen.lower import const as lower_const
 from codegen.lower import envelope as lower_envelope
 from codegen.lower import names as lower_names
@@ -1021,173 +1020,83 @@ def _importable(
     }
 
 
-#: How many times :func:`repointed` re-reads its own output before it stops.  A local
-#: reference whose target is itself a local reference moves a declaration twice, and a
-#: chain of them moves it once per hop; the bundle's deepest chain is 2, and
-#: ``compiler.local_reference`` already refuses a cycle by name, so this is a bound on a
-#: terminating walk rather than a guard against one that does not terminate.  Same
-#: constant style as ``harness``'s fold depths, and for the same reason: a traversal cut
-#: at an unstated depth disagrees with its own reader about node identity (§9).
-_TRAVEL_DEPTH = 8
-
-#: The keywords whose subschemas are CONJUNCTS, DERIVED from the descent column rather
-#: than named: ``keywords.descends_at`` is "the ONE descent table", and a keyword whose
-#: subschemas sit at CONJ is exactly what a conjunction is.  Read at ROOT, where the
-#: derivation enters; the column's answer is the same at every position that gives one.
-_CONJUNCTS = frozenset(
-    k for k, p in keywords.descends_at(Position.ROOT).items() if p is Position.CONJ
-)
-
-
-def _under(pointer: str, into: str) -> bool:
-    """Whether ``pointer`` names the node at fragment ``into`` or one inside it.
-
-    ``pointer`` is an :class:`adcp.types._base.Approximation`'s, so it carries the ``#``
-    ``schema_ref`` spells; ``into`` is a :attr:`bundle.Edge.into`, which does not.  One
-    spelling is reconciled here and in no second place, which is the whole reason this is
-    a function: the widening obligation walks a declaration's own ``(pointer, keyword)``
-    into the document (``harness.check_widening``), and a second ``#``-stripping is how a
-    declaration and the node it is about come to sit at two pointers.
-    """
-    base = f"#{into}"
-    return pointer == base or pointer.startswith(f"{base}/")
-
-
-def _travelled(document: str, one: Approximation, referrer: str, into: str) -> Approximation:
-    """``one`` re-pointed from the fragment ``into`` to the referring pointer.
-
-    The suffix below the fragment is kept exactly, because the resolution kept it: a
-    declaration at ``#/definitions/x/items`` carried to a reference at
-    ``#/properties/y`` is a declaration at ``#/properties/y/items``, which is the pointer
-    ``harness.check_widening`` walks once the resolution has replaced the node.
-
-    The attribution is RE-MINTED rather than carried, and §2 is why: an upstream
-    attribution "is a property of a document and a pointer rather than of a keyword", so a
-    declaration arriving at a new document and a new pointer is a new SITE and
-    ``codegen.attribution``'s registry is what answers for it.  Carrying the target's
-    string would make ``harness.unattributed`` compare the artifact against a registry
-    lookup for a site the artifact does not name.
-    """
-    pointer = f"#{referrer}{one.pointer[len(into) + 1 :]}"
-    return one._replace(
-        document=document,
-        pointer=pointer,
-        attribution=lower_approximate.attribution_for(document, pointer, one.keyword),
-    )
-
-
-def _folded(document: str, one: Approximation, declared: Collection[str]) -> Approximation:
-    """``one`` re-pointed off any ``allOf`` CONJUNCT the walk composed into a class.
-
-    The third of §8's four resolutions, under the same rule as the other two: a conjunct's
-    facts are the composed node's -- ``compiler.lower_composition`` folds them into one
-    class and ``harness._composed`` folds them on the document side -- so a declaration
-    about one of those facts belongs at the composed node's pointer, or the walk that
-    proves it reaches a node the document states no such keyword at.  Measured:
-    ``core/account-with-authorization.json`` and ``account/list-accounts-response.json``
-    both minted a widening one ``allOf/1`` hop below the class the conjunct composes.
-
-    **The evidence that the walk composed is the walk's own symbol table**, and that is why
-    ``declared`` is a parameter: a conjunct hop whose PREFIX is a pointer this module
-    declared a class at is a conjunct that was folded into that class.  A hop with no class
-    above it was not folded and keeps its pointer, which is the fail-safe direction -- the
-    declaration then stands where the document states the fact, which is a pointer the
-    obligation's own walk still reaches.
-    """
-    segments = [s for s in one.pointer.lstrip("#").split("/") if s]
-    for _ in range(_TRAVEL_DEPTH):
-        hop = next(
-            (
-                i
-                for i in range(len(segments) - 1)
-                if segments[i] in _CONJUNCTS
-                and segments[i + 1].isdigit()
-                and "".join(f"/{s}" for s in segments[:i]) in declared
-            ),
-            None,
-        )
-        if hop is None:
-            break
-        segments = [*segments[:hop], *segments[hop + 2 :]]
-    pointer = "#" + "".join(f"/{s}" for s in segments)
-    if pointer == one.pointer:
-        return one
-    return one._replace(
-        pointer=pointer,
-        attribution=lower_approximate.attribution_for(document, pointer, one.keyword),
-    )
-
-
-def repointed(
-    document: str,
-    own: Sequence[Approximation],
-    edges: Sequence[bundle.Edge],
-    finished: Mapping[str, Sequence[Approximation]],
-    declared: Collection[str] = (),
+def declared_once(
+    document: str, own: Sequence[Approximation]
 ) -> tuple[Approximation, ...]:
-    """**§8: a declaration travels with the fact it is about.**
+    """**§8 sentence 2: a fact is declared ONCE, at the node the document STATES it.**
 
-    "A reference carries its target's declarations to the referring pointer, re-pointed by
-    the same resolution that carried the facts.  The record already inlines a deep copy of
-    a target's facts at the referring node; a declaration about those facts is re-pointed
-    by that same operation, because a fact and the record of what could not be rendered
-    for it must move together or the two sides cannot agree about where either is."
+    "A fact is declared ONCE, at the node the document STATES it, and never once per
+    pointer the record inlines it to ... An approximation's identity is ``(stating
+    document, stating pointer, keyword)``, and every inlined occurrence resolves to it."
 
-    Here and not in a lowering, for §10's reason: the dependency order finishes every
-    target before a referrer is parsed, so this reads a FINISHED module's declarations
-    rather than re-deriving a resolution.  A handler holds one node and cannot know who
-    references it.
+    So this is the whole of what a finished module's declaration set is: the declarations
+    its OWN walk minted, deduped on that identity, and nothing carried in from anywhere.
+    The identity's first two components are read off the declaring node -- the walk parses
+    the document's own text, so ``(mod.document, node.pointer)`` IS the stating site, and
+    :func:`stated_where_declared` is the gate that says so per declaration rather than
+    leaving it an assumption.
 
-    **The two resolutions move a declaration differently, and each one's own behaviour is
-    what decides it.**  There is no third rule and no flag:
+    **WHAT THIS REPLACED, and why the replacement is a deletion rather than a rule.**
+    ``repointed`` carried a declaration to every pointer a reference inlines its node to:
+    a local reference MOVED it to the referring pointer, a remote one COPIED the target's
+    to the referrer, and a third pass folded it off an ``allOf`` conjunct.  Every one of
+    those is "once per pointer the record inlines it to", which §8 forbids by name and
+    measures: over the 1,054 portable documents the walk mints **37 declarations in 32
+    documents** and that machinery reported **178 in 70**, because the record resolves
+    references by copying and one conditional reaches thousands of pointers.  §3a settled
+    the same question for a vocabulary -- *the entry, not the declaration site* -- and the
+    reader is what resolves an occurrence to the entry, not a copy per occurrence.
 
-    * a REMOTE reference is inlined by ``bundle.record`` as a deep COPY, and the target
-      document emits its own module and is graded by its own pairs -- so the declaration
-      is COPIED to the referring pointer and the target keeps its own.
-    * a LOCAL reference is left in the record and resolved by the document-side reading
-      (``harness._normalize``), which REPLACES the referring node with its target -- so
-      the fact is read at the referring pointer and at no other, and the declaration
-      MOVES.  An entry left behind would name a pointer that reading resolves away, and
-      the widening obligation reports such a declaration unproved rather than passing it.
-
-    ``own`` is this document's own declarations in document order and ``finished`` is
-    document -> the declarations of a document the order has already finished.  A target
-    outside ``finished`` contributes nothing: it refused, so it has no module and no
-    declaration, and the referring site refused with it.
+    ``own`` is in DOCUMENT ORDER (``compiler.Module.approximations``) and the dedup keeps
+    the first of a repeated identity, so the order §6 depends on survives.
     """
-    # ``into`` empty on a LOCAL reference is ``$ref: "#"`` -- a document naming itself,
-    # which is a recursive type ``compiler.local_reference`` refuses by name.  Excluded
-    # here so the fixed point below cannot be handed a fragment that contains every
-    # declaration including the ones it produces.
-    local = [e for e in edges if e.local and e.into]
-    carried = list(own)
-    for _ in range(_TRAVEL_DEPTH):
-        moved: list[Approximation] = []
-        for one in carried:
-            sites = [e for e in local if _under(one.pointer, e.into)]
-            moved += (
-                [one]
-                if not sites
-                else [_travelled(document, one, e.pointer, e.into) for e in sites]
-            )
-        if moved == carried:
-            break
-        carried = moved
-    out: dict[tuple[str, str], Approximation] = {(a.pointer, a.keyword): a for a in carried}
-    for edge in edges:
-        if edge.local or edge.target is None:
+    out: dict[tuple[str, str], Approximation] = {}
+    for one in own:
+        if one.document != document:
+            # A declaration whose stating document is not this one belongs to that
+            # document's module and to no other (§8: "a fact is declared only by the
+            # STATING document's own module").  Nothing in this tree mints one today --
+            # :func:`stated_where_declared` measures 0 over the bundle -- and the arm is
+            # written because the identity is the rule rather than the measurement.
             continue
-        for one in finished.get(edge.target, ()):
-            if _under(one.pointer, edge.into):
-                travelled = _travelled(document, one, edge.pointer, edge.into)
-                out.setdefault((travelled.pointer, travelled.keyword), travelled)
-    # LAST, because a reference's own site may sit INSIDE a conjunct: the fold is one hop
-    # further up than the re-pointing and reads its output.
-    folded: dict[tuple[str, str], Approximation] = {}
-    for one in out.values():
-        travelled = _folded(document, one, declared)
-        folded.setdefault((travelled.pointer, travelled.keyword), travelled)
-    return tuple(folded.values())
+        out.setdefault((one.pointer, one.keyword), one)
+    return tuple(out.values())
+
+
+def stated_where_declared(
+    one: Approximation, doc: Mapping[str, Any]
+) -> str | None:
+    """Why ``one``'s pointer is not a site ``doc`` states its keyword at, or ``None``.
+
+    **§8's "THE IDENTITY IS READ OFF THE NODE WHOSE KEYWORD THE FACT IS", as a gate.**
+    The walk reads the document's own text, so the declaring handler's
+    ``(mod.document, node.pointer)`` is the stating site by construction -- and a
+    construction nothing checks is how a declaration comes to name a pointer the document
+    states nothing at, which is the one thing ``harness.check_widening`` can never
+    discharge.  So the claim is MEASURED per declaration, at the one place a module's
+    declarations are finished.
+
+    A pointer ending in its own keyword is an UNDERDETERMINED union's spelling -- the
+    combinator is what is underdetermined, so ``lower.union`` declares at
+    ``<stated_at>/<combinator>`` -- and the node that states it is one segment up.
+
+    ``None`` is "the document states it here".  A sentence is returned rather than raised
+    so the caller decides: §2 makes a disagreement between two readings inside this
+    compiler a :class:`codegen.refusal.BuildFailure`, and the caller is the frame that
+    knows the document.
+    """
+    pointer = one.pointer.lstrip("#")
+    suffix = f"/{one.keyword}"
+    at = pointer[: -len(suffix)] if pointer.endswith(suffix) else pointer
+    try:
+        node = bundle.node_at(doc, at)
+    except (KeyError, IndexError, TypeError, ValueError):
+        return f"{at or '/'} names no node of the document"
+    if not isinstance(node, Mapping):
+        return f"{at or '/'} names a {type(node).__name__}, not a schema"
+    if one.keyword not in node:
+        return f"the node at {at or '/'} states no {one.keyword!r}"
+    return None
 
 
 def needs(
@@ -1655,19 +1564,6 @@ def emit(
     )
 
     lowered: dict[str, tuple[Module, ir.Module, dict]] = {}
-    #: document -> the declarations its walk MINTED, before :func:`repointed` moved any.
-    #: A remote reference naming a FRAGMENT needs the pointer the declaration was minted
-    #: at, because that is the pointer ``bundle.record`` inlines the node from: the local
-    #: move has already carried the target's own entry to the target's own referring
-    #: property, and a referrer naming ``#/definitions/x`` directly would then match
-    #: neither spelling.  Both are offered and :func:`repointed` dedupes by site, so each
-    #: referrer re-points off whichever pointer its own fragment names.  Measured at
-    #: ``formats/canonical/audio_daast.json`` and
-    #: ``core/requirements/daast-asset-requirements.json``, which name
-    #: ``core/daast-tracker-constraints.json#/definitions/daast_versions`` and carried
-    #: their declaration at a pointer the document states no such keyword at until this
-    #: map existed.
-    minted: dict[str, tuple[Approximation, ...]] = {}
     #: ``$ref`` URI -> the NODE it names, for §2's intersection rule
     #: (:meth:`compiler.Module.resolve_node`).  **Run-level and not per document**, and
     #: the reason is whose declaration that rule reads: it compares two property
@@ -2331,23 +2227,29 @@ def emit(
             refused[document] = outcome
             continue
         mod, bound = outcome
-        # **§8's "a declaration travels with the fact it is about"**, applied where §10's
-        # order makes it a lookup: every target this document references is finished, so
-        # its declarations are read rather than re-derived (:func:`repointed`).
-        minted[document] = bound.approximations
-        bound = dataclasses_replace(
-            bound,
-            approximations=repointed(
-                document,
-                bound.approximations,
-                lowering.get(document, ()),
-                {
-                    d: (*minted.get(d, ()), *held[1].approximations)
-                    for d, held in lowered.items()
-                },
-                frozenset(bound.symbols),
-            ),
-        )
+        # **§8 sentence 2: a fact is declared ONCE, at the node the document STATES it**
+        # (:func:`declared_once`).  Nothing is carried in from a target and nothing is
+        # copied to a referring pointer: an approximation's identity is ``(stating
+        # document, stating pointer, keyword)`` and every inlined occurrence resolves to
+        # it, which is a reader's job and not a declaration per occurrence.
+        settled = declared_once(document, bound.approximations)
+        # **AND THE IDENTITY IS MEASURED RATHER THAN ASSUMED**, which is §8's "the
+        # identity is read off the node whose keyword the fact is": the walk reads this
+        # document's own text, so the declaring handler's pointer is the stating pointer
+        # -- and a declaration naming a pointer the document states nothing at is one no
+        # obligation can discharge.  A disagreement between the walk and the document is a
+        # property of the COMPILER (§2) and so is a raise and not a refusal.  Measured
+        # over the 1,054 portable documents: 0.
+        for one in settled:
+            why = stated_where_declared(one, doc)
+            if why is not None:
+                raise BuildFailure(
+                    f"{document}: the walk declares {one.keyword!r} at {one.pointer} and "
+                    f"{why} -- a declaration's identity is (stating document, stating "
+                    "pointer, keyword) and this names no site the document states, so "
+                    "harness.check_widening could never discharge it"
+                )
+        bound = dataclasses_replace(bound, approximations=settled)
         # **The drifted envelope family's base, given to every member class of this
         # module** (``codegen/lower/envelope.py``).  A pass over the FINISHED module, in
         # the shape ``lower/names.py``'s is one, and it runs here rather than inside a

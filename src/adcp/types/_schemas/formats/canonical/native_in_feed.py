@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import IntMin1
 
@@ -106,6 +106,9 @@ class CanonicalFormatNativeInFeed(CanonicalFormatBase):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='formats/canonical/native_in_feed.json', pointer='#')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('activation_methods'),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='formats/canonical/native_in_feed.json', pointer='#/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'anyOf': [{'required': ['menu_placement']}, {'required': ['focus_behavior']}]}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     experimental: Annotated[bool | None, Field(description='Stable at 3.1 GA. Shape mirrors IAB OpenRTB Native 1.2 — the renderer contract is well-established across in-feed native and content-recommendation adopters.')] = False
     v1_translatable: Annotated[bool | None, Field(description='Translates to v1 named native formats (e.g., `native_standard`, `native_content`) via the projection registry. Sellers with existing v1 named native formats SHOULD point `v1_format_ref[]` at them.')] = True

@@ -970,8 +970,53 @@ def source_identities(bundle_dir: Path) -> dict[str, str]:
     return out
 
 
+#: **A node of a record, keyed BY IDENTITY, to the site that STATES it**: ``id(node) ->
+#: (stating document, stating pointer)``.
+#:
+#: ``docs/plan/rebuild-plan.md`` §8, "THE IDENTITY IS READ OFF THE NODE WHOSE KEYWORD THE
+#: FACT IS" (decided 2026-11-03): "the inliner must export the origin of a node by
+#: identity rather than by pointer: the walk folds a conjunct into the enclosing node's
+#: pointer space, so a declared pointer is routinely at no pointer the record spells, and a
+#: pointer-keyed origin map cannot answer."
+#:
+#: **BY IDENTITY and not by pointer, which is the whole of why this type exists.**  §8's
+#: identity for an approximation is ``(stating document, stating pointer, keyword)`` and
+#: "every inlined occurrence resolves to it" -- so a reader standing at an occurrence in
+#: one record has to get back to the site the fact is STATED at.  A record pointer cannot
+#: answer that: the record inlines a target at the REFERRING pointer, so one stating site
+#: has as many record pointers as there are paths through the reference graph that reach
+#: it, and the map in the other direction is not a function.  A node's identity is, because
+#: :func:`record` places ONE OBJECT at every occurrence of one target (its own docstring's
+#: "THE SAME OBJECT IS PLACED AT EVERY OCCURRENCE") -- so the occurrences of one stating
+#: site are literally one object, and this maps that object to the site.
+#:
+#: Sound only while the record it was built for is alive, exactly as the ``by_id`` digest
+#: map inside :func:`stored` is: ``id`` is reused once an object is freed.  So it travels
+#: WITH the record as one value (:func:`recorded`) and never on its own.
+Origins = dict[int, tuple[str, str]]
+
+
 def record(bundle_dir: Path, document: str, known: Collection[str]) -> dict | Refusal:
-    """THE DOCUMENT OF RECORD: ``document`` with every cross-document ``$ref`` inlined.
+    """:func:`recorded`'s FIRST HALF, which is what almost every reader wants.
+
+    Kept as its own name because the map :func:`recorded` returns beside the record is
+    only sound while that record is alive (:data:`Origins`) and because threading a value
+    nobody opens through every reader would make one reader's cost everybody's: a
+    whole-set emit reads a record 1,744 times and opens the origin map at one of them.
+    """
+    answer = recorded(bundle_dir, document, known)
+    return answer if isinstance(answer, Refusal) else answer[0]
+
+
+def recorded(
+    bundle_dir: Path, document: str, known: Collection[str]
+) -> tuple[dict, Origins] | Refusal:
+    """THE DOCUMENT OF RECORD: ``document`` with every cross-document ``$ref`` inlined,
+    and beside it :data:`Origins` -- the site that STATES each of its nodes, by identity.
+
+    **The two are ONE value**, for :data:`Origins`' reason: an ``id``-keyed map is sound
+    only while the objects it keys on are alive, so a caller that got the record from one
+    call and the map from another would hold a map keyed on a record it threw away.
 
     This package's own inliner (``docs/plan/architecture.md`` §4), and it does what §3
     of the semantics document says and nothing else.  Resolution INLINES; it does not
@@ -1104,6 +1149,11 @@ def record(bundle_dir: Path, document: str, known: Collection[str]) -> dict | Re
     #: node's identity and is stable because ``roots`` holds every document alive: every
     #: node this descent is handed is a node of a parsed document, never one it built.
     shared: dict[tuple[int, str, bool, keywords.Position], _Reached] = {}
+    #: :data:`Origins`, filled as each node of the record is BUILT -- which is the one
+    #: place that knows both halves: ``home`` is the document whose text the node is and
+    #: ``stated`` is its pointer inside that document.  A node this descent builds is
+    #: alive for as long as the record is, so the keys stay the keys of these nodes.
+    origins: Origins = {}
 
     def root_of(name: str) -> dict:
         if name not in roots:
@@ -1114,7 +1164,13 @@ def record(bundle_dir: Path, document: str, known: Collection[str]) -> dict | Re
         return Refusal("$ref", pointer, detail, kind=Kind.VERDICT)
 
     def placed(
-        uri: str, *, pointer: str, home: str, scope: dict | None, where: _Where
+        uri: str,
+        *,
+        pointer: str,
+        home: str,
+        scope: dict | None,
+        where: _Where,
+        position: keywords.Position,
     ) -> _Reached | Refusal | None:
         """The node a reference names, inlined and ready to be placed, or ``None`` where
         the reference STAYS as written.
@@ -1163,7 +1219,20 @@ def record(bundle_dir: Path, document: str, known: Collection[str]) -> dict | Re
             return refuse(
                 pointer, f"{uri} names a {type(target).__name__} of {at_home}, not a schema"
             )
-        answer = inline(target, pointer=pointer, home=at_home, scope=root, where=where)
+        # ``stated=into``: the target's own pointer is its pointer in the document being
+        # copied out of, which is exactly what the reference's fragment names.  THIS is
+        # where the record's pointer space and the stating document's part company -- the
+        # answer is placed at ``pointer``, the REFERRING pointer, and states what it
+        # states at ``into`` in ``at_home``.
+        answer = inline(
+            target,
+            pointer=pointer,
+            home=at_home,
+            scope=root,
+            where=where,
+            position=position,
+            stated=into,
+        )
         if isinstance(answer, Refusal):
             return answer
         # A CROSS-DOCUMENT hop carries up NO anchor of the copy it took, because every
@@ -1183,13 +1252,22 @@ def record(bundle_dir: Path, document: str, known: Collection[str]) -> dict | Re
         scope: dict | None,
         position: keywords.Position = keywords.Position.ROOT,
         where: _Where = _Where((), ()),
+        stated: str = "",
     ) -> _Reached | Refusal:
         """``node`` with every reference under it inlined, or the first refusal reached.
 
         ``home`` is the document whose text this node is and ``scope`` is the root a
         local pointer in it resolves against -- ``None`` at the document whose record
         this is, where a local reference is left as written.  ``where`` carries the two
-        cycle guards.
+        cycle guards.  ``stated`` is this node's own pointer INSIDE ``home``, which is
+        what :data:`Origins` records and is NOT ``pointer``: ``pointer`` is where the
+        answer is placed in the record being built, and the two part company at every
+        reference the record resolves by copying.
+
+        **``stated`` is not in the key and does not have to be**, because it is a
+        FUNCTION of the key's first two components: a node object sits at exactly one
+        pointer of the document its text is, so ``(id(node), home)`` determines it.  A
+        held answer therefore carries the same origin the recomputed one would.
 
         **Computed once per key and shared**, which is the docstring above.  The key is
         everything the ANSWER is a function of other than the guards -- the node's
@@ -1214,7 +1292,13 @@ def record(bundle_dir: Path, document: str, known: Collection[str]) -> dict | Re
         ):
             return held
         answer = inlined(
-            node, pointer=pointer, home=home, scope=scope, position=position, where=where
+            node,
+            pointer=pointer,
+            home=home,
+            scope=scope,
+            position=position,
+            where=where,
+            stated=stated,
         )
         # Held only where nothing was: an answer computed because a held one was unusable
         # is this occurrence's and narrower, and the unusable one is still the answer for
@@ -1232,19 +1316,45 @@ def record(bundle_dir: Path, document: str, known: Collection[str]) -> dict | Re
         scope: dict | None,
         position: keywords.Position,
         where: _Where,
+        stated: str,
     ) -> _Reached | Refusal:
-        """``node``'s inlining computed from nothing held.  :func:`inline` is the share."""
+        """``node``'s inlining computed from nothing held.  :func:`inline` is the share.
+
+        Every node this builds is recorded in :data:`Origins` at ``(home, stated)``,
+        which is the site the DOCUMENT states it -- the one reading §8's identity needs
+        and the one no pointer of the record being built can give.
+        """
         uri = node.get("$ref")
         if isinstance(uri, str):
-            copied = placed(uri, pointer=pointer, home=home, scope=scope, where=where)
+            copied = placed(
+                uri,
+                pointer=pointer,
+                home=home,
+                scope=scope,
+                where=where,
+                position=position,
+            )
             if isinstance(copied, Refusal):
                 return copied
             if copied is not None:
                 # ``_beside`` is per OCCURRENCE: the referring node's own keys are not in
                 # the key, and the mapping it builds is fresh around the shared one.
-                return _Reached(
-                    _beside(copied.node, node, position), copied.documents, copied.anchors
-                )
+                #
+                # **ITS ORIGIN IS THE TARGET'S AND NOT THE REFERRER'S**, which is §8's
+                # "THE IDENTITY IS READ OFF THE NODE WHOSE KEYWORD THE FACT IS."  The
+                # referring node states a ``$ref`` and annotations; every keyword that
+                # says anything about an instance here is the TARGET's, because draft-07
+                # ignores a constraining sibling of a ``$ref`` and :func:`_beside` keeps
+                # the target's value where both state one.  So a fact read off this node
+                # is a fact the TARGET's document states, and that is the site it
+                # resolves to -- the referrer's own pointer would make one stating site
+                # own as many identities as it has referrers, which is the counting §8
+                # forbids.
+                beside = _beside(copied.node, node, position)
+                site = origins.get(id(copied.node))
+                if site is not None:
+                    origins[id(beside)] = site
+                return _Reached(beside, copied.documents, copied.anchors)
         done: dict[str, object] = {}
         documents: frozenset[str] = frozenset()
         anchors: frozenset[tuple[str, str]] = frozenset()
@@ -1258,25 +1368,31 @@ def record(bundle_dir: Path, document: str, known: Collection[str]) -> dict | Re
                 scope=scope,
                 position=holds,
                 where=where,
+                stated=f"{stated}{suffix}",
             )
             if isinstance(answer, Refusal):
                 return answer
             done[suffix] = answer.node
             documents |= answer.documents
             anchors |= answer.anchors
-        return _Reached(
-            {
-                key: rebuilt(key, value, done) if key in DESCENDS else value
-                for key, value in node.items()
-            },
-            documents,
-            anchors,
-        )
+        built = {
+            key: rebuilt(key, value, done) if key in DESCENDS else value
+            for key, value in node.items()
+        }
+        origins[id(built)] = (home, stated)
+        return _Reached(built, documents, anchors)
 
     answer = inline(
-        roots[document], pointer="", home=document, scope=None, where=_Where((document,), ())
+        roots[document],
+        pointer="",
+        home=document,
+        scope=None,
+        where=_Where((document,), ()),
+        stated="",
     )
-    return answer if isinstance(answer, Refusal) else stored(answer.node)
+    if isinstance(answer, Refusal):
+        return answer
+    return stored(answer.node, origins), origins
 
 
 def rebuilt(
@@ -1331,8 +1447,21 @@ def _itself(value: object) -> object:
     return value
 
 
-def stored(record: dict) -> dict:
+def stored(record: dict, origins: Origins | None = None) -> dict:
     """``record`` STATING EACH DISTINCT SUBTREE ONCE, under its own ``definitions``.
+
+    ``origins`` is :data:`Origins` over ``record``'s OWN nodes, re-keyed IN PLACE onto the
+    nodes this builds -- which is §8's "carried across the storage rebuild".  It has to be
+    in place and it has to be here: every node of the answer is a fresh object, so a map
+    keyed on the input's identities answers nothing about the output, and the input's nodes
+    are freed the moment this returns, which would make those keys reusable by somebody
+    else's objects.  ``None`` for a caller that wants only the storage.
+
+    **An interned content takes the origin of the node the intern CHOSE**, which is the
+    representative :func:`digest` saw first.  Two stating sites whose text is identical are
+    one subtree in the record -- that is what "states each distinct subtree once" means --
+    so they are one object and can carry one origin; the one chosen is the one the
+    document first reaches, by the same walk that names the entries.
 
     ``docs/plan/architecture.md``, "THE RECORD'S TEXT IS A DAG; ITS POINTERS ARE NOT":
     "The record stores each distinct subtree once under its own ``definitions`` with a
@@ -1456,27 +1585,66 @@ def stored(record: dict) -> dict:
                 unread.append(child)
 
     built: dict[str, dict] = {}
+    #: :data:`Origins` re-keyed onto the nodes :func:`build` makes, written as they are
+    #: made and copied back over ``origins`` at the end.  Separate from ``origins`` while
+    #: the build runs because the input's keys are still being READ: an ``id`` the build
+    #: happens to reuse would otherwise overwrite an entry a later node still needs.
+    carried: Origins = {}
 
     def build(at: str) -> dict:
         held = built.get(at)
         if held is not None:
             return held
         node = body[at]
-        done = {
-            suffix: (
-                {"$ref": _base.store_ref(names[child])} if child in names else build(child)
-            )
-            for suffix, child in edges[at].items()
-        }
+
+        def placed(child: str) -> dict:
+            """The child as this record stores it: the entry's reference, or the node.
+
+            **A STORED child's reference carries the ENTRY's origin**, because a reader
+            resolving an occurrence to its stating site dereferences through the storage
+            -- ``architecture.md``'s "a reader asking what the document states reads
+            through the storage", which :func:`expanded` and
+            ``adcp.types._base.through_the_store`` are the two existing spellings of.  So
+            the reference object gets the site the entry states, and a reader that stops
+            at the reference gets the same answer as one that follows it.  Keyed per
+            OCCURRENCE: each reference is a fresh mapping, which is what lets one entry's
+            many occurrences each carry it.
+            """
+            if child not in names:
+                return build(child)
+            ref = {"$ref": _base.store_ref(names[child])}
+            if origins is not None:
+                site = origins.get(id(body[child]))
+                if site is not None:
+                    carried[id(ref)] = site
+            return ref
+
+        done = {suffix: placed(child) for suffix, child in edges[at].items()}
         out = {
             key: rebuilt(key, value, done, missing=_itself) if key in DESCENDS else value
             for key, value in node.items()
         }
         built[at] = out
+        if origins is not None:
+            site = origins.get(id(node))
+            if site is not None:
+                carried[id(out)] = site
         return out
+
+    def flush() -> None:
+        """``carried`` over ``origins``, LAST, so every node this built is in it.
+
+        After the section's entries, which :func:`build` makes too: a stored subtree is
+        where the record keeps the node, and a reader resolving an occurrence to its
+        stating site arrives at the entry rather than at the reference naming it.
+        """
+        if origins is not None:
+            origins.clear()
+            origins.update(carried)
 
     out = build(root)
     if not names:
+        flush()
         return out
     section = out.get(_base.STORE_SECTION)
     section = dict(section) if isinstance(section, dict) else {}
@@ -1489,7 +1657,15 @@ def stored(record: dict) -> dict:
             "adcp.types._base.through_the_store dereferences through"
         )
     section.update((entry, build(at)) for at, entry in names.items())
-    return {**out, _base.STORE_SECTION: section}
+    answer = {**out, _base.STORE_SECTION: section}
+    # The ROOT is re-made here -- ``{**out, ...}`` is a fresh mapping -- so its own entry
+    # is re-keyed onto the object the caller actually gets.  The root's stating site is
+    # the document's own root, which is what ``recorded`` enters the descent at.
+    site = carried.get(id(out))
+    if site is not None:
+        carried[id(answer)] = site
+    flush()
+    return answer
 
 
 def expanded(node: object, root: object) -> object:

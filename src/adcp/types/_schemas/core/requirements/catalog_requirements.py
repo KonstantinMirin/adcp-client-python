@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import IntMin1
 
@@ -28,9 +28,6 @@ class CatalogRequirements(AdCPBaseModel):
         UniqueItems('feed_formats'),
         UniqueItems('offering_asset_constraints'),
         UniqueItems('field_bindings'),
-    )
-    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='core/requirements/catalog-requirements.json', pointer='#/properties/offering_asset_constraints/items/properties/asset_requirements/anyOf', keyword='anyOf', kind='UNDERDETERMINED', rung='JOIN', fact=({'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/requirements/image-asset-requirements.json'}, {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/requirements/video-asset-requirements.json'}, {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/requirements/audio-asset-requirements.json'}, {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/requirements/text-asset-requirements.json'}, {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/requirements/markdown-asset-requirements.json'}, {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/requirements/html-asset-requirements.json'}, {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/requirements/css-asset-requirements.json'}, {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/requirements/javascript-asset-requirements.json'}, {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/requirements/vast-asset-requirements.json'}, {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/requirements/daast-asset-requirements.json'}, {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/requirements/url-asset-requirements.json'}, {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/requirements/webhook-asset-requirements.json'}), attribution='docs/plan/rebuild-plan.md §5 combinators/anyOf'),
     )
     catalog_type: Annotated[CatalogType, Field(description='The catalog type this requirement applies to')]
     required: Annotated[bool | None, Field(description='Whether this catalog type must be present. When true, creatives using this format must reference a synced catalog of this type.')] = True

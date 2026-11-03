@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import Dependencies, ForbiddenGroups, Rule, UniqueItems
 from adcp.types.constraints import StrMatchingEE2029C8, StrMinLen1
 
@@ -80,6 +80,10 @@ class CanonicalProduct(AdCPBaseModel):
         UniqueItems('social_placement_surfaces'),
         UniqueItems('catalog_types'),
         UniqueItems('allowed_actions'),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/canonical-product.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'overlay_support': {'required': ['collection_list']}}, 'required': ['overlay_support']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/canonical-product.json', pointer='#/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'execution_requirements': {'contains': {'properties': {'kind': {'const': 'catalog'}}, 'required': ['kind']}}}, 'required': ['execution_requirements']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     product_id: StrMinLen1
     name: StrMinLen1

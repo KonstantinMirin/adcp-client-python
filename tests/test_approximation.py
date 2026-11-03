@@ -415,69 +415,48 @@ def test_a_declaration_is_carried_by_every_declaration_whose_node_contains_it() 
     assert render.declared_at((inner,), SchemaRef("core/other.json", "#")) == ()
 
 
-def _edge(pointer: str, *, local: bool, target: str | None, into: str) -> bundle.Edge:
-    """One reference site, as ``bundle.edges`` records it."""
-    return bundle.Edge(
-        document=DOC,
-        pointer=pointer,
-        position=Position.PROP,
-        uri=("#" + into) if local else f"https://example/{target}#{into}",
-        local=local,
-        target=None if local else target,
-        into=into,
-        conjunct_of_root=False,
-    )
+def test_a_fact_is_declared_once_at_the_node_the_document_states_it() -> None:
+    """**§8 sentence 2, decided 2026-11-03**: "a fact is declared ONCE, at the node the
+    document STATES it, and never once per pointer the record inlines it to ... An
+    approximation's identity is ``(stating document, stating pointer, keyword)``, and
+    every inlined occurrence resolves to it."
 
+    **THIS REPLACES THE OPPOSITE CLAUSE AND ITS TEST.**  What stood here asserted that a
+    declaration TRAVELS -- a local reference moved it to the referring pointer and a
+    remote one copied the target's to the referrer -- and §8 names that as the defect:
+    "the record resolves references by copying, so a declaration per pointer turns a
+    hundred-odd facts into tens of thousands and the declared set stops being readable".
+    Measured over the 1,054 portable documents: the walk mints **37 declarations in 32
+    documents** and the travelling rule reported **178 in 70**.  So the function is gone
+    and :func:`emit.declared_once` is what a finished module's declaration set is.
 
-def test_a_declaration_travels_with_the_fact_it_is_about() -> None:
-    """**§8, decided 2026-10-27**: "a reference carries its target's declarations to the
-    referring pointer, re-pointed by the same resolution that carried the facts."
+    Three clauses, each one the rule's own:
 
-    A declaration is minted at the NODE's pointer, and the obligation that proves it walks
-    that pointer from the pair's own node -- so the two hold together only while they agree
-    about the pointer, and they do not, by default.
-
-    **The two resolutions move a declaration differently and each one's own behaviour is
-    what decides it**, which is the whole of what is asserted here:
-
-    * a LOCAL reference is resolved by REPLACING the referring node with its target, so the
-      declaration MOVES -- an entry left at ``#/definitions/x`` is at a pointer no instance
-      location exists under, which :func:`harness.check_widening` can only report as a
-      widening nobody proved;
-    * a REMOTE one is inlined by ``bundle.record`` as a deep COPY, so the declaration is
-      COPIED and the target document keeps its own for its own pairs.
+    * a declaration the walk minted is KEPT at the pointer the walk minted it at, which
+      is the pointer the document states the keyword at;
+    * one identity is one entry, however many times the walk reaches it;
+    * a declaration whose stating document is not this one belongs to that document's
+      module and is dropped here (§8: "a fact is declared only by the STATING document's
+      own module").
     """
     entry = approximate(_ref("#/definitions/versions"), "uniqueItems", Position.DEF, True)
     deeper = approximate(_ref("#/definitions/versions/items"), "pattern", Position.ELEM, "^a+$")
-    local = _edge("/properties/versions", local=True, target=None, into="/definitions/versions")
 
-    moved = emit.repointed(DOC, (entry, deeper), (local,), {})
-    assert [one.pointer for one in moved] == [
-        "#/properties/versions",
-        "#/properties/versions/items",
+    kept = emit.declared_once(DOC, (entry, deeper))
+    assert [one.pointer for one in kept] == [
+        "#/definitions/versions",
+        "#/definitions/versions/items",
     ]
-    # The suffix below the fragment is kept exactly, and so is the fact and the rung.
-    assert [one.keyword for one in moved] == ["uniqueItems", "pattern"]
-    assert [one.fact for one in moved] == [True, "^a+$"]
-    assert all(one.document == DOC for one in moved)
-    # MOVED and not copied: the entry's own pointer is gone, because the normalisation
-    # replaced the node and no pair reads the entry.
-    assert "#/definitions/versions" not in {one.pointer for one in moved}
+    assert [one.keyword for one in kept] == ["uniqueItems", "pattern"]
+    assert [one.fact for one in kept] == [True, "^a+$"]
 
-    # Two references to ONE entry carry it to BOTH, because both pointers are walked.
-    twice = emit.repointed(
-        DOC,
-        (entry,),
-        (local, _edge("/properties/also", local=True, target=None, into="/definitions/versions")),
-        {},
-    )
-    assert {one.pointer for one in twice} == {"#/properties/versions", "#/properties/also"}
+    # ONE identity is ONE entry, and the FIRST of a repeat is the one kept, so the
+    # document order section 6 depends on survives.
+    assert emit.declared_once(DOC, (entry, entry, deeper)) == (entry, deeper)
 
-    # A REMOTE reference COPIES, and the target keeps its own -- it emits its own module
-    # and its own pairs grade it there.
-    target = "core/target.json"
+    # A declaration of ANOTHER document is that document's module's and not this one's.
     theirs = Approximation(
-        document=target,
+        document="core/target.json",
         pointer="#/properties/tags",
         keyword="uniqueItems",
         kind=WIDENED,
@@ -485,35 +464,57 @@ def test_a_declaration_travels_with_the_fact_it_is_about() -> None:
         fact=True,
         attribution=keywords.address("uniqueItems"),
     )
-    carried = emit.repointed(
-        DOC,
-        (),
-        (_edge("/properties/held", local=False, target=target, into=""),),
-        {target: (theirs,)},
+    assert emit.declared_once(DOC, (theirs,)) == ()
+    assert emit.declared_once(DOC, (entry, theirs)) == (entry,)
+
+
+def test_the_identity_is_read_off_the_node_whose_keyword_the_fact_is() -> None:
+    """**§8: "THE IDENTITY IS READ OFF THE NODE WHOSE KEYWORD THE FACT IS."**
+
+    ``emit.stated_where_declared`` is that sentence as a gate: a declaration's pointer
+    must name a node the document states its keyword at, or no obligation can discharge
+    it -- ``harness.check_widening`` walks exactly that pointer into exactly that
+    document.  The walk reads the document's own text, so the declaring handler's pointer
+    IS the stating pointer; this is what makes that a measurement rather than an
+    assumption, and ``emit.emit`` raises a ``BuildFailure`` on a sentence.
+
+    The UNDERDETERMINED spelling is the one case where the pointer carries the keyword as
+    its last segment -- ``lower.union`` declares at ``<stated_at>/<combinator>`` because
+    the combinator is what is underdetermined -- and the node that states it is one
+    segment up.
+    """
+    doc = {
+        "type": "object",
+        "properties": {"tags": {"type": "array", "uniqueItems": True}},
+        "oneOf": [{"required": ["a"]}, {"required": ["b"]}],
+    }
+    at = approximate(
+        _ref("#/properties/tags"), "uniqueItems", Position.PROP, True
     )
-    assert [(one.document, one.pointer) for one in carried] == [
-        (DOC, "#/properties/held/properties/tags")
-    ]
-    # A FRAGMENT reference re-points off the fragment and not off the root.
-    fragment = emit.repointed(
-        DOC,
-        (),
-        (_edge("/properties/held", local=False, target=target, into="/properties/tags"),),
-        {target: (theirs,)},
+    assert emit.stated_where_declared(at, doc) is None
+
+    # The union's own spelling: the pointer ends in the combinator and the node is up one.
+    union = approximate(_ref("#/oneOf"), "oneOf", Position.ROOT, (), kind=UNDERDETERMINED)
+    assert emit.stated_where_declared(union, doc) is None
+
+    # A pointer naming no node of the document.
+    missing = approximate(_ref("#/properties/gone"), "uniqueItems", Position.PROP, True)
+    assert emit.stated_where_declared(missing, doc) == (
+        "/properties/gone names no node of the document"
     )
-    assert [one.pointer for one in fragment] == ["#/properties/held"]
-    # A target that REFUSED has no module and contributes nothing.
-    assert emit.repointed(
-        DOC, (), (_edge("/properties/held", local=False, target=target, into=""),), {}
-    ) == ()
-    # And a declaration outside the fragment does not travel: the resolution carried the
-    # node at the fragment and nothing else.
-    assert emit.repointed(
-        DOC,
-        (),
-        (_edge("/properties/held", local=False, target=target, into="/properties/other"),),
-        {target: (theirs,)},
-    ) == ()
+
+    # A pointer naming a node that states no such keyword, which is the declaration
+    # ``check_widening`` reports as "the document states no such keyword".
+    silent = approximate(_ref("#/properties/tags"), "maxItems", Position.PROP, 3)
+    assert emit.stated_where_declared(silent, doc) == (
+        "the node at /properties/tags states no 'maxItems'"
+    )
+
+    # A pointer naming something that is not a schema at all.
+    listed = approximate(_ref("#/type"), "uniqueItems", Position.PROP, True)
+    assert emit.stated_where_declared(listed, doc) == (
+        "/type names a str, not a schema"
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -952,6 +953,19 @@ def test_the_verifiers_own_derivation_separates_the_pairs_section_4_separates() 
     assert harness.inseparable_unions(union(pins({"const": "a"}), bare[1])) == ()
 
 
+def _at(record: dict) -> dict:
+    """``{DOC: (record, origins)}``, which is what ``underdetermined_census`` takes.
+
+    **§8 sentence 2 makes both sides of that equality sets of the IDENTITY** ``(stating
+    document, stating pointer)``, so the derived side is read through ``origins`` and an
+    inlined occurrence resolves to the site it states.  These probe records have no
+    reference in them, so every node states itself and the map is the identity on them --
+    built by a walk here rather than by ``bundle.recorded`` because the point of the probe
+    is the derivation and not the inliner.
+    """
+    return {DOC: (record, {id(node): (DOC, pointer) for pointer, node in bundle.nodes(record)})}
+
+
 def test_the_underdetermined_set_equals_the_inseparable_set_in_both_directions() -> None:
     """**Section 8's UNDERDETERMINED equality, and each direction perturbed.**
 
@@ -967,18 +981,18 @@ def test_the_underdetermined_set_equals_the_inseparable_set_in_both_directions()
     declaration = approximate(
         _ref("#/oneOf"), "oneOf", Position.ROOT, OVERLAPPING["oneOf"], kind=UNDERDETERMINED
     )
-    stale, silent = harness.underdetermined_census((declaration,), {DOC: OVERLAPPING})
+    stale, silent = harness.underdetermined_census((declaration,), _at(OVERLAPPING))
     assert (stale, silent) == ([], [])
 
-    stale, silent = harness.underdetermined_census((declaration,), {DOC: SEPARATED})
+    stale, silent = harness.underdetermined_census((declaration,), _at(SEPARATED))
     assert len(stale) == 1 and "the derivation separates it" in stale[0]
     assert silent == []
 
-    stale, silent = harness.underdetermined_census((), {DOC: OVERLAPPING})
+    stale, silent = harness.underdetermined_census((), _at(OVERLAPPING))
     assert stale == []
     assert len(silent) == 1 and "nothing declares it" in silent[0]
 
-    assert harness.underdetermined_census((), {DOC: SEPARATED}) == ([], [])
+    assert harness.underdetermined_census((), _at(SEPARATED)) == ([], [])
 
 
 def test_a_widened_declaration_is_not_read_as_an_underdetermined_one() -> None:
@@ -990,6 +1004,6 @@ def test_a_widened_declaration_is_not_read_as_an_underdetermined_one() -> None:
     """
     widened = approximate(_ref("#/oneOf"), "oneOf", Position.ROOT, OVERLAPPING["oneOf"])
     assert widened.kind == WIDENED
-    stale, silent = harness.underdetermined_census((widened,), {DOC: OVERLAPPING})
+    stale, silent = harness.underdetermined_census((widened,), _at(OVERLAPPING))
     assert stale == []
     assert len(silent) == 1

@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import FloatMin0Max1, IntMin1, StrMatching43E30B32, StrMatching5E987613, StrMatchingDD5BDFFC, StrMaxLen50, StrMinLen1, StrMinLen1Matching130C1C9D, StrMinLen1MaxLen255
 
@@ -421,6 +421,9 @@ class GetMediaBuyDeliveryResponse(AdCPVersionEnvelope, ProtocolEnvelope):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buy-delivery-response.json', pointer='#')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ConditionalRequired((Match('aggregated_totals', True, None),), require=('currency',), forbid=()),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='media-buy/get-media-buy-delivery-response.json', pointer='#/allOf/3', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'anyOf': [{'required': ['reporting_revision']}, {'required': ['reporting_revision_binding']}, {'required': ['reporting_rows']}]}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     notification_type: Annotated[NotificationType | None, Field(description='Type of webhook notification (only present in webhook deliveries): scheduled = regular periodic update, final = campaign completed, delayed = data not yet available, adjusted = resending period with corrected data (same window), window_update = resending period with a wider measurement window (e.g., C3 superseding live, C7 superseding C3)')] = None
     partial_data: Annotated[bool | None, Field(description='Indicates if any media buys in this webhook have missing/delayed data (only present in webhook deliveries)')] = None

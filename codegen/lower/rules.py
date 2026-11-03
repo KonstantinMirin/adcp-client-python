@@ -803,25 +803,36 @@ def _conditional(
     arms = tuple(k for k in ("then", "else") if k in node and _states_presence(node[k]))
     when = _clauses(node.get("if"), root)
     if when is None:
-        # **A CONDITION the reduction cannot read is NOT declared here, and the reason is
-        # a measurement rather than a reading** (``adcp-client-python-3bb``, second
-        # population).  §5's ``if`` row decides it -- "a ``Match`` clause list where it
-        # states ``required`` plus ``properties`` with ``const`` or ``enum`` values;
-        # otherwise nothing" -- and every one of the six cells that fails this way states
-        # an ``if`` with NO ``required`` at all, which cannot yield a clause: a clause
-        # tests a key that is PRESENT, so a condition reduced from such a node would fire
-        # on instances the document's condition does not match and the rule would refuse
-        # what the document admits.
+        # **A CONDITION the reduction cannot read IS DECLARED, and §8 sentence 2 is what
+        # made it affordable.**  §5's ``if`` row decides the lowering -- "a ``Match``
+        # clause list where it states ``required`` plus ``properties`` with ``const`` or
+        # ``enum`` values; otherwise nothing" -- and a condition with no ``required`` at
+        # all cannot yield a clause: a clause tests a key that is PRESENT, so a condition
+        # reduced from such a node would fire on instances the document's condition does
+        # not match and the rule would refuse what the document admits, which §2 forbids
+        # outright.  The complement (§8 sentence 3b) does not reach it either, for the
+        # same reason: there is no key whose predicate the complement is of.
         #
-        # Declaring it instead mints **4,635 sites in 97 documents from 112 distinct
-        # conditional facts**, because the record inlines one shared conditional at every
-        # referring path -- 3,641 of them one logo-slot ``if`` under
-        # ``core/async-response-data.json`` and its webhook twin.  §8 rules that set out
-        # by name ("an approximation nothing can demonstrate does not belong in the set")
-        # and §9's "do not pin the approximation count" is written about a figure one cell
-        # reaches at eighty positions.  So the drop is the bead's, with its measurement,
-        # and the choice between a wider reading of a condition and a declaration set of
-        # that size is the design documents' to make.
+        # So the model is wider here and §2 asks for a declaration.  **What stood in the
+        # way was arithmetic, and it was the arithmetic §8 sentence 2 retires**
+        # (``adcp-client-python-3bb``, second population): declaring it minted **4,635
+        # sites in 97 documents from 112 distinct conditional facts**, because a
+        # declaration was written once per pointer the record inlines the condition to --
+        # 3,641 of them ONE logo-slot ``if`` under ``core/async-response-data.json`` and
+        # its webhook twin.  §8 ruled that set out by name ("an approximation nothing can
+        # demonstrate does not belong in the set") and the ratio 4,635 : 112 is the
+        # measurement of the defect rather than of this drop.  Under §8 sentence 2 a fact
+        # is declared ONCE, at the node the document states it, so what this mints is the
+        # distinct conditional facts and nothing per referring path.
+        #
+        # **The KEYWORD is ``if`` and the FACT is the condition the document writes**, not
+        # the keyword the cell is about: the fact dropped belongs to the conditional, and
+        # §9 requires the declared fact to be the document's own.  Declared only where an
+        # arm STATES PRESENCE, by the paragraph above -- an ``if`` whose arms say nothing
+        # about which keys are present constrains nothing a rule could have carried, so
+        # there is no difference for a declaration to describe.
+        if arms and isinstance(node.get("if"), Mapping):
+            out.dropped.append(("if", node["if"]))
         return
     clauses = tuple(Match(*clause) for clause in when)
     for keyword, kind in (("then", ConditionalRequired), ("else", NegatedConditional)):

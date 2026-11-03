@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AfterValidator, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import NotValue, Rule, UniqueItems
 from adcp.types.constraints import HttpUrl, StrMinLen1MaxLen64MatchingD373B860, StrMinLen32
 
@@ -36,6 +36,9 @@ class AgentNotificationConfig(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/agent-notification-config.json', pointer='#')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('event_types'),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/agent-notification-config.json', pointer='#', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'event_types': {'contains': {'enum': ['creative.status_changed', 'creative.assignment_changed', 'indicators.changed', 'creative.purged', 'account.status_changed', 'account.change_recorded', 'product.created', 'product.updated', 'product.priced', 'product.removed', 'signal.created', 'signal.updated', 'signal.priced', 'signal.removed', 'wholesale_feed.bulk_change']}}}, 'required': ['event_types']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     subscriber_id: Annotated[StrMinLen1MaxLen64MatchingD373B860, Field(description="Buyer- or registry-supplied identifier for this agent-level subscription endpoint. This is the stable logical key within the authenticated caller's agent-level notification config set: re-sending the same subscriber_id replaces that caller's subscriber URL, event_types, authentication selector, and active flag rather than creating a duplicate. Echoed on every webhook payload so multi-subscriber consumers can route by endpoint. MUST be unique within the submitted `notification_configs[]` array.")]
     url: Annotated[HttpUrl, Field(description='Webhook endpoint URL. Same wire contract as `push-notification-config.url` and account-level `notification-config.url`: `format: "uri"`, no destination-port allowlist enforced by the protocol, SSRF protection via the IP-range check defined in docs/building/by-layer/L1/security.mdx#webhook-url-validation-ssrf. Sellers MUST validate URL syntax, HTTPS usage, hostname normalization, and reserved-range rejection when writing any config, including `active: false` configs. Sellers MUST complete an activation challenge or equivalent proof-of-control before treating a new or changed active subscriber as active.')]

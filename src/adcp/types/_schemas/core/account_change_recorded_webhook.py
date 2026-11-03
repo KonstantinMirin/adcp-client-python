@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types.constraints import StrMaxLen255, StrMinLen16MaxLen255Matching1E5CF9EB, StrMinLen1MaxLen100, StrMinLen1MaxLen100Matching85112285, StrMinLen1MaxLen255, StrMinLen1MaxLen255Matching67860854, StrMinLen1MaxLen4096, StrMinLen1MaxLen64MatchingD373B860
 
 from .ext import ExtensionObject
@@ -32,6 +32,9 @@ class AccountChangeRecordedWebhook(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/account-change-recorded-webhook.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/account-change-recorded-webhook.json', pointer='#/properties/ext', keyword='maxProperties', kind='WIDENED', rung='KEYWORD', fact=20, attribution='docs/plan/rebuild-plan.md §5 objects/maxProperties'),
+    )
     idempotency_key: Annotated[StrMinLen16MaxLen255Matching1E5CF9EB, Field(description='Sender-generated delivery key stable across retries of one fire. Deliberate re-emission uses a new key.')]
     notification_id: Annotated[StrMinLen1MaxLen255Matching67860854, Field(description='Logical notification identifier. Always equals change_id; retries and deliberate re-emissions of the same change retain it.')]
     notification_type: Literal['account.change_recorded']

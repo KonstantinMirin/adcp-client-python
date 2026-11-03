@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import StrMaxLen100Matching85112285, StrMaxLen255, StrMaxLen500, StrMaxLen500Matching94B96057, StrMinLen1MaxLen100Matching85112285, StrMinLen1MaxLen255, StrMinLen1MaxLen255Matching67860854
 
@@ -114,6 +114,9 @@ class AccountChange(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/account-change.json', pointer='#')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('changed_paths'),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/account-change.json', pointer='#/properties/ext', keyword='maxProperties', kind='WIDENED', rung='KEYWORD', fact=20, attribution='docs/plan/rebuild-plan.md §5 objects/maxProperties'),
     )
     change_id: Annotated[StrMinLen1MaxLen255Matching67860854, Field(description='Stable seller-generated identifier for this logical change. Retries and notification re-emissions reuse this identifier.')]
     recorded_at: Annotated[AwareDatetime, Field(description='Time the seller committed or durably observed the change. Feed order is defined by the cursor, not by this timestamp.')]

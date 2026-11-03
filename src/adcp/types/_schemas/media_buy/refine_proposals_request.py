@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import Approximation, SchemaRef
+from adcp.types._base import SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import StrMinLen1, StrMinLen16MaxLen255Matching1E5CF9EB, StrMinLen1MaxLen4096
 
@@ -32,9 +32,6 @@ class RefineProposalsRequest(AdCPVersionEnvelope):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/refine-proposals-request.json', pointer='#')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('refinements'),
-    )
-    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='media-buy/refine-proposals-request.json', pointer='#/properties/refinements/items/oneOf/1/anyOf', keyword='anyOf', kind='UNDERDETERMINED', rung='JOIN', fact=({'required': ['constraints']}, {'required': ['product_changes']}, {'required': ['alternatives']}, {'required': ['ask']}, {'required': ['criteria']}, {'required': ['remove_media_buy_frequency_cap']}, {'properties': {'change_kind': {'type': 'string', 'const': 'cancellation'}}, 'required': ['change_kind']}), attribution='docs/plan/rebuild-plan.md §5 combinators/anyOf'),
     )
     adcp_version: AdcpVersion | None = None
     adcp_major_version: AdcpMajorVersion | None = None

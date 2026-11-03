@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AfterValidator, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import Distinct, ForbiddenGroups, PropertyCount, RequiredGroups, Rule, UniqueItems
 from adcp.types.constraints import IntMin1, NonEmptyList, StrMatchingEFC12812, StrMinLen1
 
@@ -120,6 +120,9 @@ class DaypartSupportTimezoneModes(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('timezone_modes'),
     )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/targeting-overlay-support.json', pointer='#/definitions/daypartSupport/anyOf/1/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'timezone_modes': {'contains': {'const': 'iana'}}}, 'required': ['timezone_modes']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
     timezone_modes: Annotated[list[DaypartTimezoneMode], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
     iana_timezones: Annotated[IanaTimezones | Annotated[NonEmptyList[IANATimezoneIdentifier], Field(json_schema_extra={'uniqueItems': True}), AfterValidator(Distinct())] | None, Field(description="Concrete IANA timezone identifiers accepted by this product. true means every identifier valid in the seller's supported IANA TZDB; an array is the exact supported subset. Required when timezone_modes includes iana and forbidden otherwise.")] = None
     ext: ExtensionObject | None = None
@@ -204,6 +207,9 @@ class TargetingOverlaySupport(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         PropertyCount(minimum=1, maximum=None),
         ForbiddenGroups((('frequency_cap', 'frequency_cap_support'),)),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/targeting-overlay-support.json', pointer='#/definitions/daypartSupport/anyOf/1/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'timezone_modes': {'contains': {'const': 'iana'}}}, 'required': ['timezone_modes']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     geo_countries: CountrySupport | None = None
     geo_countries_exclude: CountrySupport | None = None

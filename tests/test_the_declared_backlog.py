@@ -128,158 +128,166 @@ def _carried() -> dict[tuple[str, str, str], Any]:
 #: (:func:`test_the_harness_result_is_counted_over_the_whole_population`) rather than as a
 #: second 130-entry literal, because its obligation is that it reaches zero.
 #:
-#: **FOUR SHAPES, and the sentence that keeps each -- per SHAPE, because that is the level
-#: at which a declaration is a decision.**  A site is a document's instance of one of
-#: these four and carries no argument of its own:
+#: **RE-PINNED AT ``sdk/ident``: 178 IN 70 -> 128 IN 63, BY §8 SENTENCE 2 AND THE
+#: DECLARATION IT MADE AFFORDABLE.**  "A fact is
+#: declared ONCE, at the node the document STATES it, and never once per pointer the record
+#: inlines it to ... An approximation's identity is ``(stating document, stating pointer,
+#: keyword)``, and every inlined occurrence resolves to it."  Nothing stopped widening and
+#: no cell narrowed: ``emit.repointed`` carried each declaration to every pointer a
+#: reference inlines its node to -- a local reference moved it to the referring pointer, a
+#: remote one copied the target's to the referrer, a third pass folded it off an ``allOf``
+#: conjunct -- and the record resolves references by COPYING, so one conditional reached 58
+#: pointers and one cell 80.  The walk minted 37 and that machinery reported 178.
 #:
-#: * ``patternProperties`` at the CONTAINER rung -- **80 sites in 28 documents**, every one
+#: **AND 89 OF THE 126 ARE A DECLARATION THAT COULD NOT BE AFFORDED BEFORE.**  §5's
+#: ``if`` row compiles an unreadable condition to nothing, §8 sentence 3b's complement
+#: does not reach one that states no ``required``, and §2's answer for a model wider
+#: than its document is a declaration -- which ``lower.rules._conditional`` now writes.
+#: Declaring it under the old rule minted **4,635 sites in 97 documents from 112
+#: distinct conditional facts**, 3,641 of them one logo-slot ``if``; that ratio was the
+#: measurement of the per-pointer defect and not of this drop.  It closes the six RULE
+#: cells ``tests/test_cells.py`` excluded by a derived predicate, and that predicate is
+#: deleted in the same commit.
+#:
+#: **THE 141 THAT LEFT ARE NOT A SET THIS FILE SHOULD HAVE HELD**, which is why this is a
+#: re-pin and not a loosening: every one of them was a second entry for a fact already here,
+#: at a pointer a REFERRING document spells for a node another document states.  §3a settled
+#: the same question for a vocabulary -- *the entry, not the declaration site* -- and the
+#: reader is what resolves an occurrence to the entry (``harness.inseparable_sites``, over
+#: the origin map ``bundle.recorded`` exports).
+#:
+#: **SEVEN SHAPES, and the sentence that keeps each -- per SHAPE, because that is the level
+#: at which a declaration is a decision.**  A site is a document's instance of one of
+#: these seven and carries no argument of its own:
+#:
+#: * ``oneOf`` at the JOIN rung, UNDERDETERMINED -- **15 sites in 13 documents**: §4's
+#:   dispatch cannot separate the branches, which is the one kind §8 gives an instrument of
+#:   its own (``underdetermined_census``, below).
+#: * ``anyOf`` at the JOIN rung, UNDERDETERMINED -- **10 sites in 10 documents**, the same
+#:   shape under the other combinator.  ``harness.inseparable_unions`` draws no
+#:   root/nested distinction and must not, so both positions are here.
+#: * ``patternProperties`` at the CONTAINER rung -- **7 sites in 6 documents**, every one
 #:   a ``patternProperties`` beside a non-``false`` ``additionalProperties``, whose
 #:   faithful answer is a rule family for "keys matching this pattern take this type".
 #:   That is a different thing from §2's three value rules and no row has written it;
 #:   ``adcp-client-python-10l.12`` is the row that owns the keyword.
-#: * ``oneOf`` at the JOIN rung, UNDERDETERMINED -- **18 sites in 16 documents**: §4's
-#:   dispatch cannot separate the branches, which is the one kind §8 gives an instrument of
-#:   its own (``underdetermined_census``, below).
-#: * ``anyOf`` at the JOIN rung, UNDERDETERMINED -- **21 sites in 18 documents**, the same
-#:   shape under the other combinator.  ``harness.inseparable_unions`` draws no
-#:   root/nested distinction and must not, so both positions are here.  This is the one
-#:   group that moved at ``adcp-client-python-3be.23`` (18 in 15 -> 21 in 18).
-#: * ``maxLength`` at the KEYWORD rung -- **1 site**, and it is the only one of the 120 that
+#: * ``else`` at the KEYWORD rung -- **4 sites in 4 documents**: a conditional nested
+#:   inside another conditional's ``else`` arm compiles to nothing on the model, and
+#:   ``docs/plan/final-state.md`` reading 2 makes every exception to reading 1 a DECLARED
+#:   widening rather than a named ceiling.
+#: * ``maxProperties`` at the KEYWORD rung -- **2 sites**, ``/properties/ext`` in
+#:   ``core/account-change.json`` and its webhook twin: the class takes ``ignore`` and
+#:   counts over a smaller key set than the document counts over.  Declared nowhere
+#:   until ``sdk/ident``, because ``Rules.dropped`` had four producers and one
+#:   consumer and ``lower_composition`` read the screen and the distinct set and
+#:   never the dropped set.
+#: * ``maxLength`` at the KEYWORD rung -- **1 site**, and it is the only one of the 128 that
 #:   is a plain keyword rather than a structural answer:
 #:   ``compliance/comply-test-controller-response.json`` at
 #:   ``#/oneOf/6/properties/recorded_calls/items/properties/payload``.
+#: * ``if`` at the KEYWORD rung -- **89 sites in 33 documents**, the condition §5's
+#:   ``if`` row cannot reduce to a clause list and §8 sentence 3b's complement cannot
+#:   reach: it states no ``required``, and a clause tests a key that is PRESENT.
 #:
-#: **Grown by EMISSION and not by permissiveness**, which is the reading
-#: ``codegen/dump_exemptions.py``'s own instrument records for the same shape: "the number
-#: of positions one upstream pattern reaches is a property of how much of the bundle is
-#: packaged, not of how permissive the SDK is".  80 of the 178 are one cell at 80
-#: positions; 58 are ONE conditional at 58 positions; 39 are one derivation at 39 unions;
-#: 1 is a keyword.  **Four causes, not 178.**
-#:
-#: **RE-PINNED AT ``adcp-client-python-3bb``: 120 IN 53 -> 178 IN 70.**  The 58 that
-#: arrived are ``else`` at the KEYWORD rung and nothing is pinned-and-no-longer-declared:
-#: a conditional nested inside another conditional's ``else`` arm compiles to nothing on
-#: the model, and ``docs/plan/final-state.md`` reading 2 makes every exception to reading 1
-#: a DECLARED widening rather than a named ceiling.  The fifth shape's own sentence sits
-#: with the sites below, and the arithmetic is 120 + 58 = 178 facts, 53 + 17 = 70
-#: documents -- 8 of the 25 documents the 58 sites fall in already declared a
-#: ``patternProperties`` or an ``anyOf``.
+#: **SEVEN CAUSES, NOT 128**, which is the reading ``codegen/dump_exemptions.py``'s own
+#: instrument records for the same shape: one row at 89 conditions, one derivation at 25
+#: unions, one cell at 7 containers, one conditional shape at 4 nodes, one discarded drop
+#: set at 2, one keyword at 1.  The pointer count and
+#: the cause count are different numbers over different denominators and the report never
+#: adds them.
 DECLARED_WIDENINGS = {
+    # if at KEYWORD: 89 sites in 33 documents
+    ('aao/agent-publishers.json', '#/definitions/PublisherEntry/allOf/0', 'if'),
+    ('adagents.json', '#/oneOf/1/allOf/1', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/10', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/11', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/12', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/13', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/14', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/15', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/16', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/17', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/18', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/19', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/2', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/20', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/21', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/22', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/23', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/25', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/26', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/3', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/4', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/5', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/6', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/7', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/8', 'if'),
+    ('compliance/comply-test-controller-request.json', '#/allOf/9', 'if'),
+    ('compliance/comply-test-controller-response.json', '#/oneOf/3/properties/forced/allOf/0', 'if'),
+    ('compliance/comply-test-controller-response.json', '#/oneOf/3/properties/forced/allOf/1', 'if'),
+    ('core/agent-notification-config.json', '#', 'if'),
+    ('core/attestation-capabilities.json', '#/allOf/0', 'if'),
+    ('core/bidding-policy-capability.json', '#/definitions/policy_profile/allOf/0', 'if'),
+    ('core/bidding-policy-capability.json', '#/definitions/policy_profile/allOf/1', 'if'),
+    ('core/canonical-product.json', '#/allOf/0', 'if'),
+    ('core/canonical-product.json', '#/allOf/1', 'if'),
+    ('core/delivery-metric-aggregate.json', '#/oneOf/0/allOf/0', 'if'),
+    ('core/delivery-metric-aggregate.json', '#/oneOf/0/allOf/1', 'if'),
+    ('core/delivery-metric-aggregate.json', '#/oneOf/0/allOf/2', 'if'),
+    ('core/delivery-metric-aggregate.json', '#/oneOf/0/allOf/3', 'if'),
+    ('core/demographic-reporting-capability.json', '#/properties/age/allOf/0', 'if'),
+    ('core/demographic-reporting-capability.json', '#/properties/age/allOf/1', 'if'),
+    ('core/demographic-targeting-capability.json', '#/properties/age/allOf/0', 'if'),
+    ('core/demographic-targeting-capability.json', '#/properties/age/allOf/1', 'if'),
+    ('core/demographic-targeting-capability.json', '#/properties/age/allOf/3', 'if'),
+    ('core/demographic-targeting-resolution.json', '#/allOf/0', 'if'),
+    ('core/demographic-targeting-resolution.json', '#/allOf/2', 'if'),
+    ('core/package.json', '#/allOf/2', 'if'),
+    ('core/product.json', '#/allOf/0', 'if'),
+    ('core/product.json', '#/allOf/1', 'if'),
+    ('core/product.json', '#/allOf/10', 'if'),
+    ('core/product.json', '#/allOf/2', 'if'),
+    ('core/product.json', '#/allOf/5', 'if'),
+    ('core/product.json', '#/allOf/6', 'if'),
+    ('core/product.json', '#/allOf/7', 'if'),
+    ('core/product.json', '#/allOf/8', 'if'),
+    ('core/product.json', '#/allOf/9', 'if'),
+    ('core/reporting-delivery-capabilities.json', '#/allOf/5', 'if'),
+    ('core/reporting-delivery-capabilities.json', '#/allOf/6', 'if'),
+    ('core/reporting-delivery-config-state.json', '#/allOf/0', 'if'),
+    ('core/reporting-delivery-config-state.json', '#/allOf/2', 'if'),
+    ('core/reporting-obligation.json', '#/allOf/0', 'if'),
+    ('core/reporting-reliability-statistics.json', '#/allOf/0', 'if'),
+    ('core/signal-definition.json', '#/allOf/4', 'if'),
+    ('core/signal-listing.json', '#/allOf/0', 'if'),
+    ('core/targeting-overlay-support.json', '#/definitions/daypartSupport/anyOf/1/allOf/0', 'if'),
+    ('creative/preview-creative-request.json', '#/allOf/2', 'if'),
+    ('creative/preview-creative-request.json', '#/allOf/3', 'if'),
+    ('formats/canonical/native_in_feed.json', '#/allOf/2', 'if'),
+    ('governance/check-governance-request.json', '#/allOf/10', 'if'),
+    ('governance/check-governance-request.json', '#/allOf/14', 'if'),
+    ('governance/sync-plans-request.json', '#/properties/plans/items/allOf/0', 'if'),
+    ('governance/sync-plans-request.json', '#/properties/plans/items/allOf/1', 'if'),
+    ('media-buy/build-creative-request.json', '#/allOf/8', 'if'),
+    ('media-buy/get-media-buy-delivery-response.json', '#/allOf/3', 'if'),
+    ('media-buy/get-media-buys-response.json', '#/properties/media_buys/items/properties/packages/items/allOf/4', 'if'),
+    ('media-buy/get-products-request.json', '#/allOf/1', 'if'),
+    ('media-buy/get-products-response.json', '#/allOf/2', 'if'),
+    ('media-buy/get-reporting-status-response.json', '#/allOf/6', 'if'),
+    ('protocol/get-adcp-capabilities-response.json', '#/allOf/10', 'if'),
+    ('protocol/get-adcp-capabilities-response.json', '#/allOf/15', 'if'),
+    ('protocol/get-adcp-capabilities-response.json', '#/allOf/16', 'if'),
+    ('protocol/get-adcp-capabilities-response.json', '#/allOf/4', 'if'),
+    ('protocol/get-adcp-capabilities-response.json', '#/allOf/5', 'if'),
+    ('protocol/get-adcp-capabilities-response.json', '#/allOf/8', 'if'),
+    ('protocol/get-adcp-capabilities-response.json', '#/allOf/9', 'if'),
+    ('protocol/get-adcp-capabilities-response.json', '#/properties/adcp/properties/capability_changes/allOf/0', 'if'),
+    ('protocol/get-adcp-capabilities-response.json', '#/properties/adcp/properties/principal/allOf/0', 'if'),
+    ('protocol/get-adcp-capabilities-response.json', '#/properties/creative/allOf/2', 'if'),
+    ('protocol/get-adcp-capabilities-response.json', '#/properties/media_buy/allOf/1', 'if'),
+    ('signals/get-signals-request.json', '#/allOf/1', 'if'),
 
-    # anyOf at JOIN: 21 sites in 18 documents
-    ('adagents.json', '#/oneOf/1/anyOf', 'anyOf'),
-    ('compliance/comply-test-controller-request.json', '#/properties/params/properties/result/anyOf', 'anyOf'),
-    ('compliance/task-completion-data.json', '#/anyOf', 'anyOf'),
-    ('core/async-response-data.json', '#/anyOf', 'anyOf'),
-    ('core/format.json', '#/properties/assets/items/oneOf/0/oneOf/14/properties/requirements/properties/offering_asset_constraints/items/properties/asset_requirements/anyOf', 'anyOf'),
-    ('core/format.json', '#/properties/assets/items/oneOf/1/properties/assets/items/oneOf/14/properties/requirements/properties/offering_asset_constraints/items/properties/asset_requirements/anyOf', 'anyOf'),
-    ('core/mcp-webhook-payload.json', '#/properties/result/anyOf', 'anyOf'),
-    ('core/requirements/asset-requirements.json', '#/anyOf', 'anyOf'),
-    ('core/requirements/catalog-requirements.json', '#/properties/offering_asset_constraints/items/properties/asset_requirements/anyOf', 'anyOf'),
-    ('core/requirements/offering-asset-constraint.json', '#/properties/asset_requirements/anyOf', 'anyOf'),
-    ('creative/list-creative-formats-response.json', '#/properties/formats/items/properties/assets/items/oneOf/0/oneOf/14/properties/requirements/properties/offering_asset_constraints/items/properties/asset_requirements/anyOf', 'anyOf'),
-    ('creative/list-creative-formats-response.json', '#/properties/formats/items/properties/assets/items/oneOf/1/properties/assets/items/oneOf/14/properties/requirements/properties/offering_asset_constraints/items/properties/asset_requirements/anyOf', 'anyOf'),
-    ('media-buy/buy-products-request.json', '#/anyOf', 'anyOf'),
-    ('media-buy/create-media-buy-request.json', '#/anyOf', 'anyOf'),
-    ('media-buy/get-media-buys-response.json', '#/properties/media_buys/items/properties/available_actions/items/anyOf', 'anyOf'),
-    ('media-buy/list-creative-formats-response.json', '#/properties/formats/items/properties/assets/items/oneOf/0/oneOf/14/properties/requirements/properties/offering_asset_constraints/items/properties/asset_requirements/anyOf', 'anyOf'),
-    ('media-buy/list-creative-formats-response.json', '#/properties/formats/items/properties/assets/items/oneOf/1/properties/assets/items/oneOf/14/properties/requirements/properties/offering_asset_constraints/items/properties/asset_requirements/anyOf', 'anyOf'),
-    # The three ``adcp-client-python-3be.23`` re-pinned: declared by a fresh run and not
-    # by the tree this set was last read off.  All three are the SAME SHAPE as the
-    # eighteen above -- an ``anyOf`` at the JOIN rung whose branches §4's dispatch cannot
-    # separate -- and all three are the proposal/refinement closure, which is the part of
-    # the bundle that emitted since.
-    ('media-buy/proposal-refinement.json', '#/oneOf/1/anyOf', 'anyOf'),
-    ('media-buy/refine-proposals-request.json', '#/properties/refinements/items/oneOf/1/anyOf', 'anyOf'),
-    ('media-buy/request-proposals-request.json', '#/anyOf', 'anyOf'),
-    ('trusted-match/provider-registration.json', '#/anyOf', 'anyOf'),
-    # **else at KEYWORD: 58 sites in 25 documents, and they are ONE conditional**
-    # (``adcp-client-python-3bb``, and ``docs/plan/final-state.md`` reading 2).
-    # ``core/reporting-schedule-offering.json#/allOf/0/else`` holds an ``if``/``then`` of
-    # its own: the outer condition does not match, the inner one does, and the document
-    # requires a key the class does not -- ``{"b": "y", "t": "off"}`` is the payload, at
-    # cell scale.  §5's ``then``/``else`` row decides the ANNOTATION ("``ConditionalRequired``
-    # / ``NegatedConditional`` from its ``required`` and a single-name ``not``" -- a nested
-    # conditional is neither), and reading 2 decides the MODULE: a ``model_validate`` that
-    # builds a payload the document refuses is reading 1 failing, and §2 permits it only
-    # where the run says so at the pointer.
-    #
-    # **Grown by EMISSION and not by permissiveness**, which is this set's own reading of
-    # the ``patternProperties`` 80: one schedule conditional reached through the
-    # account/reporting closure in 25 documents.  Only ``core/reporting-schedule.json``,
-    # ``core/reporting-schedule-offering.json``, ``media-buy/get-products-response.json``
-    # and ``signals/get-signals-response.json`` state it at a root; every other site is
-    # that node under a ``properties``/``items`` path, and the paired
-    # ``.../schedule`` and ``.../schedule/allOf/0`` entries are the composing property and
-    # the conjunct ``emit._folded`` leaves where the document states it.
-    #
-    # **What is NOT here, and the measurement is the reason.**  The six RULE cells of
-    # ``3bb``'s second population widen for the OTHER half of the same row -- an ``if``
-    # the ``Match`` reduction cannot read -- and declaring those mints 4,635 sites in 97
-    # documents from 112 distinct conditional facts, 3,641 of them one inlined logo-slot
-    # ``if``.  §8 rules that set out by name: "an approximation nothing can demonstrate
-    # does not belong in the set".  The bead carries it.
-    ('account/list-accounts-response.json', '#/properties/accounts/items/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule', 'else'),
-    ('account/list-accounts-response.json', '#/properties/accounts/items/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule/allOf/0', 'else'),
-    ('account/sync-accounts-request.json', '#/properties/accounts/items/properties/reporting_delivery_configs/items/properties/schedule', 'else'),
-    ('account/sync-accounts-request.json', '#/properties/accounts/items/properties/reporting_delivery_configs/items/properties/schedule/allOf/0', 'else'),
-    ('account/sync-accounts-response.json', '#/oneOf/0/properties/accounts/items/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule', 'else'),
-    ('account/sync-accounts-response.json', '#/oneOf/0/properties/accounts/items/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule/allOf/0', 'else'),
-    ('compliance/comply-test-controller-request.json', '#/properties/params/properties/result/anyOf/0', 'else'),
-    ('compliance/comply-test-controller-request.json', '#/properties/params/properties/result/anyOf/1', 'else'),
-    ('compliance/comply-test-controller-request.json', '#/properties/params/properties/result/anyOf/2/properties/account/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule', 'else'),
-    ('compliance/comply-test-controller-request.json', '#/properties/params/properties/result/anyOf/2/properties/account/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule/allOf/0', 'else'),
-    ('compliance/task-completion-data.json', '#/anyOf/0', 'else'),
-    ('compliance/task-completion-data.json', '#/anyOf/1', 'else'),
-    ('compliance/task-completion-data.json', '#/anyOf/2/properties/account/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule', 'else'),
-    ('compliance/task-completion-data.json', '#/anyOf/2/properties/account/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule/allOf/0', 'else'),
-    ('core/account-with-authorization.json', '#/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule', 'else'),
-    ('core/account-with-authorization.json', '#/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule/allOf/0', 'else'),
-    ('core/account.json', '#/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule', 'else'),
-    ('core/account.json', '#/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule/allOf/0', 'else'),
-    ('core/async-response-data.json', '#/anyOf/0', 'else'),
-    ('core/async-response-data.json', '#/anyOf/15', 'else'),
-    ('core/async-response-data.json', '#/anyOf/18/oneOf/0/properties/account/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule', 'else'),
-    ('core/async-response-data.json', '#/anyOf/18/oneOf/0/properties/account/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule/allOf/0', 'else'),
-    ('core/async-response-data.json', '#/anyOf/34/oneOf/0/properties/creatives/items/properties/account/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule', 'else'),
-    ('core/async-response-data.json', '#/anyOf/34/oneOf/0/properties/creatives/items/properties/account/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule/allOf/0', 'else'),
-    ('core/mcp-webhook-payload.json', '#/properties/result/anyOf/0', 'else'),
-    ('core/mcp-webhook-payload.json', '#/properties/result/anyOf/15', 'else'),
-    ('core/mcp-webhook-payload.json', '#/properties/result/anyOf/18/oneOf/0/properties/account/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule', 'else'),
-    ('core/mcp-webhook-payload.json', '#/properties/result/anyOf/18/oneOf/0/properties/account/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule/allOf/0', 'else'),
-    ('core/mcp-webhook-payload.json', '#/properties/result/anyOf/34/oneOf/0/properties/creatives/items/properties/account/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule', 'else'),
-    ('core/mcp-webhook-payload.json', '#/properties/result/anyOf/34/oneOf/0/properties/creatives/items/properties/account/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule/allOf/0', 'else'),
-    ('core/media-buy.json', '#/properties/account/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule', 'else'),
-    ('core/media-buy.json', '#/properties/account/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule/allOf/0', 'else'),
-    ('core/reporting-delivery-capabilities.json', '#/properties/offerings/items/properties/schedule', 'else'),
-    ('core/reporting-delivery-capabilities.json', '#/properties/offerings/items/properties/schedule/allOf/0', 'else'),
-    ('core/reporting-delivery-config-state.json', '#/properties/configuration/properties/schedule', 'else'),
-    ('core/reporting-delivery-config-state.json', '#/properties/configuration/properties/schedule/allOf/0', 'else'),
-    ('core/reporting-delivery-config.json', '#/properties/schedule', 'else'),
-    ('core/reporting-delivery-config.json', '#/properties/schedule/allOf/0', 'else'),
-    ('core/reporting-delivery-offering.json', '#/properties/schedule', 'else'),
-    ('core/reporting-delivery-offering.json', '#/properties/schedule/allOf/0', 'else'),
-    ('core/reporting-obligation.json', '#/properties/schedule', 'else'),
-    ('core/reporting-obligation.json', '#/properties/schedule/allOf/0', 'else'),
-    ('core/reporting-schedule-offering.json', '#', 'else'),
-    ('core/reporting-schedule.json', '#', 'else'),
-    ('creative/list-creatives-response.json', '#/properties/creatives/items/properties/account/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule', 'else'),
-    ('creative/list-creatives-response.json', '#/properties/creatives/items/properties/account/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule/allOf/0', 'else'),
-    ('creative/sync-creatives-response.json', '#/oneOf/0/properties/creatives/items/properties/account/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule', 'else'),
-    ('creative/sync-creatives-response.json', '#/oneOf/0/properties/creatives/items/properties/account/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule/allOf/0', 'else'),
-    ('media-buy/create-media-buy-response.json', '#/oneOf/0/properties/account/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule', 'else'),
-    ('media-buy/create-media-buy-response.json', '#/oneOf/0/properties/account/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule/allOf/0', 'else'),
-    ('media-buy/get-media-buys-response.json', '#/properties/media_buys/items/properties/account/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule', 'else'),
-    ('media-buy/get-media-buys-response.json', '#/properties/media_buys/items/properties/account/properties/reporting_delivery_configs/items/properties/configuration/properties/schedule/allOf/0', 'else'),
-    ('media-buy/get-products-response.json', '#', 'else'),
-    ('media-buy/get-reporting-status-response.json', '#/properties/periods/items/properties/schedule', 'else'),
-    ('media-buy/get-reporting-status-response.json', '#/properties/periods/items/properties/schedule/allOf/0', 'else'),
-    ('protocol/get-adcp-capabilities-response.json', '#/properties/media_buy/properties/reporting_delivery/properties/offerings/items/properties/schedule', 'else'),
-    ('protocol/get-adcp-capabilities-response.json', '#/properties/media_buy/properties/reporting_delivery/properties/offerings/items/properties/schedule/allOf/0', 'else'),
-    ('signals/get-signals-response.json', '#', 'else'),
-    # maxLength at KEYWORD: 1 sites in 1 documents
-    ('compliance/comply-test-controller-response.json', '#/oneOf/6/properties/recorded_calls/items/properties/payload', 'maxLength'),
-    # oneOf at JOIN: 18 sites in 16 documents
+    # oneOf at JOIN, UNDERDETERMINED: 15 sites in 13 documents
     ('adagents.json', '#/oneOf', 'oneOf'),
     ('brand.json', '#/oneOf', 'oneOf'),
     ('content-standards/calibrate-content-response.json', '#/oneOf', 'oneOf'),
@@ -292,93 +300,44 @@ DECLARED_WIDENINGS = {
     ('content-standards/update-content-standards-request.json', '#/properties/calibration_exemplars/properties/fail/items/oneOf', 'oneOf'),
     ('content-standards/update-content-standards-request.json', '#/properties/calibration_exemplars/properties/pass/items/oneOf', 'oneOf'),
     ('content-standards/validate-content-delivery-response.json', '#/oneOf', 'oneOf'),
-    ('core/async-response-data.json', '#/anyOf/27/oneOf', 'oneOf'),
     ('core/evaluator-spec.json', '#/oneOf', 'oneOf'),
-    ('core/mcp-webhook-payload.json', '#/properties/result/anyOf/27/oneOf', 'oneOf'),
-    ('media-buy/build-creative-request.json', '#/properties/evaluator/oneOf', 'oneOf'),
     ('media-buy/build-creative-response.json', '#/oneOf', 'oneOf'),
     ('registries/v1-canonical-mapping.json', '#/properties/mappings/items/properties/v1_pattern/oneOf', 'oneOf'),
-    # patternProperties at CONTAINER: 80 sites in 28 documents
-    ('compliance/comply-test-controller-request.json', '#/properties/params/properties/result/anyOf/0/properties/extensions', 'patternProperties'),
-    ('compliance/task-completion-data.json', '#/anyOf/0/properties/extensions', 'patternProperties'),
-    ('core/async-response-data.json', '#/anyOf/0/properties/extensions', 'patternProperties'),
-    ('core/async-response-data.json', '#/anyOf/27/oneOf/0/properties/creative_manifest/properties/assets', 'patternProperties'),
-    ('core/async-response-data.json', '#/anyOf/27/oneOf/0/properties/creative_manifest/properties/component_assets/patternProperties/^[a-z][a-z0-9_]*$', 'patternProperties'),
-    ('core/async-response-data.json', '#/anyOf/27/oneOf/1/properties/creative_manifests/items/properties/assets', 'patternProperties'),
-    ('core/async-response-data.json', '#/anyOf/27/oneOf/1/properties/creative_manifests/items/properties/component_assets/patternProperties/^[a-z][a-z0-9_]*$', 'patternProperties'),
-    ('core/async-response-data.json', '#/anyOf/27/oneOf/2/properties/creatives/items/properties/variants/items/properties/creative_manifest/properties/assets', 'patternProperties'),
-    ('core/async-response-data.json', '#/anyOf/27/oneOf/2/properties/creatives/items/properties/variants/items/properties/creative_manifest/properties/component_assets/patternProperties/^[a-z][a-z0-9_]*$', 'patternProperties'),
-    ('core/async-response-data.json', '#/anyOf/28/oneOf/2/properties/manifest/properties/assets', 'patternProperties'),
-    ('core/async-response-data.json', '#/anyOf/28/oneOf/2/properties/manifest/properties/component_assets/patternProperties/^[a-z][a-z0-9_]*$', 'patternProperties'),
-    ('core/async-response-data.json', '#/anyOf/34/oneOf/0/properties/creatives/items/properties/assignment_errors', 'patternProperties'),
+
+    # anyOf at JOIN, UNDERDETERMINED: 10 sites in 10 documents
+    ('adagents.json', '#/oneOf/1/allOf/0/anyOf', 'anyOf'),
+    ('compliance/task-completion-data.json', '#/anyOf', 'anyOf'),
+    ('core/async-response-data.json', '#/anyOf', 'anyOf'),
+    ('core/requirements/asset-requirements.json', '#/anyOf', 'anyOf'),
+    ('media-buy/buy-products-request.json', '#/anyOf', 'anyOf'),
+    ('media-buy/create-media-buy-request.json', '#/anyOf', 'anyOf'),
+    ('media-buy/get-media-buys-response.json', '#/properties/media_buys/items/properties/available_actions/items/anyOf', 'anyOf'),
+    ('media-buy/proposal-refinement.json', '#/oneOf/1/anyOf', 'anyOf'),
+    ('media-buy/request-proposals-request.json', '#/anyOf', 'anyOf'),
+    ('trusted-match/provider-registration.json', '#/anyOf', 'anyOf'),
+
+    # patternProperties at CONTAINER: 7 sites in 6 documents
     ('core/creative-asset.json', '#/properties/assets', 'patternProperties'),
-    ('core/creative-asset.json', '#/properties/component_assets/patternProperties/^[a-z][a-z0-9_]*$', 'patternProperties'),
     ('core/creative-assets.json', '#', 'patternProperties'),
     ('core/creative-manifest.json', '#/properties/assets', 'patternProperties'),
-    ('core/creative-manifest.json', '#/properties/component_assets/patternProperties/^[a-z][a-z0-9_]*$', 'patternProperties'),
-    ('core/creative-representation-set.json', '#/properties/representations/items/properties/assets', 'patternProperties'),
-    ('core/creative-representation-set.json', '#/properties/representations/items/properties/component_assets/patternProperties/^[a-z][a-z0-9_]*$', 'patternProperties'),
-    ('core/creative-representation.json', '#/properties/assets', 'patternProperties'),
-    ('core/creative-representation.json', '#/properties/component_assets/patternProperties/^[a-z][a-z0-9_]*$', 'patternProperties'),
-    ('core/creative-variant.json', '#/properties/manifest/properties/assets', 'patternProperties'),
-    ('core/creative-variant.json', '#/properties/manifest/properties/component_assets/patternProperties/^[a-z][a-z0-9_]*$', 'patternProperties'),
-    ('core/mcp-webhook-payload.json', '#/properties/result/anyOf/0/properties/extensions', 'patternProperties'),
-    ('core/mcp-webhook-payload.json', '#/properties/result/anyOf/27/oneOf/0/properties/creative_manifest/properties/assets', 'patternProperties'),
-    ('core/mcp-webhook-payload.json', '#/properties/result/anyOf/27/oneOf/0/properties/creative_manifest/properties/component_assets/patternProperties/^[a-z][a-z0-9_]*$', 'patternProperties'),
-    ('core/mcp-webhook-payload.json', '#/properties/result/anyOf/27/oneOf/1/properties/creative_manifests/items/properties/assets', 'patternProperties'),
-    ('core/mcp-webhook-payload.json', '#/properties/result/anyOf/27/oneOf/1/properties/creative_manifests/items/properties/component_assets/patternProperties/^[a-z][a-z0-9_]*$', 'patternProperties'),
-    ('core/mcp-webhook-payload.json', '#/properties/result/anyOf/27/oneOf/2/properties/creatives/items/properties/variants/items/properties/creative_manifest/properties/assets', 'patternProperties'),
-    ('core/mcp-webhook-payload.json', '#/properties/result/anyOf/27/oneOf/2/properties/creatives/items/properties/variants/items/properties/creative_manifest/properties/component_assets/patternProperties/^[a-z][a-z0-9_]*$', 'patternProperties'),
-    ('core/mcp-webhook-payload.json', '#/properties/result/anyOf/28/oneOf/2/properties/manifest/properties/assets', 'patternProperties'),
-    ('core/mcp-webhook-payload.json', '#/properties/result/anyOf/28/oneOf/2/properties/manifest/properties/component_assets/patternProperties/^[a-z][a-z0-9_]*$', 'patternProperties'),
-    ('core/mcp-webhook-payload.json', '#/properties/result/anyOf/34/oneOf/0/properties/creatives/items/properties/assignment_errors', 'patternProperties'),
-    ('creative/get-creative-delivery-response.json', '#/properties/creatives/items/properties/variants/items/properties/manifest/properties/assets', 'patternProperties'),
-    ('creative/get-creative-delivery-response.json', '#/properties/creatives/items/properties/variants/items/properties/manifest/properties/component_assets/patternProperties/^[a-z][a-z0-9_]*$', 'patternProperties'),
-    ('creative/get-creative-features-request.json', '#/properties/creative_manifest/properties/assets', 'patternProperties'),
-    ('creative/get-creative-features-request.json', '#/properties/creative_manifest/properties/component_assets/patternProperties/^[a-z][a-z0-9_]*$', 'patternProperties'),
     ('creative/list-creatives-response.json', '#/properties/creatives/items/properties/assets', 'patternProperties'),
-    ('creative/list-creatives-response.json', '#/properties/creatives/items/properties/component_assets/patternProperties/^[a-z][a-z0-9_]*$', 'patternProperties'),
     ('creative/list-creatives-response.json', '#/properties/format_summary', 'patternProperties'),
-    ('creative/preview-creative-request.json', '#/properties/creative_manifest/properties/assets', 'patternProperties'),
-    ('creative/preview-creative-request.json', '#/properties/creative_manifest/properties/component_assets/patternProperties/^[a-z][a-z0-9_]*$', 'patternProperties'),
-    ('creative/preview-creative-request.json', '#/properties/requests/items/properties/creative_manifest/properties/assets', 'patternProperties'),
-    ('creative/preview-creative-request.json', '#/properties/requests/items/properties/creative_manifest/properties/component_assets/patternProperties/^[a-z][a-z0-9_]*$', 'patternProperties'),
-    ('creative/preview-creative-response.json', '#/oneOf/2/properties/manifest/properties/assets', 'patternProperties'),
-    ('creative/preview-creative-response.json', '#/oneOf/2/properties/manifest/properties/component_assets/patternProperties/^[a-z][a-z0-9_]*$', 'patternProperties'),
-    ('creative/sync-creatives-request.json', '#/properties/creatives/items/properties/assets', 'patternProperties'),
-    ('creative/sync-creatives-request.json', '#/properties/creatives/items/properties/component_assets/patternProperties/^[a-z][a-z0-9_]*$', 'patternProperties'),
     ('creative/sync-creatives-response.json', '#/oneOf/0/properties/creatives/items/properties/assignment_errors', 'patternProperties'),
-    ('creative/validate-input-request.json', '#/properties/manifest/properties/assets', 'patternProperties'),
-    ('creative/validate-input-request.json', '#/properties/manifest/properties/component_assets/patternProperties/^[a-z][a-z0-9_]*$', 'patternProperties'),
-    ('media-buy/build-creative-request.json', '#/properties/creative_manifest/properties/assets', 'patternProperties'),
-    ('media-buy/build-creative-request.json', '#/properties/creative_manifest/properties/component_assets/patternProperties/^[a-z][a-z0-9_]*$', 'patternProperties'),
-    ('media-buy/build-creative-request.json', '#/properties/creative_representation_set/properties/representations/items/properties/assets', 'patternProperties'),
-    ('media-buy/build-creative-request.json', '#/properties/creative_representation_set/properties/representations/items/properties/component_assets/patternProperties/^[a-z][a-z0-9_]*$', 'patternProperties'),
-    ('media-buy/build-creative-response.json', '#/oneOf/0/properties/creative_manifest/properties/assets', 'patternProperties'),
-    ('media-buy/build-creative-response.json', '#/oneOf/0/properties/creative_manifest/properties/component_assets/patternProperties/^[a-z][a-z0-9_]*$', 'patternProperties'),
-    ('media-buy/build-creative-response.json', '#/oneOf/1/properties/creative_manifests/items/properties/assets', 'patternProperties'),
-    ('media-buy/build-creative-response.json', '#/oneOf/1/properties/creative_manifests/items/properties/component_assets/patternProperties/^[a-z][a-z0-9_]*$', 'patternProperties'),
-    ('media-buy/build-creative-response.json', '#/oneOf/2/properties/creatives/items/properties/variants/items/properties/creative_manifest/properties/assets', 'patternProperties'),
-    ('media-buy/build-creative-response.json', '#/oneOf/2/properties/creatives/items/properties/variants/items/properties/creative_manifest/properties/component_assets/patternProperties/^[a-z][a-z0-9_]*$', 'patternProperties'),
-    ('media-buy/create-media-buy-request.json', '#/anyOf/0/properties/packages/items/properties/creatives/items/properties/assets', 'patternProperties'),
-    ('media-buy/create-media-buy-request.json', '#/anyOf/0/properties/packages/items/properties/creatives/items/properties/component_assets/patternProperties/^[a-z][a-z0-9_]*$', 'patternProperties'),
-    ('media-buy/create-media-buy-request.json', '#/properties/packages/items/properties/creatives/items/properties/assets', 'patternProperties'),
-    ('media-buy/create-media-buy-request.json', '#/properties/packages/items/properties/creatives/items/properties/component_assets/patternProperties/^[a-z][a-z0-9_]*$', 'patternProperties'),
     ('media-buy/get-products-response.json', '#/properties/extensions', 'patternProperties'),
-    ('media-buy/package-request.json', '#/properties/creatives/items/properties/assets', 'patternProperties'),
-    ('media-buy/package-request.json', '#/properties/creatives/items/properties/component_assets/patternProperties/^[a-z][a-z0-9_]*$', 'patternProperties'),
-    ('media-buy/package-update.json', '#/properties/creatives/items/properties/assets', 'patternProperties'),
-    ('media-buy/package-update.json', '#/properties/creatives/items/properties/component_assets/patternProperties/^[a-z][a-z0-9_]*$', 'patternProperties'),
-    ('media-buy/update-media-buy-request.json', '#/properties/new_packages/items/properties/creatives/items/properties/assets', 'patternProperties'),
-    ('media-buy/update-media-buy-request.json', '#/properties/new_packages/items/properties/creatives/items/properties/component_assets/patternProperties/^[a-z][a-z0-9_]*$', 'patternProperties'),
-    ('media-buy/update-media-buy-request.json', '#/properties/packages/items/properties/creatives/items/properties/assets', 'patternProperties'),
-    ('media-buy/update-media-buy-request.json', '#/properties/packages/items/properties/creatives/items/properties/component_assets/patternProperties/^[a-z][a-z0-9_]*$', 'patternProperties'),
-    ('trusted-match/context-match-response.json', '#/properties/offers/items/properties/creative_manifest/properties/assets', 'patternProperties'),
-    ('trusted-match/context-match-response.json', '#/properties/offers/items/properties/creative_manifest/properties/component_assets/patternProperties/^[a-z][a-z0-9_]*$', 'patternProperties'),
-    ('trusted-match/offer.json', '#/properties/creative_manifest/properties/assets', 'patternProperties'),
-    ('trusted-match/offer.json', '#/properties/creative_manifest/properties/component_assets/patternProperties/^[a-z][a-z0-9_]*$', 'patternProperties'),
-    ('trusted-match/provider-context-match-response.json', '#/properties/offers/items/properties/creative_manifest/properties/assets', 'patternProperties'),
-    ('trusted-match/provider-context-match-response.json', '#/properties/offers/items/properties/creative_manifest/properties/component_assets/patternProperties/^[a-z][a-z0-9_]*$', 'patternProperties'),
+
+    # else at KEYWORD: 4 sites in 4 documents
+    ('core/reporting-schedule-offering.json', '#/allOf/0', 'else'),
+    ('core/reporting-schedule.json', '#/allOf/0', 'else'),
+    ('media-buy/get-products-response.json', '#', 'else'),
+    ('signals/get-signals-response.json', '#', 'else'),
+
+    # maxProperties at KEYWORD: 2 sites in 2 documents
+    ('core/account-change-recorded-webhook.json', '#/properties/ext', 'maxProperties'),
+    ('core/account-change.json', '#/properties/ext', 'maxProperties'),
+
+    # maxLength at KEYWORD: 1 sites in 1 documents
+    ('compliance/comply-test-controller-response.json', '#/oneOf/6/properties/recorded_calls/items/properties/payload', 'maxLength'),
+
 }
 
 #: **§8's UNDERDETERMINED equality, as the set the derivation cannot separate.**  "The set
@@ -403,114 +362,124 @@ DECLARED_WIDENINGS = {
 #: that was a fact and is the reason this is a LIST of 89 and not the number 89: a pointer
 #: arriving or leaving is a fact about a document and a count cannot say which.
 #:
-#: **ONE SHAPE accounts for 70 of the 89**, so the floor is readable rather than a wall:
-#: ``properties/viewability/anyOf`` -- ``core/forecast-point.json``'s and
-#: ``core/canonical-forecast-point.json``'s ``viewability``, an ``anyOf`` of two branches
-#: §4's dispatch cannot separate -- reached through the forecast/proposal/product closure
-#: in 70 places.  The other 19 are in 14 documents and are mostly the
-#: ``products``/``partial_results``/``format_options``/``transformers`` ITEM unions, plus
-#: three roots (``core/product.json``, ``core/transformer.json``, ``adagents.json``'s
-#: conjunct).  Each is a union §4 cannot separate and ``lower.union`` declares nothing at;
-#: **none of them is a widening any row chose**, and the row that teaches §4's dispatch a
-#: fourth separator empties most of this list in one change.
+#: **BOTH SIDES ARE SETS OF §8's IDENTITY NOW, AND THE LIVE FIGURE FELL 1,081 -> 88
+#: (``sdk/ident``).**  §8 sentence 2 declares a fact once, at the node the document states
+#: it, so the DECLARED side is a set of ``(stating document, stating pointer)``.  The
+#: derived side was not: ``harness.inseparable_unions`` reads a RECORD, and a record spells
+#: one stating pointer once per path through the reference graph that reaches it -- so one
+#: inseparable union owed as many declarations as it had referrers, and this list was a
+#: reading of the reference graph rather than of the declarations.  With the derivation read
+#: through ``harness.inseparable_sites`` -- which resolves an occurrence to the site it
+#: states, over the origin map ``bundle.recorded`` exports -- the two sides are the same
+#: kind of thing and the remainder is 88.
+#:
+#: **At ``c2d2f650`` this list was pinned at 89 against a live 1,081**, which is the same
+#: disease its own history records twice over: a list below the truth gets exempted later
+#: instead of acted on.  88 is a SHRINK of the pin and the first figure it has been equal
+#: to since it was written.
+#:
+#: **Every one is a union §4's dispatch cannot separate and ``lower.union`` declares
+#: nothing at**, and **none of them is a widening any row chose**: the walk declares where
+#: it LOWERS a union, and these are nodes it reaches as an alias, a rule source or not at
+#: all.  The row that teaches §4's dispatch a fourth separator empties most of this list in
+#: one change; the row that teaches the walk to declare at a union it does not lower empties
+#: the rest.
 #:
 #: Compared against a FRESH run's declarations and a FRESH run's documents of record, for
-#: :data:`DECLARED_WIDENINGS`' reason.  Over the COMMITTED artifact the two directions read
-#: 58 stale and 21 silent instead, and that difference is ``adcp-client-python-uqf``.
+#: :data:`DECLARED_WIDENINGS`' reason.
 #:
 #: Held as ``document#pointer`` and not as ``harness``'s own sentence: the sentence is
 #: constant text and the site is the fact.
 UNDERDETERMINED_UNIONS: list[str] = [
-
-    'adagents.json#/oneOf/1/allOf/0/anyOf',
-    'adagents.json#/oneOf/1/properties/placements/items/properties/format_options/items/anyOf',
-    'compliance/comply-test-controller-request.json#/properties/params/properties/result/anyOf/0/properties/products/items/anyOf',
-    'compliance/comply-test-controller-request.json#/properties/params/properties/result/anyOf/0/properties/products/items/properties/forecast/properties/points/items/properties/viewability/anyOf',
-    'compliance/comply-test-controller-request.json#/properties/params/properties/result/anyOf/0/properties/proposals/items/properties/allocations/items/properties/forecast/properties/points/items/properties/viewability/anyOf',
-    'compliance/comply-test-controller-request.json#/properties/params/properties/result/anyOf/0/properties/proposals/items/properties/forecast/properties/points/items/properties/viewability/anyOf',
-    'compliance/comply-test-controller-request.json#/properties/params/properties/result/anyOf/1/properties/signals/items/properties/coverage_forecast/properties/points/items/allOf/0/properties/viewability/anyOf',
-    'compliance/task-completion-data.json#/anyOf/0/properties/products/items/anyOf',
-    'compliance/task-completion-data.json#/anyOf/0/properties/products/items/properties/forecast/properties/points/items/properties/viewability/anyOf',
-    'compliance/task-completion-data.json#/anyOf/0/properties/proposals/items/properties/allocations/items/properties/forecast/properties/points/items/properties/viewability/anyOf',
-    'compliance/task-completion-data.json#/anyOf/0/properties/proposals/items/properties/forecast/properties/points/items/properties/viewability/anyOf',
-    'compliance/task-completion-data.json#/anyOf/1/properties/signals/items/properties/coverage_forecast/properties/points/items/allOf/0/properties/viewability/anyOf',
-    'core/async-response-data.json#/anyOf/0/properties/products/items/anyOf',
-    'core/async-response-data.json#/anyOf/0/properties/products/items/properties/forecast/properties/points/items/properties/viewability/anyOf',
-    'core/async-response-data.json#/anyOf/0/properties/proposals/items/properties/allocations/items/properties/forecast/properties/points/items/properties/viewability/anyOf',
-    'core/async-response-data.json#/anyOf/0/properties/proposals/items/properties/forecast/properties/points/items/properties/viewability/anyOf',
-    'core/async-response-data.json#/anyOf/10/oneOf/0/properties/accepted_proposal/allOf/0/properties/forecast/allOf/0/properties/points/items/properties/viewability/anyOf',
-    'core/async-response-data.json#/anyOf/15/properties/signals/items/properties/coverage_forecast/properties/points/items/allOf/0/properties/viewability/anyOf',
-    'core/async-response-data.json#/anyOf/3/properties/partial_results/items/anyOf',
-    'core/async-response-data.json#/anyOf/3/properties/partial_results/items/properties/forecast/properties/points/items/properties/viewability/anyOf',
-    'core/async-response-data.json#/anyOf/5/properties/products/items/properties/forecast/properties/points/items/properties/viewability/anyOf',
-    'core/async-response-data.json#/anyOf/5/properties/proposals/items/allOf/0/properties/forecast/allOf/0/properties/points/items/properties/viewability/anyOf',
-    'core/async-response-data.json#/anyOf/7/properties/products/items/properties/forecast/properties/points/items/properties/viewability/anyOf',
-    'core/async-response-data.json#/anyOf/7/properties/results/items/properties/proposal/properties/forecast/allOf/0/properties/points/items/properties/viewability/anyOf',
-    'core/async-response-data.json#/anyOf/7/properties/results/items/properties/proposals/items/properties/forecast/allOf/0/properties/points/items/properties/viewability/anyOf',
-    'core/async-response-refs/media-buy/get-products-async-response-input-required.json#/properties/partial_results/items/anyOf',
-    'core/async-response-refs/media-buy/get-products-async-response-input-required.json#/properties/partial_results/items/properties/forecast/properties/points/items/properties/viewability/anyOf',
-    'core/canonical-delivery-forecast.json#/properties/points/items/properties/viewability/anyOf',
+    'brand.json#/definitions/data_subject_contestation/anyOf',
+    'brand.json#/oneOf/3/anyOf',
+    'compliance/comply-test-controller-response.json#/oneOf',
+    'content-standards/artifact.json#/$defs/asset_access/oneOf',
+    'content-standards/artifact.json#/properties/assets/items/oneOf',
+    'core/account-ref.json#/oneOf',
+    'core/activation-key.json#/oneOf',
+    'core/assets/asset-union.json#/oneOf',
+    'core/audience-activation-method.json#/oneOf',
+    'core/audience-selector.json#/oneOf/0/anyOf',
+    'core/audience-selector.json#/oneOf/1/anyOf',
+    'core/audience-selector.json#/oneOf/2/anyOf',
+    'core/audience-selector.json#/oneOf',
+    'core/bidding-policy-capability.json#/definitions/policy_profile/anyOf',
+    'core/brand-ref.json#/properties/data_subject_contestation/anyOf',
+    'core/budget-range.json#/anyOf',
     'core/canonical-forecast-point.json#/properties/viewability/anyOf',
-    'core/canonical-product.json#/properties/forecast/properties/points/items/properties/viewability/anyOf',
-    'core/canonical-proposal.json#/properties/forecast/allOf/0/properties/points/items/properties/viewability/anyOf',
-    'core/delivery-forecast.json#/properties/points/items/properties/viewability/anyOf',
+    'core/canonical-optimization-goal.json#/oneOf/0/properties/target_frequency/anyOf',
+    'core/canonical-proposal.json#/properties/total_budget_guidance/anyOf',
+    'core/catchment.json#/oneOf',
+    'core/collection-distribution.json#/anyOf',
+    'core/creative-manifest.json#/oneOf',
+    'core/delivery-metric-aggregate.json#/oneOf',
+    'core/demographic-age-range.json#/anyOf',
+    'core/demographic-reporting-capability.json#/anyOf',
+    'core/forecast-dimension-signal.json#/anyOf',
     'core/forecast-point.json#/properties/viewability/anyOf',
-    'core/mcp-webhook-payload.json#/properties/result/anyOf/0/properties/products/items/anyOf',
-    'core/mcp-webhook-payload.json#/properties/result/anyOf/0/properties/products/items/properties/forecast/properties/points/items/properties/viewability/anyOf',
-    'core/mcp-webhook-payload.json#/properties/result/anyOf/0/properties/proposals/items/properties/allocations/items/properties/forecast/properties/points/items/properties/viewability/anyOf',
-    'core/mcp-webhook-payload.json#/properties/result/anyOf/0/properties/proposals/items/properties/forecast/properties/points/items/properties/viewability/anyOf',
-    'core/mcp-webhook-payload.json#/properties/result/anyOf/10/oneOf/0/properties/accepted_proposal/allOf/0/properties/forecast/allOf/0/properties/points/items/properties/viewability/anyOf',
-    'core/mcp-webhook-payload.json#/properties/result/anyOf/15/properties/signals/items/properties/coverage_forecast/properties/points/items/allOf/0/properties/viewability/anyOf',
-    'core/mcp-webhook-payload.json#/properties/result/anyOf/3/properties/partial_results/items/anyOf',
-    'core/mcp-webhook-payload.json#/properties/result/anyOf/3/properties/partial_results/items/properties/forecast/properties/points/items/properties/viewability/anyOf',
-    'core/mcp-webhook-payload.json#/properties/result/anyOf/5/properties/products/items/properties/forecast/properties/points/items/properties/viewability/anyOf',
-    'core/mcp-webhook-payload.json#/properties/result/anyOf/5/properties/proposals/items/allOf/0/properties/forecast/allOf/0/properties/points/items/properties/viewability/anyOf',
-    'core/mcp-webhook-payload.json#/properties/result/anyOf/7/properties/products/items/properties/forecast/properties/points/items/properties/viewability/anyOf',
-    'core/mcp-webhook-payload.json#/properties/result/anyOf/7/properties/results/items/properties/proposal/properties/forecast/allOf/0/properties/points/items/properties/viewability/anyOf',
-    'core/mcp-webhook-payload.json#/properties/result/anyOf/7/properties/results/items/properties/proposals/items/properties/forecast/allOf/0/properties/points/items/properties/viewability/anyOf',
+    'core/forecast-range.json#/anyOf',
+    'core/format-option-ref.json#/oneOf',
+    'core/format.json#/properties/assets/items/oneOf/0/oneOf',
+    'core/format.json#/properties/assets/items/oneOf/1/properties/assets/items/oneOf',
+    'core/frequency-cap-constraints.json#/anyOf',
+    'core/frequency-cap.json#/anyOf',
+    'core/optimization-goal.json#/oneOf/0/properties/target/oneOf',
+    'core/optimization-goal.json#/oneOf/0/properties/target_frequency/anyOf',
+    'core/optimization-goal.json#/oneOf/1/properties/target/oneOf',
+    'core/optimization-goal.json#/oneOf/2/properties/target/oneOf',
+    'core/optimization-goal.json#/oneOf',
+    'core/placement-definition.json#/anyOf',
     'core/placement-definition.json#/properties/format_options/items/anyOf',
-    'core/product-allocation.json#/properties/forecast/properties/points/items/properties/viewability/anyOf',
+    'core/placement.json#/anyOf',
+    'core/product-filters.json#/properties/budget_range/anyOf',
+    'core/product-filters.json#/properties/geo_proximity/items/oneOf',
+    'core/product-format-declaration.json#/oneOf',
     'core/product.json#/anyOf',
-    'core/product.json#/properties/forecast/properties/points/items/properties/viewability/anyOf',
-    'core/proposal.json#/properties/allocations/items/properties/forecast/properties/points/items/properties/viewability/anyOf',
-    'core/proposal.json#/properties/forecast/properties/points/items/properties/viewability/anyOf',
-    'core/signal-coverage-forecast.json#/properties/points/items/allOf/0/properties/viewability/anyOf',
+    'core/registry-event.json#/$defs/publisherAdagentsPayload/anyOf',
+    'core/reporting-verification.json#/properties/physical_checksums/items/oneOf',
+    'core/signal-definition-enrichment.json#/properties/data_subject_rights/properties/channels/items/anyOf',
+    'core/signal-listing.json#/anyOf',
+    'core/signal-pricing.json#/oneOf',
+    'core/signal-targeting.json#/oneOf/0/anyOf',
+    'core/signal-targeting.json#/oneOf/1/anyOf',
+    'core/signal-targeting.json#/oneOf/2/anyOf',
+    'core/signal-targeting.json#/oneOf',
+    'core/targeting-overlay-requirements.json#/properties/geo_proximity/anyOf/1/anyOf',
+    'core/targeting-overlay-support.json#/properties/geo_proximity/anyOf/1/anyOf',
+    'core/targeting.json#/properties/geo_proximity/items/oneOf',
     'core/transformer.json#/anyOf',
-    'core/wholesale-feed-event.json#/$defs/signal/properties/coverage_forecast/properties/points/items/allOf/0/properties/viewability/anyOf',
-    'core/wholesale-feed-event.json#/oneOf/0/properties/payload/properties/canonical_product/properties/forecast/properties/points/items/properties/viewability/anyOf',
-    'core/wholesale-feed-event.json#/oneOf/0/properties/payload/properties/product/anyOf',
-    'core/wholesale-feed-event.json#/oneOf/0/properties/payload/properties/product/properties/forecast/properties/points/items/properties/viewability/anyOf',
-    'core/wholesale-feed-event.json#/oneOf/1/properties/payload/properties/canonical_product/properties/forecast/properties/points/items/properties/viewability/anyOf',
-    'core/wholesale-feed-event.json#/oneOf/1/properties/payload/properties/product/anyOf',
-    'core/wholesale-feed-event.json#/oneOf/1/properties/payload/properties/product/properties/forecast/properties/points/items/properties/viewability/anyOf',
-    'core/wholesale-feed-webhook.json#/properties/event/$defs/signal/properties/coverage_forecast/properties/points/items/allOf/0/properties/viewability/anyOf',
-    'core/wholesale-feed-webhook.json#/properties/event/oneOf/0/properties/payload/properties/canonical_product/properties/forecast/properties/points/items/properties/viewability/anyOf',
-    'core/wholesale-feed-webhook.json#/properties/event/oneOf/0/properties/payload/properties/product/anyOf',
-    'core/wholesale-feed-webhook.json#/properties/event/oneOf/0/properties/payload/properties/product/properties/forecast/properties/points/items/properties/viewability/anyOf',
-    'core/wholesale-feed-webhook.json#/properties/event/oneOf/1/properties/payload/properties/canonical_product/properties/forecast/properties/points/items/properties/viewability/anyOf',
-    'core/wholesale-feed-webhook.json#/properties/event/oneOf/1/properties/payload/properties/product/anyOf',
-    'core/wholesale-feed-webhook.json#/properties/event/oneOf/1/properties/payload/properties/product/properties/forecast/properties/points/items/properties/viewability/anyOf',
-    'core/wholesale-feed-webhook.json#/properties/event/oneOf/4/properties/payload/properties/signal/properties/coverage_forecast/properties/points/items/allOf/0/properties/viewability/anyOf',
-    'core/wholesale-feed-webhook.json#/properties/event/oneOf/5/properties/payload/properties/signal/properties/coverage_forecast/properties/points/items/allOf/0/properties/viewability/anyOf',
-    'creative/list-transformers-response.json#/properties/transformers/items/anyOf',
-    'governance/check-governance-request.json#/properties/proposal/properties/forecast/allOf/0/properties/points/items/properties/viewability/anyOf',
-    'media-buy/accept-proposal-response.json#/allOf/0/oneOf/0/properties/accepted_proposal/allOf/0/properties/forecast/allOf/0/properties/points/items/properties/viewability/anyOf',
-    'media-buy/buy-products-response.json#/allOf/0/oneOf/0/properties/accepted_proposal/allOf/0/properties/forecast/allOf/0/properties/points/items/properties/viewability/anyOf',
-    'media-buy/get-media-buys-response.json#/properties/media_buys/items/properties/accepted_proposal/allOf/0/properties/forecast/allOf/0/properties/points/items/properties/viewability/anyOf',
-    'media-buy/get-products-async-response-input-required.json#/properties/partial_results/items/anyOf',
-    'media-buy/get-products-async-response-input-required.json#/properties/partial_results/items/properties/forecast/properties/points/items/properties/viewability/anyOf',
-    'media-buy/get-products-response.json#/properties/products/items/anyOf',
-    'media-buy/get-products-response.json#/properties/products/items/properties/forecast/properties/points/items/properties/viewability/anyOf',
-    'media-buy/get-products-response.json#/properties/proposals/items/properties/allocations/items/properties/forecast/properties/points/items/properties/viewability/anyOf',
-    'media-buy/get-products-response.json#/properties/proposals/items/properties/forecast/properties/points/items/properties/viewability/anyOf',
-    'media-buy/list-products-response.json#/properties/products/items/properties/forecast/properties/points/items/properties/viewability/anyOf',
-    'media-buy/media-buy-commitment-response.json#/oneOf/0/properties/accepted_proposal/allOf/0/properties/forecast/allOf/0/properties/points/items/properties/viewability/anyOf',
-    'media-buy/refine-proposals-response.json#/properties/products/items/properties/forecast/properties/points/items/properties/viewability/anyOf',
-    'media-buy/refine-proposals-response.json#/properties/results/items/properties/proposal/properties/forecast/allOf/0/properties/points/items/properties/viewability/anyOf',
-    'media-buy/refine-proposals-response.json#/properties/results/items/properties/proposals/items/properties/forecast/allOf/0/properties/points/items/properties/viewability/anyOf',
-    'media-buy/request-proposals-response.json#/properties/products/items/properties/forecast/properties/points/items/properties/viewability/anyOf',
-    'media-buy/request-proposals-response.json#/properties/proposals/items/allOf/0/properties/forecast/allOf/0/properties/points/items/properties/viewability/anyOf',
-    'signals/get-signals-response.json#/properties/signals/items/properties/coverage_forecast/properties/points/items/allOf/0/properties/viewability/anyOf',
+    'core/wholesale-feed-event.json#/$defs/appliesTo/oneOf',
+    'core/wholesale-feed-event.json#/$defs/signal/anyOf',
+    'core/wholesale-feed-event.json#/oneOf/0/properties/payload/anyOf',
+    'core/wholesale-feed-event.json#/oneOf/1/properties/payload/anyOf',
+    'core/wholesale-feed-event.json#/oneOf',
+    'creative/get-creative-features-response.json#/oneOf',
+    'creative/preview-creative-request.json#/properties/requests/items/anyOf',
+    'creative/sync-creatives-request.json#/anyOf',
+    'creative/sync-creatives-response.json#/oneOf',
+    'formats/canonical/coordinated_placements.json#/properties/components/items/anyOf/1/oneOf',
+    'media-buy/build-creative-response.json#/oneOf/1/properties/preview/properties/previews/items/anyOf',
+    'media-buy/build-creative-response.json#/oneOf/2/properties/creatives/items/anyOf',
+    'media-buy/change-term-constraints.json#/oneOf/1/anyOf',
+    'media-buy/change-term-constraints.json#/oneOf/3/anyOf',
+    'media-buy/control-media-buy-request.json#/anyOf',
+    'media-buy/create-media-buy-response.json#/oneOf',
+    'media-buy/decline-proposals-response.json#/anyOf',
+    'media-buy/get-reporting-status-response.json#/oneOf',
+    'media-buy/package-control.json#/anyOf',
+    'media-buy/proposal-budget-constraint.json#/anyOf',
+    'media-buy/proposal-refinement.json#/oneOf',
+    'media-buy/refine-proposals-response.json#/anyOf',
+    'media-buy/refine-proposals-response.json#/properties/results/items/oneOf',
+    'media-buy/request-proposals-response.json#/anyOf',
+    'media-buy/sync-audiences-response.json#/oneOf',
+    'media-buy/sync-catalogs-response.json#/oneOf',
+    'media-buy/sync-reporting-receipts-response.json#/properties/results/items/anyOf',
+    'media-buy/update-media-buy-response.json#/oneOf',
+    'pricing-options/price-breakdown.json#/properties/adjustments/items/oneOf',
+    'signals/get-signals-response.json#/properties/signals/items/anyOf',
+
 ]
 
 
@@ -544,15 +513,35 @@ def test_the_underdetermined_equality_holds_in_both_directions() -> None:
     fail hides the second -- and the STALE direction is red today, so the SILENT ratchet
     would never be read and could rot exactly the way the empty list it replaces did.
 
-    **THE STALE DIRECTION IS RED, AT 3, AND DELIBERATELY NOT PINNED
-    (``adcp-client-python-10l.110``).**  The cause is decided and unwritten rather than
-    unknown: ``architecture.md``'s "An approximation's pointer is the SchemaRef spelling"
-    (2026-10-29) names exactly this -- a declaration written at the node the WALK reached,
-    where the class is stamped at the ``SchemaRef`` spelling one ``allOf`` conjunct away.
-    ``adagents.json#/oneOf/1/anyOf`` is declared and separable while
-    ``adagents.json#/oneOf/1/allOf/0/anyOf`` is inseparable and declared by nothing: one
-    union, two spellings, counted twice.  An equality is an OBLIGATION and not a ratchet,
-    so it stays at ``[]`` and reddens until that lands.
+    **THE STALE DIRECTION IS RED, AT 7, AND DELIBERATELY NOT PINNED
+    (``adcp-client-python-10l.110``; re-measured at ``sdk/ident``).**  It was **16 at
+    ``c2d2f650``** and the cause §8 sentence 2 removed is the one
+    ``adcp-client-python-10l.110`` named: a declaration carried to a pointer OTHER than the
+    one the document states the combinator at -- ``adagents.json#/oneOf/1/anyOf`` declared
+    and separable while ``adagents.json#/oneOf/1/allOf/0/anyOf`` was inseparable and
+    declared by nothing, one union under two spellings.  With the declaration at the
+    stating pointer and the derivation read as identities, that pair is one site and 9 of
+    the 16 go with it.
+
+    **6 OF THE 7 THAT REMAIN ARE ONE CAUSE, AND IT IS §8 SENTENCE 3a UNBUILT HERE.**  Each
+    is a union the walk lowers and declares whose branches the STORED record spells as
+    references into its own section -- measured: 1 of 2 branches at each of the four
+    ``calibration_exemplars`` sites and at ``available_actions/items``, 6 of 7 at
+    ``media-buy/proposal-refinement.json#/oneOf/1/anyOf`` -- and
+    ``inseparable_unions``' shape test reads a bare ``$ref`` branch as neither an object
+    nor a node with ``properties``, so the pair is never put to ``separates`` and the union
+    is absent from the derived side.  §8 sentence 3a is exactly the sentence that answers
+    it: *a reader asking what the document states reads through the storage*.
+    ``inseparable_unions`` is such a reader and does not yet read through it, and
+    ``bundle.expanded`` is the reading it needs.
+
+    **The seventh is ``core/async-response-data.json#/anyOf`` and it is a different
+    disagreement**: 42 branches, none a bare reference, so the derivation reaches it and
+    answers SEPARABLE where ``lower.union.overlapping`` answered OVERLAPPING.  Two readings
+    of one node disagreeing is this equality's own point; which of them is wrong is
+    unmeasured and is not this row's.
+
+    An equality is an OBLIGATION and not a ratchet, so this stays red and names the 7.
 
     ``silent`` arrives as ``harness``'s own SENTENCE and :data:`UNDERDETERMINED_UNIONS`
     holds the SITE, so the site is taken off the front: the suffix is constant text and
@@ -560,10 +549,15 @@ def test_the_underdetermined_equality_holds_in_both_directions() -> None:
     """
     known = set(bundle.portable(BUNDLE))
     out = compiled(BUNDLE, sorted(known))
+    # ``bundle.recorded`` and not ``bundle.record``: §8 sentence 2 makes both sides of this
+    # equality sets of ``(stating document, stating pointer)``, and resolving an inlined
+    # occurrence to the site it states needs the origin map the inliner exports beside the
+    # record (``harness.inseparable_sites``).  The pair travels together because an
+    # ``id``-keyed map is sound only while its record is alive.
     records = {
-        document: record
+        document: got
         for document in sorted(out.emitted)
-        if isinstance(record := bundle.record(BUNDLE, document, known), dict)
+        if isinstance(got := bundle.recorded(BUNDLE, document, known), tuple)
     }
     claimed("documents of record a fresh run emits", set(records))
     stale, silent = harness.underdetermined_census(

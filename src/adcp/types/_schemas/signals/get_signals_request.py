@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Dependencies, Match, Rule, UniqueItems
 from adcp.types.constraints import IntMin1, StrMatchingEFC12812
 
@@ -70,6 +70,9 @@ class GetSignalsRequest(AdCPVersionEnvelope):
         Dependencies('if_pricing_version', ('if_wholesale_feed_version',)),
         ConditionalRequired((Match('discovery_mode', True, ('wholesale',)),), require=(), forbid=('signal_spec', 'signal_refs', 'signal_ids')),
         UniqueItems('fields'),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='signals/get-signals-request.json', pointer='#/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'anyOf': [{'required': ['if_wholesale_feed_version']}, {'required': ['if_pricing_version']}]}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     discovery_mode: Annotated[DiscoveryMode | None, Field(description="Declares caller intent for this request. 'brief' (default): semantic discovery — signal_spec, signal_refs, or legacy signal_ids is required and the agent performs inference/RAG. 'wholesale': raw wholesale signals feed enumeration — signal_spec, signal_refs, and signal_ids MUST NOT be provided and the agent returns its full priced signals feed, paginated, scoped by filters/account/destinations/countries when present. Sellers receiving requests from pre-v3.1 clients without discovery_mode MUST default to 'brief'. Timing semantics: 'wholesale' is a wholesale signals feed read — agents SHOULD respond synchronously and MUST NOT route a 'wholesale' request through the async/Submitted arm; partial completion is signalled via the response's incomplete[] field, not via a task-handoff envelope. Agents that do not implement wholesale enumeration MAY return INVALID_REQUEST for wholesale calls; callers SHOULD probe via get_adcp_capabilities (signals.discovery_modes) first.")] = 'brief'
     account: Annotated[AccountReference | None, Field(description="Account for this request. When provided, the signals agent returns per-account pricing options if configured. In 'wholesale' mode, this is the rate-card scope: when omitted in wholesale mode, agents return their default rate-card pricing or omit pricing_options entirely. A reference that does not resolve returns ACCOUNT_NOT_FOUND rather than default pricing, unless the seller provisions lazily. See /docs/accounts/overview#account-references-before-provisioning.")] = None
