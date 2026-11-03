@@ -74,6 +74,7 @@ dict section 6 deleted.
 from __future__ import annotations
 
 import copy
+import functools
 import hashlib
 import importlib
 import json
@@ -495,8 +496,40 @@ def canonicalisation_shared_within_one_call() -> Iterator[dict[str, Any]]:
     subschemas, 504 at the measured worst, it is discarded on exit including on an
     exception, and that size is the figure above rather than an unknown.  The name
     says the lifetime, so a later reader cannot widen it without renaming it.
+
+    **THE ENTRY IS A SERIALISED COPY AND NOT THE OBJECT, because the way OUT of this
+    memo was the second largest cost in the whole check.**  An entry must be handed
+    back as an independent value -- the library rewrites the nodes it is given -- and
+    ``copy.deepcopy`` is the wrong instrument for that here.  ``canonicalish`` rebuilds
+    its argument before recursing, so its result carries NO internal aliasing: measured
+    over the 300 largest results of three pairs, 275,143 / 808,576 / 851,328 structural
+    ``dict``/``list`` nodes at 275,143 / 808,576 / 851,328 distinct ``id``s -- an aliasing
+    factor of 1.000 in every case.  ``deepcopy``'s whole extra machinery over a plain
+    rebuild is the identity memo that preserves aliasing there is none of, and it shows:
+    110,496,108 ``id()`` calls and 16,194,960 ``_keep_alive`` calls on one 120 s pair.
+
+    So the entry holds the result's JSON text and a hit is ``json.loads``, which is C and
+    allocates the same tree:
+
+    ======================================  ==============  ================  ==========
+    300 largest results of                  ``deepcopy``    ``json.loads``    speed-up
+    ======================================  ==============  ================  ==========
+    ``governance/check-governance-request``        247.6 ms           80.3 ms       3.1x
+    ``core/creative-representation-set``           993.7 ms          291.7 ms       3.4x
+    ``core/mcp-webhook-payload``                  1076.0 ms          370.7 ms       2.9x
+    ======================================  ==============  ================  ==========
+
+    **The serialisation is CHECKED rather than assumed**, which is what makes it a copy
+    and not an approximation of one: the text is read back and compared to the result
+    before the entry is kept, so a value the round trip would alter -- a non-string key, a
+    tuple, anything ``json`` declines -- is held as the object and deep-copied as before.
+    Measured over 900 results of those three pairs: 0 that ``json`` declined and 0 that
+    came back unequal, so the fallback is a guarantee and not a cost.
+
+    The MISS hands back the result itself and holds only the text, so a miss now copies
+    once where it copied twice.
     """
-    memo: dict[str, Any] = {}
+    memo: dict[str, tuple[str | None, Any]] = {}
     uncached = _hjs_canon.canonicalish
 
     def shared(schema: Any) -> Any:
@@ -504,18 +537,82 @@ def canonicalisation_shared_within_one_call() -> Iterator[dict[str, Any]]:
             key = json.dumps(schema, sort_keys=True, default=repr)
         except (TypeError, ValueError):
             return uncached(schema)
-        hit = memo.get(key)
-        if hit is None:
-            hit = memo[key] = uncached(schema)
-        # A DEEP COPY on the way out: the library mutates the nodes it is handed, so
-        # returning the held object would let one call corrupt every later one.
-        return copy.deepcopy(hit)
+        entry = memo.get(key)
+        if entry is None:
+            result = uncached(schema)
+            blob = _round_trips(result)
+            memo[key] = (blob, None if blob is not None else result)
+            return result
+        blob, held = entry
+        return copy.deepcopy(held) if blob is None else json.loads(blob)
 
     _hjs_canon.canonicalish = shared
     try:
         yield memo
     finally:
         _hjs_canon.canonicalish = uncached
+
+
+def _round_trips(value: Any) -> str | None:
+    """``value`` as JSON text if reading that text back yields ``value``, else ``None``.
+
+    The copy clause of :func:`canonicalisation_shared_within_one_call`, stated as a
+    predicate so the fallback is readable: ``None`` means "this value is not a thing JSON
+    text can stand in for", and the one caller then holds the object and deep-copies it.
+    ``==`` and not a type walk, because what the caller needs is that the value handed
+    back equals the one ``canonicalish`` produced, which is exactly what ``==`` says.
+    """
+    try:
+        blob = json.dumps(value)
+    except (TypeError, ValueError):
+        return None
+    return blob if json.loads(blob) == value else None
+
+
+@contextmanager
+def validator_classes_shared_within_one_call() -> Iterator[Any]:
+    """Unbound ``hypothesis_jsonschema``'s validator-class cache for ONE check.
+
+    **THE LARGEST SINGLE COST IN THE CHECK, and it is a cache that is too small rather
+    than a computation that is needed.**  ``merged`` ends by calling
+    ``_get_validator_class`` on every schema it produces (``_canonicalise.py:853``), which
+    validates that merged schema against its own METASCHEMA -- a full
+    ``jsonschema.check_schema`` walk, measured at 41.6 ms each.  The library caches the
+    answer under ``lru_cache(maxsize=128)``, and 128 does not hold one document's merged
+    subschemas, so the cache EVICTS entries the same call asks for again.  Measured per
+    pair, single process, instrumented rather than profiled:
+
+    ==========================================  =======  ==========  ======  ==========
+    pair                                          calls    distinct  misses  re-walked
+    ==========================================  =======  ==========  ======  ==========
+    ``core/creative-representation-set#``         8,181         600   1,069        44%
+    ``governance/check-governance-request#``     47,697         926   3,527        74%
+    ``core/mcp-webhook-payload#``                29,401       1,604   2,082        23%
+    ==========================================  =======  ==========  ======  ==========
+
+    "re-walked" is the share of metaschema walks that re-derive an answer the SAME call
+    already had and the bound threw away.  That share of 74.1% / 14.8% / 40.4% of those
+    pairs' budgets is what this removes, and it removes nothing else: the cache is the
+    library's own function under its own key, rebuilt with no bound and put back on exit.
+
+    **The lifetime is the same lifetime the canonicalisation sharing has, and for the same
+    reason.**  What section 6 forbids is a process-global store that grows across pairs and
+    workers; this one holds one document's distinct merged subschemas -- 1,604 at the
+    measured worst -- and is dropped on exit including on an exception, which the restored
+    bounded cache then proves by holding its own 128 again.
+    """
+    module = _hjs_canon.__dict__
+    #: The private name as the module spells it.  Module scope does not mangle, so this is
+    #: the global ``_get_validator_class`` resolves at call time -- rebinding it here is
+    #: what reaches the library's own call site without touching the library's source.
+    name = "__get_validator_class"
+    bounded = module[name]
+    unbounded = functools.lru_cache(maxsize=None)(bounded.__wrapped__)
+    module[name] = unbounded
+    try:
+        yield unbounded
+    finally:
+        module[name] = bounded
 
 
 def format_pattern_positions(schema: Any) -> list[tuple[str, dict]]:
@@ -1242,7 +1339,10 @@ def check_accepts(
 
     try:
         if held is None:
-            with canonicalisation_shared_within_one_call():
+            with (
+                canonicalisation_shared_within_one_call(),
+                validator_classes_shared_within_one_call(),
+            ):
                 run = given(instance=strategy(schema, cf))(body)
                 run = settings(
                     max_examples=examples,
@@ -2416,7 +2516,10 @@ def one_instance(schema: Mapping[str, Any], custom_formats: Mapping[str, Any]) -
     def body(instance: Any) -> None:
         drawn.append(instance)
 
-    with canonicalisation_shared_within_one_call():
+    with (
+        canonicalisation_shared_within_one_call(),
+        validator_classes_shared_within_one_call(),
+    ):
         run = given(instance=strategy(dict(schema), dict(custom_formats)))(body)
         settings(max_examples=1, phases=[Phase.explicit, Phase.generate], **_SETTINGS)(run)()
     if not drawn:
