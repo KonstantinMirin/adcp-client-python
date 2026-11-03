@@ -213,6 +213,27 @@ def _node_or_none(doc: dict, into: str) -> dict | None:
     return node if isinstance(node, dict) else None
 
 
+def _declaring_module(
+    document: str, symbol: str, bound: ir.Module, abroad: Mapping[str, str]
+) -> str | None:
+    """The MODULE that declares ``symbol``, for a binding of this module that names it.
+
+    §1 (2026-11-03): a binding declares nothing, so a reader counting declarations has to
+    reach the one it names -- and the naming pass knows the symbol and not where it lives,
+    because nothing under ``lower/`` may ask which other documents a run holds (§9).  This
+    is the run's half: local first, since a symbol this module declares is this module's,
+    then the modules it REFERENCES, which is the order the walk resolved the type in.
+
+    ``None`` where neither answers, which is a reading this run does not have rather than
+    one to guess at: ``tests/test_the_domain_surface.py`` reports it instead of keying the
+    path on the module that merely references the class, which would count a second path
+    as its own declaration.  Measured over the 1,054 portable documents: 0.
+    """
+    if symbol in bound.symbols.values():
+        return module_path(document)
+    return module_path(abroad[symbol]) if symbol in abroad else None
+
+
 def module_path(document: str) -> str:
     """D1: the module is the document path with hyphens as underscores.
 
@@ -908,6 +929,22 @@ class Emitted:
     #: (``lower/names.py``'s ``the_surface_exports``), so the rule, the surface and the
     #: check read one record and cannot disagree about what is exported.
     surface: dict[str, dict[str, str]] = field(default_factory=dict)
+    #: **MODULE** -> ``ir.Module.binds``: §1's bindings in it, symbol -> the symbol it
+    #: names.  Keyed on the module for :attr:`surface`'s reason and written beside it.
+    #:
+    #: §1 (2026-11-03): "an ``X = <bare Name>`` is a binding, not a declaration."  This is
+    #: the run's own answer to which of its statements DECLARE, and it is the only thing
+    #: the gate on §1's "the number of export paths equals the number of distinct
+    #: declarations behind them" can be stated over: the runtime interns an ``Annotated``
+    #: alias and a ``Literal``, so ``id()`` cannot tell one declaration exported twice
+    #: (reading 6) from two documents each stating one constrained scalar (reading 4) --
+    #: and §1 rules that charging the second "makes it a gate nobody can satisfy rather
+    #: than one that finds a defect".
+    #:
+    #: The value is the ``(module, symbol)`` of the DECLARATION it names, with the module
+    #: ``None`` where this run cannot say which one it is (:func:`_declaring_module`) --
+    #: an answer a reader reports rather than one it fills in.
+    binds: dict[str, dict[str, tuple[str | None, str]]] = field(default_factory=dict)
     #: Section 5's ``default`` row, the REPORTED half: ``document -> {pointer -> the
     #: value dropped}``, for a default the document states on a REQUIRED property.
     #: Dropping it changes no accepted set -- the key is in every admitted instance,
@@ -1236,6 +1273,7 @@ def decidable(
     value_lists: Mapping[tuple[object, ...], ValuesImport | str] = {},
     judged: Mapping[str, str] = {},
     objects: Mapping[str, Target] = {},
+    abroad: frozenset[str] = frozenset(),
     *,
     known: Collection[str],
 ) -> tuple[Module, ir.Module] | Refusal:
@@ -1304,7 +1342,13 @@ def decidable(
         for symbol, wanted in census.items()
         if wanted - {document}
     )
-    bound = lower_names.assign(mod, carriers, elsewhere, judged)
+    # **§1's one-path rule across a module boundary**: ``abroad`` is the symbols the
+    # modules this document REFERENCES already export, so a named node that is a bare
+    # ``$ref`` to one of them can be seen for what it is -- a second path to a class the
+    # declaring module publishes.  Only the run can answer it (a module's own walk knows
+    # the symbol and not whether the other module exports it), and §9 is satisfied because
+    # a reference target is in the closure of every run holding this document.
+    bound = lower_names.assign(mod, carriers, elsewhere, judged, abroad)
     if isinstance(bound, Refusal):
         # §4's two naming refusals, both VERDICTS of the document: two pointers deriving
         # one class name, and a branch with no identity.  Returned from here because this
@@ -1564,6 +1608,12 @@ def emit(
     )
 
     lowered: dict[str, tuple[Module, ir.Module, dict]] = {}
+    #: document -> the symbols its walk can bind from ANOTHER module, each with the
+    #: document whose module declares it.  §1's one-path rule across a module boundary
+    #: needs both halves -- whether the declaring module exports the symbol (the ``abroad``
+    #: argument below) and WHICH module that is (:attr:`Emitted.binds`) -- and only the run
+    #: can answer either.  Filled as the order reaches each document.
+    abroad: dict[str, dict[str, str]] = {}
     #: ``$ref`` URI -> the NODE it names, for §2's intersection rule
     #: (:meth:`compiler.Module.resolve_node`).  **Run-level and not per document**, and
     #: the reason is whose declaration that rule reads: it compares two property
@@ -2200,11 +2250,39 @@ def emit(
 
     for document in ordered:
         doc = bundle.read(bundle_dir, document)
+        sites_of = resolve(document)
+        named_types, restated, objects_of = (
+            vocabularies(document),
+            restatements(document),
+            objects(document),
+        )
+        # **§1's one-path rule across a module boundary**: symbol -> the document whose
+        # module declares it, for every symbol this document's walk can bind from another
+        # module.  The dependency ORDER is what makes it readable here -- every target is
+        # finished before its referrer is parsed -- so this is the same fact the three
+        # target mappings carry, asked of the finished module.
+        #
+        # **All three and not just ``$ref``**, measured: ``core.ReportingCloud`` is §3a's
+        # restating title bound to ``enums.DeliveryRecipientCloud``, which the bundle
+        # spells as a titled ``enum`` and NOT as a reference, so a reading over the
+        # reference sites alone leaves exactly the case §1's catalogue paragraph names --
+        # "where a rooted vocabulary and a referencing position both export one object ...
+        # the root's name is the one the surface keeps".
+        abroad[document] = {
+            target.symbol: target.document
+            for target in (
+                *sites_of.values(),
+                *named_types.values(),
+                *restated.values(),
+                *objects_of.values(),
+            )
+            if isinstance(target, Target) and target.document in lowered
+        }
         outcome = decidable(
             bundle_dir,
             document,
             doc,
-            resolve(document),
+            sites_of,
             named.get(document, frozenset()),
             # The run's own reading of every reference spelled absolutely, and beside it
             # the spellings that are relative to a BASE's document (:func:`based_nodes`).
@@ -2216,11 +2294,18 @@ def emit(
             asked.setdefault(document, set()),
             inherited_sites(document),
             census.get(domain(document), {}),
-            vocabularies(document),
-            restatements(document),
+            named_types,
+            restated,
             value_lists(document),
             judged(document),
-            objects(document),
+            objects_of,
+            # Narrowed to the symbols the declaring module EXPORTS, which is what makes a
+            # binding to one a second path on §1's surface rather than a private import.
+            frozenset(
+                symbol
+                for symbol, where in abroad[document].items()
+                if symbol in lowered[where][1].exports
+            ),
             known=known,
         )
         if isinstance(outcome, Refusal):
@@ -2334,6 +2419,16 @@ def emit(
         # §1's export set, carried through from the naming pass unchanged: this is a
         # record and not a second derivation (:attr:`Emitted.surface`).
         out.surface[module_path(document)] = dict(bound.exports)
+        # §1's bindings beside it, same pass and same reason, with the DECLARING MODULE
+        # resolved: the pass knows the symbol a binding names and not where it lives, and
+        # a reader counting declarations needs both or it keys a second path on the module
+        # that merely references it.  Local first -- a symbol this module declares is this
+        # module's -- then the referenced modules, which is the same order the walk
+        # resolved the type in.
+        out.binds[module_path(document)] = {
+            symbol: (_declaring_module(document, names, bound, abroad[document]), names)
+            for symbol, names in bound.binds.items()
+        }
         if mod.drops:
             out.drops[document] = dict(mod.drops)
         if mod.carries_nothing:

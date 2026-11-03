@@ -85,11 +85,10 @@ from ._schemas.creative.preview_creative_response import (
 from ._schemas.creative.preview_render import (
     PreviewRender as PreviewRender,
     PreviewRenderBoth as PreviewRenderBoth,
-    PreviewRenderBothDimensions as PreviewRenderBothDimensions,
     PreviewRenderBothEmbedding as PreviewRenderBothEmbedding,
     PreviewRenderHtml as PreviewRenderHtml,
-    PreviewRenderHtmlDimensions as PreviewRenderHtmlDimensions,
     PreviewRenderUrl as PreviewRenderUrl,
+    PreviewRenderUrlDimensions as PreviewRenderUrlDimensions,
 )
 from ._schemas.creative.sync_creatives_async_response_input_required import (
     SyncCreativesInputRequired as SyncCreativesInputRequired,
@@ -164,11 +163,10 @@ __all__ = [
     'PreviewCreativeVariantResponse',
     'PreviewRender',
     'PreviewRenderBoth',
-    'PreviewRenderBothDimensions',
     'PreviewRenderBothEmbedding',
     'PreviewRenderHtml',
-    'PreviewRenderHtmlDimensions',
     'PreviewRenderUrl',
+    'PreviewRenderUrlDimensions',
     'ProductTarget',
     'ReplaceAssignment',
     'SyncCreativesError',

@@ -98,7 +98,7 @@ from __future__ import annotations
 
 import keyword as _keyword
 import re
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Any
 
@@ -1453,6 +1453,95 @@ def _at(declaration: ir.Declaration) -> str | None:
     return None
 
 
+def names_a_declaration(
+    declaration: ir.Declaration, imports: Iterable[tuple[str, str]]
+) -> str | None:
+    """``X = Y``: the POINTER or SYMBOL this declaration merely NAMES, or ``None`` where
+    it states a type of its own.
+
+    §1 (2026-11-03): "**A gate on this counts DECLARATIONS, not ``id()`` and not names**
+    ... an ``X = <bare Name>`` is a binding, not a declaration", and "the other spellings
+    are the names of positions that REFERENCE it, and a position that references a class
+    does not name it".  This is that sentence as a predicate, and it is HERE because the
+    two readers must not drift: :func:`assign` drops the export and relocates it to the
+    declaring position, and :attr:`codegen.ir.Module.binds` records the answer so the gate
+    grades the same reading the compiler applied.
+
+    **The test is for the WHOLE STATEMENT being a bare name**: an alias whose
+    :class:`codegen.ir.TypeRef` holds a path and nothing else -- no container, no
+    arguments, no literals, no members, no facts, no format, no validators -- AND which
+    carries no description, says only "this position is that type".  That is §4's identity
+    binding (:func:`adopt`) and the cross-document ``$ref`` at a named node, and both
+    render as ``X = Y``, so ``X is Y`` at run time.
+
+    **The DESCRIPTION is in the test and the measurement is why.**  An alias that carries
+    one renders ``X = Annotated[Y, Field(description=...)]``, which is a different OBJECT
+    from ``Y`` and a sentence this position states -- ``core.Qualifier`` over
+    ``core.CanonicalMetricQualifier`` is the worked case, and reading it as a binding
+    dropped a name that is nobody's second path.  A description changes no admitted
+    instance, so it is out of §3a's entry key; it is a statement made HERE, so it is in
+    this one.  The two tests answer different questions and must not be made to agree.
+
+    **A D5 CONSTRAINTS ALIAS IS NOT A BINDING, and that is the whole of why reading 4 and
+    reading 6 do not both claim the same symbol.**  ``DaastOffset =
+    adcp.types.constraints.StrMatching38E7F7CC`` names a module the BUNDLE has no position
+    in: the alias module is one spelling of a constraint set, minted by D5 over the whole
+    run, so §1's "every one of those names IS the name derived at its own declaring
+    position, so there is no referencing position to drop and nothing to rename" applies
+    and the statement is a declaration.  What tells the two apart with no list is where
+    the named symbol comes from -- this module (``local``), or a sibling module the walk
+    imported for a cross-document reference (``imports``) -- and a dotted path into the
+    alias module is neither.
+    """
+    if not isinstance(declaration, ir.AliasDecl):
+        return None
+    held = declaration.type
+    if not held.path or any(
+        (
+            declaration.description,
+            held.container,
+            held.of,
+            held.key is not None,
+            held.literals,
+            held.members,
+            held.facts,
+            held.format,
+            held.validators,
+        )
+    ):
+        return None
+    if held.local:
+        return held.path
+    return held.path if held.path in {symbol for _, symbol in imports} else None
+
+
+def _reaching(
+    exports: Mapping[str, str],
+    binds: Mapping[str, str],
+    at: Mapping[str, ir.Declaration],
+) -> dict[str, list[str]]:
+    """Declaring pointer -> the EXPORTED pointers that reach it through a binding.
+
+    §1's "one class declared once and exported twice", counted: a binding chain is
+    followed to its end, so ``X = Y`` beside ``Y = Z`` charges ``Z``, and a target that is
+    not a declaration of THIS module is left out -- the module that declares it is the one
+    that can export it, and §9 forbids this pass to ask which other documents a run holds.
+
+    ``at`` is the walk's own pointer table, which is what tells a LOCAL pointer from the
+    SYMBOL a cross-document reference names: :func:`names_a_declaration` returns whichever
+    the type carried, and only the first is a position of this module.
+    """
+    out: dict[str, list[str]] = {}
+    for pointer in exports:
+        held, seen = pointer, {pointer}
+        while held in binds and binds[held] in at and binds[held] not in seen:
+            held = binds[held]
+            seen.add(held)
+        if held != pointer:
+            out.setdefault(held, []).append(pointer)
+    return out
+
+
 def the_surface_exports(
     pointer: str, declaration: ir.Declaration, hops: Mapping[str, object]
 ) -> str | None:
@@ -1473,6 +1562,14 @@ def the_surface_exports(
     What it deliberately does NOT reach is the per-module ``strict_validate`` helper, which
     is not a declaration of this pass at all, and §1's own reason stands: a domain name
     cannot stand for 241 functions and a caller reaches one through its class.
+
+    **IT ANSWERS FOR THE POSITION AND NOT FOR THE DECLARATION, which is why the answer is
+    not the export set on its own** (§1, 2026-11-03).  A position can be one of these
+    three kinds and still declare nothing -- an identity binding is an ``AliasDecl``, so
+    the third arm says ``alias`` for it -- and §1's one-path rule is about declarations.
+    :func:`assign` relocates such an export onto the position that DECLARES the class,
+    reading :func:`names_a_declaration`; the split is here because a kind is a property of
+    one position and a relocation needs the module's whole set.
 
     **Here rather than in ``emit`` because the facts are here.**  §1's set is stated over
     positions and the only place a position's hop and its declaration are both in hand is
@@ -1504,6 +1601,7 @@ def assign(
     carriers: frozenset[str] = frozenset(),
     surface: frozenset[str] = frozenset(),
     declared: Mapping[str, str] = {},
+    abroad: frozenset[str] = frozenset(),
 ) -> ir.Module | Refusal:
     """The pass: every declaration of one module given the name §4 derives for it.
 
@@ -1573,10 +1671,18 @@ def assign(
     #: Two readers: ``surface`` is narrowed to these pointers (:data:`COLLISION_SCOPE`),
     #: and the symbols are recorded on :attr:`ir.Module.exports` for the surface itself.
     exports: dict[str, str] = {}
+    #: Every pointer this module BINDS rather than declares -> the pointer or symbol it
+    #: names (:func:`names_a_declaration`), for :attr:`ir.Module.binds`.
+    binds: dict[str, str] = {}
     for i, declaration in enumerate(mod.declarations):
         pointer = _at(declaration)
         if pointer is None:
             continue
+        #: §1: "a position that references a class does not name it".  The pointer the
+        #: binding names, or ``None`` where this position declares its own type.
+        named = names_a_declaration(declaration, mod.imports)
+        if named is not None:
+            binds[pointer] = named
         kind = the_surface_exports(pointer, declaration, mod.hops)
         if kind is not None:
             exports[pointer] = kind
@@ -1604,10 +1710,47 @@ def assign(
         #: judged has no part in.
         name = declared.get(pointer)
         ladders[pointer] = ((name,), *rungs) if name is not None else rungs
+    # **§1's one-path rule, as the RELOCATION it is (2026-11-03).**  "What remains for this
+    # rule is the case it was written for -- one class declared once and EXPORTED TWICE --
+    # and there the surface keeps only the declaring position's spelling.  **Applying it is
+    # not purely subtractive:** for some of these the name the rule keeps is not currently
+    # exported at all, because the surface assigns no kind to a declaration at a property
+    # or element position, so the rename adds a name as well as removing ones."
+    #
+    # EXPORTED TWICE is the scope and it is the whole of why this is not simply
+    # ``names_a_declaration``'s complement: a declaration the surface reaches at exactly
+    # ONE path satisfies reading 6 whatever the spelling of that path is, and §1 names no
+    # second name to prefer it to.  Measured over this bundle, dropping that clause renames
+    # 26 further positions that reading 6 already holds for.
+    for pointer, found in _reaching(exports, binds, mod.at).items():
+        if len(found) + (pointer in exports) < 2:
+            continue
+        #: The declaring position's own kind where §1's three arms give it one, and the
+        #: referencing position's otherwise -- which is the sentence above: the surface
+        #: carried this class because a position reached it, and what changes is the name.
+        kind = exports.get(pointer) or exports[found[0]]
+        for reference in found:
+            del exports[reference]
+        exports[pointer] = kind
+    # **AND THE SAME RULE ACROSS A MODULE BOUNDARY**, where there is nothing to add: a
+    # named node that is a bare ``$ref`` to another document binds the symbol that
+    # document declares, so the class is already on the surface at the DECLARING module's
+    # path and this position's name is the second one §1 forbids.  ``abroad`` is what the
+    # referenced modules export, which only the run can answer -- and §9 is satisfied for
+    # :data:`COLLISION_SCOPE`'s reason: a reference target is in the closure of EVERY run
+    # that holds this document, so the answer does not depend on the argument list.
+    for pointer in [p for p in exports if p in binds and binds[p] in abroad]:
+        del exports[pointer]
     spelled = spell_the_rungs(
         ladders,
         carriers | {symbol for _, symbol in mod.imports},
         surface,
+        # **The RELOCATED pointers are in §1's domain scope and the dropped ones are not**,
+        # because :data:`COLLISION_SCOPE` is stated over "a position the surface exports"
+        # and the surface now exports the declaring position.  A set that still held a
+        # dropped name would lengthen a sibling against a name no module publishes, and
+        # one that missed an added one would publish two.  So the relocation above runs
+        # BEFORE the names are spelled rather than on the way out.
         frozenset(exports),
     )
     if isinstance(spelled, Refusal):
@@ -1641,4 +1784,13 @@ def assign(
         # forbids two of.  A degenerate adoption is absent by construction: it binds no
         # name of its own, so no pointer of it reached ``exports``.
         exports={symbols[pointer]: kind for pointer, kind in exports.items()},
+        # §1's BINDINGS, every one this module writes and not only the exported ones --
+        # which is what makes the gate on the export set non-vacuous once the repair has
+        # landed: the record still names what a binding is, so a name that returns to the
+        # surface is caught rather than counted.
+        binds={
+            symbols[pointer]: symbols.get(named, named)
+            for pointer, named in binds.items()
+            if pointer in symbols
+        },
     )

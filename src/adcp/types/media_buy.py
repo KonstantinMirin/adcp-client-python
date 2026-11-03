@@ -215,10 +215,9 @@ from ._schemas.media_buy.get_products_request import (
 from ._schemas.media_buy.get_products_response import (
     GetProductsResponse as GetProductsResponse,
     RefinementAppliedItemProduct as RefinementAppliedItemProduct,
-    RefinementAppliedItemProductStatus as RefinementAppliedItemProductStatus,
     RefinementAppliedItemProposal as RefinementAppliedItemProposal,
-    RefinementAppliedItemProposalStatus as RefinementAppliedItemProposalStatus,
     RefinementAppliedItemRequest as RefinementAppliedItemRequest,
+    RefinementAppliedItemRequestStatus as RefinementAppliedItemRequestStatus,
 )
 from ._schemas.media_buy.get_products_targeting_resolution import (
     ProductDiscoveryTargetingResolution as ProductDiscoveryTargetingResolution,
@@ -650,10 +649,9 @@ __all__ = [
     'RefineProposalsSubmitted',
     'RefineProposalsWorking',
     'RefinementAppliedItemProduct',
-    'RefinementAppliedItemProductStatus',
     'RefinementAppliedItemProposal',
-    'RefinementAppliedItemProposalStatus',
     'RefinementAppliedItemRequest',
+    'RefinementAppliedItemRequestStatus',
     'RegistryAcceptancePolicyProfileReference',
     'RequestProposalsInputRequired',
     'RequestProposalsRequest',

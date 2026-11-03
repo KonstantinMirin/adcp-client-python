@@ -68,15 +68,12 @@ from ._schemas.formats.canonical.responsive_creative import (
 from ._schemas.formats.canonical.seller_rendered_stateful_display import (
     CanonicalFormatSellerRenderedStatefulDisplay as CanonicalFormatSellerRenderedStatefulDisplay,
     TransitionsItemInViewTimer as TransitionsItemInViewTimer,
-    TransitionsItemInViewTimerTransitionMode as TransitionsItemInViewTimerTransitionMode,
     TransitionsItemMediaEvent as TransitionsItemMediaEvent,
-    TransitionsItemMediaEventTransitionMode as TransitionsItemMediaEventTransitionMode,
     TransitionsItemScrollProgressScrollScrollLinked as TransitionsItemScrollProgressScrollScrollLinked,
     TransitionsItemScrollThresholdScroll as TransitionsItemScrollThresholdScroll,
-    TransitionsItemScrollThresholdScrollTransitionMode as TransitionsItemScrollThresholdScrollTransitionMode,
     TransitionsItemTimer as TransitionsItemTimer,
+    TransitionsItemTimerTransitionMode as TransitionsItemTimerTransitionMode,
     TransitionsItemUserAction as TransitionsItemUserAction,
-    TransitionsItemUserActionTransitionMode as TransitionsItemUserActionTransitionMode,
 )
 from ._schemas.formats.canonical.sponsored_placement import (
     CanonicalFormatSponsoredPlacementRetailMediaCatalogDriven as CanonicalFormatSponsoredPlacementRetailMediaCatalogDriven,
@@ -122,13 +119,10 @@ __all__ = [
     'ComponentsItemFormatKindParamsVideoVast',
     'ComponentsItemFormatOptionRef',
     'TransitionsItemInViewTimer',
-    'TransitionsItemInViewTimerTransitionMode',
     'TransitionsItemMediaEvent',
-    'TransitionsItemMediaEventTransitionMode',
     'TransitionsItemScrollProgressScrollScrollLinked',
     'TransitionsItemScrollThresholdScroll',
-    'TransitionsItemScrollThresholdScrollTransitionMode',
     'TransitionsItemTimer',
+    'TransitionsItemTimerTransitionMode',
     'TransitionsItemUserAction',
-    'TransitionsItemUserActionTransitionMode',
 ]
