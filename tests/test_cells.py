@@ -16,21 +16,40 @@ cell is LIVE when it selects a type, renders a constraint or states a rule, whic
 ``keywords.COMPILES``' own reading.  :func:`test_the_live_cell_count_is_derived_from_the_table`
 is the derivation and the number it reports is the reading's denominator.
 
-**WHAT IS AND IS NOT GATED HERE, and the reason is budgetary in one direction only.**
-The per-cell PROOF is derived by ``cells.grade`` and reported by
-:func:`test_the_cell_proofs_are_reported_with_their_denominator`, which asserts the
-arithmetic of the report rather than the verdict of every cell.  It cannot assert every
-cell yet: 11 live cells the compiler emits an annotation for are not proved by a payload,
-each is a located defect with a bead, and every one of them is fixed in the COMPILER --
-which this row may not change.  A gate asserting them would be a red carried in the
-suite, which ``docs/plan/final-state.md`` forbids outright, and an allowlist of the 11
-would be the shape §9 calls "a pin with no denominator".  So the cells are MEASURED here
-and the beads carry the defects; what is GATED is everything that holds without
-exception: the denominator, the probe-table equality in both directions, the wrapper's
-agreement with the descent column, and the four composition rules.
+**WHAT IS GATED PER CELL, and every one of these holds WITHOUT EXCEPTION.**  The per-cell
+proof is derived by ``cells.grade`` and three properties of it are asserted over all 289
+live cells, each over the WHOLE set and none over a list:
+
+* **every live cell reaches an OUTCOME** -- an annotation, a verdict or a deferral -- and
+  never an unparseable module (:func:`test_every_live_cell_reaches_an_outcome`).  That was
+  false for 8 cells at ``5021772c``: an object node at a KEY position made the run write
+  ``class (AdCPBaseModel):`` with neither a refusal nor an approximation beside it, which
+  is the one thing §9 forbids outright -- "a crash is not an outcome".
+  ``adcp-client-python-zxf``;
+* **every cell at a position the bundle STATES is PROVED or REFUSED BY NAME**
+  (:func:`test_every_cell_the_bundle_states_is_proved_or_refused_by_name`).  This is the
+  set §8's induction has to range over to reach a document -- "a cell no document states is
+  a cell no document's faithfulness depends on" -- so it is the half of the table the
+  artifact's correctness actually rests on, and it holds completely;
+* **a DEFERRED cell names the keyword it defers on**
+  (:func:`test_every_deferred_cell_names_its_keyword`), which is what makes a deferral an
+  outcome rather than a silence.
+
+**AND SIX CELLS ARE NOT YET PROVED, each with a bead and a measurement, and NONE of them
+is in an allowlist here.**  They are excluded by a DERIVED predicate -- the bundle states
+none of them -- and the gate above says so by name: all six are a keyword at a RULE
+position inside an ``if`` that states no ``required``, which §5's ``if`` row decides
+compiles to nothing ("a ``Match`` clause list where it states ``required`` plus
+``properties`` with ``const`` or ``enum`` values; otherwise nothing").  Declaring the
+widening instead mints 4,635 sites in 97 documents from 112 distinct conditional facts,
+which §8 rules out by name.  ``adcp-client-python-3bb`` carries the measurement and the
+two sentences the design documents would have to move.
 """
 
 from __future__ import annotations
+
+import functools
+from typing import Any
 
 import pytest
 
@@ -42,11 +61,12 @@ from cells import (
     NODES,
     bind,
     compile_probe,
+    grade,
     live,
     stated_by_the_bundle,
     wrap,
 )
-from nodeset import claimed
+from nodeset import claimed, partitions
 from pydantic import TypeAdapter
 from codegen import harness
 
@@ -132,6 +152,154 @@ def test_the_bundle_states_the_cells_this_row_claims_it_does() -> None:
     stated = {c for c in live() if c in stated_by_the_bundle()}
     assert len(claimed("live cells the bundle states", stated)) == STATED
     assert len(live() - stated_by_the_bundle()) == LIVE - STATED == 109
+
+
+# --------------------------------------------------------------------------- #
+# the per-cell gate: three properties, each over all 289 and none over a list
+# --------------------------------------------------------------------------- #
+@functools.cache
+def graded() -> dict[tuple[str, Position], Any]:
+    """``cells.grade`` over every live cell, once per process.
+
+    One compile per cell and the cost is a function of the KEYWORD rather than of any
+    document, which is §8's whole reason for a cell proof: all 289 in seconds of CPU,
+    against a draw that returns no verdict for 86 pairs at any budget.  Cached because
+    three gates read it and a second pass would pay the compiles again.
+    """
+    return {cell: grade(*cell) for cell in sorted(live(), key=lambda c: (c[0], c[1].name))}
+
+
+def test_every_live_cell_reaches_an_outcome() -> None:
+    """**No live cell writes a module that is not parseable Python.**
+
+    §9: "a crash is not an outcome".  A cell whose probe compiles has to answer with an
+    ANNOTATION, a VERDICT or a DEFERRAL -- the three the declaration defines -- and a
+    fourth state is the one the report cannot carry: ``cells.grade`` reports it as
+    ``unparseable`` precisely because the compiler reported nothing at all.
+
+    **8 live cells were in that state at ``5021772c``** -- ``properties``, ``required``,
+    ``additionalProperties``, ``dependencies``, ``if``, ``then``, ``else`` and ``not`` at
+    KEY -- because §4 derives no name at a mapping's key position and the object row
+    declared a class there anyway, so the module read ``class (AdCPBaseModel):`` beside
+    ``dict[, Any]`` with no refusal and no approximation naming it.
+    ``adcp-client-python-zxf``.  The failure is reported with the CELL named, because the
+    keyword is what a fix is aimed at.
+    """
+    outcomes = claimed(
+        "live cells with an outcome",
+        {cell for cell, verdicts in graded().items() if verdicts.outcome},
+        inside=live(),
+    )
+    # EVERY live cell and not most of them: a cell ``grade`` returned no outcome for would
+    # be absent from the comprehension below rather than failing it.
+    assert live() - outcomes == set()
+    unparseable = {
+        cell: verdicts.outcome
+        for cell, verdicts in graded().items()
+        if verdicts.outcome not in ("emitted", "verdict", "deferred")
+    }
+    assert unparseable == {}, unparseable
+
+
+def test_every_deferred_cell_names_its_keyword() -> None:
+    """A DEFERRAL is an outcome because it NAMES the keyword, and that is asserted.
+
+    The declaration defines a deferral as "a cell with a lowering effect whose handler has
+    no code for the shape yet", and §9 asks that it be loud rather than silent.  Loud is
+    the keyword: a refusal with no keyword is a document refused for a reason nobody can
+    aim a row at.
+    """
+    refusing = claimed(
+        "live cells that refuse",
+        {c for c, v in graded().items() if v.outcome in ("verdict", "deferred")},
+        inside=live(),
+    )
+    nameless = {cell for cell in refusing if not graded()[cell].refused_on}
+    assert nameless == set(), sorted(nameless)
+
+
+def test_every_cell_the_bundle_states_is_proved_or_refused_by_name() -> None:
+    """**The half of §5's table the artifact's correctness rests on, and it holds whole.**
+
+    ``cells.stated_by_the_bundle`` is "the set the induction has to range over to reach a
+    document", because "a cell no document states is a cell no document's faithfulness
+    depends on".  So this is the gate with a consequence for the shipped tree: every cell
+    some portable document STATES is either PROVED by a payload -- no narrowing, and no
+    undeclared widening -- or refused by name, which takes the document out of the
+    emitted set rather than shipping a class the cell got wrong.
+
+    **Derived and not a list**, in both halves: the population is read off
+    ``bundle.nodes_at`` over the bundle, and the verdict is ``cells.grade``'s.  A cell the
+    bundle starts stating joins this gate with no edit here, which is the direction an
+    allowlist cannot be written in.
+
+    What is NOT in this set is the complement, and §8 names the hole it leaves: a cell the
+    bundle states at a pointer the WALK never lowers as that position is in the population
+    and contributes no node -- ``contains`` at CONJ is stated at 8 nodes in 4 documents
+    while ``./check`` reads ``deferred 0``.  That gap is premise 3 of the induction and
+    ``adcp-client-python-xjs`` owns it; this gate does not claim to close it.
+    """
+    stated = claimed(
+        "live cells the bundle states",
+        {cell for cell in live() if cell in stated_by_the_bundle()},
+    )
+    failing = {
+        cell: (verdicts.outcome, verdicts.narrowed, verdicts.widened, verdicts.declared)
+        for cell, verdicts in graded().items()
+        if cell in stated and not (verdicts.proved or verdicts.refused_on)
+    }
+    assert failing == {}, failing
+
+
+def test_the_cells_the_bundle_does_not_state_are_reported_with_their_denominator() -> None:
+    """**The six cells still unproved, named rather than counted, and NOT allowlisted.**
+
+    The set is DERIVED twice over -- the cells the bundle states nowhere, intersected with
+    the ones ``cells.grade`` neither proves nor refuses -- so nothing here admits a cell by
+    membership and a cell that stops failing leaves without an edit.  The assertion is that
+    every one of them has the SAME located cause, which is what makes them one defect with
+    a bead rather than six exemptions:
+
+    **all six are a keyword at a RULE position held under an ``if`` that states no
+    ``required``.**  §5's ``if`` row decides that shape -- "a ``Match`` clause list where
+    it states ``required`` plus ``properties`` with ``const`` or ``enum`` values; otherwise
+    nothing, and the schema half answers" -- and a condition with no required key cannot
+    yield a clause at all, because a clause tests a key that is PRESENT.  A clause reduced
+    from such a node would fire on instances the document's own condition does not match,
+    and the rule would then refuse what the document admits, which §2 forbids outright.
+
+    So the model is wider at these six and §2 asks for a declaration.  **The measurement
+    is why one is not written**: over the 1,054 portable paths, declaring an unreadable
+    condition mints 4,635 sites in 97 documents from 112 distinct conditional facts --
+    3,641 of them ONE logo-slot ``if`` the record inlines at that many referring paths --
+    and §8 rules that set out by name, "an approximation nothing can demonstrate does not
+    belong in the set".  ``adcp-client-python-3bb`` carries both sentences.
+    """
+    unstated = live() - stated_by_the_bundle()
+    failing = {
+        cell
+        for cell, verdicts in graded().items()
+        if cell in unstated and not (verdicts.proved or verdicts.refused_on)
+    }
+    assert all(position is Position.RULE for _, position in failing), sorted(
+        (k, p.name) for k, p in failing
+    )
+    # Every one of them is the SAME shape, read off the probe rather than listed: the
+    # cell's own node, placed at a RULE position under ``if``, states no ``required``.
+    from cells import probe_for
+
+    for keyword, position in sorted(failing):
+        probe = probe_for(keyword, position)
+        assert probe.under == "if", (keyword, probe.under)
+        assert "required" not in probe.node, (keyword, sorted(probe.node))
+    # The report's own arithmetic: the three outcomes account for every live cell, so a
+    # cell cannot leave one bucket without arriving in another.
+    assert partitions(
+        live(),
+        proved={c for c, v in graded().items() if v.proved},
+        refused={c for c, v in graded().items() if not v.proved and v.refused_on},
+        unproved=failing,
+    ) == live()
 
 
 # --------------------------------------------------------------------------- #

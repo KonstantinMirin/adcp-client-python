@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Dependencies, Match, Rule, UniqueItems
 from adcp.types.constraints import HttpUrl, StrMatching32F5291C, StrMatching5E987613, StrMinLen1MaxLen128, StrMinLen1MaxLen128MatchingB577C746, StrMinLen1MaxLen255Matching67860854, StrMinLen1MaxLen512, StrMinLen1MaxLen64, StrMinLen1MaxLen64Matching5CDAE669
 
@@ -131,6 +131,10 @@ class ReportingDeliveryOffering(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('supported_finality'),
         ConditionalRequired((Match('reconciliation_mode', True, ('consumer_receipt',)),), require=('method',), forbid=()),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/reporting-delivery-offering.json', pointer='#/properties/schedule/allOf/0', keyword='else', kind='WIDENED', rung='KEYWORD', fact={'if': {'properties': {'alignment': {'const': 'source_timezone'}}, 'required': ['alignment']}, 'then': {'required': ['period_timezone_policy'], 'not': {'anyOf': [{'required': ['period_anchor_policy']}, {'required': ['period_anchor']}]}, 'allOf': [{'if': {'properties': {'period_timezone_policy': {'const': 'fixed'}}, 'required': ['period_timezone_policy']}, 'then': {'required': ['period_timezone']}, 'else': {'not': {'required': ['period_timezone']}}}]}, 'else': {'not': {'anyOf': [{'required': ['period_anchor_policy']}, {'required': ['period_timezone_policy']}, {'required': ['period_anchor']}, {'required': ['period_timezone']}]}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/else'),
+        Approximation(document='core/reporting-delivery-offering.json', pointer='#/properties/schedule', keyword='else', kind='WIDENED', rung='KEYWORD', fact={'if': {'properties': {'alignment': {'const': 'source_timezone'}}, 'required': ['alignment']}, 'then': {'required': ['period_timezone_policy'], 'not': {'anyOf': [{'required': ['period_anchor_policy']}, {'required': ['period_anchor']}]}, 'allOf': [{'if': {'properties': {'period_timezone_policy': {'const': 'fixed'}}, 'required': ['period_timezone_policy']}, 'then': {'required': ['period_timezone']}, 'else': {'not': {'required': ['period_timezone']}}}]}, 'else': {'not': {'anyOf': [{'required': ['period_anchor_policy']}, {'required': ['period_timezone_policy']}, {'required': ['period_anchor']}, {'required': ['period_timezone']}]}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/else'),
     )
     offering_id: StrMinLen1MaxLen128MatchingB577C746
     feed_purpose: ReportingFeedPurpose

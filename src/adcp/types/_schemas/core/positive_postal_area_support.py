@@ -6,6 +6,7 @@ from typing import ClassVar, Literal
 from pydantic import ConfigDict
 
 from adcp.types._base import SchemaRef
+from adcp.types._runtime import PropertyCount, Rule
 
 from .postal_area_support import PostalAreaSupport
 
@@ -18,6 +19,9 @@ class PositivePostalAreaSupport(PostalAreaSupport):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/positive-postal-area-support.json', pointer='#')
+    _adcp_rules: ClassVar[tuple[Rule, ...]] = (
+        PropertyCount(minimum=1, maximum=None),
+    )
     us_zip: Literal[True] | None = None
     us_zip_plus_four: Literal[True] | None = None
     gb_outward: Literal[True] | None = None

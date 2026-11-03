@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule
 from adcp.types.constraints import FloatMin0Max100
 
@@ -105,6 +105,9 @@ class GetSignalsResponse(AdCPVersionEnvelope, ProtocolEnvelope):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='signals/get-signals-response.json', pointer='#')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ConditionalRequired((Match('unchanged', True, (True,)),), require=('wholesale_feed_version', 'cache_scope'), forbid=('signals',)),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='signals/get-signals-response.json', pointer='#', keyword='else', kind='WIDENED', rung='KEYWORD', fact={'if': {'properties': {'status': {'const': 'failed'}}, 'required': ['status']}, 'then': {'description': 'Failed response: errors[] carries the terminal failure details; signals[] and cache_scope are not required because no signal result was produced.', 'required': ['errors']}, 'else': {'description': "Standard response: signals[] MUST be present and cache_scope MUST declare the response's cache layer. wholesale_feed_version is required by the wholesale-mode contract and verifier constraints, but is not schema-required here because this response schema is shared by non-wholesale reads.", 'required': ['signals', 'cache_scope']}}, attribution='docs/plan/rebuild-plan.md §5 combinators/else'),
     )
     signals: Annotated[list[SignalsItem] | None, Field(description='Array of matching signals')] = None
     errors: Annotated[list[Error] | None, Field(description='Task-specific errors and warnings (e.g., signal discovery or pricing issues)')] = None

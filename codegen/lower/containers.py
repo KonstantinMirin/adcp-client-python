@@ -164,6 +164,28 @@ _ARRAY_CLAIMS = frozenset({"type", "items", "uniqueItems", "contains", "allOf", 
 #: live.  A node with ``properties`` goes the other way and is step 7's.
 KEY_BOUNDS = ("minProperties", "maxProperties")
 
+#: **§5's ``propertyNames`` row read as a CLAIM SET: the five answers that row gives a
+#: KEY, and nothing else** (``adcp-client-python-zxf``).  The row is "a ``$ref`` -> that
+#: type; ``minLength``/``maxLength`` -> a length-bounded ``str``; ``pattern`` -> an
+#: annotated ``str``; ``enum`` -> a ``Literal`` of the members ...; ``anyOf`` -> a union
+#: of key types", and ``type`` joins them because the PARSER supplies ``type: string`` at
+#: this position (``schema.parse._key``) -- a key is a string, and the word is the
+#: parser's rather than a fact of the document.
+#:
+#: Everything else is a cell this handler has no code for, which is what makes it a
+#: DEFERRAL: :func:`_key` writes no answer for an object key node, and §4 derives no name
+#: at KEY for one to be declared under.
+KEY_CLAIMS = frozenset({"type", "$ref", "minLength", "maxLength", "pattern", "enum", "anyOf"})
+
+#: Why a keyword outside :data:`KEY_CLAIMS` is refused, in the row's own terms.
+_NO_KEY_ANSWER = (
+    "section 5's propertyNames row gives a KEY five answers -- a $ref, "
+    "minLength/maxLength, pattern, enum, anyOf -- and names none for this keyword, so "
+    "there is no key TYPE for it to compile to; a node the object row would claim is "
+    "declared a class at a position section 4 derives no name for (lower.names.Unnamed), "
+    "which renders as an unparseable class statement rather than as an outcome"
+)
+
 #: Which constraint keywords each ``type`` can carry, for a node whose ``type`` is a
 #: LIST.  draft-07 applies a constraint keyword only to an instance OF the type it is
 #: defined for and ignores it for every other type, so a multi-type node means "this
@@ -759,6 +781,33 @@ def _key(node: nodes.Node | None, mod: Module) -> ir.TypeRef | Refusal:
     if node is None:
         return ir.TypeRef("str")
     pointer = node.pointer
+    # **§5's propertyNames row names FIVE answers at KEY and an OBJECT node is none of
+    # them, so it refuses BY NAME rather than reaching the walk**
+    # (``adcp-client-python-zxf``).  §4 derives NO name at this position
+    # (:class:`names.Unnamed`), whose own docstring already claimed "a declaration that
+    # needed one would ... refuse by name" -- and it did not: a key node the object row
+    # claims is declared a CLASS at this pointer, the names pass spells it ``""``, and
+    # the module the run writes is ``class (AdCPBaseModel):`` beside ``dict[, Any]``.
+    # That is a SyntaxError with neither a verdict nor a deferral beside it, which is the
+    # one outcome §9 forbids outright -- "a crash is not an outcome" -- so the screen runs
+    # BEFORE the dispatch and the keyword that reaches it is the one reported.
+    #
+    # Measured over the 1,054 portable documents: 0 key nodes state any of the eight, so
+    # this moves no document.  Every key node the bundle states is a SCALAR -- 5 ``type``,
+    # 13 ``pattern``, 6 ``minLength``, 7 ``maxLength`` -- and the first bundle version to
+    # state an object ``propertyNames`` is reported instead of breaking a consumer's
+    # import.
+    #
+    # **The gate is the PARSER's classification and not a keyword list**, which is what
+    # keeps it off the twelve KEY cells that already prove: a key node stating ``minimum``
+    # or ``format`` or ``contains`` is a SCALAR or a CONTAINER, the walk lowers it, and
+    # §4's missing name costs nothing because nothing is declared.  Only a
+    # :class:`nodes.Object` reaches the row that declares a class, so only that kind is
+    # screened -- and the keyword the screen then names is the one the document wrote.
+    if isinstance(node, nodes.Object):
+        refused = compiler.check_keywords(node, KEY_CLAIMS, _NO_KEY_ANSWER, mod=mod)
+        if refused is not None:
+            return refused
     if isinstance(node, nodes.Reference):
         # The one key kind that needs no alias: the bundle already names the type, so
         # P2 applies unchanged -- an import, and no constraint of the target copied.

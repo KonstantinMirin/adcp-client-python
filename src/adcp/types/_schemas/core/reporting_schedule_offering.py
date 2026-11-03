@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import StrMatching3524D29B, StrMatching5E9BB4AD, StrMinLen1MaxLen255
 
@@ -39,6 +39,9 @@ class ReportingScheduleOffering(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-schedule-offering.json', pointer='#')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ConditionalRequired((Match('alignment', True, ('billing_cycle',)),), require=('period_anchor_policy',), forbid=()),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/reporting-schedule-offering.json', pointer='#', keyword='else', kind='WIDENED', rung='KEYWORD', fact={'if': {'properties': {'alignment': {'const': 'source_timezone'}}, 'required': ['alignment']}, 'then': {'required': ['period_timezone_policy'], 'not': {'anyOf': [{'required': ['period_anchor_policy']}, {'required': ['period_anchor']}]}, 'allOf': [{'if': {'properties': {'period_timezone_policy': {'const': 'fixed'}}, 'required': ['period_timezone_policy']}, 'then': {'required': ['period_timezone']}, 'else': {'not': {'required': ['period_timezone']}}}]}, 'else': {'not': {'anyOf': [{'required': ['period_anchor_policy']}, {'required': ['period_timezone_policy']}, {'required': ['period_anchor']}, {'required': ['period_timezone']}]}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/else'),
     )
     period_duration: StrMatching5E9BB4AD
     alignment: ReportingScheduleAlignment

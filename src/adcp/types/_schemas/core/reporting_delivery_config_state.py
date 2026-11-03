@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types.constraints import AdCPUrl, StrMinLen1MaxLen2000, StrMinLen1MaxLen255
 
 from .reporting_coverage import ReportingCoverage
@@ -51,6 +51,10 @@ class ReportingDeliveryConfigurationState(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-delivery-config-state.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/reporting-delivery-config-state.json', pointer='#/properties/configuration/properties/schedule/allOf/0', keyword='else', kind='WIDENED', rung='KEYWORD', fact={'if': {'properties': {'alignment': {'const': 'source_timezone'}}, 'required': ['alignment']}, 'then': {'required': ['period_timezone'], 'not': {'required': ['period_anchor']}}, 'else': {'not': {'anyOf': [{'required': ['period_anchor']}, {'required': ['period_timezone']}]}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/else'),
+        Approximation(document='core/reporting-delivery-config-state.json', pointer='#/properties/configuration/properties/schedule', keyword='else', kind='WIDENED', rung='KEYWORD', fact={'if': {'properties': {'alignment': {'const': 'source_timezone'}}, 'required': ['alignment']}, 'then': {'required': ['period_timezone'], 'not': {'required': ['period_anchor']}}, 'else': {'not': {'anyOf': [{'required': ['period_anchor']}, {'required': ['period_timezone']}]}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/else'),
+    )
     configuration: ReportingDeliveryConfiguration
     state: ReportingDeliveryConfigLifecycleState
     destination_ref: Annotated[StrMinLen1MaxLen255 | None, Field(description='Seller-issued immutable destination-generation reference. It is caller-scoped and reusable across separately authorized account configurations; it is not itself account authority or a bearer grant. Present when and only when the configuration selects a managed-delivery offering; a Core (API-delivered) configuration becomes ready with no destination at all.')] = None

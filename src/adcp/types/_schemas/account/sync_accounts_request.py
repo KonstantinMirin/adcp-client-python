@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import Dependencies, ForbiddenGroups, Rule
 from adcp.types.constraints import IntMin1, StrMatching32F5291C, StrMatching43E30B32, StrMinLen1, StrMinLen16MaxLen255Matching1E5CF9EB
 
@@ -52,6 +52,10 @@ class AccountsItem(BranchDispatchMixin, AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         Dependencies('destination_billing_entity', ('operator_identity', 'revision')),
         Dependencies('operator_identity', ('revision',)),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='account/sync-accounts-request.json', pointer='#/properties/accounts/items/properties/reporting_delivery_configs/items/properties/schedule/allOf/0', keyword='else', kind='WIDENED', rung='KEYWORD', fact={'if': {'properties': {'alignment': {'const': 'source_timezone'}}, 'required': ['alignment']}, 'then': {'required': ['period_timezone'], 'not': {'required': ['period_anchor']}}, 'else': {'not': {'anyOf': [{'required': ['period_anchor']}, {'required': ['period_timezone']}]}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/else'),
+        Approximation(document='account/sync-accounts-request.json', pointer='#/properties/accounts/items/properties/reporting_delivery_configs/items/properties/schedule', keyword='else', kind='WIDENED', rung='KEYWORD', fact={'if': {'properties': {'alignment': {'const': 'source_timezone'}}, 'required': ['alignment']}, 'then': {'required': ['period_timezone'], 'not': {'required': ['period_anchor']}}, 'else': {'not': {'anyOf': [{'required': ['period_anchor']}, {'required': ['period_timezone']}]}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/else'),
     )
     account: Annotated[AccountReference | None, Field(description='Settings-update key. When present, this entry targets an existing account by `account_id` (seller-owned account namespace) or natural key (buyer-declared account settings-update against a previously-provisioned account). Mutually exclusive with the flat `brand` + `operator` + `billing` provisioning trio. When `account` is present, the seller MUST NOT create a new account — entries that would otherwise trigger provisioning are rejected with `UNSUPPORTED_PROVISIONING`.')] = None
     revision: Annotated[IntMin1 | None, Field(description='Expected current account revision for optimistic concurrency in settings-update mode. Required whenever operator_identity is present; optional for existing non-identity settings updates. The seller MUST compare it atomically with the write, reject a mismatch with CONFLICT, and leave the account unchanged. Obtain it from list_accounts or the most recent sync_accounts result. Reads, dry runs, validation failures, and exact idempotency replays do not increment revision; every persisted settings or identity-change state transition does. MUST be absent in provisioning mode.')] = None
@@ -127,6 +131,10 @@ class SyncAccountsRequest(AdCPVersionEnvelope):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='account/sync-accounts-request.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='account/sync-accounts-request.json', pointer='#/properties/accounts/items/properties/reporting_delivery_configs/items/properties/schedule/allOf/0', keyword='else', kind='WIDENED', rung='KEYWORD', fact={'if': {'properties': {'alignment': {'const': 'source_timezone'}}, 'required': ['alignment']}, 'then': {'required': ['period_timezone'], 'not': {'required': ['period_anchor']}}, 'else': {'not': {'anyOf': [{'required': ['period_anchor']}, {'required': ['period_timezone']}]}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/else'),
+        Approximation(document='account/sync-accounts-request.json', pointer='#/properties/accounts/items/properties/reporting_delivery_configs/items/properties/schedule', keyword='else', kind='WIDENED', rung='KEYWORD', fact={'if': {'properties': {'alignment': {'const': 'source_timezone'}}, 'required': ['alignment']}, 'then': {'required': ['period_timezone'], 'not': {'required': ['period_anchor']}}, 'else': {'not': {'anyOf': [{'required': ['period_anchor']}, {'required': ['period_timezone']}]}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/else'),
+    )
     idempotency_key: Annotated[StrMinLen16MaxLen255Matching1E5CF9EB, Field(description='Client-generated unique key for at-most-once execution. Natural per-account upsert keys handle resource-level dedup, but the envelope triggers onboarding webhooks, billing setup, and audit events — this key prevents those side effects from firing twice on retry. MUST be unique per (seller, request) pair. Use a fresh UUID v4 for each request.')]
     accounts: Annotated[list[AccountsItem], Field(description='Per-account sync entries. Each entry uses one of two key shapes: the `account` field (AccountRef) for settings-update mode, or the flat `brand` + `operator` + `billing` trio for provisioning mode. An operator_identity settings update MUST carry the latest account revision.', max_length=1000)]
     delete_missing: Annotated[bool | None, Field(description='When true, accounts previously synced by this agent but not included in this request will be deactivated. Scoped to the authenticated agent — does not affect accounts managed by other agents. Use with caution.')] = False

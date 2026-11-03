@@ -436,6 +436,19 @@ _SURVIVING_SITES: dict[tuple[str, tuple[str, ...]], str] = {
         "containers.mapping's coverage: the cells a MAPPING node consumes.  properties "
         "is absent because a node declaring one is an Object and not a Mapping, which "
         "is the parser's classification and not a cell.",
+    ("codegen.lower.containers", ("$ref", "anyOf", "enum", "maxLength", "minLength", "pattern", "type")):
+        "KEY_CLAIMS: §5's propertyNames row read as a claim set -- the FIVE answers that "
+        "row gives a KEY, plus the `type: string` the PARSER supplies there.  The table "
+        "cannot hold it for this test's own reason: it is keyed by keyword x POSITION and "
+        "carries no column for a node KIND, and the five are what the KEY arm writes "
+        "while an OBJECT key node is a cell no handler has code for -- §4 derives no name "
+        "at KEY for one to be declared under (adcp-client-python-zxf).",
+    ("codegen.harness", ("additionalProperties", "patternProperties", "propertyNames")):
+        "harness.refused_witnesses' object arm: the three keywords whose far-side witness "
+        "is an UNDECLARED KEY, which is one perturbation and not three.  §9 forbids the "
+        "verifier the walk and permits it the keyword table, and the table answers which "
+        "cell each keyword compiles to -- not which PERTURBATION of an instance each one "
+        "names, which is a fact about the witness and so is the verifier's.",
     ("codegen.lower.rules", ("properties", "required", "type")):
         "rules._clauses: the keys an `if` may carry and still reduce to a Match clause "
         "list.  A SHAPE constraint on one subschema at the RULE position -- an `if` "
