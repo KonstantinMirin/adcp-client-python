@@ -49,9 +49,14 @@ dependencies = [
 
 [project.optional-dependencies]
 # ``pytest-xdist`` is pinned like the other test-time pins above, because it
-# decides how many processes grade the population and a floating major could
+# decides how many processes grade the set of pairs and a floating major could
 # change that silently.
-dev = ["pytest>=7.0.0", "pytest-xdist==3.8.0"]
+#
+# ``ruff`` is NOT pinned here, for the reason ``[tool.mypy]`` states about the
+# type checker: a checker is an instrument and the artifact does not depend on
+# it.  Its rule set is pinned instead, by ``[tool.ruff] required-version``,
+# which is the thing an upgrade could move.
+dev = ["pytest>=7.0.0", "pytest-xdist==3.8.0", "ruff>=0.17"]
 
 [build-system]
 # The emitted tree is a package, not a directory of files: the step-1 outcome is
@@ -384,3 +389,84 @@ exclude = "^src/adcp/types/_schemas/"
 module = ["jsonschema.*"]
 ignore_missing_imports = true
 follow_untyped_imports = false
+
+
+# =============================================================================
+# The linter, added 2026-11-03 under ``docs/plan/final-state.md``'s decision
+# "AN INVARIANT OVER THE CODE IS NOT A STRUCTURAL ASSERTION": *"the ordinary
+# tools count as invariants here.  A linter's unused-import, shadowed-name,
+# mutable-default and dead-code rules are invariants over behaviour, not shape
+# pins -- so their absence is not neutrality, it is an unmeasured surface."*
+#
+# **THIS SECTION IS A READING AND NOT YET A GATE.**  Nothing invokes ``ruff``:
+# ``./check`` does not call it and no test imports it.  The reading at the
+# commit that added this is **286 findings** over ``codegen/``, ``tests/`` and
+# ``src/adcp`` minus the generated tree.  The wiring -- a test on
+# ``tests/test_type_checker.py``'s pattern, which ERRORS rather than skips when
+# the instrument is absent -- lands when that number is zero and never beside a
+# baseline, because ``final-state.md`` forbids a ratchet set below the truth.
+#
+#     .venv/bin/ruff check codegen tests src/adcp
+#
+# needs no arguments: unlike mypy above, ruff reads no ``sys.path`` and the
+# ``PYTHONPATH`` caveat does not apply.  **A linter needs no stubs, which is the
+# single reason this was worth adding**: ``codegen/harness.py`` is the one file
+# ``[tool.mypy] files`` deliberately omits, and the first thing reported there
+# is an ``F821`` undefined ``Collection`` in ``check_refuses`` -- live, and
+# reproducible as ``NameError`` through ``typing.get_type_hints``.
+[tool.ruff]
+# Pinned, against ruff's own moving target: 0.16.0 took the default rule set
+# from 59 rules to 413.  A reading that changes on an upgrade is the thing
+# ``final-state.md`` forbids, so the floor is stated here and ``select`` below
+# is explicit rather than an extension of whatever the default happens to be.
+required-version = ">=0.17"
+line-length = 120
+target-version = "py311"
+
+# THE GENERATED TREE IS NAMED, NEVER OMITTED, for the reason ``[tool.mypy]
+# exclude`` already records: the committed tree is an ARTIFACT, verified by one
+# byte-compare, and is never the subject of grading.  Its own reading is 11,315
+# findings -- 10,925 ``E501`` from schema ``description`` text carried verbatim,
+# 378 ``I001`` because import order is ``codegen/render.py``'s output, and 12
+# ``F401``.  All three are statements about ``codegen/render.py`` and are
+# attributed there.  Deleting this line pulls 1,089 modules back under the
+# linter automatically, which is what distinguishes an exclusion from an
+# omission.
+extend-exclude = ["src/adcp/types/_schemas"]
+
+[tool.ruff.lint]
+# ``select`` and never ``extend-select``, for the ``required-version`` reason.
+# ``F`` is the whole point -- F401/F811/F821/F841/F402 are the four rules the
+# decision names.  ``B`` carries B006 mutable-default.  ``I`` replaces the
+# ``isort`` in the venv that nothing has ever invoked.  ``RUF100`` is what
+# reports a suppression that suppresses nothing, and this tree has 103 of them.
+#
+# DELIBERATELY NOT SELECTED, each for a measured reason:
+#   C90  mccabe -- a complexity ceiling is a COUNT in ``final-state.md``'s
+#        sense: it says *there are N branches here*, freezes the structure, and
+#        answers the incidental-complexity question with a threshold.
+#   ERA  commented-out code -- this codebase's docstrings quote JSON and
+#        pointers as prose; it would fire on the prose.
+#   D    pydocstyle -- the docstring convention here is deliberate and unlike
+#        any pydocstyle profile; ``tests/test_prose_resolves.py`` enforces the
+#        checkable part and enforces it better.
+#   ANN  redundant under a configured mypy.  COM redundant under a formatter.
+#   S    bandit -- no untrusted input, and it would fire on ``assert``
+#        throughout ``tests/``.
+#   BLE, SLF, ARG, TRY -- measured at ~165 further findings, stylistic, and
+#        NOT declined silently: 42 of the ``RUF100`` findings are ``noqa``
+#        comments naming ``BLE001`` and ``SLF001``, so the suppressions in this
+#        tree were written against families that are not selected.  Every
+#        ``noqa`` must name a selected rule or be deleted; that is a row, and
+#        selecting a family to retroactively justify a comment is backwards.
+select = ["E", "W", "F", "I", "B", "C4", "UP", "RUF"]
+ignore = [
+    # The prose in this repository is load-bearing and long by design -- the
+    # comment block above ``[tool.mypy]`` runs past 100 lines.  This is a
+    # formatting preference and not an invariant over behaviour, and no
+    # formatter is configured here to own it.
+    "E501",
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["adcp", "codegen"]
