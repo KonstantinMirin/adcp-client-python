@@ -1316,6 +1316,24 @@ SECTIONS = {
 }
 
 
+def binds(stmt: ast.stmt) -> list[str]:
+    """The module-level names one top-level statement binds, with no deduplication.
+
+    ``declared_in`` is a mapping and so cannot report that a module bound one name
+    TWICE, which is the fact "one symbol for one node" is about.  Only the statement's
+    own targets, never a walk into it: a class body's annotated fields are ``Store``
+    names too, and counting those would make a field sharing an entry's key look like a
+    second binding of it.
+    """
+    if isinstance(stmt, ast.ClassDef):
+        return [stmt.name]
+    if isinstance(stmt, ast.AnnAssign):
+        return [stmt.target.id] if isinstance(stmt.target, ast.Name) else []
+    if isinstance(stmt, ast.Assign):
+        return [t.id for t in stmt.targets if isinstance(t, ast.Name)]
+    return []
+
+
 def declared_in(source: str) -> dict[str, ast.AST]:
     """Every module-level name a rendered module BINDS, in body order.
 
@@ -1377,10 +1395,14 @@ def test_a_local_reference_is_a_symbol_this_module_declares_and_not_an_import(
 
     source = out.files["core/catalog.py"]
     declared = declared_in(source)
-    # D3's nested rule with the document as the parent: root symbol + the entry's key.
-    assert "CatalogSlot" in declared, sorted(declared)
-    assert "CatalogCode" in declared, sorted(declared)
-    assert isinstance(declared["CatalogSlot"], ast.ClassDef), "an object entry is a class"
+    # §4's nested rule, in the spelling that section now states: ``<Key>`` for a
+    # ``definitions`` entry, because "the module path already carries the document".
+    # These read ``CatalogSlot`` / ``CatalogCode`` until 2026-11-03: the ``<Root>``
+    # prefix the names section dropped on 2026-10-28, the same stale spelling
+    # ``adcp-client-python-10l.50`` removed from the absolute half one file over.
+    assert "Slot" in declared, sorted(declared)
+    assert "Code" in declared, sorted(declared)
+    assert isinstance(declared["Slot"], ast.ClassDef), "an object entry is a class"
 
     imported = {
         a.name
@@ -1388,13 +1410,13 @@ def test_a_local_reference_is_a_symbol_this_module_declares_and_not_an_import(
         if isinstance(n, ast.ImportFrom)
         for a in n.names
     }
-    assert not {"CatalogSlot", "CatalogCode"} & imported, sorted(imported)
+    assert not {"Slot", "Code"} & imported, sorted(imported)
 
     fields = fields_of(source, "Catalog")
     for key, symbol in (
-        ("slot", "CatalogSlot"),
-        ("code", "CatalogCode"),
-        ("also_code", "CatalogCode"),
+        ("slot", "Slot"),
+        ("code", "Code"),
+        ("also_code", "Code"),
     ):
         got = fields[key]
         assert symbol in {n.id for n in ast.walk(got) if isinstance(n, ast.Name)}, key
@@ -1402,18 +1424,22 @@ def test_a_local_reference_is_a_symbol_this_module_declares_and_not_an_import(
         # bound has nowhere else in the module to hide.
         extra = kwargs_of(got) - {"description", "alias", "default", "json_schema_extra"}
         assert extra == set(), (key, sorted(extra))
-    # One symbol for one node, though two properties name it.
-    assert source.count("CatalogCode = ") == 1, source
+    # One symbol for one node, though two properties name it.  Read off the module's own
+    # top-level BINDINGS rather than off the text: ``declared_in`` is a dict and cannot
+    # report a second binding of one name, and ``source.count("Code = ")`` grades a
+    # spelling now that the name is unprefixed and a substring of other identifiers.
+    bound = [name for stmt in ast.parse(source).body for name in binds(stmt)]
+    assert bound.count("Code") == 1, bound
     # The bound IS reachable from the alias -- here through the type D5 names it once
     # as, read off THIS run's alias module rather than the committed one.
     named = constraint_aliases(out.beside["constraints.py"])
-    assert {"min_length", "max_length"} <= stated_by(declared["CatalogCode"], named), named
+    assert {"min_length", "max_length"} <= stated_by(declared["Code"], named), named
 
     # Each entry's symbol is bound BEFORE the root class that uses it, which is what
     # declaring on demand buys: the module is valid Python read top to bottom.
     names = list(declared)
-    assert names.index("CatalogSlot") < names.index("Catalog"), names
-    assert names.index("CatalogCode") < names.index("Catalog"), names
+    assert names.index("Slot") < names.index("Catalog"), names
+    assert names.index("Code") < names.index("Catalog"), names
 
 
 def test_a_local_entry_that_is_a_class_names_its_own_pointer_and_not_the_roots(
@@ -1428,7 +1454,7 @@ def test_a_local_entry_that_is_a_class_names_its_own_pointer_and_not_the_roots(
     """
     root = write_bundle(tmp_path, {"core/catalog.json": SECTIONS})
     out = emit.emit(root, ["core/catalog.json"])
-    entry = schema_ref_of(out.files["core/catalog.py"], "CatalogSlot")
+    entry = schema_ref_of(out.files["core/catalog.py"], "Slot")
     assert "core/catalog.json" in entry, entry
     assert "#/definitions/slot" in entry, entry
     # And the root's is the ROOT's, so the two are not one string.
@@ -1467,7 +1493,10 @@ def test_an_entry_nothing_references_is_not_declared(tmp_path: Path) -> None:
     """
     root = write_bundle(tmp_path, {"core/catalog.json": SECTIONS})
     out = emit.emit(root, ["core/catalog.json"])
-    assert "CatalogUnused" not in declared_in(out.files["core/catalog.py"])
+    # ``Unused`` and not ``CatalogUnused``: §4's names section dropped the ``<Root>``
+    # prefix, so the prefixed spelling was a name the emitter could not produce under
+    # any outcome and this assertion held whatever the walk did with a dead entry.
+    assert "Unused" not in declared_in(out.files["core/catalog.py"])
     assert "Unused" not in out.files["core/catalog.py"]
 
     dead = {
@@ -1552,8 +1581,11 @@ def test_a_local_reference_to_an_entry_declared_later_costs_nothing(tmp_path: Pa
     out = emit.emit(root, ["core/chain.json"])
     assert out.refusals == {}, out.refusals
     names = list(declared_in(out.files["core/chain.py"]))
-    assert {"ChainFirst", "ChainSecond", "Chain"} <= set(names), names
-    assert names.index("ChainSecond") < names.index("ChainFirst") < names.index("Chain"), names
+    # ``First`` / ``Second`` and not ``ChainFirst`` / ``ChainSecond``: §4's names
+    # section spells a ``definitions`` entry ``<Key>``, the module path carrying the
+    # document.  What this test is about is the ORDER, which the rename does not touch.
+    assert {"First", "Second", "Chain"} <= set(names), names
+    assert names.index("Second") < names.index("First") < names.index("Chain"), names
 
 
 def test_a_local_reference_cycle_refuses_rather_than_recurring(tmp_path: Path) -> None:
@@ -1693,8 +1725,10 @@ def test_a_local_pointer_as_an_allOf_conjunct_resolves_through_the_local_resolve
 
     source = out.files["core/preview.py"]
     declared = declared_in(source)
-    # D3's nested rule: the entry is a class of this module, named for its own key.
-    assert isinstance(declared.get("PreviewImpact"), ast.ClassDef), sorted(declared)
+    # §4's nested rule: the entry is a class of this module, named for its own key --
+    # ``Impact``, not ``PreviewImpact``, the ``<Root>`` prefix having been dropped on
+    # 2026-10-28 because the module path already carries the document.
+    assert isinstance(declared.get("Impact"), ast.ClassDef), sorted(declared)
     # The two composing nodes are classes of this module whose base is that entry's
     # class -- which is what says the conjunct became a BASE through the local resolver.
     # Named and not counted: a count says nothing about WHICH node composed, and a
@@ -1702,7 +1736,7 @@ def test_a_local_pointer_as_an_allOf_conjunct_resolves_through_the_local_resolve
     composed = [
         c
         for c in ast.parse(source).body
-        if isinstance(c, ast.ClassDef) and [b.id for b in c.bases] == ["PreviewImpact"]
+        if isinstance(c, ast.ClassDef) and [b.id for b in c.bases] == ["Impact"]
     ]
     assert {c.name for c in composed} == {"Narrowed", "Stricter"}, [c.name for c in composed]
 
@@ -1712,7 +1746,7 @@ def test_a_local_pointer_as_an_allOf_conjunct_resolves_through_the_local_resolve
         if isinstance(n, ast.ImportFrom)
         for a in n.names
     }
-    assert "PreviewImpact" not in imported, sorted(imported)
+    assert "Impact" not in imported, sorted(imported)
     # No import is written from an EMPTY module, which is what a local Target's
     # ``module`` is and what ``Target.where`` would have handed ``Module.importing``.
     assert "from  import" not in source, source
@@ -1723,11 +1757,11 @@ def test_a_local_pointer_as_an_allOf_conjunct_resolves_through_the_local_resolve
     # than through its absence, and the document's own description rides on it.
     reusing = next(c for c in composed if "area" in fields_of(source, c.name))
     area = fields_of(source, reusing.name)["area"]
-    assert "PreviewArea" in {n.id for n in ast.walk(area) if isinstance(n, ast.Name)}, (
+    assert "Area" in {n.id for n in ast.walk(area) if isinstance(n, ast.Name)}, (
         ast.unparse(area)
     )
     assert "Which area." in ast.unparse(area), ast.unparse(area)
-    assert "PreviewArea" not in imported, sorted(imported)
+    assert "Area" not in imported, sorted(imported)
 
 
 def test_the_bundles_two_conjunct_local_pointers_emit_and_their_chains_clear() -> None:
