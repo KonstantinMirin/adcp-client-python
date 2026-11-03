@@ -650,7 +650,27 @@ def test_the_python_text_rule_catches_the_four_texts_it_replaced(tmp_path: Path)
 #:   ``at_least_as_tight`` as pure functions over DECLARATIONS, because §2's intersection
 #:   rule merges two declarations of one property and hands the merged one back to
 #:   ``parse``.  ``nodes.Conjunct.raw``, ``nodes.Base.declared`` and
-#:   ``nodes.Union.branch_raw`` are the three typed carriers that reading is given.
+#:   ``nodes.Union.branch_raw`` are the three typed carriers that reading is given;
+#: * ``codegen/lower/normalise.py`` -- §3a's PASS B is a comparison of TWO DECLARATIONS
+#:   of one property, and it cannot be made anywhere else.  The pass is defined as "the
+#:   same concept spelled two ways, which Pass A cannot see because the two spellings are
+#:   genuinely different JSON", and the case it names is a root's ``enum`` against a
+#:   branch's ``const``: one vocabulary, two KEYWORDS.  Those keywords are the
+#:   declaration, so a reading that waited for the decided types has nothing left to
+#:   compare -- which that module MEASURED rather than assumed: ``brand.json``'s
+#:   ``default_language`` and ``markdown-asset.json``'s ``markdown_flavor`` produce
+#:   byte-identical :class:`codegen.ir.TypeRef`\ s, so a renderer asked to write
+#:   ``Literal[Symbol.MEMBER]`` cannot know whether ``Symbol`` has members at all.
+#:
+#:   **AND IT IS ``compiler.py``'s ENTRY FOLLOWING THE CODE, NOT A FIFTH PERMISSION.**
+#:   The two mappings :func:`codegen.lower.normalise.pins_a_member` reads are the two the
+#:   entry above already covers, handed to it at its one call site
+#:   (``compiler._inherited_narrowings``): ``own[key]`` is §2's intersection of the two
+#:   declarations and ``inherited[key]`` is the base's own, dereferenced.  So the set
+#:   gains an entry and admits no new READING -- the restatement ``adcp-client-python-7ko``
+#:   asks this data for, and the same move ``adcp-client-python-g4z`` made when the set
+#:   went from four entries to six.  ``adcp-client-python-d54`` is this entry; the
+#:   detector's name-based blind spot is still ``adcp-client-python-7ko``.
 #: ``codegen/emit.py`` is NOT in this set and §14 step 7 is what removed it.  It held
 #: ``_composed_nodes``, the pointers a document's root ``allOf`` NAMES -- a fact about the
 #: bundle's reference GRAPH, which §11 puts in the source layer.  It is ``bundle.composed``
@@ -662,6 +682,7 @@ MAY_READ_A_DECLARATION = frozenset(
         "schema/parse.py",
         "lower/rules.py",
         "lower/union.py",
+        "lower/normalise.py",
         "compiler.py",
     }
 )

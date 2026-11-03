@@ -1316,6 +1316,24 @@ SECTIONS = {
 }
 
 
+def binds(stmt: ast.stmt) -> list[str]:
+    """The module-level names one top-level statement binds, with no deduplication.
+
+    ``declared_in`` is a mapping and so cannot report that a module bound one name
+    TWICE, which is the fact "one symbol for one node" is about.  Only the statement's
+    own targets, never a walk into it: a class body's annotated fields are ``Store``
+    names too, and counting those would make a field sharing an entry's key look like a
+    second binding of it.
+    """
+    if isinstance(stmt, ast.ClassDef):
+        return [stmt.name]
+    if isinstance(stmt, ast.AnnAssign):
+        return [stmt.target.id] if isinstance(stmt.target, ast.Name) else []
+    if isinstance(stmt, ast.Assign):
+        return [t.id for t in stmt.targets if isinstance(t, ast.Name)]
+    return []
+
+
 def declared_in(source: str) -> dict[str, ast.AST]:
     """Every module-level name a rendered module BINDS, in body order.
 
@@ -1377,10 +1395,14 @@ def test_a_local_reference_is_a_symbol_this_module_declares_and_not_an_import(
 
     source = out.files["core/catalog.py"]
     declared = declared_in(source)
-    # D3's nested rule with the document as the parent: root symbol + the entry's key.
-    assert "CatalogSlot" in declared, sorted(declared)
-    assert "CatalogCode" in declared, sorted(declared)
-    assert isinstance(declared["CatalogSlot"], ast.ClassDef), "an object entry is a class"
+    # §4's nested rule, in the spelling that section now states: ``<Key>`` for a
+    # ``definitions`` entry, because "the module path already carries the document".
+    # These read ``CatalogSlot`` / ``CatalogCode`` until 2026-11-03: the ``<Root>``
+    # prefix the names section dropped on 2026-10-28, the same stale spelling
+    # ``adcp-client-python-10l.50`` removed from the absolute half one file over.
+    assert "Slot" in declared, sorted(declared)
+    assert "Code" in declared, sorted(declared)
+    assert isinstance(declared["Slot"], ast.ClassDef), "an object entry is a class"
 
     imported = {
         a.name
@@ -1388,13 +1410,13 @@ def test_a_local_reference_is_a_symbol_this_module_declares_and_not_an_import(
         if isinstance(n, ast.ImportFrom)
         for a in n.names
     }
-    assert not {"CatalogSlot", "CatalogCode"} & imported, sorted(imported)
+    assert not {"Slot", "Code"} & imported, sorted(imported)
 
     fields = fields_of(source, "Catalog")
     for key, symbol in (
-        ("slot", "CatalogSlot"),
-        ("code", "CatalogCode"),
-        ("also_code", "CatalogCode"),
+        ("slot", "Slot"),
+        ("code", "Code"),
+        ("also_code", "Code"),
     ):
         got = fields[key]
         assert symbol in {n.id for n in ast.walk(got) if isinstance(n, ast.Name)}, key
@@ -1402,18 +1424,22 @@ def test_a_local_reference_is_a_symbol_this_module_declares_and_not_an_import(
         # bound has nowhere else in the module to hide.
         extra = kwargs_of(got) - {"description", "alias", "default", "json_schema_extra"}
         assert extra == set(), (key, sorted(extra))
-    # One symbol for one node, though two properties name it.
-    assert source.count("CatalogCode = ") == 1, source
+    # One symbol for one node, though two properties name it.  Read off the module's own
+    # top-level BINDINGS rather than off the text: ``declared_in`` is a dict and cannot
+    # report a second binding of one name, and ``source.count("Code = ")`` grades a
+    # spelling now that the name is unprefixed and a substring of other identifiers.
+    bound = [name for stmt in ast.parse(source).body for name in binds(stmt)]
+    assert bound.count("Code") == 1, bound
     # The bound IS reachable from the alias -- here through the type D5 names it once
     # as, read off THIS run's alias module rather than the committed one.
     named = constraint_aliases(out.beside["constraints.py"])
-    assert {"min_length", "max_length"} <= stated_by(declared["CatalogCode"], named), named
+    assert {"min_length", "max_length"} <= stated_by(declared["Code"], named), named
 
     # Each entry's symbol is bound BEFORE the root class that uses it, which is what
     # declaring on demand buys: the module is valid Python read top to bottom.
     names = list(declared)
-    assert names.index("CatalogSlot") < names.index("Catalog"), names
-    assert names.index("CatalogCode") < names.index("Catalog"), names
+    assert names.index("Slot") < names.index("Catalog"), names
+    assert names.index("Code") < names.index("Catalog"), names
 
 
 def test_a_local_entry_that_is_a_class_names_its_own_pointer_and_not_the_roots(
@@ -1428,7 +1454,7 @@ def test_a_local_entry_that_is_a_class_names_its_own_pointer_and_not_the_roots(
     """
     root = write_bundle(tmp_path, {"core/catalog.json": SECTIONS})
     out = emit.emit(root, ["core/catalog.json"])
-    entry = schema_ref_of(out.files["core/catalog.py"], "CatalogSlot")
+    entry = schema_ref_of(out.files["core/catalog.py"], "Slot")
     assert "core/catalog.json" in entry, entry
     assert "#/definitions/slot" in entry, entry
     # And the root's is the ROOT's, so the two are not one string.
@@ -1439,9 +1465,25 @@ def test_a_local_entry_that_is_a_class_names_its_own_pointer_and_not_the_roots(
     # The pointer LANDS in the document the run writes beside the module, which is what
     # ``strict_validate`` reads: a ref naming a node the package cannot resolve would
     # be a class that raises on every validation instead of grading.
+    #
+    # **Read the way :func:`adcp.types._base.schema_at` reads it, which is
+    # ``store_expanded(applied_schema(root, pointer), root)``, and not off the record's
+    # raw text.**  The record states each distinct subtree ONCE and references it at
+    # every occurrence (``docs/plan/architecture.md``, "THE RECORD'S TEXT IS A DAG; ITS
+    # POINTERS ARE NOT"), so ``{"type": "string"}`` -- stated twice in this fixture, at
+    # ``/definitions/slot/properties/a`` and at ``/properties/plain`` -- is hoisted and
+    # the raw text holds ``{"$ref": "#/definitions/Shared0"}`` at both.  A text read
+    # here asserted the absence of a storage the architecture section requires, and the
+    # section makes the hoisting INVISIBLE to every pointer a reader spells: so the
+    # claim is about what the accessor hands a grader, and that is where it is asked.
     written = json.loads(out.files["core/catalog.json"])
     assert node_at(written, "/definitions/slot") is not NOTHING
-    assert node_at(written, "/definitions/slot")["properties"] == {"a": {"type": "string"}}
+    through = _base.store_expanded(applied_schema(written, "#/definitions/slot"), written)
+    assert through["properties"] == {"a": {"type": "string"}}
+    # And the storage is what stands between the two readings, so the raw text at that
+    # pointer is NOT the expansion -- which is what keeps the line above a dereference
+    # rather than a longer spelling of ``node_at``.
+    assert node_at(written, "/definitions/slot") != through
 
 
 def test_an_entry_nothing_references_is_not_declared(tmp_path: Path) -> None:
@@ -1467,7 +1509,10 @@ def test_an_entry_nothing_references_is_not_declared(tmp_path: Path) -> None:
     """
     root = write_bundle(tmp_path, {"core/catalog.json": SECTIONS})
     out = emit.emit(root, ["core/catalog.json"])
-    assert "CatalogUnused" not in declared_in(out.files["core/catalog.py"])
+    # ``Unused`` and not ``CatalogUnused``: §4's names section dropped the ``<Root>``
+    # prefix, so the prefixed spelling was a name the emitter could not produce under
+    # any outcome and this assertion held whatever the walk did with a dead entry.
+    assert "Unused" not in declared_in(out.files["core/catalog.py"])
     assert "Unused" not in out.files["core/catalog.py"]
 
     dead = {
@@ -1552,8 +1597,11 @@ def test_a_local_reference_to_an_entry_declared_later_costs_nothing(tmp_path: Pa
     out = emit.emit(root, ["core/chain.json"])
     assert out.refusals == {}, out.refusals
     names = list(declared_in(out.files["core/chain.py"]))
-    assert {"ChainFirst", "ChainSecond", "Chain"} <= set(names), names
-    assert names.index("ChainSecond") < names.index("ChainFirst") < names.index("Chain"), names
+    # ``First`` / ``Second`` and not ``ChainFirst`` / ``ChainSecond``: §4's names
+    # section spells a ``definitions`` entry ``<Key>``, the module path carrying the
+    # document.  What this test is about is the ORDER, which the rename does not touch.
+    assert {"First", "Second", "Chain"} <= set(names), names
+    assert names.index("Second") < names.index("First") < names.index("Chain"), names
 
 
 def test_a_local_reference_cycle_refuses_rather_than_recurring(tmp_path: Path) -> None:
@@ -1693,8 +1741,10 @@ def test_a_local_pointer_as_an_allOf_conjunct_resolves_through_the_local_resolve
 
     source = out.files["core/preview.py"]
     declared = declared_in(source)
-    # D3's nested rule: the entry is a class of this module, named for its own key.
-    assert isinstance(declared.get("PreviewImpact"), ast.ClassDef), sorted(declared)
+    # §4's nested rule: the entry is a class of this module, named for its own key --
+    # ``Impact``, not ``PreviewImpact``, the ``<Root>`` prefix having been dropped on
+    # 2026-10-28 because the module path already carries the document.
+    assert isinstance(declared.get("Impact"), ast.ClassDef), sorted(declared)
     # The two composing nodes are classes of this module whose base is that entry's
     # class -- which is what says the conjunct became a BASE through the local resolver.
     # Named and not counted: a count says nothing about WHICH node composed, and a
@@ -1702,7 +1752,7 @@ def test_a_local_pointer_as_an_allOf_conjunct_resolves_through_the_local_resolve
     composed = [
         c
         for c in ast.parse(source).body
-        if isinstance(c, ast.ClassDef) and [b.id for b in c.bases] == ["PreviewImpact"]
+        if isinstance(c, ast.ClassDef) and [b.id for b in c.bases] == ["Impact"]
     ]
     assert {c.name for c in composed} == {"Narrowed", "Stricter"}, [c.name for c in composed]
 
@@ -1712,7 +1762,7 @@ def test_a_local_pointer_as_an_allOf_conjunct_resolves_through_the_local_resolve
         if isinstance(n, ast.ImportFrom)
         for a in n.names
     }
-    assert "PreviewImpact" not in imported, sorted(imported)
+    assert "Impact" not in imported, sorted(imported)
     # No import is written from an EMPTY module, which is what a local Target's
     # ``module`` is and what ``Target.where`` would have handed ``Module.importing``.
     assert "from  import" not in source, source
@@ -1723,11 +1773,11 @@ def test_a_local_pointer_as_an_allOf_conjunct_resolves_through_the_local_resolve
     # than through its absence, and the document's own description rides on it.
     reusing = next(c for c in composed if "area" in fields_of(source, c.name))
     area = fields_of(source, reusing.name)["area"]
-    assert "PreviewArea" in {n.id for n in ast.walk(area) if isinstance(n, ast.Name)}, (
+    assert "Area" in {n.id for n in ast.walk(area) if isinstance(n, ast.Name)}, (
         ast.unparse(area)
     )
     assert "Which area." in ast.unparse(area), ast.unparse(area)
-    assert "PreviewArea" not in imported, sorted(imported)
+    assert "Area" not in imported, sorted(imported)
 
 
 def test_the_bundles_two_conjunct_local_pointers_emit_and_their_chains_clear() -> None:
@@ -1833,140 +1883,89 @@ def test_no_document_of_the_bundle_refuses_on_a_definition_section_any_more() ->
 def test_the_bundles_own_sections_are_walked_and_the_closure_follows() -> None:
     """The POSITIVE path on the real bundle, which the committed tree cannot grade.
 
-    15 of the 45 documents emit at 0130e5fc9 -- it was 6 at 16052ffb0 and 0 of 40
-    when this was written -- and the other 30 are each held by a keyword another
-    step owns (``$ref`` 9, ``oneOf`` 5, ``allOf`` 4, ``anyOf`` 4,
-    ``discriminator`` 3, ``properties`` 3, ``uniqueItems`` 2).  The constructed
-    bundles above are what grade the declaration itself.  What the real bundle
-    grades is the WALK, in the two places it is observable:
+    The constructed bundles above are what grade the declaration itself.  What the real
+    bundle grades is the WALK, in the two places it is observable:
 
-    * a refusal at a pointer INSIDE a section is proof the walk descended one.  9
-      documents are in that position, and none was before: every pointer under
-      ``definitions`` used to be unreachable.
-    * a refusal that moved from the root to a property means the walk got FURTHER, and
-      the closure then reaches what those earlier properties name.
+    * the walk DESCENDS into a section rather than reading the section's name, read off
+      the declarations the run made at pointers inside one;
+    * the closure then reaches what the properties inside those sections name.
       ``governance/policy-entry.json`` is the case: it refused at ``/`` on ``$defs``
-      before any of its 8 property references was read, and now refuses at
-      ``/properties/acceptance_profile`` -- so the three enum documents its earlier
-      properties name are emitted over step 1, 2 and 4's population, and no member of
-      that population references two of the three from anywhere else.
+      before any of its 8 property references was read, and the three enum documents
+      its properties name are emitted over step 1, 2 and 4's population, with no member
+      of that population referencing two of the three from anywhere else.
+
+    **THE FIRST HALF WAS A REFUSAL READING UNTIL 2026-11-03, AND IT IS A DECLARATION
+    READING NOW.**  It derived "documents refusing at a pointer inside a
+    ``definitions`` section", pinned two of them by name at an exact pointer, and read
+    a refusal INSIDE a section as proof the walk had descended into one.  That set is
+    EMPTY at ``refused 0``, so ``nodeset.claimed`` reddened it -- correctly: every
+    assertion over it held vacuously.
+
+    ``refused 0`` does NOT guarantee what this check is named for, which is why it is
+    restated rather than retired.  A walk that never entered a section refuses nothing
+    inside one either, so the absence of a refusal at a position is not evidence that
+    the position was reached; the two readings are indistinguishable from the refusal
+    side.  The DECLARATIONS separate them, and they separate them in the direction that
+    matters: a symbol at a pointer inside a section is a node the walk reached, decided
+    and named, which is strictly more than a refusal there ever said.
+
+    It also retires a pin whose own comment recorded FIVE moves -- two documents
+    leaving by emitting, three pointers going deeper -- because a refusal's pointer is
+    a quantity every emitting row moves and a pin on one is a census.  The partition
+    below says the same thing as a property: the declared positions inside a section
+    split into the section's own ENTRIES and the nodes strictly BELOW one, and the
+    second part is the descent.  A walk reading the section's name declares neither; a
+    walk stopping at the entry declares only the first.
     """
     out = compiled(BUNDLE, sorted(bundle.portable(BUNDLE)))
-    inside = {
-        d: r["pointer"]
-        for d, r in out.refusals.items()
-        if r["pointer"].lstrip("/").split("/")[0] in bundle.DEFINITIONS
-    }
-    # 8 -> 9 at ``salesagent-j3k2l.40``, and the ninth is the walk getting FURTHER
-    # rather than a new kind of refusal: ``brand.json`` refused at ``/oneOf/4`` on the
-    # branch that composes, and now that a composing branch is lowered it refuses at
-    # ``/definitions/default_language/allOf/0`` -- a verdict, on a base that is an
-    # alias, three hops inside a section.  No member left; the other 8 are unchanged.
-    #
-    # 9 -> 7 at ``salesagent-j3k2l.28``, and BOTH halves of the move are the walk
-    # finishing rather than stopping earlier.  Two documents LEFT because they emit:
-    # ``core/bidding-policy-capability.json`` (refused at
-    # ``/definitions/policy_profile/properties/supported_combinations/items/oneOf/0``)
-    # and ``core/targeting-overlay-support.json`` (at
-    # ``/definitions/countrySupport/anyOf/0``) -- both on the local-``$ref`` branch
-    # guard that row removed.  And ``governance/reported-outcome-error.json``'s
-    # pointer went DEEPER, ``/definitions/bounded_value/anyOf/0`` ->
-    # ``/definitions/bounded_value_level_3/anyOf/1``, for the same reason: the first
-    # branch lowers now and the walk reaches the third level.  No member joined.
-    #
-    # 7 -> 8 at ``salesagent-j3k2l.21``, and the eighth is the walk getting FURTHER
-    # for the third time in this test's history rather than a document becoming
-    # unrepresentable.  ``core/geo-place-requirement.json`` joined, and the cause is
-    # MEASURED on trunk rather than inferred from the count: at 8c021bffa it refused
-    # at ``/properties/systems/propertyNames`` on ``$ref``, kind ``deferred``,
-    # CHAINED to ``core/geo-place-system.json``'s own refusal -- "a branch of type
-    # 'string' is step 6", which is this row's ground.  That target is a root
-    # ``anyOf`` of scalars and now lowers, so the chain clears and the walk descends
-    # into the section, where it meets ``pattern`` on
-    # ``/definitions/catalogRequirement/properties/countries/propertyNames``.
-    #
-    # That surviving refusal was not that row's: its detail was
-    # ``salesagent-j3k2l.64``'s ground verbatim -- a constrained-str key pydantic
-    # renders back as ``patternProperties``, which that row had no reading for -- and
-    # section 5's ``propertyNames`` row decides that position: ``pattern`` -> an
-    # annotated ``str`` key.
-    #
-    # **``.64`` emitted that key and the document stayed, which is the walk getting
-    # FURTHER a fourth time rather than the count holding still.**  It was predicted
-    # here that .64 would take the count 8 -> 7; it did not, and the measurement is
-    # why: with the key lowered, the walk descends ONE MORE HOP into the same
-    # property and meets ``uniqueItems`` on the array inside the mapping's VALUE --
-    # ``/definitions/catalogRequirement/properties/countries/additionalProperties``,
-    # a verdict on an array with no class above it (``lower.containers``'s
-    # ``_DISTINCT_HAS_NOWHERE_TO_LIVE``).  So the member is unchanged, the count is
-    # unchanged, and the POINTER is what moved -- which is exactly why this test pins
-    # pointers and not a total.
-    #
-    # NAMED, NOT COUNTED: the count went 7 -> 8 -> 9 -> 8 over four rows, each move a
-    # document joining or leaving for a cause measured at the time, and a number going
-    # back down says nothing about which document moved.  The two pointers asserted
-    # below are what make this evidence of a DESCENT into the section rather than of
-    # the section being read, and they are what a count could never say.
-    #
-    # **8 -> 7 AT ``adcp-client-python-10l.21``'s SECOND INSTALMENT, and the pointer
-    # this test pinned is the one that LEFT.**  §5(b)'s ``uniqueItems`` row is a declared
-    # WIDENING now rather than a verdict, so ``core/geo-place-requirement.json`` emits
-    # and leaves this population -- which is the fourth time the pointer it carried
-    # moved and the first time it cleared.  ``governance/policy-entry.json`` emits for
-    # the same reason and its own pin below went with it.
-    #
-    # The replacement pin is ``core/creative-localization-readback.json``, which is
-    # deeper than either and reads INSIDE a section through three further hops -- a
-    # section entry, a ``patternProperties`` expression, a combinator branch -- so it
-    # still says what this test exists to say: the walk DESCENDS into a section rather
-    # than reading the section's name.  ``brand.json`` joined at ``/definitions/colors``
-    # and that is ``adcp-client-python-857``, a latent collision the overlap used to
-    # stand in front of.
-    #
-    # **AND THAT REPLACEMENT PIN CLEARED AT ``adcp-client-python-10l.55``, THE FIFTH
-    # TIME THIS POINTER HAS MOVED AND THE SECOND TIME BY EMITTING.**
-    # ``core/creative-localization-readback.json`` refused at that pointer because the
-    # branch there is a ``$ref`` onto ``core/localized-creative-asset.json``, chained to
-    # ``core/assets/asset-union.json``, whose own ``$ref`` branch onto the UNION root
-    # ``VASTAsset`` the branch row refused for not being a class.  It is one, the gate
-    # reads ``compiler.TargetKind`` now, and the whole chain emits.
-    #
-    # The pin moves to ``brand/verify-brand-claim-response.json``, which is the same
-    # depth claim through the same number of hops -- a section entry, an ``allOf``
-    # conjunct, a property -- so what this assertion says is unchanged: the walk
-    # DESCENDS into a section rather than reading the section's name.
-    claimed("documents refusing inside a definitions section", inside)
-    assert inside["brand/verify-brand-claim-response.json"] == (
-        "/definitions/signed_response/allOf/1/properties/payload"
+
+    def in_a_section(pointer: str) -> bool:
+        """``pointer``'s FIRST segment is a section keyword, so the node is inside one."""
+        return pointer.lstrip("/").split("/")[0] in bundle.DEFINITIONS
+
+    # ``Emitted.declared`` is the run's own record of where each symbol came from --
+    # "the only thing D3's content dedup can be graded over", and the only place the
+    # pointer a declaration lowered is still in hand.  The emitted TEXT has no pointers.
+    declared = claimed(
+        "nodes the run declared at a pointer inside a definitions section",
+        {
+            (document, pointer)
+            for document, at in out.declared.items()
+            for pointer in at
+            if in_a_section(pointer)
+        },
     )
-    # Pinned by name because a count alone cannot say the pointer went INTO a
-    # section.  This was ``core/response-payload-jws-envelope.json`` at
-    # ``/definitions/response_payload/properties/typ``; that document EMITS as of
-    # 16052ffb0, so it left this population and the pin moved to the deepest
-    # section pointer the bundle still refuses at -- three hops past the section
-    # name, which is what makes it evidence of a descent rather than of the
-    # section being read.  It held across 0130e5fc9, where the membership of the
-    # other seven changed and the count went 7 -> 8, and across
-    # ``salesagent-j3k2l.40``, where ``brand.json`` joined and took it 8 -> 9.
-    #
-    # **AND IT CLEARED AT ``adcp-client-python-10l.43``, THE THIRD TIME THIS SECOND PIN
-    # HAS MOVED AND THE SECOND TIME BY EMITTING.**
-    # ``core/account-identity-change-preview.json`` refused at
-    # ``/definitions/nonblocking_impacts/items/allOf/0`` because the conjunct there is a
-    # LOCAL ``$ref`` -- ``#/definitions/impact``, a pointer into its own document -- and
-    # ``lower_composition``'s conjunct arm asked the binder for it.  It asks
-    # ``compiler.local_reference`` now (``compiler._conjunct_base``) and the document
-    # emits, which is the same clearing as the first pin's: a routing gap charged to a
-    # document, not a fact about the document.
-    #
-    # The pin moves to ``brand/verify-brand-claims-response.json``, the SIBLING of the
-    # first pin at the same pointer -- a section entry, an ``allOf`` conjunct, a property,
-    # three hops past the section name -- so what this assertion says is unchanged, and
-    # the two pins are now two independently-named documents rather than two depths.
-    # There are 3 members left and ``brand.json``'s pointer is two hops, so these two are
-    # the whole of the deep evidence.
-    assert inside["brand/verify-brand-claims-response.json"] == (
-        "/definitions/signed_response/allOf/1/properties/payload"
+    entries = claimed(
+        "declarations at a section's own ENTRY",
+        {(d, p) for d, p in declared if p.strip("/").count("/") == 1},
+    )
+    below = claimed(
+        "declarations strictly BELOW a section entry, which is the descent",
+        declared - entries,
+    )
+    partitions(declared, at_an_entry=entries, below_an_entry=below)
+
+    # Each of those pointers names a node the RAW document states, so a declaration is
+    # a position of the bundle and not a string the walk composed.  Total, with the
+    # offenders NAMED: this is what makes the partition above evidence of a descent
+    # through real nodes rather than of a naming convention.
+    unreal = sorted(
+        (d, p) for d, p in declared if node_at(bundle.read(BUNDLE, d), p) is NOTHING
+    )
+    assert unreal == [], unreal[:10]
+
+    # And the descent CHAINS, which is the "the walk got FURTHER" fact the retired pin
+    # kept chasing one pointer at a time: a declaration below an entry whose own
+    # declared ancestor is itself below that entry.  Named by derivation and not pinned,
+    # so a document leaving this set by emitting differently cannot empty it silently.
+    claimed(
+        "declarations two descents below a section entry",
+        {
+            (d, p)
+            for d, p in below
+            for a in bundle.pointers_above(p, [q for e, q in below if e == d])
+            if a != p
+        },
     )
 
     # ``governance/policy-entry.json`` EMITS at ``adcp-client-python-10l.21``'s second
