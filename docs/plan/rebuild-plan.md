@@ -45,6 +45,17 @@ exactly the defect the sentence names**, because the two spellings sit in differ
 reader comparing them has no way to know they are one object. So an object reachable at two domain
 paths violates this rule even though both names are legitimate derivations.
 
+**AND FOR A SYMBOL CARRYING NO `__adcp_schema__`, THE DECLARING POSITION IS ITS CATALOGUE ENTRY'S
+HOME (decided 2026-11-03).** Only a model class carries that attribute, so the rule below had
+nothing to read for an enum or a constrained-scalar alias — and those are most of the symbols
+reachable at two paths. §3a already decides where such a symbol is declared: the entry's home is
+the stating position the other stating positions reach through a reference, chosen that way because
+it closes no reference cycle. **So the home IS the declaring position, the rule below applies
+unchanged, and nothing new has to be decided per symbol.** Where a rooted vocabulary and a
+referencing position both export one object — one enum class under two names — the root's name is
+the one the surface keeps, because a document root is already a home and a position that references
+a type does not name it.
+
 **AND THE NAME THE SURFACE KEEPS IS THE ONE DERIVED AT THE CLASS'S OWN DECLARING POSITION** — the
 document and pointer its `__adcp_schema__` names, which is where §4 derived it from the bundle. The
 other spellings are the names of positions that REFERENCE it, and a position that references a
@@ -2007,12 +2018,25 @@ declared set stops being readable — which §8 already forbids by name. §3a se
 for a vocabulary: *the entry, not the declaration site.* **An approximation's identity is
 `(stating document, stating pointer, keyword)`, and every inlined occurrence resolves to it.**
 
-**3. §5's `if` row needs words for a NEGATED clause.** A condition stating a presence fact under a
+**3a. §5's `if` ROW READS THROUGH A LOCAL REFERENCE THE RECORD MINTED (decided 2026-11-03), and
+this is the sentence that unblocks the six cells.** The overwhelming majority of unreadable
+conditions are unreadable for one reason: the record stores each distinct subtree once, so the
+condition — or a property declaration inside it — was replaced by a reference to the record's own
+`definitions`. **Read through that reference and the condition is readable and lowers exactly,
+declaring nothing.** This needs no new principle: `architecture.md` already decided that *a reader
+asking what the document states reads through the storage*, because a reference to a storage entry
+is not a fact the document states but where the fact is kept. The `if` row is such a reader, and
+the only reason it was not already covered is that the rule was written for the checks that first
+hit it.
+
+**3b. §5's `if` row needs words for a NEGATED clause.** A condition stating a presence fact under a
 `not` is readable — it is the complement of the group — and the row has no case for it, so such a
 node compiles to nothing and the model widens undeclared. **Where the condition is a negated
-presence fact, the clause is the negation of the group it would otherwise state.** That lowers the
-overwhelming majority of the sites exactly, declaring nothing, and leaves only genuinely
-unreadable conditions to declare under sentence 1.
+presence fact, the clause is the negation of the group it would otherwise state.** **Measured, this shape is a small minority and
+it is NOT exactly lowerable**: the conditions negate a presence-AND-value fact, whose negation is a
+disjunction — absent OR a different value — and a clause list is a conjunction, so no list states
+it. So these DECLARE under sentence 1, and sentence 3a is what lowers the majority. The two were
+written as one and they are not.
 
 **4. §5's `oneOf` row is WRONG about `not oneOf`, and this is a narrowing in a rule rather than a
 gap.** It says the clause is *"the union of the branches' groups"*. But `not oneOf` admits an
