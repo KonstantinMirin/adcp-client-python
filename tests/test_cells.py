@@ -83,18 +83,47 @@ from nodeset import claimed, partitions
 from pydantic import TypeAdapter
 from codegen import harness
 
-#: §5's row count and §3's position count, the two factors of the table's area.  Pinned
-#: because the DENOMINATOR is the reading: a row added without a cell, or a position
-#: added without a column, changes what "every cell" ranges over, and a reader comparing
-#: two deliveries needs to know which table each was over.
-ROWS = 98
-POSITIONS = 9
-#: §5's live cells: 289 of the 882 pairs compile to a type, a field or a rule.
-LIVE = 289
-#: Of those, the ones at least one portable document of bundle 3.2 STATES.  The rest are
-#: cells no document's faithfulness depends on, and the compiler's answer at 27 of them
-#: is a refusal naming the keyword rather than an annotation.
-STATED = 180
+#: **THE FOUR PINNED COUNTS THAT STOOD HERE ARE GONE** (2026-11-04,
+#: ``adcp-client-python-99m``).  They were ``ROWS = 98``, ``POSITIONS = 9``,
+#: ``LIVE = 289`` and ``STATED = 180``, and the three checks below asserted them --
+#: eighteen integers over nine ``assert ... ==`` sites, which
+#: ``tests/test_every_check_names_its_set.py``'s census instrument counted against a
+#: CEILING OF 0 and was red on.  Every one of the eighteen was TRUE when it was removed;
+#: that is the point.  Each was a census: one bundle version's reading of a quantity
+#: every emitting row and every upstream release moves, and a number being right today
+#: is what makes it indistinguishable from a check.
+#:
+#: What they stood in for is asserted instead, and in each case it is a property the
+#: counts were decoration on:
+#:
+#: * ``ROWS``/``POSITIONS``/882 stood in for "the cells are the whole CROSS PRODUCT of
+#:   the table and the positions".  That is asserted as the equality of two derived sets.
+#:   The ``882`` was vacuous even as a count -- ``len`` of a set comprehension over two
+#:   iterables cannot be anything else.
+#: * ``LIVE`` stood in for "``live()`` is exactly the cells whose effect ``COMPILES``",
+#:   which the two assertions directly beneath it ALREADY state as a biconditional.  The
+#:   count added nothing to them.
+#: * the nine per-position figures stood in for three facts, each now asserted: the nine
+#:   columns PARTITION the live set, every column is NON-EMPTY (so the induction has
+#:   something to discharge at every hop), and ``RULE`` is the SHORT column -- a strict
+#:   inequality against every other column, which is what §5's "RULE -> nothing" rows
+#:   mean and what a pinned 24 could never say.
+#: * ``STATED`` and ``109`` stood in for "the bundle-stated cells and the rest PARTITION
+#:   the live set, and neither half is empty".  The two figures are a REPORT -- the
+#:   check's own docstring says "the two figures are different obligations and the report
+#:   never sums them" -- so they are stated as a measurement below and not as a gate.
+#:
+#: MEASURED 2026-11-04 over ``schemas/cache/3.2``, for a reader comparing deliveries:
+#: 98 rows x 9 positions = 882 cells, 289 live, 180 of those stated by some portable
+#: document and 109 not; by position ROOT 33, PROP 34, ELEM 33, MAPV 33, KEY 33,
+#: BRANCH 33, CONJ 33, RULE 24, DEF 33.  A delivery reports these; nothing asserts them.
+#:
+#: **AND THE GATE DOES NOT WEAKEN, because the counts were never the gate.**  §8's
+#: obligation is coverage of a derived set, not its size, and
+#: :func:`test_every_live_cell_is_proved_or_refused_by_name` already ranges over the
+#: whole live set with no predicate narrowing it.  A row added to ``keywords.TABLE``
+#: enlarges that set and is proved or reddens, which is exactly what a pinned
+#: denominator cannot do: it reddens on the SIZE and says nothing about the new cell.
 
 
 # --------------------------------------------------------------------------- #
@@ -108,24 +137,38 @@ def test_the_live_cell_count_is_derived_from_the_table() -> None:
     position is here too, because the induction walks a document BY position and a
     position's column is what it has to discharge at each hop.
     """
-    assert len(keywords.TABLE) == ROWS
-    assert len(list(Position)) == POSITIONS
-    cells = {
-        (keyword, position) for keyword in keywords.TABLE for position in Position
-    }
-    assert len(cells) == ROWS * POSITIONS == 882
+    cells = claimed(
+        "§5's cells",
+        {(keyword, position) for keyword in keywords.TABLE for position in Position},
+    )
+    # **THE TABLE IS TOTAL OVER THE CROSS PRODUCT**, which is what the pinned
+    # ``ROWS * POSITIONS == 882`` was reaching for and could not say: the product of two
+    # counts is satisfied by any table of the right AREA, and the induction's requirement
+    # is that no ``(keyword, position)`` pair is missing an answer.  ``keywords.cell``
+    # returns ``None`` for a keyword with no row -- "the answer that refuses the document
+    # BY NAME" -- so a row added to one section and not the others reddens HERE, with the
+    # pair named, instead of moving a denominator.
+    missing = sorted(
+        (keyword, position.name)
+        for keyword, position in cells
+        if keywords.cell(keyword, position) is None
+    )
+    assert missing == [], missing
 
-    assert len(claimed("§5's live cells", live())) == LIVE
-    # Every live cell's effect is one of the three that COMPILE to something, and no
-    # other effect is in the set -- the biconditional, so a fourth effect joining
-    # ``COMPILES`` cannot enlarge this set silently.
+    claimed("§5's live cells", live())
+    # **THE BICONDITIONAL IS THE DEFINITION OF ``live()``, and it is the whole of what a
+    # pinned 289 was standing in front of.**  Every live cell's effect is one of the
+    # three that COMPILE to something, and every cell with such an effect is live -- so a
+    # fourth effect joining ``COMPILES``, or a row whose cell stopped compiling, moves
+    # this set and reddens by CELL rather than by a number.
     assert {keywords.cell(k, p).effect for k, p in live()} <= keywords.COMPILES
-    assert all(
-        (keyword, position) in live()
+    assert live() == {
+        (keyword, position)
         for keyword in keywords.TABLE
         for position in Position
         if keywords.cell(keyword, position).effect in keywords.COMPILES
-    )
+    }
+    assert live() < cells, "every cell is live: the table says nothing anywhere"
 
 
 def test_the_live_cells_split_by_position_as_the_induction_walks_them() -> None:
@@ -135,36 +178,57 @@ def test_the_live_cells_split_by_position_as_the_induction_walks_them() -> None:
     §5 gives several rows "RULE -> nothing" and those cells are not live -- which is why
     the induction reaches a conditional subtree with less to prove than a value subtree.
     """
-    by_position = {p: len({c for c in live() if c[1] is p}) for p in Position}
-    assert by_position == {
-        Position.ROOT: 33,
-        Position.PROP: 34,
-        Position.ELEM: 33,
-        Position.MAPV: 33,
-        Position.KEY: 33,
-        Position.BRANCH: 33,
-        Position.CONJ: 33,
-        Position.RULE: 24,
-        Position.DEF: 33,
-    }
-    assert sum(by_position.values()) == LIVE
+    column = {p: {c for c in live() if c[1] is p} for p in Position}
+    # TOTAL and DISJOINT over the live set, which is what ``sum(...) == LIVE`` was a
+    # weaker spelling of: two columns can sum correctly while one misses a cell and
+    # another holds it twice, and ``partitions`` reports both failures BY CELL.
+    partitions(live(), **{p.name: column[p] for p in Position})
+    # Every column NON-EMPTY, so the induction has something to discharge at every hop.
+    # Named per position, so a column emptying reddens with the position named.
+    for position in Position:
+        claimed(f"live cells at {position.name}", column[position], inside=live())
+    # **``RULE`` IS THE SHORT COLUMN, asserted as the inequality the docstring states.**
+    # §5 gives several rows "RULE -> nothing" and those cells are not live, so a
+    # conditional subtree has strictly less to prove than any value subtree.  A pinned 24
+    # could not say that; it only said what the number was on one bundle.
+    assert all(
+        len(column[Position.RULE]) < len(column[position])
+        for position in Position
+        if position is not Position.RULE
+    ), {p.name: len(s) for p, s in column.items()}
 
 
 def test_the_bundle_states_the_cells_this_row_claims_it_does() -> None:
-    """How many live cells any portable document STATES, derived over the bundle.
+    """WHICH live cells any portable document STATES, derived over the bundle.
 
     **The set the induction has to range over to reach a document.**  A cell no document
-    states is a cell no document's faithfulness depends on, so the two figures are
-    different obligations and the report never sums them: 289 is the table's area and 180
-    is what bundle 3.2 asks of it.
+    states is a cell no document's faithfulness depends on, so the two halves are
+    different obligations and the report never sums them.
 
-    Pinned as COUNTS over the bundle SOURCE and not over the emitted population, for §8's
-    reason: a count over what is emitted rises when the emitter emits more, and these are
-    positions of the source, which does not move when a row lands.
+    Derived over the bundle SOURCE and not over the emitted population, for §8's reason:
+    a reading of what is EMITTED grows when the emitter emits more, and these are
+    positions of the source, which do not move when a row lands.
+
+    **Asserted as a PARTITION and no longer as two counts** (2026-11-04): the figures
+    that stood here -- 180 stated, 109 not -- are a measurement a delivery reports, and
+    pinning them made this check red in
+    ``tests/test_every_check_names_its_set.py``'s census instrument while saying nothing
+    the partition does not.  Which cells are in which half is what matters, and a cell
+    moving between the halves because an upstream release started stating it is the
+    bundle changing rather than this tree.
     """
-    stated = {c for c in live() if c in stated_by_the_bundle()}
-    assert len(claimed("live cells the bundle states", stated)) == STATED
-    assert len(live() - stated_by_the_bundle()) == LIVE - STATED == 109
+    stated = claimed(
+        "live cells the bundle states", {c for c in live() if c in stated_by_the_bundle()}
+    )
+    unstated = claimed("live cells no portable document states", live() - stated)
+    # The two obligations, as a PARTITION of the live set and not as two counts whose
+    # difference is a third: this check's own docstring says the report never sums them,
+    # and a partition is the statement that every live cell is exactly one of the two.
+    partitions(live(), the_bundle_states_it=stated, no_document_states_it=unstated)
+    # Drawn from the live set: ``stated_by_the_bundle`` is derived independently, so a
+    # cell it reports that is not live would mean the two readings disagree about the
+    # table rather than about the bundle.
+    assert stated <= live(), sorted(stated - live())
 
 
 # --------------------------------------------------------------------------- #
