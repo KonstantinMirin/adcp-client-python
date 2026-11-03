@@ -37,6 +37,35 @@ Three forms of the same evasion, and each has been found here:
   if its own required set shares the omission. **The shipped package is in scope by definition** —
   it is the artifact every reading is about.
 
+**AN INVARIANT OVER THE CODE IS NOT A STRUCTURAL ASSERTION, AND THE DIFFERENCE IS NOT A MATTER OF
+DEGREE (decided 2026-11-03).** The rule against asserting code structure is right about what it
+names — a count of lines, imports or call sites freezes the shape, blocks the refactor it was meant
+to encourage, and proves nothing, because there are unboundedly many wrong structures and
+enumerating a few is not a strategy. **It has been read as forbidding every check over the code,
+and that reading is what let incidental complexity accumulate unmeasured.**
+
+A COUNT says *there are N of these*. An INVARIANT says *this cannot happen*. The first goes stale
+the moment anyone moves a line; the second is a statement about behaviour that survives any
+refactor preserving it. **Invariants over the code are required, and these are the ones this
+project has paid for by not having:**
+
+- **every producer reaches a consumer.** A set with several producers and one consumer, placed
+  where some producers do not reach it, loses facts silently — and did.
+- **a claimed funnel is the only path.** A comment asserting "the one funnel X passes through" is
+  an invariant written as prose; where a second path exists it is a defect the comment hides.
+- **a derived reading has one owner.** A callee that re-derives what the caller already knows is
+  both a cost and a divergence waiting to happen.
+- **a figure in a comment or a docstring is derived, never written.** Every stale census in this
+  code was a number someone typed, and each was believed for as long as it stood.
+- **a name a layer mints is a name**, not an index. A layer that hoists a repeated thing and calls
+  it by its position is doing anonymously what the layer above it does with judgement.
+
+**And the ordinary tools count as invariants here.** A linter's unused-import, shadowed-name,
+mutable-default and dead-code rules are invariants over behaviour, not shape pins — so their
+absence is not neutrality, it is an unmeasured surface. A repository with none has no reading on
+its own incidental complexity, which is the condition under which that complexity is mistaken for
+the problem's own.
+
 **A ROW THAT MOVES NO READING IS NOT BRIEFED.**
 
 ---
