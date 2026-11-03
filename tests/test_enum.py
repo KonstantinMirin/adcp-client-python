@@ -791,6 +791,61 @@ def test_a_node_this_row_cannot_represent_refuses_by_name(values: list, because:
     assert because in caught.detail, caught.detail
 
 
+def test_a_constraint_beside_an_enum_refuses_an_excluded_member_so_the_members_are_the_set() -> None:
+    """The premise §3a's value-list key rests on, stated where the refusal that makes it
+    true lives.
+
+    §3a keys a catalogue entry on the VALUE LIST, and ``compiler.Module.restatements``
+    was asked only of a node carrying no constraint beside its ``enum`` -- "a value list
+    beside a ``pattern`` admits a subset of the members and is not the entry's
+    vocabulary".  That premise is :func:`lower_enum.excluded` restated and it is false
+    past it: the row REFUSES a node whose own constraints exclude any member, so every
+    node that lowers at all admits exactly its members and two positions over one value
+    list admit the same instances.
+
+    Both directions, because only the pair says it:
+
+    * a constraint that excludes a member is a VERDICT, named on the keyword that
+      excludes it -- so the subset case never reaches the key;
+    * a constraint every member satisfies lowers to the members unchanged -- so the
+      relaxation gives up nothing.
+
+    **Graded on nodes written here, which is the right level** for
+    :func:`test_a_node_this_row_cannot_represent_refuses_by_name`'s own reason: the RAW
+    bundle states 0 constraint keywords beside an ``enum``, and the one node that reaches
+    the case gets its ``pattern`` from §2's intersection rule during the walk.  The
+    MEASURED half of it is below -- that node's two classes became one.
+    """
+    excluded = lower_enum.lower(
+        _probe({"enum": ["DE", "CH", "at"], "pattern": "^[A-Z]{2}$"}, "/properties/country"),
+        compiler.Module(document="probe.json"),
+    )
+    caught = refusal_from(excluded)
+    assert caught.keyword == "pattern", caught
+    assert caught.pointer == "/properties/country"
+    assert "'at'" in caught.detail, caught.detail
+
+    inside = lower_enum.decide(
+        _probe({"enum": ["DE", "CH", "AT"], "pattern": "^[A-Z]{2}$"}, "/properties/country"),
+        "Probe",
+    )
+    assert not isinstance(inside, refusal_module.Refusal), inside
+    assert [m.value for m in inside.members] == ["DE", "CH", "AT"]
+
+    # And the measurement: the one node of this bundle that reaches the case.  §2's
+    # intersection rule puts ``core/postal-country-system.json``'s root ``^[A-Z]{2}$``
+    # beside its branch's three members, and ``core/postal-area.json`` re-lowers that very
+    # node -- which drew a second class over one value list until the guard was relaxed.
+    out = compiled(BUNDLE, population())
+    home = "core/postal-country-system.json"
+    composing = "core/postal-area.json"
+    assert out.declared[home]["/anyOf/3/properties/country"] == "Country"
+    assert "Country" not in set(out.declared[composing].values()), out.declared[composing]
+    assert "from .postal_country_system import" in out.files[
+        f"{emit.module_file(composing, PACKAGES)}.py"
+    ]
+
+
 def test_two_members_spelling_one_name_give_a_literal_of_both_and_no_enum_class() -> None:
     """§5's ``enum`` row, decided 2026-10-29, at the one node of the bundle that reaches it.
 

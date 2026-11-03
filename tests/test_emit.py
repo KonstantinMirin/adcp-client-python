@@ -5942,25 +5942,31 @@ def test_the_one_document_property_holds_for_a_name_the_DOMAIN_decided() -> None
     # The collision is across MODULES of one domain, which is why §4's module scope never
     # reached it, and BOTH sides moved -- §4's "all N lengthen" at the wider scope.
     assert emit.domain(document) == emit.domain(other) == "content_standards"
+    # §3a keys the export record on the MODULE, so a document is turned into one by D1
+    # (``emit.module_path``) and the record is asked with that.
+    mine, theirs = emit.module_path(document), emit.module_path(other)
     for short in ("FailItemUrl", "PassItemUrl", "CalibrationExemplarsFailItemUrl"):
-        assert short not in whole.surface[document], (short, whole.surface[document])
-        assert short not in whole.surface[other], (short, whole.surface[other])
+        assert short not in whole.surface[mine], (short, whole.surface[mine])
+        assert short not in whole.surface[theirs], (short, whole.surface[theirs])
     assert (
-        whole.surface[document]["CreateContentStandardsRequestCalibrationExemplarsFailItemUrl"]
+        whole.surface[mine]["CreateContentStandardsRequestCalibrationExemplarsFailItemUrl"]
         == "branch"
-    ), whole.surface[document]
+    ), whole.surface[mine]
     assert (
-        whole.surface[other]["UpdateContentStandardsRequestCalibrationExemplarsFailItemUrl"]
+        whole.surface[theirs]["UpdateContentStandardsRequestCalibrationExemplarsFailItemUrl"]
         == "branch"
-    ), whole.surface[other]
+    ), whole.surface[theirs]
     # And the ROOT axis, on the shape §4 decides with no new rung: an async response's root
     # against the same-named branch of its sync response.  Read off the same run, so this
     # costs no second compile.
     submitted = "creative/get-creative-features-async-response-submitted.json"
     response = "creative/get-creative-features-response.json"
-    assert whole.surface[submitted]["GetCreativeFeaturesSubmitted"] == "root"
-    assert "GetCreativeFeaturesSubmitted" not in whole.surface[response]
-    assert whole.surface[response]["GetCreativeFeaturesResponseSubmitted"] == "branch"
+    assert whole.surface[emit.module_path(submitted)]["GetCreativeFeaturesSubmitted"] == "root"
+    assert "GetCreativeFeaturesSubmitted" not in whole.surface[emit.module_path(response)]
+    assert (
+        whole.surface[emit.module_path(response)]["GetCreativeFeaturesResponseSubmitted"]
+        == "branch"
+    )
 
     alone = compiled(BUNDLE, [document])
     assert other not in alone.emitted, (
@@ -5969,7 +5975,7 @@ def test_the_one_document_property_holds_for_a_name_the_DOMAIN_decided() -> None
     )
     assert alone.files[rel] == whole.files[rel]
     assert alone.declared[document] == whole.declared[document]
-    assert alone.surface[document] == whole.surface[document]
+    assert alone.surface[mine] == whole.surface[mine]
 
 
 def test_the_committed_tree_is_what_a_fresh_run_emits(tmp_path) -> None:
@@ -6026,7 +6032,19 @@ def test_the_committed_tree_is_what_a_fresh_run_emits(tmp_path) -> None:
     #
     # The domain half is read off this run's own export record, which is the one place §1's
     # export set is decided, so a domain that stops being emitted reddens here by NAME.
-    domains = {f"{emit.domain(document)}.py" for document in out.surface}
+    #
+    # **The record is keyed on the MODULE and a module that exports NOTHING contributes no
+    # domain** (§3a, 2026-11-02, and ``emit.domain_modules``): §3a's catalogue module is on
+    # the record because the run wrote it, nothing in it is a type a consumer writes, and a
+    # public ``<namespace>.py`` re-exporting it would carry an empty ``__all__``.  §1's
+    # surface is stated over what is EXPORTED, which is the one case where that reading and
+    # "every module the run wrote" differ: 1,058 modules on the record, 4 of them exporting
+    # none, 23 domains with a public module and a 24th (``common``) without one.
+    domains = {
+        f"{emit.module_domain(module)}.py"
+        for module, exported in out.surface.items()
+        if exported
+    }
     assert sorted(out.beside) == sorted(domains | {"constraints.py", "envelopes.py"}), (
         sorted(out.beside)
     )

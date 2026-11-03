@@ -103,18 +103,46 @@ def surface() -> dict[tuple[str, str], list[tuple[str, str]]]:
 
     Read off ``emit.surface``, the run's own record of §1's export set, which is written
     from the one place a position's hop and its declaration are both in hand
-    (``lower/names.py``'s ``the_surface_exports``).  The DOMAIN is ``emit.domain``, §1's
-    one derivation of it, so nothing here spells a domain or a kind twice.
+    (``lower/names.py``'s ``the_surface_exports``).  The DOMAIN is
+    ``emit.module_domain``, §1's one derivation of it, so nothing here spells a domain or
+    a kind twice.
+
+    **THE RECORD IS KEYED ON THE MODULE** (§3a, 2026-11-02), so there is no document to
+    turn into one here and no second reading of D1: "every document already maps to the
+    module it produced, so the key becomes that module and a catalogue module is simply
+    one with no document.  The readers that take a document to answer a domain or a path
+    take the module instead, which is what they were always asking about."  This file was
+    one of the two readers and spelled ``emit.module_path(document)`` to get exactly this.
+
+    Measured over the record, before the catalogue module and after:
+
+    ============================  =====  =====
+    the record                    before  after
+    ============================  =====  =====
+    modules                       1,054  1,058
+    ... of those exporting none       0      4
+    exported ``(domain, name)``   1,950  1,950
+    domains ON the record            23     24
+    domains that export a name       23     23
+    ============================  =====  =====
+
+    The four are §3a's catalogue modules, one per namespace its scope rule names, and
+    they export nothing because "nothing here is a type" -- a value list is private to
+    the modules that build a type over it.  So the 1,950 pairs do not move and the
+    24th domain, ``common``, has no public module: §1's surface is stated over what is
+    EXPORTED, and ``emit.domain_modules`` reads that rather than being told.
+
 
     A LIST and not one entry, because a name two declarations want is exactly what the
     first test has to report, and a mapping to one could not hold both.
     """
     out: dict[tuple[str, str], list[tuple[str, str]]] = {}
     held = compiled(BUNDLE, fresh.population())
-    for document, exported in held.surface.items():
-        module = emit.module_path(document).replace("/", ".")
+    for module, exported in held.surface.items():
         for name, kind in exported.items():
-            out.setdefault((emit.domain(document), name), []).append((module, kind))
+            out.setdefault((emit.module_domain(module), name), []).append(
+                (module.replace("/", "."), kind)
+            )
     return out
 
 
