@@ -85,6 +85,7 @@ is emitting it.
 from __future__ import annotations
 
 import importlib
+from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
@@ -228,6 +229,120 @@ def test_the_domain_name_gives_the_same_object_as_the_private_path(
             )
     assert not unreachable, {"not reachable at a public name": sorted(set(unreachable))}
     assert not not_the_same, {"a second object wearing the public name": not_the_same}
+
+
+def declaring(
+    module: str, name: str, obj: object, binds: Mapping[str, tuple[str | None, str]]
+) -> tuple[str, str] | None:
+    """The DECLARATION one export path is a path to, or ``None`` where nothing says.
+
+    §1 (2026-11-03): "**A gate on this counts DECLARATIONS, not ``id()`` and not names**.
+    Three readings were available and the middle one is right."  This is the middle one,
+    and all three of its arms are §1's own sentences:
+
+    * **A CLASS carries its own declaring position**, in ``__module__`` and
+      ``__qualname__``: the class statement ran once, Python recorded where, and the name
+      it recorded is the name §4 derived at the declaring position.  So a binding to a
+      class and the class's own export path collapse onto one key with nothing told to
+      this function, which is why the class arm is FIRST.
+    * **A BINDING declares nothing of its own**, so the key is the declaration it names:
+      "an ``X = <bare Name>`` is a binding, not a declaration", and "the other spellings
+      are the names of positions that REFERENCE it, and a position that references a
+      class does not name it".  Read off the run's own record
+      (``emit.Emitted.binds``), because for an alias no other reader can answer: the
+      runtime cannot -- the type system interns an ``Annotated`` and a ``Literal``, so
+      ``X`` and ``Y`` are one object whether or not either names the other -- and §1
+      forbids the emitted TEXT to be the subject.
+    * **ANYTHING ELSE is its own declaration at its own module-level statement**, which is
+      §1's reason for refusing ``id()``: "Counting ``id()`` is too STRONG, and it charges
+      us for something we did not do.  Where several documents each state the same
+      constrained scalar, the walk emits an independent alias statement in each ... The
+      runtime then binds them to one object because the type system interns it, and the
+      same happens to an interned literal.  **A gate keyed on object identity reports
+      those as a violation with no available repair.**"  Those are reading 4's, §3a's
+      collection is their repair, and this arm is what keeps them out of this gate.
+
+    ``None`` is the UNDECIDABLE answer and not a pass: ``emit._declaring_module`` answers
+    ``None`` where the run cannot say which module declares a binding's target, and the
+    caller REPORTS that rather than keying the path on the module that merely references
+    the class -- which would count a second path as its own declaration, the exact
+    blindness this check exists to end.  Measured over the 3.2 bundle: 0.
+    """
+    if isinstance(obj, type):
+        return (obj.__module__, obj.__qualname__)
+    where, held, seen = module, name, {name}
+    #: The chain is followed only while it stays in THIS module, because ``binds`` is this
+    #: module's record: ``X = Y`` beside ``Y = Z`` charges ``Z``, and a hop out of the
+    #: module is the end of what this record can say.
+    while where == module and held in binds and binds[held][1] not in seen:
+        where, held = binds[held]
+        if where is None:
+            return None
+        seen.add(held)
+    return (where, held)
+
+
+def test_the_export_paths_number_the_declarations_behind_them(
+    exported: dict[tuple[str, str], list[tuple[str, str]]],
+) -> None:
+    """Reading 6, counted the way §1 settles: **one declaration per export path**.
+
+    ``final-state.md`` reading 6: "**Decided by** counting OBJECTS, not names: the number
+    of export paths equals the number of distinct objects behind them ... A check that
+    resolves every export and requires exactly one path each is answered ``yes`` by two
+    names for one object, each resolving cleanly -- so it reads green while this reading is
+    false.  **Both checks belong; the per-name one is incomplete, not wrong.**"  So this
+    test joins the two above rather than replacing either.
+
+    **AND WHAT IS COUNTED IS DECLARATIONS AND NOT ``id()``** (§1, 2026-11-03), which is
+    the one thing this check could get wrong in the expensive direction: the type system
+    interns an ``Annotated`` alias and a ``Literal``, so a gate on object identity charges
+    a defect to two documents that each state one constrained scalar -- "a gate nobody can
+    satisfy rather than one that finds a defect".  :func:`declaring` is the three-armed
+    reading §1 rules for, and the arithmetic is the one sentence over it.
+
+    Two failures sit under the one equality and both are reported BY NAME:
+
+    * ``two paths to one declaration`` -- the defect itself, named by the declaration and
+      listing every path that reaches it.  §1's repair is the rename: "the surface keeps
+      only the declaring position's spelling", and it is not purely subtractive -- where
+      the declaring position is a property or an element the surface assigned it no kind,
+      so the name the rule keeps was not exported at all and the rename ADDS one.
+    * ``no declaration this reading can name`` -- an export whose declaration is an alias
+      in another module, which the record states as a symbol with no module beside it.
+      That is an answer this check does not have rather than one it passes, because
+      keying such a path on its OWN module would count a second path as a declaration,
+      which is the blindness the per-name check already has.
+    """
+    claimed("the names the surface exports", exported)
+    held = compiled(BUNDLE, fresh.population())
+    behind: dict[tuple[str, str], list[str]] = {}
+    undecided: dict[str, str] = {}
+    for (domain, name), sources in sorted(exported.items()):
+        # :func:`surface` spells the module the way an IMPORT does; the record is keyed
+        # on the module's own path, which is what ``Emitted.binds`` and ``declares`` hold.
+        private = sources[0][0].replace(".", "/")
+        module = importlib.import_module(f"adcp.types.{domain}")
+        key = declaring(private, name, getattr(module, name), held.binds.get(private, {}))
+        if key is None:
+            undecided[f"{domain}.{name}"] = held.binds[private][name][1]
+            continue
+        behind.setdefault(key, []).append(f"{domain}.{name}")
+    shared = {
+        f"{where}.{symbol}": sorted(found)
+        for (where, symbol), found in behind.items()
+        if len(found) > 1
+    }
+    assert not undecided, {"no declaration this reading can name": undecided}
+    assert not shared, {
+        "two paths to one declaration": shared,
+        "export paths": len(exported),
+        "declarations behind them": len(behind),
+    }
+    assert len(exported) == len(behind), {
+        "export paths": len(exported),
+        "declarations behind them": len(behind),
+    }
 
 
 def test_a_caller_can_name_the_branch_a_union_handed_it() -> None:

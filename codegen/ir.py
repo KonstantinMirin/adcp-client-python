@@ -741,6 +741,26 @@ class Module:
     #: the surface re-exports names; the pointer is in :attr:`symbols` for a reader who
     #: wants the node.
     exports: Mapping[str, str] = field(default_factory=dict)
+    #: **§1's BINDINGS**: every symbol this module binds to a declaration made somewhere
+    #: else -> the symbol it names.  ``X = Y`` and nothing more: §4's identity binding at
+    #: the second position of one node, and the cross-document ``$ref`` at a named node.
+    #:
+    #: §1 (2026-11-03): "**A gate on this counts DECLARATIONS, not ``id()`` and not
+    #: names** ... an ``X = <bare Name>`` is a binding, not a declaration."  A gate asking
+    #: that the number of export paths equal the number of distinct declarations behind
+    #: them cannot read that off the runtime -- the type system interns an ``Annotated``
+    #: alias and an interned literal, so ``id()`` makes two independent declarations look
+    #: like one -- and it cannot read it off the emitted TEXT either, for the reason
+    #: :attr:`exports` already records. So the walk says which of its statements declare.
+    #:
+    #: **Every binding and not only the exported ones**, which is what keeps the gate
+    #: honest after the repair: once no export path is a binding, a record holding only
+    #: the exported ones would be empty and the check would pass by having nothing to
+    #: range over.
+    #:
+    #: Keyed by SYMBOL for :attr:`exports`' reason, and the value is a symbol too, so a
+    #: failure can name what the binding reaches.
+    binds: Mapping[str, str] = field(default_factory=dict)
 
 
 def symbols(decided: TypeRef) -> set[str]:
