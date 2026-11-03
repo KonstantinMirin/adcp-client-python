@@ -371,7 +371,7 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     # exists for: on this lane's own branch the delta was 0 and the row's value was the
     # attribution alone.  Its size moved at every row that unblocked a conjunct's
     # target (228, 233, 237), each move enumerated at the time and each one correct.
-    delta = claimed(
+    claimed(
         "documents that emit only with this row",
         set(with_row.emitted) - set(without.emitted),
         inside=set(with_row.emitted),

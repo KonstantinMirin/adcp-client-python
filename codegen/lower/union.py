@@ -2286,7 +2286,6 @@ def _arms(node: nodes.Union, mod: compiler.Module) -> ir.Decided | Refusal:
             f"{len(node.branches)} branch: a union of one is the branch itself, not a union",
             kind=Kind.VERDICT,
         )
-    named = dispatch_key(node)
     arms: list[ir.TypeRef] = []
     for i, parsed in enumerate(node.branches):
         at = parsed.pointer
