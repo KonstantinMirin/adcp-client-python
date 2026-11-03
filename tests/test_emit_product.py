@@ -48,6 +48,7 @@ from codegen import bundle, compiler, emit, intersect, ir, keywords, refusal, re
 from codegen import constraints as constraints_module
 from codegen.harness import Pair, check_pair, violated_keywords
 from codegen.lower import composition, names
+from codegen.lower import inherited as inherited_row
 from codegen.refusal import Kind, Refusal
 from codegen.schema import nodes
 from codegen.schema import nodes as schema_nodes
@@ -278,7 +279,7 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
             return Refusal("allOf", pointer, refusal.DEFERRED_TO_A_LATER_ROW, kind=Kind.DEFERRED)
         return composing_at_a_root(node, mod, *rest, **kw)
 
-    with mock.patch.object(compiler, "lower_composition", without_the_root_arm), store.perturbed():
+    with mock.patch.object(composition, "lower_composition", without_the_root_arm), store.perturbed():
         # ``emit.emit`` and NOT ``compiled``: this is a PERTURBATION, and
         # ``tests/compiled.py``'s key is a digest of ``codegen/``'s source, which a
         # runtime patch does not move -- so the cache would hand back the UNPERTURBED
@@ -1009,7 +1010,7 @@ def test_a_lost_inherited_fact_lets_the_model_accept_what_the_document_refuses(
     the one the lost fact names and not whatever else the probe's document demands.
     """
     monkeypatch.setattr(
-        compiler,
+        inherited_row,
         "_reused",
         lambda key, held, source, pointer, mod: ir.Field(
             name=key, wire=key, type=ir.TypeRef("typing.Any"), required=False

@@ -25,9 +25,29 @@ the answer there".  This module was 39 lines delegating to ``lower_composition``
   through them, which is what makes an ``allOf``'s class and a plain object's class the
   same kind of thing.
 
-What is left here is the four concerns the function's own branch conditions name: which
-kind each conjunct is, what a ``$ref`` conjunct resolves to, how an own field merges
-against an inherited one, and which rules and facts the composed class carries.
+**THE FOUR CONCERNS the function's own branch conditions name, and where each is.**
+``lower_composition`` was 1,438 lines, and the reason that is a finding rather than a
+length is that no part of it could be asked a question on its own -- the only evidence any
+of the four was right was that the emitted tree came out right.  Two are separated and
+graded; two are not, and the reason is stated rather than left to a reader:
+
+* **which kind a conjunct is** -- :func:`classify`, returning :class:`Conjunct`.  Four
+  conditions that were stated inline once per arm, and whose partitioning nothing could
+  see.  ``tests/test_conjunct_kinds.py``.
+* **how an own field merges against an inherited one** -- ``codegen/lower/inherited.py``,
+  with §2's requiredness overlay, which is one more arm of the same decision.  This was
+  the deepest nesting here and the subtlest rule in it.
+  ``tests/test_inherited_merge.py``.
+* **which rules and facts the composed class carries** -- separated in HALF.  The three
+  sibling screens are :func:`a_sibling_with_no_type_to_constrain`, one reading of §5's
+  ``$ref`` row at three keywords, two of which have a population of 0 in this bundle and
+  are therefore exactly the ones worth a test (``tests/test_conjunct_siblings.py``).  The
+  ``uniqueItems`` arm and the per-conjunct collection are still inline.
+* **what a ``$ref`` conjunct resolves to** -- NOT separated.  The arm writes to eight
+  accumulators of the enclosing function (the inherited views, the extra, the
+  description, the bases, the conjoined list), so separating it needs a carrier for the
+  walk's per-conjunct state, and that is a design decision rather than a relocation.
+  ``adcp-client-python-g4z`` carries the question.
 """
 
 from __future__ import annotations
@@ -1605,64 +1625,18 @@ def lower_composition(
                 "duplicates the document refuses",
                 kind=compiler.kind_for("uniqueItems", position),
             )
-    if contains is not None and not conjoined:
-        # **A ``contains`` beside conjuncts that are all BASES.**  §5's row makes the
-        # sibling constrain the TYPE a non-class target supplies, and a node whose
-        # conjuncts are classes has no such type: ``contains`` quantifies over the MEMBERS
-        # of a list and a composed class is not a list, so there is nothing for the
-        # ``AtLeastOne`` to range over.  0 sites over the portable population -- the one
-        # node reaching the carrier at all composes a bare ``$ref`` to an array document
-        # -- so this is written so the first one is loud rather than emitted with the
-        # keyword dropped.
-        return Refusal(
-            "contains",
-            pointer,
-            "this node states contains beside conjuncts that are all class bases: "
-            "section 5's contains row makes it an AtLeastOne over the members of a LIST, "
-            "and this node's type is a composed class, so the predicate has nothing to "
-            "range over and dropping it would lose the document's own existential",
-            kind=compiler.kind_for("contains", Position.CONJ),
-        )
-    if conjunct_values and not conjoined:
-        # **A value set beside conjuncts that are all BASES, which §5's row does not
-        # reach.**  The row's answer is the TARGET as this node's own TYPE, narrowed; a
-        # node whose conjuncts are classes has no such type -- the instance must satisfy
-        # those classes AND be one of the enumerated values, and a class is not a member
-        # of a vocabulary.  0 sites over the portable population (the one value-level
-        # conjunct in the bundle sits beside a ``$ref`` to an enumeration), so this is
-        # written so the first one is loud rather than emitted with the keyword dropped.
-        where, conjunct = conjunct_values[0]
-        return Refusal(
-            min(intersect.declaring(conjunct, Position.CONJ)),
-            where,
-            "a conjunct states a VALUE SET beside conjuncts that are all class bases: "
-            "section 5's enum row at CONJ narrows the TYPE a non-class target supplies, "
-            "and this node's type is a composed class -- an instance of a class is not a "
-            "member of a vocabulary, so there is nothing here for the intersection to "
-            "narrow and dropping the keyword would lose the document's own value set",
-            kind=compiler.kind_for("enum", Position.CONJ),
-        )
-    if facts and not conjoined:
-        # **A BOUND beside conjuncts that are all BASES, which §5's row does not reach
-        # either**, and the reasoning is the two arms' above read at a third sibling: the
-        # row's answer is the TARGET as this node's own TYPE, constrained; a node whose
-        # conjuncts are classes has no such type, and a ``minLength`` or a ``minItems``
-        # says nothing about an instance of a class -- draft-07 applies a constraint
-        # keyword only to instances of the type it is defined for.  0 sites over the
-        # portable population: both nodes that state one compose a non-class target, so
-        # this is written so the first one is loud rather than emitted with the bound
-        # dropped.
-        return Refusal(
-            min(facts),
-            pointer,
-            f"this node states {sorted(facts)} beside conjuncts that are all class "
-            "bases: section 5's $ref row at CONJ makes a sibling constrain the TYPE a "
-            "non-class target supplies, and this node's type is a composed class -- a "
-            "bound on a string or a list says nothing about an instance of a class, so "
-            "there is nothing here for it to constrain and dropping it would lose the "
-            "document's own bound",
-            kind=compiler.kind_for(min(facts), position),
-        )
+
+    sibling = a_sibling_with_no_type_to_constrain(
+        contains=contains,
+        conjunct_values=conjunct_values,
+        facts=facts,
+        conjoined=conjoined,
+        pointer=pointer,
+        position=position,
+    )
+    if sibling is not None:
+        return sibling
+
     #: §5's DISTRIBUTION clause, where the row above answered with the target's BRANCHES:
     #: the conjunct's own pointer, the branches, and the node each branch class is
     #: declared from.  ``None`` at every other node, which is what the tail below reads to
@@ -1933,6 +1907,95 @@ def lower_composition(
     return _distribute(
         declared, *distributing, asserted=_asserted_properties(node, conjuncts), mod=mod
     )
+
+
+def a_sibling_with_no_type_to_constrain(
+    *,
+    contains: Any | None,
+    conjunct_values: Sequence[tuple[str, Mapping[str, Any]]],
+    facts: Mapping[str, Any],
+    conjoined: Sequence[object],
+    pointer: str,
+    position: Position,
+) -> Refusal | None:
+    """§5's ``$ref`` row at CONJ read at the three SIBLINGS, where every conjunct is a base.
+
+    The row's answer for a sibling of the conjunct list is "the target is this node's own
+    TYPE, and the other conjuncts and the ``allOf``'s siblings constrain it".  That answer
+    needs a type to constrain, and a node whose conjuncts are all CLASS bases has none: an
+    instance of a class is not a member of a vocabulary, and a bound on a string or a list
+    says nothing about one.
+
+    Three siblings reach it and the three comments below are one reading at three keywords,
+    which is why they are one function: a ``contains``, a conjunct that is a VALUE SET, and
+    a BOUND.  Each refuses rather than dropping the keyword, because dropping it widens the
+    model past its document and none of the three has a declaration to be widened AS.
+
+    ``conjoined`` is the list of ``$ref`` conjuncts whose target IS a class; the screen is
+    about the case where it is EMPTY, which is what "every conjunct is a base" means from
+    this side.  Measured over the 1,054 portable documents: **0 sites** for the value set
+    and 0 for the bound, so both are written to make the first one loud, and the
+    ``contains`` arm is the one with a population.
+    """
+    if contains is not None and not conjoined:
+        # **A ``contains`` beside conjuncts that are all BASES.**  §5's row makes the
+        # sibling constrain the TYPE a non-class target supplies, and a node whose
+        # conjuncts are classes has no such type: ``contains`` quantifies over the MEMBERS
+        # of a list and a composed class is not a list, so there is nothing for the
+        # ``AtLeastOne`` to range over.  0 sites over the portable population -- the one
+        # node reaching the carrier at all composes a bare ``$ref`` to an array document
+        # -- so this is written so the first one is loud rather than emitted with the
+        # keyword dropped.
+        return Refusal(
+            "contains",
+            pointer,
+            "this node states contains beside conjuncts that are all class bases: "
+            "section 5's contains row makes it an AtLeastOne over the members of a LIST, "
+            "and this node's type is a composed class, so the predicate has nothing to "
+            "range over and dropping it would lose the document's own existential",
+            kind=compiler.kind_for("contains", Position.CONJ),
+        )
+    if conjunct_values and not conjoined:
+        # **A value set beside conjuncts that are all BASES, which §5's row does not
+        # reach.**  The row's answer is the TARGET as this node's own TYPE, narrowed; a
+        # node whose conjuncts are classes has no such type -- the instance must satisfy
+        # those classes AND be one of the enumerated values, and a class is not a member
+        # of a vocabulary.  0 sites over the portable population (the one value-level
+        # conjunct in the bundle sits beside a ``$ref`` to an enumeration), so this is
+        # written so the first one is loud rather than emitted with the keyword dropped.
+        where, conjunct = conjunct_values[0]
+        return Refusal(
+            min(intersect.declaring(conjunct, Position.CONJ)),
+            where,
+            "a conjunct states a VALUE SET beside conjuncts that are all class bases: "
+            "section 5's enum row at CONJ narrows the TYPE a non-class target supplies, "
+            "and this node's type is a composed class -- an instance of a class is not a "
+            "member of a vocabulary, so there is nothing here for the intersection to "
+            "narrow and dropping the keyword would lose the document's own value set",
+            kind=compiler.kind_for("enum", Position.CONJ),
+        )
+    if facts and not conjoined:
+        # **A BOUND beside conjuncts that are all BASES, which §5's row does not reach
+        # either**, and the reasoning is the two arms' above read at a third sibling: the
+        # row's answer is the TARGET as this node's own TYPE, constrained; a node whose
+        # conjuncts are classes has no such type, and a ``minLength`` or a ``minItems``
+        # says nothing about an instance of a class -- draft-07 applies a constraint
+        # keyword only to instances of the type it is defined for.  0 sites over the
+        # portable population: both nodes that state one compose a non-class target, so
+        # this is written so the first one is loud rather than emitted with the bound
+        # dropped.
+        return Refusal(
+            min(facts),
+            pointer,
+            f"this node states {sorted(facts)} beside conjuncts that are all class "
+            "bases: section 5's $ref row at CONJ makes a sibling constrain the TYPE a "
+            "non-class target supplies, and this node's type is a composed class -- a "
+            "bound on a string or a list says nothing about an instance of a class, so "
+            "there is nothing here for it to constrain and dropping it would lose the "
+            "document's own bound",
+            kind=compiler.kind_for(min(facts), position),
+        )
+    return None
 
 
 def _distributed_pointer(where: str, branches: compiler.TargetBranches, index: int) -> str:
