@@ -28,6 +28,7 @@ pair of classes over one document: these are three, differing in one axis each.
 
 from __future__ import annotations
 
+import time
 from typing import Any
 
 import pytest
@@ -231,23 +232,85 @@ def test_a_round_tripped_instance_is_counted_and_an_unreported_one_is_not() -> N
 # --------------------------------------------------------------------------- #
 # the BUDGET, which is a statement about the instrument and never about a document
 # --------------------------------------------------------------------------- #
-#: A document whose draw has no bound worth waiting for and no filtering in it, so what
-#: ends the draw below is the BUDGET and nothing else: 2,000 objects of 200 demanded
-#: 120-character strings is 400,000 strings, and nothing about it is unsatisfiable --
-#: an ``Unsatisfiable`` or a ``strategy_error`` here would be a different reading.
-UNBOUNDED_DRAW: dict[str, Any] = {
-    "type": "array",
-    "minItems": 2000,
-    "items": {
-        "type": "object",
-        "required": [f"p{i}" for i in range(200)],
-        "properties": {f"p{i}": {"type": "string", "minLength": 120} for i in range(200)},
-    },
-}
+# **THE PROPERTY IS PROPAGATION AND IT IS NOT THE CLOCK**, which is what the fixture these
+# two checks replace had wrong (``adcp-client-python-82m.34``).
+#
+# It was a 1 s ``within`` around ``check_accepts`` over a schema commented "nothing about it
+# is unsatisfiable -- an ``Unsatisfiable`` or a ``strategy_error`` here would be a different
+# reading": 2,000 objects of 200 demanded 120-character strings.  **The comment is refuted
+# by the draw.**  Run with NO budget at all, five times, that schema returns on its own in
+# 15.5, 20.7, 24.7, 24.8 and 25.9 s with ``outcome='strategy_error'`` and the detail
+# "Unsatisfiable: ... 459 of 459 test cases were too large to finish generating".
+# ``hypothesis``'s buffer is 8,192 bytes and the instance is 400,000 strings, so every one
+# of its 459 generation attempts overruns and the library gives up -- the draw was never
+# unbounded, it was slow.
+#
+# So the check was a race between two non-deterministic terminations, and NEITHER of them is
+# the property.  Measured: the ``check_accepts`` form failed 0 of 30 runs alone and **2 of 30
+# under 48-way CPU load**, the ``_Draws`` form in ``tests/test_widening_corpus.py`` **1 of 20
+# under 24-way load** and 1 of 6 at ``-n 4`` in a four-file set; every failure is
+# ``DID NOT RAISE OverBudget`` with the whole test taking 1.1 s.  The mechanism is the one
+# ``within``'s own docstring already names: the alarm's first firing lands in
+# ``hypothesis``'s ``gc_callback``, where Python DISCARDS the exception, ``hypothesis``
+# concludes ``Unsatisfiable`` at ~1.1 s, the block exits NORMALLY, and ``within``'s
+# ``finally`` clears the timer before a retry can land.
+#
+# **AND WIDENING THE BUDGET MAKES IT WORSE, which is why that was not the fix.**  The margin
+# is not clock-against-contention, it is clock-against-a-draw-that-ends-itself: at any budget
+# over ~26 s the library wins the race every time and the check fails on an idle box.
+#
+# What replaces it is two checks with the division the property deserves.  The one the
+# property depends on INJECTS the raise and has no clock in it at all; the one that covers
+# the end-to-end path uses the real alarm over a draw that cannot end on its own, so there
+# is no termination for contention to bring forward.
+
+#: How long a non-terminating draw body spins before it gives up and FAILS.  Far wider than
+#: any budget here, so a budget that does not cut is a loud red rather than a hung suite:
+#: the failsafe is the test's own patience and never the instrument.
+_FAILSAFE_SECONDS = 120.0
 
 
-def test_a_budget_cut_is_a_cut_and_never_a_verdict_about_the_document() -> None:
-    """**The reading ``adcp-client-python-pjc``'s third part moves**, through the real check.
+def _an_entry_point_that_does_not_finish():
+    """An ``accept`` that spins in ORDINARY PYTHON until something cuts it.
+
+    **A draw with no termination of its own, which is what the old fixture only claimed to
+    be.**  The spin is pure Python, so the alarm lands between bytecodes in a frame this
+    file owns and propagates immediately -- and it is reached through the real
+    ``check_accepts``, the real ``hypothesis`` ``given`` machinery and the real draw, so the
+    end-to-end path is the one under test.  There is nothing here for load to finish early:
+    a loop that does not stop cannot be beaten to the exit.
+    """
+
+    def accept(payload: Any) -> Any:
+        until = time.monotonic() + _FAILSAFE_SECONDS
+        while time.monotonic() < until:
+            pass
+        raise AssertionError(
+            f"the entry point spun for {_FAILSAFE_SECONDS} s and nothing cut it, so the "
+            "budget did not bound the draw"
+        )
+
+    return accept
+
+
+def _an_entry_point_that_raises(what: BaseException):
+    def accept(payload: Any) -> Any:
+        raise what
+
+    return accept
+
+
+def _raising(what: BaseException):
+    """A stand-in for any callable on the path to the draw, raising ``what`` when reached."""
+
+    def instead(*args: Any, **kwargs: Any) -> Any:
+        raise what
+
+    return instead
+
+
+def test_a_budget_cut_reaches_the_caller_as_itself_and_never_as_a_verdict() -> None:
+    """**The reading ``adcp-client-python-pjc``'s third part moves**, with no clock in it.
 
     ``check_accepts``' last clause catches "a model that raises something other than a
     ``ValidationError``" and spells it ``model_error``.  A budget cut used to arrive there
@@ -256,23 +319,99 @@ def test_a_budget_cut_is_a_cut_and_never_a_verdict_about_the_document() -> None:
     20 s budget: 73 pairs reported ``accepts:model_error`` and every one of the 73 was a
     cut, which is 73 false reds in the column a reader scans for real ones.
 
-    Both halves are read, because either one alone would pass on the old code: the cut
-    reaches the caller AS a cut, and no enclosing ``except Exception`` sees it -- which is
-    what makes the property hold at the twenty-odd broad handlers between here and the
-    draw rather than only at this one.  The entry point below accepts whatever it is
-    handed, so there is no defect for a verdict to be about; it is never reached, because
-    the draw does not produce an instance inside the budget, and that is the point.
+    **An injected raise establishes exactly that, and a wall clock cannot.**  What the
+    property says is that a :class:`harness.OverBudget` raised anywhere inside the draw
+    machinery reaches the caller AS ITSELF, is held by nothing, and is never converted into
+    a verdict about a document.  Where the exception comes from is immaterial to that
+    sentence, and making it come from a timer adds a race and no coverage: on the old code
+    an injected raise fails exactly as a timed one did, because what was wrong was
+    ``OverBudget`` being an ``Exception``.
+
+    **Both ENDS of the handler chain, because the chain is what the property is about.**
+    ``check_accepts`` has four handlers between the caller and the draw -- ``_DumpRefused``,
+    ``ValidationError``, the ``hypothesis`` family, and the broad ``Exception`` -- and
+    ``hypothesis`` has its own between the body and the strategy.  The entry-point injection
+    is raised INSIDE the drawn body, so it crosses every one of them; the strategy-build
+    injection never reaches a draw at all, so it crosses the outermost only.  Either alone
+    would pass over a defect in the other.
+
+    Both halves of the original reading are kept: the cut arrives as a cut, and no enclosing
+    ``except Exception`` sees it.
+    """
+    cut = harness.OverBudget("injected where the draw machinery would raise one")
+
+    def reaches_the_caller(where: str, call) -> None:  # noqa: ANN001
+        swallowed: Exception | None = None
+        verdict: Any = None
+        with pytest.raises(harness.OverBudget) as raised:
+            try:
+                verdict = call()
+            except Exception as e:  # noqa: BLE001 -- the handler under judgement
+                swallowed = e
+        assert raised.value is cut, (
+            f"the cut injected at {where} did not reach the caller as itself: "
+            f"{raised.value!r}"
+        )
+        assert swallowed is None, (
+            f"a budget cut injected at {where} was caught by an `except Exception` and "
+            f"would have been reported as a verdict about the document: "
+            f"{type(swallowed).__name__}: {swallowed}"
+        )
+        assert verdict is None, (
+            f"a budget cut injected at {where} was turned into a verdict: {verdict}"
+        )
+
+    # Inside the drawn body: through hypothesis and all four of check_accepts' handlers.
+    reaches_the_caller(
+        "the entry point",
+        lambda: harness.check_accepts(DOC, _an_entry_point_that_raises(cut), examples=1),
+    )
+
+    # At the strategy build, which is the first thing check_accepts does inside its try --
+    # so the cut crosses the outermost handler without a draw happening at all.
+    built = harness.strategy
+    harness.strategy = _raising(cut)
+    try:
+        reaches_the_caller(
+            "the strategy build",
+            lambda: harness.check_accepts(DOC, lambda payload: payload, examples=1),
+        )
+    finally:
+        harness.strategy = built
+
+
+def test_the_real_alarm_cuts_a_draw_that_cannot_END_and_the_cut_is_still_a_cut() -> None:
+    """The END-TO-END path, with the real ``SIGALRM`` -- and it is not the check above.
+
+    The property is already established without a clock; this one exists so the wiring that
+    delivers a cut in production is covered too: :func:`harness.within`'s repeating
+    ``setitimer``, its handler, the restore on the way out, and ``OverBudget`` crossing the
+    same handler chain when a TIMER rather than a test raises it.
+
+    **The draw cannot end on its own, which is the whole of why this does not flake.**  The
+    entry point spins in ordinary Python, so there is no ``Unsatisfiable``, no buffer
+    overrun and no early return for load to bring forward -- the only thing that can end
+    this call is the alarm.  Measured at 30 of 30 under 48-way CPU load, propagating in
+    2.01 s every time, against the 2-in-30 of the fixture this replaces.
+
+    The budget is small ON PURPOSE and the failsafe is what makes that safe: a budget that
+    fails to cut costs ``_FAILSAFE_SECONDS`` and then reddens, rather than hanging.  Nothing
+    here is a margin against contention -- see this section's note.
     """
     swallowed: Exception | None = None
+    started = time.monotonic()
     with pytest.raises(harness.OverBudget):
         try:
-            with harness.within(1):
-                harness.check_accepts(UNBOUNDED_DRAW, lambda payload: payload, examples=1)
+            with harness.within(2):
+                harness.check_accepts(DOC, _an_entry_point_that_does_not_finish(), examples=1)
         except Exception as e:  # noqa: BLE001 -- the handler under judgement
             swallowed = e
     assert swallowed is None, (
         f"a budget cut was caught by an `except Exception` and would have been reported as "
         f"a verdict about the document: {type(swallowed).__name__}: {swallowed}"
+    )
+    assert time.monotonic() - started < _FAILSAFE_SECONDS, (
+        "the alarm did not cut the draw; the entry point's own failsafe did"
     )
 
 
