@@ -326,6 +326,47 @@ def _pins(view: Any, root: dict, depth: int = 0) -> dict[str, Any]:
     return out
 
 
+def an_instance_this_check_can_offer(document: str, node: dict) -> Any:
+    """One instance ``document`` admits for the reduction to perturb, or ``None``.
+
+    **TWO DERIVATIONS, and the second is §8's FIXTURE DERIVATION** -- "a referenced
+    document is graded by its own pair", read here at the document's own pair rather than
+    at a referring position.  ``harness.Fixtures`` holds it, and what it answers with for a
+    root pointer is the instance the ACCEPTS CORPUS already holds for that pair: drawn from
+    the document by ``check_accepts``, keyed on the document's raw bytes and its raw
+    reference closure's, and re-offered to the document on every read.
+
+    **It is here because eight documents of this set reported "no instance derivable" and
+    a check scoped away from eight of its own documents reports green.**
+    ``docs/plan/final-state.md`` names that as one of the three forms of the same evasion
+    -- "a scope that omits the code the check is about" -- and :func:`_pins` reaches only a
+    root whose properties pin a ``const`` or an ``enum``, which these eight do not:
+    ``core/bidding-policy-capability.json``, ``core/deadline-policy.json``,
+    ``core/installment-deadlines.json``, ``core/principal-state.json``,
+    ``core/product-change-map.json``, ``core/targeting-overlay-support.json``,
+    ``governance/audience-constraints.json`` and
+    ``media-buy/product-discovery-criteria.json``.
+
+    The pinned derivation is asked FIRST and is not replaced, for the reason
+    :func:`_pins`' own docstring gives: it costs no draw at all, and
+    ``core/positive-postal-area-support.json`` -- the document ``adcp-client-python-6oe``
+    was measured on -- is satisfied by it.
+
+    **THE DOCUMENT DECIDES, in both arms.**  Each candidate is offered to ``conforms``
+    before it is returned, so a derivation that misreads a node contributes nothing rather
+    than a verdict against a guess.
+    """
+    pinned = an_instance_the_document_admits(node)
+    if pinned is not None and harness.conforms(node, pinned) is True:
+        return pinned
+    import test_emit  # the tree reader, one reading for the whole suite  # noqa: PLC0415
+
+    drawn = test_emit.fixtures().one(document, "#")
+    if drawn is not harness.NONE and harness.conforms(node, drawn) is True:
+        return drawn
+    return None
+
+
 def _locally(declaration: Any, root: dict) -> dict:
     """``declaration`` with a bare local pointer resolved against ``root``."""
     if not isinstance(declaration, dict):
@@ -354,14 +395,24 @@ def test_every_counting_root_refuses_the_count_its_document_refuses(document: st
     """
     assert fresh.schemas() is not None, fresh.FAILURE
     node = counting_roots()[document]
-    instance = an_instance_the_document_admits(node)
-    if instance is None:
-        pytest.skip(f"no instance derivable from {document}'s own declarations")
-    if harness.conforms(node, instance) is not True:
-        pytest.skip(f"the derived instance is not one {document} admits")
+    #: **NO SKIP ON THE INSTANCE, which is the change ``final-state.md`` requires.**  Eight
+    #: documents of this set had none derivable from their own ``const``/``enum``
+    #: declarations and reported green while being unrun;
+    #: :func:`an_instance_this_check_can_offer` adds §8's fixture derivation beside the
+    #: pinned one and the set is graded whole.  An assertion and not a skip, so a document
+    #: that stops having one REDDENS with its name.
+    instance = an_instance_this_check_can_offer(document, node)
+    assert instance is not None, (
+        f"no instance {document} admits is derivable, so this document's pair would be "
+        "scoped out of a check that reports green over the others"
+    )
     symbol = _root_of(document)
     if symbol is None:
-        pytest.skip(f"{document} emits no root class")
+        #: An assertion for the same reason the instance above is one: §2 makes every
+        #: portable document emit, ``./check`` reports ``refused 0``, and a skip here would
+        #: scope this check away from a document whose class exists.  Measured: 0 of this
+        #: set take it.
+        raise AssertionError(f"{document} emits no root class, so its pair is ungraded")
     result = check_refuses(
         node,
         TypeAdapter(symbol).validate_python,
