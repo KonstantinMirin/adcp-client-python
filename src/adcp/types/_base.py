@@ -74,7 +74,7 @@ from __future__ import annotations
 
 import functools
 import json
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from importlib import resources
 from typing import (
     Annotated,
@@ -1265,11 +1265,75 @@ class BranchDispatchMixin:
         )
 
     @classmethod
+    def _unfielded_root_required(cls) -> tuple[str, ...]:
+        """The names the ROOT requires that this base has NO FIELD for.
+
+        §5's ``required`` row at ROOT beside a union records such a name in
+        :attr:`_ROOT_REQUIRED` and declares no field for it, "because a field for either
+        would shadow the branches' own typed declaration with whatever the root says
+        about it, which is nothing".  The row rests on one premise -- "the branch classes
+        hold the fields and their own requiredness is what refuses a payload omitting
+        one" -- and where a branch declares the key NOWHERE, nothing refuses and the
+        root's ``required`` is silently dropped.
+
+        Measured (``adcp-client-python-82m.24``).  ``media-buy/buy-products-request.json``
+        at ``#/anyOf/1/properties/account`` composes ``core/canonical-account-ref.json``
+        and restates ``required: [brand, operator]`` over it.  The target declares
+        ``brand`` and ``operator`` only inside its own ``/anyOf/1``, so the base
+        ``Account`` has neither field and its ``/anyOf/0`` branch -- the ``account_id``
+        arm -- declares neither either.  ``Account.model_validate({"account_id": "a1"})``
+        therefore resolved to that branch and returned, where the document refuses the
+        payload: ``allOf`` INTERSECTS, so an instance at that position carries every
+        restated required key.
+
+        **The refusal belongs HERE and not on a branch**, which is the same clause that
+        put the names on the base: the root asserts about the instance every branch
+        describes, so the fact is the root's whatever branch a payload would reach, and
+        reported at the root it names the document's own ``required`` once instead of
+        once per branch.
+
+        **Scoped to the names with NO field, and that is what keeps the reporting of
+        every other union where it was.**  A name the base DOES declare is already a
+        required field there, so pydantic refuses its absence with ``missing`` at its own
+        location and a second refusal would only rename the first.
+        """
+        return tuple(k for k in cls._ROOT_REQUIRED if k not in cls.model_fields)
+
+    @classmethod
     def _dispatch(cls, value: Any) -> Any:
+        absent = (
+            [k for k in cls._unfielded_root_required() if k not in value]
+            if isinstance(value, Mapping)
+            else []
+        )
+        if absent:
+            raise cls._required(value, absent)
         try:
             return cls._branch_adapter().validate_python(value)
         except ValidationError as err:
             raise cls._no_branch(value, err) from None
+
+    @classmethod
+    def _required(cls, value: Any, absent: Sequence[str]) -> ValidationError:
+        """``required`` at each absent key's own location: the document's own keyword.
+
+        One construction, read by :meth:`_dispatch`'s own screen and by
+        :meth:`_no_branch`'s root-required arm, so the two cannot come to report the same
+        document fact two different ways.
+        """
+        return ValidationError.from_exception_data(
+            cls.__name__,
+            [
+                InitErrorDetails(
+                    type=PydanticCustomError(
+                        "required", "{detail}", {"detail": f"{key!r} is a required property"}
+                    ),
+                    loc=(key,),
+                    input=value,
+                )
+                for key in absent
+            ],
+        )
 
     @classmethod
     def _no_branch(cls, value: Any, err: ValidationError) -> ValidationError:
@@ -1302,27 +1366,25 @@ class BranchDispatchMixin:
             e["type"] in _TAG_ERRORS for e in err.errors()
         ):
             return err
-        details = [
-            InitErrorDetails(
-                type=PydanticCustomError(
-                    "required", "{detail}", {"detail": f"{key!r} is a required property"}
-                ),
-                loc=(key,),
-                input=value,
-            )
-            for key in absent
-        ] or [
-            InitErrorDetails(
-                type=PydanticCustomError(
-                    cls._branch_combinator(),
-                    "{detail}",
-                    {"detail": f"is not valid under any of the {len(cls._branch_models)} branches"},
-                ),
-                loc=(),
-                input=value,
-            )
-        ]
-        return ValidationError.from_exception_data(cls.__name__, details)
+        if absent:
+            return cls._required(value, absent)
+        return ValidationError.from_exception_data(
+            cls.__name__,
+            [
+                InitErrorDetails(
+                    type=PydanticCustomError(
+                        cls._branch_combinator(),
+                        "{detail}",
+                        {
+                            "detail": "is not valid under any of the "
+                            f"{len(cls._branch_models)} branches"
+                        },
+                    ),
+                    loc=(),
+                    input=value,
+                )
+            ],
+        )
 
     def __new__(cls, *args: Any, **data: Any) -> Any:
         if data and cls._dispatching():
