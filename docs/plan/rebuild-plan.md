@@ -1967,6 +1967,27 @@ inlined subtree, so substituting a fixture collapses it **whether or not the rec
 bytes** — which makes it a change to how we grade rather than a change to the artifact. It is the
 cheap half of what un-inlining would buy.
 
+**A REFERRING POSITION IS ONE WHERE THE REFERENCED DOCUMENT DESCRIBES AN INSTANCE OF ITS OWN, AND
+NOWHERE ELSE.** PROP, ELEM, MAPV, KEY, DEF, and a whole `anyOf`/`oneOf` branch are such positions:
+the referenced document is the entire answer about one value, and one value it admits is a fixture.
+
+**A reference at an `allOf` conjunct, inside `if`/`then`/`else`, under `not`, or anywhere else that
+CO-DESCRIBES THE ENCLOSING INSTANCE IS NOT ONE.** There, two or more documents each state part of
+what one value must satisfy, so a fixture per conjunct is two documents answering one question and
+**the intersection is empty** — the draw then yields nothing at all rather than yielding too much.
+Measured: `media-buy/get-products-response.json#` states `allOf: [{$ref core/version-envelope},
+{$ref core/protocol-envelope}, …]`, and a fixture at each conjunct gives `Unsatisfiable: cannot
+generate test cases from empty strategy`.
+
+**At a co-describing position the reference is TRANSPARENT: the walk reads through it and keeps
+looking below**, which is the reading `architecture.md` already applies to the record's storage.
+The fixtures then land inside the conjunct, at positions that do not meet each other.
+
+**AND THE RESIDUAL EMPTINESS IS REPORTED, NEVER SWALLOWED.** Two fixtures can still meet on one
+instance through `uniqueItems` or a tuple-valued `items`. That is a non-pass with a name — a
+`strategy_error` attributable to its pair — and never a silent green, because a pair the instrument
+cannot grade is not a pair that passes.
+
 **Two costs, stated rather than discovered.** A fixture is one instance where a draw is many, so a
 defect reachable only by an unusual value *inside* a referenced subtree is found by **that
 subtree's own pair or not at all** — which is correct, and is the whole content of "graded there",
