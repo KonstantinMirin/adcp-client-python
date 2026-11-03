@@ -2161,8 +2161,8 @@ condition, below.
    module that any module it writes imports from.** The closure is the transitive closure of the
    IMPORT relation the lowering actually produces, and `$ref` is one contributor to it.
 
-   This is green today over the whole bundle and false over any subset, which is the shape of a
-   defect that an instrument ranging only over the full set cannot see — **and the fix is to the
+   This is green today over the whole bundle and false over any subset, which is what a defect
+   looks like when every instrument for it ranges only over the full set — **and the fix is to the
    closure, not to the gate's set**: a gate that only ever runs over everything proves nothing
    about the mechanism it is named for.
 
