@@ -541,7 +541,18 @@ def _reaching(population: list[str]) -> tuple[Any, set[str]]:
     lower_union.overlapping = traced  # type: ignore[assignment]
     emit.lower_document = one_document  # type: ignore[assignment]
     try:
-        return emit.emit(BUNDLE, population), seen
+        # ``store.perturbed()``: both patches above are run-time changes to a walk module,
+        # and ``codegen/store.py`` holds §1's export census on disk under a digest of
+        # ``codegen/``'s SOURCE, which a patch does not move.  So without this the walk
+        # takes the census off disk and pass one never runs -- which is the whole thing
+        # this function exists to make happen -- and ``tests/test_no_cached_compile_under_
+        # a_perturbation.py`` is the guard that says so.  It has always been true of the
+        # ``lower_union.overlapping`` patch and the guard could not SEE it: its ``WALK``
+        # tuple is matched against the local name, and ``lower_union`` is this module's
+        # alias for ``codegen.lower.union``.  The ``emit.`` patch is spelled with a name
+        # the guard knows, so adding it is what made the omission visible.
+        with store.perturbed():
+            return emit.emit(BUNDLE, population), seen
     finally:
         lower_union.overlapping = real  # type: ignore[assignment]
         emit.lower_document = real_document  # type: ignore[assignment]
