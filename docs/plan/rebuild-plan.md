@@ -1846,6 +1846,47 @@ belong in this section** — that rule is what the 2026-10-30 deletion below enf
     pointer the declaration names, and that same pointer is one the draw can reach.
 - **Dump.** Serialize the instance and validate the dump against the document. A failure means we
   emit something our own schema refuses.
+### THE TWO CHECKS ARE APPLIED COMPOSITIONALLY, AND CERTAINTY COMES FROM THE TABLE (decided 2026-11-03)
+
+**DRAWING SAMPLES; IT NEVER PROVES.** The draw finds a disagreement and names the value, which is
+why it is the instrument of record for a defect. It cannot establish the absence of one, so *"the
+class is faithful to its document"* is not a claim the draw can deliver at any budget. Two
+consequences, and both are rules.
+
+**A COMBINATOR ROOT IS NOT GRADED BY DRAWING THE PRODUCT OF ITS BRANCHES.** Every branch of a
+union is its own class and therefore its own pair, graded on its own; drawing the root re-draws
+the product of what has already been verified one branch at a time, and in this bundle that
+product does not terminate — a root whose branches nest combinators several deep is a
+multiplication across levels, not a sum, and it is the library's canonicaliser that performs it.
+**So a composite root is discharged by four finite obligations and never by one unbounded search:**
+
+1. **every branch pair green** — which is the existing check, at the existing cost;
+2. **the dispatch resolves** — §4's sources, and a root that cannot name the branch a payload is
+   fails that check already;
+3. **the root's OWN keywords graded at the root with its combinator removed** — everything stated
+   beside the combinator compiles onto the base and every branch inherits it, so it is a plain
+   object check;
+4. **disjointness proved or declared** — the existing UNDERDETERMINED declaration is exactly this
+   obligation's negative answer.
+
+A branch that is itself a combinator root recurses by the same four. Nothing here samples a
+product, and a root the draw can never finish is reachable by all four.
+
+**AND CERTAINTY ITSELF COMES FROM §5's TABLE, NOT FROM THE DRAW.** §5 is a keyword × position
+decision table: each cell says what one keyword at one position compiles to. **Prove each cell
+once** — the annotation it emits admits exactly the values that keyword admits at that position,
+against the boundary values the keyword itself names — and **prove each composition rule once** —
+`allOf` intersects, `anyOf` unions, a restatement merges — and faithfulness over any document
+follows **by structural induction on the document**. The obligation becomes the table's cells plus
+the composition rules, which is finite and terminates, and it covers documents no draw will ever
+reach.
+
+**The draw is then a cross-check on the table rather than the proof**, and that is the role it can
+actually fill: a drawn disagreement means a cell is wrong or the walk applied the wrong cell, and
+either is a located defect rather than a mystery. **The carve-outs are already written down** — the
+declared approximations and the narrowings the registry admits — so "faithful except where
+recorded" is a statement the induction can quote rather than a hedge.
+
 **THERE IS NO THIRD CHECK (decided 2026-10-30).** A comparison of the class's
 `model_json_schema()` against the document stood here and is **deleted** — code, tests, pins,
 prose, as if it had never existed. It was not a check on the artifact; it diffed schema TEXT, and
