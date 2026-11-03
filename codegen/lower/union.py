@@ -1363,7 +1363,9 @@ def lower_union(
     # shapes, so the union keyword arrives through ``{kw}`` alone and a root carrying
     # BOTH ``oneOf`` and ``anyOf`` still refuses on the second -- which is what the
     # docstring of :func:`keyword` says it does, and the bundle has 0 of them.
-    stated = compiler.rules_at(node, position=node.position, resolve=mod.resolve_node)
+    stated = compiler.rules_at(
+        node, position=node.position, resolve=mod.resolve_node, root=mod.record
+    )
     refused = compiler.check_keywords(node, ROOT_CLAIMS | {kw} | stated.screen, mod=mod)
     if refused is not None:
         return refused
@@ -2508,7 +2510,9 @@ def _plan(node: "nodes.Union", i: int, mod: compiler.Module) -> Branch | Refusal
     # node, so there is no second reading of which keywords are union keywords here --
     # the set would be :data:`UNION` spelled again, and :data:`UNION` is itself derived
     # from the declaration's descent column.
-    stated = compiler.rules_at(parsed, position=Position.BRANCH, resolve=mod.resolve_node)
+    stated = compiler.rules_at(
+        parsed, position=Position.BRANCH, resolve=mod.resolve_node, root=mod.record
+    )
     forbids = forbidden_names(parsed, branch)
     nested_union = (
         frozenset({parsed.combinator}) if isinstance(parsed, nodes.Union) else frozenset()

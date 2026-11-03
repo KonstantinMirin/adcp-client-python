@@ -91,6 +91,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
+from adcp.types import _base
 from adcp.types._runtime import (
     AtLeastOne,
     ConditionalRequired,
@@ -185,6 +186,7 @@ def lower(
     extra_stated: bool = False,
     *,
     resolve: compiler.Resolver = None,
+    root: Mapping[str, Any] | None = None,
 ) -> Lowered:
     """Every rule one node states, off the three facts a node carries for it.
 
@@ -205,6 +207,18 @@ def lower(
     then not claimed, and the handler that claimed the keyword reports or refuses -- so a
     caller with no run to resolve against loses no fact silently.
 
+    ``root`` is the fifth and belongs to §8's sentence 3a (decided 2026-11-03): **§5's
+    ``if`` row reads through a LOCAL REFERENCE THE RECORD MINTED.**  The record stores
+    each distinct subtree once under its own ``definitions`` (reading 5), so a condition --
+    or a property declaration inside one -- may have been REPLACED by a reference naming a
+    storage entry, and a reader that stops at the reference reads a node the document does
+    not state.  ``architecture.md`` already decided the seam: *a reader asking what the
+    document states reads through the storage*, which is
+    :func:`adcp.types._base.through_the_store` and nothing else.  ``None`` is the safe arm
+    -- a reference is then read as written, which is exactly what this module did before
+    the storage existed -- so a caller with no record in hand loses no fact silently and
+    declares instead.
+
     :func:`lower_declaration` is the same reading asked of a raw declaration, for §2's
     one declaration-level reader: an ``allOf`` conjunct.
     """
@@ -213,7 +227,7 @@ def lower(
     _count(sources, out, extra_stated)
     _negated(sources, out, declared)
     _combinator(sources, out)
-    _conditional(sources, out)
+    _conditional(sources, out, root)
     _distinct(declared, out, resolve)
     return out
 
@@ -224,6 +238,7 @@ def lower_declaration(
     *,
     resolve: compiler.Resolver = None,
     extra_stated: bool | None = None,
+    root: Mapping[str, Any] | None = None,
 ) -> Lowered:
     """:func:`lower`, asked of a raw DECLARATION: an ``allOf`` conjunct's rules.
 
@@ -253,6 +268,7 @@ def lower_declaration(
         declared if isinstance(declared, dict) else {},
         ("additionalProperties" in declaration) if extra_stated is None else extra_stated,
         resolve=resolve,
+        root=root,
     )
 
 
@@ -694,7 +710,9 @@ def _distinct(
     out.rules.extend(UniqueItems(key) for key in claimed)
 
 
-def _conditional(node: Mapping[str, Any], out: Lowered) -> None:
+def _conditional(
+    node: Mapping[str, Any], out: Lowered, root: Mapping[str, Any] | None = None
+) -> None:
     """``if``/``then``/``else``, and every arm of it the class does not carry.
 
     §5's ``if`` row is "a ``Match`` clause list where it states ``required`` plus
@@ -722,7 +740,7 @@ def _conditional(node: Mapping[str, Any], out: Lowered) -> None:
     dropped belongs to the conditional.
     """
     arms = tuple(k for k in ("then", "else") if k in node and _states_presence(node[k]))
-    when = _clauses(node.get("if"))
+    when = _clauses(node.get("if"), root)
     if when is None:
         # **A CONDITION the reduction cannot read is NOT declared here, and the reason is
         # a measurement rather than a reading** (``adcp-client-python-3bb``, second
@@ -835,7 +853,41 @@ def _required_groups(sub: Any) -> list[tuple[str, ...]] | None:
     return schema.required_groups(sub, Position.RULE, partial=True)
 
 
-def _clauses(sub: Any) -> list[tuple[str, bool, tuple[Any, ...] | None]] | None:
+def through_the_storage(node: Any, root: Mapping[str, Any] | None) -> Any:
+    """``node`` with a reference the RECORD MINTED followed, or ``node`` as written.
+
+    **§8's sentence 3a (decided 2026-11-03), and it needs no new principle.**  The record
+    stores each distinct subtree once under its own ``definitions`` and references it at
+    every occurrence (reading 5), so the node a reader is handed at a position may be a
+    reference to a storage entry rather than the content the document states there.
+    ``architecture.md`` already settled what such a reader does: *a reader asking what the
+    document states reads through the storage*, because "a reference to a storage entry is
+    not a fact the document states but where the fact is kept".
+
+    :func:`adcp.types._base.through_the_store` is that one hop and this is the name this
+    module calls it by.  Two things follow from using it rather than a local-pointer
+    resolver of this module's own, and both are the reason:
+
+    * it follows ONLY a node whose single key is a ``$ref`` naming a ``Shared<N>`` entry,
+      which is the only shape the hoisting writes.  **A document's OWN local reference is
+      left exactly as written** -- ``bundle.record`` leaves one in, 1,158 of them carry a
+      ``description`` beside the ``$ref``, and following those would change what every
+      other reader of the same node sees for a storage decision that touches none;
+    * it is the package's own declaration of the seam, so the walk and
+      ``strict_validate`` dereference the record through one predicate rather than two.
+
+    ``root`` is ``None`` for a caller with no record in hand -- a document lowered outside
+    a run, a conjunct read with no module -- and the answer is then ``node`` itself, which
+    is the arm that DECLARES rather than lowering a node it cannot see.
+    """
+    if root is None:
+        return node
+    return _base.through_the_store(node, root)
+
+
+def _clauses(
+    sub: Any, root: Mapping[str, Any] | None = None
+) -> list[tuple[str, bool, tuple[Any, ...] | None]] | None:
     """An ``if`` as ``(key, present, allowed values)`` clauses, or ``None``.
 
     Every clause must be about a key the ``if`` also REQUIRES.  A ``properties`` entry
@@ -843,7 +895,16 @@ def _clauses(sub: Any) -> list[tuple[str, bool, tuple[Any, ...] | None]] | None:
     as by its value matching, and a clause cannot say "absent or one of these" -- so
     such an ``if`` reduces to nothing rather than to something stronger than the
     document.
+
+    **The condition and each property declaration inside it are read THROUGH the record's
+    own storage** (:func:`through_the_storage`, §8's sentence 3a).  Both hops are needed
+    and the measurement is why: over the 1,054 portable documents 2,804 record pointers
+    state an ``if`` this reduction cannot read as written, **2,188 of them because the
+    condition or a property declaration inside it had been replaced by a reference to a
+    storage entry, and 1,971 of those lower exactly once the reference is followed** --
+    declaring nothing, because the clause list then states what the document states.
     """
+    sub = through_the_storage(sub, root)
     if not isinstance(sub, dict):
         return None
     keys = _keys(sub)
@@ -857,7 +918,7 @@ def _clauses(sub: Any) -> list[tuple[str, bool, tuple[Any, ...] | None]] | None:
         return None
     out = []
     for name in required:
-        declaration = properties.get(name)
+        declaration = through_the_storage(properties.get(name), root)
         allowed = None
         if isinstance(declaration, dict):
             allowed = _values(declaration)

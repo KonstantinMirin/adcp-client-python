@@ -419,7 +419,9 @@ def typeless(node: nodes.Typeless, mod: Module) -> ir.Decided | Refusal:
         #
         # The upstream issue a registry document earns -- the schema should say more
         # than it does -- stands and is the issue list's, not a declaration's (§5(b)).
-        stated = compiler.rules_at(node, position=Position.ROOT, resolve=mod.resolve_node)
+        stated = compiler.rules_at(
+            node, position=Position.ROOT, resolve=mod.resolve_node, root=mod.record
+        )
         refused = check_keywords(node, {*stated.screen, *lower_rules.ON_A_VALUE}, mod=mod)
         if refused is not None:
             return refused
