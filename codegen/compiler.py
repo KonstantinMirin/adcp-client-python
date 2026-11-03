@@ -100,7 +100,6 @@ either would freeze the shape rather than move it.
 
 from __future__ import annotations
 
-import keyword
 from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from enum import StrEnum
