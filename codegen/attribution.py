@@ -166,3 +166,73 @@ def malformed(registry: Mapping[Site, object] | None = None) -> tuple[Site, ...]
             or not entry.summary.strip()
         )
     )
+
+
+#: **Issues whose EXISTENCE has been verified, as the reference and what was seen.**
+#: Empty, and :func:`unverified` is the gate over it.
+#:
+#: ``docs/plan/final-state.md`` reading 9: "Each declared fact is ours with a decision
+#: recorded, or **upstream with an issue that exists**", decided by "every ``upstream``
+#: attribution naming a live issue".  :class:`Issue` already refuses an entry with no
+#: REFERENCE -- an empty string is not a value this module can hold -- and that is a
+#: different claim: a reference is a well-formed spelling, and existence is a fact about
+#: upstream's tracker.  No offline check can derive it, and this package has no network in a
+#: test, so what is checkable is that somebody LOOKED and recorded what they saw.
+#:
+#: **That is a registry and it is compared in both directions, which is what keeps it from
+#: being an allowlist.**  Forward: an attribution whose reference is not here is a claim on
+#: someone else's backlog that nobody has checked, and :func:`unverified` reports it.
+#: Backward: an entry here that no attribution names is a list of issues doing nothing, and
+#: :func:`unnamed` reports that.  So this cannot grow ahead of an attribution and cannot
+#: stay behind one.
+#:
+#: **BOTH DIRECTIONS ARE VACUOUS TODAY AND THAT IS SAID PLAINLY**, because a gate that
+#: passes for want of a set is the thing this project has been bitten by repeatedly.
+#: :data:`REGISTRY` is empty, so there are zero ``upstream`` attributions, so there is
+#: nothing for either direction to range over.  What makes it non-vacuous the moment one is
+#: added is the forward direction's shape: an attribution arrives with its verification or
+#: it reddens, and adding both is one diff a reviewer reads.
+#:
+#: **One upstream issue exists and is deliberately NOT here**:
+#: ``adcontextprotocol/adcp#8698`` attributes nothing, because it is a question and not a
+#: verdict -- and an entry for it would be exactly the backward-direction defect above.
+#: ``codegen/dump_exemptions.py``'s ``adcontextprotocol/adcp#8398`` is not here either, and
+#: for a different reason: it is a DUMP exemption and not an approximation's attribution,
+#: graded by that module's own test over its own set.
+VERIFIED: Mapping[str, str] = {}
+
+
+def unverified(
+    registry: Mapping[Site, Issue] | None = None,
+    verified: Mapping[str, str] | None = None,
+) -> tuple[tuple[Site, str], ...]:
+    """Every site whose upstream issue has no recorded verification that it exists.
+
+    Reading 9's second clause, made mechanical.  The site AND the reference, because the
+    question a reader of a failure asks is "which issue am I being asked to believe in".
+    """
+    rows = REGISTRY if registry is None else registry
+    seen = VERIFIED if verified is None else verified
+    return tuple(
+        sorted(
+            (site, entry.reference)
+            for site, entry in rows.items()
+            if entry.reference not in seen
+        )
+    )
+
+
+def unnamed(
+    registry: Mapping[Site, Issue] | None = None,
+    verified: Mapping[str, str] | None = None,
+) -> tuple[str, ...]:
+    """Every verified issue that no attribution names.
+
+    The backward direction, and the reason :data:`VERIFIED` is a registry rather than a
+    list: it holds what an attribution needs and nothing else, so it shrinks when an issue
+    closes and an attribution becomes ours again.
+    """
+    rows = REGISTRY if registry is None else registry
+    seen = VERIFIED if verified is None else verified
+    named = {entry.reference for entry in rows.values()}
+    return tuple(sorted(ref for ref in seen if ref not in named))
