@@ -38,8 +38,8 @@ Three forms of the same evasion, and each has been found here:
   it is the artifact every reading is about.
 
 **AN INVARIANT OVER THE CODE IS NOT A STRUCTURAL ASSERTION, AND THE DIFFERENCE IS NOT A MATTER OF
-DEGREE (decided 2026-11-03).** The rule against asserting code structure is right about what it
-names — a count of lines, imports or call sites freezes the shape, blocks the refactor it was meant
+DEGREE.** The rule against asserting code structure is right about what it
+names — a count of lines, imports or call sites freezes the structure, blocks the refactor it was meant
 to encourage, and proves nothing, because there are unboundedly many wrong structures and
 enumerating a few is not a strategy. **It has been read as forbidding every check over the code,
 and that reading is what let incidental complexity accumulate unmeasured.**
@@ -61,7 +61,7 @@ project has paid for by not having:**
   it by its position is doing anonymously what the layer above it does with judgement.
 
 **And the ordinary tools count as invariants here.** A linter's unused-import, shadowed-name,
-mutable-default and dead-code rules are invariants over behaviour, not shape pins — so their
+mutable-default and dead-code rules are invariants over behaviour, not structural pins — so their
 absence is not neutrality, it is an unmeasured surface. A repository with none has no reading on
 its own incidental complexity, which is the condition under which that complexity is mistaken for
 the problem's own.
@@ -129,7 +129,7 @@ is the question that tells our defect from the schema's own duplication — the 
 fix, the second is faithful emission and an ask stated over a set of the bundle.
 
 **Decided by** one census per layer, each keyed on that layer's own
-identity — and **not every layer has a class population to census over the tree**: an array type
+identity — and **not every layer has a set of classes to census over the tree**: an array type
 renders as `list[X]` inside an annotation and declares no class, so the array layer is read off the
 bundle's own stating positions while the object layer can be read off either. A census that assumes
 every layer appears as a class silently skips one. The key is that layer's

@@ -93,7 +93,7 @@ exactly one path is answered `yes` by two names for one object, each resolving c
 green while the rule is false. The reading is that the number of export paths equals the number of
 distinct objects behind them.
 
-**That carve-out reaches across modules as well as inside one (2026-10-26)**, because a document
+**That carve-out reaches across modules as well as inside one**, because a document
 that is a bare `$ref` to another
 document states the same node, and §4's rule for the same node stated twice does not change at a
 file boundary. Where the target is a class the root is a subclass of it instead, which is one
@@ -122,7 +122,7 @@ lengthen.
 
 The middle row's figures were **first measured 196 declarations too low, and the undercount is
 itself the finding (corrected 2026-10-30).** A reading over the emitted TEXT has to spell "branch"
-as *a class one of whose bases this module declares*, and that misses every arm of a nested
+as *a class one of whose bases this module declares*, and that misses every case of a nested
 `A | B` union, which subclasses nothing local. So the export set is read off the RUN's own record
 — `ir.Module.exports`, written where a position's hop and its declaration are both in hand —
 giving **1,951 declarations: 1,054 roots, 756 branches, 141 aliases**, over 1,932 distinct pairs in
@@ -148,7 +148,7 @@ A D2 `Annotated` alias is a name an application writes, so the 113 distinct type
 exported with the same rule. The 241 per-module `strict_validate` helpers are not: a domain name
 cannot stand for 241 functions, and a caller reaches one through the class it belongs to.
 
-**`adagents` is a domain (2026-10-30).** `adagents.json` sits at the tree's root with no directory
+**`adagents` is a domain.** `adagents.json` sits at the tree's root with no directory
 beside it, so the derivation answers 23 domains and not the 22 the directories suggest. It gets
 `adcp.types.adagents`, carrying its 39 classes. §10's layout rule is untouched — that rule is
 about a document whose path is ALSO a directory's, and this one has no directory.
@@ -221,7 +221,7 @@ four distinct meanings behind one word. Where a sentence needed one of those, it
 member of a `oneOf` or `anyOf` is a branch, the class emitted for it is a branch class, and §4's
 dispatch sources already say *branch*. Nothing is gained by a second word for one concept, and
 `_branch_models`, `_BRANCH_DISCRIMINATOR` and `…Branch<N>` all say which word the code uses.
-*"Population"* is a **set** — the portable set, the declared set, the set a check ranges over.
+*"Set"* is a **set** — the portable set, the declared set, the set a check ranges over.
 A count is stated over a set, and `bundle.portable` returns one.
 
 **"RUNG" AND "LADDER" ARE BANNED, AND THIS ONE HID A TYPE ERROR RATHER THAN A SYNONYM (decided
@@ -231,7 +231,7 @@ asserted a relation between them that does not exist:
 - **§2's widening order is a CHAIN — a totally ordered set — over five types, ordered by
   INCLUSION OF THE ADMITTED VALUE SET**: `KEYWORD ⊆ TYPE ⊆ JOIN ⊆ CONTAINER ⊆ TOP`. A handler
   that cannot render a fact takes the **LEAST WIDENING** it can render. `Any` is the order's
-  **greatest element**, which is why no node runs out of renderings — a property of the order,
+ **greatest element**, which is why no node runs out of renderings — a property of the order,
   not of a metaphor. "Monotone", "terminates", "least" and "greatest" are the words this is made
   of, and all four are checkable.
 - **§4's branch naming is an ORDERED LIST OF CANDIDATE NAMES, resolved by FIRST FIT.** A
@@ -264,7 +264,7 @@ would then be narrower than the schema it names. Two spellings of 'which hop kee
 is precisely how that divergence would arrive, and it would arrive silently."
 
 So the entailment is one sentence in one function, and the walk inherits it. `harness._entails_type`
-is the third reader and its combinator arm must derive from the same function rather than require
+is the third reader and its combinator case must derive from the same function rather than require
 a STATED word on every branch — measured, requiring one reports `added /type` on 9 pairs, which is
 the divergence that docstring forbids showing up as a verifier disagreement instead of a crash.
 §9 permits it: `adcp.types` is the emitted package reached as a consumer reaches it, and
@@ -325,9 +325,9 @@ The practical test is the report line. If a reader of the refusal would go to th
 understand it, it is a refusal. If they would go to `codegen/`, it is ours, and an exception at
 the pointer is both louder and honest where a refusal is quiet and wrong.
 
-This is why an unreachable arm guarding a compiler invariant needs no `Refusal.kind`: the
+This is why an unreachable case guarding a compiler invariant needs no `Refusal.kind`: the
 question "is this a verdict or a deferral" does not apply to it, because it is neither. `kind_for`
-answering DEFERRED for such an arm is not the table being wrong — it is the arm being the wrong
+answering DEFERRED for such a case is not the table being wrong — it is the case being the wrong
 case.
 
 ### The schema decides acceptance
@@ -509,31 +509,31 @@ The refusal argument survives in exactly two places, and the design keeps both.
   construction then fails. A narrowing is the defect the old sentence was reaching for, and
   nothing below widens into one.
 
-  **A narrowing taken on purpose is admitted by an ENUMERATED registry and by nothing else.**
+ **A narrowing taken on purpose is admitted by an ENUMERATED registry and by nothing else.**
   The registry is the authority, this sentence is not, and a narrowing absent from one is the
   defect above. Each entry is compared by equality so it admits that fact and not its kind — a
   rule admitting "the sort of bound a URL type adds" would be invisible and permanent.
 
-  **A registry is a DECISION where no other check can report its edit, and a decision must be
+ **A registry is a DECISION where no other check can report its edit, and a decision must be
   read by a test (added 2026-10-27).** That is the discriminator between a decision and a
   mechanical lookup, and it is the reason the distinction can be measured rather than argued:
   a lookup's error surfaces somewhere else — a wrong `_TIGHTER_BOUND` direction loosens the
   composed bound and the pair reports `added` — while a decision's edit is silent everywhere.
   `tests/test_decision_set.py` holds the guard, with both sides of every pin derived.
 
-  **A per-pair reading cannot see one of these edits, which is why the guard measures REACH.**
+ **A per-pair reading cannot see one of these edits, which is why the guard measures REACH.**
   Remove `maxLength` from `URL_IMPLIED` and the per-pair verdicts do not move: every pair
   grades exactly as it did. That silence is the signature of the
   incident this rule exists for, so the guard switches each admission mechanism off in turn and
   pins which keywords reappear.
 
-  **THE WITHDRAWAL IS REVERSED AND THE TWO URL TYPES STAND (the owner's decision,
+ **THE WITHDRAWAL IS REVERSED AND THE TWO URL TYPES STAND (the owner's decision,
   for the second time). This is not reopened again.** A lane executed the withdrawal on the
   strength of the paragraphs below, and I briefed it without asking what the diff reversed, which
   is my own rule. **The reversal is a decision about which artifact is authoritative, and the
   answer is not the document.**
 
-  **THE BUNDLE IS WRONG ABOUT URLs, and that is the whole premise.** It spells "a URL" many
+ **THE BUNDLE IS WRONG ABOUT URLs, and that is the whole premise.** It spells "a URL" many
   different ways across its `uri` positions — a bare `format: uri`, an `^https://` pattern, a
   length bound, several combinations — for what is one concept. **Where the schema states one
   concept inconsistently, the SDK states it consistently**, and consistency across the bundle is
@@ -541,7 +541,7 @@ The refusal argument survives in exactly two places, and the design keeps both.
   `AdCPUrl` where the document pins `^https://`, which is the agent-facing form, and `HttpUrl`
   everywhere else, which is the identity form.
 
-  **SO THE NORMALISATION IS A NARROWING TAKEN ON PURPOSE, not a defect**, and §2's rule about
+ **SO THE NORMALISATION IS A NARROWING TAKEN ON PURPOSE, not a defect**, and §2's rule about
   deliberate narrowings applies to it in full: it must be **admitted by the enumerated registry
   and by nothing else**, because an unadmitted narrowing is invisible and permanent. The
   registry's own mechanism does not express it yet — an entry is compared by equality so that it
@@ -567,12 +567,12 @@ The refusal argument survives in exactly two places, and the design keeps both.
   `https://qo1p.here/`, which the document then refuses on its own
   `pattern: ^https://[^/?#@]+$`. One type decision, a narrowing and a broken round trip.
 
-  **A rule-level repair is provably wrong**, and was measured rather than argued: neutralise the
+ **A rule-level repair is provably wrong**, and was measured rather than argued: neutralise the
   `UniqueItems` comparison and the same pair fails the other way, because the DUMP then carries
   the duplicate and the document refuses it on `uniqueItems`. The rule is not the defect; the
   non-injective type is.
 
-  **So `format: uri` carries the document's own string, with the URL grammar asserted beside
+ **So `format: uri` carries the document's own string, with the URL grammar asserted beside
   it.** The reach — the `uniqueItems` arrays over `format: uri` items, the `format: uri`
   positions beside a pattern the normalised form violates, and the `uri` positions behind them —
   is stated in the row, because it moves with the bundle.
@@ -582,7 +582,7 @@ The refusal argument survives in exactly two places, and the design keeps both.
   object instead of a string, and §2 settles that trade where it always settles it: an
   annotation tighter than its document is the defect nothing may widen into.
 
-  **AND `approximated` DOES NOT MOVE.** **None of the declared facts is a URL fact** — they are
+ **AND `approximated` DOES NOT MOVE.** **None of the declared facts is a URL fact** — they are
   `patternProperties` at CONTAINER, `anyOf` and `oneOf` at JOIN, and one `maxLength` at an
   `x-adcp-open-payload` node that is not a `uri` position. So there is nothing to subtract:
   `URL_IMPLIED`'s two facts cannot "stop being dropped" when the registry that declared them has
@@ -590,13 +590,13 @@ The refusal argument survives in exactly two places, and the design keeps both.
   guard — **does not exist**. The third count is already zero as well, since `refused` is 0 and
   §5's `uri`-beside-a-constraint case is answered by the TYPE widening already.
 
-  **What the withdrawal moves is the NARROWING count, and that is invisible to the drawn set** —
+ **What the withdrawal moves is the NARROWING count, and that is invisible to the drawn set** —
   which is the measure of the problem rather than an excuse. None of the narrowing's measured
   pairs appears among the failures of a whole-set grade, because a draw does not produce two
   case-differing URLs by chance; the payloads had to be constructed by hand. An unadmitted
   narrowing is exactly the fact no instrument finds.
 
-  **The order is forced and it is two commits.** The withdrawal lands first and moves the emitted
+ **The order is forced and it is two commits.** The withdrawal lands first and moves the emitted
   tree; the registry lands second, EMPTY, with its equality in both directions. Registry-first
   cannot be done: this section already says a normalisation cannot be registered, because an
   entry is compared by equality so that it admits one fact and not its kind — so a
@@ -607,7 +607,7 @@ The refusal argument survives in exactly two places, and the design keeps both.
   longer selects a type), `pattern`'s (the pattern goes on the type rather than staying with the
   schema half), and `minLength`/`maxLength`'s (no URL type to refuse against).
 
-  **A reading that finds code contradicting this section reports it and does not change either
+ **A reading that finds code contradicting this section reports it and does not change either
   side.** A registry entry is a decision even though it is not in this document.
 - **No document of record.** Where the record (§3) is undefined, there is no schema half at all,
   so `strict_validate` has no authority to run and the annotation is the only claim there is.
@@ -690,7 +690,7 @@ Summing them would report someone else's backlog as ours, which is the second ha
 
 Three figures, three denominators, never summed (§8 states the grading side of each):
 
-- **Emitted, over the population.** Every portable document of the bundle emits, and its
+- **Emitted, over the set.** Every portable document of the bundle emits, and its
   complement is the one irreducible class above — no document of record. This is a partition and
   it is the directive's exit condition: *refused* is zero.
 - **Round-trip failures, over the graded pairs.** A pair where the class refuses a value the
@@ -698,9 +698,9 @@ Three figures, three denominators, never summed (§8 states the grading side of 
   either one is the defect that matters.
 - **Approximations, over the declared set**, split by attribution. This count moves with
   emission, so §9 forbids pinning it; it is reported, and its `Ours` half ratchets down. The
-  four text-diff defect counts that stood here are deleted with the comparison (2026-10-30).
+  four text-diff defect counts that stood here are deleted with the comparison.
 
-The approximation count is **not** a partition of the population the way *emitted / refused*
+The approximation count is **not** a partition of the set the way *emitted / refused*
 was: one document carries many and most carry none. The number of documents carrying at least
 one is a different figure over a different denominator, and the two are never added.
 
@@ -813,7 +813,7 @@ reached first.
   element, `<Property>Value` for a mapping value, `<Key>` for a `definitions` entry. The
   module path already carries the document, so a nested name does not repeat it.
 
-  **The `definitions` entry dropped its `<Root>` prefix on 2026-10-28**, for the sentence above
+ **The `definitions` entry dropped its `<Root>` prefix on 2026-10-28**, for the sentence above
   it: the module carries the document. `core/verification-token-claims.json` declares
   `VerificationTokenGradingProfile` and the old rule spelled it
   `AgenticAdvertisingOrgVerificationTokenClaimsVerificationTokenGradingProfile` — 75 characters in
@@ -826,8 +826,8 @@ reached first.
   else its sorted `required` set; else, where the branch is a bare `$ref`, **the TARGET's own
   derived name**; else its **index among the branches**, `<Base>Branch<i>`.
 
-  **These five are an ORDERED LIST OF CANDIDATES RESOLVED BY FIRST FIT**, and the fifth is the
-  **default case**. A collision means the candidate did not identify the branch, so the next is
+ **These five are an ORDERED LIST OF CANDIDATES RESOLVED BY FIRST FIT**, and the fifth is the
+ **default case**. A collision means the candidate did not identify the branch, so the next is
   taken. Position here means *is preferred* and nothing more: **a name is not an acceptance fact**,
   so moving along this list changes nothing an instance can observe — which is what distinguishes
   it from §2's widening chain, where moving changes what the class admits.
@@ -873,7 +873,7 @@ through `...Branch11` are the twelve asset kinds — `image-asset-requirements.j
 `isinstance(req, AssetRequirementsBranch7)` has to count the document's branches to know it means
 JavaScript. **Measured on a FRESH RUN: 18 classes over 7 documents take the index, of which 13 are bare
 `$ref`s** and are what this candidate reaches. The other five are other cases — a nested registry
-branch, an `allOf` arm, a properties-only arm, and a `not`-complement branch with the copy another
+branch, an `allOf` case, a properties-only case, and a `not`-complement branch with the copy another
 document inlines. An earlier figure of 19 over 6 was read off the committed tree, which was 39
 documents stale, and assumed one case for all of them.
 
@@ -983,7 +983,7 @@ recomputable after the walk, and no census over the run enters.
 The DEDUP is confined to one module, never compared across modules, because a name's module is
 its namespace.
 
-**The COLLISION rule is not, for a name §1 exports (2026-10-30).** This clause used to confine
+**The COLLISION rule is not, for a name §1 exports.** This clause used to confine
 both, on the ground that §9 forbids a document's output depending on which other documents the run
 includes — and that ground is intact, but it is about the RUN and the collision scope is the
 BUNDLE, which §9 now says in as many words. So: one module for every position, and **the domain
@@ -1027,20 +1027,20 @@ Four mechanics make it work, each because one of the others does not reach a pat
   finds the same union and recurses. So the serialization slot carries a wrap serializer built
   from the plain model schema the class would otherwise have had, which terminates.
 
-  *What that schema is, settled 2026-10-27, because the sentence above admits two readings and
+ *What that schema is, because the sentence above admits two readings and
   both lose data.* Read as "the base's own plain schema, alone", a BRANCH reached through a
   base-typed field serialises as the base's fields and the branch's own are dropped silently —
   measured, it comes back as `{"shared": null}`. Read as a union of the branches plus that
-  schema, a BASE instance matches no arm under a smart union and the serialiser falls through to
+  schema, a BASE instance matches no case under a smart union and the serialiser falls through to
   the circular reference the mechanic exists to avoid. Both readings were live: the second is
   what the code does, and it became reachable for the first time at §14 step 9, because while a
-  root declaring `properties` was refused every base had no fields and matched the plain arm
+  root declaring `properties` was refused every base had no fields and matched the plain case
   trivially.
 
-  **The serialiser dispatches on the instance's own class, and each class serialises through its
+ **The serialiser dispatches on the instance's own class, and each class serialises through its
   own plain model schema.** A branch serialises the branch's fields; a base serialises the base's.
   That is not a union in the serializer slot at all, which is why it terminates — there is no
-  arm to fail to match and nothing to infer. It also states the obvious invariant the two
+  case to fail to match and nothing to infer. It also states the obvious invariant the two
   readings each broke in one direction: **a value serialises as what it is.** A base instance is
   a legitimate value, because `__new__` covers `Base(**data)` and validates it, so the slot owes
   it an answer rather than treating it as unreachable.
@@ -1072,7 +1072,7 @@ sources, in order:
    2026-11-02).** The union carries `Field(discriminator=<property>)` and the key alone selects
    the branch, so Pydantic reports against that branch rather than against all of them.
 
-   **PINNING IS NOT DETERMINING, and the requiredness half is the whole of the rule.** A
+  **PINNING IS NOT DETERMINING, and the requiredness half is the whole of the rule.** A
    discriminator is a total function from the instance to one branch. A pin on a key the branch
    lets an instance OMIT determines nothing when the key is absent, so such a key is not a
    discriminator and this source does not apply — the union falls to source 3. Pydantic raises
@@ -1081,7 +1081,7 @@ sources, in order:
    limitation of its own, and there is nothing to work around. Reading the key ourselves in
    `BranchDispatchMixin._dispatch` fails identically: an absent key cannot be read.
 
-   **The two predicates agree wherever the pinned key is required**, so testing the weaker one
+  **The two predicates agree wherever the pinned key is required**, so testing the weaker one
    passes nearly everywhere and fails only where a document pins a key one branch lets an instance
    omit. That near-agreement is why the weak predicate must be named and not merely corrected: it
    will look right in every case a reader checks by hand.
@@ -1096,10 +1096,10 @@ sources, in order:
 3. **Branches no instance satisfies twice.** Where the branches are pairwise disjoint, the
    payload selects its own branch and the order they are tried in cannot change which one it
    reaches. Disjointness is derived from the branches themselves: one property pinned to
-   **disjoint value SETS**, a `required` name one branch declares and another forbids, **one
+  **disjoint value SETS**, a `required` name one branch declares and another forbids, **one
    branch forbidding a VALUE another pins**, or scalar branches of different `type`.
 
-   *The first separator reads SETS and not single values.* An `enum` is a
+  *The first separator reads SETS and not single values.* An `enum` is a
    set of pinned values and a `not: {"enum": [...]}` is its complement, so two branches whose
    sets do not intersect are disjoint for the same reason two different `const`s are — the
    single-value case is the one-member set. Reading only single values made
@@ -1114,7 +1114,7 @@ sources, in order:
    derivation cannot separate is treated as overlapping, because admitting a union on an unproven
    disjointness is the defect this source exists to avoid.
 
-   *The third separator is new on 2026-10-27, and it exists because neither of the others was
+  *The third separator is new on 2026-10-27, and it exists because neither of the others was
    sound for a real union.* `media-buy/sync-catalogs-response.json` has a branch forbidding
    `status == "submitted"` and a branch pinning `status` to that very `const`. Every instance of
    the second carries a value the first forbids, so the two are disjoint in fact — and no
@@ -1211,7 +1211,7 @@ is the one place a keyword decision lives, and a grid is its rendering.
 | keyword | compiles to |
 | --- | --- |
 | `type` | A scalar word → `str` / `int` / `float` / `bool`, unless a constrained type or `format` selects one. `object` with `properties` → a class; without → `dict[K, V]`. `array` → `list[X]`. `null` → `None`. A LIST of words → `A \| B`, each sibling keyword going to the one type word that can carry it. Absent → `Any`; absent beside `properties` → an object, where an enclosing node applies `type: object` to the same instance, and refused otherwise. An enclosing `oneOf` APPLIES a type word it does not state, where TWO OR MORE of its branches admit that type vacuously: `oneOf` admits an instance satisfying exactly one branch, so an instance two branches both admit is refused by the combinator, and the type is excluded by the document itself. This is EXACT and not a widening — it reads a constraint the document imposes rather than relaxing one — so it owes no declaration and no widening. It holds at `oneOf` ALONE: at `anyOf` an instance one branch admits is admitted, so the same derivation there would state a constraint the document does not (`adcp-client-python-10l.69`). |
-| `properties` | A class with one field per key. An entry whose subschema ADMITS NOTHING — `false`, or `{"not": {}}`, which draft-07 makes the same schema — is NOT a field: draft-07 validates a `properties` entry only where the key is PRESENT and that entry then always fails, so the document's statement is that the key MAY NOT APPEAR and it says nothing at all about a value. The accepted set is the accepted set of `not: {required: [key]}`, which the `not` row already compiles to a `ForbiddenGroups` rule, so the key joins that rule on the nearest enclosing class and no field is declared. EXACT, not wide: nothing is dropped reaching it and no declaration is owed. `extra` is NOT the carrier — all three sites of the bundle state `additionalProperties: true` beside the forbidden key, so closing the class would refuse the other extras the document admits. Where `required` ALSO names the key the document admits nothing, and so does the class without an arm of its own: the `required` row's undeclared-name field refuses a payload omitting the key and this rule refuses one carrying it. ROOT beside a union → fields on the base, inherited by every branch. PROP / ELEM / MAPV / DEF → a nested class. BRANCH → the branch class. CONJ → fields of the composed class. A property two conjuncts declare is one field: its constraints intersect by §2, and two object declarations compose as an `allOf` of the two at that property; an empty intersection — two type words, disjoint enums — refuses, because the document admits nothing there. A `default` or a `description` is not a constraint, and the document's own statement wins over a base's. RULE: under `if` → the values a `Match` clause tests, read only where `const` or `enum`; under `then` / `else` / `not` → nothing. |
+| `properties` | A class with one field per key. An entry whose subschema ADMITS NOTHING — `false`, or `{"not": {}}`, which draft-07 makes the same schema — is NOT a field: draft-07 validates a `properties` entry only where the key is PRESENT and that entry then always fails, so the document's statement is that the key MAY NOT APPEAR and it says nothing at all about a value. The accepted set is the accepted set of `not: {required: [key]}`, which the `not` row already compiles to a `ForbiddenGroups` rule, so the key joins that rule on the nearest enclosing class and no field is declared. EXACT, not wide: nothing is dropped reaching it and no declaration is owed. `extra` is NOT the carrier — all three sites of the bundle state `additionalProperties: true` beside the forbidden key, so closing the class would refuse the other extras the document admits. Where `required` ALSO names the key the document admits nothing, and so does the class without a case of its own: the `required` row's undeclared-name field refuses a payload omitting the key and this rule refuses one carrying it. ROOT beside a union → fields on the base, inherited by every branch. PROP / ELEM / MAPV / DEF → a nested class. BRANCH → the branch class. CONJ → fields of the composed class. A property two conjuncts declare is one field: its constraints intersect by §2, and two object declarations compose as an `allOf` of the two at that property; an empty intersection — two type words, disjoint enums — refuses, because the document admits nothing there. A `default` or a `description` is not a constraint, and the document's own statement wins over a base's. RULE: under `if` → the values a `Match` clause tests, read only where `const` or `enum`; under `then` / `else` / `not` → nothing. |
 | `required` | The named fields are required: no `\| None`, no default. Naming a property NO declaration declares → a required field of type `Any`, and it is EXACT rather than wide: `required: ['x']` with no entry for `x` admits an object carrying `x` with any value, which is what the `type` row already gives an absent type word, so nothing is dropped and no declaration is owed. The model-only `properties` entry it renders is the empty schema, which states nothing the document does not. `required: []` → nothing. ROOT beside a union → required on the base's fields, and the names recorded in `_ROOT_REQUIRED`, so a refusal can separate a field the root requires from one that selects a branch. BRANCH → the branch class's requiredness, and the third of the branch-naming choices. CONJ → unioned into the composed class's `required`; a `required`-only conjunct → the overlay. RULE → a presence rule: `RequiredGroups`, `ForbiddenGroups` under `not`, the keys a `Match` clause tests under `if`, `ConditionalRequired` / `NegatedConditional` under `then` / `else`. |
 | `definitions`, `$defs` | Nothing by itself: a bag of named subschemas. Each entry is declared on demand when a `$ref` names it, as the node's own kind, under `<Root><Key>`. |
 | `$ref` | Another document's root → an IMPORT of that module's symbol; nothing of the target is copied into the module, and in the document of record (§3) the target is inlined unchanged. A fragment of another document → an import of a symbol the target declares. Local `#/…` → the entry decided on demand in this module; a cycle refuses. An annotation sibling → the sibling's description wins. A CONSTRAINING sibling → nothing, and REPORTED: draft-07 ignores every sibling of `$ref`, so the keyword constrains no instance and the document's accepted set is the target's alone. The record keeps the key, because §3 drops none; the declaration's cell says it compiles to nothing at this co-occurrence; and the report names it, because a key that reads as a constraint and is inert is worth reading once. Refusing it instead would refuse a document whose accepted set its own draft decides, and letting the referring value win would make the record state an acceptance fact the bundle does not — §9's last rule. KEY → the key type. BRANCH of a root union → a class with two bases; of a nested union → a member type. CONJ → a BASE where the target is a class declaring fields. Where it is not — a scalar, an enum, a container, or a union root — it is not a class a model can extend: the target is this node's own TYPE, and the other conjuncts and the `allOf`'s siblings constrain it, which is §2's intersection at a node that declares no fields of its own. A UNION root beside a node that DOES declare fields distributes: conjunction distributes over disjunction, so `(A | B) and C` is `(A and C) | (B and C)`, and the node is a union whose branches each take one of the target's branches as a base and add the node's own fields. Each branch of a union root is a class declaring fields, so this is the CONJ rule above applied once per branch and not a second answer. A property the node and the target's branch BOTH declare is one field taking §2's intersection, exactly as the `properties` row at CONJ states it for two conjuncts — the node's declaration does not shadow the branch's, and two `const`s intersect to the pin where they agree and to nothing where they differ. A distributed branch whose intersection is EMPTY is DROPPED, and the node refuses only where every branch is: `(A \| B \| C) and D` with `A and D` empty is exactly `(B and D) \| (C and D)`, so the accepted set is unchanged and nothing is approximated. The emptiness must be PROVED from the pins the two sides state — disjoint `const`s, disjoint `enum`s, disjoint type words — which is the same test the empty-intersection row names; an intersection this compiler cannot compute is the restatement row and not this one. |
@@ -1222,7 +1222,7 @@ is the one place a keyword decision lives, and a grid is its rendering.
 <!-- generated from codegen/keywords.py -->
 | keyword | compiles to |
 | --- | --- |
-| `const` | `Literal[value]`; the type word is not restated, since Pydantic renders it. A `format` beside the pin compiles to NOTHING and the pin alone is rendered, because a fixed value either satisfies the format or the node admits nothing: the pin is checked against the format, and where it satisfies it the `Literal` is already strictly tighter than any type the format would select, while where it does not the node is §5's empty intersection and refuses upstream. So no fact is dropped, and the cell declares the `format` as rendering nothing at this co-occurrence (`adcp-client-python-10l.70`). A `str`, `bool` or `int` value; an object, array, `null` or float refuses. On a branch's property → also the second of the branch-naming choices. AT a branch node, pinning the whole branch → the branch is a scalar: a `Literal` member of the union. Where EVERY branch of a root union is a scalar there are no branch classes to declare, so the root emits as an alias over the union of their types — `Literal['asap'] | AwareDatetime` — and not as a base with branches. A root union with a scalar branch beside a class branch → refused by name: the root symbol is a class or an alias, no shape in §4 carries both, and the first document to state one decides it rather than taking a rendering nothing has exercised. RULE: under `if` → a `Match` clause's value; under `then` / `else` / `not` → nothing. |
+| `const` | `Literal[value]`; the type word is not restated, since Pydantic renders it. A `format` beside the pin compiles to NOTHING and the pin alone is rendered, because a fixed value either satisfies the format or the node admits nothing: the pin is checked against the format, and where it satisfies it the `Literal` is already strictly tighter than any type the format would select, while where it does not the node is §5's empty intersection and refuses upstream. So no fact is dropped, and the cell declares the `format` as rendering nothing at this co-occurrence (`adcp-client-python-10l.70`). A `str`, `bool` or `int` value; an object, array, `null` or float refuses. On a branch's property → also the second of the branch-naming choices. AT a branch node, pinning the whole branch → the branch is a scalar: a `Literal` member of the union. Where EVERY branch of a root union is a scalar there are no branch classes to declare, so the root emits as an alias over the union of their types — `Literal['asap'] | AwareDatetime` — and not as a base with branches. A root union with a scalar branch beside a class branch → refused by name: the root symbol is a class or an alias, no named type in §4 carries both, and the first document to state one decides it rather than taking a rendering nothing has exercised. RULE: under `if` → a `Match` clause's value; under `then` / `else` / `not` → nothing. |
 | `enum` | A named node → `StrEnum` / `IntEnum`, base read off the members; `enumDescriptions` → member docstrings. An untitled BRANCH of a root union → a `Literal` of the members. Mixed member types, an empty list, or a duplicate member → refused. Two members whose spellings yield one Python name → a `Literal` of the members and NOT an enum class. The collision exists only because an enum mints a Python IDENTIFIER per member; a `Literal` needs none, so both values are carried exactly as the document spells them and nothing is dropped. This is the same answer the row already gives an untitled branch of a root union, reached by a second route. Refusing instead cost **21 of the 95 refusals** for one node — `formats/canonical/html5.json`'s `clicktag_macro`, whose `clickTag` and `clickTAG` both spell `CLICKTAG` — including `core/product.json`. The cost is that one node gives a string-literal union rather than an enum class, which is a DX difference and not a correctness one; dropping a member, which the old clause rightly refused to do, remains forbidden. ROOT → the enum with a module-level `strict_validate`. PROP → a nested enum. KEY → a `Literal` of the members as the mapping's KEY type, which pydantic renders back as `propertyNames: {enum: […]}` — the document's own keyword, rendered and gradable; where the key node carries a `title` the `StrEnum` is the key type and renders the same way. CONJ beside a `$ref` whose target is an enumeration → §2's intersection of the two vocabularies, rendered as a `Literal` over the TARGET's MEMBERS and not over their raw values. The two dump identically — `{"enum": [the members], "type": "string"}` — so they state the same fact either way, and the member form keeps the imported symbol a caller can name: where two renderings state one fact, DX decides. A vocabulary the target does not contain is the empty intersection and refuses, by the same rule that refuses a member the node's own constraints exclude. RULE: under `if` → `Match` values; else nothing. |
 | `default` | On a REQUIRED property → dropped and reported, because no rendering makes a field both required and defaulted. On a node that becomes an alias → no slot. PROP → the field's default; `None` is a default, absence is not. |
 <!-- end generated -->
@@ -1264,7 +1264,7 @@ is the one place a keyword decision lives, and a grid is its rendering.
 | keyword | compiles to |
 | --- | --- |
 | `additionalProperties` | The empty schema `{}` IS `true` and is read as `true` everywhere below, never as a typed value schema. On a class: `false` → `forbid`; `true` → `allow`; typed → `allow` with a typed `__pydantic_extra__`; absent → `ignore`. **A class DECLARES the `extra` the document gives it and never inherits it**: pydantic merges `model_config` along the MRO, so a branch composing TWO bases takes whichever value the later base happens to carry, and `absent → ignore` on that base silently overrides an `allow` the document states. Measured on `content-standards/get-content-standards-response.json#/oneOf/0`, where the union base states `allow` from the root's envelope conjunct and the composed target's default `ignore` wins the merge, so the model drops keys the document admits. The value is read from what the document states at the class's own pointer after the document-side fold — which is where the root's conjunct arrives — and written on the class, so MRO order decides nothing a document states. On a mapping (no `properties`) → the VALUE type; `true` or `{}` → `Any`; `false` → refused, it admits only the empty object. Beside `patternProperties` → refused, two value schemas. `false` on an `allOf` overlay would reject the fields its sibling conjunct contributes, which is why `true` is the only value an overlay can carry. ROOT beside a union → the same, on the base, inherited by every branch; a branch stating its own composes with it by the CONJ rule below. CONJ → `true` is the identity and contributes nothing, `false` on any conjunct closes the composed object, and two typed ones intersect their value schemas; a typed conjunct beside a `true` one is a widening and refuses. |
-| `patternProperties` | A mapping whose KEY carries the pattern: `dict[Annotated[str, StringConstraints(pattern=…)], V]`, which Pydantic renders back as `patternProperties` — the document's own keyword. More than one pattern → refused: that is a value schema per key shape. Beside a non-`false` `additionalProperties` → refused. |
+| `patternProperties` | A mapping whose KEY carries the pattern: `dict[Annotated[str, StringConstraints(pattern=…)], V]`, which Pydantic renders back as `patternProperties` — the document's own keyword. More than one pattern → refused: that is a value schema per key structure. Beside a non-`false` `additionalProperties` → refused. |
 | `propertyNames` | The mapping's KEY type: a `$ref` → that type; `minLength` / `maxLength` → a length-bounded `str`; `pattern` → an annotated `str`; `enum` → a `Literal` of the members, which pydantic renders back as this very keyword; `anyOf` → a union of key types. Beside `patternProperties` → the key type carries both, by §2's intersection: each states a constraint on the same key. On a CLASS with declared `properties` → checked against the declared names when the class is emitted and carried nowhere, because those names are fixed and known; a declared name the constraint refuses is a contradiction in the document and refuses by name. Where that class also admits extras, a key beyond the declared names is checked by the schema half alone, and the model is looser than its document there, which §2 permits. RULE position → nothing on the model: a rule position constrains which keys a conditional *tests*, so there is no key type to annotate and no value to annotate. |
 | `minProperties`, `maxProperties` | On a class → a `PropertyCount` rule. `minProperties` is written only where `additionalProperties` is stated, because a dropped key would make the rule refuse what the document accepts; `maxProperties` needs no such gate, since a dropped key only lowers the count. On a mapping → `Field(min_length / max_length)` on the dict's type, because a `PropertyCount` rule counts declared fields and a dict has none. |
 | `dependencies` | The list form → a `Dependencies` rule: if A is present, B is required. The schema form refuses by name on the first occurrence, rather than being skipped. |
@@ -1276,10 +1276,10 @@ is the one place a keyword decision lives, and a grid is its rendering.
 | keyword | compiles to |
 | --- | --- |
 | `allOf` | ROOT with no union beside → `$ref` conjuncts are BASES, inline conjuncts are fields and rules of this class; beside a union → the same, onto the base: `$ref` conjuncts are the base's bases and inline conjuncts are its fields and rules, and every branch inherits them. PROP / ELEM / DEF → the same reader at the node's own pointer. BRANCH → the branch class composes, with the union base first. CONJ → the same rule applied to the conjunct's own conjuncts. RULE: under `not` → single-group conjuncts merge into one group; else nothing. |
-| `oneOf`, `anyOf` | Presence-only, every branch `required`-only → a `RequiredGroups` rule naming the combinator. Presence-only where a branch also `not`s a group of `required` → a `PresenceGroups` rule naming the combinator, whose clauses are the branches: each clause carries its OWN required group and its own forbidden groups, because the `not` is per branch — a `ForbiddenGroups` over the union of them forbids every group unconditionally and refuses a payload the document admits. Shapes at ROOT → the base plus one class per branch. Shapes nested, with nothing beside the combinator → one type `A \| B`. A sibling a CLASS carries → that same base-plus-branches shape, at a union in ANY position: the siblings become the base, each branch becomes a subclass narrowing what it narrows, and the union is over the subclasses. A sibling no class carries refuses, because it is a conjunction with every branch and `A \| B` has no slot for a fact of its own. For `oneOf`, `A \| B` admits an instance satisfying two branches and the schema half enforces exclusivity. A union whose branches declare the same properties with the same `required`, and differ only in the `const` or `enum` each pins on some of them → one class: each such field admits the union of the branches' values, and one rule whose clauses are the branches themselves — one clause per branch pinning that branch's values, satisfied when the instance matches at least one clause. A branch that differs in a type, a bound, a format, a nested shape or its `required` is a branch of shapes and takes the base-plus-branches answer. For `oneOf` the schema half enforces exclusivity, as it does for `A \| B`. KEY → a union of key types. CONJ → one class per branch over the composed bases. RULE: nothing, and the schema half answers. The `not` clause this row carried — the union of the branches' groups — is WITHDRAWN (§8, 2026-11-03): `not oneOf` admits an instance satisfying ZERO branches or TWO OR MORE, and a forbidden group over the union refuses an instance satisfying two, which the document admits. A forbidden-group list cannot say "not exactly one", so such a node DECLARES rather than lowers. |
+| `oneOf`, `anyOf` | Presence-only, every branch `required`-only → a `RequiredGroups` rule naming the combinator. Presence-only where a branch also `not`s a group of `required` → a `PresenceGroups` rule naming the combinator, whose clauses are the branches: each clause carries its OWN required group and its own forbidden groups, because the `not` is per branch — a `ForbiddenGroups` over the union of them forbids every group unconditionally and refuses a payload the document admits. Shapes at ROOT → the base plus one class per branch. Shapes nested, with nothing beside the combinator → one type `A \| B`. A sibling a CLASS carries → that same base-plus-branches structure, at a union in ANY position: the siblings become the base, each branch becomes a subclass narrowing what it narrows, and the union is over the subclasses. A sibling no class carries refuses, because it is a conjunction with every branch and `A \| B` has no slot for a fact of its own. For `oneOf`, `A \| B` admits an instance satisfying two branches and the schema half enforces exclusivity. A union whose branches declare the same properties with the same `required`, and differ only in the `const` or `enum` each pins on some of them → one class: each such field admits the union of the branches' values, and one rule whose clauses are the branches themselves — one clause per branch pinning that branch's values, satisfied when the instance matches at least one clause. A branch that differs in a type, a bound, a format, a nested structure or its `required` is a branch and takes the base-plus-branches answer. For `oneOf` the schema half enforces exclusivity, as it does for `A \| B`. KEY → a union of key types. CONJ → one class per branch over the composed bases. RULE: nothing, and the schema half answers. The `not` clause this row carried — the union of the branches' groups — is WITHDRAWN (§8, 2026-11-03): `not oneOf` admits an instance satisfying ZERO branches or TWO OR MORE, and a forbidden group over the union refuses an instance satisfying two, which the document admits. A forbidden-group list cannot say "not exactly one", so such a node DECLARES rather than lowers. |
 | `if` | A `Match` clause list where it states `required` plus `properties` with `const` or `enum` values; otherwise nothing, and the schema half answers. With `then` / `else` → a rule on the nearest class. |
 | `then`, `else` | `ConditionalRequired` / `NegatedConditional` from its `required` and a single-name `not`. Its `properties` → nothing on the model; the schema half narrows the value. |
-| `not` | `not: {required: …}`, and `anyOf` / `allOf` of those → a `ForbiddenGroups` rule. Over a `const` or `enum` → a `NotValue` after-validator on the value's own annotated type. Any other shape → nothing on the model; the schema half answers and the ceiling is named. `not: {}` admits nothing, which the typeless `Any` carries — at a node whose OWN accepted set is the thing being typed. As a `properties` entry it is not that node: the enclosing object still admits every instance without the key, and the `properties` row answers it there with the `ForbiddenGroups` this row already decides for the keyword's other spelling. |
+| `not` | `not: {required: …}`, and `anyOf` / `allOf` of those → a `ForbiddenGroups` rule. Over a `const` or `enum` → a `NotValue` after-validator on the value's own annotated type. Any other structure → nothing on the model; the schema half answers and the ceiling is named. `not: {}` admits nothing, which the typeless `Any` carries — at a node whose OWN accepted set is the thing being typed. As a `properties` entry it is not that node: the enclosing object still admits every instance without the key, and the `properties` row answers it there with the `ForbiddenGroups` this row already decides for the keyword's other spelling. |
 <!-- end generated -->
 
 **`oneOf`'s CELL SPLIT IS WITHDRAWN (2026-10-30, same day it was decided).** It was decided
@@ -1390,7 +1390,7 @@ introspection, **the disagreeing sites are not where this rule first read as tho
 | a dict of models or enums | 46 | 0 |
 
 **No bare-model default exists anywhere in the bundle**, so the case this rule was first written
-about has no population; the defect is a list of models and, far more of it, a plain enum —
+about has no set; the defect is a list of models and, far more of it, a plain enum —
 `asset_source: AssetSource | None = 'buyer_uploaded'`, 126 times across 57 documents. The two
 carry different error codes and belong to this rule rather than to §3a's catalogue: 78
 `[list-item]` and **98 of the 362 `[assignment]`**, where the remaining 264 are the override
@@ -1514,7 +1514,7 @@ attribution.
   one sentence is that a faithful answer is a rule family for "keys matching this pattern take
   this type", which no row has written.
 
-  **This is why the verdict ceiling rose.** `onq`'s Group A let 15 documents get further and land
+ **This is why the verdict ceiling rose.** `onq`'s Group A let 15 documents get further and land
   on this already-decided verdict, which is a verdict they should never have reached. Moving the
   row off the verdict column takes all 15 with it — the largest single correction available to
   `refused` after the root-siblings group.
@@ -1536,7 +1536,7 @@ attribution.
   wearing a different hat: not a verdict minted for unwritten code, but an APPROXIMATION declared
   for it, which is worse because an approximation looks accounted for.
 
-  **The faithful answer:** declare the three in `_runtime.py` beside the other rule kinds, and
+ **The faithful answer:** declare the three in `_runtime.py` beside the other rule kinds, and
   declare each on the value's own annotated type where no class encloses it. Measured at the point this
   was withdrawn, **13 of 17 declared approximations were `uniqueItems`** at exactly these
   positions, so they become faithful and the *ours* backlog falls by 13 rather than being
@@ -1547,7 +1547,7 @@ attribution.
   bare `const` or one-member `enum`), and a richer predicate still widens rather than being
   transcribed. The distinction is between a rule having nowhere to LIVE, which was never true, and
   a predicate having no decided RENDERING, which is.
-  **`contains` keeps its own refusal of transcription and drops only the document.** The row
+ **`contains` keeps its own refusal of transcription and drops only the document.** The row
   declines to transcribe a `contains` subschema into a validator, and that decision stands —
   what it may no longer do is refuse the document for it. Dropping the keyword widens the array
   (a list with no matching element is accepted by the model and refused by the schema half) and
@@ -1649,12 +1649,12 @@ does. `base_if_none_composes` is the same case at the same seam — "what the ba
 nothing composed" — and this is "what the mixin is if nothing already carries it".
 
 A guard keyed to the route is the alternative and it is wrong. `Enclosing` is constructed at one
-place, inside the enclosing union's branch loop, under the arm that claims a branch the parser
+place, inside the enclosing union's branch loop, under the case that claims a branch the parser
 classified `nodes.Union`. A nested union reaching `lower_union` through the DISPATCH instead —
-because it declares `properties` beside its own combinator, so the enclosing loop's arm does not
+because it declares `properties` beside its own combinator, so the enclosing loop's case does not
 claim it — arrives with no carrier, and a second guard there would be a second copy of the
 reading `Enclosing` was built to hold once (§11). Measured on `core/postal-area.json#/anyOf/0`,
-which is a fifth case beside the four that arm's own comment counts, and the only inconsistent
+which is a fifth case beside the four that case's own comment counts, and the only inconsistent
 MRO in the 1,006-module tree.
 
 `Enclosing` keeps its other job. It carries the enclosing base and that base's `Case` so a
@@ -1675,7 +1675,7 @@ way, and the member form keeps the imported symbol a caller can name. Where §8 
 renderings apart, DX decides, and a caller reaching the enum class is worth more than a bare
 string.
 
-Population one: `core/creative-approval-scope.json` at `/properties/approval_status/allOf/1`.
+Set one: `core/creative-approval-scope.json` at `/properties/approval_status/allOf/1`.
 Over every `allOf` in the bundle whose conjuncts are a bare `$ref` plus an inline conjunct
 stating none of `type`, `properties`, `required`, `additionalProperties` or `allOf`: **all but one
 state a rule or a combinator and are already routed.** The exception states an `enum`.
@@ -1742,7 +1742,7 @@ case is that product over one-element lists. So
 `((g, a), (g, b))`, which is what the document says and what `governance/check-governance-request.json`
 states at `/allOf/1`.
 
-The product arm never takes `partial`, for the reason the `allOf` arm already does not: dropping an
+The product case never takes `partial`, for the reason the `allOf` case already does not: dropping an
 unreadable conjunct from a product leaves FEWER names in each group, which under a `not` forbids
 MORE, and a rule stronger than its document is the narrowing §2 refuses.
 
@@ -1828,7 +1828,7 @@ refusal left in the compiler is not a keyword's at all.
 
 Both rows have moved to §6, each refused for a reason that was never about the document's
 accepted set. **`errorMessage`'s cell was the last `REFUSE` in the table, and moving it is what
-let `Effect.REFUSE` retire (2026-10-30).** The effect no longer exists, so "refuse a document on
+let `Effect.REFUSE` retire.** The effect no longer exists, so "refuse a document on
 a keyword" is a name error rather than a path the compiler can take — which is the whole of what
 that step was buying.
 
@@ -1911,7 +1911,7 @@ belong in this section** — that rule is what the 2026-10-30 deletion below enf
 - **Accepts.** Draw payloads the document accepts and construct the class from each. A refusal
   here means the model is tighter than its document, which is the defect that matters.
 
-  **An approximation is a claim about this check, and this check is what proves it.** §2 says
+ **An approximation is a claim about this check, and this check is what proves it.** §2 says
   every approximation of acceptance is a widening. A widening is therefore not a thing a
   declaration asserts and a reader believes: for every fact an approximation drops, the draw
   takes the values that keyword distinguishes — the same coverage classes below — and the class
@@ -1919,7 +1919,7 @@ belong in this section** — that rule is what the 2026-10-30 deletion below enf
   is a NARROWING wearing a declaration, and it fails here, by value and by pointer. This is
   what keeps "approximated" from being an allowlist.
 
-  **The draw COVERS the node's admissible space by constraint class; it does not sample it.**
+ **The draw COVERS the node's admissible space by constraint class; it does not sample it.**
   "Never tighter" is a claim about every value the document admits, and a sampling draw reports
   only the values it drew — so it can run green forever against a type that refuses a whole class
   of admissible value. For each keyword the node states, the draw takes the classes that keyword
@@ -1928,7 +1928,7 @@ belong in this section** — that rule is what the 2026-10-30 deletion below enf
   most likely. A Python type chosen for a node admits everything the node admits, or the choice is
   a narrowing and this check names it with the value.
 
-  **Every position a widening can land at has an instance location (settled 2026-10-27).** The
+ **Every position a widening can land at has an instance location .** The
   draw places a value at the instance location the node's pointer names, and a position with no
   location makes a widening UNPROVABLE — which that check counts as a failure, correctly, since
   an unproved widening is a claim with no instrument on it. Two positions had none, and §5(b)'s
@@ -1993,7 +1993,7 @@ exists.
    fails that check already;
 3. ~~the root's OWN keywords graded at the root with its combinator removed~~ — **WITHDRAWN
    2026-11-03, the day it was written, and refuted twice over.** *Unsound:* removing a restriction
-   **widens** the admissible set, so instances drawn from the stripped node are not instances the
+  **widens** the admissible set, so instances drawn from the stripped node are not instances the
    document admits — measured, nearly every one is refused by the pair's own entry point and fails
    to conform to the full node, so the obligation run as written reports almost every root as
    refusing a valid value. Screening by the full node restores soundness and reintroduces the
@@ -2165,7 +2165,7 @@ value forbidden to be `v`. Absent satisfies it, present-and-different satisfies 
 present-and-equal does not — which is the negation exactly.
 
 **And this is the lever sentence 2 was carrying alone.** The overwhelming majority of the
-conditions that make declaration unaffordable are this one shape, and under the complement they
+conditions that make declaration unaffordable are this one form, and under the complement they
 **lower exactly and declare nothing**. Declaring them was never the answer; it was the price of a
 primitive that could not say *not*.
 
@@ -2197,7 +2197,7 @@ what the document admits, and the only loss is which branch an overlapping paylo
 no draw and no dump can observe. §4's inseparable `oneOf` is unaffected: it is a WIDENED fact,
 because the model admits a payload the document refuses, and the draw shows it.
 
-**AND THE TWO DERIVED EQUALITIES THAT GRADED IT GO WITH IT (2026-10-30).** A generic keyword set
+**AND THE TWO DERIVED EQUALITIES THAT GRADED IT GO WITH IT.** A generic keyword set
 derived from the declaration, the equality between it and what the declaration renders, the
 equality between the declared set and the approximated set, and the pointer-translation rule that
 made the second comparable — all of that existed to keep the text diff honest. With the diff gone
@@ -2237,7 +2237,7 @@ us nothing about the generated class on either route. There is therefore no "ref
 the model; the equivalent check confirms the schema half is wired to the class at all.
 
 Every class, root model and alias the tree carries is paired with the schema node it names, and
-all three checks run over that pairing. **The population every check ranges over is every
+all three checks run over that pairing. **The set every check ranges over is every
 portable document of the bundle**, and under §2 every one of them emits, so there is no second
 set to reason about: a document that does not appear in the pairing is a defect in the run,
 where it used to be a refusal with a reason.
@@ -2384,16 +2384,16 @@ Each is one sentence and its reason.
   or the one refusal §7 names. An unhandled type error names nothing and stops the run. Under §2
   the walk is total, so this rule loses the type checker that used to enforce it — a handler had
   to answer the refusal branch — and what replaces it is that `approximate` is the one function a
-  handler calls when it cannot render, reached by its own final arm. A handler that raises
+  handler calls when it cannot render, reached by its own final case. A handler that raises
   instead is the defect this rule is now about.
 - **Do not decide one document's output by a census over the run.** A name, a case or an
   import that depends on which other documents the run includes makes a one-document emission
   and a whole-bundle emission disagree about the same document; §2 names every constrained
   scalar from its constraint alone for this reason.
 
-  **THE RUN IS NOT THE BUNDLE, and that distinction is what §1's domain-scope collision rule
-  rests on (2026-10-30).** This prohibition is about the run's DOCUMENT SET — the argument list,
-  which varies between `./check --why one-document.json` and a whole-population emission. The
+ **THE RUN IS NOT THE BUNDLE, and that distinction is what §1's domain-scope collision rule
+  rests on.** This prohibition is about the run's DOCUMENT SET — the argument list,
+  which varies between `./check --why one-document.json` and a whole-bundle emission. The
   BUNDLE is neither: it is pinned, declared, and an input to every run alike, so a name derived
   from a bundle-wide reading is the SAME name in both, which is exactly the property this rule
   protects. So a census over the RUN is forbidden and a reading of the BUNDLE is not, and the
@@ -2404,15 +2404,15 @@ Each is one sentence and its reason.
   closure. It becomes a function of the bundle, and the one-document path has to read the domain's
   exported names before it can name its own.
 
-  **And the alternative is refused on the project's own evidence.** Making it a function of the
+ **And the alternative is refused on the project's own evidence.** Making it a function of the
   run instead is one line, and the shipped artifact would be identical because the committed tree
-  is always a whole-population run — but it leaves
+  is always a whole-bundle run — but it leaves
   `test_one_documents_module_is_the_same_text_alone_as_with_the_whole_bundle` GREEN while the
-  property it names is false for the documents behind the collisions, because its population does
+  property it names is false for the documents behind the collisions, because its set does
   not include one of them. A test green on a false property is this project's most expensive
   recurring defect, and buying one line with one is not a trade.
 
-  **THE ROOT AXIS IS A PARSE; A NESTED NAME IS A WALK.** A ROOT's name is a title and parse
+ **THE ROOT AXIS IS A PARSE; A NESTED NAME IS A WALK.** A ROOT's name is a title and parse
   gives it — 1,054
   raw documents read at ROOT cost 0.23 s, which is why the root axis is free. A NESTED name needs
   which positions exist and what kind each one is, and that is the WALK's decision, not the
