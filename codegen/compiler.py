@@ -2167,7 +2167,7 @@ def _a_property_count_rides(
     Imported on use because ``codegen.lower.containers`` imports THIS module, which is the
     direction the lazy import at the ``dropped`` funnel below already resolves.
     """
-    from codegen.lower.containers import KEY_BOUNDS  # noqa: PLC0415 -- see above
+    from codegen.lower.containers import KEY_BOUNDS  # see above
 
     return any(
         key in node.rules or any(key in one for one in rule_nodes) for key in KEY_BOUNDS

@@ -684,7 +684,7 @@ def undrawable_formats(
         try:
             run = given(instance=strategy(node, dict(custom_formats)))(_drawing_this_node)
             settings(max_examples=examples, phases=[Phase.generate], **_SETTINGS)(run)()
-        except Exception as e:  # noqa: BLE001 -- any failure to draw names the position
+        except Exception as e:  # any failure to draw names the position
             out.append(
                 f"{pointer}: format {node['format']!r} beside pattern"
                 f" {node['pattern']!r} [{_why(e)}]"
@@ -1926,7 +1926,7 @@ class _Draws:
         self.drawn += 1
         try:
             return [one_instance(schema, custom_formats)]
-        except Exception as e:  # noqa: BLE001 -- an undrawable position is unproved
+        except Exception as e:  # an undrawable position is unproved
             #: A cut that ``hypothesis`` swallowed and replaced with its own exception is
             #: not an undrawable position; :func:`budget_expired` says which this is.
             if budget_expired():
@@ -2184,7 +2184,7 @@ def _mapping_key(node: Any, expression: str | None) -> Any:
         return _ALIEN_KEY
     try:
         return one_instance(key, {})
-    except Exception:  # noqa: BLE001 -- an undrawable key constraint has no location
+    except Exception:  # an undrawable key constraint has no location
         return None
 
 
@@ -2293,7 +2293,7 @@ def _steps(
             i += 1
         elif word in _MAPPING_VALUE and i + _MAPPING_VALUE[word] <= len(segments):
             spent = _MAPPING_VALUE[word]
-            expression = bundle.unescape_key(segments[i + 1]) if spent == 2 else None  # noqa: PLR2004
+            expression = bundle.unescape_key(segments[i + 1]) if spent == 2 else None
             key = _mapping_key(node, expression)
             if key is None:
                 return None
@@ -2736,7 +2736,7 @@ def check_widening(
                     f"approximated at rung {one.rung}, {one.attribution}"
                 )
                 continue
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:
                 res.unproved.append(
                     f"{one.pointer}/{one.keyword}: {label} raised "
                     f"{type(e).__name__}: {e}"[:300]
@@ -2751,7 +2751,7 @@ def at_or_none(doc: Any, pointer: str) -> Any:
     """:func:`at`, answering ``None`` for a pointer the document does not hold."""
     try:
         return at(doc, pointer)
-    except Exception:  # noqa: BLE001 -- a pointer the document does not hold
+    except Exception:  # a pointer the document does not hold
         return None
 
 
@@ -4655,7 +4655,7 @@ def _inseparable(
     for pointer, node in _rule_free_nodes(record):
         for kw in _COMBINATORS:
             branches = node.get(kw)
-            if not isinstance(branches, list) or len(branches) < 2:  # noqa: PLR2004
+            if not isinstance(branches, list) or len(branches) < 2:
                 continue
             if not all(isinstance(b, Mapping) for b in branches):
                 continue
@@ -4824,7 +4824,7 @@ def check_pair(
     #: passing blind.
     try:
         drawn_from = resolve(pair.schema, store={}, referrer=pair.document)
-    except Exception:  # noqa: BLE001 -- any resolution failure falls back to the node
+    except Exception:  # any resolution failure falls back to the node
         drawn_from = pair.schema
     rep.accepts = check_accepts(
         drawn_from,
@@ -5317,7 +5317,7 @@ def pairs(package: Any, path: Sequence[str] | None = None) -> tuple[list[Paired]
     for info in sorted(walked, key=lambda i: i.name):
         try:
             module = importlib.import_module(info.name)
-        except Exception:  # noqa: BLE001 -- recorded, never raised; see the docstring
+        except Exception:  # recorded, never raised; see the docstring
             unimportable[info.name] = traceback.format_exc(limit=3)[-600:]
             continue
         taken: set[int] = set()  # by IDENTITY: one class, one pair, whatever it is called

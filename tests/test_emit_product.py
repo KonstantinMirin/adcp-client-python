@@ -258,7 +258,7 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     # assertion is for, and it is what caught the stale target.
     composing_at_a_root = compiler.lower_composition
 
-    def without_the_root_arm(node, mod, *rest, **kw):  # noqa: ANN001,ANN202
+    def without_the_root_arm(node, mod, *rest, **kw):
         # The POSITION and the POINTER are the node's own fields: §14 step 7 took the
         # name argument off every handler, so a stub standing in for one takes the node
         # and the module and nothing else.
@@ -749,7 +749,7 @@ def install_run_aliases(out: emit.Emitted, monkeypatch) -> list[str]:
     removes them when the test ends.
     """
     namespace: dict[str, Any] = {}
-    exec(out.beside["constraints.py"], namespace)  # noqa: S102 -- the emitter's own output
+    exec(out.beside["constraints.py"], namespace)  # the emitter's own output
     added = []
     for symbol, value in namespace.items():
         if symbol.startswith("_") or not symbol[:1].isupper() or hasattr(constraints, symbol):
@@ -1854,7 +1854,7 @@ def test_breaking_the_inner_annotation_carrier_drops_the_fact_at_both_positions(
     so the reach is this probe's: ``docs/plan/rebuild-plan.md`` §8 assigns the
     population-wide claim to the annotation COVERAGE obligation.
     """
-    from codegen.lower import containers  # noqa: PLC0415
+    from codegen.lower import containers
 
     monkeypatch.setattr(
         containers,

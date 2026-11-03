@@ -54,8 +54,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from cells import grade, live  # noqa: E402  -- §5's table, graded one cell at a time
-from compiled import compiled  # noqa: E402  -- the run's own declarations
+from cells import grade, live  # §5's table, graded one cell at a time
+from compiled import compiled  # the run's own declarations
 
 from codegen import attribution, bundle, narrowings
 from codegen.attribution import Issue

@@ -510,7 +510,7 @@ def test_the_storage_moves_no_pointer_any_reader_spells() -> None:
     def answer(root: dict, pointer: str) -> Any:
         try:
             return applied_schema(root, pointer)
-        except Exception as e:  # noqa: BLE001 -- the failure is the answer being compared
+        except Exception as e:  # the failure is the answer being compared
             return f"{type(e).__name__}: {e}"
 
     unresolved, moved = [], []

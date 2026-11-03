@@ -99,7 +99,7 @@ from codegen.harness import (
     LivenessResult,
     Pair,
     PairReport,
-    _composed,  # noqa: PLC2701 -- the harness's own folding of an allOf conjunct's facts
+    _composed,  # the harness's own folding of an allOf conjunct's facts
     check_accepts,
     check_liveness,
     check_pair,
@@ -1671,7 +1671,7 @@ def _unwrap(node: dict, defs: dict) -> dict:
     branches = node.get("anyOf")
     if isinstance(branches, list):
         live = [b for b in branches if isinstance(b, dict) and b.get("type") != "null"]
-        if len(live) == 1 and len(branches) == 2:  # noqa: PLR2004 -- T | None only
+        if len(live) == 1 and len(branches) == 2:  # T | None only
             return {**_unwrap(live[0], defs), **{k: v for k, v in node.items() if k != "anyOf"}}
     return node
 
@@ -2383,7 +2383,7 @@ def test_extra_follows_the_schema_and_a_silent_document_takes_the_base_default()
         # same argument ``_composed`` is read here for.
         root = schema_at(SchemaRef(row.ref.document, "#"))
         declared = _composed(
-            harness._normalize(schema_at(row.ref), root, declared_null=True),  # noqa: SLF001
+            harness._normalize(schema_at(row.ref), root, declared_null=True),
             root,
         ).get("additionalProperties", "silent")
         # The four forms, named: a schema here is the TYPED row, graded in full by
@@ -3182,7 +3182,7 @@ def _an_instance(schema: dict, document: dict | None = None) -> Any:
     if document is not None:
         try:
             schema = harness.resolve(schema, store={}, referrer=document)
-        except Exception:  # noqa: BLE001 -- any resolution failure falls back to the node
+        except Exception:  # any resolution failure falls back to the node
             pass
     drawn: list[Any] = []
 
@@ -4136,14 +4136,14 @@ def _constructed(doc: dict, *, binds: dict[str, Any] | None = None) -> tuple[Any
     # a ``$ref`` target gets, for the same reason, and the annotation stays the
     # compiler's.
     if mod.aliases:
-        exec(render.constraints_module(mod.aliases), module.__dict__)  # noqa: S102
+        exec(render.constraints_module(mod.aliases), module.__dict__)
     alias_import = f"from {constraints_module.MODULE} import"
     # Registered, because ``from __future__ import annotations`` makes every
     # annotation a string and pydantic resolves it against the defining module's
     # globals -- a bare ``exec`` dict has no module to be found through.
     sys.modules[module.__name__] = module
     try:
-        exec(  # noqa: S102 -- executing the compiler's own output is the point
+        exec(  # executing the compiler's own output is the point
             "\n".join(
                 line
                 for line in text.splitlines()
@@ -5523,7 +5523,7 @@ def test_every_module_of_the_tree_imports_and_every_class_of_it_is_defined() -> 
             ):
                 try:
                     value.model_json_schema()
-                except Exception as why:  # noqa: BLE001 -- the failure is the finding
+                except Exception as why:  # the failure is the finding
                     unresolved.append((f"{name}.{value.__name__}", str(why)[:200]))
     assert unresolved == [], unresolved
 
@@ -5595,7 +5595,7 @@ def test_a_multi_type_property_applies_each_keyword_to_its_own_branch() -> None:
     # unreadable, and the four ways a model can be wrong about it are each asserted
     # below.  ``harness._type_list`` is the lift and ``keywords.ARM`` is what says which
     # arm a key belongs to.
-    normalize = harness._normalize  # noqa: SLF001 -- the normalization under test
+    normalize = harness._normalize  # the normalization under test
     assert normalize(
         {"anyOf": [{"type": "string", "minLength": 2}, {"type": "integer"}]}, {}
     ) == {"type": ["string", "integer"], "minLength": 2}
@@ -5665,7 +5665,7 @@ def test_a_multi_type_property_applies_each_keyword_to_its_own_branch() -> None:
     # the integer arm takes no string bound.  Built from the alias the emitter uses,
     # which the walk's own rendering is asserted against below.
     arm_alias = {"StrMinLen4": None}
-    exec(render.constraints_module({named: ("string", {"minLength": 4}, None)}), arm_alias)  # noqa: S102
+    exec(render.constraints_module({named: ("string", {"minLength": 4}, None)}), arm_alias)
 
     class Armed(AdCPBaseModel):
         v: arm_alias[named] | int  # type: ignore[name-defined,valid-type]
@@ -7378,7 +7378,7 @@ def test_a_const_node_is_a_literal_over_the_value_it_pins() -> None:
     # anything else out.
     accept = _accept_of(doc, model)
     assert accept({"typed": "collection_list_changed", "typeless": "asap", "flag": True})
-    with pytest.raises(Exception):  # noqa: B017, PT011 -- either half may refuse first
+    with pytest.raises(Exception):  # noqa: B017 -- either half may refuse first
         accept({"typed": "something_else", "typeless": "asap", "flag": True})
 
 

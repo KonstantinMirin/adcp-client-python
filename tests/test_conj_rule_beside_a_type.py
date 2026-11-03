@@ -150,7 +150,7 @@ def _reaching() -> tuple[Site, ...]:
     it to one per process, which is why the return is a tuple.
     """
     seen: list[Site] = []
-    original = compiler._the_conjuncts_own_type  # noqa: SLF001 -- the test is the caller
+    original = compiler._the_conjuncts_own_type  # the test is the caller
 
     # **The spy FORWARDS the call rather than restating the signature**, which is the
     # correction ``adcp-client-python-10l.109`` makes.  It used to name each keyword
@@ -195,7 +195,7 @@ def _reaching() -> tuple[Site, ...]:
         )
         return answer
 
-    compiler._the_conjuncts_own_type = spy  # noqa: SLF001
+    compiler._the_conjuncts_own_type = spy
     try:
         # ``emit.emit`` and NOT ``compiled``: this installs a SPY, so the walk has to
         # RUN.  ``tests/compiled.py``'s key is a digest of ``codegen/``'s source and
@@ -211,7 +211,7 @@ def _reaching() -> tuple[Site, ...]:
         with store.perturbed():
             emit.emit(BUNDLE, sorted(bundle.portable(BUNDLE)))
     finally:
-        compiler._the_conjuncts_own_type = original  # noqa: SLF001
+        compiler._the_conjuncts_own_type = original
     return tuple(seen)
 
 
@@ -633,7 +633,7 @@ def test_a_rule_kind_that_is_no_callable_on_the_value_refuses_and_names_itself()
         position=Position.PROP,
         source=schema_parse.Source(document="probe.json"),
     )
-    answer = compiler._the_conjuncts_own_type(  # noqa: SLF001 -- the arm's only caller
+    answer = compiler._the_conjuncts_own_type(  # the arm's only caller
         node,
         [("/properties/kind/allOf/0", _AN_ANNOTATION, _THE_REFERENCE)],
         fields_declared=(),
@@ -679,7 +679,7 @@ def test_two_conjuncts_stating_one_rule_keyword_refuse_rather_than_drop_one() ->
     # probe uses the one a ``$ref`` to an enumeration resolves to: ``_AN_ANNOTATION``,
     # the kind that makes §5's row give the node the target as its own TYPE.
     target = _AN_ANNOTATION
-    answer = compiler._the_conjuncts_own_type(  # noqa: SLF001 -- the arm's only caller
+    answer = compiler._the_conjuncts_own_type(  # the arm's only caller
         node,
         [("/properties/kind/allOf/0", target, _THE_REFERENCE)],
         fields_declared=(),
@@ -699,7 +699,7 @@ def test_two_conjuncts_stating_one_rule_keyword_refuse_rather_than_drop_one() ->
     assert "two conjuncts state 'not'" in answer.detail, answer.detail
     # And ONE ``not`` beside the same target is decided, so the refusal above is about the
     # second statement and not about the position.
-    one = compiler._the_conjuncts_own_type(  # noqa: SLF001
+    one = compiler._the_conjuncts_own_type(
         node,
         [("/properties/kind/allOf/0", target, _THE_REFERENCE)],
         fields_declared=(),

@@ -737,7 +737,7 @@ def test_the_accepts_and_liveness_checks_are_blind_to_this_row() -> None:
     adapter = TypeAdapter(str)
 
     def wide_accept(payload: Any) -> Any:
-        from adcp.types._base import _refuse  # noqa: PLC0415,SLF001
+        from adcp.types._base import _refuse
 
         _refuse(doc, payload, "Wide")
         return adapter.validate_python(payload)
@@ -974,7 +974,7 @@ def test_an_integer_enum_becomes_an_int_enum_at_the_three_nodes_that_carry_one()
     text = render.enum(decided).text
     assert text.startswith("class BitDepth(IntEnum):"), text
     scope: dict[str, Any] = {"IntEnum": pyenum.IntEnum}
-    exec(compile(text, "<probe>", "exec"), scope)  # noqa: S102 -- the compiler's own output
+    exec(compile(text, "<probe>", "exec"), scope)  # the compiler's own output
     assert [m.value for m in scope["BitDepth"]] == [16, 24, 32]
     assert TypeAdapter(scope["BitDepth"]).json_schema()["type"] == "integer"
 

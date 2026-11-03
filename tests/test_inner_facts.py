@@ -421,7 +421,7 @@ def test_an_array_bound_on_a_branch_binds_that_branch_and_not_the_field() -> Non
     assert [s.value for s in both] == ["active", "paused"], both
     try:
         R.model_validate({"status_filter": []})
-    except Exception:  # noqa: BLE001 -- the type is pydantic's and the claim is refusal
+    except Exception:  # the type is pydantic's and the claim is refusal
         pass
     else:
         raise AssertionError("the empty list was accepted: the branch lost its minItems")
@@ -450,7 +450,7 @@ def test_a_stores_extra_key_type_is_enforced_although_pydantic_renders_none() ->
     assert R.model_validate({"k": "v"}).model_extra == {"k": "v"}
     try:
         R.model_validate({"k" * (bound["maxLength"] + 1): "v"})
-    except Exception:  # noqa: BLE001 -- the type is pydantic's and the claim is refusal
+    except Exception:  # the type is pydantic's and the claim is refusal
         return
     raise AssertionError("a key past the document's bound was accepted")
 
@@ -496,7 +496,7 @@ def _emitted_model(document: str, out: emit.Emitted) -> Any:
     module = types.ModuleType("_inner_facts_union_fixture")
     sys.modules[module.__name__] = module
     try:
-        exec(  # noqa: S102 -- executing the compiler's own output is the point
+        exec(  # executing the compiler's own output is the point
             "\n".join(x for x in text.splitlines() if not x.startswith("from .")),
             module.__dict__,
         )

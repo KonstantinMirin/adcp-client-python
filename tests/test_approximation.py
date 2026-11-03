@@ -331,7 +331,7 @@ def test_the_declaration_renders_as_a_constructor_expression_the_consumer_reads_
         "SchemaRef": SchemaRef,
         "ClassVar": ClassVar,
     }
-    exec(compile(text, "<probe>", "exec"), namespace)  # noqa: S102 -- the artifact is the subject
+    exec(compile(text, "<probe>", "exec"), namespace)  # the artifact is the subject
     assert harness.declarations_of(namespace["Probe"]) == (one,)
 
 

@@ -880,7 +880,7 @@ def klass(decl: ir.ClassDecl, declared: Sequence[Approximation] = ()) -> Rendere
     approximation_lines = _approximation_lines(declared)
     class_body = (*body, *_union_base_lines(decl), *rule_lines, *approximation_lines)
     for line in class_body:
-        model._append_internal_template_data("class_body_lines", line)  # noqa: SLF001 -- the generator's own channel; see the module docstring
+        model._append_internal_template_data("class_body_lines", line)  # the generator's own channel; see the module docstring
     out = Rendered(text=model.render().rstrip("\n"), imports=set(rule_imports))
     if approximation_lines:
         out.imports.add((ir.BASE_MODULE, Approximation.__name__))

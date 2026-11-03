@@ -1350,7 +1350,7 @@ def lower_union(
     refused = compiler.check_keywords(node, ROOT_CLAIMS | {kw} | stated.screen, mod=mod)
     if refused is not None:
         return refused
-    if len(node.branches) < 2:  # noqa: PLR2004 -- a union of one is not a union
+    if len(node.branches) < 2:  # a union of one is not a union
         return Refusal(
             kw,
             pointer,
@@ -2224,7 +2224,7 @@ def _undetermined(node: nodes.Union, mod: compiler.Module) -> None:
     the document with it and the declaration goes with the module nobody emits.
     """
     kw = node.combinator
-    if len(node.branches) < 2 or not all(isinstance(b, Mapping) for b in node.branch_raw):  # noqa: PLR2004
+    if len(node.branches) < 2 or not all(isinstance(b, Mapping) for b in node.branch_raw):
         return
     planned = [
         Branch(
@@ -2279,7 +2279,7 @@ def _arms(node: nodes.Union, mod: compiler.Module) -> ir.Decided | Refusal:
     so the two positions cannot come to disagree about one branch list.
     """
     kw, pointer = node.combinator, node.pointer
-    if len(node.branches) < 2:  # noqa: PLR2004 -- a union of one is not a union
+    if len(node.branches) < 2:  # a union of one is not a union
         return Refusal(
             kw,
             pointer,

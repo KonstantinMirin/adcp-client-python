@@ -1442,7 +1442,7 @@ class BranchDispatchMixin(_MixedInto):
             # -- while what is wanted here is the runtime call the subscript compiles
             # to.  ``typing``'s ``_tp_cache`` makes the two the identical object, so
             # this is the same union by identity and not merely an equal one.
-            union = Union.__getitem__(cls._branch_models)  # noqa: UP007 -- at runtime
+            union = Union.__getitem__(cls._branch_models)  # at runtime
             got = TypeAdapter(
                 Annotated[union, Field(discriminator=cls._BRANCH_DISCRIMINATOR)]
                 if cls._BRANCH_DISCRIMINATOR

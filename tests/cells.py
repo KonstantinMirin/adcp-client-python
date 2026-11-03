@@ -551,7 +551,7 @@ def bind(out: emit.Emitted) -> Any:
     """
     _BOUND[0] += 1
     constraints = types.ModuleType("adcp.types.constraints")
-    exec(  # noqa: S102 -- executing the compiler's own output is the point
+    exec(  # executing the compiler's own output is the point
         compile(out.beside.get("constraints.py", ""), "<constraints>", "exec"),
         constraints.__dict__,
     )
@@ -561,7 +561,7 @@ def bind(out: emit.Emitted) -> Any:
     try:
         for name in BESIDE:
             module = types.ModuleType("_cell_beside")
-            exec(  # noqa: S102
+            exec(
                 compile(_standalone(out.files[name.replace(".json", ".py")]), "<b>", "exec"),
                 module.__dict__,
             )
@@ -572,7 +572,7 @@ def bind(out: emit.Emitted) -> Any:
         sys.modules[module.__name__] = module
         try:
             module.__dict__.update(held)
-            exec(  # noqa: S102
+            exec(
                 compile(_standalone(out.files["core/probe.py"]), "<probe>", "exec"),
                 module.__dict__,
             )
@@ -652,7 +652,7 @@ def grade(keyword: str, position: Position) -> Verdicts:
         try:
             adapter.validate_python(instance)
             by_class = True
-        except Exception:  # noqa: BLE001 -- any refusal is a refusal
+        except Exception:  # any refusal is a refusal
             by_class = False
         rows.append((json.dumps(instance, default=str), harness.conforms(resolved, instance), by_class))
     return Verdicts(

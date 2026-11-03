@@ -376,7 +376,7 @@ def _prove(document: dict, witnesses: tuple, *, widens: bool = False) -> None:
         try:
             adapter.validate_python(witness)
             by_class = True
-        except Exception:  # noqa: BLE001 -- any refusal is a refusal
+        except Exception:  # any refusal is a refusal
             by_class = False
         by_document = harness.conforms(resolved, witness)
         verdicts.append(by_document)

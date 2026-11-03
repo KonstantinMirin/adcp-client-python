@@ -300,7 +300,7 @@ def symbol(
     kind: str,
     constraints: Mapping[str, Any],
     *,
-    format: str | None = None,  # noqa: A002 -- the JSON Schema keyword's own name
+    format: str | None = None,  # the JSON Schema keyword's own name
 ) -> str | None:
     """D5's rung 3: the alias name for this shape, derived from the constraint.
 
@@ -342,7 +342,7 @@ def resolve(
     kind: str,
     constraints: Mapping[str, Any],
     *,
-    format: str | None = None,  # noqa: A002 -- the JSON Schema keyword's own name
+    format: str | None = None,  # the JSON Schema keyword's own name
 ) -> str | None:
     """The dotted path this shape's named type is reachable at, or ``None``.
 
@@ -390,7 +390,7 @@ def record(
     kind: str,
     constraints: Mapping[str, Any],
     *,
-    format: str | None = None,  # noqa: A002 -- the JSON Schema keyword's own name
+    format: str | None = None,  # the JSON Schema keyword's own name
 ) -> None:
     """Record one resolved shape under its name, refusing a collision.
 

@@ -156,7 +156,7 @@ def grade(tree: Path, package: Path | None, bundle_dir: Path) -> tuple[str, int]
                     "source": identities[p.ref.document],
                 },
             )
-        except Exception as e:  # noqa: BLE001 -- a row with a cause, never a lost pair
+        except Exception as e:  # a row with a cause, never a lost pair
             rows.append(
                 harness.verdict_row(
                     p.ref, None, model=model, error=f"pairing raised {type(e).__name__} {e}"
@@ -220,7 +220,7 @@ def grade(tree: Path, package: Path | None, bundle_dir: Path) -> tuple[str, int]
                 )
             )
             continue
-        except Exception as e:  # noqa: BLE001 -- as above: the run reports, it does not die
+        except Exception as e:  # as above: the run reports, it does not die
             rows.append(
                 harness.verdict_row(
                     p.ref, None, model=model, error=f"check raised {type(e).__name__} {e}"

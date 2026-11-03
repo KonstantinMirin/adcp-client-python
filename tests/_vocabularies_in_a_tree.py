@@ -48,7 +48,7 @@ def main() -> int:
     for name in names:
         try:
             module = importlib.import_module(name)
-        except Exception:  # noqa: BLE001 -- reported by the import obligation, not here
+        except Exception:  # reported by the import obligation, not here
             continue
         modules += 1
         for value in vars(module).values():

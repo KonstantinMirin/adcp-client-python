@@ -162,7 +162,7 @@ def _drawn_dump(pair: harness.Pair) -> Any:
     seen: list[Any] = []
     harness.check_accepts(pair.schema, pair.accept, examples=1, seen=seen)
     assert seen, pair.name
-    return harness._wire_dump(pair.accept(seen[-1]))  # noqa: SLF001 -- the production dump
+    return harness._wire_dump(pair.accept(seen[-1]))  # the production dump
 
 
 # --------------------------------------------------------------------------- #
@@ -271,8 +271,8 @@ def test_every_entry_resolves_and_still_states_its_value(entry: Exemption) -> No
     matching and this reddens until the entry is removed.  So the set does not depend
     on anybody remembering to revisit it: the repair itself reddens the build.
     """
-    node = dump_exemptions._at(  # noqa: SLF001 -- the resolution under test
-        _packaged(entry.document), dump_exemptions._path(entry.pointer)  # noqa: SLF001
+    node = dump_exemptions._at(  # the resolution under test
+        _packaged(entry.document), dump_exemptions._path(entry.pointer)
     )
     assert isinstance(node, dict), (entry.document, entry.pointer, "pointer does not resolve")
     assert entry.keyword in node, (entry.document, entry.pointer, entry.keyword, sorted(node))
@@ -418,7 +418,7 @@ def _roundtrip(pattern: str, examples: int = DRAWS) -> Roundtrip:
     def body(value: str) -> None:
         try:
             out = adapter.dump_python(adapter.validate_python(value), mode="json")
-        except Exception:  # noqa: BLE001 -- refused on the way IN, which is D4's half
+        except Exception:  # refused on the way IN, which is D4's half
             counts["refused_in"] += 1
             return
         counts["round_tripped"] += 1
@@ -564,7 +564,7 @@ def test_the_strike_removes_only_the_named_keywords(
     after = {ptr for ptr, _ in _walk(relaxed)}
     assert not after - before, after - before
     expected = {
-        f"{dump_exemptions._path(e.pointer)[len(dump_exemptions._path(pointer)) :]}"  # noqa: SLF001
+        f"{dump_exemptions._path(e.pointer)[len(dump_exemptions._path(pointer)) :]}"
         for e in dump_exemptions.applying_to(document, pointer)
     }
     assert expected, (document, pointer, "no entry applies, so nothing is being graded")

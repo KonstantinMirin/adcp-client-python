@@ -192,7 +192,7 @@ class Lowered:
 
 def lower(
     sources: Mapping[str, Any],
-    declared: Mapping[str, Any] = {},  # noqa: B006 -- read-only, and the empty mapping is the answer
+    declared: Mapping[str, Any] = {},  # read-only, and the empty mapping is the answer
     extra_stated: bool = False,
     *,
     resolve: compiler.Resolver = None,
@@ -637,7 +637,7 @@ def _count(node: Mapping[str, Any], out: Lowered, extra_stated: bool) -> None:
 def _negated(
     node: Mapping[str, Any],
     out: Lowered,
-    declared: Mapping[str, Any] = {},  # noqa: B006 -- read-only, and the empty mapping is the answer
+    declared: Mapping[str, Any] = {},  # read-only, and the empty mapping is the answer
 ) -> None:
     """Every group of key names this node forbids, from the keyword and from a property.
 

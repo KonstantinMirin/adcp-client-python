@@ -238,7 +238,7 @@ def test_the_keyword_is_read_at_this_position_and_not_merely_tolerated() -> None
         # property, and ``_naming_facts`` has no parameter for one.  The helper keeps the
         # argument so the two calls below read as the two cases they are.
         assert key is None or isinstance(key, str)
-        hop = lower_union._naming_facts(  # noqa: SLF001 -- the test is the caller
+        hop = lower_union._naming_facts(  # the test is the caller
             branch, branch.get("properties")
         )
         # §4's branch rules answer with the branch's own SEGMENTS now
