@@ -486,10 +486,6 @@ class Fixtures:
     documents: Collection[str]
     corpus: Any = None
     custom_formats: Mapping[str, Any] = ()
-    #: Seconds one DERIVED fixture's own draw may take.  Not a budget on the pair: it is
-    #: the bound on a draw this class took on voluntarily, and a cut one leaves the
-    #: position unsubstituted, which is the same answer as a document with no fixture.
-    budget: int = 30
 
     #: ``(document, pointer) -> the instance, or None``.  Memoised for the run, which is
     #: what turns the product into a sum.
@@ -562,12 +558,20 @@ class Fixtures:
             if instance is not NONE:
                 placements.append((position.pointer, instance))
         substituted, _ = fixtured(drawn_from, placements)
+        #: **NO BUDGET OF ITS OWN, and that is a correction rather than an omission.**  A
+        #: :func:`within` here looked right and silently removed the CALLER's bound:
+        #: ``signal.setitimer`` is process-global, so a nested block re-arms the timer to
+        #: its own interval and then clears it on the way out, leaving the enclosing grade
+        #: with no timer at all.  Measured: one pair ran ten minutes against a 20 s budget.
+        #: ``OverBudget`` is therefore not caught either -- a cut belongs to whoever set
+        #: the budget, and a derivation that swallowed one would make the pair run past it.
+        #: The caller's bound is the only bound, and a derivation that exceeds it cuts the
+        #: pair, which is what the pair did before this rule existed.
         try:
-            with within(self.budget):
-                instance = one_instance(substituted, self.custom_formats)
-        except OverBudget:
-            return NONE
+            instance = one_instance(substituted, self.custom_formats)
         except Exception:  # noqa: BLE001 -- an undrawable node has no fixture
+            if budget_expired():
+                raise OverBudget("the fixture derivation was cut") from None
             return NONE
         #: **The DOCUMENT decides, before anything else reads the value.**  The
         #: substitution is a restriction, so this cannot fail by construction; it is
@@ -5025,10 +5029,52 @@ def _inseparable(
             # whole of what UNDERDETERMINED names.  Measured: without this clause the
             # derivation reports 185 pointers, 16 of them roots whose documents emit as a
             # single class with a presence rule.
+            #: **EVERY BRANCH IS READ THROUGH THE RECORD'S OWN STORAGE, which is §8
+            #: sentence 3a applied to this derivation** -- and the reading
+            #: ``architecture.md`` already settled: *a reader asking what the document
+            #: states reads through the storage, because a reference to a storage entry is
+            #: not a fact the document states but where the fact is kept*.  FIRST, before
+            #: either clause below, because both of them are such readers.
+            #:
+            #: Without it a branch the store replaced with ``{"$ref":
+            #: "#/definitions/Shared<N>"}`` carries no ``required``, no ``type`` and no
+            #: ``properties``, so the presence-only clause does not fire and the shape test
+            #: rejects it, the whole union is skipped, and a union the declaration
+            #: correctly calls inseparable reports as DECLARED AND SEPARABLE.  Measured:
+            #: 6 of the 7 sites the stale direction named have at least one bare storage
+            #: reference among their branches, and
+            #: ``media-buy/proposal-refinement.json#/oneOf/1/anyOf`` has 6 of 7 -- all
+            #: seven of them ``{"required": [one name]}``, which is the presence-only
+            #: clause's own subject, read by nothing until now.
+            branches = [bundle.expanded(b, record) for b in branches]
             if all(set(b) <= {"required"} for b in branches):
                 continue
             applied = [b.get("type") or node.get("type") for b in branches]
-            if not all(t == "object" or (t is None and b.get("properties")) for t, b in zip(applied, branches)):
+            #: **THE SHAPE TEST READS EVERY VIEW OF THE BRANCH and not the branch node
+            #: alone**, which is §8's third pairing rule ("a node at a CONJUNCT of an
+            #: ``allOf`` is paired with its node read AS THE COMPOSITION") and the reading
+            #: every other clause of this derivation already makes (:func:`_views`,
+            #: "``node`` and every node its ``allOf`` applies to the SAME instance").
+            #:
+            #: Measured on ``core/async-response-data.json#/anyOf``: 3 of its 42 branches --
+            #: 6, 8 and 28 -- state their object-ness in an ``allOf`` conjunct and carry
+            #: neither ``type`` nor ``properties`` at their own top level, so the node-only
+            #: test rejected them and the 42-branch union was skipped whole.  With the
+            #: composition read, ``separates`` answers ``None`` for 846 of its 861 pairs.
+            #: The payload says the same thing independently: the instance the accepts
+            #: corpus holds for branch pair ``#/anyOf/0`` --
+            #: ``{"cache_scope": "public", "status": "failed", "unchanged": true,
+            #: "wholesale_feed_version": ""}`` -- satisfies 17 of the 42 branches, so the
+            #: union IS overlapping, ``lower.union.overlapping`` is right, and the
+            #: disagreement was this gate.
+            if not all(
+                any(
+                    (view.get("type") or t) == "object"
+                    or ((view.get("type") or t) is None and view.get("properties"))
+                    for view in _views(b)
+                )
+                for t, b in zip(applied, branches)
+            ):
                 continue
             base = "" if pointer == "/" else pointer
             # The ROOT's own ``required`` is handed to every pair, because section 4
