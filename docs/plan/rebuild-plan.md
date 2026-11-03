@@ -1915,6 +1915,32 @@ either is a located defect rather than a mystery. **The carve-outs are already w
 declared approximations and the narrowings the registry admits — so "faithful except where
 recorded" is a statement the induction can quote rather than a hedge.
 
+**THE INDUCTION HAS FOUR PREMISES AND THE FOURTH IS NOT YET SATISFIABLE (named 2026-11-03).** Three
+are checked: the positions are closed under descent; nothing outside the table reaches the output,
+which is *why* nothing is refused; and the walk applies the cell the table names, of which §5's
+grid equality is half.
+
+**The fourth is that a cell is a function of `(keyword, position)`. It is not.** It is a function
+of `(keyword, position, CO-OCCURRENCE)` — what else the node states — and §5's own table says so:
+*"the table is keyed by position and a co-occurrence is not one, so it belongs to the sentence of
+the cell it qualifies."* Most live cells condition their answer on something other than the
+position: *where* this, *beside* that, *ALSO*, *enclosing*, *unless*. `const` reads the same field's
+enclosing declaration. `additionalProperties` is read after the document-side fold. §3a's catalogue
+collects vocabularies before emission, so one position's annotation is a function of every other
+position stating the same value set.
+
+**So "prove each cell once" has no denominator.** A probe proves ONE answer per cell — the one its
+own co-occurrence selects — and nothing says how many answers a cell has. The induction's step is
+not local, which is the property the whole argument rested on.
+
+**THE FIX IS TO THE TABLE'S FORM, NOT TO THE PROOF: a cell that conditions must state its
+conditions as DATA.** A co-occurrence written in English cannot be enumerated, so the obligation
+cannot be counted and the equality cannot close. Written as a condition the table carries, each
+cell's answers are a finite enumerable set, the live-cell count becomes a live-ANSWER count, and
+the induction's step is local again. Until then the cell proofs are sound and incomplete, and they
+must be reported that way — **complete only up to the co-occurrence each probe selects**, never as
+coverage of the table.
+
 **THERE IS NO THIRD CHECK (decided 2026-10-30).** A comparison of the class's
 `model_json_schema()` against the document stood here and is **deleted** — code, tests, pins,
 prose, as if it had never existed. It was not a check on the artifact; it diffed schema TEXT, and
