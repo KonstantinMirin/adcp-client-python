@@ -284,7 +284,7 @@ def test_the_derivation_decides_the_roots_that_reach_it_and_the_refusal_takes_th
     **THIS CHECK WAS TWO PINNED CENSUSES UNTIL 2026-11-03.**  It named 48 document paths
     by hand as "the roots whose first-source dispatch is expected to be empty" and
     asserted that set EQUAL to what the walk handed the derivation, and it took the
-    overlapping half from a second hand-written set, :data:`OVERLAPPING_ROOTS`.  Both
+    overlapping half from a second hand-written set, ``OVERLAPPING_ROOTS``.  Both
     had drifted, and the drift is what a census does -- it is one tree's reading of a
     quantity every emitting row moves:
 
@@ -567,81 +567,21 @@ MANIFEST_DISCRIMINATED = frozenset(
         "protocol/list-tasks-response.json",
     }
 )
-#: Union roots the walk cannot separate: §4's three sources all answer no, so the union
-#: declares §4's UNDERDETERMINED approximation.  ``adagents.json`` and ``brand.json``
-#: overlapped before §14 step 9 and the root-siblings row let the other 16 reach the
-#: derivation for the first time, which reconciles the previous instalment's 16 with this
-#: set.
+#: **``OVERLAPPING_ROOTS`` STOOD HERE AND IS GONE** (2026-11-04,
+#: ``adcp-client-python-99m``).  It was a hand-written frozenset of the union roots the
+#: walk cannot separate, and it was a CENSUS: the two checks reading it asserted it
+#: EQUAL to what the run declares, and that equality moves whenever the derivation
+#: learns to separate one more root or an upstream release adds one.  Its own docstring
+#: recorded three documents leaving it one row at a time, each with a paragraph; by
+#: 2026-11-04 it named 16 while the run declared 17, five of those not in it and four of
+#: it not declaring, and the red was hiding ``adcp-client-python-82m.44``.
 #:
-#: **TWO LEFT AT ``adcp-client-python-10l.21``, and both left because the DERIVATION got
-#: them right rather than because the set was relaxed** (``adcp-client-python-10l.27``):
-#: ``media-buy/sync-audiences-response.json`` separates on §4's SECOND separator once the
-#: ``not``/``anyOf`` reduction keeps the disjuncts it can read, and
-#: ``media-buy/sync-catalogs-response.json`` on §4's FOURTH -- one branch forbids a VALUE
-#: another pins.  Both emit, and neither declares an approximation, which is the
-#: direction this set is pinned for.
-#:
-#: **ONE MORE LEFT AT ``adcp-client-python-10l.55``, AND ITS MEMBERSHIP WAS NEVER
-#: MEASURED.**  ``creative/sync-creatives-response.json`` REFUSED while it was listed
-#: here -- chained behind ``core/assets/asset-union.json``, whose ``$ref`` branch onto a
-#: union root the branch row refused -- so the walk returned on branch 0 before
-#: :func:`union.overlapping` was ever called, and the two assertions this set feeds both
-#: exempt a refusing document (``declaring == overlapping - set(out.refusals)``).  With
-#: the branch row fixed the document emits, the derivation runs, and it SEPARATES: each
-#: of the three branches carries a ``not``/``anyOf`` forbidding the names the other two
-#: require -- ``creatives``, ``errors``, and ``status``/``task_id`` -- which is §4's
-#: third source.  ``harness.inseparable_unions`` reads the same document independently
-#: and answers ``()``, so §8's third equality holds in both directions; the entry was a
-#: claim about a derivation that had not run, and dropping it puts one more root under
-#: the ``declaring <= overlapping`` bound rather than outside it.
-OVERLAPPING_ROOTS = frozenset(
-    {
-        "adagents.json",
-        "brand.json",
-        "content-standards/calibrate-content-response.json",
-        "content-standards/create-content-standards-response.json",
-        "content-standards/get-content-standards-response.json",
-        "content-standards/get-media-buy-artifacts-response.json",
-        "content-standards/list-content-standards-response.json",
-        "content-standards/validate-content-delivery-response.json",
-        "core/evaluator-spec.json",
-        "core/postal-country-system.json",
-        # **ADDED when the document began EMITTING, not when it began overlapping.**
-        # ``core/requirements/asset-requirements.json``'s 12 bare ``$ref`` branches have
-        # no title and no pin, so §4's dispatch derivation separated none of them and the
-        # root has always been in this set's subject matter -- what it did not have was a
-        # module, because ``lower/names.py`` refused a branch with no identity.  §4's
-        # FOURTH branch rung (``adcp-client-python-10l.70``) names them, the document
-        # emits, and the declaration it was always owed becomes observable:
-        # ``declaring <= overlapping`` is what reddens when an entry is missing here, and
-        # that is the assertion rather than this comment.
-        "core/requirements/asset-requirements.json",
-        # **``creative/get-creative-features-response.json`` LEFT, and the derivation is
-        # why.**  It was listed here while it REFUSED -- on ``title`` at ``/oneOf/0``, a
-        # branch with no identity -- so ``overlapping`` was never called for it and the
-        # two assertions this set feeds both exempt a refusing document.  §4's fourth
-        # branch rung names the branch, the document emits, the derivation runs, and it
-        # SEPARATES: the entry was a claim about a derivation that had not run, which is
-        # exactly what ``creative/sync-creatives-response.json`` left for at
-        # ``adcp-client-python-10l.55``.
-        # **ONE MORE AT ``adcp-client-python-10l.37``, and it is a FINDING rather than a
-        # loss.**  ``governance/check-governance-request.json``'s ``/allOf/1`` is an
-        # ``anyOf`` the document states as a CONSTRAINT and not as an alternation of
-        # shapes: arm 0 requires ``plan_id``, arm 1 requires ``governance_context`` plus
-        # one of ``planned_delivery`` / ``delivery_metrics``, and neither forbids a name
-        # or closes its map -- so an instance carrying all three satisfies BOTH and no
-        # separator §4 names tells them apart.  The pair is named by
-        # :func:`union.overlapping` and asserted in
-        # :func:`test_the_conjunct_borne_combinator_separates_or_names_the_pair`.  The
-        # row that owns an ``anyOf``-as-constraint is .29 / onq's, which compile it to a
-        # RULE; §4 owes it no discriminant.
-        "governance/check-governance-request.json",
-        "media-buy/build-creative-response.json",
-        "media-buy/create-media-buy-response.json",
-        "media-buy/update-media-buy-response.json",
-        "trusted-match/provider-registration.json",
-    }
-)
+#: Both readers derive the set from ``Emitted.approximations`` now -- an UNDERDETERMINED
+#: declaration at ``#/oneOf`` or ``#/anyOf`` is the run saying "I could not separate
+#: this", which is the fact the list was a copy of.  The claim that the derivation is
+#: RIGHT about it is §8's third equality, asserted against ``harness.separates``'s
+#: independent reading of the document of record in
+#: ``test_the_derivation_decides_the_roots_that_reach_it_and_the_refusal_takes_the_rest``.
 
 
 def _declares(node: Any, field: str, pointer: str = "") -> list[str]:
@@ -666,23 +606,49 @@ def test_the_manifests_dispatch_source_has_no_union_to_dispatch_in_this_bundle()
     is the table.  Such a union emits as a mapping keyed by that field: its discriminant
     is in the envelope, not in the payload."
 
-    **Its population over bundle 3.2 is 0, and the reason is the SHAPE of the
-    resolution rather than the count.**  The template is
-    ``/tools/{task_type}/response_schema``: it resolves a DOCUMENT from a task field.  So
-    the manifest's key is spent selecting the document, and a union INSIDE the document it
-    selects has no discriminant left in the envelope to be told apart by.  Measured three
-    ways here, each of which fails on its own:
+    The thesis was that its population over bundle 3.2 is 0, and that the reason is the
+    SHAPE of the resolution rather than the count: the template is
+    ``/tools/{task_type}/response_schema``, so it resolves a DOCUMENT from a task field,
+    the manifest's key is spent selecting the document, and a union INSIDE the document
+    it selects has no discriminant left in the envelope to be told apart by.  Measured
+    three ways here, each of which fails on its own:
 
     * every document declaring the manifest's discriminator field states NO union at
       all, at any pointer -- so there is nothing for the second source to dispatch;
-    * no branch of any overlapping root declares that field, and no branch of one is a
-      ``$ref`` to a schema the manifest resolves;
-    * 13 of the 18 overlapping roots ARE a schema the manifest's own template resolves,
-      which is the measurement that settles it: the manifest names the document and the
-      overlap is a union inside it.
+    * no branch of an inseparable root declares that field, and no branch of one is a
+      reference to a schema the manifest resolves;
+    * most of the inseparable roots ARE a schema the manifest's own template resolves,
+      which is the measurement that was meant to settle it: the manifest names the
+      document and the overlap is a union inside it.
 
-    So the overlapping set is **step 10's UNDERDETERMINED row** and not this one's.  §4
-    decides what becomes of it -- "a union matching none of the three emits a plain
+    **THE SECOND MEASUREMENT IS FALSE, AND THE POPULATION THIS CHECK'S THESIS NEEDS TO
+    BE 0 IS 2** (``adcp-client-python-82m.44``, filed 2026-11-04).  Two roots have
+    branches that ARE references to documents the manifest resolves, neither root is
+    itself a resolved schema, and neither declares the field at any pointer -- so the
+    key is not spent on the document, it selects the BRANCH, which is §4's second-source
+    sentence verbatim:
+
+        compliance/task-completion-data.json      4 branches,  3 resolved
+        core/async-response-data.json            42 branches, 14 resolved
+
+    **WHAT HID IT WAS THIS CHECK'S OWN CENSUS.**  The population was the hand-written
+    frozenset ``OVERLAPPING_ROOTS``, which named 16 documents while the run declares
+    UNDERDETERMINED at a root for 17; the equality on it was RED
+    (``adcp-client-python-99m``) and it failed BEFORE the three measurements ran, so the
+    second measurement was being asked of the stale 16 and never saw the two roots that
+    refute it.  Deriving the population is what made the real finding visible, and it is
+    the reason that red mattered.
+
+    So the population is derived now, the stale equality is gone, and the second
+    measurement is asserted UNNARROWED and NAMES its offenders.  It is red, and that red
+    is ``adcp-client-python-82m.44``: §4's second source has code nowhere, both roots
+    fall through to the third source, and both carry an UNDERDETERMINED declaration the
+    document does not owe them.  Fixing it moves what the walk emits and ``./check``'s
+    third figure, so it is that row's and not this check's -- and no scope here is
+    narrowed to go green, which is what would put it back out of sight.
+
+    The REST of the inseparable set is **§4's UNDERDETERMINED row** and not this one's.
+    §4 decides what becomes of it -- "a union matching none of the three emits a plain
     ``A | B`` over its branches and declares an UNDERDETERMINED approximation at the
     union's pointer, attributed upstream" -- and the DECLARATION is what puts it there:
     the faithful rows cost none.
@@ -737,17 +703,34 @@ def test_the_manifests_dispatch_source_has_no_union_to_dispatch_in_this_bundle()
         if one.kind == UNDERDETERMINED and one.pointer in ("#/oneOf", "#/anyOf")
     }
     assert not any("branches OVERLAP" in r.get("detail", "") for r in out.refusals.values())
-    deeper = {d for d in OVERLAPPING_ROOTS if d in out.refusals}
-    overlapping = sorted(OVERLAPPING_ROOTS)
-    assert declaring == set(OVERLAPPING_ROOTS) - deeper, sorted(declaring)
-    # Every one of the rest reaches the derivation and reports its OWN next obstruction,
-    # which is neither the overlap nor nothing: a document that silently stopped
-    # refusing would be read here as the set going stale.
-    for document in sorted(deeper):
+    # DERIVED, and the hand-written ``OVERLAPPING_ROOTS`` is gone with the equality on
+    # it: that set named 16 documents while the run declares 17, and the census failing
+    # here was what kept the three measurements below from ever running on the current
+    # population (``adcp-client-python-82m.44``).
+    overlapping = sorted(
+        claimed(
+            "roots the derivation cannot separate, read off the run's declarations",
+            declaring,
+            inside=bundle.portable(BUNDLE),
+        )
+    )
+    # Every one that refuses reports its OWN next obstruction, which is neither the
+    # overlap nor nothing.  At ``refused 0`` the set is empty and the loop is a floor
+    # rather than a check -- which is why the overlap sentence is asserted over ALL
+    # refusals one line above, where it is not conditional on this set.
+    for document in sorted(d for d in overlapping if d in out.refusals):
         row = out.refusals[document]
         assert row["keyword"] != document, row
         assert "branches OVERLAP" not in row["detail"], (document, row)
     resolved_overlaps = [d for d in overlapping if d in resolves]
+    # **MEASUREMENT 2, UNNARROWED, WITH ITS OFFENDERS NAMED.**  Collected over the whole
+    # set and asserted once, so the message is the POPULATION of §4's second source and
+    # not the first document that happens to be visited.  Red as of 2026-11-04, and the
+    # red is ``adcp-client-python-82m.44``: the key selects the BRANCH at these two
+    # roots, which is the second source's own sentence, and no code implements it.
+    carries_the_key: list[str] = []
+    branches_the_manifest_resolves: list[tuple[str, int, str]] = []
+    known = set(bundle.portable(BUNDLE))
     for document in overlapping:
         # The union is the one the PARSER classified at the root, and the branches are
         # the field it set: an overlapping root no longer refuses ON the overlap, so the
@@ -769,16 +752,36 @@ def test_the_manifests_dispatch_source_has_no_union_to_dispatch_in_this_bundle()
         assert isinstance(node, nodes.Union), (document, type(node).__name__)
         branches = [b for b in node.branch_raw if isinstance(b, dict)]
         assert branches, (document, node.stated_at)
-        # No branch carries the envelope's key, and no branch is one of the schemas the
-        # manifest resolves -- the two shapes the second source would read.
-        assert not any(field in (b.get("properties") or {}) for b in branches), document
-        assert not {
-            b["$ref"].rsplit("/", 1)[-1] for b in branches if "$ref" in b
-        } & {r.rsplit("/", 1)[-1] for r in resolves}, document
+        # The two shapes the second source would read: a branch carrying the envelope's
+        # key, and a branch that IS one of the schemas the manifest resolves.  Collected
+        # and not asserted here, for the reason above the loop.
+        #
+        # **Resolved by DOCUMENT and not by basename**: ``bundle.document_for`` is the
+        # one reading of a reference's document half, and a basename match would report
+        # a collision between two domains as a resolution.
+        carries_the_key += [
+            document for b in branches if field in (b.get("properties") or {})
+        ]
+        for i, b in enumerate(branches):
+            if "$ref" not in b:
+                continue
+            head, _ = bundle.split_ref(b["$ref"])
+            target = bundle.document_for(head, known) if head else document
+            if target in resolves:
+                branches_the_manifest_resolves.append((document, i, target))
+    assert carries_the_key == [], sorted(set(carries_the_key))
+    assert branches_the_manifest_resolves == [], {
+        "§4's second source names these roots and no code dispatches them "
+        "(adcp-client-python-82m.44)": sorted(
+            {d for d, _, _ in branches_the_manifest_resolves}
+        ),
+        "branch -> the resolved document it references": branches_the_manifest_resolves,
+    }
+
     # The decisive one: most of them ARE what the manifest resolves TO, so the key is
     # spent before the branch choice is reached.  Partitioned BY NAME, because the two
     # halves are different facts and their sum is not one: the resolved half is where
-    # the manifest's key is spent on the document, and the other five are documents the
+    # the manifest's key is spent on the document, and the rest are documents the
     # manifest does not name at all.
     partitions(
         set(overlapping),
@@ -790,28 +793,19 @@ def test_the_manifests_dispatch_source_has_no_union_to_dispatch_in_this_bundle()
         resolved_overlaps,
         inside=overlapping,
     )
-    # **``creative/get-creative-features-response.json`` left the same way, one row
-    # later**: §4's fourth branch rung let it emit, the derivation ran for the first time
-    # and SEPARATED it, so it is no longer in :data:`OVERLAPPING_ROOTS` and this list --
-    # that set intersected with what the manifest resolves -- loses it with it.  The
-    # manifest still resolves the document; what changed is the claim that it overlaps.
-    #
-    # **``creative/sync-creatives-response.json`` left with its entry in
-    # :data:`OVERLAPPING_ROOTS``** (``adcp-client-python-10l.55``): this list is that set
-    # intersected with what the manifest resolves, so a root the derivation separates is
-    # not in it.  The manifest still resolves the document -- what changed is that the
-    # document is no longer claimed to overlap.
-    assert set(resolved_overlaps) == {
-        "content-standards/calibrate-content-response.json",
-        "content-standards/create-content-standards-response.json",
-        "content-standards/get-content-standards-response.json",
-        "content-standards/get-media-buy-artifacts-response.json",
-        "content-standards/list-content-standards-response.json",
-        "content-standards/validate-content-delivery-response.json",
-        "media-buy/build-creative-response.json",
-        "media-buy/create-media-buy-response.json",
-        "media-buy/update-media-buy-response.json",
-    }, sorted(resolved_overlaps)
+    claimed(
+        "overlapping roots the manifest does not name at all",
+        set(overlapping) - set(resolved_overlaps),
+        inside=overlapping,
+    )
+    # **THE NINE-DOCUMENT EQUALITY THAT STOOD HERE IS GONE** (2026-11-04).  It pinned
+    # ``set(resolved_overlaps)`` to a list of nine, which is this set intersected with
+    # what the manifest resolves -- a census twice over: a root the derivation learns to
+    # separate leaves it, and an upstream tool added to ``manifest.tools`` joins it.  The
+    # two comments below it recorded exactly that happening twice, once per row.  The
+    # partition above says the property instead: every inseparable root is accounted for
+    # by exactly one of the two halves, both halves are non-empty and named, and which
+    # documents are in which is the run's answer rather than this file's.
 
 
 # --------------------------------------------------------------------------- #
