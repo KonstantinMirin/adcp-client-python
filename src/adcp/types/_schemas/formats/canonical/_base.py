@@ -63,6 +63,7 @@ class SlotsItem(AdCPBaseModel):
         UniqueItems('required_logo_slots'),
         ConditionalRequired((Match('asset_type', True, ('text', 'markdown', 'brief')),), require=(), forbid=('max_size_kb',)),
         ConditionalRequired((Match('asset_type', True, ('image', 'video', 'audio', 'zip')),), require=(), forbid=('max_chars',)),
+        ConditionalRequired((Match('asset_group_id', None, None, forbidden=('logo',)),), require=(), forbid=('logo_slots', 'required_logo_slots')),
         NegatedConditional((Match('asset_type', True, ('image', 'card')),), require=(), forbid=('pixel_ratios', 'required_pixel_ratios')),
         ConditionalRequired((Match('required_pixel_ratios', True, None),), require=('pixel_ratios',), forbid=()),
         ConditionalRequired((Match('asset_type', True, ('url', 'catalog', 'published_post', 'html', 'css', 'javascript', 'webhook', 'daast', 'vast', 'display_tag', 'card', 'object', 'pixel_tracker', 'vast_tracker', 'daast_tracker')),), require=(), forbid=('max_chars', 'max_size_kb')),

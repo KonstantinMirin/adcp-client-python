@@ -564,17 +564,36 @@ def _argument(name: str, value: Any, default: Any) -> str:
     return repr(value)
 
 
-def _clause(clause: Match) -> str:
-    """One ``if`` clause as a constructor expression, every part POSITIONAL.
+#: The parts of a clause that read as a TRIPLE and are therefore written in order.
+#:
+#: :class:`adcp.types._runtime.Match` is a clause and not a rule -- it has no ``errors``
+#: -- and these three are a key, whether it is present, and the values it admits.  So
+#: :func:`_argument`'s rule does not apply to them and all three are written positionally,
+#: which is what the class-body line has always carried.
+_CLAUSE_TRIPLE = ("key", "present", "allowed")
 
-    :class:`adcp.types._runtime.Match` is a clause and not a rule -- it has no
-    ``errors`` -- and its three parts read as a triple: a key, whether it is present, and
-    the values it admits.  So :func:`_argument`'s rule does not apply to it and all three
-    are written in order, which is what the class-body line has always carried.
+
+def _clause(clause: Match) -> str:
+    """One ``if`` clause as a constructor expression: the triple, then what it adds.
+
+    **Every field past the triple is written BY NAME and only where it differs from its
+    own default**, which is what keeps §8 sentence 3b's complement from respelling every
+    clause in the tree.  ``Match`` gained a ``forbidden`` value set so that a negated
+    presence-and-value condition lowers as ONE clause, and that set is ``None`` at all but
+    the clauses that take the complement -- so a positional read would have rewritten
+    thousands of unchanged lines to say ``None`` and made the diff that carries the
+    decision unreadable.
+
+    Read off ``dataclasses.fields`` and not a second list, so a field added to the clause
+    reports itself here exactly as :func:`_rule` already does for a rule's own.
     """
-    return (
-        f"{type(clause).__name__}({clause.key!r}, {clause.present!r}, {clause.allowed!r})"
-    )
+    args = [f"{getattr(clause, name)!r}" for name in _CLAUSE_TRIPLE]
+    args += [
+        f"{spec.name}={getattr(clause, spec.name)!r}"
+        for spec in dataclasses.fields(clause)
+        if spec.name not in _CLAUSE_TRIPLE and getattr(clause, spec.name) != spec.default
+    ]
+    return f"{type(clause).__name__}({', '.join(args)})"
 
 
 def _rule(rule: Any) -> str:
