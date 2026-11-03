@@ -656,6 +656,18 @@ store that makes the first reading affordable is exactly what a renaming destroy
 is invisible to every pointer any reader spells, and a declared pointer that stops resolving is a
 defect of the hoisting rather than a consequence of it.
 
+**A READER ASKING WHAT THE DOCUMENT STATES READS THROUGH THE STORAGE (decided 2026-11-03).** The
+hoisting is a storage representation, so a reference to a storage entry is not a fact the document
+states — it is where the fact is kept. **Any reader whose question is semantic therefore
+dereferences**, and a reader that walks the stored text raw is answering a different question and
+must say so. This is the first corollary the hoisting forced: three checks that asked "what does
+this document require at this pointer" read the text raw and found a reference where they expected
+a `required` list. The class was correct; the reading was not.
+
+It follows that the dereference belongs at the seam every semantic reader already passes through,
+and that a check written against a record must go through that seam rather than re-deriving the
+walk. A helper that walks the record raw is the thing to fix, never the stored form.
+
 **THE RECORD'S OWN WALK IS A FORK AND NOT A PORT, and it is a SEPARATE DECISION** that must not be
 taken inside the hoisting. `bundle.nodes` enumerates a pointer per occurrence. Either the walk
 follows references and re-derives one per occurrence — which hands back every occurrence, so the
