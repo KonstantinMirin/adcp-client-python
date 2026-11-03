@@ -457,6 +457,30 @@ def test_the_storage_states_what_the_inlined_record_states() -> None:
     expansion with no section at all.  Draft-07 gives a ``definitions`` section no
     assertion behaviour, so the two state the same thing; 0 documents of this bundle
     state an empty one, which is why the round trip is exact here.
+
+    **THE TWO DIRECTIONS RANGE OVER TWO POPULATIONS, AND THE WIDER ONE IS THE ROUND
+    TRIP** (``adcp-client-python-n1t``).  ``stored(inlined) == record`` is a claim about
+    the COMMITTED record, so it is only askable of a document that HAS one -- the set
+    :func:`records` names, which is ``emit.emit``'s own condition.
+    ``expanded(stored(x)) == x`` is not: it is a property of the two functions and of
+    nothing else, true or false of any record-shaped input, so narrowing it to the same
+    set narrows it for a reason that belongs to the other direction.
+
+    The narrowing was INHERITED and its stated reason does not reach here.
+    :func:`records` excludes a reference-free document because "including them would
+    state a property of the bundle's authors as a property of this inliner" -- which is
+    exactly right for reading 5 next door, where upstream's own duplication would be
+    mis-attributed, and is not a reason to leave ``stored`` ungraded on an input.  So the
+    round trip is asked of :func:`carried`, every portable document, and the 21 it adds
+    on which ``stored`` does real work are claimed by name below: they are the inputs
+    where ``stored`` hoists and the committed-record direction never runs it.
+
+    **Measured at the row that widened it**, in 6.4 s and 71 MB of peak RSS over the
+    whole bundle: 0 failures either direction.  20,656 entries are hoisted across the 516
+    records that have storage, and the widening adds 42 more across the 21 reference-free
+    documents whose own text repeats a subtree -- 537 documents hoisting in all.  Both
+    figures are derived by the loops below rather than asserted, for the reason the first
+    rule of ``tests/test_every_check_names_its_set.py`` gives.
     """
     every = records()
     claimed("records of documents that state a reference", every, inside=bundle.portable(BUNDLE))
@@ -468,14 +492,168 @@ def test_the_storage_states_what_the_inlined_record_states() -> None:
         if isinstance(node.get(kw), dict) and not node[kw]
     }
     assert empty_sections == set(), sorted(empty_sections)
+
+    #: The ROUND TRIP first, over the wider population, and the order is not cosmetic.
+    #: ``stored(expanded(r)) == r`` below is strictly DOWNSTREAM of ``expanded`` -- it
+    #: consumes its output -- so every perturbation of the expansion reddens it too, and
+    #: whichever of the two runs first is the one that reports.  Asked in this order, a
+    #: broken expansion is reported as the property it broke rather than as a record that
+    #: stopped matching, which is the difference between a verdict and a symptom.
+    text = claimed(
+        "the text the package carries beside every module",
+        carried(),
+        inside=bundle.portable(BUNDLE),
+    )
+    hoisted_outside_the_committed_records = []
+    for document in sorted(text):
+        held = carried()[document]
+        inlined = bundle.expanded(held, held)
+        again = bundle.stored(inlined)
+        assert bundle.expanded(again, again) == inlined, (
+            f"{document}: expanded(stored(x)) is not x. The storage is "
+            "'a storage representation ... not a renaming', so a reader that puts it "
+            "back must get the text the record stated before it existed."
+        )
+        if document not in every and again != inlined:
+            hoisted_outside_the_committed_records.append(document)
+    claimed(
+        "reference-free documents whose OWN text the storage hoists",
+        hoisted_outside_the_committed_records,
+        inside=set(text) - set(every),
+    )
+
     stored_at_all = []
     for document, record in sorted(every.items()):
         inlined = bundle.expanded(record, record)
         assert bundle.stored(inlined) == record, document
-        assert bundle.expanded(bundle.stored(inlined), record) == inlined, document
         if inlined != record:
             stored_at_all.append(document)
     claimed("records the storage changes", stored_at_all, inside=set(every))
+
+
+def test_no_entry_under_the_store_prefix_is_a_documents_own() -> None:
+    """The assumption ``is_a_store_entry`` is EXACT under, re-read off the bundle.
+
+    ``adcp/types/_base.py`` beside :data:`adcp.types._base.STORE_PREFIX`: "**No document
+    of the bundle names an entry under this prefix**, which is what keeps the predicate
+    below exact rather than approximate".  Nothing re-read it
+    (``adcp-client-python-n1t``), and the predicate is the one two readers agree through
+    -- ``bundle.stored`` refuses to write an entry a document already holds, and
+    ``bundle.expanded`` DROPS exactly the entries it matches.  So a document of its own
+    naming ``Shared7`` would not merely collide: the expansion would delete a section
+    entry the document states, and every reference to it would stop resolving.
+
+    Asked of the RAW text and of the RECORDED text, because the two can diverge and only
+    the first is upstream's: ``bundle.record`` inlines, so a raw document with no section
+    can record with one.  In the recorded text an entry under the prefix is expected and
+    is the storage's, so what is asserted there is the other half of the same exactness
+    -- the storage writes its entries at the ROOT section and nowhere else, which is what
+    makes dropping them at the root sufficient.
+
+    **Measured: 0 of 168 entries across 46 ``definitions``/``$defs`` sections of the raw
+    bundle match, and 0 of the recorded prefix entries sit below a root.**  A zero
+    reading is the point rather than a weakness here -- the predicate is exact only while
+    it is zero, and the sentence asserting it had no instrument.  The population is
+    claimed so the zero cannot be the vacuous one.
+    """
+    sections = []
+    own = []
+    for document in sorted(bundle.portable(BUNDLE)):
+        raw = bundle.read(BUNDLE, document)
+        for pointer, node in bundle.nodes(raw):
+            for kw in bundle.DEFINITIONS:
+                section = node.get(kw)
+                if not isinstance(section, dict):
+                    continue
+                sections.append((document, pointer, kw))
+                own += [
+                    (document, pointer, kw, key)
+                    for key in section
+                    if _base.is_a_store_entry(key)
+                ]
+    claimed("definition sections the raw bundle states", sections)
+    assert not own, (
+        f"a document of the bundle names {len(own)} entry/entries under "
+        f"{_base.STORE_PREFIX!r}: {own[:3]}. ``bundle.expanded`` drops every entry "
+        "``is_a_store_entry`` matches, so this is a section entry the expansion would "
+        "delete from the document that states it."
+    )
+
+    below_a_root = []
+    entries = []
+    for document, record in sorted(records().items()):
+        for pointer, node in bundle.nodes(record):
+            section = node.get(_base.STORE_SECTION)
+            if not isinstance(section, dict):
+                continue
+            for key in section:
+                if not _base.is_a_store_entry(key):
+                    continue
+                entries.append((document, pointer, key))
+                if pointer != "":
+                    below_a_root.append((document, pointer, key))
+    claimed("entries the storage wrote across every record", entries)
+    assert not below_a_root, (
+        f"the storage wrote {len(below_a_root)} entry/entries below a record's root: "
+        f"{below_a_root[:3]}. ``store_expanded`` drops the section at every node it "
+        "walks, but a reference is resolved against the ROOT, so an entry below one "
+        "names a node no reader reaches."
+    )
+
+
+def test_a_stored_subtree_is_never_itself_a_bare_reference() -> None:
+    """Why ONE storage hop suffices, as the property rather than as the bound.
+
+    :func:`adcp.types._base.through_the_store`: "One hop suffices and the loop is bounded
+    for the reason it suffices: a stored subtree is never itself a bare reference
+    (``bundle.stored`` stores no node that already is one), so a storage reference
+    resolves to a node that is not another.  The bound is written anyway, and raises,
+    because a cycle here is a defect of the writer and the alternative to raising is a
+    hang."  The bound is the DETECTION and this is the PREVENTION, and only the bound was
+    ever instrumented (``adcp-client-python-n1t``) -- a loop that has never been asked to
+    go round twice is a loop whose first iteration nothing has measured.
+
+    Two readings of one property, and the second is the one a reader of the docstring
+    wants.  No entry of any record's store IS a bare reference; and consequently every
+    storage reference in every record resolves, in ONE hop, to a node that is not another
+    storage reference -- which is what :data:`adcp.types._base._STORE_HOPS` being larger
+    than one is insurance against rather than a requirement of.
+
+    Measured over the 20,656 entries the 516 records with storage hold: 0 are a bare
+    reference, and 0 references take a second hop.  The bound is therefore dead code on
+    this bundle, which is the right state for it and not an argument to delete it: it is
+    what turns a writer's defect into a ``LookupError`` instead of a hang.
+    """
+    entries = []
+    bare = []
+    second_hop = []
+    for document, record in sorted(records().items()):
+        section = record.get(_base.STORE_SECTION) or {}
+        for key, held in section.items():
+            if not _base.is_a_store_entry(key):
+                continue
+            entries.append((document, key))
+            if isinstance(held, dict) and len(held) == 1 and "$ref" in held:
+                bare.append((document, key, held))
+        for pointer, node in bundle.nodes(record):
+            if len(node) != 1 or not isinstance(node.get("$ref"), str):
+                continue
+            once = _base.through_the_store(node, record)
+            if once is node:
+                continue  # a document's OWN local reference, which the hop leaves alone
+            if _base.through_the_store(once, record) is not once:
+                second_hop.append((document, pointer, node["$ref"]))
+    claimed("entries the storage wrote across every record", entries)
+    assert not bare, (
+        f"{len(bare)} stored subtree(s) are themselves a bare reference: {bare[:3]}. "
+        "Storing one writes a reference to a reference, which is longer than the node "
+        "it replaces and is what makes a single hop insufficient."
+    )
+    assert not second_hop, (
+        f"{len(second_hop)} storage reference(s) need a second hop: {second_hop[:3]}. "
+        "``through_the_store`` is documented as transparent at one hop; a chain means "
+        "``bundle.stored`` stored a node that was already a reference."
+    )
 
 
 def test_the_storage_moves_no_pointer_any_reader_spells() -> None:
