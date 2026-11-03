@@ -82,7 +82,7 @@ import pkgutil
 import traceback
 from contextlib import contextmanager
 from collections import Counter
-from collections.abc import Callable, Iterator, Mapping, Sequence
+from collections.abc import Callable, Collection, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any, NamedTuple
 
