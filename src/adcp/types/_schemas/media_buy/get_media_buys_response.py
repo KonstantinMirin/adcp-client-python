@@ -37,6 +37,7 @@ from ..core.protocol_envelope import ProtocolEnvelope
 from ..core.targeting import TargetingOverlay
 from ..core.version_envelope import AdCPVersionEnvelope
 from ..core.webhook_activity_record import WebhookActivityRecord
+from ..creative.list_creatives_response import AssignmentIndicatorType
 from ..enums.canceled_by import CanceledBy
 from ..enums.creative_approval_status import CreativeApprovalStatus
 from ..enums.delivery_status import DeliveryStatus
@@ -120,14 +121,6 @@ class PackagesItemCancellation(AdCPBaseModel):
     reason: Annotated[StrMaxLen500 | None, Field(description='Reason the package was canceled.')] = None
 
 
-class CreativeApprovalsItemIndicatorsItemType(StrEnum):
-    """
-    A seller-asserted material risk or optimization opportunity that currently warrants buyer attention on an AdCP resource relationship. AdCP standardizes the broad meaning of each value for the protocol release; it does not standardize or version the seller's detection methodology or prescribe a universal remedy.
-    """
-    CREATIVE_FATIGUE = 'creative_fatigue'
-    CREATIVE_QUALITY_OPPORTUNITY = 'creative_quality_opportunity'
-
-
 class CreativeApprovalsItemIndicatorsItem(Indicator):
     """
     A compact current seller assertion identifying a material risk or optimization opportunity that warrants buyer attention on the containing media buy, package, or package–creative relationship. An indicator is read-side state, not an error, warning, durable event record, authorization, executable action, or independently addressable resource. The responding seller is the source. Different sellers may use different methodologies for the same standard type; native scores, evaluation windows, suggested actions, deep links, and upstream attribution belong in ext.
@@ -136,10 +129,10 @@ class CreativeApprovalsItemIndicatorsItem(Indicator):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buys-response.json', pointer='#/properties/media_buys/items/properties/packages/items/properties/creative_approvals/items/allOf/1/properties/indicators/items')
-    type: Annotated[CreativeApprovalsItemIndicatorsItemType, Field(description="A seller-asserted material risk or optimization opportunity that currently warrants buyer attention on an AdCP resource relationship. AdCP standardizes the broad meaning of each value for the protocol release; it does not standardize or version the seller's detection methodology or prescribe a universal remedy.")]
+    type: Annotated[AssignmentIndicatorType, Field(description="A seller-asserted material risk or optimization opportunity that currently warrants buyer attention on an AdCP resource relationship. AdCP standardizes the broad meaning of each value for the protocol release; it does not standardize or version the seller's detection methodology or prescribe a universal remedy.")]
 
 
-CreativeApprovalsItemIndicatorTypesEvaluatedItem = CreativeApprovalsItemIndicatorsItemType
+CreativeApprovalsItemIndicatorTypesEvaluatedItem = Annotated[AssignmentIndicatorType, Field(description="A seller-asserted material risk or optimization opportunity that currently warrants buyer attention on an AdCP resource relationship. AdCP standardizes the broad meaning of each value for the protocol release; it does not standardize or version the seller's detection methodology or prescribe a universal remedy.")]
 
 
 class CreativeApprovalsItem(IndicatorBearingResourceState):

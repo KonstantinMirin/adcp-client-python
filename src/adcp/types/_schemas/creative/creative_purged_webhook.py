@@ -9,16 +9,9 @@ from pydantic import AwareDatetime, ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types.constraints import StrMaxLen500, StrMinLen16MaxLen255Matching1E5CF9EB, StrMinLen1MaxLen255Matching67860854, StrMinLen1MaxLen64MatchingD373B860
 
+from ..compliance.comply_test_controller_request import PurgeKind
 from ..core.ext import ExtensionObject
 from ..enums.creative_event_reason_code import CreativeEventReasonCode
-
-
-class PurgeKind(StrEnum):
-    """
-    `soft` — tombstone retained on `list_creatives` (with `include_purged: true`) for the seller's retention window (default 30 days, MUST match the `webhook_activity[]` retention rule). `hard` — no tombstone; the seller MUST NOT retain or echo the asset content elsewhere. `hard` is reserved for legal erasure or equivalent compelled destruction; sellers SHOULD default to `soft`.
-    """
-    SOFT = 'soft'
-    HARD = 'hard'
 
 
 class Initiator(StrEnum):

@@ -9,8 +9,11 @@ from pydantic import ConfigDict, Field, NonNegativeInt, TypeAdapter
 from adcp.types._base import SchemaRef
 from adcp.types.constraints import IntMin1, StrMatchingF601B9EB
 
+from ...core.canonical_projection_ref import AssetSource
+from ...core.requirements.video_asset_requirements import VideoCodec
 from ...enums.ctv_ad_experience import CTVAdExperience
 from ._base import CanonicalFormatBase, SlotsItem
+from .seller_rendered_stateful_display import ContainersItem
 
 
 class Orientation(StrEnum):
@@ -22,15 +25,6 @@ class Orientation(StrEnum):
     SQUARE = 'square'
 
 
-class VideoCodecsItem(StrEnum):
-    H264 = 'h264'
-    H265 = 'h265'
-    VP8 = 'vp8'
-    VP9 = 'vp9'
-    AV1 = 'av1'
-    PRORES = 'prores'
-
-
 class AudioCodecsItem(StrEnum):
     AAC = 'aac'
     MP3 = 'mp3'
@@ -38,28 +32,10 @@ class AudioCodecsItem(StrEnum):
     PCM = 'pcm'
 
 
-class ContainersItem(StrEnum):
-    MP4 = 'mp4'
-    WEBM = 'webm'
-    MOV = 'mov'
-
-
 class Captions(StrEnum):
     REQUIRED = 'required'
     RECOMMENDED = 'recommended'
     NOT_REQUIRED = 'not_required'
-
-
-class AssetSource(StrEnum):
-    """
-    Where the rendered asset bytes come from. Single shared enum across canonicals. See `image.json#asset_source` for the full semantics. `publisher_host_recorded` is audio-specific and has no defined behavior on video. `publisher_owned_reference` is valid when the product accepts an existing post reference via a `published_post` slot instead of uploaded video bytes. Adopters MUST select a value appropriate to the canonical.
-    """
-    BUYER_UPLOADED = 'buyer_uploaded'
-    PUBLISHER_HOST_RECORDED = 'publisher_host_recorded'
-    SELLER_PRE_RENDERED_FROM_BRIEF = 'seller_pre_rendered_from_brief'
-    SELLER_HUMAN_DESIGNED = 'seller_human_designed'
-    AGENT_SYNTHESIZED = 'agent_synthesized'
-    PUBLISHER_OWNED_REFERENCE = 'publisher_owned_reference'
 
 
 class BuyerAssetAcceptance(StrEnum):
@@ -87,7 +63,7 @@ class CanonicalFormatHostedVideo(CanonicalFormatBase):
     max_height: IntMin1 | None = None
     duration_ms_range: Annotated[list[NonNegativeInt | None] | None, Field(description='[min, max] duration in milliseconds. Either endpoint MAY be null to express an unbounded side: [null, 60000] means up to 60s; [15000, null] means at least 15s. [null, null] is invalid because at least one endpoint must be bounded. **Precedence**: when both `duration_ms_exact` and `duration_ms_range` ship on the same product, `duration_ms_exact` takes precedence — buyers MUST validate against the exact value and ignore the range. SDKs SHOULD lint a warning when both fields ship; producers SHOULD pick one.', max_length=2, min_length=2)] = None
     duration_ms_exact: Annotated[IntMin1 | None, Field(description='When set, duration must equal exactly this value. Takes precedence over `duration_ms_range` when both ship (see `duration_ms_range` description).')] = None
-    video_codecs: list[VideoCodecsItem] | None = None
+    video_codecs: list[VideoCodec] | None = None
     audio_codecs: list[AudioCodecsItem] | None = None
     containers: list[ContainersItem] | None = None
     min_bitrate_kbps: IntMin1 | None = None
@@ -102,7 +78,7 @@ class CanonicalFormatHostedVideo(CanonicalFormatBase):
     cta_values: list[str] | None = None
     companion_banner_widths: Annotated[list[IntMin1] | None, Field(description='Permitted companion banner widths (instream video).')] = None
     companion_banner_heights: list[IntMin1] | None = None
-    asset_source: Annotated[AssetSource | None, Field(default_factory=lambda: TypeAdapter(AssetSource).validate_python('buyer_uploaded'), description='Where the rendered asset bytes come from. Single shared enum across canonicals. See `image.json#asset_source` for the full semantics. `publisher_host_recorded` is audio-specific and has no defined behavior on video. `publisher_owned_reference` is valid when the product accepts an existing post reference via a `published_post` slot instead of uploaded video bytes. Adopters MUST select a value appropriate to the canonical.', json_schema_extra={'default': 'buyer_uploaded'})]
+    asset_source: Annotated[AssetSource | None, Field(description='Where the rendered asset bytes come from. Single shared enum across canonicals. See `image.json#asset_source` for the full semantics. `publisher_host_recorded` is audio-specific and has no defined behavior on video. `publisher_owned_reference` is valid when the product accepts an existing post reference via a `published_post` slot instead of uploaded video bytes. Adopters MUST select a value appropriate to the canonical.')] = 'buyer_uploaded'
     buyer_asset_acceptance: Annotated[BuyerAssetAcceptance | None, Field(default_factory=lambda: TypeAdapter(BuyerAssetAcceptance).validate_python('accepted'), description='Whether the product accepts buyer-uploaded video. When `rejected`, the buyer cannot ship a video asset directly — they must use build_creative, sync_creatives with brief inputs, or sync_creatives with an accepted reference asset so the seller produces or resolves the video.', json_schema_extra={'default': 'accepted'})]
     ctv_ad_experience: Annotated[CTVAdExperience | None, Field(description='CTV experience this option serves. On `video_hosted` only `screensaver` is valid (ambient looping video the platform plays on idle). Other experiences route per the matrix in docs/creative/ctv-experiences.mdx; linear CTV video declares no experience.')] = None
 

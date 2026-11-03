@@ -10,6 +10,7 @@ from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import Distinct, RequiredGroups, Rule, UniqueItems
 from adcp.types.constraints import HttpUrl, StrFormatUuid, StrMatching32F5291C, StrMatchingEFC12812
 
+from ..adagents import DelegationType
 from ..enums.adcp_protocol import AdCPProtocol
 from ..enums.collection_kind import CollectionKind
 from ..enums.distribution_identifier_type import DistributionIdentifierType
@@ -520,7 +521,7 @@ class RegistryEventAgentComplianceChangedAgent(RegistryEvent):
     payload: Annotated[CompliancePayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
 
 
-class RegistryEventAgentVerificationEarnedAgentPayloadGradingProfile(StrEnum):
+class GradingProfile(StrEnum):
     """
     Grading profile that produced the badge. Historical events emitted before profile selection may omit this field and are Legacy.
     """
@@ -540,7 +541,7 @@ class RegistryEventAgentVerificationEarnedAgentPayload(AdCPBaseModel):
     role: AdCPProtocol
     verified_specialisms: Annotated[list[str], Field(min_length=1)]
     adcp_version: str | None = None
-    grading_profile: Annotated[RegistryEventAgentVerificationEarnedAgentPayloadGradingProfile | None, Field(description='Grading profile that produced the badge. Historical events emitted before profile selection may omit this field and are Legacy.')] = None
+    grading_profile: Annotated[GradingProfile | None, Field(description='Grading profile that produced the badge. Historical events emitted before profile selection may omit this field and are Legacy.')] = None
 
 
 class RegistryEventAgentVerificationEarnedAgent(RegistryEvent):
@@ -551,14 +552,6 @@ class RegistryEventAgentVerificationEarnedAgent(RegistryEvent):
     event_type: Annotated[Literal[EventType.AGENT_VERIFICATION_EARNED], Field(description='Discriminator. Determines the shape of payload.')]
     entity_type: Annotated[Literal[EntityType.AGENT], Field(description='Entity class touched by this event.')]
     payload: Annotated[RegistryEventAgentVerificationEarnedAgentPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
-
-
-class RegistryEventAgentVerificationLostAgentPayloadGradingProfile(StrEnum):
-    """
-    Grading profile in force when the badge was lost. Historical events emitted before profile selection may omit this field and are Legacy.
-    """
-    LEGACY = 'legacy'
-    SPEC = 'spec'
 
 
 class RegistryEventAgentVerificationLostAgentPayload(AdCPBaseModel):
@@ -573,7 +566,7 @@ class RegistryEventAgentVerificationLostAgentPayload(AdCPBaseModel):
     role: AdCPProtocol
     reason: str
     adcp_version: str | None = None
-    grading_profile: Annotated[RegistryEventAgentVerificationLostAgentPayloadGradingProfile | None, Field(description='Grading profile in force when the badge was lost. Historical events emitted before profile selection may omit this field and are Legacy.')] = None
+    grading_profile: Annotated[GradingProfile | None, Field(description='Grading profile in force when the badge was lost. Historical events emitted before profile selection may omit this field and are Legacy.')] = None
 
 
 class RegistryEventAgentVerificationLostAgent(RegistryEvent):
@@ -654,12 +647,6 @@ class AuthorizationType(StrEnum):
 
 
 Countries = Annotated[Annotated[list[StrMatchingEFC12812], Field(json_schema_extra={'uniqueItems': True}), AfterValidator(Distinct())], Field(min_length=1)]
-
-
-class DelegationType(StrEnum):
-    DIRECT = 'direct'
-    DELEGATED = 'delegated'
-    AD_NETWORK = 'ad_network'
 
 
 class Evidence(StrEnum):

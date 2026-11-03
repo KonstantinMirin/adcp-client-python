@@ -195,7 +195,7 @@ class PlacementTagsValue(AdCPBaseModel):
     description: Annotated[str, Field(description='Description of what this placement tag represents')]
 
 
-class AuthorizedAgentsItemPropertyIdsDelegationType(StrEnum):
+class DelegationType(StrEnum):
     """
     Commercial relationship for this inventory path. 'direct' means the publisher treats this as a direct way to buy from them, even if a third party operates the software. 'delegated' means the agent is authorized to sell on the publisher's behalf. 'ad_network' means the inventory is sold as part of a network/package context rather than as the publisher's direct endpoint.
     """
@@ -221,14 +221,14 @@ class AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemProperty
     collections: Annotated[list[CollectionSelector] | None, Field(description="Optional collection constraints. When present, authorization only applies to inventory associated with these collections. A selector without collection_ids grants for all collections declared in that selector's publisher_domain adagents.json (the bulk-grant form for owner-sold carriage).", min_length=1)] = None
     placement_ids: Annotated[list[str] | None, Field(description='Optional placement constraints. When present, authorization only applies to these placement IDs from the top-level placements array in this file.', min_length=1)] = None
     placement_tags: Annotated[list[str] | None, Field(description='Optional placement tag constraints. When present, authorization only applies to placements whose tags include any of these publisher-defined values.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    delegation_type: Annotated[AuthorizedAgentsItemPropertyIdsDelegationType | None, Field(description="Commercial relationship for this inventory path. 'direct' means the publisher treats this as a direct way to buy from them, even if a third party operates the software. 'delegated' means the agent is authorized to sell on the publisher's behalf. 'ad_network' means the inventory is sold as part of a network/package context rather than as the publisher's direct endpoint.")] = None
+    delegation_type: Annotated[DelegationType | None, Field(description="Commercial relationship for this inventory path. 'direct' means the publisher treats this as a direct way to buy from them, even if a third party operates the software. 'delegated' means the agent is authorized to sell on the publisher's behalf. 'ad_network' means the inventory is sold as part of a network/package context rather than as the publisher's direct endpoint.")] = None
     exclusive: Annotated[bool | None, Field(description="Whether this agent is the publisher's sole authorized path for the scoped inventory slice. When false or absent, other authorized agents may also sell the same inventory.")] = None
     countries: Annotated[list[StrMatchingEFC12812] | None, Field(description='Optional ISO 3166-1 alpha-2 country codes limiting where this authorization applies. Omit for worldwide authorization.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     effective_from: Annotated[AwareDatetime | None, Field(description='Optional start time for this authorization window.')] = None
     effective_until: Annotated[AwareDatetime | None, Field(description='Optional end time for this authorization window.')] = None
 
 
-AuthorizedAgentsItemPropertyTagsDelegationType = AuthorizedAgentsItemPropertyIdsDelegationType
+AuthorizedAgentsItemPropertyTagsDelegationType = DelegationType
 
 
 class AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPropertyTags(AuthorizedAgentBaseFields):
@@ -255,7 +255,7 @@ class AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemProperty
     effective_until: Annotated[AwareDatetime | None, Field(description='Optional end time for this authorization window.')] = None
 
 
-AuthorizedAgentsItemInlinePropertiesDelegationType = AuthorizedAgentsItemPropertyIdsDelegationType
+AuthorizedAgentsItemInlinePropertiesDelegationType = DelegationType
 
 
 class AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemInlineProperties(AuthorizedAgentBaseFields):
@@ -282,7 +282,7 @@ class AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemInlinePr
     effective_until: Annotated[AwareDatetime | None, Field(description='Optional end time for this authorization window.')] = None
 
 
-AuthorizedAgentsItemPublisherPropertiesDelegationType = AuthorizedAgentsItemPropertyIdsDelegationType
+AuthorizedAgentsItemPublisherPropertiesDelegationType = DelegationType
 
 
 class AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPublisherProperties(AuthorizedAgentBaseFields):

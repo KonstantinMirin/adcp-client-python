@@ -20,11 +20,6 @@ class ModesItem(StrEnum):
     ROAS = 'roas'
 
 
-class PolicyProfileRoasStrengthsItem(StrEnum):
-    FLOOR = 'floor'
-    TARGET = 'target'
-
-
 class MaxBidWithCostPer(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -37,7 +32,9 @@ class MaxBidWithCostPer(AdCPBaseModel):
     cost_per_strengths: Annotated[list[OutcomeTargetCostStrength], Field(description='cost_per strengths supported when combined with max_bid.', json_schema_extra={'uniqueItems': True}, min_length=1)]
 
 
-MaxBidWithRoasRoasStrengthsItem = PolicyProfileRoasStrengthsItem
+class RoasStrength(StrEnum):
+    FLOOR = 'floor'
+    TARGET = 'target'
 
 
 class MaxBidWithRoas(AdCPBaseModel):
@@ -49,7 +46,7 @@ class MaxBidWithRoas(AdCPBaseModel):
         UniqueItems('roas_strengths'),
     )
     kind: Literal['max_bid_with_roas']
-    roas_strengths: Annotated[list[MaxBidWithRoasRoasStrengthsItem], Field(description='roas strengths supported when combined with max_bid.', json_schema_extra={'uniqueItems': True}, min_length=1)]
+    roas_strengths: Annotated[list[RoasStrength], Field(description='roas strengths supported when combined with max_bid.', json_schema_extra={'uniqueItems': True}, min_length=1)]
 
 
 class PolicyProfile(AdCPBaseModel):
@@ -65,7 +62,7 @@ class PolicyProfile(AdCPBaseModel):
     )
     modes: Annotated[list[ModesItem] | None, Field(description='Standalone policy modes accepted in this exact scope and allocation context. Combination-only components belong only in supported_combinations and need not appear here. `automatic` means the seller accepts and preserves an explicit `{automatic:true}` authored block; omission only invokes inheritance/default behavior.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     cost_per_strengths: Annotated[list[OutcomeTargetCostStrength] | None, Field(description='Supported standalone cost_per strengths in this profile. Required exactly when modes includes cost_per.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    roas_strengths: Annotated[list[PolicyProfileRoasStrengthsItem] | None, Field(description='Supported standalone roas strengths in this profile. Required exactly when modes includes roas.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    roas_strengths: Annotated[list[RoasStrength] | None, Field(description='Supported standalone roas strengths in this profile. Required exactly when modes includes roas.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     supported_combinations: Annotated[list[MaxBidWithCostPer | MaxBidWithRoas] | None, Field(description='Multi-field policies supported in this exact scope and allocation context. Each entry independently qualifies the strengths supported in that combination; standalone strength support does not imply combination support. Absence means no multi-field combination is claimed.', min_length=1)] = None
 
 

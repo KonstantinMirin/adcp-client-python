@@ -13,7 +13,7 @@ from adcp.types.constraints import HttpUrl, StrMatching32F5291C, StrMatching5E98
 from ..enums.reporting_finality import ReportingFinality
 from .reporting_canonicalization_contract import ReportingPrimaryKey
 from .reporting_dataset_share_destination import ReportingCloud
-from .reporting_delivery_method import ReportingOrchestration
+from .reporting_delivery_method import FileFormat, ReportingOrchestration
 from .reporting_reconciliation_mode import ReportingReconciliationMode
 from .reporting_resource import ReportingReaderCompatibilityItem
 from .reporting_schedule_offering import ReportingScheduleOffering
@@ -73,14 +73,6 @@ class MethodProvider(AdCPBaseModel):
     domain: StrMatching32F5291C
 
 
-class Format(StrEnum):
-    JSONL = 'jsonl'
-    CSV = 'csv'
-    PARQUET = 'parquet'
-    AVRO = 'avro'
-    ORC = 'orc'
-
-
 ProducerIdentityProvider = MethodProvider
 
 
@@ -122,7 +114,7 @@ class Method(AdCPBaseModel):
     orchestration: ReportingOrchestration
     destination_modes: Annotated[list[DestinationModesItem], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
     provider: MethodProvider | None = None
-    format: Format | None = None
+    format: FileFormat | None = None
     access_mode: StrMinLen1MaxLen64Matching5CDAE669 | None = None
     producer_identity: Annotated[ProducerIdentity | None, Field(description='Seller principal a buyer grants access to for this exact buyer-hosted destination offering.')] = None
     reader_compatibility: Annotated[list[ReportingReaderCompatibilityItem] | None, Field(json_schema_extra={'uniqueItems': True})] = None

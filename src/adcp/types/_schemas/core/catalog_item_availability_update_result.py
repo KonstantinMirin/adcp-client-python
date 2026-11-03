@@ -11,6 +11,7 @@ from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, 
 from adcp.types.constraints import StrMinLen1MaxLen255
 
 from .catalog_item_availability_error import CatalogItemAvailabilityError
+from .catalog_item_availability_state import Availability
 from .ext import ExtensionObject
 
 
@@ -29,14 +30,6 @@ class Status(StrEnum):
     APPLIED = 'applied'
     UNCHANGED = 'unchanged'
     FAILED = 'failed'
-
-
-class Availability(StrEnum):
-    """
-    Persisted buyer-authored state after an applied or unchanged result.
-    """
-    ACTIVE = 'active'
-    SUPPRESSED = 'suppressed'
 
 
 class CatalogItemAvailabilityUpdateResult(AdCPBaseModel):

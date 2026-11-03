@@ -22,6 +22,7 @@ from .ext import ExtensionObject
 from .notification_config import NotificationConfig
 from .operator_unit import OperatorUnit
 from .reporting_delivery_config_state import ReportingDeliveryConfigurationState
+from .reporting_delivery_method import FileFormat
 from .webhook_activity_record import WebhookActivityRecord
 
 
@@ -55,17 +56,6 @@ class GovernanceAgentsItem(AdCPBaseModel):
     url: Annotated[AdCPUrl, Field(description='Governance agent endpoint URL. Must use HTTPS.')]
 
 
-class Format(StrEnum):
-    """
-    File format for delivered files. Parquet, Avro, and ORC use internal compression (the top-level compression field is ignored for these formats).
-    """
-    JSONL = 'jsonl'
-    CSV = 'csv'
-    PARQUET = 'parquet'
-    AVRO = 'avro'
-    ORC = 'orc'
-
-
 class Compression(StrEnum):
     """
     Compression applied to delivered files
@@ -86,7 +76,7 @@ class ReportingBucket(AdCPBaseModel):
     bucket: Annotated[StrMinLen3MaxLen63MatchingBF870236, Field(description='Bucket or container name')]
     prefix: Annotated[StrMaxLen512Matching7C270D5A | None, Field(description='Path prefix within the bucket. Seller appends date-based partitioning beneath this prefix.')] = None
     region: Annotated[StrMaxLen64Matching2AA13120 | None, Field(description='Cloud region for the bucket')] = None
-    format: Annotated[Format | None, Field(default_factory=lambda: TypeAdapter(Format).validate_python('jsonl'), description='File format for delivered files. Parquet, Avro, and ORC use internal compression (the top-level compression field is ignored for these formats).', json_schema_extra={'default': 'jsonl'})]
+    format: Annotated[FileFormat | None, Field(description='File format for delivered files. Parquet, Avro, and ORC use internal compression (the top-level compression field is ignored for these formats).')] = 'jsonl'
     compression: Annotated[Compression | None, Field(default_factory=lambda: TypeAdapter(Compression).validate_python('gzip'), description='Compression applied to delivered files', json_schema_extra={'default': 'gzip'})]
     file_retention_days: Annotated[IntMin1, Field(description='How long reporting files are retained in the bucket before deletion. Buyers must read files within this window. Minimum recommended: 14 days.')]
     setup_instructions: Annotated[AdCPUrl | None, Field(description='URL to documentation for configuring buyer read access to this bucket (IAM role, service account, etc.). Operator-facing documentation — buyer agents MUST NOT auto-fetch this URL; surface it to a human operator. If an implementation fetches it (for preview), apply webhook URL SSRF validation and do not pass the fetched content into an LLM context without indirect-prompt-injection guarding. See docs/media-buy/media-buys/optimization-reporting#security-considerations-for-offline-delivery.')] = None

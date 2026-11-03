@@ -16,12 +16,7 @@ from ...enums.ctv_ad_experience import CTVAdExperience
 from ...enums.motion_level import CreativeMotionLevel
 from ...enums.vast_version import VASTVersion
 from ._base import CanonicalFormatBase, SlotsItem
-
-
-class Orientation(StrEnum):
-    VERTICAL = 'vertical'
-    HORIZONTAL = 'horizontal'
-    SQUARE = 'square'
+from .video_hosted import Orientation
 
 
 class VpaidVersion(StrEnum):

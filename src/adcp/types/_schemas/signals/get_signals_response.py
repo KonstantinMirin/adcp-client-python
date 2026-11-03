@@ -23,6 +23,7 @@ from ..core.signal_listing import SignalListing
 from ..core.signal_ref import SignalRef
 from ..core.vendor_pricing_option import VendorPricingOption
 from ..core.version_envelope import AdCPVersionEnvelope
+from ..core.wholesale_feed_webhook import CacheScope
 from ..enums.signal_catalog_type import SignalAvailabilityType
 from ..enums.signal_value_type import SignalValueType
 
@@ -92,14 +93,6 @@ class IncompleteItem(AdCPBaseModel):
     scope: Annotated[Scope, Field(description="'signals': not all matching signals were returned. 'pricing': signals returned but pricing is absent or unconfirmed. 'wholesale_feed': in wholesale mode, full feed enumeration could not complete in the time budget.")]
     description: Annotated[str, Field(description='Human-readable explanation of what is missing and why.')]
     estimated_wait: Annotated[EstimatedWait | None, Field(description='How much additional time would resolve this scope. Allows the caller to decide whether to retry with a larger time_budget.')] = None
-
-
-class CacheScope(StrEnum):
-    """
-    Declares whether the wholesale_feed_version and pricing_version on this response describe a universal layer or an account-specific overlay. REQUIRED on every 3.1+ response (the 3.1 schema enforces this — the safety property of the two-layer cache model depends on it). 'public': this response describes the agent's published rate card; the caller MAY dedupe under (agent, discovery_mode, filters, destinations, countries) without scoping by account. 'account': this response includes account-specific overrides; the caller MUST cache the version under that tuple plus account_id. When the request did NOT include `account`, the agent MUST return `cache_scope: 'public'`. When the request included `account`, the agent MUST return either 'public' (this account prices off the public rate card — caller dedupes) or 'account' (account-specific overrides exist — caller caches under the account key). Agents MAY return 'public' on an account-scoped request that previously had overrides — callers SHOULD interpret this as a downgrade. Without schema-required cache_scope, an agent silently omitting the field on an account-scoped response would cause callers to mis-key the cache and serve account-overlay payloads to other accounts — the canonical safety invariant of the entire cache layering model. **Backward-compatibility note for 3.1 validators:** SDKs validating strictly against the 3.1 schema MUST select the validator based on the server-declared `adcp_version`. For responses with `adcp_version` starting `3.0`, the 3.1 cache_scope-required constraint MUST be relaxed — pre-3.1 agents correctly emit no cache_scope and remain conformant to their declared version. This is a tightening within 3.1, not a 3.0 break.
-    """
-    PUBLIC = 'public'
-    ACCOUNT = 'account'
 
 
 class GetSignalsResponse(AdCPVersionEnvelope, ProtocolEnvelope):

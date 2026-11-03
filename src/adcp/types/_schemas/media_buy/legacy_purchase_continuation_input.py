@@ -13,7 +13,7 @@ from adcp.types.constraints import StrMinLen1, StrMinLen16
 from ..core.account_ref import AccountReference
 
 
-class AcceptedLossesItem(StrEnum):
+class LossesItem(StrEnum):
     FEED_VERSION_NOT_ATOMIC = 'feed_version_not_atomic'
     PRICING_VERSION_NOT_ATOMIC = 'pricing_version_not_atomic'
     MUTATION_IDEMPOTENCY_NOT_GUARANTEED = 'mutation_idempotency_not_guaranteed'
@@ -35,7 +35,7 @@ class CompatibilityPurchaseCoordinatorInput(AdCPBaseModel):
     continuation_token: Annotated[StrMinLen16, Field(description='Opaque token returned by products_available.purchase_continuation.')]
     account: Annotated[AccountReference, Field(description='Account identity that must match the account bound into the continuation token.')]
     selected_product_ids: Annotated[list[StrMinLen1], Field(description='Non-empty subset of the product IDs bound into the continuation.', json_schema_extra={'uniqueItems': True}, min_length=1)]
-    accepted_losses: Annotated[Annotated[list[AcceptedLossesItem], AfterValidator(AtLeastOne(values=('feed_version_not_atomic',), pinned=())), AfterValidator(AtLeastOne(values=('pricing_version_not_atomic',), pinned=()))], Field(description='Exact loss set returned with the continuation. Missing, extra, or stale consent fails before mutation.', json_schema_extra={'uniqueItems': True}, min_length=2)]
+    accepted_losses: Annotated[Annotated[list[LossesItem], AfterValidator(AtLeastOne(values=('feed_version_not_atomic',), pinned=())), AfterValidator(AtLeastOne(values=('pricing_version_not_atomic',), pinned=()))], Field(description='Exact loss set returned with the continuation. Missing, extra, or stale consent fails before mutation.', json_schema_extra={'uniqueItems': True}, min_length=2)]
     legacy_create_request: Annotated[dict[str, Any], Field(description='Proposed create_media_buy payload. Before mutation the coordinator validates this object against create-media-buy-request.json from source_adcp_version, requires explicit-package mode, and requires its package product IDs to equal selected_product_ids.', min_length=1)]
 
 

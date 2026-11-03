@@ -11,7 +11,7 @@ from adcp.types._runtime import ConditionalRequired, Distinct, Match, RequiredGr
 from adcp.types.constraints import NonEmptyList, StrMatching3CBDBB74, StrMatching4BFFD9A4, StrMatching4D6E1599, StrMatching71E52EB8, StrMatchingEFC12812, StrMinLen1
 
 from ..core.ext import ExtensionObject
-from .acceptance_policy_rule import AcceptancePolicyRule
+from .acceptance_policy_rule import AcceptancePolicyRule, AppliesToItem
 
 
 class PolicyRefsItem(AdCPBaseModel):
@@ -30,16 +30,6 @@ class Coverage(StrEnum):
     """
     PARTIAL = 'partial'
     COMPLETE = 'complete'
-
-
-class AppliesToItem(StrEnum):
-    ACCOUNT = 'account'
-    MEDIA_BUY = 'media_buy'
-    CREATIVE = 'creative'
-    LANDING_PAGE = 'landing_page'
-    TARGETING = 'targeting'
-    DELIVERY = 'delivery'
-    FORMAT = 'format'
 
 
 class Scope(AdCPBaseModel):

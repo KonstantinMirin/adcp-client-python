@@ -23,6 +23,7 @@ from ..core.version_envelope import AdCPVersionEnvelope
 from ..creative.creative_feature_result import CreativeFeatureResult
 from ..creative.preview_render import PreviewRender
 from ..enums.creative_selection_strategy import CreativeSelectionStrategy
+from .build_creative_request import KeepMode
 
 
 class BuildCreativeResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope):
@@ -241,15 +242,6 @@ class CreativesItem(AdCPBaseModel):
     errors: Annotated[list[Error] | None, Field(description='Per-creative errors when this catalog item failed to build. Present only on failed items; does not fail the batch (per-item non-atomic). A failed entry carries errors[] and no variants[]; a successful entry carries variants[] and SHOULD NOT carry errors.', min_length=1)] = None
 
 
-class KeepModeApplied(StrEnum):
-    """
-    Echoes the `keep_mode` the agent applied (mirrors the request hint). Present when the request set `keep_mode`. `keep_mode` is advisory — it does not change what is produced or billed (you pay for every leaf in `variants[]`) — so this echo is the buyer's confirmation that the hint was received, the audit paper trail for a 'I asked for keep_one but was billed for N' dispute. Whether the agent acted on it shows in the `recommended`/`rank` it set on the leaves.
-    """
-    KEEP_ALL = 'keep_all'
-    KEEP_ONE = 'keep_one'
-    KEEP_SOME = 'keep_some'
-
-
 class BudgetStatus(StrEnum):
     """
     `complete` (default; absent == complete for back-compat) means the agent produced everything requested. `capped` means a `max_spend` ceiling stopped production early: every returned leaf is real/billed, and an advisory `BUDGET_CAP_REACHED` entry in `errors[]` is the authoritative cap signal. The leaf-granular shortfall is `leaves_returned` < `leaves_total` (do NOT rely on items_returned < items_total — that is also the normal max_creatives-sampling signal and does not capture a mid-item or variant-only cap). This is a successful partial build, not a failure.
@@ -280,7 +272,7 @@ class BuildCreativeVariantSuccess(BuildCreativeResponse):
     leaves_returned: Annotated[NonNegativeInt | None, Field(description="Number of leaves actually produced and billed across creatives[].variants[]. When budget_status is 'capped', leaves_returned < leaves_total is the leaf-granular shortfall signal (items_returned/items_total are catalog-item counts and do not capture a mid-item or variant-only cap).")] = None
     vendor_cost: Annotated[NonNegativeFloat | None, Field(description='Aggregate cost across all variant leaves, denominated in currency. MUST equal the sum of the per-leaf vendor_cost values (leaves are the source of truth). When present, every produced leaf MUST carry its own vendor_cost + currency (enforced) so the sum invariant is checkable; omit this aggregate only for a genuinely free build.')] = None
     currency: Annotated[StrMatching43E30B32 | None, Field(description='ISO 4217 currency code for the aggregate vendor_cost.')] = None
-    keep_mode_applied: Annotated[KeepModeApplied | None, Field(description="Echoes the `keep_mode` the agent applied (mirrors the request hint). Present when the request set `keep_mode`. `keep_mode` is advisory — it does not change what is produced or billed (you pay for every leaf in `variants[]`) — so this echo is the buyer's confirmation that the hint was received, the audit paper trail for a 'I asked for keep_one but was billed for N' dispute. Whether the agent acted on it shows in the `recommended`/`rank` it set on the leaves.")] = None
+    keep_mode_applied: Annotated[KeepMode | None, Field(description="Echoes the `keep_mode` the agent applied (mirrors the request hint). Present when the request set `keep_mode`. `keep_mode` is advisory — it does not change what is produced or billed (you pay for every leaf in `variants[]`) — so this echo is the buyer's confirmation that the hint was received, the audit paper trail for a 'I asked for keep_one but was billed for N' dispute. Whether the agent acted on it shows in the `recommended`/`rank` it set on the leaves.")] = None
     selection_strategy_applied: Annotated[CreativeSelectionStrategy | None, Field(description='Echoes the selection_strategy the agent applied when max_creatives sampling occurred (mirrors keep_mode_applied). Present when the request set selection_strategy. The ranking itself shows in the rank/recommended on creatives[].variants[].')] = None
     budget_status: Annotated[BudgetStatus | None, Field(default_factory=lambda: TypeAdapter(BudgetStatus).validate_python('complete'), description='`complete` (default; absent == complete for back-compat) means the agent produced everything requested. `capped` means a `max_spend` ceiling stopped production early: every returned leaf is real/billed, and an advisory `BUDGET_CAP_REACHED` entry in `errors[]` is the authoritative cap signal. The leaf-granular shortfall is `leaves_returned` < `leaves_total` (do NOT rely on items_returned < items_total — that is also the normal max_creatives-sampling signal and does not capture a mid-item or variant-only cap). This is a successful partial build, not a failure.', json_schema_extra={'default': 'complete'})]
     errors: Annotated[list[Error] | None, Field(description='Advisory (non-terminal) entries on an otherwise-successful build — e.g. a `BUDGET_CAP_REACHED` notice when `budget_status` is `capped`. Terminal failures use the BuildCreativeError shape, not this field.')] = None

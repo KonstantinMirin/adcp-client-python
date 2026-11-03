@@ -14,6 +14,7 @@ from ..core.canonical_product import CanonicalProduct
 from ..core.context import ContextObject
 from ..core.duration import Duration
 from ..core.ext import ExtensionObject
+from ..core.wholesale_feed_webhook import CacheScope
 
 
 class Outcome(StrEnum):
@@ -22,11 +23,6 @@ class Outcome(StrEnum):
     """
     LISTED = 'listed'
     UNCHANGED = 'unchanged'
-
-
-class CacheScope(StrEnum):
-    PUBLIC = 'public'
-    ACCOUNT = 'account'
 
 
 class Scope(StrEnum):

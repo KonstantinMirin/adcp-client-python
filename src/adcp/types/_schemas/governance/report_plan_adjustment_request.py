@@ -13,6 +13,7 @@ from adcp.types.constraints import FloatGt0, StrMatching3CBDBB74, StrMatching43E
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
 from ..core.version_envelope import AdCPVersionEnvelope
+from .get_plan_audit_logs_response import AdjustmentType, EvidenceType
 
 
 class Action(StrEnum):
@@ -31,16 +32,6 @@ class Decision(StrEnum):
     DISPUTE = 'dispute'
 
 
-class AdjustmentType(StrEnum):
-    """
-    Commercial meaning. Verified decommitments restore headroom in every mode; verified refunds and credits restore it only in verified_net_cost mode; makegoods never restore cash headroom.
-    """
-    DECOMMITMENT = 'decommitment'
-    REFUND = 'refund'
-    CREDIT = 'credit'
-    MAKEGOOD = 'makegood'
-
-
 class Amount(AdCPBaseModel):
     """
     Positive adjustment amount in the plan currency.
@@ -51,13 +42,6 @@ class Amount(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/report-plan-adjustment-request.json', pointer='#/properties/amount')
     amount: Annotated[FloatGt0, Field(description='Finite positive amount. Cumulative adjustments for an outcome cannot exceed its authoritative commitment.')]
     currency: Annotated[StrMatching43E30B32, Field(description='Three-letter uppercase currency code matching the plan currency.')]
-
-
-class EvidenceType(StrEnum):
-    DECOMMITMENT_AGREEMENT = 'decommitment_agreement'
-    REFUND_SETTLEMENT = 'refund_settlement'
-    CREDIT_NOTE = 'credit_note'
-    MAKEGOOD_AGREEMENT = 'makegood_agreement'
 
 
 class Evidence(AdCPBaseModel):

@@ -18,7 +18,10 @@ from ..core.duration import Duration
 from ..core.error import Error
 from ..core.ext import ExtensionObject
 from ..core.version_envelope import AdcpVersion
+from .get_products_response import Scope
 from .get_products_targeting_resolution import ProductDiscoveryTargetingResolution
+from .legacy_purchase_continuation_input import LossesItem
+from .refine_proposals_response import Status
 
 
 class Outcome(StrEnum):
@@ -37,14 +40,6 @@ class ProposalsItem(CanonicalProposal):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/request-proposals-response.json', pointer='#/properties/proposals/items')
     proposal_status: Annotated[Literal['draft'], Field(description='draft is indicative and unreserved; committed has firm terms with inventory reserved until expires_at; accepted is the historical snapshot attached to a MediaBuy.')]
     expires_at: Annotated[AwareDatetime, Field(description='For a draft, the indicative-terms freshness deadline. For a committed proposal, the inventory-hold deadline.')]
-
-
-class Scope(StrEnum):
-    PRODUCTS = 'products'
-    PRICING = 'pricing'
-    FORECAST = 'forecast'
-    PROPOSALS = 'proposals'
-    WHOLESALE_FEED = 'wholesale_feed'
 
 
 class IncompleteItem(AdCPBaseModel):
@@ -81,12 +76,6 @@ class SourceAdcpVersion(StrEnum):
     V_3_1 = '3.1'
 
 
-class LossesItem(StrEnum):
-    FEED_VERSION_NOT_ATOMIC = 'feed_version_not_atomic'
-    PRICING_VERSION_NOT_ATOMIC = 'pricing_version_not_atomic'
-    MUTATION_IDEMPOTENCY_NOT_GUARANTEED = 'mutation_idempotency_not_guaranteed'
-
-
 class PurchaseContinuationLegacyCreate(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -103,11 +92,6 @@ class PurchaseContinuationLegacyCreate(AdCPBaseModel):
     product_ids: Annotated[list[StrMinLen1], Field(description='Exact products bound to this continuation. A follow-up MUST select a non-empty subset and MUST NOT substitute an ID from another discovery result.', json_schema_extra={'uniqueItems': True}, min_length=1)]
     losses: Annotated[Annotated[list[LossesItem], AfterValidator(AtLeastOne(values=('feed_version_not_atomic',), pinned=())), AfterValidator(AtLeastOne(values=('pricing_version_not_atomic',), pinned=()))], Field(description='Guarantees that the established create_media_buy continuation cannot provide. The coordinator MUST fail before mutation unless the caller explicitly accepts every listed loss.', json_schema_extra={'uniqueItems': True}, min_length=2)]
     requires_explicit_acceptance: Literal[True]
-
-
-class Status(StrEnum):
-    COMPLETED = 'completed'
-    SUBMITTED = 'submitted'
 
 
 class RequestProposalsResponse(BranchDispatchMixin, AdCPBaseModel):
@@ -154,7 +138,7 @@ class RequestProposalsResponseProposedCompleted(RequestProposalsResponse):
         ForbiddenGroups((('reason',), ('suggestions',), ('purchase_continuation',), ('task_id',))),
     )
     outcome: Literal[Outcome.PROPOSED]
-    status: Literal[Status.COMPLETED] | None = None
+    status: Literal['completed'] | None = None
     products: Annotated[list[CanonicalProduct], Field(min_length=1)]
     proposals: Annotated[list[ProposalsItem], Field(min_length=1)]
 
@@ -168,7 +152,7 @@ class RequestProposalsResponseProductsAvailableCompleted(RequestProposalsRespons
         ForbiddenGroups((('proposals',), ('reason',), ('suggestions',), ('task_id',))),
     )
     outcome: Literal[Outcome.PRODUCTS_AVAILABLE]
-    status: Literal[Status.COMPLETED] | None = None
+    status: Literal['completed'] | None = None
     products: Annotated[list[CanonicalProduct], Field(min_length=1)]
     purchase_continuation: Annotated[PurchaseContinuationListedPurchaseAccount | PurchaseContinuationLegacyCreate, Field(description='Deprecated AdCP 3.x projection instruction for purchasing products returned without a proposal. This is coordinator state, not a claim that the established seller implements a compact task. A native 3.2 seller MUST NOT emit it.')]
 
@@ -182,7 +166,7 @@ class RequestProposalsResponseRejectedCompleted(RequestProposalsResponse):
         ForbiddenGroups((('proposals',), ('products',), ('incomplete',), ('purchase_continuation',), ('task_id',))),
     )
     outcome: Literal[Outcome.REJECTED]
-    status: Literal[Status.COMPLETED] | None = None
+    status: Literal['completed'] | None = None
     reason: StrMinLen1
 
 

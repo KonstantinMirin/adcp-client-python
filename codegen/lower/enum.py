@@ -249,6 +249,26 @@ def lower(
     # at an ``if`` branch of *Authentication Scheme*), and widening the arm would change
     # what §4 derives at a position it deliberately gives no name.
     entry = mod.vocabularies.get(node.pointer)
+    if entry is None and not node.facts:
+        # **The VALUE LIST arm, for a restating position no pointer of this document's own
+        # text reaches** (:attr:`compiler.Module.restatements`): a node a COMPOSITION
+        # re-lowers at a pointer belonging to no edge of either document, and a position
+        # whose home is in this same module.  Asked only where the node carries no
+        # constraint beside its ``enum``, because a value list beside a ``pattern`` admits
+        # a subset of the members and is not the entry's vocabulary.
+        # **A document ROOT is never answered here**, and that is §1's rule: "every
+        # portable document contributes a symbol", so a root that referenced another
+        # module's class would leave its own document with no exported name.  The pointer
+        # is empty exactly at the root (``bundle.nodes_at`` starts at ``""``).
+        restated = None if node.pointer == "" else mod.restatements.get(node.members)
+        if isinstance(restated, str):
+            # A home in THIS module, so the reference is local and no import is written.
+            # ``emit`` leaves the home's own pointer out of the map, and the comparison is
+            # the guard that says so: the home declares, so it must reach ``decide`` below.
+            if restated != node.pointer:
+                return ir.Decided(ir.TypeRef(restated, local=True))
+        elif restated is not None:
+            entry = restated
     if entry is not None:
         # The same two records a ``$ref`` writes, through the same one writer: §1 gives a
         # class one import path, so the symbol is taken from the module that DECLARES it

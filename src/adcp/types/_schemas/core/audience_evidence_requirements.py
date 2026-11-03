@@ -35,7 +35,7 @@ class EvidencePresence(StrEnum):
     WHEN_AVAILABLE = 'when_available'
 
 
-class AcceptedEvidenceTypesItem(StrEnum):
+class EvidenceType(StrEnum):
     MEASURED = 'measured'
     FORECAST = 'forecast'
     SELLER_DECLARED = 'seller_declared'
@@ -84,7 +84,7 @@ class AudienceEvidenceRequirements(AdCPBaseModel):
     evidence_presence: Annotated[EvidencePresence, Field(description='required applies the mode to evidence presence itself. when_available applies constraints only when a product publishes evidence: with requirement_mode required, a product with no evidence remains eligible but a product with evidence must have an admissible item; with preferred, presence and admissibility only affect ranking.')]
     accepted_methodologies: Annotated[list[AudienceEvidenceMethodology] | None, Field(description='Allowed methodologies. excluded_methodologies always wins if a value appears in both lists.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     excluded_methodologies: Annotated[list[AudienceEvidenceMethodology] | None, Field(description='Disallowed methodologies. Exclusion wins over accepted_methodologies when the lists overlap.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    accepted_evidence_types: Annotated[list[AcceptedEvidenceTypesItem] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    accepted_evidence_types: Annotated[list[EvidenceType] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     accepted_providers: Annotated[list[BrandReference] | None, Field(description='Allowed evidence providers. excluded_providers always wins if the same canonical BrandRef appears in both lists.', min_length=1)] = None
     excluded_providers: Annotated[list[BrandReference] | None, Field(description='Disallowed evidence providers. Exclusion wins over accepted_providers when the lists overlap.', min_length=1)] = None
     accepted_subject_types: Annotated[list[AudienceSubjectType] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None

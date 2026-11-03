@@ -13,6 +13,7 @@ from ..core.creative_revision_id import CreativeRevisionID
 from ..core.ext import ExtensionObject
 from ..enums.creative_event_reason_code import CreativeEventReasonCode
 from ..enums.creative_status import CreativeStatus
+from .creative_purged_webhook import Initiator
 
 
 class From(StrEnum):
@@ -36,14 +37,6 @@ class Transition(AdCPBaseModel):
     from_: Annotated[From, Field(alias='from', description='Prior status — restricted to the states from which a seller/system-initiated transition can fire. For initial review outcomes the prior status is `pending_review`; for processing outcomes it is `processing`; for seller re-review, post-approval revocation, recoverable suspension, and seller-initiated archive it is `approved`; for recovery from a dependency/authorization outage or terminal escalation after a suspension it is `suspended`.')]
     to: Annotated[CreativeStatus, Field(description='New status.')]
     observed_at: Annotated[AwareDatetime, Field(description="ISO 8601 timestamp when the seller observed the transition. Distinct from `fired_at` — `fired_at` reflects when the webhook was emitted, which may lag `observed_at` by up to the seller's coalescence window. **Ordering with `media-buy.impairment`:** when a creative transition also causes a media-buy impairment (e.g., `approved → suspended` or `approved → rejected` while assignments exist), the `creative.status_changed` and `impairment` fires are not ordered — buyers MUST NOT assume one arrives before the other. Reconcile via the snapshot (`list_creatives` and `get_media_buys`) when the two fires reference the same `creative_id`.")]
-
-
-class Initiator(StrEnum):
-    """
-    Who initiated the transition. `seller` — explicit decision by the seller (human reviewer, policy operator, takedown handler). `system` — automated seller-side process (processing pipeline, retention sweep, inactivity scan). `buyer` never appears on this event — buyer-initiated transitions are acknowledged on the `sync_creatives` response path and MUST NOT fire `creative.status_changed`.
-    """
-    SELLER = 'seller'
-    SYSTEM = 'system'
 
 
 class CreativeStatusChangedWebhook(AdCPBaseModel):

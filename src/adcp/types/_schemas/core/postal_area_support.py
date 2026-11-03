@@ -13,17 +13,17 @@ from adcp.types.constraints import NonEmptyList, StrMatchingEFC12812
 from ..enums.legacy_postal_system import CountryFusedPostalCodeSystem
 
 
-class USItem(StrEnum):
+class USPostalCodeSystem(StrEnum):
     ZIP = 'zip'
     ZIP_PLUS_FOUR = 'zip_plus_four'
 
 
-class GBItem(StrEnum):
+class GBPostalCodeSystem(StrEnum):
     OUTWARD = 'outward'
     FULL = 'full'
 
 
-class CAItem(StrEnum):
+class CaPostalCodeSystem(StrEnum):
     FSA = 'fsa'
     FULL = 'full'
 
@@ -55,9 +55,9 @@ class PostalAreaSupport(AdCPBaseModel):
         UniqueItems('IN'),
         UniqueItems('ZA'),
     )
-    US: Annotated[list[USItem] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    GB: Annotated[list[GBItem] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    CA: Annotated[list[CAItem] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    US: Annotated[list[USPostalCodeSystem] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    GB: Annotated[list[GBPostalCodeSystem] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    CA: Annotated[list[CaPostalCodeSystem] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     DE: Annotated[list[Literal['plz']] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     CH: Annotated[list[Literal['plz']] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     AT: Annotated[list[Literal['plz']] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
@@ -79,4 +79,4 @@ class PostalAreaSupport(AdCPBaseModel):
     at_plz: bool | None = None
 
 
-__all__ = ["PostalAreaSupport", "CAItem", "GBItem", "USItem"]
+__all__ = ["PostalAreaSupport", "CaPostalCodeSystem", "GBPostalCodeSystem", "USPostalCodeSystem"]

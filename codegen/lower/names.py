@@ -1378,6 +1378,7 @@ def assign(
     mod: Module,
     carriers: frozenset[str] = frozenset(),
     surface: frozenset[str] = frozenset(),
+    declared: Mapping[str, str] = {},
 ) -> ir.Module | Refusal:
     """The pass: every declaration of one module given the name §4 derives for it.
 
@@ -1414,6 +1415,15 @@ def assign(
 
     :data:`SCOPE` is the DEDUP's scope and the signature still holds it: two nodes are one
     class within one module and nowhere else.
+
+    ``declared`` is §3a's JUDGED NAME for a catalogue entry declared at one of this
+    module's pointers (``codegen/vocabularies.py``), and it enters as an EXTRA FIRST RUNG
+    rather than as an override.  §3a's table admits "a stated name lengthened to avoid an
+    existing class -- that is the collision rule, not a mint", and a rung is how this pass
+    says that: a rung of ONE segment has nothing to prepend, so §4's own axes answer a
+    collision by FALLING to the position's own chain -- the name this pass would have given
+    it with no row at all.  Nothing is special-cased and no name is forced past a
+    collision; the judgement is preferred and §4 still decides.
 
     :data:`COLLISION_SCOPE` is the COLLISION rule's, which §1's amendment widened to the
     domain for the positions the surface exports, and the signature holds that too --
@@ -1464,7 +1474,11 @@ def assign(
             takes[pointer] = declares
             degenerate.add(i)
             continue
-        ladders[pointer] = rungs
+        #: §3a's judged name as rung 0, read AFTER the dedup arm above: the comparison
+        #: there is §4's "two positions stating the same NODE", which a name the catalogue
+        #: judged has no part in.
+        name = declared.get(pointer)
+        ladders[pointer] = ((name,), *rungs) if name is not None else rungs
     spelled = spell_the_rungs(
         ladders,
         carriers | {symbol for _, symbol in mod.imports},

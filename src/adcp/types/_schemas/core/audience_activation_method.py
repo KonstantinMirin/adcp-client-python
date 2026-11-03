@@ -11,6 +11,7 @@ from adcp.types._runtime import Dependencies, Rule, UniqueItems
 from adcp.types.constraints import HttpUrl, IntMin1, StrMinLen1, StrMinLen1MaxLen256
 
 from ..enums.cloud_storage_protocol import CloudStorageProtocol
+from ..enums.delivery_recipient_cloud import DeliveryRecipientCloud
 from .brand_ref import BrandReference
 
 
@@ -80,15 +81,6 @@ class AudienceActivationMethodFileTransfer(AudienceActivationMethod):
     vendor: Annotated[BrandReference, Field(description="Platform providing the storage primitive (e.g., the cloud provider's domain).")]
 
 
-class Cloud(StrEnum):
-    """
-    Cloud family hosting this identity's account.
-    """
-    AWS = 'aws'
-    AZURE = 'azure'
-    GCP = 'gcp'
-
-
 class ConsumerIdentitiesItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -98,7 +90,7 @@ class ConsumerIdentitiesItem(AdCPBaseModel):
         Dependencies('cloud', ('region',)),
         Dependencies('region', ('cloud',)),
     )
-    cloud: Annotated[Cloud | None, Field(description="Cloud family hosting this identity's account.")] = None
+    cloud: Annotated[DeliveryRecipientCloud | None, Field(description="Cloud family hosting this identity's account.")] = None
     region: Annotated[str | None, Field(description="Vendor/cloud region identifier. Format follows the cloud family's region naming; not constrained by this schema.")] = None
     identity: Annotated[StrMinLen1, Field(description="Principal to grant, interpreted relative to the enclosing entry's vendor.domain. Format is vendor-specific and opaque — Snowflake: orgname.accountname; Databricks: sharing recipient identifier; BigQuery: IAM principal.")]
 

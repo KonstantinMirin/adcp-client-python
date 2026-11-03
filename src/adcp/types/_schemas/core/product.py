@@ -42,6 +42,7 @@ from .inventory_list_application import InventoryListApplication
 from .measurement_readiness import MeasurementReadiness
 from .measurement_terms import MeasurementTerms
 from .media_buy_support import ProductMediaBuySupport
+from .optimization_goal import OptimizationMetric
 from .outcome_measurement import OutcomeMeasurement
 from .performance_standard import PerformanceStandard
 from .placement import Placement
@@ -71,21 +72,6 @@ class DeliveryMeasurement(AdCPBaseModel):
     notes: Annotated[str | None, Field(description="Additional details about measurement methodology in plain language (e.g., 'MRC-accredited viewability. 50% in-view for 1s display / 2s video', 'Panel-based demographic measurement updated monthly'). Free-form prose for context that doesn't fit the structured `vendors` field.")] = None
 
 
-class SupportedMetricsItem(StrEnum):
-    CLICKS = 'clicks'
-    VIEWS = 'views'
-    COMPLETED_VIEWS = 'completed_views'
-    VIEWED_SECONDS = 'viewed_seconds'
-    VIEWABLE_RATE = 'viewable_rate'
-    ATTENTION_SECONDS = 'attention_seconds'
-    ATTENTION_SCORE = 'attention_score'
-    ENGAGEMENTS = 'engagements'
-    FOLLOWS = 'follows'
-    SAVES = 'saves'
-    PROFILE_VISITS = 'profile_visits'
-    REACH = 'reach'
-
-
 class MetricOptimizationSupportedTargetsItem(StrEnum):
     COST_PER = 'cost_per'
     THRESHOLD_RATE = 'threshold_rate'
@@ -102,7 +88,7 @@ class MetricOptimization(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('supported_viewability_standards'),
     )
-    supported_metrics: Annotated[list[SupportedMetricsItem], Field(description='Metric kinds this product can optimize for. Buyers should only request metric goals for kinds listed here. **DEPRECATED values** (slated for removal at next major): `attention_seconds` and `attention_score` — declare vendor-attested attention/quality metrics via `vendor_metric_optimization.supported_metrics[]` with an explicit vendor binding instead. Sellers MAY reject the deprecated values with `TERMS_REJECTED` and a suggestion to use the `vendor_metric` kind.', min_length=1)]
+    supported_metrics: Annotated[list[OptimizationMetric], Field(description='Metric kinds this product can optimize for. Buyers should only request metric goals for kinds listed here. **DEPRECATED values** (slated for removal at next major): `attention_seconds` and `attention_score` — declare vendor-attested attention/quality metrics via `vendor_metric_optimization.supported_metrics[]` with an explicit vendor binding instead. Sellers MAY reject the deprecated values with `TERMS_REJECTED` and a suggestion to use the `vendor_metric` kind.', min_length=1)]
     supported_reach_units: Annotated[list[ReachUnit] | None, Field(description="Reach units this product can optimize for. Required when supported_metrics includes 'reach'. Buyers must set reach_unit to a value in this list on reach optimization goals — sellers reject unsupported values.", min_length=1)] = None
     supported_view_durations: Annotated[list[FloatGt0] | None, Field(description="Video view duration thresholds (in seconds) this product supports for completed_views goals. Only relevant when supported_metrics includes 'completed_views'. When absent, the seller uses their platform default. Buyers must set view_duration_seconds to a value in this list — sellers reject unsupported values.")] = None
     supported_viewability_standards: Annotated[list[ViewabilityStandard] | None, Field(description="Viewability standards this product can optimize viewable_rate goals against. Only relevant when supported_metrics includes 'viewable_rate'. When absent, buyers cannot assume a specific standard is supported and sellers reject unsupported values. Buyers must set the goal's standard to a value in this list when it is present.", json_schema_extra={'uniqueItems': True}, min_length=1)] = None

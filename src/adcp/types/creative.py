@@ -62,7 +62,6 @@ from ._schemas.creative.list_creatives_request import (
     ListCreativesRequest as ListCreativesRequest,
 )
 from ._schemas.creative.list_creatives_response import (
-    IndicatorTypesEvaluatedItem as IndicatorTypesEvaluatedItem,
     ListCreativesResponse as ListCreativesResponse,
 )
 from ._schemas.creative.list_transformers_request import (
@@ -149,7 +148,6 @@ __all__ = [
     'GetCreativeFeaturesResponseSuccess',
     'GetCreativeFeaturesSubmitted',
     'GetCreativeFeaturesSuccess',
-    'IndicatorTypesEvaluatedItem',
     'ListCreativeFormatsRequestCreativeAgent',
     'ListCreativeFormatsResponseCreativeAgent',
     'ListCreativesRequest',

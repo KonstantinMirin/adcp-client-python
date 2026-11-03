@@ -12,6 +12,7 @@ from adcp.types.constraints import StrMatchingEFC12812
 
 from ..enums.legacy_postal_system import CountryFusedPostalCodeSystem
 from ..enums.postal_system import PostalCodeSystem
+from .postal_area_support import CaPostalCodeSystem, GBPostalCodeSystem, USPostalCodeSystem
 from .postal_country_system import PostalCountrySystem, PostalCountrySystemAUPostcode, PostalCountrySystemBRCep, PostalCountrySystemBranch9, PostalCountrySystemCA, PostalCountrySystemFRCodePostal, PostalCountrySystemGB, PostalCountrySystemINPin, PostalCountrySystemPlz, PostalCountrySystemUS, PostalCountrySystemZAPostalCode
 
 
@@ -44,29 +45,13 @@ class PostalAreaCountrySystemValues(PostalArea, AdCPBaseModel):
     values: Annotated[list[str], Field(description='Postal codes within the country and system.', min_length=1)]
 
 
-class PostalAreaUSSystem(StrEnum):
-    """
-    Country-local postal code system.
-    """
-    ZIP = 'zip'
-    ZIP_PLUS_FOUR = 'zip_plus_four'
-
-
 class PostalAreaUS(PostalAreaCountrySystemValues, PostalCountrySystemUS):
     model_config = ConfigDict(
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/postal-area.json', pointer='#/anyOf/0/allOf/0/anyOf/0')
     country: Annotated[Literal['US'], Field(description='ISO 3166-1 alpha-2 country code.')]
-    system: Annotated[PostalAreaUSSystem, Field(description='Country-local postal code system.')]
-
-
-class PostalAreaGBSystem(StrEnum):
-    """
-    Country-local postal code system.
-    """
-    OUTWARD = 'outward'
-    FULL = 'full'
+    system: Annotated[USPostalCodeSystem, Field(description='Country-local postal code system.')]
 
 
 class PostalAreaGB(PostalAreaCountrySystemValues, PostalCountrySystemGB):
@@ -75,15 +60,7 @@ class PostalAreaGB(PostalAreaCountrySystemValues, PostalCountrySystemGB):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/postal-area.json', pointer='#/anyOf/0/allOf/0/anyOf/1')
     country: Annotated[Literal['GB'], Field(description='ISO 3166-1 alpha-2 country code.')]
-    system: Annotated[PostalAreaGBSystem, Field(description='Country-local postal code system.')]
-
-
-class PostalAreaCASystem(StrEnum):
-    """
-    Country-local postal code system.
-    """
-    FSA = 'fsa'
-    FULL = 'full'
+    system: Annotated[GBPostalCodeSystem, Field(description='Country-local postal code system.')]
 
 
 class PostalAreaCA(PostalAreaCountrySystemValues, PostalCountrySystemCA):
@@ -92,7 +69,7 @@ class PostalAreaCA(PostalAreaCountrySystemValues, PostalCountrySystemCA):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/postal-area.json', pointer='#/anyOf/0/allOf/0/anyOf/2')
     country: Annotated[Literal['CA'], Field(description='ISO 3166-1 alpha-2 country code.')]
-    system: Annotated[PostalAreaCASystem, Field(description='Country-local postal code system.')]
+    system: Annotated[CaPostalCodeSystem, Field(description='Country-local postal code system.')]
 
 
 class Country(StrEnum):
@@ -158,7 +135,7 @@ class PostalAreaZAPostalCode(PostalAreaCountrySystemValues, PostalCountrySystemZ
     system: Annotated[Literal['postal_code'], Field(description='Country-local postal code system.')]
 
 
-class PostalAreaBranch9System(StrEnum):
+class System(StrEnum):
     """
     Country-local postal code system.
     """
@@ -172,7 +149,7 @@ class PostalAreaBranch9(PostalAreaCountrySystemValues, PostalCountrySystemBranch
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/postal-area.json', pointer='#/anyOf/0/allOf/0/anyOf/9')
     country: Annotated[Annotated[StrMatchingEFC12812, AfterValidator(NotValue(('US', 'GB', 'CA', 'DE', 'CH', 'AT', 'FR', 'AU', 'BR', 'IN', 'ZA')))], Field(description='ISO 3166-1 alpha-2 country code.')]
-    system: Annotated[PostalAreaBranch9System, Field(description='Country-local postal code system.')]
+    system: Annotated[System, Field(description='Country-local postal code system.')]
 
 
 PostalAreaCountrySystemValues._branch_models = (PostalAreaUS, PostalAreaGB, PostalAreaCA, PostalAreaPlz, PostalAreaFRCodePostal, PostalAreaAUPostcode, PostalAreaBRCep, PostalAreaINPin, PostalAreaZAPostalCode, PostalAreaBranch9,)

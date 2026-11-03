@@ -47,7 +47,7 @@ from pathlib import Path
 import pytest
 from nodeset import claimed, partitions
 
-from codegen import bundle, catalogue, emit
+from codegen import bundle, catalogue, emit, vocabularies
 
 REPO = Path(__file__).resolve().parents[1]
 BUNDLE = REPO / "schemas" / "cache" / "3.2"
@@ -70,45 +70,97 @@ def l0() -> catalogue.Catalogue:
 def test_the_collection_partitions_every_vocabulary_stated_more_than_once(
     l0: catalogue.Catalogue,
 ) -> None:
-    """§3a's four groups account for every repeated identity, each exactly once.
+    """§3a's four groups account for every repeated VALUE LIST, each exactly once.
 
     The arithmetic alone is not this property: two groups whose sizes sum correctly can
-    both miss an identity and double-count another, which is why ``partitions`` reports
+    both miss a value list and double-count another, which is why ``partitions`` reports
     the unaccounted and the double-counted by name.
+
+    **Keyed on the value list, which is reading 4's own key** -- "no value list appears
+    twice in the emitted tree" -- and ``catalogue.value_list`` carries the measurement that
+    makes the coarser key safe.  ``test_one_value_list_is_one_set_of_admitted_values``
+    below is that measurement held as a check.
     """
-    stated: dict[tuple[tuple[str, str], ...], int] = Counter(
-        position.identity for position in l0.positions
+    stated: dict[catalogue.Vocabulary, int] = Counter(
+        catalogue.value_list(position) for position in l0.positions
     )
     repeated = claimed(
-        "identities the bundle states at more than one position",
+        "value lists the bundle states at more than one position",
         [key for key, n in stated.items() if n > 1],
         inside=stated,
     )
     partitions(
         repeated,
-        one_document=[group[0].identity for group in l0.restated],
+        one_document=[catalogue.value_list(group[0]) for group in l0.restated],
         named=list(l0.entries),
-        untitled=[group[0].identity for group in l0.untitled],
-        conflicting=[conflict.identity for conflict in l0.conflicting],
+        untitled=[catalogue.value_list(group[0]) for group in l0.untitled],
+        conflicting=[conflict.vocabulary for conflict in l0.conflicting],
     )
 
 
+def test_one_value_list_is_one_set_of_admitted_values(l0: catalogue.Catalogue) -> None:
+    """**The measurement that lets an entry be keyed on the VALUE LIST.**
+
+    §3a's identity is STRUCTURAL and a value list is coarser, so the two can only be
+    exchanged if no group of positions sharing a value list differs in a keyword that
+    NARROWS.  That is a property of this bundle and not of the key, so it is checked
+    rather than asserted in a docstring: for every value list stated at more than one
+    position, the admitting keywords BESIDE the ``enum`` are compared across the group,
+    and the only difference admitted is a ``type`` -- which beside a closed value set of
+    one JSON kind admits not one value more.
+
+    Measured today: 169 value lists stated at more than one position, 159 with one
+    structural identity and 10 with two, and in all 10 the whole of the difference is
+    ``type: "string"`` beside an all-``str`` ``enum``.  **If a document ever states one
+    value list twice with a differing ``pattern`` or ``minLength``, this reddens and the
+    key is wrong** -- which is the fact a count would not have carried.
+    """
+    groups: dict[catalogue.Vocabulary, list[catalogue.Stated]] = {}
+    for position in l0.positions:
+        groups.setdefault(catalogue.value_list(position), []).append(position)
+    repeated = claimed(
+        "value lists the bundle states at more than one position",
+        {key: group for key, group in groups.items() if len(group) > 1},
+        inside=groups,
+    )
+    narrowing = {}
+    for key in repeated:
+        group = groups[key]
+        besides = {
+            tuple((word, value) for word, value in p.identity if word not in ("enum", "type"))
+            for p in group
+        }
+        if len(besides) > 1:
+            narrowing[str(key)] = sorted(str(b) for b in besides)
+    assert not narrowing, json.dumps(narrowing, indent=2)
+
+
 def test_the_naming_split_is_the_bundles_own(l0: catalogue.Catalogue) -> None:
-    """§3a's three naming cases, each read off the bundle and none of them minted.
+    """§3a's naming cases, each read off the bundle or off a declared judgement.
 
     Not an equality on a count: §3a's table reads 203 / 457 / 3 and that is a census over
     the document of RECORD, where every ``$ref`` reaching a titled vocabulary carries its
     one title along.  The READING is what cannot go stale -- a name is a title the bundle
-    states, an untitled group is not collapsed, and a conflict is the owner's -- so this
-    asserts the reading over every member and lets the counts move.
+    states or a judgement ``codegen/vocabularies.py`` declares, an un-rowed untitled group
+    is not collapsed, and a conflict between two ROOTS is the owner's -- so this asserts
+    the reading over every member and lets the counts move.
+
+    **A TITLED entry's title is stated at one of its own positions.**  An UNTITLED one is
+    titled at none of them and is an entry only because a row judges it one subject, which
+    is §3a's "one named type -- the positions are one subject and the bundle names it".
     """
     named = claimed("vocabularies the bundle names", l0.entries.values())
     for entry in named:
         titles = catalogue.titles(entry.positions)
-        assert titles == {entry.title}, (entry.title, sorted(titles))
-        assert entry.members == next(
-            p.members for p in entry.positions if p.title == entry.title
-        ), entry.title
+        if entry.title is None:
+            assert not titles, (entry.name, sorted(titles))
+            assert vocabularies.one_subject(entry.vocabulary), entry.vocabulary
+            assert not vocabularies.separate(entry.vocabulary), entry.vocabulary
+        else:
+            assert entry.title in titles, (entry.title, sorted(titles))
+            assert entry.members == next(
+                p.members for p in entry.positions if p.title == entry.title
+            ), entry.title
         assert len(entry.documents) > 1, (entry.title, sorted(entry.documents))
 
     for group in claimed(
@@ -116,6 +168,7 @@ def test_the_naming_split_is_the_bundles_own(l0: catalogue.Catalogue) -> None:
     ):
         assert not catalogue.titles(group), sorted(catalogue.titles(group))
         assert len({p.document for p in group}) > 1
+        assert not vocabularies.one_subject(catalogue.value_list(group[0])), group[0].members
 
     for group in claimed(
         "vocabularies a single document restates", l0.restated, inside=l0.restated
@@ -124,7 +177,7 @@ def test_the_naming_split_is_the_bundles_own(l0: catalogue.Catalogue) -> None:
 
 
 def test_a_conflicting_title_is_brought_and_never_picked(l0: catalogue.Catalogue) -> None:
-    """§3a's third case: two titles for one identity is the OWNER's decision.
+    """§3a's third case: two titles, NEITHER a document root, is the OWNER's decision.
 
     "3 carry conflicting titles and are a decision brought to the owner."  So the check is
     that none of them became an entry and that no name was picked for one -- picking the
@@ -135,7 +188,7 @@ def test_a_conflicting_title_is_brought_and_never_picked(l0: catalogue.Catalogue
     conflicts = claimed("identities the bundle gives more than one title", l0.conflicting)
     report = []
     for conflict in conflicts:
-        assert conflict.identity not in l0.entries, conflict.titles
+        assert conflict.vocabulary not in l0.entries, conflict.titles
         assert len(conflict.titles) > 1, conflict.titles
         report.append(
             {
@@ -290,7 +343,7 @@ def test_no_two_classes_carry_one_named_vocabulary(
 
     entries = sorted(
         claimed("vocabularies the bundle names", l0.entries.values()),
-        key=lambda e: e.title,
+        key=lambda e: (e.title or e.name or "", e.vocabulary[0], len(e.members)),
     )
     out = compiled(BUNDLE, sorted(bundle.portable(BUNDLE)))
     claimed("modules a fresh run emits", out.files)
@@ -313,7 +366,10 @@ def test_no_two_classes_carry_one_named_vocabulary(
     assert report["modules"] > 1000, report["modules"]
 
     scattered = {
-        entries[i].title: carriers
+        # The entry's own evidence: a title the bundle states, the name a judgement
+        # declares, or -- for ``vocabularies.AGREED``, where §4's own derivation already
+        # agreed at every position -- the members, which are what identifies it.
+        entries[i].title or entries[i].name or str(list(entries[i].members)): carriers
         for i, count, carriers in report["carriers"]
         if count != 1
     }

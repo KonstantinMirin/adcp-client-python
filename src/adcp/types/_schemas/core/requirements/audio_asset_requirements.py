@@ -18,7 +18,7 @@ class FormatsItem(StrEnum):
     FLAC = 'flac'
 
 
-class ChannelsItem(StrEnum):
+class AudioChannels(StrEnum):
     MONO = 'mono'
     STEREO = 'stereo'
 
@@ -36,7 +36,7 @@ class AudioAssetRequirements(AdCPBaseModel):
     formats: Annotated[list[FormatsItem] | None, Field(description='Accepted audio file formats')] = None
     max_file_size_kb: Annotated[IntMin1 | None, Field(description='Maximum file size in kilobytes')] = None
     sample_rates: Annotated[list[IntMin1] | None, Field(description='Accepted sample rates in Hz (e.g., [44100, 48000])')] = None
-    channels: Annotated[list[ChannelsItem] | None, Field(description='Accepted audio channel configurations')] = None
+    channels: Annotated[list[AudioChannels] | None, Field(description='Accepted audio channel configurations')] = None
     min_bitrate_kbps: Annotated[IntMin1 | None, Field(description='Minimum audio bitrate in kilobits per second')] = None
     max_bitrate_kbps: Annotated[IntMin1 | None, Field(description='Maximum audio bitrate in kilobits per second')] = None
     loudness_lufs: Annotated[float | None, Field(description='Target integrated loudness in LUFS. LKFS is the equivalent unit name under ITU-R BS.1770; values expressed in LUFS and LKFS are directly comparable without conversion.')] = None

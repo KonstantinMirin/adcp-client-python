@@ -10,11 +10,7 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import PropertyCount, Rule
 from adcp.types.constraints import DictMaxProperties32, ListMaxItems32, StrMaxLen1000, StrMaxLen128, StrMaxLen4000, StrMinLen1MaxLen64
 
-
-class Recovery(StrEnum):
-    TRANSIENT = 'transient'
-    CORRECTABLE = 'correctable'
-    TERMINAL = 'terminal'
+from ..core.error import Recovery
 
 
 BoundedScalar = bool | float | StrMaxLen4000 | None

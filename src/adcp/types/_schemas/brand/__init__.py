@@ -259,7 +259,7 @@ class Background(StrEnum):
     TRANSPARENT_BG = 'transparent-bg'
 
 
-class Variant(StrEnum):
+class LogoVariant(StrEnum):
     """
     Logo variant type. primary: main logo, secondary: alternative, icon: symbol only, wordmark: text only, full-lockup: complete logo
     """
@@ -285,7 +285,7 @@ class Logo(AdCPBaseModel):
     url: Annotated[HttpUrl, Field(description='URL to the logo asset')]
     orientation: Annotated[LogoOrientation | None, Field(description='Logo aspect ratio orientation. square: ~1:1, horizontal: wide, vertical: tall, stacked: vertically arranged elements')] = None
     background: Annotated[Background | None, Field(description='Background compatibility. dark-bg: use on dark backgrounds, light-bg: use on light backgrounds, transparent-bg: has transparent background')] = None
-    variant: Annotated[Variant | None, Field(description='Logo variant type. primary: main logo, secondary: alternative, icon: symbol only, wordmark: text only, full-lockup: complete logo')] = None
+    variant: Annotated[LogoVariant | None, Field(description='Logo variant type. primary: main logo, secondary: alternative, icon: symbol only, wordmark: text only, full-lockup: complete logo')] = None
     tags: Annotated[list[str] | None, Field(description='Additional semantic tags for custom categorization beyond the standard orientation, background, and variant fields')] = None
     slots: Annotated[list[LogoSlot] | None, Field(description='Canonical renderer slots where this logo is appropriate. Consumers SHOULD prefer this over inferring from tags or usage prose when selecting a logo for a specific UI surface.', json_schema_extra={'uniqueItems': True})] = None
     usage: Annotated[str | None, Field(description="Human-readable description of when to use this logo variant (e.g., 'Primary logo for use on light backgrounds')")] = None
@@ -933,7 +933,7 @@ class GraphicElementType(StrEnum):
     DECORATIVE = 'decorative'
 
 
-class GraphicElementOrientation(StrEnum):
+class Orientation(StrEnum):
     """
     Preferred orientation when used in layouts
     """
@@ -956,7 +956,7 @@ class GraphicElement(AdCPBaseModel):
     name: Annotated[str, Field(description="Element name (e.g., 'Paper Tear', 'Brand Watermark', 'Section Divider')")]
     type: Annotated[GraphicElementType | None, Field(description='Element type')] = None
     description: Annotated[str | None, Field(description='How the element is used in layouts')] = None
-    orientation: Annotated[GraphicElementOrientation | None, Field(description='Preferred orientation when used in layouts')] = None
+    orientation: Annotated[Orientation | None, Field(description='Preferred orientation when used in layouts')] = None
     colors: Annotated[list[HexColor] | None, Field(description='Colors this element may appear in')] = None
     max_per_layout: Annotated[int | None, Field(description='Maximum instances per layout')] = None
 
@@ -1185,17 +1185,6 @@ class ColorConstraint(AdCPBaseModel):
     contexts: Annotated[list[str] | None, Field(description='Channels or creative contexts where this constraint applies, such as digital, print, social, or ctv_end_card.')] = None
     severity: GuidelineSeverity | None = None
     description: Annotated[str | None, Field(description='Human-readable rationale or source-language summary for the rule.')] = None
-
-
-class LogoVariant(StrEnum):
-    """
-    Logo variant this rule applies to.
-    """
-    PRIMARY = 'primary'
-    SECONDARY = 'secondary'
-    ICON = 'icon'
-    WORDMARK = 'wordmark'
-    FULL_LOCKUP = 'full-lockup'
 
 
 class MinimumSize(AdCPBaseModel):
