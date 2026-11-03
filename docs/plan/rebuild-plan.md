@@ -1966,10 +1966,50 @@ still refuses a value the document admits is a NARROWING wearing a declaration, 
 here, by value and by pointer. That is what keeps the declared set from being an allowlist, and
 it is why the widening set belongs to the round trip rather than beside it.
 
-**An approximation nothing can demonstrate does not belong in the set.** With the text diff gone,
-a declaration earns its place by a value: either a payload exists that the document admits and
-the class now admits, or the declaration is describing a difference no consumer can reach and it
-is deleted rather than counted. This retires the UNDERDETERMINED kind and the disjointness
+**AN APPROXIMATION EARNS ITS PLACE IN EITHER DIRECTION, AND IS DECLARED AT THE NODE THAT STATES
+IT (decided 2026-11-03). Four sentences, one cause.**
+
+**1. The criterion has two directions and this clause stated one.** It said a declaration is
+earned by *"a payload the document admits and the class now admits"* — the ACCEPTS direction, which
+fits a dropped constraint. A dropped CONDITIONAL's witness is the opposite: a value the document
+**refuses** and the class admits. Both are the same defect — the model is wider — so **both earn a
+declaration, and a widening whose only witness is a refusal is earned exactly as one whose witness
+is an acceptance.** The refuses-check is the instrument that produces it, and it must not be
+offered the value through any path that consults the document first.
+
+**2. A fact is declared ONCE, at the node the document STATES it, and never once per pointer the
+record inlines it to.** This is the sentence whose absence made the first one unusable: one
+conditional in one document reaches thousands of pointers because the record resolves references
+by copying, so a declaration per pointer turns a hundred-odd facts into tens of thousands and the
+declared set stops being readable — which §8 already forbids by name. §3a settled the same question
+for a vocabulary: *the entry, not the declaration site.* **An approximation's identity is
+`(stating document, stating pointer, keyword)`, and every inlined occurrence resolves to it.**
+
+**3. §5's `if` row needs words for a NEGATED clause.** A condition stating a presence fact under a
+`not` is readable — it is the complement of the group — and the row has no case for it, so such a
+node compiles to nothing and the model widens undeclared. **Where the condition is a negated
+presence fact, the clause is the negation of the group it would otherwise state.** That lowers the
+overwhelming majority of the sites exactly, declaring nothing, and leaves only genuinely
+unreadable conditions to declare under sentence 1.
+
+**4. §5's `oneOf` row is WRONG about `not oneOf`, and this is a narrowing in a rule rather than a
+gap.** It says the clause is *"the union of the branches' groups"*. But `not oneOf` admits an
+instance satisfying ZERO branches or TWO OR MORE, and a forbidden group over the union refuses an
+instance satisfying two — which the document admits. **So `not oneOf` is not expressible as a
+forbidden group over the union, the row's clause is withdrawn, and such a node declares rather
+than lowers.** A rule that refuses what its document admits is the one outcome §2 forbids outright,
+so this is corrected ahead of anything built on it.
+
+**And the same cause has one more consequence, which is a WALK defect rather than a rule one:** a
+count keyword withheld from a class whose extra policy drops the keys it counts is not answered by
+declaring the count — it is answered by the class KEEPING the keys the document counts. Declaring
+it would be declaring a difference the walk created. That reverses the `absent → ignore` reading at
+exactly those nodes and nowhere else.
+
+**With the text diff gone, a declaration earns its place by a value**: either a payload exists that
+the document admits and the class now admits, or one exists that the document refuses and the class
+admits, or the declaration is describing a difference no consumer can reach and it is deleted
+rather than counted. This retires the UNDERDETERMINED kind and the disjointness
 equality that graded it — nothing widens at an UNDERDETERMINED site, the annotation admits exactly
 what the document admits, and the only loss is which branch an overlapping payload becomes, which
 no draw and no dump can observe. §4's inseparable `oneOf` is unaffected: it is a WIDENED fact,
