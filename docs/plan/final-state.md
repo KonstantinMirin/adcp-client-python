@@ -1,6 +1,11 @@
 # The final state
 
-**NINE READINGS. Each is a statement about the finished artifact, and each names what decides it.**
+**TEN READINGS. Each is a statement about the finished artifact, and each names what decides it.**
+
+**Readings 1 to 9 are FAITHFULNESS and reading 10 is the DROP-IN, and the order is not a
+preference: a class exists because a schema node states it, and reading 10 may not reshape any of
+the nine to make itself easier. Designing the classes so the aliases are convenient is how
+upstream's mistakes arrive through the back door.**
 
 This file holds the target and nothing else. It carries no measurement, no progress, no row — those
 go stale on the next merge, and a stale number in a rule document gets believed. **Current status
@@ -192,6 +197,35 @@ because a predicate waiver is invisible and permanent.
 
 **Decided by** every `upstream` attribution naming a live issue, and by that registry's equality in
 both directions.
+
+## 10. Every spelling an application uses today resolves to our object
+
+A downstream application installs this wheel in place of upstream `adcp` and keeps working
+without an edit. Every name upstream exposes publicly either **is** one of ours, or is an **alias**
+to one of ours, or carries a **verdict** saying why it should not exist.
+
+**An alias is a NAME and never a second type.** Reading 6 still holds with the aliases counted:
+export paths equal distinct declarations, and `isinstance` holds across every spelling. An alias
+that is a second class is the duplication this whole project exists to remove, arriving as
+compatibility.
+
+**AN ABSENT UPSTREAM NAME IS A QUESTION WITH A VERDICT, NEVER AN INSTRUCTION TO ADD A CLASS.** It
+splits two ways and the verdict says which: **we represent it differently** — a fold that keeps
+every fact the schema states is us being right and their class redundant, which is the expected
+outcome; a fold that is awkward for a caller is answered by an export or a name, never by splitting
+a class; a fold that LOSES something the schema states is **our defect** and the fix is in the walk,
+which makes it a reading 1 failure and outranks this reading entirely — or **their class should not
+exist**: a duplicate of theirs, a hand-written ergonomic layer, or a class from a bundle version
+that is not ours. **Name the schema node, or say there isn't one.** Neither verdict may be reached
+by reading two class definitions side by side.
+
+**And the comparison is one-directional.** Every name upstream exposes gets a verdict; the reverse
+is not asked. **A smaller count on our side is the expected outcome and not a deficit.**
+
+**Decided by** installing the wheel into an environment that has never seen this repository and
+resolving every name in the cross-check's present, renamed and relocated sets — plus every absent
+name carrying a verdict that names a schema node or says there is none. A count of unmatched names
+with no verdicts attached is not a result.
 
 ---
 
