@@ -7,7 +7,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import StrMinLen1, StrMinLen1MaxLen255Matching67860854
+from adcp.types.constraints import ComplyTestControllerRequestParamsReceivedReportingRevisionId, StrMinLen1
 
 from .reporting_control_total import ReportingControlTotal
 from .reporting_delivery_method import FileFormat
@@ -38,9 +38,9 @@ class ReportingFileManifest(AdCPBaseModel):
     )
     manifest_version: Literal['1.0']
     complete: Literal[True]
-    reporting_revision_id: StrMinLen1MaxLen255Matching67860854
-    reporting_obligation_id: StrMinLen1MaxLen255Matching67860854
-    reporting_materialization_id: StrMinLen1MaxLen255Matching67860854
+    reporting_revision_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId
+    reporting_obligation_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId
+    reporting_materialization_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId
     period: Period
     format: FileFormat
     compression: ReportingFileCompression

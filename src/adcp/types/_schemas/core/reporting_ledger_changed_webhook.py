@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule
-from adcp.types.constraints import StrMinLen1, StrMinLen16MaxLen255Matching1E5CF9EB, StrMinLen1MaxLen255Matching67860854, StrMinLen1MaxLen64MatchingD373B860
+from adcp.types.constraints import AccountChangeRecordedWebhookSubscriberId, ComplyTestControllerRequestParamsReceivedReportingRevisionId, StrMinLen1, SyncAccountsRequestIdempotencyKey
 
 from ..enums.reporting_finality import ReportingFinality
 from .ext import ExtensionObject
@@ -31,18 +31,18 @@ class ReportingLedgerChangedWebhook(AdCPBaseModel):
         ConditionalRequired((Match('change_kind', True, ('revision_published',)),), require=('reporting_revision_id', 'finality'), forbid=('reporting_adjustment_id', 'adjusts_reporting_revision_id')),
         NegatedConditional((Match('change_kind', True, ('revision_published',)),), require=('reporting_adjustment_id', 'adjusts_reporting_revision_id'), forbid=('reporting_revision_id', 'supersedes_reporting_revision_id', 'finality')),
     )
-    idempotency_key: Annotated[StrMinLen16MaxLen255Matching1E5CF9EB, Field(description='Random per distinct fire and stable across transport retries, scoped to the authenticated sender.')]
-    notification_id: Annotated[StrMinLen1MaxLen255Matching67860854, Field(description='Stable per committed ledger record; re-emissions reuse it.')]
+    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Random per distinct fire and stable across transport retries, scoped to the authenticated sender.')]
+    notification_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId, Field(description='Stable per committed ledger record; re-emissions reuse it.')]
     notification_type: Literal['reporting.ledger_changed']
     fired_at: AwareDatetime
-    subscriber_id: StrMinLen1MaxLen64MatchingD373B860
+    subscriber_id: AccountChangeRecordedWebhookSubscriberId
     account_id: StrMinLen1
     change_kind: ChangeKind
-    reporting_revision_id: StrMinLen1MaxLen255Matching67860854 | None = None
-    supersedes_reporting_revision_id: StrMinLen1MaxLen255Matching67860854 | None = None
+    reporting_revision_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId | None = None
+    supersedes_reporting_revision_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId | None = None
     finality: ReportingFinality | None = None
-    reporting_adjustment_id: StrMinLen1MaxLen255Matching67860854 | None = None
-    adjusts_reporting_revision_id: StrMinLen1MaxLen255Matching67860854 | None = None
+    reporting_adjustment_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId | None = None
+    adjusts_reporting_revision_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId | None = None
     ext: ExtensionObject | None = None
 
 

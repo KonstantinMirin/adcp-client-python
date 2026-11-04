@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule
-from adcp.types.constraints import FloatMin0Max1, IntMin1, StrMatching3CBDBB74, StrMatching43E30B32, StrMinLen1MaxLen1024, StrMinLen1MaxLen255Matching71E52EB8, StrMinLen1MaxLen4096MatchingB34ADF3C
+from adcp.types.constraints import ConsultationContext, FloatMin0Max1, GetAccountFinancialsResponseSuccessCurrency, GovernanceContext, IntMin1, StrMinLen1MaxLen1024, ZipAssetDigest
 
 from ..core.attestation_evaluation import AttestationEvaluation
 from ..core.context import ContextObject
@@ -40,7 +40,7 @@ class FindingsItem(AdCPBaseModel):
     details: Annotated[dict[str, Any] | None, Field(description='Structured details for programmatic consumption.')] = None
     confidence: Annotated[FloatMin0Max1 | None, Field(description="Confidence score (0-1) in this finding. Distinguishes 'this definitely violates the policy' (0.95) from 'this might violate depending on how audience segments resolve' (0.6). When absent, the finding is presented without a confidence qualifier.")] = None
     uncertainty_reason: Annotated[str | None, Field(description="Explanation of why confidence is below 1.0 (e.g., 'Targeting includes regions that partially overlap jurisdiction boundaries'). Present when confidence is below a governance-agent-defined threshold.")] = None
-    attestation_reference_digest: Annotated[StrMatching3CBDBB74 | None, Field(description='When this finding relies on or reports a runtime attestation evaluation, the reference_digest of the exact AttestationReference in runtime_attestation_evaluations[]. Findings MUST NOT copy credential bodies or treat a presenter assertion as verified evidence.')] = None
+    attestation_reference_digest: Annotated[ZipAssetDigest | None, Field(description='When this finding relies on or reports a runtime attestation evaluation, the reference_digest of the exact AttestationReference in runtime_attestation_evaluations[]. Findings MUST NOT copy credential bodies or treat a presenter assertion as verified evidence.')] = None
 
 
 class ConditionsItem(AdCPBaseModel):
@@ -83,13 +83,13 @@ class DeliveryStatement(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/check-governance-response.json', pointer='#/properties/delivery_statement')
     statement_id: str
-    statement_digest: StrMatching3CBDBB74
+    statement_digest: ZipAssetDigest
     sequence: IntMin1
     issued_at: AwareDatetime
     seller_reference: str
     reporting_period: ReportingPeriod
     cumulative_spend: NonNegativeFloat
-    currency: StrMatching43E30B32
+    currency: GetAccountFinancialsResponseSuccessCurrency
     canonical_payload: Annotated[CanonicalPayload, Field(description='Exact retained digest-bearing payload. To verify statement_digest, apply RFC 8785 JCS after removing delivery_metrics.statement_digest.')]
 
 
@@ -106,7 +106,7 @@ class ActionBinding(AdCPBaseModel):
     )
     action_type: Annotated[Literal['https://adcontextprotocol.org/actions/governance-check'], Field(description='Absolute URI naming the action vocabulary, such as an AdCP governance-check or audience-evidence snapshot type.')]
     action_id: Annotated[StrMinLen1MaxLen1024, Field(description="Stable identifier of the consuming action within the domain consumer's namespace.")]
-    action_digest: Annotated[StrMatching3CBDBB74 | None, Field(description='SHA-256 digest of the domain-defined canonical action preimage.')] = None
+    action_digest: Annotated[ZipAssetDigest | None, Field(description='SHA-256 digest of the domain-defined canonical action preimage.')] = None
 
 
 class RuntimeAttestationEvaluationsItem(AttestationEvaluation):
@@ -138,7 +138,7 @@ class CheckGovernanceResponse(AdCPVersionEnvelope):
     explanation: Annotated[str, Field(description='Human-readable explanation of the governance decision.')]
     findings: Annotated[list[FindingsItem] | None, Field(description="Specific issues found during the governance check. Present when verdict is 'denied' or 'conditions'. MAY also be present on 'approved' for informational findings (e.g., budget approaching limit).")] = None
     conditions: Annotated[list[ConditionsItem] | None, Field(description="Intent-phase counterproposal. Present only when verdict is 'conditions'. It does not authorize execution and MUST NOT be returned for execution or lifecycle checks. Each field path is rooted at the complete check_governance request arguments, so both payload.* and proposed_commitment.* can be addressed. After applying conditions, the caller MUST re-call check_governance with the adjusted parameters and receive approved before proceeding.")] = None
-    consultation_context: Annotated[StrMinLen1MaxLen255Matching71E52EB8 | None, Field(description='Opaque negotiation handle present only with modern conditions responses. It carries no authorization and MUST NOT be sent to a downstream service. The governance agent MUST bind it server-side to the authenticated principal, caller, plan, tool, purchase type, and target audience, and reject a re-check if any binding changes. The buyer returns it only on the adjusted intent re-check.')] = None
+    consultation_context: Annotated[ConsultationContext | None, Field(description='Opaque negotiation handle present only with modern conditions responses. It carries no authorization and MUST NOT be sent to a downstream service. The governance agent MUST bind it server-side to the authenticated principal, caller, plan, tool, purchase type, and target audience, and reject a re-check if any binding changes. The buyer returns it only on the adjusted intent re-check.')] = None
     expires_at: Annotated[AwareDatetime | None, Field(description="When this approval expires. In the cross-role shape, present only when verdict is 'approved'. Deprecated legacy conditions responses may also carry it for 3.x compatibility. The caller must act before this time or re-call check_governance. A lapsed approval is no approval.")] = None
     next_check: Annotated[AwareDatetime | None, Field(description='When the seller should next call check_governance with delivery metrics. Present when the governance agent expects ongoing delivery reporting.')] = None
     delivery_statement: Annotated[DeliveryStatement | None, Field(description='Canonical seller-attributed delivery statement retained by governance. Present on delivery execution checks. The buyer binds any later observation to this exact statement through report_plan_outcome.')] = None
@@ -146,8 +146,8 @@ class CheckGovernanceResponse(AdCPVersionEnvelope):
     policies_evaluated: Annotated[list[str] | None, Field(description="Policy IDs evaluated during this check. Includes registry policy IDs (resolved via the policy registry) and any inline `policy_id`s declared in the plan's `custom_policies`.")] = None
     mode: Annotated[GovernanceMode | None, Field(description='Governance enforcement mode active when this check was evaluated. Allows counterparties, regulators, and auditors to distinguish whether a finding blocked execution (enforce) or was logged silently (audit).')] = None
     runtime_attestation_evaluations: Annotated[list[RuntimeAttestationEvaluationsItem] | None, Field(description="Evaluator-of-record results for request runtime_attestations[], in the same order and with exactly one result per presentation. Each result is the shared AttestationEvaluation and MUST bind to this response's check_id through action_binding.action_type = https://adcontextprotocol.org/actions/governance-check and action_binding.action_id = check_id. The signed governance_context MUST bind the same reference_digest/outcome pairs; large evidence stays in the audit log rather than the token.", max_length=10, min_length=1)] = None
-    runtime_attestation_binding_digest: Annotated[StrMatching3CBDBB74 | None, Field(description='SHA-256 of RFC 8785 JCS({ evaluations: runtime_attestation_evaluations, findings: attestation_bound_findings }), where attestation_bound_findings is the response findings[] subset carrying attestation_reference_digest, preserved in response order. Required whenever runtime_attestation_evaluations is present. The governance_context JWS carries this exact value as runtime_attestation_binding_digest; get_plan_audit_logs retains ordered {reference, evaluation} pairs so auditors can first recompute every reference_digest and then prove which evaluations and findings the signed decision relied on.')] = None
-    governance_context: Annotated[StrMinLen1MaxLen4096MatchingB34ADF3C | None, Field(description='Opaque authorization context for this governed action. Present only when verdict is approved; denied and conditions responses MUST NOT carry it. The buyer attaches it to the protocol envelope when sending the governed request. The service persists and forwards it on subsequent execution and lifecycle checks without requiring plan_id.\n\nGovernance agents MUST emit a compact JWS per the AdCP JWS profile. Verifiers validate the standard authorization claims but MUST NOT interpret embedded governance state for business logic. The issuing governance agent uses the token to recover its internal plan and decision state.')] = None
+    runtime_attestation_binding_digest: Annotated[ZipAssetDigest | None, Field(description='SHA-256 of RFC 8785 JCS({ evaluations: runtime_attestation_evaluations, findings: attestation_bound_findings }), where attestation_bound_findings is the response findings[] subset carrying attestation_reference_digest, preserved in response order. Required whenever runtime_attestation_evaluations is present. The governance_context JWS carries this exact value as runtime_attestation_binding_digest; get_plan_audit_logs retains ordered {reference, evaluation} pairs so auditors can first recompute every reference_digest and then prove which evaluations and findings the signed decision relied on.')] = None
+    governance_context: Annotated[GovernanceContext | None, Field(description='Opaque authorization context for this governed action. Present only when verdict is approved; denied and conditions responses MUST NOT carry it. The buyer attaches it to the protocol envelope when sending the governed request. The service persists and forwards it on subsequent execution and lifecycle checks without requiring plan_id.\n\nGovernance agents MUST emit a compact JWS per the AdCP JWS profile. Verifiers validate the standard authorization claims but MUST NOT interpret embedded governance state for business logic. The issuing governance agent uses the token to recover its internal plan and decision state.')] = None
     context: ContextObject | None = None
     ext: ExtensionObject | None = None
 

@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import StrMatching4D6E1599, StrMaxLen500
+from adcp.types.constraints import AccountAuthorizationAllowedTasksItem, StrMaxLen500
 
 from ..enums.impairment_offline_state import ImpairmentOfflineState
 from ..enums.impairment_reason_code import ImpairmentReasonCode
@@ -32,7 +32,7 @@ class Transition(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/impairment.json', pointer='#/properties/transition')
-    from_: Annotated[StrMatching4D6E1599 | None, Field(alias='from', description="Prior status of the resource (e.g., 'ready', 'approved', 'good'). Optional — sellers SHOULD include when known, MAY omit when the resource was discovered already in an offline state (e.g., a property depublished via brand.json crawl with no prior snapshot). Open string at the schema layer because each resource_type has its own serviceable-state vocabulary; the pattern constraint blocks free-form garbage, and the impairment.coherence assertion validates that 'from' is a known serviceable value for the resource_type.")] = None
+    from_: Annotated[AccountAuthorizationAllowedTasksItem | None, Field(alias='from', description="Prior status of the resource (e.g., 'ready', 'approved', 'good'). Optional — sellers SHOULD include when known, MAY omit when the resource was discovered already in an offline state (e.g., a property depublished via brand.json crawl with no prior snapshot). Open string at the schema layer because each resource_type has its own serviceable-state vocabulary; the pattern constraint blocks free-form garbage, and the impairment.coherence assertion validates that 'from' is a known serviceable value for the resource_type.")] = None
     to: Annotated[ImpairmentOfflineState, Field(description="Current (offline) status of the resource. Drawn from the resource_type's canonical lifecycle enum; see impairment-offline-state for per-value resource_type pairing. The pairing is validated by impairment.coherence.")]
 
 

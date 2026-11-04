@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Presence, PresenceGroups, Rule, UniqueItems
-from adcp.types.constraints import FloatGt0, FloatMin1, FloatMinNeg180Max180, FloatMinNeg90Max90, IntMin13Max99, StrMatchingCE72C7C2, StrMatchingEFC12812
+from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, AgeRestrictionMin, FloatGt0, FloatMin1, FloatMinNeg180Max180, FloatMinNeg90Max90, GeoForecastDimensionCode
 
 from ..enums.age_verification_method import AgeVerificationMethod
 from ..enums.browser_family import BrowserFamily
@@ -37,16 +37,16 @@ from .targeting_unknown_age_eligibility_constraint import TargetingUnknownAgeEli
 from .targeting_verified_age_basis_constraint import TargetingVerifiedAgeBasisConstraint
 
 
-GeoCountries = Annotated[list[StrMatchingEFC12812], Field(description="Restrict delivery to specific countries. ISO 3166-1 alpha-2 codes (e.g., 'US', 'GB', 'DE').", min_length=1)]
+GeoCountries = Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem], Field(description="Restrict delivery to specific countries. ISO 3166-1 alpha-2 codes (e.g., 'US', 'GB', 'DE').", min_length=1)]
 
 
-GeoCountriesExclude = Annotated[list[StrMatchingEFC12812], Field(description="Exclude specific countries from delivery. ISO 3166-1 alpha-2 codes (e.g., 'US', 'GB', 'DE').", min_length=1)]
+GeoCountriesExclude = Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem], Field(description="Exclude specific countries from delivery. ISO 3166-1 alpha-2 codes (e.g., 'US', 'GB', 'DE').", min_length=1)]
 
 
-GeoRegions = Annotated[list[StrMatchingCE72C7C2], Field(description='Restrict delivery to exact canonical ISO 3166-2 subdivisions (states, provinces, regions, departments, or other subdivision categories). Unknown identifiers are invalid. At create or update, sellers MUST reject unsupported identifiers and MUST NOT silently widen, drop, or partially apply the list. During get_products, a seller may instead return a sparse, buyer-reviewable targeting_resolution modification for a valid but unsupported requested outcome. Exact internal translation preserves accepted identifiers in package readback.', min_length=1)]
+GeoRegions = Annotated[list[GeoForecastDimensionCode], Field(description='Restrict delivery to exact canonical ISO 3166-2 subdivisions (states, provinces, regions, departments, or other subdivision categories). Unknown identifiers are invalid. At create or update, sellers MUST reject unsupported identifiers and MUST NOT silently widen, drop, or partially apply the list. During get_products, a seller may instead return a sparse, buyer-reviewable targeting_resolution modification for a valid but unsupported requested outcome. Exact internal translation preserves accepted identifiers in package readback.', min_length=1)]
 
 
-GeoRegionsExclude = Annotated[list[StrMatchingCE72C7C2], Field(description='Exclude exact canonical ISO 3166-2 subdivisions. Support is independent from geo_regions inclusion support. Unknown identifiers and values also present in geo_regions are invalid. At create or update, sellers MUST reject unsupported identifiers and partial application; during get_products, a seller may instead return a sparse, buyer-reviewable targeting_resolution modification for a valid but unsupported requested outcome.', min_length=1)]
+GeoRegionsExclude = Annotated[list[GeoForecastDimensionCode], Field(description='Exclude exact canonical ISO 3166-2 subdivisions. Support is independent from geo_regions inclusion support. Unknown identifiers and values also present in geo_regions are invalid. At create or update, sellers MUST reject unsupported identifiers and partial application; during get_products, a seller may instead return a sparse, buyer-reviewable targeting_resolution modification for a valid but unsupported requested outcome.', min_length=1)]
 
 
 GeoMetrosExclude = Annotated[list[GeoMetro], Field(description='Exclude specific metro areas from delivery. Each entry specifies the classification system and excluded values. Seller must declare supported systems in get_adcp_capabilities.', min_length=1)]
@@ -87,7 +87,7 @@ class AgeRestriction(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/targeting.json', pointer='#/properties/age_restriction')
-    min: Annotated[IntMin13Max99, Field(description='Minimum age required')]
+    min: Annotated[AgeRestrictionMin, Field(description='Minimum age required')]
     verification_required: Annotated[bool | None, Field(description='Whether verified age (not inferred) is required for compliance')] = False
     accepted_methods: Annotated[list[AgeVerificationMethod] | None, Field(description='Accepted verification methods. If omitted, any method the platform supports is acceptable.', min_length=1)] = None
 

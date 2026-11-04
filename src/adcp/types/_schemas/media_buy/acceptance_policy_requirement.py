@@ -7,7 +7,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import StrMatchingAC6483FF, StrMinLen1
+from adcp.types.constraints import AcceptancePolicyRequirementId, StrMinLen1
 
 from ..core.ext import ExtensionObject
 from ..enums.restricted_attribute import RestrictedAttribute
@@ -55,7 +55,7 @@ class AcceptancePolicyRequirementAdvertiserEligibility(AcceptancePolicyRequireme
         UniqueItems('criteria'),
     )
     kind: Literal['advertiser_eligibility']
-    criteria: Annotated[list[StrMatchingAC6483FF], Field(description='Stable criteria such as domestic_entity, citizen_or_resident, official_election_authority, or eligible_agency.', json_schema_extra={'uniqueItems': True}, min_length=1)]
+    criteria: Annotated[list[AcceptancePolicyRequirementId], Field(description='Stable criteria such as domestic_entity, citizen_or_resident, official_election_authority, or eligible_agency.', json_schema_extra={'uniqueItems': True}, min_length=1)]
     description: StrMinLen1 | None = None
 
 
@@ -68,7 +68,7 @@ class AcceptancePolicyRequirementFundingRestriction(AcceptancePolicyRequirement)
         UniqueItems('criteria'),
     )
     kind: Literal['funding_restriction']
-    criteria: Annotated[list[StrMatchingAC6483FF], Field(description='Stable restrictions such as no_foreign_funding or sponsor_identity_required.', json_schema_extra={'uniqueItems': True}, min_length=1)]
+    criteria: Annotated[list[AcceptancePolicyRequirementId], Field(description='Stable restrictions such as no_foreign_funding or sponsor_identity_required.', json_schema_extra={'uniqueItems': True}, min_length=1)]
     description: StrMinLen1 | None = None
 
 
@@ -200,7 +200,7 @@ class AcceptancePolicyRequirementCustom(AcceptancePolicyRequirement):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/acceptance-policy-requirement.json', pointer='#/oneOf/16')
     kind: Literal['custom']
-    id: StrMatchingAC6483FF
+    id: AcceptancePolicyRequirementId
     description: StrMinLen1
     ext: ExtensionObject | None = None
 

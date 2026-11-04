@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
-from adcp.types.constraints import FloatGt0, StrMatching3CBDBB74, StrMatching43E30B32, StrMinLen1, StrMinLen16MaxLen255Matching1E5CF9EB, StrMinLen1MaxLen1000, StrMinLen1MaxLen255
+from adcp.types.constraints import FloatGt0, GetAccountFinancialsResponseSuccessCurrency, StrMinLen1, StrMinLen1MaxLen1000, StrMinLen1MaxLen255, SyncAccountsRequestIdempotencyKey, ZipAssetDigest
 
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
@@ -41,7 +41,7 @@ class Amount(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/report-plan-adjustment-request.json', pointer='#/properties/amount')
     amount: Annotated[FloatGt0, Field(description='Finite positive amount. Cumulative adjustments for an outcome cannot exceed its authoritative commitment.')]
-    currency: Annotated[StrMatching43E30B32, Field(description='Three-letter uppercase currency code matching the plan currency.')]
+    currency: Annotated[GetAccountFinancialsResponseSuccessCurrency, Field(description='Three-letter uppercase currency code matching the plan currency.')]
 
 
 class Evidence(AdCPBaseModel):
@@ -54,7 +54,7 @@ class Evidence(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/report-plan-adjustment-request.json', pointer='#/properties/evidence')
     evidence_id: Annotated[StrMinLen1MaxLen255, Field(description="Immutable identifier in the authenticated seller's namespace. Reuse with different adjustment evidence is a conflict.")]
     evidence_type: EvidenceType
-    digest: StrMatching3CBDBB74
+    digest: ZipAssetDigest
     issued_at: AwareDatetime
 
 
@@ -83,7 +83,7 @@ class ReportPlanAdjustmentRequest(AdCPVersionEnvelope):
     reason: Annotated[StrMinLen1MaxLen1000 | None, Field(description='Human-readable reason retained in the audit trail.')] = None
     effective_at: Annotated[AwareDatetime | None, Field(description="When the seller's adjustment became effective.")] = None
     evidence: Annotated[Evidence | None, Field(description='Integrity-bound commercial source record supplied by the seller. Its evidence_type must correspond to adjustment_type.')] = None
-    idempotency_key: Annotated[StrMinLen16MaxLen255Matching1E5CF9EB, Field(description='Caller-generated retry key. Exact replays return the original report or review; reuse with another payload is rejected.')]
+    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Caller-generated retry key. Exact replays return the original report or review; reuse with another payload is rejected.')]
     context: ContextObject | None = None
     ext: ExtensionObject | None = None
 

@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule, UniqueItems
-from adcp.types.constraints import FloatMin0Max1, HttpUrl, StrMatching3CBDBB74, StrMatchingEAB1CA79, StrMinLen1MaxLen1024
+from adcp.types.constraints import FloatMin0Max1, HttpUrl, ReasonCodesItem, StrMinLen1MaxLen1024, ZipAssetDigest
 
 from .ext import ExtensionObject
 
@@ -44,7 +44,7 @@ class ActionBinding(AdCPBaseModel):
     )
     action_type: Annotated[HttpUrl, Field(description='Absolute URI naming the action vocabulary, such as an AdCP governance-check or audience-evidence snapshot type.')]
     action_id: Annotated[StrMinLen1MaxLen1024 | None, Field(description="Stable identifier of the consuming action within the domain consumer's namespace.")] = None
-    action_digest: Annotated[StrMatching3CBDBB74 | None, Field(description='SHA-256 digest of the domain-defined canonical action preimage.')] = None
+    action_digest: Annotated[ZipAssetDigest | None, Field(description='SHA-256 digest of the domain-defined canonical action preimage.')] = None
 
 
 class AttestationEvaluation(AdCPBaseModel):
@@ -60,14 +60,14 @@ class AttestationEvaluation(AdCPBaseModel):
         ConditionalRequired((Match('outcome', True, ('verified', 'expired', 'revoked', 'invalid', 'subject_mismatch', 'digest_mismatch')),), require=('credential_digest', 'proof_format'), forbid=()),
         ConditionalRequired((Match('credential_digest', True, None),), require=('proof_format',), forbid=()),
     )
-    reference_digest: Annotated[StrMatching3CBDBB74, Field(description='SHA-256 of the RFC 8785 JSON Canonicalization Scheme encoding of the complete AttestationReference, including embedded_credential when present. This prevents a result for one presentation from being replayed for another.')]
-    credential_digest: Annotated[StrMatching3CBDBB74 | None, Field(description='SHA-256 of the exact resolved or embedded credential bytes according to proof_format. REQUIRED by the normative contract when outcome is verified, expired, revoked, invalid, subject_mismatch, or digest_mismatch; omitted when no credential bytes were obtained. For dual delivery, this is the resolved credential digest; reference_digest independently binds the embedded bytes.')] = None
+    reference_digest: Annotated[ZipAssetDigest, Field(description='SHA-256 of the RFC 8785 JSON Canonicalization Scheme encoding of the complete AttestationReference, including embedded_credential when present. This prevents a result for one presentation from being replayed for another.')]
+    credential_digest: Annotated[ZipAssetDigest | None, Field(description='SHA-256 of the exact resolved or embedded credential bytes according to proof_format. REQUIRED by the normative contract when outcome is verified, expired, revoked, invalid, subject_mismatch, or digest_mismatch; omitted when no credential bytes were obtained. For dual delivery, this is the resolved credential digest; reference_digest independently binds the embedded bytes.')] = None
     proof_format: Annotated[HttpUrl | None, Field(description='Absolute URI identifying the credential/proof format used to interpret and hash obtained credential bytes. REQUIRED whenever credential_digest is present.')] = None
     outcome: Annotated[Outcome, Field(description='Stable evaluation outcome. verified means all required issuer, signature, claim type, subject, consuming-action scope, validity, revocation, and digest checks passed under evaluator policy. subject_mismatch covers either a credential/presentation subject mismatch or a presentation/consuming-action subject mismatch. Other values are non-authoritative failures and MUST NOT be treated as verified.')]
     evaluated_at: AwareDatetime
     evaluated_by: Annotated[HttpUrl, Field(description='Canonical agent URL of the evaluator-of-record that produced this result, even when it delegated proof checking to an accepted verifier.')]
     verifier_agent_url: Annotated[HttpUrl | None, Field(description='Accepted verifier agent actually used, when verification was delegated. Omit for local verification or when no verifier was called.')] = None
-    reason_codes: Annotated[list[StrMatchingEAB1CA79] | None, Field(description='Open, machine-readable reason identifiers supplied by the evaluator. Consumers MUST branch on outcome, not on free-form or evaluator-specific reason codes.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    reason_codes: Annotated[list[ReasonCodesItem] | None, Field(description='Open, machine-readable reason identifiers supplied by the evaluator. Consumers MUST branch on outcome, not on free-form or evaluator-specific reason codes.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     confidence: Annotated[FloatMin0Max1 | None, Field(description='Optional evaluator-produced confidence in the normalized outcome on the AdCP 0–1 scale. This is evaluation output, never copied from an authoritative presenter field. Omit when the proof or evaluator does not support a meaningful confidence score.')] = None
     revocation_checked_at: Annotated[AwareDatetime | None, Field(description='When the evaluator last checked authoritative revocation state. Its freshness is governed by proof format and evaluator policy.')] = None
     valid_until: Annotated[AwareDatetime | None, Field(description='Upper bound on reuse of this evaluation, considering credential expiry, revocation-cache TTL, and evaluator policy. Consumers MUST re-evaluate after this time.')] = None

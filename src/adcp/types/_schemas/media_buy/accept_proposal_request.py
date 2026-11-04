@@ -7,7 +7,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
-from adcp.types.constraints import StrMatching325DEB97, StrMatching43E30B32, StrMinLen1, StrMinLen16MaxLen255Matching1E5CF9EB, StrMinLen1MaxLen250, StrMinLen1MaxLen255, StrMinLen1MaxLen255Matching130C1C9D, StrMinLen1MaxLen4096
+from adcp.types.constraints import CanonicalProposalTermsDigest, GetAccountFinancialsResponseSuccessCurrency, IoAcceptanceSignatory, MediaBuyName, StrMinLen1, StrMinLen1MaxLen255, StrMinLen1MaxLen4096, SyncAccountsRequestIdempotencyKey
 
 from ..core.canonical_account_ref import CanonicalAccountReference
 from ..core.context import ContextObject
@@ -27,7 +27,7 @@ class TotalBudget(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/accept-proposal-request.json', pointer='#/properties/total_budget')
     amount: NonNegativeFloat
-    currency: StrMatching43E30B32
+    currency: GetAccountFinancialsResponseSuccessCurrency
 
 
 class IoAcceptance(AdCPBaseModel):
@@ -37,7 +37,7 @@ class IoAcceptance(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/accept-proposal-request.json', pointer='#/properties/io_acceptance')
     io_id: StrMinLen1
     accepted_at: AwareDatetime
-    signatory: StrMinLen1MaxLen250
+    signatory: IoAcceptanceSignatory
     signature_id: StrMinLen1 | None = None
 
 
@@ -65,11 +65,11 @@ class AcceptProposalRequest(AdCPVersionEnvelope):
     )
     adcp_version: AdcpVersion | None = None
     adcp_major_version: AdcpMajorVersion | None = None
-    idempotency_key: StrMinLen16MaxLen255Matching1E5CF9EB
-    name: Annotated[StrMinLen1MaxLen255Matching130C1C9D | None, Field(description='Human-readable MediaBuy name supplied by the buyer for trafficking UI display and operational communication. When supplied, this value wins over proposal.name; the seller MUST persist it and echo it unchanged on the commitment success response and subsequent get_media_buys reads. It is operational metadata outside accepted_proposal and is not covered by proposal_terms_digest or terms_digest. When an acceptance creates a MediaBuy and name is absent, the seller MAY seed the MediaBuy name from proposal.name only when proposal.name already satisfies the MediaBuy name constraints (non-whitespace and no longer than 255 characters); the seller MUST NOT silently truncate or otherwise rewrite it. A seeded value counts as a name created through AdCP and MUST be reported on commitment and read surfaces. This display label is not an identifier or financial reference.')] = None
+    idempotency_key: SyncAccountsRequestIdempotencyKey
+    name: Annotated[MediaBuyName | None, Field(description='Human-readable MediaBuy name supplied by the buyer for trafficking UI display and operational communication. When supplied, this value wins over proposal.name; the seller MUST persist it and echo it unchanged on the commitment success response and subsequent get_media_buys reads. It is operational metadata outside accepted_proposal and is not covered by proposal_terms_digest or terms_digest. When an acceptance creates a MediaBuy and name is absent, the seller MAY seed the MediaBuy name from proposal.name only when proposal.name already satisfies the MediaBuy name constraints (non-whitespace and no longer than 255 characters); the seller MUST NOT silently truncate or otherwise rewrite it. A seeded value counts as a name created through AdCP and MUST be reported on commitment and read surfaces. This display label is not an identifier or financial reference.')] = None
     account: CanonicalAccountReference
     proposal_id: StrMinLen1
-    proposal_terms_digest: Annotated[StrMatching325DEB97, Field(description='terms_digest from the committed proposal. The seller MUST atomically verify both ID and digest before acceptance.')]
+    proposal_terms_digest: Annotated[CanonicalProposalTermsDigest, Field(description='terms_digest from the committed proposal. The seller MUST atomically verify both ID and digest before acceptance.')]
     total_budget: Annotated[TotalBudget | None, Field(description='Execution amount when the committed proposal defines scalable percentages or constraints rather than a fixed total.')] = None
     daily_budget_cap: Annotated[NonNegativeFloat | None, Field(description="Optional hard aggregate daily spend ceiling applied when the committed proposal is accepted. It constrains execution without changing the proposal's negotiated pricing.")] = None
     budget_cap_timezone: Annotated[StrMinLen1 | None, Field(description='Optional shared IANA cap-day timezone override. Requires buyer_timezone_override support. When omitted, budget_capping.timezone_basis selects Account.timezone or fixed_timezone.')] = None

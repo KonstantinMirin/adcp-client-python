@@ -7,7 +7,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule, UniqueItems
-from adcp.types.constraints import IntMin1, StrMatching43E30B32, StrMaxLen2000, StrMinLen1, StrMinLen1MaxLen255Matching130C1C9D
+from adcp.types.constraints import GetAccountFinancialsResponseSuccessCurrency, IntMin1, MediaBuyName, StrMaxLen2000, StrMinLen1
 from adcp.types.envelopes import FailedResponse
 
 from ..core.account import Account
@@ -70,14 +70,14 @@ class CreateMediaBuySuccess(CreateMediaBuyResponse):
     )
     proposal_id: Annotated[StrMinLen1 | None, Field(description='The immutable committed proposal executed by this media buy, echoed when proposal_id was supplied in the request.')] = None
     media_buy_id: Annotated[str, Field(description="Seller's unique identifier for the created media buy")]
-    name: Annotated[StrMinLen1MaxLen255Matching130C1C9D | None, Field(description='Persisted human-readable name for this media buy. When create_media_buy supplied name, the seller MUST echo it unchanged here. This display label is shared for trafficking UI display and operational communication; it is not an identifier or financial reference.')] = None
+    name: Annotated[MediaBuyName | None, Field(description='Persisted human-readable name for this media buy. When create_media_buy supplied name, the seller MUST echo it unchanged here. This display label is shared for trafficking UI display and operational communication; it is not an identifier or financial reference.')] = None
     account: Annotated[Account | None, Field(description='Account billed for this media buy. Includes advertiser, billing proxy (if any), and rate card applied.')] = None
     invoice_recipient: Annotated[BusinessEntity | None, Field(description='Per-buy invoice recipient, echoed from the request when provided. Confirms the seller accepted the billing override. Bank details are omitted (write-only).')] = None
     media_buy_status: Annotated[MediaBuyStatus | None, Field(description="Initial media buy status. Either 'pending_creatives' (awaiting creative assets), 'pending_start' (ready to serve, waiting for flight date), 'active' (immediate activation), or 'paused' (created with delivery held after all activation prerequisites are satisfied). This field carries the media buy lifecycle state; top-level `status` is reserved for the protocol-envelope TaskStatus (`completed` on synchronous success).")] = None
     confirmed_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp when this media buy was committed by the seller. Stable after it is set; do not update on later pause/resume/status/reporting transitions. May be null in deferred or manual-approval flows until seller commitment occurs.')]
     creative_deadline: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp for creative upload deadline')] = None
     revision: Annotated[IntMin1, Field(description='Initial revision number for this media buy. Use in subsequent update_media_buy requests intended to change state for optimistic concurrency.')]
-    currency: Annotated[StrMatching43E30B32 | None, Field(description='Single ISO 4217 currency code for total_budget, package budget constraints, and canonical BiddingPolicy monetary fields. Every selected pricing option MUST declare this currency; packages needing another currency belong in another media buy. In proposal mode the seller derives it from total_budget.currency; in explicit-package mode the seller derives or validates one common pricing-option currency. Matches subsequent get_media_buys responses.')] = None
+    currency: Annotated[GetAccountFinancialsResponseSuccessCurrency | None, Field(description='Single ISO 4217 currency code for total_budget, package budget constraints, and canonical BiddingPolicy monetary fields. Every selected pricing option MUST declare this currency; packages needing another currency belong in another media buy. In proposal mode the seller derives it from total_budget.currency; in explicit-package mode the seller derives or validates one common pricing-option currency. Matches subsequent get_media_buys responses.')] = None
     total_budget: Annotated[NonNegativeFloat | None, Field(description='Hard aggregate lifetime budget, denominated in currency. The request encodes total_budget as an object {amount, currency}; this response flattens amount and promotes currency to its sibling field. Present for proposal and seller-optimized modes, and when supplied or deterministically derived in fixed explicit-package mode. Matches subsequent get_media_buys responses.')] = None
     daily_budget_cap: Annotated[NonNegativeFloat | None, Field(description='Accepted hard aggregate daily spend ceiling, denominated in currency. Sellers MUST echo it whenever the request set an aggregate daily cap.')] = None
     frequency_cap: Annotated[MediaBuyFrequencyCap | None, Field(description='Accepted shared MediaBuy frequency cap. Sellers MUST echo it whenever the request or executed proposal set one.')] = None

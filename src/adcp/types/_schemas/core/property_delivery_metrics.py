@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import SchemaRef
-from adcp.types.constraints import StrMatching32F5291C
+from adcp.types.constraints import AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain
 
 from .delivery_metrics import DeliveryMetrics
 from .identifier import Identifier
@@ -21,7 +21,7 @@ class PropertyDeliveryMetrics(DeliveryMetrics):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/property-delivery-metrics.json', pointer='#')
-    publisher_domain: Annotated[StrMatching32F5291C, Field(description='Publisher or platform authority that namespaces the operational identifier, including when the surface is not registered in adagents.json.')]
+    publisher_domain: Annotated[AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, Field(description='Publisher or platform authority that namespaces the operational identifier, including when the surface is not registered in adagents.json.')]
     identifier: Annotated[Identifier, Field(description='Primary operational identifier of the property that delivered. Required even when catalog enrichment is unavailable.')]
     property_ref: Annotated[PropertyReference | None, Field(description="Canonical publisher-scoped catalog identity when the delivered property resolves to adagents.json. Its publisher_domain MUST equal the row's publisher_domain.")] = None
     property_name: Annotated[str | None, Field(description='Current human-readable property name. Convenience metadata only; property_ref is stable identity.')] = None

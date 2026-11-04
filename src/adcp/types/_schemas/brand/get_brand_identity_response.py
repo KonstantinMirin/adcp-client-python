@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, PropertyCount, Rule
-from adcp.types.constraints import AdCPUrl, DictMinProperties1, DictMinProperties1MaxProperties1, HttpUrl, IntMin100Max900, NonEmptyList, StrMatching83577F62, StrMatchingEFC12812, StrMatchingF01B4765, StrMaxLen100, StrMinLen1
+from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, AdCPUrl, BrandDiscoveryColorValue, BrandDiscoveryFontRoleOpentypeFeaturesItem, DictMinProperties1, DictMinProperties1MaxProperties1, HttpUrl, IntMin100Max900, NonEmptyList, StrMaxLen100, StrMinLen1
 from adcp.types.envelopes import FailedResponse
 
 from ..brand import Background, FontFileStyle, KellerType, LogoOrientation, LogoVariant
@@ -72,11 +72,11 @@ class Colors(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/get-brand-identity-response.json', pointer='#/oneOf/0/properties/colors')
-    primary: StrMatchingF01B4765 | NonEmptyList[StrMatchingF01B4765] | None = None
-    secondary: StrMatchingF01B4765 | NonEmptyList[StrMatchingF01B4765] | None = None
-    accent: StrMatchingF01B4765 | NonEmptyList[StrMatchingF01B4765] | None = None
-    background: StrMatchingF01B4765 | NonEmptyList[StrMatchingF01B4765] | None = None
-    text: StrMatchingF01B4765 | NonEmptyList[StrMatchingF01B4765] | None = None
+    primary: BrandDiscoveryColorValue | NonEmptyList[BrandDiscoveryColorValue] | None = None
+    secondary: BrandDiscoveryColorValue | NonEmptyList[BrandDiscoveryColorValue] | None = None
+    accent: BrandDiscoveryColorValue | NonEmptyList[BrandDiscoveryColorValue] | None = None
+    background: BrandDiscoveryColorValue | NonEmptyList[BrandDiscoveryColorValue] | None = None
+    text: BrandDiscoveryColorValue | NonEmptyList[BrandDiscoveryColorValue] | None = None
 
 
 class FilesItem(AdCPBaseModel):
@@ -97,7 +97,7 @@ class GetBrandIdentityResponseFontRoleFamily(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/get-brand-identity-response.json', pointer='#/oneOf/0/properties/fonts/definitions/font_role/oneOf/1')
     family: Annotated[str, Field(description='CSS font-family name')]
     files: Annotated[list[FilesItem] | None, Field(max_length=36)] = None
-    opentype_features: Annotated[list[StrMatching83577F62] | None, Field(description="OpenType feature tags to enable (e.g., ['ss01', 'tnum'])", max_length=20)] = None
+    opentype_features: Annotated[list[BrandDiscoveryFontRoleOpentypeFeaturesItem] | None, Field(description="OpenType feature tags to enable (e.g., ['ss01', 'tnum'])", max_length=20)] = None
     fallbacks: Annotated[list[StrMaxLen100] | None, Field(description='Ordered fallback font-family names for script coverage', max_length=10)] = None
 
 
@@ -175,8 +175,8 @@ class Rights(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/get-brand-identity-response.json', pointer='#/oneOf/0/properties/rights')
     available_uses: list[RightUse] | None = None
-    countries: Annotated[list[StrMatchingEFC12812] | None, Field(description='Countries where rights are available (ISO 3166-1 alpha-2). If omitted, rights are available worldwide.')] = None
-    excluded_countries: Annotated[list[StrMatchingEFC12812] | None, Field(description='Countries excluded from availability (ISO 3166-1 alpha-2)')] = None
+    countries: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem] | None, Field(description='Countries where rights are available (ISO 3166-1 alpha-2). If omitted, rights are available worldwide.')] = None
+    excluded_countries: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem] | None, Field(description='Countries excluded from availability (ISO 3166-1 alpha-2)')] = None
     exclusivity_model: str | None = None
     content_restrictions: list[str] | None = None
 

@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule, UniqueItems
-from adcp.types.constraints import HttpUrl, StrMatching5E987613, StrMinLen1, StrMinLen1MaxLen128, StrMinLen1MaxLen255Matching67860854, StrMinLen1MaxLen64
+from adcp.types.constraints import ComplyTestControllerRequestParamsReceivedReportingRevisionId, HttpUrl, ReportingAdjustmentReceiptObservedAdjustmentSha256, StrMinLen1, StrMinLen1MaxLen128, StrMinLen1MaxLen64
 
 from ..enums.reporting_finality import ReportingFinality
 from .reporting_canonical_content_digest import ReportingCanonicalContentDigest
@@ -58,15 +58,15 @@ class ReportingRevision(AdCPBaseModel):
         ConditionalRequired((Match('finality', True, ('official',)),), require=('finality_basis', 'finality_policy_id', 'finalized_at'), forbid=()),
         NegatedConditional((Match('finality', True, ('official',)),), require=(), forbid=('finality_basis', 'finality_policy_id', 'finalized_at')),
     )
-    reporting_revision_id: Annotated[StrMinLen1MaxLen255Matching67860854, Field(description='Portable AdCP identity for this immutable report publication. Distinct from package delivery_revision_id and provider-native versions.')]
-    revision_content_sha256: Annotated[StrMatching5E987613, Field(description='SHA-256 of the immutable RFC 8785 JCS binding object containing reporting_revision_id, row_count, control_totals, and reporting_rows. Reliable Reporting 1.0 Core revisions include it and exact reads return the identical value.')]
-    report_definition_id: Annotated[StrMinLen1MaxLen255Matching67860854, Field(description='Identity or canonical fingerprint of immutable metric, grain, attribution, breakdown, action-definition, profile, and calendar/timezone semantics.')]
+    reporting_revision_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId, Field(description='Portable AdCP identity for this immutable report publication. Distinct from package delivery_revision_id and provider-native versions.')]
+    revision_content_sha256: Annotated[ReportingAdjustmentReceiptObservedAdjustmentSha256, Field(description='SHA-256 of the immutable RFC 8785 JCS binding object containing reporting_revision_id, row_count, control_totals, and reporting_rows. Reliable Reporting 1.0 Core revisions include it and exact reads return the identical value.')]
+    report_definition_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId, Field(description='Identity or canonical fingerprint of immutable metric, grain, attribution, breakdown, action-definition, profile, and calendar/timezone semantics.')]
     report_definition_uri: HttpUrl
-    report_definition_sha256: StrMatching5E987613
+    report_definition_sha256: ReportingAdjustmentReceiptObservedAdjustmentSha256
     reporting_profile: StrMinLen1MaxLen128
     schema_version: StrMinLen1MaxLen64
     schema_uri: Annotated[HttpUrl, Field(description='Machine-readable schema on the authenticated seller/provider or AdCP-registry origin.')]
-    schema_sha256: Annotated[StrMatching5E987613, Field(description='Digest of the exact schema bytes used to validate this immutable revision.')]
+    schema_sha256: Annotated[ReportingAdjustmentReceiptObservedAdjustmentSha256, Field(description='Digest of the exact schema bytes used to validate this immutable revision.')]
     schema_dialect: Annotated[Literal['https://json-schema.org/draft/2020-12/schema'], Field(description='Closed SDK-bundled dialect; the metaschema is never network-fetched.')]
     schema_ref_policy: Annotated[Literal['local_fragment_only'], Field(description='The fetched schema is self-contained and every $ref is a local # fragment.')]
     account_id: StrMinLen1
@@ -75,12 +75,12 @@ class ReportingRevision(AdCPBaseModel):
     period: Annotated[Period, Field(description='Half-open reporting interval with its source calendar boundary.')]
     finality: ReportingFinality
     finality_basis: Annotated[FinalityBasis | None, Field(description='Why an official revision is considered final: an authoritative source signal, a versioned contractual cutoff, or a versioned stabilization rule.')] = None
-    finality_policy_id: Annotated[StrMinLen1MaxLen255Matching67860854 | None, Field(description='Immutable policy/version reference that defines the selected finality basis. It MUST be bound by report_definition_id.')] = None
+    finality_policy_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId | None, Field(description='Immutable policy/version reference that defines the selected finality basis. It MUST be bound by report_definition_id.')] = None
     finalized_at: Annotated[AwareDatetime | None, Field(description='When the producer applied the declared finality basis to this official revision.')] = None
     observed_at: Annotated[AwareDatetime, Field(description='When the seller obtained or committed this source observation.')]
     data_through: Annotated[AwareDatetime | None, Field(description='Latest event time conservatively included, or null when precision is unknown.')]
     data_through_precision: DataThroughPrecision
-    supersedes_reporting_revision_id: Annotated[StrMinLen1MaxLen255Matching67860854 | None, Field(description='Immediately superseded snapshot revision of the same logical slice. An official revision is terminal and MUST NOT be named here; later corrections use reporting-adjustment records.')] = None
+    supersedes_reporting_revision_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId | None, Field(description='Immediately superseded snapshot revision of the same logical slice. An official revision is terminal and MUST NOT be named here; later corrections use reporting-adjustment records.')] = None
     row_count: Annotated[NonNegativeInt, Field(description='Logical row count, including zero for a successfully evaluated empty report.')]
     control_totals: Annotated[list[ReportingControlTotal], Field(description='Profile-defined totals computed from the canonical logical revision. Names MUST be unique.', json_schema_extra={'uniqueItems': True})]
     canonical_content_digest: ReportingCanonicalContentDigest | None = None

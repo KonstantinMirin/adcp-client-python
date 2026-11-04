@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import AdCPUrl, StrMatching32F5291C
+from adcp.types.constraints import AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, AdCPUrl
 
 from ..core.brand_ref import BrandReference
 from ..core.ext import ExtensionObject
@@ -35,7 +35,7 @@ class PayingPrincipal(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-sponsored-context.json', pointer='#/properties/paying_principal')
     brand: Annotated[BrandReference, Field(description='Brand economically accountable for the sponsored context.')]
     account: Annotated[Account | None, Field(description='Optional seller-assigned account context for the paying principal. This intentionally carries only an account_id so the canonical economic principal remains paying_principal.brand.')] = None
-    operator: Annotated[StrMatching32F5291C | None, Field(description='Domain of the operator acting for the paying principal, when different from the brand domain.')] = None
+    operator: Annotated[AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain | None, Field(description='Domain of the operator acting for the paying principal, when different from the brand domain.')] = None
     display_name: Annotated[str | None, Field(description='Human-readable label for disclosure rendering. The canonical identity remains the brand/account reference.')] = None
 
 

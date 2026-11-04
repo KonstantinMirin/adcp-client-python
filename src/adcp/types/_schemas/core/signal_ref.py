@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
-from adcp.types.constraints import HttpUrl, StrMatching32F5291C, StrMatchingA828669D
+from adcp.types.constraints import AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, HttpUrl
 
 
 class SignalRef(BranchDispatchMixin, AdCPBaseModel):
@@ -35,7 +35,7 @@ class SignalRefProduct(SignalRef):
         ForbiddenGroups((('data_provider_domain',), ('signal_source_url',), ('agent_url',), ('source',), ('id',))),
     )
     scope: Annotated[Literal['product'], Field(description="Discriminator indicating the signal resolves through the selected product's included_signals or signal_targeting_options.")]
-    signal_id: Annotated[StrMatchingA828669D, Field(description='Product-local signal identifier. For local signals exposed on both get_signals and get_products, this MUST match get_signals.signals[].signal_ref.signal_id for the same signal.')]
+    signal_id: Annotated[AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, Field(description='Product-local signal identifier. For local signals exposed on both get_signals and get_products, this MUST match get_signals.signals[].signal_ref.signal_id for the same signal.')]
 
 
 class SignalRefDataProvider(SignalRef):
@@ -50,8 +50,8 @@ class SignalRefDataProvider(SignalRef):
         ForbiddenGroups((('agent_url',), ('signal_source_url',), ('source',), ('id',))),
     )
     scope: Annotated[Literal['data_provider'], Field(description="Discriminator indicating the signal resolves through a data provider's published adagents.json signals[].")]
-    data_provider_domain: Annotated[StrMatching32F5291C, Field(description='Domain that publishes the signal definition in its adagents.json signals[].')]
-    signal_id: Annotated[StrMatchingA828669D, Field(description="Signal identifier within the data provider's published adagents.json signals[].")]
+    data_provider_domain: Annotated[AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, Field(description='Domain that publishes the signal definition in its adagents.json signals[].')]
+    signal_id: Annotated[AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, Field(description="Signal identifier within the data provider's published adagents.json signals[].")]
 
 
 class SignalRefSignalSource(SignalRef):
@@ -67,7 +67,7 @@ class SignalRefSignalSource(SignalRef):
     )
     scope: Annotated[Literal['signal_source'], Field(description='Discriminator indicating the signal resolves through the issuing signal source.')]
     signal_source_url: Annotated[HttpUrl, Field(description='URL of the signal source that issues this source-native signal.')]
-    signal_id: Annotated[StrMatchingA828669D, Field(description="Signal identifier within the issuing signal source's signal set.")]
+    signal_id: Annotated[AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, Field(description="Signal identifier within the issuing signal source's signal set.")]
 
 
 SignalRef._branch_models = (SignalRefProduct, SignalRefDataProvider, SignalRefSignalSource,)

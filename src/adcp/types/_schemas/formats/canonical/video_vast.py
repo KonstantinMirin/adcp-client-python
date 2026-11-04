@@ -8,7 +8,7 @@ from pydantic import ConfigDict, Field, NonNegativeInt, TypeAdapter
 
 from adcp.types._base import SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule, UniqueItems
-from adcp.types.constraints import IntMin1, StrMatchingF601B9EB
+from adcp.types.constraints import CanonicalFormatImageAspectRatio, IntMin1
 
 from ...core.vast_media_file_requirements import VASTMediaFileRequirements
 from ...enums.activation_method import CreativeActivationMethod
@@ -49,7 +49,7 @@ class CanonicalFormatVASTVideo(CanonicalFormatBase):
     )
     slots: Annotated[list[SlotsItem] | None, Field(default_factory=lambda: TypeAdapter(list[SlotsItem]).validate_python([{'asset_group_id': 'vast_tag', 'asset_type': 'vast', 'required': True}, {'asset_group_id': 'landing_page_url', 'asset_type': 'url', 'required': False}]), description="Default slots for video_vast canonical. Buyer ships a VAST tag (URL or inline XML, VAST 2.x-4.x) plus an optional clickthrough URL (which falls back to the VAST `ClickThrough` element when omitted). Tracking events are inherent to VAST and don't require explicit slots.", json_schema_extra={'default': [{'asset_group_id': 'vast_tag', 'asset_type': 'vast', 'required': True}, {'asset_group_id': 'landing_page_url', 'asset_type': 'url', 'required': False}]})]
     orientation: Orientation | None = None
-    aspect_ratio: StrMatchingF601B9EB | None = None
+    aspect_ratio: CanonicalFormatImageAspectRatio | None = None
     vast_versions: Annotated[list[VASTVersion] | None, Field(description='VAST versions accepted by this product format option. The asset still declares exactly one `vast_version`; compatibility requires membership in this set and the seller-wide execution set.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     vast_version: Annotated[VASTVersion | None, Field(description='Deprecated one-element alias for `vast_versions`. Producers use either the singular legacy alias or the plural 3.2 field, never both.')] = None
     media_file_requirements: Annotated[VASTMediaFileRequirements | None, Field(description='Technical acceptance constraints for alternative VAST MediaFile renditions. Each applicable resolved InLine linear creative needs at least one MediaFile satisfying all declared constraints.')] = None

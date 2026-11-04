@@ -8,7 +8,7 @@ from pydantic import ConfigDict, Field, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, RequiredGroups, Rule
-from adcp.types.constraints import IntMin1, StrMatchingA828669D
+from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, IntMin1
 
 from ..core.context import ContextObject
 from ..core.creative_manifest import CreativeManifest
@@ -59,7 +59,7 @@ class RequestsItem(AdCPBaseModel):
         RequiredGroups((('creative_manifest',), ('creative_id',)), 'anyOf'),
         ForbiddenGroups((('creative_manifest', 'creative_id'),)),
     )
-    target_capability_id: Annotated[StrMatchingA828669D | None, Field(description='Canonical preview-operation selector for this batch item. Overrides the batch-level target_capability_id and MUST identify an advertised capability whose operations contains preview. If neither item nor batch supplies one, renderer inference is permitted only for a unique compatible preview capability.')] = None
+    target_capability_id: Annotated[AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem | None, Field(description='Canonical preview-operation selector for this batch item. Overrides the batch-level target_capability_id and MUST identify an advertised capability whose operations contains preview. If neither item nor batch supplies one, renderer inference is permitted only for a unique compatible preview capability.')] = None
     format_id: Annotated[FormatReferenceStructuredObject | None, Field(description='**DEPRECATED in 3.2.** Legacy named-format preview route. Use target_capability_id plus the canonical identity in creative_manifest.')] = None
     creative_manifest: Annotated[CreativeManifest | None, Field(description='Complete creative manifest with all required assets.')] = None
     creative_id: Annotated[str | None, Field(description='Creative-library identifier. Use instead of creative_manifest to preview a stored canonical creative.')] = None
@@ -88,7 +88,7 @@ class PreviewCreativeRequest(AdCPVersionEnvelope):
     )
     request_type: Annotated[RequestType, Field(description="Preview mode. 'single' previews one creative manifest. 'batch' previews multiple creatives in one call. 'variant' replays a post-flight variant by ID.")]
     creative_manifest: Annotated[CreativeManifest | None, Field(description='Complete creative manifest with all required assets for the format. In single mode, provide exactly one of creative_manifest or creative_id. Also accepted per item in batch mode.')] = None
-    target_capability_id: Annotated[StrMatchingA828669D | None, Field(description="Canonical preview-operation selector. Identifies one get_adcp_capabilities creative.supported_formats[].capability_id entry whose operations contains preview. In single mode it selects the renderer for this request; in batch mode it is the default for items that omit their own target_capability_id. When omitted, the agent MAY resolve the renderer only if exactly one advertised preview capability satisfies the manifest's canonical declaration; zero matches or multiple matches MUST be rejected with FORMAT_NOT_SUPPORTED rather than choosing nondeterministically. Mutually exclusive with deprecated format_id.")] = None
+    target_capability_id: Annotated[AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem | None, Field(description="Canonical preview-operation selector. Identifies one get_adcp_capabilities creative.supported_formats[].capability_id entry whose operations contains preview. In single mode it selects the renderer for this request; in batch mode it is the default for items that omit their own target_capability_id. When omitted, the agent MAY resolve the renderer only if exactly one advertised preview capability satisfies the manifest's canonical declaration; zero matches or multiple matches MUST be rejected with FORMAT_NOT_SUPPORTED rather than choosing nondeterministically. Mutually exclusive with deprecated format_id.")] = None
     format_id: Annotated[FormatReferenceStructuredObject | None, Field(description='**DEPRECATED in 3.2.** Legacy named-format preview route. New requests select an advertised preview renderer with target_capability_id and carry portable format identity in creative_manifest.format_kind plus optional creative_manifest.format_option_ref.')] = None
     inputs: Annotated[list[PreviewCreativeRequestInputsItem] | None, Field(description='Array of input sets for generating multiple preview variants. Each input set defines macros and context values for one preview rendering. Used in single mode.', min_length=1)] = None
     template_id: Annotated[str | None, Field(description='Specific template ID for custom format rendering. Used in single mode.')] = None

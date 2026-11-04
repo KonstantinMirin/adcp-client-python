@@ -8,7 +8,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule
-from adcp.types.constraints import HttpUrl, StrMatching727735D6, StrMinLen1
+from adcp.types.constraints import AssetPath, HttpUrl, StrMinLen1
 
 from ..enums.macro_dialect import MacroDialectFamily
 from ..enums.macro_mapping_status import MacroMappingStatus
@@ -47,7 +47,7 @@ class MacroResolutionResult(AdCPBaseModel):
         ConditionalRequired((Match('status', True, ('preserved_for_downstream',)),), require=(), forbid=('performed_by',)),
     )
     declaration_id: StrMinLen1
-    asset_path: Annotated[StrMatching727735D6, Field(description='JSON Pointer to the asset carrying the declaration.')]
+    asset_path: Annotated[AssetPath, Field(description='JSON Pointer to the asset carrying the declaration.')]
     token: StrMinLen1
     dialect: MacroDialectFamily
     dialect_namespace: HttpUrl | None = None

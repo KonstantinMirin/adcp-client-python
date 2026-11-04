@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import IntMin1, StrMatchingEA283A10
+from adcp.types.constraints import ComplianceRequiredDisclosuresItemJurisdictionsItem, IntMin1
 
 from ..enums.disclosure_persistence import DisclosurePersistence
 from ..enums.disclosure_position import DisclosurePosition
@@ -46,7 +46,7 @@ class RequiredDisclosuresItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/creative-brief.json', pointer='#/properties/compliance/properties/required_disclosures/items')
     text: Annotated[str, Field(description='The disclosure text that must appear in the creative')]
     position: Annotated[DisclosurePosition | None, Field(description='Where the disclosure should appear within the creative. prominent: clearly visible in the main creative area; footer: at the bottom of visual creatives; audio: spoken in audio/video creatives; subtitle: displayed in the subtitle or closed-caption track; overlay: superimposed on video content; end_card: displayed on video end card; pre_roll: spoken or displayed before main content; companion: in companion ad unit alongside primary creative')] = None
-    jurisdictions: Annotated[list[StrMatchingEA283A10] | None, Field(description="Jurisdictions where this disclosure is required. ISO 3166-1 alpha-2 country codes or ISO 3166-2 subdivision codes (e.g., 'US', 'GB', 'US-NJ', 'CA-QC'). If omitted, the disclosure applies to all jurisdictions in the campaign.", min_length=1)] = None
+    jurisdictions: Annotated[list[ComplianceRequiredDisclosuresItemJurisdictionsItem] | None, Field(description="Jurisdictions where this disclosure is required. ISO 3166-1 alpha-2 country codes or ISO 3166-2 subdivision codes (e.g., 'US', 'GB', 'US-NJ', 'CA-QC'). If omitted, the disclosure applies to all jurisdictions in the campaign.", min_length=1)] = None
     regulation: Annotated[str | None, Field(description="The regulation or legal authority requiring this disclosure (e.g., 'SEC Rule 156', 'FCA COBS 4.5', 'FDA 21 CFR 202')")] = None
     min_duration_ms: Annotated[IntMin1 | None, Field(description='Minimum display duration in milliseconds. For video/audio disclosures, how long the disclosure must be visible or audible. For static formats, how long the disclosure must remain on screen before any auto-advance.')] = None
     language: Annotated[str | None, Field(description="Language of the disclosure text as a BCP 47 language tag (e.g., 'en', 'fr-CA', 'es'). When omitted, the disclosure is assumed to match the creative's language.")] = None

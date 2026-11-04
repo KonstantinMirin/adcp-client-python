@@ -8,7 +8,7 @@ from pydantic import ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import StrMatchingEFC12812, StrMinLen16MaxLen255Matching1E5CF9EB, StrMinLen1MaxLen4096MatchingB34ADF3C
+from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, GovernanceContext, SyncAccountsRequestIdempotencyKey
 
 from ..core.account_ref import AccountReference
 from ..core.brand_ref import BrandReference
@@ -36,7 +36,7 @@ class Campaign(AdCPBaseModel):
     )
     description: Annotated[str, Field(description='Description of how the rights will be used')]
     uses: Annotated[list[RightUse], Field(description='Specific rights uses for this campaign', min_length=1)]
-    countries: Annotated[list[StrMatchingEFC12812] | None, Field(description='Countries where the campaign will run (ISO 3166-1 alpha-2)')] = None
+    countries: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem] | None, Field(description='Countries where the campaign will run (ISO 3166-1 alpha-2)')] = None
     format_ids: Annotated[list[FormatReferenceStructuredObject] | None, Field(description='Deprecated in AdCP 3.2; removed in AdCP 4.0. Legacy named formats that will be produced. Use `format_kinds` and optional `format_option_refs`.')] = None
     format_kinds: Annotated[list[CanonicalFormatKind] | None, Field(description='Canonical creative format kinds that will be produced under the rights grant.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     format_option_refs: Annotated[list[FormatOptionReference] | None, Field(description='Exact canonical publisher or product format options covered by the planned rights use, when kind alone is insufficient.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
@@ -53,7 +53,7 @@ class AcquireRightsRequest(AdCPVersionEnvelope):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/acquire-rights-request.json', pointer='#')
-    governance_context: Annotated[StrMinLen1MaxLen4096MatchingB34ADF3C | None, Field(description='Opaque intent authorization for this rights commitment. Required when governance applies to the resolved account.')] = None
+    governance_context: Annotated[GovernanceContext | None, Field(description='Opaque intent authorization for this rights commitment. Required when governance applies to the resolved account.')] = None
     rights_id: Annotated[str, Field(description='Rights offering identifier from get_rights response')]
     pricing_option_id: Annotated[str, Field(description='Selected pricing option from the rights offering')]
     buyer: Annotated[BrandReference, Field(description="The buyer's brand identity")]
@@ -61,7 +61,7 @@ class AcquireRightsRequest(AdCPVersionEnvelope):
     campaign: Annotated[Campaign, Field(description='Campaign details for rights clearance')]
     revocation_webhook: Annotated[PushNotificationConfig, Field(description='Webhook for rights revocation notifications. If the rights holder needs to revoke rights (talent scandal, contract violation, etc.), they POST a revocation-notification to this URL. The buyer is responsible for stopping creative delivery upon receipt.')]
     push_notification_config: Annotated[PushNotificationConfig | None, Field(description='Webhook for async status updates if the acquisition requires approval. The rights agent sends a webhook notification when the status transitions to acquired or rejected.')] = None
-    idempotency_key: Annotated[StrMinLen16MaxLen255Matching1E5CF9EB, Field(description='Client-generated key for safe retries. Resubmitting with the same key returns the original response rather than creating a duplicate acquisition. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.')]
+    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Client-generated key for safe retries. Resubmitting with the same key returns the original response rather than creating a duplicate acquisition. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.')]
     context: ContextObject | None = None
     ext: ExtensionObject | None = None
 

@@ -8,7 +8,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import HttpUrl, StrMatchingA2A26C71, StrMaxLen500, StrMaxLen5000, StrMinLen1
+from adcp.types.constraints import HttpUrl, IssuerDomain, StrMaxLen500, StrMaxLen5000, StrMinLen1
 
 from ..core.ext import ExtensionObject
 from ..enums.channels import MediaChannel
@@ -34,7 +34,7 @@ class Issuer(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/policy-entry.json', pointer='#/properties/issuer')
-    domain: Annotated[StrMatchingA2A26C71, Field(description='Lowercase registrable or organizational domain used as the stable issuer identifier.')]
+    domain: Annotated[IssuerDomain, Field(description='Lowercase registrable or organizational domain used as the stable issuer identifier.')]
     name: StrMinLen1 | None = None
 
 

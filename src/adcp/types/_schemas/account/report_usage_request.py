@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import StrMatching43E30B32, StrMaxLen50
+from adcp.types.constraints import GetAccountFinancialsResponseSuccessCurrency, StrMaxLen50
 
 from ..core.account_ref import AccountReference
 from ..core.context import ContextObject
@@ -23,7 +23,7 @@ class UsageItem(AdCPBaseModel):
     account: Annotated[AccountReference, Field(description='Account for this usage record.')]
     media_buy_id: Annotated[str | None, Field(description='Seller-assigned media buy identifier. Links this usage record to a specific media buy.')] = None
     vendor_cost: Annotated[NonNegativeFloat, Field(description='Amount owed to the vendor for this record, denominated in currency.')]
-    currency: Annotated[StrMatching43E30B32, Field(description='ISO 4217 currency code.')]
+    currency: Annotated[GetAccountFinancialsResponseSuccessCurrency, Field(description='ISO 4217 currency code.')]
     pricing_option_id: Annotated[str | None, Field(description="Pricing option identifier from the vendor's discovery response (e.g., get_signals, list_content_standards). The vendor uses this to verify the correct rate was applied.")] = None
     impressions: Annotated[NonNegativeInt | None, Field(description='Impressions delivered using this vendor service.')] = None
     media_spend: Annotated[NonNegativeFloat | None, Field(description='Media spend in currency for the period. Required when a percent_of_media pricing model was used, so the vendor can verify the applied rate.')] = None

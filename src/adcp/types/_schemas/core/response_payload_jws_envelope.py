@@ -7,7 +7,7 @@ from typing import Annotated, Any, ClassVar, Literal
 from pydantic import ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import HttpUrl, StrMatching2F959EB5, StrMatching325DEB97, StrMatching32F5291C
+from adcp.types.constraints import AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, CanonicalProposalTermsDigest, HttpUrl, ResponsePayloadJWSEnvelopeProtected
 
 
 class Task(StrEnum):
@@ -25,9 +25,9 @@ class ResponsePayload(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/response-payload-jws-envelope.json', pointer='#/definitions/response_payload')
     typ: Annotated[Literal['adcp-response-payload+jws'], Field(description='Type discriminator preventing cross-profile replay.')]
     task: Annotated[Task, Field(description='Designated task whose response payload is signed.')]
-    brand_domain: Annotated[StrMatching32F5291C, Field(description='Brand tenant whose policy store produced the answer. The signer MUST derive this from server-side tenant resolution, not caller-supplied request fields.')]
+    brand_domain: Annotated[AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, Field(description='Brand tenant whose policy store produced the answer. The signer MUST derive this from server-side tenant resolution, not caller-supplied request fields.')]
     agent_url: Annotated[HttpUrl, Field(description='Canonical URL of the responding brand agent entry whose response-signing key verifies this envelope.')]
-    request_hash: Annotated[StrMatching325DEB97, Field(description='sha256: prefix plus unpadded base64url SHA-256 of the canonical request-binding object for this call.')]
+    request_hash: Annotated[CanonicalProposalTermsDigest, Field(description='sha256: prefix plus unpadded base64url SHA-256 of the canonical request-binding object for this call.')]
     iat: Annotated[NonNegativeInt, Field(description='Issued-at time as Unix epoch seconds.')]
     exp: Annotated[NonNegativeInt, Field(description='Expiration time as Unix epoch seconds. Online verifiers reject envelopes after this time, allowing only implementation-defined clock skew.')]
     response: Annotated[dict[str, Any], Field(description='Canonical task-body success response payload being attested. Any unsigned task-body fields on the outer response, excluding signed_response and protocol/version envelope fields, MUST match this object.')]
@@ -41,9 +41,9 @@ class ResponsePayloadJWSEnvelope(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/response-payload-jws-envelope.json', pointer='#')
-    protected: Annotated[StrMatching2F959EB5, Field(description='Base64url-encoded JWS protected header. The decoded header MUST include alg, kid, and typ: adcp-response-payload+jws, and MUST NOT include the RFC 7797 b64 header. Verifiers enforce the key purpose by resolving kid to a JWK with adcp_use: response-signing.')]
+    protected: Annotated[ResponsePayloadJWSEnvelopeProtected, Field(description='Base64url-encoded JWS protected header. The decoded header MUST include alg, kid, and typ: adcp-response-payload+jws, and MUST NOT include the RFC 7797 b64 header. Verifiers enforce the key purpose by resolving kid to a JWK with adcp_use: response-signing.')]
     payload: Annotated[ResponsePayload, Field(description='Decoded signed payload. Signers compute the JWS payload bytes from the RFC 8785/JCS canonicalization of this object.')]
-    signature: Annotated[StrMatching2F959EB5, Field(description='Base64url-encoded JWS signature over the protected header and canonicalized payload.')]
+    signature: Annotated[ResponsePayloadJWSEnvelopeProtected, Field(description='Base64url-encoded JWS signature over the protected header and canonicalized payload.')]
 
 
 __all__ = ["ResponsePayloadJWSEnvelope", "ResponsePayload"]

@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field, NonNegativeFloat, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import FloatMinNeg180Max180, FloatMinNeg90Max90, HttpUrl, StrMatchingEFC12812
+from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, FloatMinNeg180Max180, FloatMinNeg90Max90, HttpUrl
 
 from .ext import ExtensionObject
 from .offering_asset_group import OfferingAssetGroup
@@ -26,7 +26,7 @@ class Address(AdCPBaseModel):
     city: Annotated[str | None, Field(description='City name.')] = None
     region: Annotated[str | None, Field(description='State, province, or region.')] = None
     postal_code: Annotated[str | None, Field(description='Postal or ZIP code.')] = None
-    country: Annotated[StrMatchingEFC12812 | None, Field(description='ISO 3166-1 alpha-2 country code.')] = None
+    country: Annotated[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem | None, Field(description='ISO 3166-1 alpha-2 country code.')] = None
 
 
 class PropertyType(StrEnum):

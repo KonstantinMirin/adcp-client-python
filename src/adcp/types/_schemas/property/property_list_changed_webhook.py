@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import StrMinLen16MaxLen255Matching1E5CF9EB
+from adcp.types.constraints import SyncAccountsRequestIdempotencyKey
 
 from ..core.ext import ExtensionObject
 
@@ -32,7 +32,7 @@ class PropertyListChangedWebhook(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='property/property-list-changed-webhook.json', pointer='#')
-    idempotency_key: Annotated[StrMinLen16MaxLen255Matching1E5CF9EB, Field(description='Sender-generated key stable across retries of the same webhook event. Governance agents MUST generate a cryptographically random value (UUID v4 recommended) per distinct list-change event and reuse the same key on every retry. Recipients MUST dedupe by this key, scoped to the authenticated sender identity established by the RFC 9421 signing key — keys from different governance agents are independent.')]
+    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Sender-generated key stable across retries of the same webhook event. Governance agents MUST generate a cryptographically random value (UUID v4 recommended) per distinct list-change event and reuse the same key on every retry. Recipients MUST dedupe by this key, scoped to the authenticated sender identity established by the RFC 9421 signing key — keys from different governance agents are independent.')]
     event: Annotated[Literal['property_list_changed'], Field(description='The event type')]
     list_id: Annotated[str, Field(description='ID of the property list that changed')]
     list_name: Annotated[str | None, Field(description='Name of the property list')] = None

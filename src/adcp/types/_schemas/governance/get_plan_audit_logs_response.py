@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNega
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
-from adcp.types.constraints import FloatGt0, FloatMin0Max1, HttpUrl, IntMin1, StrMatching3CBDBB74, StrMatching43E30B32, StrMatchingE9418C71, StrMinLen1MaxLen255
+from adcp.types.constraints import FloatGt0, FloatMin0Max1, GetAccountFinancialsResponseSuccessCurrency, HttpUrl, IntMin1, PlansItemEntriesItemPlanHash, StrMinLen1MaxLen255, ZipAssetDigest
 
 from ..common._vocabularies import _VALUES_OPEN_CLOSED
 from ..core.attestation_evaluation import AttestationEvaluation
@@ -182,7 +182,7 @@ class FindingsItem(AdCPBaseModel):
     details: Annotated[dict[str, Any] | None, Field(description='Structured finding details retained exactly as emitted by check_governance.')] = None
     confidence: FloatMin0Max1 | None = None
     uncertainty_reason: Annotated[str | None, Field(description='Reason the finding carries less than full confidence, retained exactly as emitted by check_governance.')] = None
-    attestation_reference_digest: Annotated[StrMatching3CBDBB74 | None, Field(description='reference_digest of the runtime attestation evaluation this finding relied on.')] = None
+    attestation_reference_digest: Annotated[ZipAssetDigest | None, Field(description='reference_digest of the runtime attestation evaluation this finding relied on.')] = None
 
 
 class DeliveryStatementReportingPeriod(AdCPBaseModel):
@@ -215,12 +215,12 @@ class DeliveryStatement(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/get-plan-audit-logs-response.json', pointer='#/properties/plans/items/properties/entries/items/properties/delivery_statement')
     statement_id: str
-    statement_digest: StrMatching3CBDBB74
+    statement_digest: ZipAssetDigest
     sequence: IntMin1
     issued_at: AwareDatetime
     seller_reference: str
     cumulative_spend: NonNegativeFloat
-    currency: StrMatching43E30B32
+    currency: GetAccountFinancialsResponseSuccessCurrency
     reporting_period: DeliveryStatementReportingPeriod
     canonical_payload: Annotated[CanonicalPayload, Field(description='Exact retained payload used to verify statement_digest after removing delivery_metrics.statement_digest.')]
 
@@ -244,7 +244,7 @@ class Amount(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/get-plan-audit-logs-response.json', pointer='#/properties/plans/items/properties/entries/items/properties/amount')
     amount: FloatGt0
-    currency: StrMatching43E30B32
+    currency: GetAccountFinancialsResponseSuccessCurrency
 
 
 class Source(StrEnum):
@@ -279,10 +279,10 @@ class Delivery(AdCPBaseModel):
     source: Annotated[Source | None, Field(description='Whether the buyer is forwarding the seller statement it received or reporting an independently measured observation. A forwarded seller statement is not independent evidence.')] = None
     observed_at: AwareDatetime | None = None
     seller_statement_id: Annotated[str | None, Field(description='Seller statement identifier as received by the buyer. Required for seller_statement_copy.')] = None
-    seller_statement_digest: Annotated[StrMatching3CBDBB74 | None, Field(description='Digest received with the seller statement. Governance compares it to the seller-authenticated canonical digest.')] = None
+    seller_statement_digest: Annotated[ZipAssetDigest | None, Field(description='Digest received with the seller statement. Governance compares it to the seller-authenticated canonical digest.')] = None
     reporting_period: Annotated[EntriesItemDeliveryReportingPeriod | None, Field(description='Start and end timestamps for the reporting window.')] = None
     cumulative_spend: Annotated[NonNegativeFloat | None, Field(description='Buyer-attributed cumulative spend for the governed action.')] = None
-    currency: StrMatching43E30B32 | None = None
+    currency: GetAccountFinancialsResponseSuccessCurrency | None = None
     period_closed: Annotated[bool | None, Field(description='Buyer-declared operational closure of this governance reporting period. When true, governance freezes the period after recording this observation. An unresolved mismatch becomes closed_unresolved and no longer blocks later governance. Closure is not final billing or commercial settlement.')] = False
     impressions: NonNegativeInt | None = None
 
@@ -332,7 +332,7 @@ class Evidence(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/get-plan-audit-logs-response.json', pointer='#/properties/plans/items/properties/entries/items/properties/evidence')
     evidence_id: str
     evidence_type: EvidenceType
-    digest: StrMatching3CBDBB74
+    digest: ZipAssetDigest
     issued_at: AwareDatetime
 
 
@@ -372,9 +372,9 @@ class EntriesItem(AdCPBaseModel):
     seller_reference: Annotated[str | None, Field(description='Seller resource identifier retained on an outcome entry.')] = None
     delivery: Annotated[Delivery | None, Field(description='Buyer-attributed observation retained as audit evidence on a delivery outcome. It never overwrites the seller statement.')] = None
     governance_context: Annotated[str | None, Field(description='Governance context for this entry (present for check and outcome entries).')] = None
-    plan_hash: Annotated[StrMatchingE9418C71 | None, Field(description='Audit-layer binding to the plan revision this attestation was evaluated over — base64url_no_pad(SHA-256(JCS(plan_payload))) per Plan binding and audit in the campaign-governance specification. Present on check entries. Auditors and buyer-side compliance verify by recomputing over the retained plan revision and byte-comparing the decoded 32-byte digests.')] = None
+    plan_hash: Annotated[PlansItemEntriesItemPlanHash | None, Field(description='Audit-layer binding to the plan revision this attestation was evaluated over — base64url_no_pad(SHA-256(JCS(plan_payload))) per Plan binding and audit in the campaign-governance specification. Present on check entries. Auditors and buyer-side compliance verify by recomputing over the retained plan revision and byte-comparing the decoded 32-byte digests.')] = None
     runtime_attestations: Annotated[list[RuntimeAttestationsItem] | None, Field(description='Portable attestation presentations and their evaluator-of-record results retained as ordered pairs for this check entry. Auditors recompute each evaluation.reference_digest from JCS(reference), then recompute runtime_attestation_binding_digest from the ordered evaluations and attestation-bound findings.', max_length=10, min_length=1)] = None
-    runtime_attestation_binding_digest: Annotated[StrMatching3CBDBB74 | None, Field(description="Binding digest copied from the check response and signed governance_context. Auditors recompute it from this entry's ordered runtime_attestations[].evaluation values plus findings carrying attestation_reference_digest after verifying each paired reference digest.")] = None
+    runtime_attestation_binding_digest: Annotated[ZipAssetDigest | None, Field(description="Binding digest copied from the check response and signed governance_context. Auditors recompute it from this entry's ordered runtime_attestations[].evaluation values plus findings carrying attestation_reference_digest after verifying each paired reference digest.")] = None
     purchase_type: Annotated[PurchaseType | None, Field(description='Purchase type for this entry.')] = None
     outcome_status: Annotated[str | None, Field(description='Outcome status (present for outcome entries).')] = None
     delivery_reconciliation_status: DeliveryReconciliationStatus | None = None

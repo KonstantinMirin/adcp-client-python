@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
-from adcp.types.constraints import HttpUrl, StrMinLen16MaxLen255Matching1E5CF9EB
+from adcp.types.constraints import HttpUrl, SyncAccountsRequestIdempotencyKey
 
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
@@ -79,7 +79,7 @@ class UpdateContentStandardsRequest(AdCPVersionEnvelope):
     calibration_exemplars: Annotated[CalibrationExemplars | None, Field(description='Updated training/test set to calibrate policy interpretation. Use URL references for pages to be fetched and analyzed, or full artifacts for pre-extracted content.')] = None
     context: ContextObject | None = None
     ext: ExtensionObject | None = None
-    idempotency_key: Annotated[StrMinLen16MaxLen255Matching1E5CF9EB, Field(description='Client-generated unique key for at-most-once execution. If a request with the same key has already been processed, the server returns the original response without re-processing. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.')]
+    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Client-generated unique key for at-most-once execution. If a request with the same key has already been processed, the server returns the original response without re-processing. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.')]
 
 
 __all__ = ["UpdateContentStandardsRequest"]

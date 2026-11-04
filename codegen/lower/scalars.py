@@ -185,7 +185,9 @@ def name_the_constraint(decided: ir.Decided, mod: compiler.Module) -> ir.TypeRef
     kind = _CONTAINER_WORD.get(decided.type.container) or _SCALAR_WORD.get(decided.type.path)
     if kind is None:
         return None
-    path = constraints_module.resolve(kind, decided.constraints, format=decided.format)
+    path = constraints_module.resolve(
+        kind, decided.constraints, format=decided.format, named=mod.constrained
+    )
     if path is None:
         return None
     inner = _named_alias(path, kind, decided.constraints, mod, fmt=decided.format)
@@ -287,7 +289,7 @@ def lower(node: nodes.Scalar, mod: Module) -> ir.Decided | Refusal:
         if fmt in URL_FORMATS:
             return ir.Decided(ir.TypeRef(selected, validators=bound))
         return ir.Decided(ir.TypeRef(selected, validators=bound), constraints)
-    path = constraints_module.resolve(word, constraints)
+    path = constraints_module.resolve(word, constraints, named=mod.constrained)
     if path is not None:
         # **The rule goes on THIS SITE's type and never on the shared alias.**  An alias
         # in ``adcp.types.constraints`` names a CONSTRAINT and is reached by every node

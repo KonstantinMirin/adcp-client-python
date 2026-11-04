@@ -624,3 +624,215 @@ def test_every_repeated_array_type_is_owned_by_a_layer_beneath_it(
             unowned[f"{position.document}{position.pointer}"] = sorted(element)
     assert not unowned, json.dumps(unowned, indent=2)
     assert sum(owners.values()) == len(cross), (dict(owners), len(cross))
+
+
+# ---------------------------------------------------------------------------
+# §3a's L1: the CONSTRAINED SCALARS, and the name each one takes.
+#
+# Reading 4 ranges over all four layers and L1 is the one that was HALF built: the layer
+# already wrote each constraint once and referenced it -- ``constraints.symbol`` is a pure
+# function of the shape, so reading 4's identity obligation held -- and named 114 of them
+# with eight hex digits of the pattern's SHA-256.  ``docs/plan/rebuild-plan.md`` §4 rules
+# that a defect: "a minted name says what the type constrains.  A digest fails that and is
+# a defect, and insertion-stability is not the test."
+#
+# So the obligations here are a NAMING obligation and not a collapsing one, and they are
+# two: that every symbol the layer mints is a name (the GATE), and that the name each one
+# takes is the step of §4's derivation the bundle licenses (the READINGS).
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="module")
+def l1() -> catalogue.Scalars:
+    """§3a's layer L1: the CONSTRAINED SCALARS the bundle states.
+
+    The bundle and nothing else, which is :func:`l0`'s own rule and §9's.
+    """
+    from codegen import constraints
+
+    return catalogue.collect_scalars(
+        BUNDLE,
+        frozenset(keyword for keyword, _ in constraints.SPELLING),
+        constraints.symbol,
+    )
+
+
+def test_the_scalar_layer_knows_the_type_words_its_own_module_spells(
+    l1: catalogue.Scalars,
+) -> None:
+    """``catalogue.SCALAR_WORDS`` is ``constraints.BASE``'s key set and cannot drift.
+
+    The two are restated rather than imported because §11's arrows run
+    ``catalogue <- constraints``, and ``catalogue.domain``'s own docstring names the price:
+    "the DERIVATION is one sentence and the two cannot come apart without
+    ``tests/test_catalogue.py``'s own equality reddening".  This is that equality for this
+    layer, and the layer censuses nothing outside the set either way.
+    """
+    from codegen import constraints
+
+    assert frozenset(constraints.BASE) == catalogue.SCALAR_WORDS
+    assert {position.kind for position in l1.positions} <= catalogue.SCALAR_WORDS
+
+
+def test_the_scalar_layer_partitions_into_section_fours_three_steps(
+    l1: catalogue.Scalars,
+) -> None:
+    """§4's three derivation steps account for every entry, each exactly once.
+
+    "**The derivation, in order, and there is no fourth step**", so the three parts are a
+    PARTITION of the layer and a fourth bucket cannot appear without this reddening.  The
+    arithmetic alone is not the property -- ``partitions`` reports the unaccounted and the
+    double-claimed by name, so two parts whose sizes sum correctly cannot both miss an
+    entry and double-count another.
+    """
+    entries = claimed("L1 entries the bundle states", l1.entries)
+    partitions(
+        entries,
+        the_bundles_own_name=[e.key for e in l1.named_by_the_bundle],
+        the_constraint_in_words=[e.key for e in l1.named_by_the_constraint],
+        the_declaring_position=[e.key for e in l1.pending_a_name],
+    )
+
+
+def test_a_constraints_name_is_the_bundles_only_where_the_bundle_names_one_subject(
+    l1: catalogue.Scalars,
+) -> None:
+    """§4's step 1, and §3a's own argument for why it is stricter here than at L0.
+
+    §3a: "What tells a shared subject from a coincidental overlap is that an object's key
+    holds the property NAMES, while an array's key over a scalar element holds no name at
+    all -- which is why the object layer can collapse on identity and the array layer must
+    not."  **A constrained scalar's key holds no name either**: it is the constraint, and
+    nothing in it says what the constraint is ABOUT.  So one position's title names THAT
+    POSITION's subject and says nothing about the constraint's, and step 1 answers only
+    where every stating position names the same subject.
+
+    Both directions are checked, because the loose reading is the tempting one:
+
+    * a step-1 entry's name IS that one subject, and every position agrees on it;
+    * an entry the bundle does NOT name one subject for took a later step -- so an entry
+      whose positions disagree can never be named after one of them.
+    """
+    for entry in claimed("L1 entries named by the bundle", l1.named_by_the_bundle):
+        assert entry.subjects == (entry.name,), (entry.name, entry.subjects)
+        assert all(p.subject == entry.name for p in entry.positions), entry.name
+    disagreeing = claimed(
+        "L1 entries whose positions name more than one subject, or none",
+        [e for e in l1.entries.values() if len(e.subjects) != 1 or any(
+            p.subject is None for p in e.positions
+        )],
+        inside=l1.entries.values(),
+    )
+    for entry in disagreeing:
+        assert entry.step != 1, (entry.name, entry.subjects)
+        # ... and where such a name DOES coincide with a subject it is the HOME's own and
+        # never a sibling's, which is the half that matters: a name taken from a position
+        # the entry does not declare at is the lie this rule exists to stop.  Measured,
+        # one entry of this bundle is in that condition --
+        # ``core/reporting-control-total.json``'s two titled branches both state a
+        # ``name`` pattern, and the home's subject already carries its branch's title, so
+        # ``IntegerReportingControlTotalName`` is the position and not the subject.
+        assert entry.name not in set(entry.subjects) - {entry.at.subject}, (
+            entry.name,
+            entry.subjects,
+        )
+
+
+def test_a_constraint_pending_a_name_is_named_for_the_position_that_declares_it(
+    l1: catalogue.Scalars,
+) -> None:
+    """§4's step 3, which is §1's rule and is simultaneously the upstream ASK.
+
+    §1: "for a symbol carrying no ``__adcp_schema__`` the declaring position is its
+    catalogue entry's home."  So a step-3 name is read off ``ScalarEntry.at`` -- a position
+    of the bundle -- and the check is that it IS: the home's own document name is in the
+    symbol, so a reader meets a position they can go and read rather than a subject the
+    bundle never claimed.
+
+    **The home is a function of the bundle and not of the run**, which is what makes the
+    symbol the same for a one-document command and for a whole-population emission (§9).
+    """
+    for entry in claimed("L1 entries pending a name", l1.pending_a_name):
+        assert entry.at in entry.positions, entry.name
+        assert entry.name.startswith(catalogue._home_name(BUNDLE, entry.at)[:1]), entry.name
+        assert entry.name == catalogue._home_name(BUNDLE, entry.at) or entry.name.startswith(
+            catalogue._home_name(BUNDLE, entry.at)
+        ), (entry.name, entry.at.document, entry.at.pointer)
+
+
+def test_no_symbol_this_compiler_mints_carries_a_digest_or_an_index(
+    l1: catalogue.Scalars,
+) -> None:
+    """**THE L1 GATE**: §4's one rule for a digest and for a positional index.
+
+    "A digest and an index are the same failure at different layers, so they are one rule
+    and not two: **no name the compiler mints contains a content digest or a positional
+    index.**"
+
+    Read off the SYMBOLS a fresh run declares in ``adcp.types.constraints`` -- the module a
+    consumer imports from and annotates with -- and not off this layer's collection, so a
+    second path that minted a name without consulting the layer would redden here too.
+
+    **It is an INVARIANT and not a count.**  "There are 0 digests" freezes nothing: the
+    statement is that a run cannot declare a symbol whose tail is a hexadecimal run or a
+    bare integer, and it survives every rename, every new constraint and every bundle.
+    """
+    import ast
+    import re
+
+    from compiled import compiled
+
+    out = compiled(BUNDLE, sorted(bundle.portable(BUNDLE)))
+    module = ast.parse(out.beside["constraints.py"])
+    assignments = {
+        target.id: ast.unparse(node.value)
+        for node in module.body
+        if isinstance(node, ast.Assign)
+        for target in node.targets
+        if isinstance(target, ast.Name)
+    }
+    declared = claimed(
+        "symbols a fresh run declares in adcp.types.constraints", assignments
+    )
+    # **A CONTENT DIGEST**: a trailing run of eight or more UPPERCASE hexadecimal
+    # characters, which is what the retired ``constraints._digest`` wrote and is a form no
+    # bound this bundle states reaches -- its widest is ``maxLength: 1048576``, seven
+    # decimal digits.  Asked of every declared symbol, because a digest minted by any path
+    # at all is the defect.
+    digested = sorted(name for name in declared if re.search(r"[0-9A-F]{8,}$", name))
+    assert not digested, digested
+    # **A POSITIONAL INDEX**: a trailing digit run that is not the value of a bound.  Asked
+    # of the names this MODULE spells rather than of all of them, and that is the sound
+    # scope rather than a narrowed one: a step-1 or step-3 name is made of the bundle's own
+    # words, so a digit in it is the bundle's (``...ObservedAdjustmentSha256``), while a
+    # step-2 name is spelled here from the constraint and every bound it spells follows its
+    # own keyword word.  A digit run reached without one is an index.
+    from codegen import constraints
+
+    spelled_here = claimed(
+        "symbols this module spells from the constraint itself",
+        [e.name for e in l1.named_by_the_constraint] + list(constraints.NAMED_CONTAINERS.values()),
+    )
+    words = "|".join(
+        word for _, word in constraints.SPELLING
+    ) + "|" + "|".join(
+        word for spelling in constraints.CONTAINER_SPELLING.values() for _, word in spelling
+    )
+    indexed = sorted(
+        name
+        for name in spelled_here & declared
+        if (found := re.search(r"([A-Za-z]*)[\dp.]+$", name))
+        and not re.search(rf"({words})$", found.group(1))
+    )
+    assert not indexed, indexed
+    # **AND THE LAYER IS WHAT NAMED THEM**, so the gate cannot go green because a second
+    # path minted a name without consulting it.  Asked of the symbols carrying a
+    # ``pattern``, which is exactly the population the retired digest named: every one of
+    # them is a name this layer derived over the bundle.
+    minted = {entry.name for entry in l1.entries.values()}
+    patterned = claimed(
+        "symbols a fresh run declares for a constraint carrying a pattern",
+        [name for name, value in assignments.items() if "pattern=" in value],
+        inside=declared,
+    )
+    assert patterned <= minted, sorted(patterned - minted)

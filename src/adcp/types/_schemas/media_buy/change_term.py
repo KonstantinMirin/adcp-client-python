@@ -8,7 +8,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import StrMatching71E52EB8, StrMatchingB74DBD1C, StrMinLen1MaxLen1000
+from adcp.types.constraints import ConditionsItem, StrMediaBuyChangeTermID, StrMinLen1MaxLen1000
 
 from ..core.ext import ExtensionObject
 from ..core.sla_window import SLAWindow
@@ -36,12 +36,12 @@ class MediaBuyChangeTerm(AdCPBaseModel):
         UniqueItems('allowed_statuses'),
         UniqueItems('conditions'),
     )
-    term_id: StrMatching71E52EB8
+    term_id: StrMediaBuyChangeTermID
     action: CanonicalMediaBuyActionName
     service_mode: CanonicalMediaBuyActionMode
     allowed_statuses: Annotated[list[AllowedStatusesItem] | None, Field(description='Non-terminal MediaBuy statuses in which this negotiated right may be exercised. When absent, the right applies in every non-terminal status where the canonical action itself is meaningful. This field describes contractual lifecycle scope; available_actions[] remains authoritative for the current instant.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     processing_sla: Annotated[SLAWindow | None, Field(description='Binding elapsed-time acknowledgement and completion commitment. Sellers account for weekends and non-working periods when declaring the maximum.')] = None
-    conditions: Annotated[list[StrMatchingB74DBD1C] | None, Field(description='Opaque stable condition identifiers defined by terms_ref or bilateral commercial documentation. Implementations compare identifiers; they MUST NOT execute or interpret them as instructions.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    conditions: Annotated[list[ConditionsItem] | None, Field(description='Opaque stable condition identifiers defined by terms_ref or bilateral commercial documentation. Implementations compare identifiers; they MUST NOT execute or interpret them as instructions.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     constraints: Annotated[MediaBuyChangeTermConstraints | None, Field(description='Portable bounds that buyer and seller SDKs can preflight. Omission means no machine-readable bound was promised; opaque conditions remain unevaluated.')] = None
     terms_ref: Annotated[StrMinLen1MaxLen1000 | None, Field(description="Stable contract reference. Resolving it cannot expand the typed right and MUST use the caller's normal authenticated contract-document path, never ambient seller credentials.")] = None
     description: Annotated[StrMinLen1MaxLen1000 | None, Field(description='Display-only summary; it cannot grant authority, add an action, or override typed fields.')] = None

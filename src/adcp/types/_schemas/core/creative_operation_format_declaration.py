@@ -7,7 +7,7 @@ from pydantic import Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, NegatedConditional, Rule, UniqueItems
-from adcp.types.constraints import AdCPUrl, StrMatching32F5291C
+from adcp.types.constraints import AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, AdCPUrl
 
 from ..enums.channels import MediaChannel
 from .canonical_format_kind import CanonicalFormatKind
@@ -33,7 +33,7 @@ class CreativeOperationFormatDeclaration(AdCPBaseModel):
         ConditionalRequired((Match('locale_policy', True, None),), require=('canonical_formats_only',), forbid=()),
     )
     format_option_id: Annotated[str | None, Field(description='Stable publisher- or product-declaration identity that this creative operation can satisfy. When publisher_domain is present, this field is required.')] = None
-    publisher_domain: Annotated[StrMatching32F5291C | None, Field(description='Publisher namespace for format_option_id when this operation claims compatibility with a publisher declaration.')] = None
+    publisher_domain: Annotated[AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain | None, Field(description='Publisher namespace for format_option_id when this operation claims compatibility with a publisher declaration.')] = None
     macro_resolution_capabilities: Annotated[list[MacroProcessingCapability] | None, Field(description='Creative-route processing capabilities for exact macro dialect identities, semantics, operations, actors, contexts, and encodings. These capabilities describe build, validation, or preview processing and do not grant seller production authority.', min_length=1)] = None
     technical_requirements_complete: bool | None = None
     display_name: str | None = None

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
-from adcp.types.constraints import StrMatching32F5291C
+from adcp.types.constraints import AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain
 
 from ..enums.distribution_identifier_type import DistributionIdentifierType
 from ..enums.genre_taxonomy import GenreTaxonomy
@@ -55,7 +55,7 @@ class PublisherCollectionsSource(BaseCollectionSource):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='collection/base-collection-source.json', pointer='#/oneOf/1')
     selection_type: Annotated[Literal['publisher_collections'], Field(description='Discriminator indicating selection by specific collection IDs within a publisher')]
-    publisher_domain: Annotated[StrMatching32F5291C, Field(description="Domain where publisher's adagents.json is hosted")]
+    publisher_domain: Annotated[AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, Field(description="Domain where publisher's adagents.json is hosted")]
     collection_ids: Annotated[list[str], Field(description="Specific collection IDs from the publisher's adagents.json", min_length=1)]
 
 
@@ -68,7 +68,7 @@ class PublisherGenresSource(BaseCollectionSource):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='collection/base-collection-source.json', pointer='#/oneOf/2')
     selection_type: Annotated[Literal['publisher_genres'], Field(description='Discriminator indicating selection by genre within a publisher')]
-    publisher_domain: Annotated[StrMatching32F5291C, Field(description="Domain where publisher's adagents.json is hosted")]
+    publisher_domain: Annotated[AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, Field(description="Domain where publisher's adagents.json is hosted")]
     genres: Annotated[list[str], Field(description="Genre values to match against the publisher's collections", min_length=1)]
     genre_taxonomy: Annotated[GenreTaxonomy, Field(description="Taxonomy for the genre values. Required so sellers can interpret genre strings unambiguously. Use 'custom' for free-form values negotiated out of band.")]
 

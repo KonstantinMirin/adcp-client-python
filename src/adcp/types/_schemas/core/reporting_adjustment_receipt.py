@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule, UniqueItems
-from adcp.types.constraints import StrMatching5E987613, StrMinLen16MaxLen255Matching1E5CF9EB, StrMinLen1MaxLen128MatchingE43B025C, StrMinLen1MaxLen255Matching67860854
+from adcp.types.constraints import ComplyTestControllerRequestParamsReceivedReportingRevisionId, ReportingAdjustmentReceiptObservedAdjustmentSha256, ReportingAdjustmentReceiptRejectionCode, SyncAccountsRequestIdempotencyKey
 
 from ..common._vocabularies import _VALUES_ACCEPTED_REJECTED
 
@@ -18,7 +18,7 @@ class Status(StrEnum):
     REJECTED = _VALUES_ACCEPTED_REJECTED[1]
 
 
-ReportingAdjustmentRejectionCode = StrMinLen1MaxLen128MatchingE43B025C
+ReportingAdjustmentRejectionCode = ReportingAdjustmentReceiptRejectionCode
 
 
 class ReportingAdjustmentReceipt(AdCPBaseModel):
@@ -34,12 +34,12 @@ class ReportingAdjustmentReceipt(AdCPBaseModel):
         ConditionalRequired((Match('status', True, ('rejected',)),), require=('rejection_codes',), forbid=()),
         NegatedConditional((Match('status', True, ('rejected',)),), require=(), forbid=('rejection_codes',)),
     )
-    reporting_receipt_id: StrMinLen16MaxLen255Matching1E5CF9EB
-    reporting_adjustment_id: StrMinLen1MaxLen255Matching67860854
-    adjusts_reporting_revision_id: StrMinLen1MaxLen255Matching67860854
-    supersedes_reporting_receipt_id: Annotated[StrMinLen16MaxLen255Matching1E5CF9EB | None, Field(description='Optional immutable rejected receipt replaced by this new receipt for the same adjustment. Accepted current receipts are terminal.')] = None
+    reporting_receipt_id: SyncAccountsRequestIdempotencyKey
+    reporting_adjustment_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId
+    adjusts_reporting_revision_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId
+    supersedes_reporting_receipt_id: Annotated[SyncAccountsRequestIdempotencyKey | None, Field(description='Optional immutable rejected receipt replaced by this new receipt for the same adjustment. Accepted current receipts are terminal.')] = None
     status: Status
-    observed_adjustment_sha256: Annotated[StrMatching5E987613, Field(description='Digest recomputed from the adjustment using its canonical evidence rule.')]
+    observed_adjustment_sha256: Annotated[ReportingAdjustmentReceiptObservedAdjustmentSha256, Field(description='Digest recomputed from the adjustment using its canonical evidence rule.')]
     rejection_codes: Annotated[list[ReportingAdjustmentRejectionCode] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     observed_at: AwareDatetime
     received_at: AwareDatetime | None = None

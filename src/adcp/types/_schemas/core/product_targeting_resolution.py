@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import StrMatchingD0AA0CF3
+from adcp.types.constraints import EffectiveTargetingDigest
 
 from .ext import ExtensionObject
 from .targeting_modification import TargetingModification
@@ -25,7 +25,7 @@ class ProductTargetingResolution(AdCPBaseModel):
         UniqueItems('modifications'),
     )
     modifications: Annotated[list[TargetingModification], Field(description='Ordered changes applied to the requested targeting_overlay. Sellers apply entries in array order and MUST validate the complete resulting overlay before returning the product.', json_schema_extra={'uniqueItems': True}, min_length=1)]
-    effective_targeting_digest: Annotated[StrMatchingD0AA0CF3 | None, Field(description='Optional digest of the canonical effective targeting overlay. Until AdCP defines a cross-implementation canonicalization algorithm, this value is an opaque seller audit handle and buyers MUST NOT attempt to reproduce or compare it across sellers.')] = None
+    effective_targeting_digest: Annotated[EffectiveTargetingDigest | None, Field(description='Optional digest of the canonical effective targeting overlay. Until AdCP defines a cross-implementation canonicalization algorithm, this value is an opaque seller audit handle and buyers MUST NOT attempt to reproduce or compare it across sellers.')] = None
     ext: ExtensionObject | None = None
 
 

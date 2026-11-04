@@ -8,7 +8,7 @@ from pydantic import ConfigDict, Field, NonNegativeFloat, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
-from adcp.types.constraints import FloatGt0, IntGt0, IntMin1, StrMatchingA1D8FDA8
+from adcp.types.constraints import FloatGt0, FormatRendersItemDimensionsAspectRatio, IntMin1, MaxWeightGrams
 
 from ...enums.dimension_unit import DimensionUnit
 
@@ -73,7 +73,7 @@ class ImageAssetRequirements(AdCPBaseModel):
     pixel_ratios: Annotated[list[FloatGt0] | None, Field(description='Accepted intrinsic-pixel densities for this image slot. One submitted image matching any listed ratio satisfies the slot; the array does not require one asset per ratio. Absence imposes no density constraint beyond the existing dimension requirements.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     parameters_from_format_id: Annotated[bool | None, Field(description="When true on a legacy template format, logical width, logical height, and pixel ratio are supplied by the parameterized format_id. The image asset's intrinsic dimensions MUST equal logical dimensions multiplied by pixel_ratio (which defaults to 1 when omitted).")] = None
     unit: Annotated[DimensionUnit | None, Field(description="Unit of measurement for width/height values. Defaults to 'px' when absent. Print formats use 'inches' or 'cm'.")] = None
-    aspect_ratio: Annotated[StrMatchingA1D8FDA8 | None, Field(description="Required aspect ratio (e.g., '16:9', '1:1', '1.91:1')")] = None
+    aspect_ratio: Annotated[FormatRendersItemDimensionsAspectRatio | None, Field(description="Required aspect ratio (e.g., '16:9', '1:1', '1.91:1')")] = None
     formats: Annotated[list[FormatsItem] | None, Field(description='Accepted image file formats')] = None
     min_dpi: Annotated[IntMin1 | None, Field(description='Minimum resolution in dots per inch. Always in DPI regardless of the dimension unit. Standard print requires 300 DPI, newspaper 150 DPI.')] = None
     bleed: Annotated[BleedUniform | BleedBottomLeftRightTop | None, Field(description='Required bleed area beyond the trim size. The submitted image must be larger than the declared dimensions: total width = trim width + left bleed + right bleed, total height = trim height + top bleed + bottom bleed. For uniform bleed: total = trim + (2 * uniform). Uses the same unit as the parent dimensions.')] = None
@@ -82,7 +82,7 @@ class ImageAssetRequirements(AdCPBaseModel):
     transparency_required: Annotated[bool | None, Field(description='Whether the image must support transparency (requires PNG, WebP, or GIF)')] = None
     animation_allowed: Annotated[bool | None, Field(description='Whether animated images (GIF, animated WebP) are accepted')] = None
     max_animation_duration_ms: Annotated[NonNegativeInt | None, Field(description='Maximum animation duration in milliseconds (if animation_allowed is true)')] = None
-    max_weight_grams: Annotated[IntGt0 | None, Field(description='Maximum weight in grams for the finished physical piece (print inserts, flyers). Affects postage calculations and production constraints. Only applicable to print channels.')] = None
+    max_weight_grams: Annotated[MaxWeightGrams | None, Field(description='Maximum weight in grams for the finished physical piece (print inserts, flyers). Affects postage calculations and production constraints. Only applicable to print channels.')] = None
 
 
 __all__ = ["ImageAssetRequirements"]

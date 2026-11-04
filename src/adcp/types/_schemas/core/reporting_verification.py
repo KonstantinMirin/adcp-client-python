@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
-from adcp.types.constraints import StrMatching5E987613, StrMatching82F4E987
+from adcp.types.constraints import PhysicalChecksumsItemSHA512PhysicalChecksumValue, ReportingAdjustmentReceiptObservedAdjustmentSha256
 
 from .reporting_canonical_content_digest import ReportingCanonicalContentDigest
 from .reporting_control_total import ReportingControlTotal
@@ -33,7 +33,7 @@ class SHA256PhysicalChecksum(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-verification.json', pointer='#/properties/physical_checksums/items/oneOf/0')
     object_ref: ReportingFileObjectReference
     algorithm: Literal['sha256']
-    value: StrMatching5E987613
+    value: ReportingAdjustmentReceiptObservedAdjustmentSha256
 
 
 class SHA512PhysicalChecksum(AdCPBaseModel):
@@ -43,7 +43,7 @@ class SHA512PhysicalChecksum(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-verification.json', pointer='#/properties/physical_checksums/items/oneOf/1')
     object_ref: ReportingFileObjectReference
     algorithm: Literal['sha512']
-    value: StrMatching82F4E987
+    value: PhysicalChecksumsItemSHA512PhysicalChecksumValue
 
 
 class ObservedThrough(StrEnum):

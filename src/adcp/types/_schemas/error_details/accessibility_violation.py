@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import StrMaxLen256Matching4B53B494, StrMaxLen256Matching59721198, StrMaxLen64Matching107885CB, StrMinLen1MaxLen32Matching0E0E048E, StrMinLen1MaxLen64Matching0E0E048E, StrMinLen1MaxLen64Matching4C202885
+from adcp.types.constraints import ViolationsItemCriterion, ViolationsItemCriterionSource, ViolationsItemFailureKind, ViolationsItemPointer, ViolationsItemRemediation, ViolationsItemRequiredLevel
 
 
 class FailureKind(StrEnum):
@@ -26,12 +26,12 @@ class ViolationsItem(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='error-details/accessibility-violation.json', pointer='#/properties/violations/items')
-    pointer: Annotated[StrMaxLen256Matching4B53B494, Field(description='RFC 6901 JSON Pointer rooted at the complete task request payload, not at the nested creative manifest. For example, inline build_creative uses /creative_manifest/assets/hero_image and a sync_creatives batch uses /creatives/0/assets/hero_image. If build_creative resolves a stored manifest from creative_id, use /creative_id because the failing asset is not present in the request.')]
-    criterion: Annotated[StrMinLen1MaxLen32Matching0E0E048E, Field(description='Stable criterion identifier within criterion_source, for example 1.4.3. Open string so external standards can evolve without an AdCP enum update.')]
-    criterion_source: Annotated[StrMinLen1MaxLen64Matching4C202885, Field(description='Standard or policy namespace defining the criterion, for example WCAG21, WCAG22, or EN301549.')]
-    required_level: Annotated[StrMinLen1MaxLen64Matching0E0E048E, Field(description="Conformance level or policy threshold that applied, for example AA. Kept open because not every accessibility standard uses WCAG's A/AA/AAA vocabulary.")]
-    failure_kind: Annotated[FailureKind | StrMaxLen64Matching107885CB, Field(description='Diagnostic failure category. Canonical values cover common portable cases. Vendor-local extensions use an x_ prefix. Portable recovery dispatches on criterion_source plus criterion after validating this details schema; failure_kind may refine diagnostics but does not select the recovery class.')]
-    remediation: Annotated[StrMaxLen256Matching59721198 | None, Field(description='Optional human-readable correction guidance. Plain text only; consumers treat it as untrusted agent input.')] = None
+    pointer: Annotated[ViolationsItemPointer, Field(description='RFC 6901 JSON Pointer rooted at the complete task request payload, not at the nested creative manifest. For example, inline build_creative uses /creative_manifest/assets/hero_image and a sync_creatives batch uses /creatives/0/assets/hero_image. If build_creative resolves a stored manifest from creative_id, use /creative_id because the failing asset is not present in the request.')]
+    criterion: Annotated[ViolationsItemCriterion, Field(description='Stable criterion identifier within criterion_source, for example 1.4.3. Open string so external standards can evolve without an AdCP enum update.')]
+    criterion_source: Annotated[ViolationsItemCriterionSource, Field(description='Standard or policy namespace defining the criterion, for example WCAG21, WCAG22, or EN301549.')]
+    required_level: Annotated[ViolationsItemRequiredLevel, Field(description="Conformance level or policy threshold that applied, for example AA. Kept open because not every accessibility standard uses WCAG's A/AA/AAA vocabulary.")]
+    failure_kind: Annotated[FailureKind | ViolationsItemFailureKind, Field(description='Diagnostic failure category. Canonical values cover common portable cases. Vendor-local extensions use an x_ prefix. Portable recovery dispatches on criterion_source plus criterion after validating this details schema; failure_kind may refine diagnostics but does not select the recovery class.')]
+    remediation: Annotated[ViolationsItemRemediation | None, Field(description='Optional human-readable correction guidance. Plain text only; consumers treat it as untrusted agent input.')] = None
 
 
 class AccessibilityViolationDetails(AdCPBaseModel):

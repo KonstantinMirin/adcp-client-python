@@ -8,7 +8,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import RequiredGroups, Rule
-from adcp.types.constraints import StrMatching3CBDBB74, StrMinLen1, StrMinLen1MaxLen1024
+from adcp.types.constraints import StrMinLen1, StrMinLen1MaxLen1024, ZipAssetDigest
 
 from .attestation_evaluation import AttestationEvaluation
 from .attestation_reference import AttestationReference
@@ -38,7 +38,7 @@ class ActionBinding(AdCPBaseModel):
     )
     action_type: Annotated[Literal['https://adcontextprotocol.org/actions/audience-evidence-evaluation'], Field(description='Absolute URI naming the action vocabulary, such as an AdCP governance-check or audience-evidence snapshot type.')]
     action_id: Annotated[StrMinLen1MaxLen1024, Field(description="Stable identifier of the consuming action within the domain consumer's namespace.")]
-    action_digest: Annotated[StrMatching3CBDBB74, Field(description='SHA-256 digest of the domain-defined canonical action preimage.')]
+    action_digest: Annotated[ZipAssetDigest, Field(description='SHA-256 digest of the domain-defined canonical action preimage.')]
 
 
 class Evaluation(AttestationEvaluation):
@@ -72,7 +72,7 @@ class AudienceEvidenceSelection(AdCPBaseModel):
     evidence_id: StrMinLen1
     snapshot_id: StrMinLen1
     version: StrMinLen1
-    content_digest: StrMatching3CBDBB74
+    content_digest: ZipAssetDigest
     decision_use: Annotated[DecisionUse, Field(description="How this evidence affected the seller's decision. This is not targeting execution.")]
     evidence: Annotated[AudienceEvidence | None, Field(description='Optional inline immutable snapshot. Its identity, version, and digest MUST equal the surrounding fields.')] = None
     attestation_evaluations: Annotated[list[AttestationEvaluationsItem] | None, Field(description="Exact reference/evaluation pairs used in the decision. The reference MUST be one of the selected evidence snapshot's attestation_refs, evaluation.reference_digest MUST equal the digest of that same reference, reference.subject.content_digest and evaluation.action_binding.action_digest MUST equal this selection's content_digest, evaluation.action_binding.action_id MUST equal snapshot_id, and action_type MUST be https://adcontextprotocol.org/actions/audience-evidence-evaluation.", max_length=10, min_length=1)] = None

@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import IntMin1, StrMinLen1, StrMinLen16MaxLen255Matching1E5CF9EB, StrMinLen1MaxLen255Matching67860854, StrMinLen1MaxLen64MatchingD373B860
+from adcp.types.constraints import AccountChangeRecordedWebhookSubscriberId, ComplyTestControllerRequestParamsReceivedReportingRevisionId, IntMin1, StrMinLen1, SyncAccountsRequestIdempotencyKey
 
 from ..enums.reporting_finality import ReportingFinality
 from .reporting_delivery_offering import ReportingFeedPurpose
@@ -26,16 +26,16 @@ class ReportingDeliveryReadyWebhook(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-delivery-ready-webhook.json', pointer='#')
-    idempotency_key: Annotated[StrMinLen16MaxLen255Matching1E5CF9EB, Field(description='Stable across transport retries of this fire; new for a later re-emission.')]
-    notification_id: Annotated[StrMinLen1MaxLen255Matching67860854, Field(description='Stable for this logical materialization-ready event across re-emissions.')]
+    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Stable across transport retries of this fire; new for a later re-emission.')]
+    notification_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId, Field(description='Stable for this logical materialization-ready event across re-emissions.')]
     notification_type: Literal['reporting.delivery_ready']
     fired_at: AwareDatetime
-    subscriber_id: StrMinLen1MaxLen64MatchingD373B860
+    subscriber_id: AccountChangeRecordedWebhookSubscriberId
     account_id: StrMinLen1
-    delivery_config_id: StrMinLen1MaxLen64MatchingD373B860
+    delivery_config_id: AccountChangeRecordedWebhookSubscriberId
     delivery_config_version: IntMin1
-    reporting_revision_id: StrMinLen1MaxLen255Matching67860854
-    reporting_materialization_id: StrMinLen1MaxLen255Matching67860854
+    reporting_revision_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId
+    reporting_materialization_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId
     readiness: Readiness
     finality: ReportingFinality
     data_through: AwareDatetime | None

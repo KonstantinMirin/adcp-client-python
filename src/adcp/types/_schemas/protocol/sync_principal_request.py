@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, PropertyCount, Rule
-from adcp.types.constraints import StrMinLen16MaxLen255Matching1E5CF9EB, StrMinLen1MaxLen255
+from adcp.types.constraints import StrMinLen1MaxLen255, SyncAccountsRequestIdempotencyKey
 
 from ..core.agent_notification_config import AgentNotificationConfig
 from ..core.agent_reporting_destination import AgentReportingDestination
@@ -55,7 +55,7 @@ class SyncPrincipalRequest(AdCPVersionEnvelope):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('buyer_agent_url',), ('agent_url',), ('principal_id',), ('connection_id',))),
     )
-    idempotency_key: Annotated[StrMinLen16MaxLen255Matching1E5CF9EB, Field(description='Client-generated key for at-most-once execution, at least 16 characters; a fresh UUID v4 per logical operation is recommended. Retries MUST reuse the same key with the same body.')]
+    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Client-generated key for at-most-once execution, at least 16 characters; a fresh UUID v4 per logical operation is recommended. Retries MUST reuse the same key with the same body.')]
     expected_configuration_version: Annotated[StrMinLen1MaxLen255 | None, Field(description='Optional optimistic-concurrency fence returned by a previous successful sync. When present and stale, the seller rejects the whole request without mutation. Compare only for equality.')] = None
     expected_principal_kind: Annotated[PrincipalKind | None, Field(description='Optional assertion fence, not identity input: the caller states which party kind it believes it is authenticating as. When present and different from the seller-resolved principal_kind, the seller rejects the whole request with CONFLICT before mutation. The field never influences resolution.')] = None
     configuration: Annotated[Configuration, Field(description='Sections to replace atomically. At least one section is required. A present array is complete desired state for that section; [] clears it; omission leaves it unchanged.')]

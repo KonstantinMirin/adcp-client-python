@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import HttpUrl, StrMatchingD4A41027, StrMinLen1
+from adcp.types.constraints import AdcpVersion, HttpUrl, StrMinLen1
 
 from .registry_event import GradingProfile
 
@@ -54,7 +54,7 @@ class AgenticAdvertisingOrgVerificationTokenClaims(AdCPBaseModel):
     verification_modes: Annotated[list[VerificationMode], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
     grading_profile: Annotated[VerificationTokenGradingProfile | None, Field(description='Grading policy that produced the badge. Absence on a historical token means Legacy; verification_modes remains an independent evidence axis.')] = None
     first_failing_spec_at: Annotated[AwareDatetime | None, Field(description='Start of the current Strict Spec failure episode. Omitted when no Strict Spec failure clock is active. The registry remains authoritative for real-time status.')] = None
-    adcp_version: StrMatchingD4A41027 | None = None
+    adcp_version: AdcpVersion | None = None
     protocol_version: str | None = None
 
 

@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import HttpUrl, StrMaxLen255, StrMaxLen500, StrMinLen3MaxLen3
+from adcp.types.constraints import HttpUrl, StrMaxLen255, StrMaxLen500, TermsTotalBudgetCurrency
 
 
 class TotalBudget(AdCPBaseModel):
@@ -16,7 +16,7 @@ class TotalBudget(AdCPBaseModel):
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/insertion-order.json', pointer='#/properties/terms/properties/total_budget')
     amount: NonNegativeFloat
-    currency: Annotated[StrMinLen3MaxLen3, Field(description='ISO 4217 currency code')]
+    currency: Annotated[TermsTotalBudgetCurrency, Field(description='ISO 4217 currency code')]
 
 
 class PaymentTerms(StrEnum):

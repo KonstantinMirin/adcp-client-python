@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field, NonNegativeInt, TypeAdapter
 
 from adcp.types._base import SchemaRef
-from adcp.types.constraints import IntMin1, StrMatchingF601B9EB
+from adcp.types.constraints import CanonicalFormatImageAspectRatio, IntMin1
 
 from ...common._vocabularies import _VALUES_ACCEPTED_REJECTED
 from ...core.canonical_projection_ref import AssetSource
@@ -57,7 +57,7 @@ class CanonicalFormatHostedVideo(CanonicalFormatBase):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='formats/canonical/video_hosted.json', pointer='#')
     slots: Annotated[list[SlotsItem] | None, Field(default_factory=lambda: TypeAdapter(list[SlotsItem]).validate_python([{'asset_group_id': 'video_main', 'asset_type': 'video', 'required': True}, {'asset_group_id': 'headline', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'primary_text', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'cta', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'brand_name', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'companion_banner', 'asset_type': 'image', 'required': False}, {'asset_group_id': 'landing_page_url', 'asset_type': 'url', 'required': False}]), description='Default slots for video_hosted canonical. Buyer ships a video asset (file or hosted URL); optional headline, primary text (long-form caption), CTA (typically constrained via `cta_values`), brand_name (typical for vertical short-form), companion_banner (typical for horizontal instream), and clickthrough URL. Products MAY override or extend the default — e.g., remove `companion_banner` for short-form vertical, narrow `cta` to a value enum, mark `landing_page_url` as required.', json_schema_extra={'default': [{'asset_group_id': 'video_main', 'asset_type': 'video', 'required': True}, {'asset_group_id': 'headline', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'primary_text', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'cta', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'brand_name', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'companion_banner', 'asset_type': 'image', 'required': False}, {'asset_group_id': 'landing_page_url', 'asset_type': 'url', 'required': False}]})]
     orientation: Annotated[Orientation | None, Field(description='Video orientation. Vertical = 9:16 (Reels, Stories, Shorts). Horizontal = 16:9 (instream, CTV). Square = 1:1 (in-feed).')] = None
-    aspect_ratio: Annotated[StrMatchingF601B9EB | None, Field(description='Aspect ratio. Inferred from orientation if omitted.')] = None
+    aspect_ratio: Annotated[CanonicalFormatImageAspectRatio | None, Field(description='Aspect ratio. Inferred from orientation if omitted.')] = None
     min_width: IntMin1 | None = None
     min_height: IntMin1 | None = None
     max_width: IntMin1 | None = None

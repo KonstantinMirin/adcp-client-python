@@ -8,7 +8,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule, UniqueItems
-from adcp.types.constraints import IntMin0Max150, StrMinLen1Matching130C1C9D
+from adcp.types.constraints import DemographicReportingCapabilityAgeIntervalsItemDemographic, IntMin0Max150
 
 from ..enums.demographic_system import DemographicSystem
 from .demographic_age_range import DemographicAgeRange
@@ -29,7 +29,7 @@ class IntervalsItem(AdCPBaseModel):
         ConditionalRequired((Match('demographic_system', True, None),), require=('demographic',), forbid=()),
     )
     age: DemographicAgeRange
-    demographic: Annotated[StrMinLen1Matching130C1C9D | None, Field(description='Optional native demographic label returned for this interval.')] = None
+    demographic: Annotated[DemographicReportingCapabilityAgeIntervalsItemDemographic | None, Field(description='Optional native demographic label returned for this interval.')] = None
     demographic_system: DemographicSystem | None = None
 
 

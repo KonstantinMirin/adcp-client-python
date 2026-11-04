@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
-from adcp.types.constraints import StrMinLen1, StrMinLen16MaxLen255Matching1E5CF9EB, StrMinLen1MaxLen4096
+from adcp.types.constraints import StrMinLen1, StrMinLen1MaxLen4096, SyncAccountsRequestIdempotencyKey
 
 from ..core.brand_key import BrandKey
 from ..core.canonical_account_ref import CanonicalAccountReference, CanonicalAccountReferenceAccountId, CanonicalAccountReferenceBrandOperator
@@ -58,7 +58,7 @@ class RequestProposalsRequest(BranchDispatchMixin, AdCPVersionEnvelope):
     context: ContextObject | None = None
     governance_context: StrMinLen1MaxLen4096 | None = None
     push_notification_config: RequestProposalsRequestPushNotificationConfig | None = None
-    idempotency_key: Annotated[StrMinLen16MaxLen255Matching1E5CF9EB, Field(description='Client-generated key required for retry-safe proposal creation.')]
+    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Client-generated key required for retry-safe proposal creation.')]
     account: Annotated[CanonicalAccountReference | None, Field(description='Alternative brand source for proposal terms. Provide either this natural-key account containing brand and operator or top-level brand, not both.')] = None
     brand: Annotated[BrandKey | None, Field(description='Alternative brand source for proposal terms. Provide either top-level brand or a natural-key account containing brand and operator, not both.')] = None
     brief: Annotated[StrMinLen1, Field(description='Campaign goal, strategy, and requirements that are not represented in structured criteria.')]

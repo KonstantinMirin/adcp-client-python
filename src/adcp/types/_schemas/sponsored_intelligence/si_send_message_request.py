@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import RequiredGroups, Rule
-from adcp.types.constraints import StrMinLen16MaxLen255Matching1E5CF9EB
+from adcp.types.constraints import SyncAccountsRequestIdempotencyKey
 
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
@@ -38,7 +38,7 @@ class SISendMessageRequest(AdCPVersionEnvelope):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         RequiredGroups((('message',), ('action_response',)), 'anyOf'),
     )
-    idempotency_key: Annotated[StrMinLen16MaxLen255Matching1E5CF9EB, Field(description='Client-generated unique key for at-most-once execution. Each conversational turn is a distinct mutation of session transcript — without this key, a timeout-and-retry produces a duplicate turn and a duplicate model response. MUST be unique per (seller, request) pair. Use a fresh UUID v4 for each user turn.')]
+    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Client-generated unique key for at-most-once execution. Each conversational turn is a distinct mutation of session transcript — without this key, a timeout-and-retry produces a duplicate turn and a duplicate model response. MUST be unique per (seller, request) pair. Use a fresh UUID v4 for each user turn.')]
     session_id: Annotated[str, Field(description='Active session identifier')]
     message: Annotated[str | None, Field(description="User's message to the brand agent")] = None
     action_response: Annotated[ActionResponse | None, Field(description='Response to a previous action_button (e.g., user clicked checkout)')] = None

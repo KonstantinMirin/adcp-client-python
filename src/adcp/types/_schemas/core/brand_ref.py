@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import RequiredGroups, Rule, UniqueItems
-from adcp.types.constraints import AdCPUrl, StrMatching32F5291C, StrMatching6EB47BAA, StrMatchingEFC12812
+from adcp.types.constraints import AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, AdCPUrl, BrandReferenceKitOverrideColorsAccent
 
 from .assets.image_asset import ImageAsset
 from .brand_id import BrandID
@@ -37,9 +37,9 @@ class Colors(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/brand-ref.json', pointer='#/properties/brand_kit_override/properties/colors')
-    primary: StrMatching6EB47BAA | None = None
-    secondary: StrMatching6EB47BAA | None = None
-    accent: StrMatching6EB47BAA | None = None
+    primary: BrandReferenceKitOverrideColorsAccent | None = None
+    secondary: BrandReferenceKitOverrideColorsAccent | None = None
+    accent: BrandReferenceKitOverrideColorsAccent | None = None
 
 
 class BrandKitOverride(AdCPBaseModel):
@@ -69,9 +69,9 @@ class BrandReference(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('countries'),
     )
-    domain: Annotated[StrMatching32F5291C, Field(description="Domain where /.well-known/brand.json is hosted, or the brand's operating domain")]
+    domain: Annotated[AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, Field(description="Domain where /.well-known/brand.json is hosted, or the brand's operating domain")]
     brand_id: Annotated[BrandID | None, Field(description='Brand identifier within the house portfolio. Optional for single-brand domains.')] = None
-    countries: Annotated[list[StrMatchingEFC12812] | None, Field(description='Canonical set of ISO 3166-1 alpha-2 countries for this advertiser identity. Omit for a global/default identity. Array order is not meaningful; producers MUST sort codes lexicographically before computing keys or signatures. This qualifies account identity and is not delivery targeting.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    countries: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem] | None, Field(description='Canonical set of ISO 3166-1 alpha-2 countries for this advertiser identity. Omit for a global/default identity. Array order is not meaningful; producers MUST sort codes lexicographically before computing keys or signatures. This qualifies account identity and is not delivery targeting.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     industries: Annotated[list[str] | None, Field(description="Inline override for the brand's industries. Useful when the caller cannot modify the brand's canonical brand.json but needs to declare industries for governance (e.g., Annex III vertical detection). brand.json remains the canonical source; when omitted here, governance agents SHOULD resolve from brand.json.")] = None
     data_subject_contestation: Annotated[DataSubjectContestation | None, Field(description="Inline override for the brand's contestation contact point. Useful when the operator does not control brand.json but needs to discharge Art 22(3) for this plan. brand.json is canonical; when omitted, governance agents resolve brand → house → missing.")] = None
     brand_kit_override: Annotated[BrandKitOverride | None, Field(description="Inline override for brand-kit fields normally resolved from `/.well-known/brand.json` on `domain` (logo, colors, voice, tagline). Use when brand.json is missing, stale, or inappropriate for this specific call — e.g., a campaign-scoped tagline, a co-branded creative, a freshly-rebranded color palette the brand.json hasn't shipped yet. Same inline-override pattern as `industries` and `data_subject_contestation` above: brand.json is canonical, the override is per-call. Adopters needing to override fields outside this subset (`voice_attributes`, `prohibited_terms`, etc.) MUST publish a different brand.json and reference it via a different `domain` — the inline override is intentionally narrow to a small high-traffic subset.\n\n**Merge semantics (normative).** The merge is **field-level**, not whole-object replacement. Each field within `brand_kit_override` (`logo`, `colors`, `voice`, `tagline`) is evaluated independently — when a field is present on the override the override value applies; when a field is absent the brand.json value applies (or is absent if brand.json doesn't carry one either). For composite fields (`colors.primary`, `colors.secondary`, `colors.accent`), the merge is one level deeper: each color slot is evaluated independently — a producer can override `colors.primary` while still inheriting `colors.secondary` from brand.json. SDKs MUST NOT treat a present `brand_kit_override.colors` as wiping the brand.json `colors` block entirely; only the per-slot fields present in the override take precedence. Without this rule, a partial-override semantics would diverge across SDKs and produce inconsistent rendering for the same payload.")] = None

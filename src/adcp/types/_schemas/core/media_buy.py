@@ -7,7 +7,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, TypeAda
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Dependencies, Rule
-from adcp.types.constraints import IntMin1, StrMatching325DEB97, StrMatching43E30B32, StrMaxLen500, StrMinLen1MaxLen255, StrMinLen1MaxLen255Matching130C1C9D
+from adcp.types.constraints import CanonicalProposalTermsDigest, GetAccountFinancialsResponseSuccessCurrency, IntMin1, MediaBuyName, StrMaxLen500, StrMinLen1MaxLen255
 
 from ..enums.canceled_by import CanceledBy
 from ..enums.media_buy_health import MediaBuyHealth
@@ -60,9 +60,9 @@ class MediaBuy(AdCPBaseModel):
         Dependencies('accepted_proposal_terms_digest', ('accepted_proposal_id',)),
     )
     media_buy_id: Annotated[str, Field(description="Seller's unique identifier for the media buy")]
-    name: Annotated[StrMinLen1MaxLen255Matching130C1C9D | None, Field(description='Human-readable name for this media buy, shared by buyer and seller for trafficking UI display and operational communication. Sellers MUST include the persisted name on read surfaces such as get_media_buys when the media buy was created through AdCP with name. Sellers MAY omit name for media buys created outside AdCP or created without name. This display label is not an identifier or financial reference.')] = None
+    name: Annotated[MediaBuyName | None, Field(description='Human-readable name for this media buy, shared by buyer and seller for trafficking UI display and operational communication. Sellers MUST include the persisted name on read surfaces such as get_media_buys when the media buy was created through AdCP with name. Sellers MAY omit name for media buys created outside AdCP or created without name. This display label is not an identifier or financial reference.')] = None
     accepted_proposal_id: Annotated[StrMinLen1MaxLen255 | None, Field(description='Current accepted commercial snapshot. Compact-lifecycle buyers pass this ID to refine_proposals after restart or handoff. Updated atomically when an amendment or negotiated cancellation is accepted.')] = None
-    accepted_proposal_terms_digest: Annotated[StrMatching325DEB97 | None, Field(description='Digest of the current accepted proposal commercial_terms, allowing buyers and governance agents to verify the recovered snapshot.')] = None
+    accepted_proposal_terms_digest: Annotated[CanonicalProposalTermsDigest | None, Field(description='Digest of the current accepted proposal commercial_terms, allowing buyers and governance agents to verify the recovered snapshot.')] = None
     account: Annotated[Account | None, Field(description='Account billed for this media buy')] = None
     status: MediaBuyStatus
     health: Annotated[MediaBuyHealth | None, Field(default_factory=lambda: TypeAdapter(MediaBuyHealth).validate_python('ok'), description="Aggregate health based on open impairments[]. Orthogonal to status — a paused, pending, or active buy can each be impaired. Defaults to 'ok' when impairments[] is empty.", json_schema_extra={'default': 'ok'})]
@@ -74,7 +74,7 @@ class MediaBuy(AdCPBaseModel):
     daily_budget_cap: Annotated[NonNegativeFloat | None, Field(description='Current hard aggregate spend ceiling per calendar day. Sellers MUST echo this whenever an aggregate daily cap is set. It bounds total media-buy spend without allocating or reserving spend for packages.')] = None
     frequency_cap: Annotated[MediaBuyFrequencyCap | None, Field(description='Current hard MediaBuy-level cap. Sellers MUST echo it whenever set. Its counter aggregates exposures across all participating packages; each package targeting_overlay.frequency_cap remains independently binding.')] = None
     budget_cap_timezone: Annotated[str | None, Field(description='IANA timezone defining the shared calendar-day boundary for every aggregate and package daily cap on this media buy. Sellers MUST echo it whenever any daily cap is set.')] = None
-    currency: Annotated[StrMatching43E30B32 | None, Field(description="Single ISO 4217 denomination for total_budget, every package budget/minimum, and every canonical BiddingPolicy monetary field. Every package's selected pricing option MUST declare this currency; packages requiring another currency belong in a separate media buy.")] = None
+    currency: Annotated[GetAccountFinancialsResponseSuccessCurrency | None, Field(description="Single ISO 4217 denomination for total_budget, every package budget/minimum, and every canonical BiddingPolicy monetary field. Every package's selected pricing option MUST declare this currency; packages requiring another currency belong in a separate media buy.")] = None
     budget_allocation: Annotated[BudgetAllocation | None, Field(description='Accepted cross-package budget allocation configuration. Omitted means fixed allocation for legacy buys.')] = None
     pacing: Annotated[Pacing | None, Field(description='Aggregate pacing strategy for total_budget across the media-buy flight.')] = None
     bidding: Annotated[Bidding | None, Field(description='Media-buy-authored bidding policy. This is the complete default inherited by packages that omit package.bidding; `{automatic:true}` is an explicit authored automatic policy. In seller-optimized mode, cost_per/roas bind to the primary budget_allocation optimization goal. In fixed mode, inherited cost_per requires compatible package primary-goal result units and inherited roas requires value-bearing primary goals. Monetary fields use media_buy.currency; every affected pricing option MUST declare the same currency. Package overrides are permitted only where advertised; conflicts MUST be rejected atomically with BIDDING_PLACEMENT_CONFLICT.')] = None

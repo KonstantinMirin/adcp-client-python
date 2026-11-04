@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import IntMin1, StrMatching43E30B32, StrMatchingEFC12812
+from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, GetAccountFinancialsResponseSuccessCurrency, IntMin1
 
 from ..enums.right_use import RightUse
 from ..enums.rights_billing_period import RightsBillingPeriod
@@ -22,7 +22,7 @@ class Exclusivity(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/rights-terms.json', pointer='#/properties/exclusivity')
     scope: str | None = None
-    countries: list[StrMatchingEFC12812] | None = None
+    countries: list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem] | None = None
 
 
 class RightsTerms(AdCPBaseModel):
@@ -35,7 +35,7 @@ class RightsTerms(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/rights-terms.json', pointer='#')
     pricing_option_id: str
     amount: NonNegativeFloat
-    currency: StrMatching43E30B32
+    currency: GetAccountFinancialsResponseSuccessCurrency
     period: RightsBillingPeriod | None = None
     uses: list[RightUse]
     impression_cap: IntMin1 | None = None

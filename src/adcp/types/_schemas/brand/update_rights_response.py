@@ -7,7 +7,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
-from adcp.types.constraints import StrMatching3CBDBB74
+from adcp.types.constraints import ZipAssetDigest
 from adcp.types.envelopes import FailedResponse
 
 from ..core.brand_ref import BrandReference
@@ -46,7 +46,7 @@ class UpdateRightsSuccessRightsConstraint(RightsConstraint):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/update-rights-response.json', pointer='#/oneOf/0/properties/rights_constraint')
     attestation_refs: Annotated[list[AttestationRefsItem], Field(description='Alternative portable presentations of a holder-issued rights-grant credential signed by its authorized rights agent. The buyer carries references only; the serving party remains verifier-of-record. At least one reference must evaluate to verified and match rights_holder, rights_id, rights_agent, content_digest, validity, revocation state, and local policy before this constraint can contribute to serving eligibility.', json_schema_extra={'uniqueItems': True}, max_length=4, min_length=1)]
-    content_digest: Annotated[StrMatching3CBDBB74, Field(description='SHA-256 of UTF8(JCS(rights_constraint minus content_digest, attestation_refs, and verification_url)), formatted as sha256:<lowercase hex>. This binds all serving-relevant grant fields, including future extension fields, while deliberately excluding the legacy non-authoritative URL.')]
+    content_digest: Annotated[ZipAssetDigest, Field(description='SHA-256 of UTF8(JCS(rights_constraint minus content_digest, attestation_refs, and verification_url)), formatted as sha256:<lowercase hex>. This binds all serving-relevant grant fields, including future extension fields, while deliberately excluding the legacy non-authoritative URL.')]
     grant_status: Annotated[GrantStatus, Field(description='Authoritative lifecycle state bound into the grant digest and credential status evidence. Only active can evaluate to verified. paused and revoked credentials are ineligible for serving; resumption issues a fresh active credential and reference.')]
     rights_holder: Annotated[BrandReference, Field(description='Canonical BrandRef for the rights holder that issued the grant through an authorized rights agent. Required whenever attestation_refs is present. Evaluators first match this exact BrandRef against local issuer policy, then resolve the authoritative brand.json and bind the credential verification key to exactly one matching agents[] entry with type rights. Sibling-brand agents are never authority. Legacy unattested constraints may omit this field but remain machine-unverified.')]
 

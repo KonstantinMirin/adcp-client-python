@@ -107,11 +107,12 @@ caller can read both and the decision is the owner's.
 from __future__ import annotations
 
 import json
-from collections.abc import Collection, Iterator, Mapping
+from collections.abc import Callable, Collection, Iterator, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from codegen import bundle, keywords, vocabularies
+from codegen.lower import names
 
 #: The EFFECTS a keyword can have without changing what a node ADMITS: a symbol
 #: (``NAME``), a fact a lowering carries (``ANNOTATION``), a fact the enclosing FIELD
@@ -1338,6 +1339,572 @@ def collect_shapes(
         ),
         positions=tuple(every),
     )
+
+
+# --------------------------------------------------------------------------- #
+# §3a's layer L1: the CONSTRAINED SCALARS, and the name each one takes
+# --------------------------------------------------------------------------- #
+#: The pointer segment that contributes a SUFFIX to the subject a named ancestor gives,
+#: which is §4's nested rule read one step at a time: ``<Property>Item`` for an array
+#: element, ``<Property>Value`` for a mapping value.
+#:
+#: **DERIVED from the descent column and never listed** (§3, §11: the table is the one
+#: place a keyword decision lives).  The two WORDS are §4's and are the two
+#: ``lower/names.py`` spells for the same two positions; which keywords reach them is the
+#: table's answer, so a keyword joining ``ELEM`` or ``MAPV`` joins this by its own cell.
+#: ``patternProperties`` lands here rather than in :data:`NAMING` because its key is a
+#: REGEX and not a name the bundle gives a subject.
+SUFFIXED = {
+    **{keyword: "Item" for keyword, at in bundle.DESCENDS.items() if at is keywords.Position.ELEM},
+    **{keyword: "Value" for keyword, at in bundle.DESCENDS.items() if at is keywords.Position.MAPV},
+}
+
+#: The keywords that hold a bag of named subschemas whose KEY is the name the bundle
+#: gives the subject beneath it -- §4's "the property the constraint belongs to", and the
+#: ``definitions`` key beside it.  Derived for :data:`SUFFIXED`'s reason: a ``PROP`` or a
+#: ``DEF`` position is reached through a keyword whose key IS a name.
+NAMING = frozenset(
+    keyword
+    for keyword, at in bundle.DESCENDS.items()
+    if at in (keywords.Position.PROP, keywords.Position.DEF)
+)
+
+
+@dataclass(frozen=True)
+class Constrained:
+    """One position that STATES a constrained scalar: §3a's layer L1.
+
+    :class:`Stated` is L0's and :class:`Shaped` is L2's and L3's; this is the same fact at
+    the layer whose identity is a CONSTRAINT SET.  **The identity is the constraint and
+    the constraint carries no name**, which is the whole of why this layer needs a naming
+    rule of its own and why §3a's argument for the array layer transfers to it verbatim
+    (see :func:`collect_scalars`).
+    """
+
+    document: str
+    pointer: str
+    position: keywords.Position
+    #: The document's own type word: ``string``, ``integer`` or ``number``.  Taken from
+    #: the nearest enclosing node that states one where this node states none, because a
+    #: ``pattern`` under an ``anyOf`` of a ``type: string`` root is a constrained STRING
+    #: and the type word is the ancestor's -- ``core/macro-bearing-url.json`` is the case,
+    #: and reading the node alone misses it and every alias the intersection derives.
+    kind: str
+    #: The constraint keywords this position states, in :data:`constraints_spelling`'s
+    #: order, which is the KEY this layer is collected on.
+    constraints: tuple[tuple[str, object], ...]
+    #: The ``format`` where one is part of the shape, which ``constraints.Shape`` carries
+    #: as a third member for ``ir.TypeRef``'s own reason.
+    format: str | None
+    #: The node's own ``title``, or ``None``.
+    title: str | None
+    #: **The name the BUNDLE gives this position's subject**, or ``None`` where it gives
+    #: none -- §4's step 1, in §4's own order: a ``title``, a ``definitions`` key, the
+    #: property the constraint belongs to, and §4's nested rule beneath any of them.
+    subject: str | None
+    #: Does the walk LOWER a type from this position at all?  :attr:`Stated.reached`'s
+    #: reading: ``False`` inside a ``definitions`` entry no ``$ref`` names.
+    reached: bool = True
+    #: **Does §1 ALREADY EXPORT A SYMBOL for the type at this position?**  True at a
+    #: document ROOT -- D5 fixes a document's own symbol -- and at a ``definitions`` entry
+    #: a ``$ref`` names, which §4's nested rule declares in its own module under the
+    #: entry's key.
+    #:
+    #: It is what stops §4's step 1 taking a name that is already taken.  §3a's own
+    #: correction says a document root "is already a home.  There is nothing to mint,
+    #: because the bundle named it", and §4 says which side moves when two positions want
+    #: one name: "a root keeps the name because D5 fixes its symbol ... So the colliding
+    #: branch falls, and the import keeps the name."  An alias carries no
+    #: ``__adcp_schema__``, so it is the side that moves, and the move is to §4's step 3.
+    #:
+    #: Measured, without this 9 alias symbols took a name the module importing them
+    #: declares -- ``core/experimental-feature-id.json``'s root against
+    #: ``ExperimentalFeatureID``, and ``definitions/code`` against the ``Code`` its own
+    #: module declares for the same node.
+    declares_a_symbol: bool = False
+
+    @property
+    def key(self) -> tuple[str, tuple[tuple[str, object], ...], str | None]:
+        """This position's SHAPE, which is ``constraints.Shape`` read as a hashable key."""
+        return (self.kind, self.constraints, self.format)
+
+    @property
+    def is_a_root(self) -> bool:
+        """Is this position the document's own ROOT?  :attr:`Stated.is_a_root`'s reason."""
+        return self.pointer == ""
+
+
+@dataclass(frozen=True)
+class ScalarEntry:
+    """One L1 entry: a constraint, the name §4's derivation gives it, and where it lives."""
+
+    key: tuple[str, tuple[tuple[str, object], ...], str | None]
+    #: The symbol ``adcp.types.constraints`` declares for this constraint.
+    name: str
+    #: WHICH of §4's three steps answered -- 1 the bundle's own name for the subject, 2 the
+    #: constraint in words, 3 the declaring position.  **There is no fourth**, and a step
+    #: of 3 is simultaneously the name and the UPSTREAM ASK: the bundle states this
+    #: constraint for subjects it names differently or not at all, so the symbol names
+    #: where the type is declared and claims no subject.
+    step: int
+    #: Every position that states this constraint, in bundle order.
+    positions: tuple[Constrained, ...]
+    #: The position this entry is DECLARED at, which is the name's home at step 3.
+    at: Constrained
+
+    @property
+    def documents(self) -> frozenset[str]:
+        return frozenset(p.document for p in self.positions)
+
+    @property
+    def subjects(self) -> tuple[str, ...]:
+        """The distinct names the bundle gives the subjects of this one constraint."""
+        return tuple(sorted({p.subject for p in self.positions if p.subject is not None}))
+
+
+@dataclass(frozen=True)
+class Scalars:
+    """§3a's layer L1 over a bundle: every constrained scalar, collected once and named.
+
+    **The three parts are §4's three derivation steps and nothing else**, which is what
+    "there is no fourth step" means held by a type: :attr:`named_by_the_bundle`,
+    :attr:`named_by_the_constraint` and :attr:`pending_a_name` partition
+    :attr:`entries`, and a reader asking which step answered reads
+    :attr:`ScalarEntry.step`.
+    """
+
+    #: shape -> its entry, for every constrained scalar the bundle states.
+    entries: Mapping[tuple[str, tuple[tuple[str, object], ...], str | None], ScalarEntry]
+    #: Every stating position, which is the set the entries partition.
+    positions: tuple[Constrained, ...]
+
+    def _relaxed(self) -> dict[object, ScalarEntry]:
+        """The lookup keys an entry also answers at, for a shape the WALK composes.
+
+        A shape reaching ``constraints.resolve`` is not always a shape some node of the
+        bundle states verbatim: a ``format: uri`` that SELECTS a URL type leaves the bound
+        behind without the format (§5's ``format`` row), and an ``allOf`` intersection
+        composes a constraint set no single node writes.  Both are the same constraint, so
+        both reach the same entry: the format is dropped and then the type word, in that
+        order, and a relaxed key is only ever added where it is UNAMBIGUOUS -- two entries
+        wanting one relaxed key cancel it, so the fallback can never hand a caller the
+        wrong constraint's name.
+        """
+        counted: dict[object, list[ScalarEntry]] = {}
+        for entry in self.entries.values():
+            kind, cons, _ = entry.key
+            for relaxed in ((kind, cons, None), cons):
+                if relaxed != entry.key:
+                    counted.setdefault(relaxed, []).append(entry)
+        return {key: group[0] for key, group in counted.items() if len(group) == 1}
+
+    def table(self) -> dict[object, str]:
+        """shape -> the symbol, which is the WHOLE of what the walk consults.
+
+        The same arrangement :meth:`Catalogue.restating` is for L0: a plain mapping, so
+        the walk reads a table and never this layer's collection, and §11's arrows hold.
+        Keyed on the exact shape and on :meth:`_relaxed`'s unambiguous fallbacks together,
+        the exact key winning where both answer.
+        """
+        return {
+            **{key: entry.name for key, entry in self._relaxed().items()},
+            **{key: entry.name for key, entry in self.entries.items()},
+        }
+
+    @property
+    def named_by_the_bundle(self) -> tuple[ScalarEntry, ...]:
+        """§4's step 1: the entries the bundle itself names."""
+        return tuple(e for e in self.entries.values() if e.step == 1)
+
+    @property
+    def named_by_the_constraint(self) -> tuple[ScalarEntry, ...]:
+        """§4's step 2: the entries whose constraint has a spelling in words."""
+        return tuple(e for e in self.entries.values() if e.step == 2)
+
+    @property
+    def pending_a_name(self) -> tuple[ScalarEntry, ...]:
+        """§4's step 3, which is also the UPSTREAM ASK, stated over a set of the bundle.
+
+        The bundle states one constraint at positions whose subjects it names differently
+        or not at all, so there is no name for the CONSTRAINT to take and the symbol names
+        its declaring position instead.  **That is a name and not a digest** -- a reader
+        follows it to the position and finds the constraint -- and it is an ask filed
+        rather than answered: upstream naming the subject moves the entry to step 1.
+        """
+        return tuple(e for e in self.entries.values() if e.step == 3)
+
+
+def _words(name: str) -> list[str]:
+    """One pascal-case name split at its capital boundaries, acronyms kept whole.
+
+    The unit a shared leading RUN is measured in: §4's rule is about segments and
+    cutting one mid-word would mint a name no reader can map back to the bundle.
+    """
+    out: list[str] = []
+    for ch in name:
+        if ch.isupper() and out and not (out[-1].isupper() and len(out[-1]) == 1):
+            out.append(ch)
+        elif out:
+            out[-1] += ch
+        else:
+            out.append(ch)
+    merged: list[str] = []
+    for word in out:
+        if len(word) == 1 and word.isupper() and merged and merged[-1].isupper():
+            merged[-1] += word
+        else:
+            merged.append(word)
+    return merged
+
+
+def _run(out: str, word: str) -> str:
+    """``word`` appended to ``out`` past the leading RUN the two share (§4).
+
+    §4: "Where the root's name and the target's share a leading run, the branch takes the
+    root's name plus the target's distinguishing remainder, so
+    ``core/requirements/asset-requirements.json``'s branch on ``image-asset-requirements``
+    is ``AssetRequirementsImage`` and not the target's name repeated."  Both inputs are
+    facts about the one position, so the rule is insertion-stable, which is §4's own
+    criterion.
+
+    Measured on this bundle's longest step-3 name: ``Get Account Financials Response``
+    stating ``Get Account Financials Success`` at a branch reads
+    ``GetAccountFinancialsResponseSuccessCurrency`` rather than
+    ``GetAccountFinancialsResponseGetAccountFinancialsSuccessCurrency``.
+    """
+    if not out:
+        return word
+    if out in word:
+        return word
+    # **A ``word`` the accumulated name already CONTAINS is still appended**, and that is
+    # not redundancy for its own sake: dropping it makes the symbol equal the DOCUMENT's
+    # own name, which §1 exports for the document's root class, and §4's rule is that the
+    # root keeps the name ("D5 fixes its symbol") and the colliding side moves.  Measured,
+    # dropping it collided 8 alias symbols with the root class of their own home --
+    # ``core/agent-webhook-challenge.json``'s ``challenge`` against
+    # ``AgentWebhookChallenge`` and seven more.  Only a shared LEADING run is collapsed,
+    # which is the rule §4 states.
+    head, tail = _words(out), _words(word)
+    shared = 0
+    while shared < min(len(head), len(tail)) and head[shared] == tail[shared]:
+        shared += 1
+    return out + "".join(tail[shared:])
+
+
+def _subject(doc: Mapping[str, object], pointer: str, node: Mapping[str, object]) -> str | None:
+    """§4's step 1 at ONE position: the name the bundle gives this position's subject.
+
+    §4's own list in §4's own order -- "a ``title``, a ``definitions`` key, the property
+    the constraint belongs to" -- with §4's nested rule applied beneath any of the three,
+    so an array element of ``allowed_tasks`` is still an allowed task and not nameless.
+    **A ``description`` is not read**: §3a's sentence is that "a description states what a
+    thing IS, not what it is CALLED, so it mints no name".
+
+    A combinator's BRANCH contributes its own ``title`` where it carries one and nothing
+    at all otherwise, which is §4's branch candidates minus the index: a minted name may
+    not contain a positional index, so a branch the bundle does not name is walked past
+    rather than numbered.
+    """
+    title = node.get("title")
+    if isinstance(title, str) and title.strip():
+        return names.class_name(title)
+    parts = [p for p in pointer.split("/") if p]
+    out, walked, at = "", "", 0
+    while at < len(parts):
+        part = parts[at]
+        walked += f"/{part}"
+        if part in NAMING and at + 1 < len(parts):
+            out += names.class_name(parts[at + 1])
+            walked += f"/{parts[at + 1]}"
+            at += 2
+            continue
+        if part in SUFFIXED:
+            # **The suffix lands on the name SO FAR and never on the next segment.**
+            # §4 names an array element ``<Property>Item``, so ``any_of/items/.../role``
+            # is a ``role`` of an ``AnyOfItem`` and not an ``AnyOfRoleItem`` -- and a
+            # trailing ``items`` with nothing named after it keeps its suffix instead of
+            # losing it, which is the same bug read from the other end.
+            out += SUFFIXED[part]
+            at += 1
+            continue
+        if part.isdigit():
+            try:
+                branch = bundle.node_at(doc, walked)
+            except (KeyError, IndexError, TypeError, ValueError):
+                branch = {}
+            spelled = branch.get("title") if isinstance(branch, dict) else None
+            if isinstance(spelled, str) and spelled.strip():
+                out = _run(out, names.class_name(spelled))
+            at += 1
+            continue
+        at += 1
+    if out:
+        return out
+    root = doc.get("title")
+    if isinstance(root, str) and root.strip():
+        return names.class_name(root)
+    return None
+
+
+def _home_name(bundle_dir: Path, at: Constrained) -> str:
+    """§4's step 3: the DECLARING POSITION, spelled as a name.
+
+    §1's rule is that "for a symbol carrying no ``__adcp_schema__`` the declaring position
+    is its catalogue entry's home", and this is that rule written out: the home's own
+    document, then the subject that position carries (:func:`_subject`).  The document is
+    IN the name here and is not in a nested class's, and §4 says why -- "the module path
+    already carries the document" is true of ``adcp.types._schemas`` and false of
+    ``adcp.types.constraints``, which carries no document at all, so the name must.
+
+    Where the position's own subject already contains the document's name the document is
+    not repeated, which is §4's rule for a branch sharing a leading run with its root.
+
+    **No positional index and no digest**, which is §4's one rule for both: a branch
+    contributes its own title or nothing (:func:`_subject`), and nothing here is a
+    function of the constraint's bytes.
+    """
+    doc = bundle.read(bundle_dir, at.document)
+    title = doc.get("title")
+    head = names.class_name(
+        title if isinstance(title, str) and title.strip() else Path(at.document).stem
+    )
+    name = head if at.subject is None else _run(head, at.subject)
+    if name != head:
+        return name
+    # **A NAME THAT CAME OUT AS THE DOCUMENT'S OWN takes the type word in front**, because
+    # §1 exports the document's name for its root and D5 fixes it.  Two positions reduce
+    # to it -- the root itself, whose subject IS the document's title, and a combinator
+    # branch with no naming ancestor, which falls back to the root's title
+    # (``core/macro-bearing-url.json``'s ``anyOf`` arms).  The word is the document's own
+    # type word, which is the alphabet ``constraints.symbol`` already spells in, so
+    # ``StrExperimentalFeatureID`` reads as what it is: the constrained string that root
+    # states.  No class of the tree is named for a type word, so this cannot collide back.
+    return BASE_WORD.get(at.kind, "") + name
+
+
+def scalar_states(
+    bundle_dir: Path,
+    spelled: Collection[str],
+    documents: Collection[str] | None = None,
+) -> Iterator[Constrained]:
+    """Every position of the bundle that STATES a constrained scalar.
+
+    ``spelled`` is ``constraints.SPELLING``'s keyword set, handed IN rather than imported:
+    §11's arrows run ``catalogue <- constraints``, so the layer that owns the spelling
+    says which keywords it spells and this one collects over them.
+
+    **A RULE POSITION MINTS NO TYPE** (§3a), so a node inside an ``if``, ``then``, ``else``
+    or ``not`` is not a stating position -- it constrains an instance of the enclosing type
+    and declares none of its own.  **A ``definitions`` entry no ``$ref`` names is not one
+    either**, which is :attr:`Stated.reached`'s reading at L0.
+
+    **The type word is INHERITED where a node states none**, which is the one reading a
+    node-local census gets wrong: ``core/macro-bearing-url.json`` states ``type: string``
+    at its root and the ``pattern`` on an ``anyOf`` branch beneath it, and a census reading
+    each node alone collects neither the branch nor the alias the walk derives for it.
+    """
+    named = bundle.named_nodes(bundle_dir)
+    for document in sorted(documents if documents is not None else bundle.portable(bundle_dir)):
+        doc = bundle.read(bundle_dir, document)
+        unreferenced = tuple(
+            sorted(bundle.section_entries(doc) - named.get(document, frozenset()))
+        )
+        words: dict[str, str] = {}
+        for pointer, node, position in bundle.nodes_at(doc):
+            word = node.get("type")
+            if isinstance(word, str):
+                words[pointer] = word
+            elif position is keywords.Position.KEY:
+                # A ``propertyNames`` node constrains a KEY, and a JSON object's key is a
+                # string by the keyword rather than by a ``type`` the document states.
+                words[pointer] = "string"
+            elif position in INHERITS:
+                # **The type word is inherited ONLY through a step that keeps the
+                # INSTANCE**, which a combinator's branch and an ``allOf`` conjunct do and
+                # a property, an element and a mapping value do not: the string under
+                # ``type: string`` plus ``anyOf`` is the same string, and a property of an
+                # object is a different instance entirely.  Found by pointer PREFIX over
+                # the walk's own order, which yields an ancestor before its descendants.
+                for upto in range(len(pointer), -1, -1):
+                    if pointer[:upto] in words:
+                        words[pointer] = words[pointer[:upto]]
+                        break
+            if position is keywords.Position.RULE:
+                continue
+            kind = words.get(pointer)
+            if kind not in SCALAR_WORDS:
+                continue
+            stated = tuple(sorted((k, node[k]) for k in node if k in spelled))
+            fmt = node.get("format")
+            fmt = fmt if isinstance(fmt, str) else None
+            if not stated and fmt is None:
+                continue
+            title = node.get("title")
+            yield Constrained(
+                document=document,
+                pointer=pointer,
+                position=position,
+                kind=kind,
+                constraints=stated,
+                format=fmt,
+                title=title if isinstance(title, str) and title.strip() else None,
+                subject=_subject(doc, pointer, node),
+                reached=not any(pointer.startswith(entry) for entry in unreferenced),
+                declares_a_symbol=(
+                    pointer == "" or pointer in named.get(document, frozenset())
+                ),
+            )
+
+
+#: The type words a constrained SCALAR can carry, which is ``constraints.BASE``'s own key
+#: set read from this side.  Restated rather than imported for :func:`domain`'s reason --
+#: §11's arrows run ``catalogue <- constraints`` -- and ``tests/test_catalogue.py``'s
+#: equality against ``constraints.BASE`` is what keeps the two from coming apart.
+SCALAR_WORDS = frozenset({"string", "integer", "number"})
+
+#: **§4's STEP 2, as a type**: ``constraints.symbol``, which spells a constraint set in
+#: words or answers ``None`` where one of its keywords has no words.  Taken as a parameter
+#: rather than imported because §11's arrows run ``catalogue <- constraints``: the layer
+#: that OWNS the spelling says what it spells, and this one collects over the answer.
+InWords = Callable[..., str | None]
+
+#: The positions a node INHERITS its enclosing node's type word at, because the instance
+#: is the same one: a combinator's branch and an ``allOf`` conjunct.  Every other position
+#: is a different instance and states its own type or none.
+INHERITS = frozenset({keywords.Position.BRANCH, keywords.Position.CONJ})
+
+
+def collect_scalars(
+    bundle_dir: Path,
+    spelled: Collection[str],
+    in_words: InWords,
+    documents: Collection[str] | None = None,
+) -> Scalars:
+    """Layer L1 over the bundle: every constrained scalar, named by §4's three steps.
+
+    ``in_words`` is ``constraints.symbol`` -- §4's step 2, which is the owning layer's
+    own spelling of a constraint set and is handed in for :func:`scalar_states`' reason.
+
+    **§3a'S ARGUMENT FOR THE ARRAY LAYER IS THIS LAYER'S ARGUMENT TOO, and it is what
+    decides step 1.**  §3a: "What tells a shared subject from a coincidental overlap is
+    that an object's key holds the property NAMES, while an array's key over a scalar
+    element holds no name at all -- which is why the object layer can collapse on identity
+    and the array layer must not."  **A constrained scalar's key holds no name either**:
+    it is the constraint, and nothing in it says what the constraint is ABOUT.  So one
+    position's ``title`` names THAT POSITION's subject and says nothing about the
+    constraint's, and step 1 answers only where every stating position names the SAME
+    subject -- which is the only condition under which the bundle has named the
+    constraint's own subject rather than one site's.
+
+    Measured over this bundle, that is the difference between a name and a lie:
+    ``^[A-Za-z0-9_.:-]{1,128}$`` is titled "Reporting Delivery Offering ID" at one of its
+    ten positions and reached at ``name``, ``external_ref`` and ``reporting_profile`` at
+    the others, and ``^[A-Z]{3}$`` is stated at 86 positions in 62 documents for
+    ``currency`` AND ``airport_code``.  L0's rule -- one title anywhere decides -- would
+    name both, and both names would be false at most of their sites.
+
+    **The three steps, and there is no fourth** (``docs/plan/rebuild-plan.md`` §4):
+
+    1. the bundle's own name for the subject, where every position agrees on one;
+    2. else the constraint in words, which answers for every shape whose keywords all have
+       a spelling -- so never for one carrying a ``pattern``, because a regular expression
+       has no words and a name spelling the OTHER keywords alone would drop a fact;
+    3. else the declaring position (:func:`_home_name`), which is also where two
+       candidates colliding at step 1 separate -- "never by a hash of either".
+
+    A step-1 candidate that two entries derive has identified neither, so BOTH fall to the
+    next step, which is §4's own first-fit semantics for its name candidates.
+    """
+    grouped: dict[tuple[str, tuple[tuple[str, object], ...], str | None], list[Constrained]] = {}
+    every: list[Constrained] = []
+    for position in scalar_states(bundle_dir, spelled, documents):
+        every.append(position)
+        grouped.setdefault(position.key, []).append(position)
+
+    # Step 1's candidate per shape, and then the collision rule over the whole layer.
+    candidate: dict[object, str | None] = {}
+    for key, group in grouped.items():
+        subjects = {p.subject for p in group}
+        answered = len(subjects) == 1 and None not in subjects
+        # ... **and no stating position already carries §1's symbol for the type**
+        # (:attr:`Constrained.declares_a_symbol`): there the subject's name is taken and
+        # the alias is the side that moves, which is §4's own rule for a root and for an
+        # imported symbol alike.
+        candidate[key] = (
+            subjects.pop()
+            if answered and not any(p.declares_a_symbol for p in group)
+            else None
+        )
+    taken: dict[str, int] = {}
+    for word in candidate.values():
+        if word is not None:
+            taken[word] = taken.get(word, 0) + 1
+
+    entries: dict[tuple[str, tuple[tuple[str, object], ...], str | None], ScalarEntry] = {}
+    for key, group in grouped.items():
+        kind, cons, fmt = key
+        at = min(group, key=lambda p: (not p.reached, p.document, p.pointer))
+        first = candidate[key]
+        if first is not None and taken[first] == 1:
+            step, name = 1, first
+        elif (second := in_words(kind, dict(cons), format=fmt)) is not None:
+            step, name = 2, second
+        else:
+            step, name = 3, _home_name(bundle_dir, at)
+        entries[key] = ScalarEntry(
+            key=key, name=name, step=step, positions=tuple(group), at=at
+        )
+    return Scalars(entries=_separated(entries, in_words), positions=tuple(every))
+
+
+def _separated(
+    entries: Mapping[tuple[str, tuple[tuple[str, object], ...], str | None], ScalarEntry],
+    in_words: InWords,
+) -> dict[tuple[str, tuple[tuple[str, object], ...], str | None], ScalarEntry]:
+    """Two entries that derived one name at step 3, separated by their own CONSTRAINT.
+
+    §4: "two constraints that collide at step 2 separate [at step 3], **never by a hash of
+    either**", and this is the converse case -- two constraints colliding at step 3, where
+    the positions that declare them are siblings the bundle names identically.  Measured,
+    this bundle has exactly one such pair: ``core/macro-bearing-url.json``'s ``/anyOf/1``
+    and ``/anyOf/2``, two patterns under one untitled ``anyOf`` whose only naming ancestor
+    is the document root.
+
+    **The index is not available and that is §4's own rule** -- "no name the compiler mints
+    contains a content digest or a positional index" -- so what separates them is the part
+    of each constraint that HAS a spelling in words, which is the ``format``: one branch
+    states ``format: uri`` beside its pattern and the other states none.
+
+    Where that still leaves two entries on one name nothing here invents a third, and
+    ``constraints.record`` fails the build with both constraints in the message, which is
+    the designed outcome for the emitter disagreeing with itself about what a name means.
+    """
+    held: dict[str, list[ScalarEntry]] = {}
+    for entry in entries.values():
+        held.setdefault(entry.name, []).append(entry)
+    renamed = dict(entries)
+    for name, group in held.items():
+        if len(group) < 2:
+            continue
+        for entry in group:
+            kind, _, fmt = entry.key
+            word = in_words(kind, {}, format=fmt) if fmt is not None else None
+            if word is None:
+                continue
+            renamed[entry.key] = ScalarEntry(
+                key=entry.key,
+                name=name + word.removeprefix(BASE_WORD.get(kind, "")),
+                step=entry.step,
+                positions=entry.positions,
+                at=entry.at,
+            )
+    return renamed
+
+
+#: The word a scalar's own ``type`` contributes to a name in words, which is
+#: ``constraints.BASE`` read from this side -- stripped off a separating segment because
+#: the segment is appended to a name that already says what it is about.
+BASE_WORD = {"string": "Str", "integer": "Int", "number": "Float"}
 
 
 def collect(bundle_dir: Path, documents: Collection[str] | None = None) -> Catalogue:

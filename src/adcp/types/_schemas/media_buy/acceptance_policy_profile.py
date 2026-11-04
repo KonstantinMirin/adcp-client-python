@@ -8,7 +8,7 @@ from pydantic import AfterValidator, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Distinct, Match, RequiredGroups, Rule, UniqueItems
-from adcp.types.constraints import NonEmptyList, StrMatching3CBDBB74, StrMatching4BFFD9A4, StrMatching4D6E1599, StrMatching71E52EB8, StrMatchingEFC12812, StrMinLen1
+from adcp.types.constraints import AcceptancePolicyProfileRegionAliases, AccountAuthorizationAllowedTasksItem, AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, NonEmptyList, StrMediaBuyChangeTermID, StrMinLen1, ZipAssetDigest
 
 from ..core.ext import ExtensionObject
 from .acceptance_policy_rule import AcceptancePolicyRule, AppliesToItem
@@ -21,7 +21,7 @@ class PolicyRefsItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/acceptance-policy-profile.json', pointer='#/properties/policy_refs/items')
     policy_id: StrMinLen1
     version: StrMinLen1
-    content_digest: Annotated[StrMatching3CBDBB74, Field(description="SHA-256 digest of the referenced policy entry's RFC 8785 JCS serialization with acceptance_profile omitted.")]
+    content_digest: Annotated[ZipAssetDigest, Field(description="SHA-256 digest of the referenced policy entry's RFC 8785 JCS serialization with acceptance_profile omitted.")]
 
 
 class Coverage(StrEnum):
@@ -47,10 +47,10 @@ class Scope(AdCPBaseModel):
         UniqueItems('jurisdictions'),
         UniqueItems('jurisdiction_groups'),
     )
-    subject_categories: Annotated[list[StrMatching4D6E1599], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
+    subject_categories: Annotated[list[AccountAuthorizationAllowedTasksItem], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
     applies_to: Annotated[list[AppliesToItem], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
-    jurisdictions: Annotated[list[StrMatchingEFC12812] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    jurisdiction_groups: Annotated[list[StrMatching4BFFD9A4] | None, Field(description="Named groups declared in this profile's region_aliases.", json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    jurisdictions: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    jurisdiction_groups: Annotated[list[AcceptancePolicyProfileRegionAliases] | None, Field(description="Named groups declared in this profile's region_aliases.", json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     all_jurisdictions: Annotated[Literal[True] | None, Field(description='Explicitly states that the scope is not limited by delivery jurisdiction.')] = None
 
 
@@ -65,13 +65,13 @@ class AcceptancePolicyProfile(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ConditionalRequired((Match('coverage', True, ('complete',)),), require=('scope',), forbid=()),
     )
-    profile_id: StrMatching71E52EB8
+    profile_id: StrMediaBuyChangeTermID
     version: StrMinLen1
-    content_digest: Annotated[StrMatching3CBDBB74, Field(description='SHA-256 digest of the RFC 8785 JCS serialization of this profile with content_digest omitted. A profile_id/version pair is immutable; consumers reject a resolved profile whose digest differs.')]
+    content_digest: Annotated[ZipAssetDigest, Field(description='SHA-256 digest of the RFC 8785 JCS serialization of this profile with content_digest omitted. A profile_id/version pair is immutable; consumers reject a resolved profile whose digest differs.')]
     policy_refs: Annotated[list[PolicyRefsItem], Field(description='Exact registry policy versions from which this profile was derived. Consumers MUST NOT silently substitute a different version.', min_length=1)]
     coverage: Annotated[Coverage, Field(description='partial means additional unpublished rules may apply and omission is unknown. complete means this profile is exhaustive only for its declared scope and version.')]
     scope: Annotated[Scope | None, Field(description='The boundary within which a complete profile claims exhaustiveness. It is informative for partial profiles and mandatory for complete profiles.')] = None
-    region_aliases: Annotated[dict[StrMatching4BFFD9A4, Annotated[NonEmptyList[StrMatchingEFC12812], Field(json_schema_extra={'uniqueItems': True}), AfterValidator(Distinct())]] | None, Field(description='Profile-local named country groups. Rules may reference only keys declared here; consumers expand them before matching.')] = None
+    region_aliases: Annotated[dict[AcceptancePolicyProfileRegionAliases, Annotated[NonEmptyList[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem], Field(json_schema_extra={'uniqueItems': True}), AfterValidator(Distinct())]] | None, Field(description='Profile-local named country groups. Rules may reference only keys declared here; consumers expand them before matching.')] = None
     description: StrMinLen1 | None = None
     rules: Annotated[list[AcceptancePolicyRule], Field(min_length=1)]
     ext: ExtensionObject | None = None

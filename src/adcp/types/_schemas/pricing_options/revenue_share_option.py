@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, NegatedConditional, Rule
-from adcp.types.constraints import FloatGt0Max1, StrMatching43E30B32, StrMinLen1, StrMinLen1MaxLen1000
+from adcp.types.constraints import CommissionRate, GetAccountFinancialsResponseSuccessCurrency, StrMinLen1, StrMinLen1MaxLen1000
 
 from ..enums.event_type import EventType
 
@@ -30,8 +30,8 @@ class RevenueSharePricingOption(AdCPBaseModel):
     event_type: Annotated[EventType, Field(description='Conversion event whose attributed value may become commissionable (for example purchase or subscribe)')]
     custom_event_name: Annotated[StrMinLen1 | None, Field(description='Name of the custom event when event_type is custom. Required for custom events and absent otherwise.')] = None
     event_source_id: Annotated[StrMinLen1, Field(description='Event source whose attribution is authoritative for billing. Must match an event source configured through sync_event_sources.')]
-    commission_rate: Annotated[FloatGt0Max1, Field(description='Decimal proportion applied to commissionable_value. For example, 0.04 means 4%.')]
-    currency: Annotated[StrMatching43E30B32, Field(description='ISO 4217 currency code for commissionable_value and resulting spend')]
+    commission_rate: Annotated[CommissionRate, Field(description='Decimal proportion applied to commissionable_value. For example, 0.04 means 4%.')]
+    currency: Annotated[GetAccountFinancialsResponseSuccessCurrency, Field(description='ISO 4217 currency code for commissionable_value and resulting spend')]
     commission_basis_description: Annotated[StrMinLen1MaxLen1000, Field(description='Human-readable definition of inclusions, exclusions, and return or cancellation treatment used by the billing authority to calculate commissionable_value.')]
 
 

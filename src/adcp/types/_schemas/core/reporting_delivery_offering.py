@@ -8,7 +8,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Dependencies, Match, Rule, UniqueItems
-from adcp.types.constraints import HttpUrl, StrMatching32F5291C, StrMatching5E987613, StrMinLen1MaxLen128, StrMinLen1MaxLen128MatchingB577C746, StrMinLen1MaxLen255Matching67860854, StrMinLen1MaxLen512, StrMinLen1MaxLen64, StrMinLen1MaxLen64Matching5CDAE669
+from adcp.types.constraints import AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, AgentReportingDestinationFileTransferDestinationTransport, ComplyTestControllerRequestParamsReceivedReportingRevisionId, HttpUrl, ReportingAdjustmentReceiptObservedAdjustmentSha256, ReportingCanonicalizationContractGoldenVectorsAdditionalItemName, StrMinLen1MaxLen128, StrMinLen1MaxLen512, StrMinLen1MaxLen64
 
 from ..enums.reporting_finality import ReportingFinality
 from .reporting_canonicalization_contract import ReportingPrimaryKey
@@ -39,10 +39,10 @@ class ReportingProfile(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('primary_keys'),
     )
-    id: StrMinLen1MaxLen128MatchingB577C746
+    id: ReportingCanonicalizationContractGoldenVectorsAdditionalItemName
     version: StrMinLen1MaxLen64
     schema_uri: Annotated[HttpUrl, Field(description='Authenticated seller/provider or AdCP-registry HTTPS origin only; never an IP literal, userinfo URL, redirect target, or mutable validation authority.')]
-    schema_sha256: Annotated[StrMatching5E987613, Field(description='Digest of the exact schema bytes. SDKs verify this before parsing and cache by digest.')]
+    schema_sha256: Annotated[ReportingAdjustmentReceiptObservedAdjustmentSha256, Field(description='Digest of the exact schema bytes. SDKs verify this before parsing and cache by digest.')]
     schema_dialect: Annotated[Literal['https://json-schema.org/draft/2020-12/schema'], Field(description="Closed SDK-bundled dialect. The SDK never resolves a metaschema over the network, and the fetched document's $schema MUST equal this value.")]
     schema_ref_policy: Annotated[Literal['local_fragment_only'], Field(description='The fetched schema is a self-contained bundle. Every $ref is a local # fragment; remote and relative-document dependencies are forbidden.')]
     grain: Annotated[StrMinLen1MaxLen128, Field(description='Stable description of what one logical row represents.')]
@@ -51,7 +51,7 @@ class ReportingProfile(AdCPBaseModel):
     canonicalization_contract_version: Literal['1.0'] | None = None
     canonicalization_media_type: Literal['application/vnd.adcp.reporting-canonicalization+json'] | None = None
     canonicalization_uri: Annotated[HttpUrl | None, Field(description='Retrievable exact canonicalization contract on the authenticated seller/provider or AdCP-registry origin. SDKs apply the same bounded, redirect-free SSRF controls as schema_uri and verify canonicalization_sha256 before use.')] = None
-    canonicalization_sha256: Annotated[StrMatching5E987613 | None, Field(description='Digest of the exact canonicalization contract identified by canonicalization_id.')] = None
+    canonicalization_sha256: Annotated[ReportingAdjustmentReceiptObservedAdjustmentSha256 | None, Field(description='Digest of the exact canonicalization contract identified by canonicalization_id.')] = None
 
 
 class ReportingDeliveryPattern(StrEnum):
@@ -70,7 +70,7 @@ class MethodProvider(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-delivery-offering.json', pointer='#/properties/method/properties/provider')
-    domain: StrMatching32F5291C
+    domain: AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain
 
 
 ProducerIdentityProvider = MethodProvider
@@ -110,12 +110,12 @@ class Method(AdCPBaseModel):
         ConditionalRequired((Match('pattern', True, ('dataset_share',)),), require=('access_mode',), forbid=()),
     )
     pattern: ReportingDeliveryPattern
-    transport: StrMinLen1MaxLen64Matching5CDAE669
+    transport: AgentReportingDestinationFileTransferDestinationTransport
     orchestration: ReportingOrchestration
     destination_modes: Annotated[list[DestinationModesItem], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
     provider: MethodProvider | None = None
     format: FileFormat | None = None
-    access_mode: StrMinLen1MaxLen64Matching5CDAE669 | None = None
+    access_mode: AgentReportingDestinationFileTransferDestinationTransport | None = None
     producer_identity: Annotated[ProducerIdentity | None, Field(description='Seller principal a buyer grants access to for this exact buyer-hosted destination offering.')] = None
     reader_compatibility: Annotated[list[ReportingReaderCompatibilityItem] | None, Field(json_schema_extra={'uniqueItems': True})] = None
 
@@ -132,11 +132,11 @@ class ReportingDeliveryOffering(AdCPBaseModel):
         UniqueItems('supported_finality'),
         ConditionalRequired((Match('reconciliation_mode', True, ('consumer_receipt',)),), require=('method',), forbid=()),
     )
-    offering_id: StrMinLen1MaxLen128MatchingB577C746
+    offering_id: ReportingCanonicalizationContractGoldenVectorsAdditionalItemName
     feed_purpose: ReportingFeedPurpose
-    report_definition_id: Annotated[StrMinLen1MaxLen255Matching67860854, Field(description='Immutable semantic definition for metric, grain, attribution, action-report-time, timezone/calendar, source/API mapping, and restatement/finality policy. Configurations and revisions MUST echo this exact value.')]
+    report_definition_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId, Field(description='Immutable semantic definition for metric, grain, attribution, action-report-time, timezone/calendar, source/API mapping, and restatement/finality policy. Configurations and revisions MUST echo this exact value.')]
     report_definition_uri: Annotated[HttpUrl, Field(description='Retrievable immutable reporting-report-definition.json document on the authenticated seller/provider or AdCP-registry origin.')]
-    report_definition_sha256: Annotated[StrMatching5E987613, Field(description='Digest of the exact report-definition bytes. SDKs verify this before parsing and cache by digest.')]
+    report_definition_sha256: Annotated[ReportingAdjustmentReceiptObservedAdjustmentSha256, Field(description='Digest of the exact report-definition bytes. SDKs verify this before parsing and cache by digest.')]
     reporting_profile: Annotated[ReportingProfile, Field(description='Machine-readable semantic and validation contract for delivered rows. The canonicalization_* fields describe the external-materialization canonical-digest contract and are required only for offerings under the reconciled_billing tier; Core and managed-delivery offerings omit those fields but every Core revision still carries the fixed RFC 8785/JCS revision-binding digest.')]
     schedule: Annotated[ReportingScheduleOffering, Field(description='Period and availability SLA this offering can honor. For example, PT1H with snapshot finality explicitly advertises hourly provisional snapshots; a separate P1D official offering advertises daily finalized reporting.')]
     supported_finality: Annotated[list[ReportingFinality], Field(description='Finality classes available under this exact report definition, schedule, and delivery method. snapshot is an explicit provisional capability, not inferred from poll frequency. Use separate atomic offerings when snapshot and official schedules or methods differ.', json_schema_extra={'uniqueItems': True}, min_length=1)]

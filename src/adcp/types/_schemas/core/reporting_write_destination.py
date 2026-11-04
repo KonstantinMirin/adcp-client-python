@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
-from adcp.types.constraints import StrMatching32F5291C, StrMinLen1MaxLen2048, StrMinLen1MaxLen255, StrMinLen1MaxLen64Matching5CDAE669
+from adcp.types.constraints import AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, AgentReportingDestinationFileTransferDestinationTransport, StrMinLen1MaxLen2048, StrMinLen1MaxLen255
 
 
 class ReportingWriteDestination(BranchDispatchMixin, AdCPBaseModel):
@@ -39,7 +39,7 @@ class Provider(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-write-destination.json', pointer='#/oneOf/1/properties/provider')
-    domain: StrMatching32F5291C
+    domain: AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain
 
 
 class ProvisionBinding(ReportingWriteDestination):
@@ -50,7 +50,7 @@ class ProvisionBinding(ReportingWriteDestination):
     mode: Literal['provision']
     provider: Annotated[Provider, Field(description='Platform hosting the destination.')]
     location: Annotated[StrMinLen1MaxLen2048, Field(description='Provider-native bucket, prefix, project/dataset, catalog/schema, or equivalent locator. It MUST NOT contain an embedded credential or signed URL.')]
-    access_mode: Annotated[StrMinLen1MaxLen64Matching5CDAE669 | None, Field(description='Optional provider access family used for capability matching.')] = None
+    access_mode: Annotated[AgentReportingDestinationFileTransferDestinationTransport | None, Field(description='Optional provider access family used for capability matching.')] = None
 
 
 ReportingWriteDestination._branch_models = (ReportingWriteDestinationExisting, ProvisionBinding,)

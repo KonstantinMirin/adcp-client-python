@@ -8,7 +8,7 @@ from pydantic import AfterValidator, Field, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Distinct, Match, NegatedConditional, Rule
-from adcp.types.constraints import StrMatching38E7F7CC
+from adcp.types.constraints import DAASTTrackerAssetOffset
 
 from ..enums.vast_version import VASTVersion
 from ._vocabularies import _VALUES_LINEAR_NON_LINEAR_COMPANION
@@ -50,7 +50,7 @@ class VastTarget(StrEnum):
     COMPANION = _VALUES_LINEAR_NON_LINEAR_COMPANION[2]
 
 
-VastOffset = StrMatching38E7F7CC
+VastOffset = DAASTTrackerAssetOffset
 
 
 VastVersions = Annotated[Annotated[list[VASTVersion], Field(json_schema_extra={'uniqueItems': True}), AfterValidator(Distinct())], Field(min_length=1)]

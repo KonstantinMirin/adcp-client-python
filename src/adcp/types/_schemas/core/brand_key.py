@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import StrMatching32F5291C, StrMatchingEFC12812
+from adcp.types.constraints import AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem
 
 from .brand_id import BrandID
 
@@ -23,9 +23,9 @@ class BrandKey(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('countries'),
     )
-    domain: Annotated[StrMatching32F5291C, Field(description='Domain that hosts /.well-known/brand.json or is registered for the brand.')]
+    domain: Annotated[AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, Field(description='Domain that hosts /.well-known/brand.json or is registered for the brand.')]
     brand_id: Annotated[BrandID | None, Field(description='Brand within a house-of-brands manifest. Omit for a single-brand domain.')] = None
-    countries: Annotated[list[StrMatchingEFC12812] | None, Field(description='Canonical set of ISO 3166-1 alpha-2 countries for this advertiser identity. Omit when the identity is global or the house does not split the brand geographically. Array order is not meaningful; producers MUST sort codes lexicographically before computing keys or signatures. This qualifies account and proposal identity and is not delivery targeting.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    countries: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem] | None, Field(description='Canonical set of ISO 3166-1 alpha-2 countries for this advertiser identity. Omit when the identity is global or the house does not split the brand geographically. Array order is not meaningful; producers MUST sort codes lexicographically before computing keys or signatures. This qualifies account and proposal identity and is not delivery targeting.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
 
 
 __all__ = ["BrandKey"]

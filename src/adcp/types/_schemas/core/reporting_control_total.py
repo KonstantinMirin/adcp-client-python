@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
-from adcp.types.constraints import StrMatching60986A4B, StrMatchingD4234346, StrMinLen1MaxLen128Matching367B2A35, StrMinLen1MaxLen32
+from adcp.types.constraints import DecimalReportingControlTotalValue, IntegerReportingControlTotalName, IntegerReportingControlTotalValue, StrMinLen1MaxLen32
 
 
 class ReportingControlTotal(BranchDispatchMixin, AdCPBaseModel):
@@ -27,8 +27,8 @@ class IntegerReportingControlTotal(ReportingControlTotal):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-control-total.json', pointer='#/oneOf/0')
-    name: StrMinLen1MaxLen128Matching367B2A35
-    value: Annotated[StrMatchingD4234346, Field(description='Canonical base-10 integer with no exponent, grouping separator, decimal point, or insignificant leading zeroes.')]
+    name: IntegerReportingControlTotalName
+    value: Annotated[IntegerReportingControlTotalValue, Field(description='Canonical base-10 integer with no exponent, grouping separator, decimal point, or insignificant leading zeroes.')]
     value_type: Literal['integer']
     unit: Annotated[StrMinLen1MaxLen32 | None, Field(description='Profile-defined unit such as impressions or an ISO 4217 currency code.')] = None
 
@@ -38,8 +38,8 @@ class DecimalReportingControlTotal(ReportingControlTotal):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-control-total.json', pointer='#/oneOf/1')
-    name: StrMinLen1MaxLen128Matching367B2A35
-    value: Annotated[StrMatching60986A4B, Field(description='Canonical base-10 decimal with no exponent, grouping separator, or insignificant leading zeroes.')]
+    name: IntegerReportingControlTotalName
+    value: Annotated[DecimalReportingControlTotalValue, Field(description='Canonical base-10 decimal with no exponent, grouping separator, or insignificant leading zeroes.')]
     value_type: Literal['decimal']
     unit: Annotated[StrMinLen1MaxLen32 | None, Field(description='Profile-defined unit such as impressions or an ISO 4217 currency code.')] = None
 

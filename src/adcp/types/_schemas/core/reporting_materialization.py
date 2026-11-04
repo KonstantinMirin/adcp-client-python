@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
-from adcp.types.constraints import IntMin1, StrMinLen1MaxLen128MatchingE43B025C, StrMinLen1MaxLen255, StrMinLen1MaxLen255Matching67860854, StrMinLen1MaxLen64Matching5CDAE669, StrMinLen1MaxLen64MatchingD373B860
+from adcp.types.constraints import AccountChangeRecordedWebhookSubscriberId, AgentReportingDestinationFileTransferDestinationTransport, ComplyTestControllerRequestParamsReceivedReportingRevisionId, IntMin1, ReportingAdjustmentReceiptRejectionCode, StrMinLen1MaxLen255
 
 from .reporting_delivery_offering import ReportingDeliveryPattern, ReportingFeedPurpose
 from .reporting_resource import ReportingResource
@@ -37,20 +37,20 @@ class ReportingMaterialization(AdCPBaseModel):
         ConditionalRequired((Match('status', True, ('available', 'delivered')),), require=('ready_at', 'resource', 'verification'), forbid=()),
         ConditionalRequired((Match('status', True, ('failed',)),), require=('failed_at', 'failure_code'), forbid=()),
     )
-    reporting_materialization_id: StrMinLen1MaxLen255Matching67860854
-    reporting_revision_id: StrMinLen1MaxLen255Matching67860854
-    reporting_obligation_id: Annotated[StrMinLen1MaxLen255Matching67860854, Field(description='Destination-specific obligation this materialization attempts to satisfy.')]
-    delivery_config_id: Annotated[StrMinLen1MaxLen64MatchingD373B860, Field(description='Durable configuration that requested this materialization.')]
+    reporting_materialization_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId
+    reporting_revision_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId
+    reporting_obligation_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId, Field(description='Destination-specific obligation this materialization attempts to satisfy.')]
+    delivery_config_id: Annotated[AccountChangeRecordedWebhookSubscriberId, Field(description='Durable configuration that requested this materialization.')]
     delivery_config_version: IntMin1
     destination_ref: Annotated[StrMinLen1MaxLen255, Field(description='Immutable caller-owned destination generation selected by the account-authorized obligation. It may be reused by the same caller across other independently authorized accounts.')]
     feed_purpose: ReportingFeedPurpose
     method: ReportingDeliveryPattern
-    transport: StrMinLen1MaxLen64Matching5CDAE669 | None = None
+    transport: AgentReportingDestinationFileTransferDestinationTransport | None = None
     attempt: IntMin1
     status: Annotated[Status, Field(description='Lifecycle of this attempt. pending may transition once to available, delivered, or failed; terminal evidence is immutable. Staleness is evaluated in get_reporting_status health, not stored as a materialization state.')]
     ready_at: Annotated[AwareDatetime | None, Field(description='When consumer-path or destination verification completed.')] = None
     failed_at: AwareDatetime | None = None
-    failure_code: Annotated[StrMinLen1MaxLen128MatchingE43B025C | None, Field(description='Stable safe failure classification. MUST NOT include credentials or provider response bodies.')] = None
+    failure_code: Annotated[ReportingAdjustmentReceiptRejectionCode | None, Field(description='Stable safe failure classification. MUST NOT include credentials or provider response bodies.')] = None
     resource: ReportingResource | None = None
     verification: ReportingVerification | None = None
     created_at: AwareDatetime

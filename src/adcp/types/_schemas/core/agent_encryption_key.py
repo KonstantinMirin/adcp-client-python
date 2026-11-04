@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import StrMaxLen8
+from adcp.types.constraints import Kid
 
 
 class AgentEncryptionKey(AdCPBaseModel):
@@ -17,7 +17,7 @@ class AgentEncryptionKey(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/agent-encryption-key.json', pointer='#')
-    kid: Annotated[StrMaxLen8, Field(description='Key identifier. Opaque — MUST NOT encode geographic or deployment information.')]
+    kid: Annotated[Kid, Field(description='Key identifier. Opaque — MUST NOT encode geographic or deployment information.')]
     kty: Annotated[Literal['OKP'], Field(description='JWK key type. Must be OKP for X25519.')]
     crv: Annotated[Literal['X25519'], Field(description='Curve name. Must be X25519 for TMPX encryption.')]
     use: Annotated[Literal['enc'], Field(description='JWK use value. Must be enc for encryption keys.')]

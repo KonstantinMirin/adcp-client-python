@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import HttpUrl, StrMatching43E30B32
+from adcp.types.constraints import GetAccountFinancialsResponseSuccessCurrency, HttpUrl
 
 from .ext import ExtensionObject
 from .offering_asset_group import OfferingAssetGroup
@@ -21,7 +21,7 @@ class Origin(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/flight-item.json', pointer='#/properties/origin')
-    airport_code: Annotated[StrMatching43E30B32, Field(description="IATA airport code (e.g., 'AMS', 'JFK', 'LHR').")]
+    airport_code: Annotated[GetAccountFinancialsResponseSuccessCurrency, Field(description="IATA airport code (e.g., 'AMS', 'JFK', 'LHR').")]
     city: Annotated[str | None, Field(description="City name (e.g., 'Amsterdam', 'New York').")] = None
 
 
@@ -33,7 +33,7 @@ class Destination(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/flight-item.json', pointer='#/properties/destination')
-    airport_code: Annotated[StrMatching43E30B32, Field(description='IATA airport code.')]
+    airport_code: Annotated[GetAccountFinancialsResponseSuccessCurrency, Field(description='IATA airport code.')]
     city: Annotated[str | None, Field(description='City name.')] = None
 
 

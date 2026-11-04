@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import StrMatchingCE72C7C2, StrMatchingEFC12812
+from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, GeoForecastDimensionCode
 
 
 class GeographicRegionRequirementCountriesValueAllValues(AdCPBaseModel):
@@ -26,7 +26,7 @@ class GeographicRegionRequirementCountriesValueValues(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('values'),
     )
-    values: Annotated[list[StrMatchingCE72C7C2], Field(description='Exact finite set of ISO 3166-2 identifiers the buyer may select later.', json_schema_extra={'uniqueItems': True}, min_length=1)]
+    values: Annotated[list[GeoForecastDimensionCode], Field(description='Exact finite set of ISO 3166-2 identifiers the buyer may select later.', json_schema_extra={'uniqueItems': True}, min_length=1)]
 
 
 class GeographicRegionRequirement(AdCPBaseModel):
@@ -37,7 +37,7 @@ class GeographicRegionRequirement(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/geo-region-requirement.json', pointer='#')
-    countries: Annotated[dict[StrMatchingEFC12812, GeographicRegionRequirementCountriesValueAllValues | GeographicRegionRequirementCountriesValueValues], Field(description='Required ISO subdivision support keyed by ISO 3166-1 alpha-2 country.', min_length=1)]
+    countries: Annotated[dict[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, GeographicRegionRequirementCountriesValueAllValues | GeographicRegionRequirementCountriesValueValues], Field(description='Required ISO subdivision support keyed by ISO 3166-1 alpha-2 country.', min_length=1)]
 
 
 __all__ = ["GeographicRegionRequirement"]

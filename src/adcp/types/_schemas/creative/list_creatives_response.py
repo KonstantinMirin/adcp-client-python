@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Dependencies, Match, Presence, PresenceGroups, Rule, UniqueItems
-from adcp.types.constraints import IntMin0Max200, StrMatching4D6E1599
+from adcp.types.constraints import AccountAuthorizationAllowedTasksItem, CreativesItemAssignmentsReturnedAssignmentCount
 
 from ..core.account import Account
 from ..core.canonical_format_kind import CanonicalFormatKind
@@ -135,7 +135,7 @@ class Assignments(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/list-creatives-response.json', pointer='#/properties/creatives/items/properties/assignments')
     assignment_count: Annotated[NonNegativeInt, Field(description='Total number of active package assignments')]
-    returned_assignment_count: Annotated[IntMin0Max200 | None, Field(description='Number of rows present in assigned_packages for this response.')] = None
+    returned_assignment_count: Annotated[CreativesItemAssignmentsReturnedAssignmentCount | None, Field(description='Number of rows present in assigned_packages for this response.')] = None
     matching_assignment_count: Annotated[NonNegativeInt | None, Field(description='Total active assignments matching filters.indicator_types. MUST be present exactly when assignment_projection was matching. May exceed returned_assignment_count.')] = None
     assignments_truncated: Annotated[bool | None, Field(description='True exactly when more qualifying assignments exist than were returned under assignment_limit. Qualifying means assignment_count for the all projection and matching_assignment_count for the matching projection. Buyers needing complete state repair through get_media_buys.')] = None
     assigned_packages: Annotated[list[AssignedPackagesItem] | None, Field(description='Bounded package assignment projection. Under assignment_projection: matching, contains only assignments carrying a requested indicator type; otherwise contains active assignments up to assignment_limit. The response ceiling is enforced via verifier_constraints rather than maxItems, so payloads from 3.1 sellers remain schema-valid.')] = None
@@ -201,7 +201,7 @@ class CreativesItem(AdCPBaseModel):
     created_date: Annotated[AwareDatetime, Field(description='When the creative was created')]
     updated_date: Annotated[AwareDatetime, Field(description='When the creative was last modified')]
     assets: Annotated[dict[str, Any] | None, Field(description='Assets for this creative, keyed by asset_id. Each slot value is either a single asset object or an array of asset objects (for slots with `min`/`max > 1`). Each asset value carries an `asset_type` discriminator that selects the matching asset schema.')] = None
-    component_assets: Annotated[dict[StrMatching4D6E1599, CreativeAssets] | None, Field(description='Preserved component-addressed asset maps for `coordinated_placements`, keyed by coordinated component ID.')] = None
+    component_assets: Annotated[dict[AccountAuthorizationAllowedTasksItem, CreativeAssets] | None, Field(description='Preserved component-addressed asset maps for `coordinated_placements`, keyed by coordinated component ID.')] = None
     localization: Annotated[CreativeLocalizationReadback | None, Field(description='Authoritative exact materialized locale-variant state. Present for localized creatives when complete. The enclosing creative status is the single review lifecycle for all variants.')] = None
     localization_unavailable: Annotated[LocalizationUnavailable | None, Field(description='Per-creative fail-closed state returned instead of localization when the seller knows the creative is localized but cannot construct complete exact readback. The creative remains in this page and counts toward query_summary.returned and pagination; buyers may continue using the base creative fields but MUST NOT infer locale eligibility.')] = None
     tags: Annotated[list[str] | None, Field(description='User-defined tags for organization and searchability')] = None

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import StrMatching5E987613, StrMaxLen512
+from adcp.types.constraints import PartitionValue, ReportingAdjustmentReceiptObservedAdjustmentSha256
 
 from .reporting_file_object_ref import ReportingFileObjectReference
 from .reporting_native_version_ref import ReportingNativeVersionReference
@@ -23,9 +23,9 @@ class ReportingFileEntry(AdCPBaseModel):
     object_ref: ReportingFileObjectReference
     native_version_ref: ReportingNativeVersionReference | None = None
     size_bytes: NonNegativeInt
-    sha256: StrMatching5E987613
+    sha256: ReportingAdjustmentReceiptObservedAdjustmentSha256
     row_count: NonNegativeInt
-    partition: Annotated[dict[str, StrMaxLen512] | None, Field(max_length=32)] = None
+    partition: Annotated[dict[str, PartitionValue] | None, Field(max_length=32)] = None
 
 
 __all__ = ["ReportingFileEntry"]

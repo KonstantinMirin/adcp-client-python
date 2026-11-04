@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
-from adcp.types.constraints import StrMatchingA828669D
+from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem
 
 from ..core.account_ref import AccountReference
 from ..core.canonical_format_kind import CanonicalFormatKind
@@ -45,7 +45,7 @@ class ListTransformersRequestCreativeAgent(AdCPVersionEnvelope):
     input_format_ids: Annotated[list[FormatReferenceStructuredObject] | None, Field(description='**DEPRECATED in 3.2.** Filter by legacy named input formats. Use input_format_kinds.', min_length=1)] = None
     output_format_ids: Annotated[list[FormatReferenceStructuredObject] | None, Field(description='**DEPRECATED in 3.2.** Filter by legacy named output formats. Use output_capability_ids.', min_length=1)] = None
     input_format_kinds: Annotated[list[CanonicalFormatKind] | None, Field(description='Filter to transformers whose canonical input_formats include any of these canonical format kinds.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    output_capability_ids: Annotated[list[StrMatchingA828669D] | None, Field(description='Filter to transformers that can produce any of these canonical creative.supported_formats capability IDs.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    output_capability_ids: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem] | None, Field(description='Filter to transformers that can produce any of these canonical creative.supported_formats capability IDs.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     name_search: Annotated[str | None, Field(description='Search transformers by name (case-insensitive partial match).')] = None
     brief: Annotated[str | None, Field(description="Natural-language brief used to rank and filter transformers (and their enumerable option values when expanded) — e.g. 'warm female Spanish-language voiceover'. Curates to intent rather than returning the full set, the way get_products curates inventory.")] = None
     expand_params: Annotated[list[str] | None, Field(description="Param `field` names for which to return the FIRST page of account-scoped option VALUES inline on each transformer's `params[].options[]`. Omit to return param descriptors without enumerated values (the lean default). When a param's options are truncated, its `params[].options_cursor` is set — fetch the next page via `expand_pagination` (below).", min_length=1)] = None

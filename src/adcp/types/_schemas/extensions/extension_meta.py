@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar, Literal
 from pydantic import Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import HttpUrl, StrMatchingA6E81EA9
+from adcp.types.constraints import HttpUrl, PrincipalDeclarationsStateSelectedAsyncAdcpVersion
 
 
 class AdCPExtensionFileSchema(AdCPBaseModel):
@@ -17,8 +17,8 @@ class AdCPExtensionFileSchema(AdCPBaseModel):
     schema_: Annotated[Literal['http://json-schema.org/draft-07/schema#'], Field(alias='$schema')]
     title: Annotated[str, Field(description='Human-readable title for the extension')]
     description: Annotated[str, Field(description='Description of what this extension provides')]
-    valid_from: Annotated[StrMatchingA6E81EA9, Field(description="Minimum AdCP version this extension is compatible with (e.g., '2.5'). Extension will be included in all versioned schema builds >= this version.")]
-    valid_until: Annotated[StrMatchingA6E81EA9 | None, Field(description="Last AdCP version this extension is compatible with (e.g., '3.0'). Omit if extension is still valid for current and future versions.")] = None
+    valid_from: Annotated[PrincipalDeclarationsStateSelectedAsyncAdcpVersion, Field(description="Minimum AdCP version this extension is compatible with (e.g., '2.5'). Extension will be included in all versioned schema builds >= this version.")]
+    valid_until: Annotated[PrincipalDeclarationsStateSelectedAsyncAdcpVersion | None, Field(description="Last AdCP version this extension is compatible with (e.g., '3.0'). Omit if extension is still valid for current and future versions.")] = None
     docs_url: Annotated[HttpUrl | None, Field(description='URL to documentation for implementors of this extension')] = None
     type: Annotated[Literal['object'], Field(description='Extensions must be objects (data within ext.{namespace})')]
     properties: Annotated[dict[str, Any], Field(description='Schema properties defining the structure of ext.{namespace} data')]

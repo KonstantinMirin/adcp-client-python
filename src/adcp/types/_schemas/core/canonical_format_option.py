@@ -8,7 +8,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule, UniqueItems
-from adcp.types.constraints import AdCPUrl, StrMatching32F5291C, StrMinLen1
+from adcp.types.constraints import AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, AdCPUrl, StrMinLen1
 
 from ..enums.channels import MediaChannel
 from .creative_locale_policy import CreativeLocalePolicy
@@ -56,7 +56,7 @@ class CanonicalFormatOption(AdCPBaseModel):
         NegatedConditional((Match('format_kind', True, ('custom',)),), require=(), forbid=('format_shape', 'format_schema')),
     )
     format_option_id: StrMinLen1 | None = None
-    publisher_domain: StrMatching32F5291C | None = None
+    publisher_domain: AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain | None = None
     tracker_execution_contract: Annotated[TrackerExecutionContract | None, Field(description='Seller- or publisher-authored production commitment for first-class manifest tracker execution. Presence requires a stable format_option_id. Creative-agent projections MUST strip this authority-bearing field.')] = None
     macro_resolution_capabilities: Annotated[list[MacroProcessingCapability] | None, Field(description='Binding format-option processing capabilities for exact macro dialect identities, semantics, operations, actors, contexts, and encodings. Absence means undeclared, not supported on the opt-in declared-token path. Seller-wide capabilities are only a ceiling. This field does not claim that a buyer tracker asset is honored or fired.', min_length=1)] = None
     technical_requirements_complete: Annotated[bool | None, Field(description='When true, every technical creative-acceptance constraint for this declaration layer is expressed and omitted technical fields mean no constraint. When false or absent, omitted technical fields are undeclared and MUST NOT be inferred. The effective contract is complete only when every applicable declaration layer asserts true.')] = None

@@ -8,7 +8,7 @@ from pydantic import ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule
-from adcp.types.constraints import HttpUrl, StrMinLen1, StrMinLen1Matching2F959EB5
+from adcp.types.constraints import DeclarationId, HttpUrl, StrMinLen1
 
 from ..enums.macro_dialect import MacroDialectFamily
 from ..enums.macro_mapping_status import MacroMappingStatus
@@ -70,7 +70,7 @@ class MacroDeclaration(AdCPBaseModel):
         ConditionalRequired((Match('operation', True, ('resolve_value',)),), require=('performed_by',), forbid=('translation_target',)),
         ConditionalRequired((Match('operation', True, ('preserve',)),), require=(), forbid=('performed_by', 'translation_target')),
     )
-    declaration_id: Annotated[StrMinLen1Matching2F959EB5, Field(description='Identifier unique within the enclosing asset, used to correlate validation results.')]
+    declaration_id: Annotated[DeclarationId, Field(description='Identifier unique within the enclosing asset, used to correlate validation results.')]
     token: Annotated[StrMinLen1, Field(description='Exact byte-preserved token expression at this occurrence, including delimiters.')]
     dialect: MacroDialectFamily
     dialect_namespace: Annotated[HttpUrl | None, Field(description='Authority-controlled registry or mapping URI. Required for IAB VAST, IAB DAAST, and vendor dialects.')] = None

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import IntMin1Max99, StrMatchingEFC12812, StrMaxLen2000
+from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, IntMin1Max99, StrMaxLen2000
 
 from ..core.brand_ref import BrandReference
 from ..core.context import ContextObject
@@ -26,7 +26,7 @@ class SearchBrandsRequest(AdCPBaseModel):
     adcp_major_version: Annotated[IntMin1Max99 | None, Field(description="The AdCP major version the buyer's payloads conform to. Sellers validate against their supported major_versions and return VERSION_UNSUPPORTED if unsupported. When omitted, the seller assumes its highest supported version.")] = None
     query: Annotated[StrMaxLen2000, Field(description='Natural language description of the brands to find. The agent interprets intent, category, and roster coverage from this text.')]
     industries: Annotated[list[AdvertiserIndustry] | None, Field(description='Optional industry filter. The agent restricts results to brands operating in these industries. Values follow the advertiser-industry taxonomy; the agent SHOULD accept unknown values gracefully per the advertiser-industry extension policy.', min_length=1)] = None
-    countries: Annotated[list[StrMatchingEFC12812] | None, Field(description='Optional market filter. Returns brands with rights availability in at least one of the specified countries (ISO 3166-1 alpha-2).', min_length=1)] = None
+    countries: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem] | None, Field(description='Optional market filter. Returns brands with rights availability in at least one of the specified countries (ISO 3166-1 alpha-2).', min_length=1)] = None
     buyer_brand: Annotated[BrandReference | None, Field(description="The buyer's brand. When provided, the agent SHOULD apply the same compatibility filtering as get_rights — filtering out brands with category conflicts, competitor exclusions, or dietary restrictions that would prevent licensing. When omitted, results are returned without compatibility filtering.")] = None
     pagination: Annotated[PaginationRequest | None, Field(description='Pagination parameters for large result sets')] = None
     context: ContextObject | None = None

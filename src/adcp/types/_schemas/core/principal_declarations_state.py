@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import StrMatchingA6E81EA9, StrMinLen1MaxLen128, StrMinLen1MaxLen512
+from adcp.types.constraints import PrincipalDeclarationsStateSelectedAsyncAdcpVersion, StrMinLen1MaxLen128, StrMinLen1MaxLen512
 
 from .principal_declarations import AgentDeclarations
 
@@ -38,7 +38,7 @@ class PrincipalDeclarationsState(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/principal-declarations-state.json', pointer='#')
     declared: Annotated[AgentDeclarations, Field(description="The caller's current declared set, echoed verbatim.")]
     accepted: Annotated[AgentDeclarations, Field(description="The intersection of the declared set with the seller's objective support. Sellers select asynchronous payload versions, signing algorithms, and experimental behavior only from this set. A change to this set caused by seller-side evolution fires principal.changed with reason declarations_intersection_changed.")]
-    selected_async_adcp_version: Annotated[StrMatchingA6E81EA9 | None, Field(description='The single AdCP minor version the seller will use for asynchronous payload shapes toward this principal. MUST be a member of accepted.async_adcp_versions and MUST be present whenever that set is non-empty, so the buyer knows the exact payload contract rather than inferring it from the intersection.')] = None
+    selected_async_adcp_version: Annotated[PrincipalDeclarationsStateSelectedAsyncAdcpVersion | None, Field(description='The single AdCP minor version the seller will use for asynchronous payload shapes toward this principal. MUST be a member of accepted.async_adcp_versions and MUST be present whenever that set is non-empty, so the buyer knows the exact payload contract rather than inferring it from the intersection.')] = None
     exclusions: Annotated[list[ExclusionsItem] | None, Field(description="Every declared value that is absent from the accepted intersection, with the seller's reason. Present whenever declared and accepted differ, so a buyer can see why a capability it relies on was not accepted instead of diffing the two sets.", max_length=64)] = None
 
 

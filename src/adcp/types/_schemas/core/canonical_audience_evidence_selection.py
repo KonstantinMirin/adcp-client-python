@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import StrMatching3CBDBB74, StrMinLen1
+from adcp.types.constraints import StrMinLen1, ZipAssetDigest
 
 from .audience_evidence_selection import DecisionUse
 from .canonical_audience_evidence import CanonicalAudienceEvidence
@@ -28,10 +28,10 @@ class CanonicalAudienceEvidenceSelection(AdCPBaseModel):
     evidence_id: StrMinLen1
     snapshot_id: StrMinLen1
     version: StrMinLen1
-    content_digest: StrMatching3CBDBB74
+    content_digest: ZipAssetDigest
     decision_use: DecisionUse
     evidence: CanonicalAudienceEvidence | None = None
-    verified_attestation_digests: Annotated[list[StrMatching3CBDBB74] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    verified_attestation_digests: Annotated[list[ZipAssetDigest] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     ext: ExtensionObject | None = None
 
 

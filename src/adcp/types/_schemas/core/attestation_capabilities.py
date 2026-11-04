@@ -8,7 +8,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import HttpUrl, IntMin1024Max1048576, StrMinLen1MaxLen255MatchingEAB1CA79
+from adcp.types.constraints import AttestationCapabilitiesAcceptedIssuersItemResolversItemResolverId, HttpUrl, MaxEmbeddedCredentialBytes
 
 from .attestation_issuer import AttestationIssuer
 from .ext import ExtensionObject
@@ -33,7 +33,7 @@ class ResolversItem(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/attestation-capabilities.json', pointer='#/properties/accepted_issuers/items/properties/resolvers/items')
-    resolver_id: StrMinLen1MaxLen255MatchingEAB1CA79
+    resolver_id: AttestationCapabilitiesAcceptedIssuersItemResolversItemResolverId
     url: Annotated[HttpUrl, Field(description='Evaluator-configured HTTPS resolver endpoint. Calls use POST with Content-Type application/json and a body containing only credential_id; query-string and path interpolation are forbidden. The evaluator still applies the attestation fetch contract before every call.')]
     authentication: Annotated[Authentication, Field(description='Whether the resolver is public or uses credentials managed outside AdCP task payloads. Presenter-supplied credentials are never accepted.')]
 
@@ -92,7 +92,7 @@ class AttestationCapabilities(AdCPBaseModel):
     supported_delivery_methods: Annotated[list[SupportedDeliveryMethodsItem], Field(description='Credential delivery paths this evaluator supports. credential_uri resolves an HTTPS credential URI from the presentation; issuer_credential_id combines issuer, credential_id, and an evaluator-published resolver_id; embedded accepts an inline credential.', json_schema_extra={'uniqueItems': True}, min_length=1)]
     accepted_issuers: Annotated[list[AcceptedIssuersItem], Field(description='Issuer allowlist and resolver policy. Matching is on the canonical AttestationIssuer identity. A presenter-supplied issuer or credential URI that does not match this policy is rejected without an outbound request.', min_length=1)]
     accepted_verifiers: Annotated[list[AcceptedVerifiersItem] | None, Field(description="Verifier agents the evaluator may call. A presenter's verify_agent nomination must match one of these canonicalized URLs, but the evaluator remains verifier-of-record and chooses whether to use the nominated agent, another accepted agent, or local verification.", min_length=1)] = None
-    max_embedded_credential_bytes: Annotated[IntMin1024Max1048576 | None, Field(description='Maximum UTF-8 byte size accepted for one embedded credential. Evaluators MUST enforce this limit before parsing the credential. The protocol ceiling is 1 MiB.')] = None
+    max_embedded_credential_bytes: Annotated[MaxEmbeddedCredentialBytes | None, Field(description='Maximum UTF-8 byte size accepted for one embedded credential. Evaluators MUST enforce this limit before parsing the credential. The protocol ceiling is 1 MiB.')] = None
     ext: ExtensionObject | None = None
 
 

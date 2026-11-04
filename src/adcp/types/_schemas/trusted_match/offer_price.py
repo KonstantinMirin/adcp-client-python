@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import StrMatching43E30B32
+from adcp.types.constraints import GetAccountFinancialsResponseSuccessCurrency
 
 
 class Model(StrEnum):
@@ -30,7 +30,7 @@ class OfferPrice(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='trusted-match/offer-price.json', pointer='#')
     amount: Annotated[NonNegativeFloat, Field(description='Price amount in the specified currency')]
-    currency: Annotated[StrMatching43E30B32 | None, Field(description='ISO 4217 currency code')] = 'USD'
+    currency: Annotated[GetAccountFinancialsResponseSuccessCurrency | None, Field(description='ISO 4217 currency code')] = 'USD'
     model: Annotated[Model, Field(description='Pricing model for this offer')]
 
 

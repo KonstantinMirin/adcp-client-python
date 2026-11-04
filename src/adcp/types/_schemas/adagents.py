@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
-from adcp.types.constraints import AdCPUrl, HttpUrl, StrMatching32F5291C, StrMatching59861E88, StrMatchingA828669D, StrMatchingEFC12812, StrMatchingF1F3DC8E, StrMinLen1MaxLen100, StrMinLen1MaxLen255
+from adcp.types.constraints import AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, AdCPAgentsAuthorizationAuthorizedAgentsItemSignalTagsItem, AdCPAgentsAuthorizationFormatsItemFormatRevision, AdCPUrl, HttpUrl, StrMinLen1MaxLen100, StrMinLen1MaxLen255
 
 from .core.authorized_agent_base import AuthorizedAgentBaseFields
 from .core.collection import Collection
@@ -64,7 +64,7 @@ class Contact(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/contact')
     name: Annotated[StrMinLen1MaxLen255, Field(description="Name of the entity managing this file (e.g., 'Meta Advertising Operations', 'Clear Channel Digital')")]
     email: Annotated[StrMinLen1MaxLen255 | None, Field(description='Contact email for questions or issues with this authorization file', json_schema_extra={'format': 'email'})] = None
-    domain: Annotated[StrMatching32F5291C | None, Field(description='Primary domain of the entity managing this file')] = None
+    domain: Annotated[AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain | None, Field(description='Primary domain of the entity managing this file')] = None
     seller_id: Annotated[StrMinLen1MaxLen255 | None, Field(description='Seller ID from IAB Tech Lab sellers.json (if applicable)')] = None
     tag_id: Annotated[StrMinLen1MaxLen100 | None, Field(description='TAG Certified Against Fraud ID for verification (if applicable)')] = None
     privacy_policy_url: Annotated[HttpUrl | None, Field(description="URL to the entity's privacy policy. Used for consumer consent flows when interacting with this sales agent.")] = None
@@ -85,7 +85,7 @@ class RevokedPublisherDomainsItem(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/revoked_publisher_domains/items')
-    publisher_domain: Annotated[StrMatching32F5291C, Field(description='Publisher domain being revoked. Matches against the same canonicalized form used in `publisher_properties[].publisher_domain`.')]
+    publisher_domain: Annotated[AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, Field(description='Publisher domain being revoked. Matches against the same canonicalized form used in `publisher_properties[].publisher_domain`.')]
     revoked_at: Annotated[AwareDatetime, Field(description='ISO 8601 timestamp when this publisher was revoked. Validators MAY use this to order revocations against their own cached state.')]
     reason: Annotated[Reason | None, Field(description='Reason for revocation. **Operator-internal self-classification for review routing — not a public accusation.** `relationship_ended` is the routine commercial case. `compliance_violation` SHOULD be used only when the network has itself determined the publisher is out of policy; for un-adjudicated third-party allegations (regulator inquiries, advertiser complaints, ongoing investigations), use `other` to avoid making a discoverable adverse statement. `publisher_request` is for publisher-initiated exits. Compare to sellers.json, which deliberately carries no reason field for the same exposure concern.')] = None
 
@@ -104,7 +104,7 @@ class FormatsItem(BranchDispatchMixin, AdCPBaseModel):
     applies_to_property_ids: Annotated[list[PropertyID] | None, Field(description='Optional property IDs from this file\'s `properties[]` that this format declaration applies to. When omitted, the declaration applies to all properties in the file. Mutually compatible with `applies_to_property_tags` (union is the effective scope). Example: Meta declares Reels with `applies_to_property_ids: ["instagram", "facebook"]` because WhatsApp doesn\'t carry Reels inventory.', min_length=1)] = None
     applies_to_property_tags: Annotated[list[PropertyTag] | None, Field(description='Optional property tags from this file\'s `tags` map that this format declaration applies to. When omitted, the declaration applies to all properties in the file. Useful for network-wide formats (e.g., a managed network declaring `applies_to_property_tags: ["premium_video"]`). Compatible with `applies_to_property_ids` — a property is in scope if it matches either ID list or tag list.', min_length=1)] = None
     reference_renderer: Annotated[ReferenceRenderer | None, Field(description="Optional only for an AgenticAdvertising.org community-registry format entry fetched from the configured registry origin. Points to a pinned browser-ESM OSS renderer package export that provides a non-authoritative reference presentation. Registry review and contract fixtures bind the named export to the enclosing format's input contract (its canonical format kind, manifest shape, constraints, and declared macros); renderer package versions and format revisions have independent lifecycles. Display metadata and property scope do not affect that compatibility binding. Non-JavaScript clients use hosted preview_creative or display the manifest. Publisher-origin catalogs and seller product declarations do not use this field: publishers describe placement-specific chrome with placements[].presentation_ref and grant route-specific preview authority with placements[].preview_provider.")] = None
-    format_revision: Annotated[StrMatchingF1F3DC8E | None, Field(description="Registry-managed revision of this community format entry's input contract. Required when reference_renderer is present, but independent of any reference-renderer package version or legacy reference_renderer.format_revision annotation. A contract update may retain an existing renderer pin when that export still passes the updated declaration's contract fixtures.")] = None
+    format_revision: Annotated[AdCPAgentsAuthorizationFormatsItemFormatRevision | None, Field(description="Registry-managed revision of this community format entry's input contract. Required when reference_renderer is present, but independent of any reference-renderer package version or legacy reference_renderer.format_revision annotation. A contract update may retain an existing renderer pin when that export still passes the updated declaration's contract fixtures.")] = None
 
 
 class FormatsItemImage(FormatsItem, ImageFormatDeclaration):
@@ -224,7 +224,7 @@ class AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemProperty
     placement_tags: Annotated[list[str] | None, Field(description='Optional placement tag constraints. When present, authorization only applies to placements whose tags include any of these publisher-defined values.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     delegation_type: Annotated[DelegationType | None, Field(description="Commercial relationship for this inventory path. 'direct' means the publisher treats this as a direct way to buy from them, even if a third party operates the software. 'delegated' means the agent is authorized to sell on the publisher's behalf. 'ad_network' means the inventory is sold as part of a network/package context rather than as the publisher's direct endpoint.")] = None
     exclusive: Annotated[bool | None, Field(description="Whether this agent is the publisher's sole authorized path for the scoped inventory slice. When false or absent, other authorized agents may also sell the same inventory.")] = None
-    countries: Annotated[list[StrMatchingEFC12812] | None, Field(description='Optional ISO 3166-1 alpha-2 country codes limiting where this authorization applies. Omit for worldwide authorization.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    countries: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem] | None, Field(description='Optional ISO 3166-1 alpha-2 country codes limiting where this authorization applies. Omit for worldwide authorization.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     effective_from: Annotated[AwareDatetime | None, Field(description='Optional start time for this authorization window.')] = None
     effective_until: Annotated[AwareDatetime | None, Field(description='Optional end time for this authorization window.')] = None
 
@@ -251,7 +251,7 @@ class AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemProperty
     placement_tags: Annotated[list[str] | None, Field(description='Optional placement tag constraints. When present, authorization only applies to placements whose tags include any of these publisher-defined values.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     delegation_type: Annotated[AuthorizedAgentsItemPropertyTagsDelegationType | None, Field(description="Commercial relationship for this inventory path. 'direct' means the publisher treats this as a direct way to buy from them, even if a third party operates the software. 'delegated' means the agent is authorized to sell on the publisher's behalf. 'ad_network' means the inventory is sold as part of a network/package context rather than as the publisher's direct endpoint.")] = None
     exclusive: Annotated[bool | None, Field(description="Whether this agent is the publisher's sole authorized path for the scoped inventory slice. When false or absent, other authorized agents may also sell the same inventory.")] = None
-    countries: Annotated[list[StrMatchingEFC12812] | None, Field(description='Optional ISO 3166-1 alpha-2 country codes limiting where this authorization applies. Omit for worldwide authorization.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    countries: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem] | None, Field(description='Optional ISO 3166-1 alpha-2 country codes limiting where this authorization applies. Omit for worldwide authorization.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     effective_from: Annotated[AwareDatetime | None, Field(description='Optional start time for this authorization window.')] = None
     effective_until: Annotated[AwareDatetime | None, Field(description='Optional end time for this authorization window.')] = None
 
@@ -278,7 +278,7 @@ class AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemInlinePr
     placement_tags: Annotated[list[str] | None, Field(description='Optional placement tag constraints. When present, authorization only applies to placements whose tags include any of these publisher-defined values.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     delegation_type: Annotated[AuthorizedAgentsItemInlinePropertiesDelegationType | None, Field(description="Commercial relationship for this inventory path. 'direct' means the publisher treats this as a direct way to buy from them, even if a third party operates the software. 'delegated' means the agent is authorized to sell on the publisher's behalf. 'ad_network' means the inventory is sold as part of a network/package context rather than as the publisher's direct endpoint.")] = None
     exclusive: Annotated[bool | None, Field(description="Whether this agent is the publisher's sole authorized path for the scoped inventory slice. When false or absent, other authorized agents may also sell the same inventory.")] = None
-    countries: Annotated[list[StrMatchingEFC12812] | None, Field(description='Optional ISO 3166-1 alpha-2 country codes limiting where this authorization applies. Omit for worldwide authorization.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    countries: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem] | None, Field(description='Optional ISO 3166-1 alpha-2 country codes limiting where this authorization applies. Omit for worldwide authorization.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     effective_from: Annotated[AwareDatetime | None, Field(description='Optional start time for this authorization window.')] = None
     effective_until: Annotated[AwareDatetime | None, Field(description='Optional end time for this authorization window.')] = None
 
@@ -305,7 +305,7 @@ class AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPublishe
     placement_tags: Annotated[list[str] | None, Field(description='Optional placement tag constraints. When present, authorization only applies to placements whose tags include any of these publisher-defined values.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     delegation_type: Annotated[AuthorizedAgentsItemPublisherPropertiesDelegationType | None, Field(description="Commercial relationship for this inventory path. 'direct' means the publisher treats this as a direct way to buy from them, even if a third party operates the software. 'delegated' means the agent is authorized to sell on the publisher's behalf. 'ad_network' means the inventory is sold as part of a network/package context rather than as the publisher's direct endpoint.")] = None
     exclusive: Annotated[bool | None, Field(description="Whether this agent is the publisher's sole authorized path for the scoped inventory slice. When false or absent, other authorized agents may also sell the same inventory.")] = None
-    countries: Annotated[list[StrMatchingEFC12812] | None, Field(description='Optional ISO 3166-1 alpha-2 country codes limiting where this authorization applies. Omit for worldwide authorization.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    countries: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem] | None, Field(description='Optional ISO 3166-1 alpha-2 country codes limiting where this authorization applies. Omit for worldwide authorization.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     effective_from: Annotated[AwareDatetime | None, Field(description='Optional start time for this authorization window.')] = None
     effective_until: Annotated[AwareDatetime | None, Field(description='Optional end time for this authorization window.')] = None
 
@@ -319,7 +319,7 @@ class AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemSignalId
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/authorized_agents/items/oneOf/4')
     authorization_type: Annotated[Literal['signal_ids'], Field(description='Discriminator indicating authorization by specific signal IDs')]
-    signal_ids: Annotated[list[StrMatchingA828669D], Field(description='Signal IDs this agent is authorized to resell. Resolved against the top-level signals array in this file', min_length=1)]
+    signal_ids: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem], Field(description='Signal IDs this agent is authorized to resell. Resolved against the top-level signals array in this file', min_length=1)]
 
 
 class AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemSignalTags(AuthorizedAgentBaseFields):
@@ -331,7 +331,7 @@ class AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemSignalTa
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/authorized_agents/items/oneOf/5')
     authorization_type: Annotated[Literal['signal_tags'], Field(description='Discriminator indicating authorization by signal tags')]
-    signal_tags: Annotated[list[StrMatching59861E88], Field(description='Signal tags this agent is authorized for. Agent can resell all signals with these tags', min_length=1)]
+    signal_tags: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemSignalTagsItem], Field(description='Signal tags this agent is authorized for. Agent can resell all signals with these tags', min_length=1)]
 
 
 class PropertyFeaturesItem(AdCPBaseModel):

@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import StrMatchingA828669D
+from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem
 
 from .format_id import FormatReferenceStructuredObject
 from .signal_pricing import CpmPricing, CustomPricing, FlatFeePricing, PerUnitPricing, PercentOfMediaPricing, VendorPricing
@@ -29,7 +29,7 @@ class VendorPricingOption(BranchDispatchMixin, AdCPBaseModel):
     )
     pricing_option_id: Annotated[str, Field(description='Opaque identifier for this pricing option, unique within the vendor agent. Pass this in report_usage to identify which pricing option was applied.')]
     applies_to_output_format_ids: Annotated[list[FormatReferenceStructuredObject] | None, Field(description='**DEPRECATED in 3.2.** Legacy named-format pricing scope. Use applies_to_output_capability_ids.', min_length=1)] = None
-    applies_to_output_capability_ids: Annotated[list[StrMatchingA828669D] | None, Field(description='Creative transformers only: scopes this pricing option to canonical output capabilities advertised in creative.supported_formats[].capability_id. When absent, the option is the default for any output. A build targeting an output that matches no scoped option and has no unscoped default is rejected with UNPRICEABLE_OUTPUT.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    applies_to_output_capability_ids: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem] | None, Field(description='Creative transformers only: scopes this pricing option to canonical output capabilities advertised in creative.supported_formats[].capability_id. When absent, the option is the default for any output. A build targeting an output that matches no scoped option and has no unscoped default is rejected with UNPRICEABLE_OUTPUT.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
 
 
 class VendorPricingOptionCpm(VendorPricingOption, CpmPricing):

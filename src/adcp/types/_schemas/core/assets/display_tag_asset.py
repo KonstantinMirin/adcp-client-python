@@ -8,7 +8,7 @@ from pydantic import ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
-from adcp.types.constraints import StrMinLen1MaxLen1048576
+from adcp.types.constraints import InlineMarkupMarkup
 
 from ...enums.macro_value_context import MacroValueContext
 from ..macro_bearing_url import MacroBearingURL
@@ -114,7 +114,7 @@ class InlineMarkup(DisplayTagAsset):
     provenance: Provenance | None = None
     delivery_type: Literal['inline_markup']
     markup_type: Annotated[MarkupType, Field(description='How the destination traffics the byte-preserved markup.')]
-    markup: Annotated[StrMinLen1MaxLen1048576, Field(description='Exact third-party tag markup. Receivers MUST preserve its bytes and MUST NOT reinterpret it as a seller-hosted HTML5 bundle.')]
+    markup: Annotated[InlineMarkupMarkup, Field(description='Exact third-party tag markup. Receivers MUST preserve its bytes and MUST NOT reinterpret it as a seller-hosted HTML5 bundle.')]
 
 
 class LocationField(StrEnum):

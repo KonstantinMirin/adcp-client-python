@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule, UniqueItems
-from adcp.types.constraints import HttpUrl, IntMin1, StrMatching564F6F3C, StrMatching5E987613, StrMinLen1MaxLen128, StrMinLen1MaxLen128MatchingB577C746, StrMinLen1MaxLen32
+from adcp.types.constraints import HttpUrl, IntMin1, ReportingAdjustmentReceiptObservedAdjustmentSha256, ReportingCanonicalizationContractGoldenVectorsAdditionalItemName, ReportingReliabilityStatisticsAdjustmentMagnitudeItemP50AbsoluteDelta, StrMinLen1MaxLen128, StrMinLen1MaxLen32
 
 
 class ReportingReliabilityMeasurementPeriod(AdCPBaseModel):
@@ -37,8 +37,8 @@ class AdjustmentMagnitudeItem(AdCPBaseModel):
     control_total_name: StrMinLen1MaxLen128
     unit: StrMinLen1MaxLen32
     sample_count: IntMin1
-    p50_absolute_delta: StrMatching564F6F3C
-    p95_absolute_delta: StrMatching564F6F3C
+    p50_absolute_delta: ReportingReliabilityStatisticsAdjustmentMagnitudeItemP50AbsoluteDelta
+    p95_absolute_delta: ReportingReliabilityStatisticsAdjustmentMagnitudeItemP50AbsoluteDelta
 
 
 class Basis(StrEnum):
@@ -58,7 +58,7 @@ class Evidence(AdCPBaseModel):
     basis: Basis
     generated_at: AwareDatetime
     attestation_uri: HttpUrl | None = None
-    attestation_sha256: StrMatching5E987613 | None = None
+    attestation_sha256: ReportingAdjustmentReceiptObservedAdjustmentSha256 | None = None
 
 
 class ReportingReliabilityStatistics(AdCPBaseModel):
@@ -75,7 +75,7 @@ class ReportingReliabilityStatistics(AdCPBaseModel):
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='core/reporting-reliability-statistics.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'official_revisions_adjusted': {'minimum': 1}}, 'required': ['official_revisions_adjusted']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
-    offering_id: StrMinLen1MaxLen128MatchingB577C746
+    offering_id: ReportingCanonicalizationContractGoldenVectorsAdditionalItemName
     measurement_period: ReportingReliabilityMeasurementPeriod
     obligations_due: Annotated[IntMin1, Field(description='Denominator for on-time performance.')]
     obligations_on_time: Annotated[NonNegativeInt, Field(description='Obligations whose required revision was published by expected_at. Divide by obligations_due for the on-time rate.')]

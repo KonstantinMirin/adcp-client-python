@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
-from adcp.types.constraints import IntMin1, StrMinLen1, StrMinLen16MaxLen255Matching1E5CF9EB, StrMinLen1MaxLen128, StrMinLen1MaxLen255, StrMinLen1MaxLen255Matching67860854, StrMinLen1MaxLen64MatchingD373B860
+from adcp.types.constraints import AccountChangeRecordedWebhookSubscriberId, ComplyTestControllerRequestParamsReceivedReportingRevisionId, IntMin1, StrMinLen1, StrMinLen1MaxLen128, StrMinLen1MaxLen255, SyncAccountsRequestIdempotencyKey
 
 from ..enums.reporting_finality import ReportingFinality
 from ..enums.reporting_health import ReportingHealth
@@ -65,10 +65,10 @@ class ReportingObligation(AdCPBaseModel):
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='core/reporting-obligation.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'consumer_status_count': {'minimum': 1}}, 'required': ['consumer_status_count']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
-    reporting_obligation_id: StrMinLen1MaxLen255Matching67860854
-    delivery_config_id: StrMinLen1MaxLen64MatchingD373B860
+    reporting_obligation_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId
+    delivery_config_id: AccountChangeRecordedWebhookSubscriberId
     delivery_config_version: IntMin1
-    report_definition_id: StrMinLen1MaxLen255Matching67860854
+    report_definition_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId
     feed_purpose: ReportingFeedPurpose
     reporting_profile: StrMinLen1MaxLen128
     account_id: StrMinLen1
@@ -86,7 +86,7 @@ class ReportingObligation(AdCPBaseModel):
     production_status: Annotated[ProductionStatus, Field(description='Whether any revision has been produced for this obligation. published includes zero-row revisions.')]
     revision_count: Annotated[NonNegativeInt, Field(description='Number of revision records for this obligation in the consistent ledger snapshot.')]
     consumer_status_count: Annotated[NonNegativeInt | None, Field(description='Complete number of immutable authenticated consumer status statements associated with this obligation in the ledger snapshot, whether originally joined by reporting_obligation_id or by the exact configuration-generation, report-definition, and period key before the obligation existed. Core status-sync history is counted independently from Reconciled Billing receipts.')] = None
-    current_consumer_status_id: Annotated[StrMinLen16MaxLen255Matching1E5CF9EB | None, Field(description='Current unsuperseded consumer status statement associated with this obligation by seller ID or its exact logical period key. Omitted when consumer_status_count is zero.')] = None
+    current_consumer_status_id: Annotated[SyncAccountsRequestIdempotencyKey | None, Field(description='Current unsuperseded consumer status statement associated with this obligation by seller ID or its exact logical period key. Omitted when consumer_status_count is zero.')] = None
     adjustment_count: Annotated[NonNegativeInt | None, Field(description='Number of immutable post-official reporting adjustment records for this obligation in the consistent ledger snapshot.')] = None
     materialization_count: Annotated[NonNegativeInt | None, Field(description="Number of materialization records for this obligation's revisions in the consistent ledger snapshot. Present iff the obligation is managed-delivery (destination_ref present).")] = None
     successful_materialization_count: Annotated[NonNegativeInt | None, Field(description='Number of available/delivered verified materializations in the consistent ledger snapshot. Present iff the obligation is managed-delivery (destination_ref present).')] = None

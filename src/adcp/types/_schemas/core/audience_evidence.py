@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import AdCPUrl, FloatMin0Max1, IntMin1, StrMatching3CBDBB74, StrMinLen1
+from adcp.types.constraints import AdCPUrl, FloatMin0Max1, IntMin1, StrMinLen1, ZipAssetDigest
 
 from ..enums.audience_evidence_methodology import AudienceEvidenceMethodology
 from ..enums.audience_resolution_method import AudienceResolutionMethod
@@ -62,7 +62,7 @@ class Subject(AttestationResourceSubject):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/audience-evidence.json', pointer='#/properties/attestation_refs/items/allOf/1/properties/subject')
     resource_type: Annotated[Literal['https://adcontextprotocol.org/claims/subjects/audience-evidence'], Field(description='Open, absolute URI naming the subject vocabulary, such as https://adcontextprotocol.org/claims/subjects/signal. AdCP does not maintain an exhaustive enum.')]
-    content_digest: Annotated[StrMatching3CBDBB74, Field(description='Optional SHA-256 pin for the exact content or immutable snapshot identified by this resource subject. This is part of the complete typed subject identity and is distinct from AttestationReference.content_digest, which pins credential bytes.')]
+    content_digest: Annotated[ZipAssetDigest, Field(description='Optional SHA-256 pin for the exact content or immutable snapshot identified by this resource subject. This is part of the complete typed subject identity and is distinct from AttestationReference.content_digest, which pins credential bytes.')]
 
 
 class AttestationRefsItem(AttestationReference):
@@ -87,7 +87,7 @@ class AudienceEvidence(AdCPBaseModel):
     evidence_id: Annotated[StrMinLen1, Field(description='Stable provider-scoped identifier for the logical evidence series across versions.')]
     snapshot_id: Annotated[StrMinLen1, Field(description='Seller-scoped immutable snapshot identifier. It MUST never be reused for different content.')]
     version: Annotated[StrMinLen1, Field(description='Provider version of this evidence snapshot.')]
-    content_digest: Annotated[StrMatching3CBDBB74, Field(description='SHA-256 of the RFC 8785 (JCS) canonical evidence core with content_digest and attestation_refs omitted. Attestation references are excluded so independently issued credentials can be attached without changing the immutable evidence snapshot and without creating a recursive digest. This digest is required even when snapshot_id is present so buyers can detect identifier reuse or catalog drift.')]
+    content_digest: Annotated[ZipAssetDigest, Field(description='SHA-256 of the RFC 8785 (JCS) canonical evidence core with content_digest and attestation_refs omitted. Attestation references are excluded so independently issued credentials can be attached without changing the immutable evidence snapshot and without creating a recursive digest. This digest is required even when snapshot_id is present so buyers can detect identifier reuse or catalog drift.')]
     audience: AudienceCharacteristic
     relationship: Annotated[Relationship, Field(description='What the estimate says: population share, ratio to a baseline, or estimated reachable count.')]
     value: Annotated[NonNegativeFloat, Field(description='Estimated relationship value, interpreted according to unit.')]

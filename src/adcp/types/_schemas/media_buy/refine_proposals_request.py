@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import StrMinLen1, StrMinLen16MaxLen255Matching1E5CF9EB, StrMinLen1MaxLen4096
+from adcp.types.constraints import StrMinLen1, StrMinLen1MaxLen4096, SyncAccountsRequestIdempotencyKey
 
 from ..core.context import ContextObject
 from ..core.push_notification_config import PushNotificationConfig
@@ -39,7 +39,7 @@ class RefineProposalsRequest(AdCPVersionEnvelope):
     context: ContextObject | None = None
     governance_context: StrMinLen1MaxLen4096 | None = None
     push_notification_config: RefineProposalsRequestPushNotificationConfig | None = None
-    idempotency_key: Annotated[StrMinLen16MaxLen255Matching1E5CF9EB, Field(description='Client-generated key required for retry-safe proposal refinement.')]
+    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Client-generated key required for retry-safe proposal refinement.')]
     refinements: Annotated[list[ProposalRefinement], Field(description='Proposal operations to apply, with at most 25 entries per request. revise creates a draft successor from a draft, committed, or accepted source. finalize MUST target a draft, reserves inventory, and creates a committed successor whose expires_at is the hold deadline. A batch containing finalize MUST contain only finalize entries and is atomic. proposal_id values MUST be unique; results preserve request order.', json_schema_extra={'uniqueItems': True}, max_length=25, min_length=1)]
 
 

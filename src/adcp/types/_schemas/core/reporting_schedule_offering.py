@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
-from adcp.types.constraints import StrMatching3524D29B, StrMatching5E9BB4AD, StrMinLen1MaxLen255
+from adcp.types.constraints import PeriodDuration, ReportingReportDefinitionFinalityPoliciesItemDurationAfterPeriodEnd, StrMinLen1MaxLen255
 
 from .reporting_schedule import ReportingScheduleAlignment
 
@@ -43,13 +43,13 @@ class ReportingScheduleOffering(AdCPBaseModel):
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='core/reporting-schedule-offering.json', pointer='#/allOf/0', keyword='else', kind='WIDENED', rung='KEYWORD', fact={'if': {'properties': {'alignment': {'const': 'source_timezone'}}, 'required': ['alignment']}, 'then': {'required': ['period_timezone_policy'], 'not': {'anyOf': [{'required': ['period_anchor_policy']}, {'required': ['period_anchor']}]}, 'allOf': [{'if': {'properties': {'period_timezone_policy': {'const': 'fixed'}}, 'required': ['period_timezone_policy']}, 'then': {'required': ['period_timezone']}, 'else': {'not': {'required': ['period_timezone']}}}]}, 'else': {'not': {'anyOf': [{'required': ['period_anchor_policy']}, {'required': ['period_timezone_policy']}, {'required': ['period_anchor']}, {'required': ['period_timezone']}]}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/else'),
     )
-    period_duration: StrMatching5E9BB4AD
+    period_duration: PeriodDuration
     alignment: ReportingScheduleAlignment
     period_anchor_policy: Annotated[PeriodAnchorPolicy | None, Field(description='For billing_cycle only. fixed requires the advertised anchor and timezone; configurable lets each authorized account configuration select them.')] = None
     period_timezone_policy: Annotated[PeriodTimezonePolicy | None, Field(description="For source_timezone only. fixed advertises one exact upstream IANA timezone; account_resolved requires the seller to resolve and echo the account's upstream reporting timezone during configuration.")] = None
     period_anchor: AwareDatetime | None = None
     period_timezone: StrMinLen1MaxLen255 | None = None
-    delivery_sla: StrMatching3524D29B
+    delivery_sla: ReportingReportDefinitionFinalityPoliciesItemDurationAfterPeriodEnd
 
 
 __all__ = ["ReportingScheduleOffering"]

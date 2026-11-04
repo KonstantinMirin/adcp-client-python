@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
-from adcp.types.constraints import StrMatching32F5291C, StrMinLen1
+from adcp.types.constraints import AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, StrMinLen1
 
 from .seller_agent_ref import SellerAgentReference
 
@@ -30,7 +30,7 @@ class PublisherCatalogPlacementIdentity(PlacementIdentity):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/placement-identity.json', pointer='#/oneOf/0')
     kind: Literal['publisher_ref']
-    publisher_domain: Annotated[StrMatching32F5291C, Field(description='Domain whose adagents.json declares placement_id.')]
+    publisher_domain: Annotated[AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, Field(description='Domain whose adagents.json declares placement_id.')]
     placement_id: StrMinLen1
 
 

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import StrMatching43E30B32, StrMaxLen100, StrMinLen1, StrMinLen1MaxLen255, StrMinLen1MaxLen500
+from adcp.types.constraints import GetAccountFinancialsResponseSuccessCurrency, StrMaxLen100, StrMinLen1, StrMinLen1MaxLen255, StrMinLen1MaxLen500
 
 from ..core.bidding_policy import BiddingPolicy
 from ..core.brand_key import BrandKey
@@ -41,7 +41,7 @@ class TotalBudget(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/commercial-terms.json', pointer='#/properties/total_budget')
     amount: NonNegativeFloat
-    currency: StrMatching43E30B32
+    currency: GetAccountFinancialsResponseSuccessCurrency
 
 
 class ReportingCommitmentsItem(AdCPBaseModel):

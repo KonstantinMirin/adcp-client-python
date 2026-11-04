@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, PropertyCount, Rule, UniqueItems
-from adcp.types.constraints import IntMin1, StrMinLen1MaxLen128MatchingB577C746, StrMinLen1MaxLen255Matching67860854, StrMinLen1MaxLen64MatchingD373B860
+from adcp.types.constraints import AccountChangeRecordedWebhookSubscriberId, ComplyTestControllerRequestParamsReceivedReportingRevisionId, IntMin1, ReportingCanonicalizationContractGoldenVectorsAdditionalItemName
 
 from ..enums.reporting_finality import ReportingFinality
 from .reporting_coverage import ReportingMediaBuyId
@@ -61,13 +61,13 @@ class ReportingDeliveryConfiguration(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ConditionalRequired((Match('reconciliation_mode', True, ('consumer_receipt',)),), require=('method',), forbid=()),
     )
-    delivery_config_id: Annotated[StrMinLen1MaxLen64MatchingD373B860, Field(description='Caller-selected stable identifier, unique within the authenticated caller and account.')]
+    delivery_config_id: Annotated[AccountChangeRecordedWebhookSubscriberId, Field(description='Caller-selected stable identifier, unique within the authenticated caller and account.')]
     delivery_config_version: Annotated[IntMin1, Field(description='Caller-selected immutable semantic generation. Increment when feed/profile/scope/finality/schedule/method/destination changes; lifecycle fields may change in place.')]
-    offering_id: Annotated[StrMinLen1MaxLen128MatchingB577C746, Field(description='Atomic reporting offering advertised by the seller that binds feed, profile, schedule, finality, and delivery support.')]
+    offering_id: Annotated[ReportingCanonicalizationContractGoldenVectorsAdditionalItemName, Field(description='Atomic reporting offering advertised by the seller that binds feed, profile, schedule, finality, and delivery support.')]
     active: Annotated[bool, Field(description='Whether new reporting obligations should use this configuration. Inactive configurations remain visible for historical resolution.')]
     feed_purpose: ReportingFeedPurpose
-    report_definition_id: Annotated[StrMinLen1MaxLen255Matching67860854, Field(description='Exact immutable semantic definition selected from the offering. This makes the expected obligation identity independently derivable and prevents attribution, timezone, source-mapping, or restatement-policy drift behind a profile label.')]
-    reporting_profile: Annotated[StrMinLen1MaxLen128MatchingB577C746, Field(description='Versioned semantic profile for the aggregate report, such as media_buy_delivery_v1. It MUST match the selected offering.')]
+    report_definition_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId, Field(description='Exact immutable semantic definition selected from the offering. This makes the expected obligation identity independently derivable and prevents attribution, timezone, source-mapping, or restatement-policy drift behind a profile label.')]
+    reporting_profile: Annotated[ReportingCanonicalizationContractGoldenVectorsAdditionalItemName, Field(description='Versioned semantic profile for the aggregate report, such as media_buy_delivery_v1. It MUST match the selected offering.')]
     scope: Annotated[Scope, Field(description='Media buys covered by this configuration.')]
     coverage_requirement: Annotated[CoverageRequirement, Field(description='Whether every package in the resolved media-buy scope must support the exact selected offering. full fails closed when any package is unsupported or unknown. allow_partial permits publication only for the explicitly covered package denominator; every revision and status response still exposes partial coverage and MUST NOT present covered-subset totals as whole-buy totals.')]
     required_finality: Annotated[ReportingFinality, Field(description='Finality the durable path must ultimately provide. Snapshot delivery may still precede an official requirement.')]

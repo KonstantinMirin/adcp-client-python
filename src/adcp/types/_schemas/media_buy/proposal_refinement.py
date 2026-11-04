@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, PropertyCount, RequiredGroups, Rule
-from adcp.types.constraints import FloatGt0, IntMin2Max10, StrMatching43E30B32, StrMinLen1
+from adcp.types.constraints import FloatGt0, GetAccountFinancialsResponseSuccessCurrency, IntMin2Max10, StrMinLen1
 
 from ..core.product_change_map import ProductChangeMap
 from .product_discovery_criteria import ProductDiscoveryCriteria
@@ -40,7 +40,7 @@ class Cpm(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/proposal-refinement.json', pointer='#/properties/constraints/properties/cpm')
     max: FloatGt0
-    currency: StrMatching43E30B32
+    currency: GetAccountFinancialsResponseSuccessCurrency
 
 
 class Impressions(AdCPBaseModel):

@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
-from adcp.types.constraints import StrMinLen16MaxLen255Matching1E5CF9EB, StrMinLen1MaxLen255Matching67860854, StrMinLen1MaxLen64MatchingD373B860
+from adcp.types.constraints import AccountChangeRecordedWebhookSubscriberId, ComplyTestControllerRequestParamsReceivedReportingRevisionId, SyncAccountsRequestIdempotencyKey
 
 from ..enums.indicator_type import IndicatorType
 from .ext import ExtensionObject
@@ -48,11 +48,11 @@ class IndicatorsChangedWebhook(AdCPBaseModel):
         ConditionalRequired((Match('relationship_kind', True, ('package',)),), require=('package_id',), forbid=()),
         ConditionalRequired((Match('relationship_kind', True, ('creative_assignment',)),), require=('package_id', 'creative_id'), forbid=()),
     )
-    idempotency_key: Annotated[StrMinLen16MaxLen255Matching1E5CF9EB, Field(description='Random fire identifier reused across retries. Receivers dedupe within the authenticated sender scope.')]
-    notification_id: Annotated[StrMinLen1MaxLen255Matching67860854, Field(description='Stable identity for this logical snapshot change across re-emissions. A later semantic change receives a new value.')]
+    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Random fire identifier reused across retries. Receivers dedupe within the authenticated sender scope.')]
+    notification_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId, Field(description='Stable identity for this logical snapshot change across re-emissions. A later semantic change receives a new value.')]
     notification_type: Literal['indicators.changed']
     fired_at: AwareDatetime
-    subscriber_id: StrMinLen1MaxLen64MatchingD373B860
+    subscriber_id: AccountChangeRecordedWebhookSubscriberId
     account_id: str
     relationship_kind: Annotated[RelationshipKind, Field(description='Identifies which indicator-bearing snapshot changed.')]
     media_buy_id: str
