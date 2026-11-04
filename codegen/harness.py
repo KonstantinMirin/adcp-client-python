@@ -81,6 +81,7 @@ import hashlib
 import importlib
 import json
 import pkgutil
+import re
 import traceback
 import zlib
 from collections import Counter
@@ -441,6 +442,289 @@ _FIXTURE_DEPTH = 12
 NONE: Any = object()
 
 
+#: **The two descending keywords a RESTRICTION does not travel through**, which is the one
+#: thing :func:`locations` has to know and the whole of why it is a keyword set rather
+#: than a position set.  ``not`` and ``if`` each hold their subschema at
+#: ``Position.RULE``, and so do ``then``, ``else`` and ``dependencies`` -- so the position
+#: cannot tell them apart and the keyword is what decides.
+#:
+#: Replacing a subschema by something NARROWER makes the enclosing node narrower at every
+#: other descending keyword: a property, an element, a mapping value, a key, an ``allOf``
+#: conjunct, an ``anyOf`` branch, a ``then`` and an ``else`` all pass a restriction
+#: straight up.  Under these two it INVERTS: ``not S`` admits everything ``S`` refuses, so
+#: narrowing ``S`` WIDENS the node, and ``if S then T`` lets every instance outside ``S``
+#: through vacuously, so narrowing ``S`` widens the node too.  A fixture placed under
+#: either is therefore not a restriction of the pair's node, the draw can produce an
+#: instance the document REFUSES, and the saving would be bought with a false verdict.
+#:
+#: ``oneOf`` and ``anyOf`` are absent for a third reason and are handled where they arise
+#: rather than here: a union is non-monotone in the other direction -- restricting one
+#: branch can make an instance that used to match two branches match one, which a ``oneOf``
+#: then ADMITS -- so a union node is a FRONTIER in its own right, replaced by an ``enum``
+#: of values screened against the whole node, and never pinned branch by branch
+#: underneath one (:meth:`Fixtures.narrowed`).
+_INVERTS = frozenset({"not", "if"})
+
+#: **The keyword whose subschema describes the SAME instance the node does
+#: UNCONDITIONALLY, so the statements at it CONJOIN.**  draft-07 applies every ``allOf``
+#: conjunct to the instance the enclosing node describes, so a value satisfying the node
+#: satisfies all of them at once -- which is why :func:`locations` collects them together
+#: and :meth:`Fixtures.value` draws from their conjunction rather than from any one of
+#: them.  ``if`` is not one, and :data:`_INVERTS` says why.
+_CONJOINS = frozenset({"allOf"})
+
+#: **A consequent describes the same instance CONDITIONALLY, so it gets a SCOPE of its own
+#: rather than joining the conjunction.**  Measured on
+#: ``compliance/comply-test-controller-request.json#``, a 30-way discriminated dispatch:
+#: read as unconditional conjuncts, the 30 consequents' statements about ``/params``
+#: grouped into ONE demand of 8,158,816 bytes -- a value satisfying all thirty scenarios
+#: at once, which no value does -- so the pin failed and the whole 8.17 MB node went to
+#: the generator.  Scoped, each consequent is pinned on its own, and at most one of them
+#: applies to any instance because the conditions are exclusive.
+#:
+#: The residual risk is named rather than hedged: two consequents whose conditions can
+#: BOTH match are two pins that meet, and the draw then yields nothing.  That is a
+#: ``strategy_error`` with ``hypothesis``'s own filtered-draw count -- a non-pass with a
+#: name, never a green -- and the unconditional statements are conjoined into every
+#: consequent's value so a consequent's pin cannot conflict with the node's own.
+_CONDITIONAL = frozenset({"then", "else"})
+
+#: **The keywords whose subschema describes a CHILD of the node's instance, and which of
+#: them is REPLACED where several decide one location.**  A location's value is drawn from
+#: the conjunction of every statement about it; only the OWNING position is replaced by
+#: the pin, because the others then hold a constraint the pinned value already satisfies
+#: and leaving them alone cannot make the node empty.
+#:
+#: * ``properties`` OWNS a named key.  Every ``patternProperties`` entry whose pattern
+#:   matches that key also states something about it -- draft-07 applies all of them -- so
+#:   those are conjoined and left standing.  A pattern entry is never the owner, because
+#:   one entry can reach several keys and a single pin cannot answer for all of them.
+#: * ``items`` in its SINGLE-SCHEMA form OWNS every element.  ``contains`` states
+#:   something about one of them, so it is conjoined and left standing: with every element
+#:   pinned to a value ``contains`` also admits, the keyword is satisfied rather than
+#:   contradicted.  Measured on ``adagents.json#/oneOf/1/allOf/0/anyOf/1``, whose
+#:   ``formats`` node is ``{contains, items, minItems, type}`` and 494,960 bytes: with
+#:   ``contains`` read as a conflict the frontier was EMPTY and the whole subtree went to
+#:   the generator untouched.
+#: * ``additionalProperties`` in its schema form OWNS the keys no other keyword names,
+#:   which is a location of its own and meets nothing.
+#:
+#: The rest are left to the draw.  A TUPLE-valued ``items`` decides one index that
+#: ``additionalItems`` also reaches, and ``propertyNames`` decides a key and not a value --
+#: both are §8's own named caveat, "two fixtures can still meet on one instance through
+#: ``uniqueItems`` or a tuple-valued ``items``".
+_OWNS = frozenset({"properties", "items", "additionalProperties"})
+
+#: The keywords :func:`locations` reads but never replaces: they state something about a
+#: location another keyword owns, so they are conjoined into that location's value and
+#: left exactly as they stand.
+_CO_STATES = frozenset({"patternProperties", "contains"})
+
+
+class Location(NamedTuple):
+    """One frontier item: where it is, what is replaced there, and what decides it.
+
+    ``pointers`` is in document order and relative to the node the walk started at, and
+    they are the positions the pin REPLACES.  ``nodes`` is every statement the value has
+    to satisfy, which is a superset: a keyword that co-states a location another keyword
+    owns is conjoined and left standing (:data:`_CO_STATES`).
+
+    ``kind`` says what the pin IS.
+
+    * ``"const"`` -- one value every statement admits, which is the saving: a 287 KB
+      property becomes a few KB of value.
+    * ``"reduce"`` -- the position's own REDUCTION, for the two frontier items no single
+      value answers for.  A union BRANCH is an ALTERNATIVE, so pinning it to a value one
+      branch admits says nothing about what the union admits and can meet a conjunct that
+      refuses it.  And an UNCONDITIONAL statement about a location some consequent also
+      decides must not be pinned, because the consequent's pin and this one would both
+      have to hold wherever the condition matches.  Both are narrowed in place instead,
+      which is a restriction and keeps every conjunction satisfiable.
+    """
+
+    at: str
+    pointers: tuple[str, ...]
+    nodes: tuple[Mapping[str, Any], ...]
+    kind: str
+
+
+def locations(node: Any, *, depth: int = 32) -> tuple[Location, ...]:
+    """The OUTERMOST frontier under ``node``: every instance location one level in.
+
+    **§8's fixture rule, keyed on where a reference LANDS IN THE NODE BEING GRADED
+    rather than on where a ``$ref`` string appears in the raw document** (the owner's
+    correction, 2026-11-04, with the payload that measured it).  The rule
+    :func:`referring_positions` carries reads the raw bundle document's own ``$ref``
+    strings, and at a COMPOSED position that reading returns nothing: ``_base.applied_schema``
+    conjoins what the enclosing nodes assert about the same instance -- "the conjunction is
+    :data:`SAME_INSTANCE_FACTS` plus the enclosing node's own ``allOf``, spliced into the
+    node's conjunct list" -- so the reference is in the GRADED NODE and at no pointer the
+    document spells.
+
+    Measured on ``media-buy/refine-proposals-response.json#/properties/results/items/oneOf/0``,
+    the pair reported ungradeable at every bound including 3,600 s: the raw branch is 454
+    bytes and holds NO ``$ref`` at all, so the raw reading finds nothing; the graded node
+    is 683,849 bytes, of which 683,144 sit in one ``/allOf/0`` conjunct the document does
+    not spell, and ``properties/proposals`` inside it is the whole of
+    ``core/canonical-proposal.json``.  Validating a payload against that node costs 1 ms
+    and generating one does not terminate -- so the cost is in GENERATION and the fix
+    cannot lose a value the check was deciding.
+
+    **What a frontier item is.**  The walk descends through what describes the same
+    instance (:data:`_CONJOINS`) and stops at the first thing that describes a DIFFERENT
+    one:
+
+    * a **child location** -- a ``properties`` entry or a single-schema ``items`` --
+      grouped by the location it decides, because several conjuncts can each state part of
+      what one key or one element must satisfy and a pin per conjunct would be two
+      documents answering one question with an empty intersection (§8's measured clause).
+      The pin is ONE value drawn from their conjunction, placed at all of them.
+    * a **union node**, taken whole and not descended into, because a union's branches are
+      alternatives rather than conjuncts and a restriction inside one of them can widen a
+      ``oneOf``.
+
+    Nothing under ``not`` or ``if`` is a frontier item (:data:`_INVERTS`), and neither is a
+    ``definitions`` entry -- it has no instance location, which is §8's own reading of why
+    such a declaration belongs to the entry's own pair.  Everything else is left to the
+    draw: :data:`_OWNS` says which keywords are pinned and why the rest are not.
+    """
+    #: location token -> (pointers, nodes).  A dict keyed on the token and not a list, so
+    #: the several conjuncts deciding one key arrive as ONE item.
+    #: ``(instance location, conditional scope) -> (positions to replace, statements)``.
+    found: dict[tuple[str, str], tuple[list[str], list[Mapping[str, Any]]]] = {}
+    branches: list[Location] = []
+
+    def take(key: tuple[str, str], pointer: str, sub: Any, *, owns: bool) -> None:
+        if not isinstance(sub, Mapping):
+            return
+        pointers, nodes = found.setdefault(key, ([], []))
+        if owns:
+            pointers.append(pointer)
+        nodes.append(sub)
+
+    def walk(current: Any, rel: str, at: str, scope: str, left: int) -> None:
+        if not isinstance(current, Mapping) or left <= 0:
+            return
+        #: **A UNION BRANCH IS A FRONTIER ITEM AND THE WALK KEEPS GOING**, which is the
+        #: correction a 48 s measurement forced.  A union taken as a location of its OWN
+        #: and pinned to a value derived from the union node alone produced
+        #: ``{"allOf": [{"oneOf": [{"const": null}]}, {"type": "object", ...}]}`` on
+        #: ``adagents.json#/oneOf/1/allOf/0/anyOf/1`` -- a value one branch admits, met by
+        #: a conjunct at the same instance location that refuses it, so the draw reported
+        #: ``Cannot generate test cases from empty strategy`` and the 1.16 MB node went to
+        #: the generator untouched.  A union describes the node's OWN instance, so it is
+        #: not a location of its own; what is reducible about it is each branch's
+        #: interior, and that is what is substituted.
+        for keyword in ("oneOf", "anyOf"):
+            held = current.get(keyword)
+            if not isinstance(held, list):
+                continue
+            for index, sub in enumerate(held):
+                if isinstance(sub, Mapping) and sub:
+                    branches.append(
+                        Location(at, (f"{rel}/{keyword}/{index}",), (sub,), "reduce")
+                    )
+        patterns = current.get("patternProperties")
+        patterns = patterns if isinstance(patterns, Mapping) else {}
+        properties = current.get("properties")
+        if isinstance(properties, Mapping):
+            for key, sub in properties.items():
+                token = f"{at}/{bundle.escape_key(key)}"
+                take(
+                    (token, scope),
+                    f"{rel}/properties/{bundle.escape_key(key)}",
+                    sub,
+                    owns=True,
+                )
+                for pattern, beside in patterns.items():
+                    if _matches(pattern, key):
+                        take((token, scope), "", beside, owns=False)
+        items = current.get("items")
+        #: ``uniqueItems`` with a floor of two is the one case a single element value
+        #: cannot answer: every element pinned to one value makes a two-member array
+        #: impossible, so the node would be EMPTY rather than narrower.  §8 names this
+        #: case by keyword, and this is the guard it asks for.
+        floor = current.get("minItems")
+        unique = bool(current.get("uniqueItems")) and isinstance(floor, int) and floor > 1
+        if isinstance(items, Mapping) and not unique:
+            token = f"{at}/*"
+            take((token, scope), f"{rel}/items", items, owns=True)
+            contains = current.get("contains")
+            if isinstance(contains, Mapping):
+                take((token, scope), "", contains, owns=False)
+        extra = current.get("additionalProperties")
+        if isinstance(extra, Mapping) and extra:
+            take((f"{at}/+", scope), f"{rel}/additionalProperties", extra, owns=True)
+        for word, suffix, sub, _position in bundle.subschemas(current):
+            if word in _CONJOINS:
+                walk(sub, rel + suffix, at, scope, left - 1)
+            elif word in _CONDITIONAL:
+                #: **THE SCOPE IS THE CONSEQUENT'S WHOLE RELATIVE POINTER and never the
+                #: keyword suffix alone.**  Measured: with ``scope + suffix`` every one of
+                #: ``compliance/comply-test-controller-request.json#``'s thirty
+                #: consequents was scoped ``/then``, so all thirty collapsed back into one
+                #: key and the 8,158,816-byte demand was rebuilt -- 193.85 s to report
+                #: that no value satisfies thirty scenarios at once.  The pointer is what
+                #: makes one consequent one scope.
+                walk(sub, rel + suffix, at, rel + suffix, left - 1)
+
+    walk(node, "", "", "", depth)
+    #: Which locations a CONSEQUENT decides, so the unconditional statement about one is
+    #: narrowed in place instead of pinned: the two pins would both have to hold wherever
+    #: the condition matches.
+    conditioned = {token for token, scope in found if scope}
+    children: list[Location] = []
+    for (token, scope), (pointers, nodes) in found.items():
+        if not pointers:
+            continue
+        if scope:
+            #: The unconditional statements are conjoined into the consequent's value, so
+            #: a consequent's pin satisfies what the node itself says about the location
+            #: and cannot conflict with it.
+            beside = found.get((token, ""), ([], []))[1]
+            children.append(Location(token, tuple(pointers), tuple(nodes) + tuple(beside), "const"))
+        elif token in conditioned:
+            children.append(Location(token, tuple(pointers), tuple(nodes), "reduce"))
+        else:
+            children.append(Location(token, tuple(pointers), tuple(nodes), "const"))
+    return tuple(children) + tuple(branches)
+
+
+@functools.lru_cache(maxsize=4096)
+def _matches(pattern: str, key: str) -> bool:
+    """Whether draft-07's ``patternProperties`` entry ``pattern`` reaches ``key``.
+
+    ``re.search`` and not ``fullmatch``, which is draft-07's own reading: a
+    ``patternProperties`` key is an unanchored ECMA-262 regular expression.  A pattern
+    this engine cannot compile reaches nothing, which is the fail-safe direction -- it
+    loses a co-statement and so loses a pin, rather than conjoining the wrong one.
+    """
+    try:
+        return re.search(pattern, key) is not None
+    except re.error:
+        return False
+
+
+def _content_key(nodes: Sequence[Mapping[str, Any]], *, kind: bytes = b"") -> bytes | None:
+    """A digest of what these statements SAY, for the pin memo, or ``None``.
+
+    A digest and not the text, for the reason
+    :func:`canonicalisation_shared_within_one_call` measures one layer down: the text of a
+    subtree is held again by every ancestor's entry, and a memo keyed on text was "981 MiB,
+    which is 28,370x the document it is a memo of".  A digest answers the one question the
+    key decides -- whether these are the statements an entry was made for -- with the same
+    equivalence classes.
+
+    ``None`` where ``json`` declines the node, which is a node that simply gets no entry.
+    """
+    try:
+        return hashlib.sha256(
+            kind + b"\0" + json.dumps(list(nodes), sort_keys=True, separators=(",", ":")).encode()
+        ).digest()
+    except (TypeError, ValueError):
+        return None
+
+
 class Referring(NamedTuple):
     """One position a fixture is substituted at, and the document it is derived FROM.
 
@@ -554,14 +838,27 @@ def fixtured(schema: Any, placements: Sequence[tuple[str, Any]]) -> tuple[Any, i
     this has been measured, and where they do not the fail-safe direction is to lose the
     saving rather than to place a value at a position nobody named.
     """
+    return replaced(schema, [(pointer, {"const": v}) for pointer, v in placements])
+
+
+def replaced(schema: Any, placements: Sequence[tuple[str, Any]]) -> tuple[Any, int]:
+    """``schema`` with the SUBSCHEMA at each relative pointer replaced by the one given.
+
+    :func:`fixtured`'s body, with the replacement a caller's rather than ``{"const": v}``,
+    because the union rule substitutes an ``{"enum": [...]}`` over a whole union node
+    where the reference rule substitutes one instance at a referring position
+    (:meth:`Fixtures.reduced`).  Both are restrictions and the argument for each is made
+    where it is built; this function only places what it is handed, and it is the ONE
+    copy-on-write walk so a second spelling of it cannot drift.
+    """
     placed = 0
     out = schema
-    for pointer, value in placements:
+    for pointer, replacement in placements:
         segments = [s for s in pointer.split("/") if s]
 
-        def rebuilt(current: Any, i: int, _segments: list[str] = segments) -> Any:
+        def rebuilt(current: Any, i: int, _segments: list[str] = segments, _to=replacement) -> Any:
             if i == len(_segments):
-                return {"const": value}
+                return _to
             word = _segments[i]
             if isinstance(current, list):
                 index = int(word)
@@ -629,6 +926,16 @@ class Fixtures:
     replayed: int = 0
     derived: int = 0
     unavailable: int = 0
+    #: ``digest of a frontier item's statements -> the subschema it is replaced by, or
+    #: NONE``.  The node-side rule's memo, keyed on CONTENT and not on a pointer for the
+    #: reason :func:`locations` measures: a location inside a pair's node sits at pointers
+    #: ``applied_schema`` minted and the document does not spell, so there is no
+    #: ``(document, pointer)`` to key on.  Content is the honest key and the stronger one
+    #: -- two pairs holding one subtree at two pointers share one derivation.
+    pins: dict[bytes, Any] = field(default_factory=dict)
+    #: How many frontier items were pinned, and how many could not be.
+    reduced_locations: int = 0
+    unreduced: int = 0
 
     def positions(self, document: str, pointer: str) -> tuple[Referring, ...]:
         return referring_positions(self.read, document, pointer, self.documents)
@@ -641,6 +948,132 @@ class Fixtures:
             if instance is not NONE:
                 placements.append((position.pointer, instance))
         return fixtured(schema, placements)
+
+    def reduced(self, schema: Any, depth: int = 8) -> tuple[Any, int]:
+        """``schema`` with every outermost instance location under it pinned to one value.
+
+        **§8's fixture rule read off the NODE BEING GRADED**, which is the half
+        :meth:`substitute` cannot reach.  That method asks the RAW document which positions
+        refer, and at a composed position the answer is nothing: measured on
+        ``media-buy/refine-proposals-response.json#/properties/results/items/oneOf/0``, the
+        raw branch is 454 bytes with no ``$ref`` in it and the graded node is 683,849
+        bytes, because ``applied_schema`` conjoins the enclosing node's statements about
+        the same instance and ``core/canonical-proposal.json`` arrives inside that
+        conjunct.  Having found nothing to place, the draw was handed the whole node.
+
+        So the frontier is read off the node itself (:func:`locations`) and each item is
+        pinned:
+
+        * a **child location** -- what one ``properties`` entry or one ``items`` decides --
+          is pinned to ONE value, drawn from the CONJUNCTION of every statement about that
+          location and placed at all of them.  ``{"const": v}`` admits a subset of what
+          each of those statements admits, so the result is a restriction, and the value is
+          screened against the conjunction before it is kept.
+        * a **union node** is replaced by an ``{"enum": [...]}`` of its branches' own
+          values, each screened against the whole union node with its siblings in place --
+          because a union is not monotone branch by branch (narrowing one branch of a
+          ``oneOf`` can make an instance that matched two match one, which the node then
+          ADMITS), while an ``enum`` of values the node admits is a subset of them
+          whatever the branches overlap.
+
+        **Every pin is DERIVED and never hand-written** (§8: "a hand-written one is a
+        thousand files to maintain and a silent exemption the first time a document changes
+        under it").  The value comes from that location's own statements by the same draw
+        the location's own pair would pay, recursively reduced the same way, so the cost of
+        a node is the SUM over its locations and not the product.
+
+        An item no value survives for is left exactly as it stands and counted
+        (:attr:`unreduced`): the fail-safe direction is to lose the saving, never to place
+        a value the document does not admit.
+
+        ``depth`` bounds how many times the reduction re-enters itself; it is a guard on an
+        unreasonable answer and not the terminator, which is the content memo.
+        """
+        placements = []
+        for item in locations(schema):
+            answer = self._pin(item, depth)
+            if answer is NONE:
+                self.unreduced += 1
+                continue
+            self.reduced_locations += 1
+            placements.extend((pointer, answer) for pointer in item.pointers)
+        return replaced(schema, placements)
+
+    def _pin(self, item: Location, depth: int) -> Any:
+        """The subschema one frontier item is replaced by, or :data:`NONE`.
+
+        **Memoised on the item's CONTENT and not on a pointer**, which is the key §8's
+        "the key is the declaration" becomes here: a location inside a pair's node sits at
+        pointers ``applied_schema`` minted and the document does not spell, so there is no
+        ``(document, pointer)`` to key on.  Content is the honest key and the stronger one
+        -- the three ``refine-proposals-response.json#/properties/results/items/oneOf/*``
+        pairs hold the same commercial-terms subtree at three different pointers and share
+        one derivation, which a pointer key cannot do.
+        """
+        if depth <= 0:
+            return NONE
+        #: The KIND is in the key, because a branch and a child location with identical
+        #: content get different answers -- a reduced node and a ``{"const": v}`` -- and a
+        #: key that could not tell them apart would hand one the other's.
+        key = _content_key(item.nodes, kind=item.kind.encode())
+        if key is not None and key in self.pins:
+            return self.pins[key]
+        answer = self._derived_pin(item, depth)
+        if key is not None:
+            self.pins[key] = answer
+        return answer
+
+    def _derived_pin(self, item: Location, depth: int) -> Any:
+        """The subschema one frontier item is replaced by, or :data:`NONE`.
+
+        :class:`Location`'s ``kind`` says which of the two this is and why; here is only
+        how each is made.  A reduction that shrinks nothing is :data:`NONE`: a placement
+        that replaces a node by an equal one is a copy and not a saving, and counting it
+        would overstate what the rule did.
+        """
+        if item.kind == "reduce":
+            if depth <= 1:
+                return NONE
+            narrowed, placed = self.reduced(item.nodes[0], depth - 1)
+            return narrowed if placed else NONE
+        value = self.value(item.nodes, depth - 1)
+        return NONE if value is NONE else {"const": value}
+
+    def value(self, statements: Sequence[Mapping[str, Any]], depth: int) -> Any:
+        """One instance the CONJUNCTION of ``statements`` admits, or :data:`NONE`.
+
+        Several statements about one instance location are conjoined as the document
+        conjoins them -- as an ``allOf`` -- and the draw is over that conjunction, which is
+        what keeps §8's measured clause from biting: "a fixture per conjunct is two
+        documents answering one question and the intersection is empty."  One value for the
+        location, satisfying every statement about it, is the answer that cannot be empty
+        by construction.
+
+        The conjunction's own frontier is reduced first (:meth:`reduced`), so the draw is
+        over a node whose children are already pinned.  **No budget of its own**, for
+        :meth:`_derived`'s measured reason: ``signal.setitimer`` is process-global, so a
+        nested :func:`within` would re-arm the caller's timer and clear it on the way out,
+        leaving the enclosing grade unbounded.
+
+        The value is screened against the conjunction before it is returned, because the
+        restriction is this module's claim and the claim is cheap to check.
+        """
+        kept = [s for s in statements if isinstance(s, Mapping)]
+        if not kept:
+            return NONE
+        conjunction: Any = kept[0] if len(kept) == 1 else {"allOf": list(kept)}
+        narrowed, _ = self.reduced(conjunction, depth)
+        try:
+            instance = one_instance(narrowed, self.custom_formats)
+        except OverBudget:
+            raise
+        except Exception:  # noqa: BLE001 -- an undrawable location has no pin
+            if budget_expired():
+                raise OverBudget("a fixture derivation was cut") from None
+            return NONE
+        if conforms(conjunction, instance) is not True:
+            return NONE
+        return instance
 
     def one(self, document: str, pointer: str, seen: frozenset = frozenset()) -> Any:
         """One instance ``document``'s node at ``pointer`` admits, or :data:`NONE`.
@@ -693,6 +1126,11 @@ class Fixtures:
             if instance is not NONE:
                 placements.append((position.pointer, instance))
         substituted, _ = fixtured(drawn_from, placements)
+        #: The union rule applies to a referenced document's own draw too, and it is the
+        #: same call the pair makes: a referenced document whose cost is its OWN internal
+        #: branches is exactly the case :meth:`substitute` leaves standing, and this is the
+        #: position where that cost used to be paid in full.
+        substituted, _ = self.reduced(substituted)
         #: **NO BUDGET OF ITS OWN, and that is a correction rather than an omission.**  A
         #: :func:`within` here looked right and silently removed the CALLER's bound:
         #: ``signal.setitimer`` is process-global, so a nested block re-arms the timer to
@@ -2051,7 +2489,7 @@ def check_accepts(
     ref: SchemaRef | None = None,
     corpus: Any = None,
     identity: Any = None,
-    draw_from: dict | None = None,
+    draw_from: dict | Callable[[], dict | None] | None = None,
 ) -> AcceptsResult:
     """The accepts check: every instance the schema admits, ``accept`` admits --
     and what it constructed, DUMPED back out, is an instance the schema admits too.
@@ -2130,6 +2568,9 @@ def check_accepts(
       absent corpus is one full cold run.
 
     **``draw_from`` IS WHERE THE INSTANCES COME FROM; ``schema`` STAYS WHAT DECIDES.**
+    A CALLABLE is forced only on a corpus MISS, which is the only branch that draws; §8's
+    substitution costs a derivation per instance location and a replayed pair must not pay
+    for a draw it does not make.
     §8's fixture rule substitutes an instance of a referenced document at the referring
     position (:class:`Fixtures`), and that is a statement about the DRAW: the fixtured node
     is a RESTRICTION of this one, so every instance it yields is an instance ``schema``
@@ -2224,9 +2665,44 @@ def check_accepts(
                 canonicalisation_shared_within_one_call(),
                 validator_classes_shared_within_one_call(),
             ):
-                run = given(instance=strategy(schema if draw_from is None else draw_from, cf))(
-                    body
+                #: **A CALLABLE IS CALLED HERE AND NOWHERE ELSE, which is what keeps
+                #: §8's substitution off the replayed path.**  The substitution derives
+                #: a value per instance location of the node (:meth:`Fixtures.reduced`),
+                #: and the 2,674 pairs the committed floor answers would each pay that
+                #: derivation for a draw that never happens -- so the caller hands a
+                #: thunk and it is forced on the MISS, which is the only branch that
+                #: draws.  A mapping still means what it meant.
+                drawing = draw_from() if callable(draw_from) else draw_from
+                #: **THE DOCUMENT SCREENS EVERY INSTANCE A SUBSTITUTION PRODUCED, which is
+                #: what makes §8's substitution a statement about GENERATION and nothing
+                #: else.**  The owner's measurement is the whole argument: on
+                #: ``media-buy/refine-proposals-response.json#/properties/results/items/oneOf/0``,
+                #: validating a payload against the 683,849-byte node costs 1 ms and
+                #: generating one does not terminate -- so the cost is in generation,
+                #: never in the check, and a screen on the way out costs nothing and
+                #: removes every soundness question the substitution could raise.
+                #:
+                #: With it, a pair cannot be graded on a value its own node refuses
+                #: whatever the substitution did: ``oneOf`` is not monotone branch by
+                #: branch, a ``properties`` pin can meet another statement about the same
+                #: key through a keyword the frontier guards did not foresee, and neither
+                #: can now reach a verdict.  What a substitution can still do is produce
+                #: NOTHING the node admits, and that is reported as ``strategy_error``
+                #: with ``hypothesis``'s own filtered-draw count in the detail -- a
+                #: non-pass with a name, which is what §8 requires of a residue.
+                #:
+                #: ``schema`` and not ``dump_schema``: the exemptions are the DUMP's and
+                #: an instance going IN is decided by the node as the document writes it.
+                drawn_from_schema = drawing is None or drawing is schema
+                payloads = (
+                    strategy(schema, cf)
+                    if drawn_from_schema
+                    else strategy(drawing, cf).filter(
+                        lambda value: conforms(schema, value, validator_cls=validator_cls)
+                        is True
+                    )
                 )
+                run = given(instance=payloads)(body)
                 run = settings(
                     max_examples=examples,
                     phases=[Phase.explicit, Phase.generate],
@@ -2451,6 +2927,18 @@ class _Draws:
 
     #: The caller's store, or ``None`` to draw exactly as this check always did.
     corpus: Any = None
+    #: **§8's SUBSTITUTION, for the schemas this obligation DERIVES**, or ``None`` to draw
+    #: the derived schema whole.  The obligation's draws are built out of the pair's node
+    #: -- a value class, an intermediate node, the node conjoined with a demand -- so they
+    #: inherit the node's size, and the substitution that makes the accepts draw
+    #: affordable has to reach them or reading 2 stays blocked wherever reading 1 was.
+    #:
+    #: Measured: with the accepts draw substituted,
+    #: ``creative/sync-creatives-response.json#`` and both
+    #: ``media-buy/get-media-buys-response.json`` pairs stopped being cut in
+    #: ``check_accepts`` and started being cut HERE -- same library call,
+    #: ``merged_as_strategies``, one check further on.
+    fixtures: "Fixtures | None" = None
     #: The pair's STATIC identity, :attr:`Pair.identity`.  Required beside a ``corpus``.
     identity: Any = None
     #: How many draws were PAID, and how many a held value answered.  Reported on
@@ -2547,6 +3035,28 @@ class _Draws:
 
     def _draw(self, schema: Any, custom_formats: Mapping[str, Any]) -> list[Any]:
         self.drawn += 1
+        #: **The DERIVED schema is reduced before it is drawn from, and the value is
+        #: screened against the SCHEMA AS DERIVED.**  Same rule, same seam: the reduction
+        #: is a restriction, so a value it yields is a value this position admits, and the
+        #: screen makes that a check rather than a claim.  A reduction that places nothing,
+        #: raises, or yields a value this schema refuses loses the saving and the draw runs
+        #: exactly as it did before -- which is the fail-safe direction §8 requires.
+        if self.fixtures is not None:
+            try:
+                narrowed, placed = self.fixtures.reduced(schema)
+            except OverBudget:
+                raise
+            except Exception:  # noqa: BLE001 -- a derivation that raises loses the saving
+                narrowed, placed = schema, 0
+            if placed:
+                try:
+                    value = one_instance(narrowed, custom_formats)
+                except OverBudget:
+                    raise
+                except Exception:  # noqa: BLE001 -- fall through to the unreduced draw
+                    value = NONE
+                if value is not NONE and conforms(schema, value) is True:
+                    return [value]
         try:
             return [one_instance(schema, custom_formats)]
         except Exception as e:  # an undrawable position is unproved
@@ -3305,6 +3815,7 @@ def check_widening(
     custom_formats: Mapping[str, Any] = (),
     corpus: Any = None,
     identity: Any = None,
+    fixtures: "Fixtures | None" = None,
 ) -> WideningResult:
     """Section 8's accepts OBLIGATION, one declaration at a time.
 
@@ -3373,7 +3884,7 @@ def check_widening(
         )
     res = WideningResult()
     cf = dict(custom_formats)
-    draws = _Draws(corpus=corpus, identity=identity)
+    draws = _Draws(corpus=corpus, identity=identity, fixtures=fixtures)
     validator_cls = validator_for(schema)
     for one in declared:
         res.declarations += 1
@@ -4749,6 +5260,12 @@ class PairReport:
     #: varied this class's own payload and took each referenced document's value as given,
     #: and a reader of a green pair is entitled to know how much of the node was a fixture.
     fixtures: int = 0
+    #: How many INSTANCE LOCATIONS of this pair's node were pinned to one value read off
+    #: the node itself (:meth:`Fixtures.reduced`).  The same fact keyed the other way, and
+    #: reported for the same reason: the draw varied what the node leaves open and took
+    #: each location's value as given, and a green pair is entitled to say how much of its
+    #: node was a fixture rather than a draw.
+    pinned: int = 0
 
     @property
     def graded_instances(self) -> int:
@@ -5646,18 +6163,37 @@ def check_pair(
     #:
     #: FAIL-SAFE with no ``fixtures``: the pair draws exactly as it did before, which costs
     #: the time the rule exists to remove and grades the same thing.
-    draw_from = None
-    if fixtures is not None and pair.ref is not None:
+    #:
+    #: **AND THE SAME RULE KEYED ON THE NODE BEING GRADED, which is the half the reference
+    #: rule cannot reach** (the owner's correction, 2026-11-04).  ``substitute`` asks the
+    #: RAW document which positions refer, and at a COMPOSED position the answer is
+    #: nothing: ``applied_schema`` conjoins the enclosing node's statements about the same
+    #: instance, so the reference is in the graded node at a pointer the document does not
+    #: spell.  :meth:`Fixtures.reduced` reads the frontier off the node itself and pins one
+    #: value per instance location; :func:`locations` carries the rule and the measurement.
+    #: Applied AFTER the reference rule and to its output, so the two savings compose
+    #: instead of competing for the same pointer.
+    #:
+    #: **A THUNK AND NOT A NODE, which is what keeps the cost off the replayed path.**  The
+    #: substitution derives a value per instance location, and the 2,674 pairs the
+    #: committed floor answers draw nothing at all -- so this is forced inside
+    #: ``check_accepts`` on a corpus MISS and nowhere else.  ``rep.fixtures`` and
+    #: ``rep.pinned`` are therefore 0 on a replayed pair, which says what happened: no
+    #: fixture was placed because no draw was made.
+    def draw_from() -> dict | None:
+        if fixtures is None or pair.ref is None:
+            return None
         try:
-            draw_from, rep.fixtures = fixtures.substitute(
+            substituted, rep.fixtures = fixtures.substitute(
                 drawn_from, pair.ref.document, pair.ref.pointer
             )
+            substituted, rep.pinned = fixtures.reduced(substituted)
         except OverBudget:
             raise
         except Exception:  # noqa: BLE001 -- a derivation that raises loses the saving only
-            draw_from, rep.fixtures = None, 0
-        if not rep.fixtures:
-            draw_from = None
+            rep.fixtures, rep.pinned = 0, 0
+            return None
+        return substituted if (rep.fixtures or rep.pinned) else None
     rep.accepts = check_accepts(
         drawn_from,
         pair.accept,
@@ -5704,6 +6240,7 @@ def check_pair(
             custom_formats=custom_formats,
             corpus=widening_corpus,
             identity=pair.identity,
+            fixtures=fixtures,
         )
     return rep
 
