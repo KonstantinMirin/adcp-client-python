@@ -619,6 +619,19 @@ ignore = [
     # selected, which is where the design fact is -- a boolean PARAMETER.
     "TC", "PLC0415", "TRY003", "EM101", "EM102", "PT018", "PLR2004", "FBT003",
 
+    # ``N818`` error-suffix-on-exception-name: it decides what an EXCEPTION is by
+    # reading the base class's NAME, not its type.  Measured on all four
+    # findings: ``issubclass(cls, BaseException)`` is **False** for every one,
+    # and the MRO is ``AdCPBaseModel`` throughout.  They inherit from
+    # ``Error``, ``CommitmentError`` and ``ControlError`` -- schema-derived
+    # MODELS that the PROTOCOL calls errors, because an error is a payload on
+    # this wire and not a raise.  So the rule is reading a word.  Renaming four
+    # classes to satisfy it would make the emitted name differ from the name the
+    # document gives the subject, which §4 forbids: a name comes from the bundle
+    # and from nowhere else.  Declined by NAME with the measurement, as
+    # ``PLC0414`` is.
+    "N818",
+
     # ``PLC0414`` useless-import-alias (1,945): **this rule is WRONG for this
     # package and following it would break reading 7.**  ``X as X`` is the
     # PEP 484 explicit re-export form, and it is what tells a consumer's type
