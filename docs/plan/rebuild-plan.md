@@ -1731,6 +1731,45 @@ MRO in the 1,006-module tree.
 property both declare takes §2's restatement rule, which no base list states and which the
 dispatch route genuinely does not have.
 
+### A STRUCTURE THE BUNDLE NEVER TITLES IS NAMED FROM ITSELF, AND THE UPSTREAM ASK STAYS FILED
+
+**"Pending a name" was being read as "pending upstream", and that is wrong. It waits for nothing.**
+§3a's third answer says a structure nothing names is an upstream ask and not a local answer, and
+that sentence is right about the *concept* and was taken to forbid the *type*. The result was 116
+object structures emitted at 327 positions — 211 classes that admit identically to one of their
+siblings and exist only because no `title` arrived.
+
+**THE KEY ALREADY SETTLES IT. Two positions sharing a layer's identity ADMIT IDENTICALLY** — the
+key recurses through every `$ref`, drops annotations, and keeps every constraining keyword, so it
+is the admitted-set key and nothing weaker. **Collapsing them cannot change what the SDK
+accepts**, which is the only thing reading 1 is about. There is no faithfulness argument for
+emitting them twice; there was only a naming argument, and the naming argument has an answer.
+
+**THE ANSWER IS THE ONE L1 ALREADY SHIPS.** `StrMaxLen100` and `IntMin0Max150` are not in the
+bundle either — they are **derived from the constraint**, because a constrained scalar's identity
+*is* its constraint. An object structure's identity is its field set, so the same derivation
+applies one layer up: **where the bundle does not name a structure, the name is derived FROM THE
+STRUCTURE**, by §4's steps in order — the bundle's own title where it states one, else the
+structure in words, else the declaring position.
+
+**A DERIVED NAME IS NOT AN INVENTED CONCEPT, and that distinction is the whole of the rule.** A
+name derived from the fields claims only what it can prove: *this is the type with these fields.*
+A name taken from one position's property key claims a subject, and that is what §3a refuses —
+`^[A-Z]{3}$` at `currency` and at `airport_code` is the measured case, one layer down.
+
+**AND WHERE THE POSITIONS ARE GENUINELY DIFFERENT SUBJECTS, ONE DEFINITION CARRIES SEVERAL
+NAMES.** That is §3a's second answer, and it is what makes this safe: the type is written once and
+each position that needs its own spelling gets an alias to it. Zero duplicate definitions, and a
+caller still reads the word the protocol uses at the position they are at. A consumer's
+`isinstance` holds across every spelling, which is precisely what several classes over one
+structure cost today.
+
+**THE UPSTREAM ASK IS NOT WITHDRAWN AND IS NOT A BLOCKER.** A `title` from the bundle is strictly
+better than a derived name — it is the protocol's own word — so the ask stays filed and an answer
+*replaces* a derived name with a stated one. What changes is that the derived name ships in the
+meantime, because a pinned bundle is not going to grow titles and the SDK is for the bundle we
+have.
+
 ### A FRAGMENT REFERENCE STATES WHAT THE NODE STATES, NEVER WHAT ITS DOCUMENT'S ROOT ADDS
 
 A `$ref` to `other.json#/oneOf/0` resolves to **that subschema and nothing else**. Where the target
