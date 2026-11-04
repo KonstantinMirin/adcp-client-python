@@ -2028,6 +2028,50 @@ document with a pair of its own, graded there — so at the referring position t
 over a reference holding fifteen branches is **three plus fifteen, never three times fifteen**: the
 product becomes a sum because nothing is re-derived that is already decided elsewhere.
 
+**AND THE SAME RULE GOVERNS A WIDENING'S PROVING VALUE: IT IS A QUESTION ABOUT A DECLARATION AND A
+DOCUMENT, NOT ABOUT THE PAIR THAT ASKED.** A declaration sits at one pointer in one document and
+the value that demonstrates it is a property of that pair of facts alone. Keying the held answer on
+the *asking* pair's pointer gives one subject several keys — three pairs deriving an identical
+multi-megabyte subject are given three, and each pays the draw again — where the narrowest pair's
+answer already serves every one of them.
+
+So **the key is the declaration**: the document, the declared pointer, the keyword and the class
+label, which are a function of the declaration and not of who reached it. That is the same "product
+becomes a sum" one layer over, and it is what makes a value drawn once at the cheapest position the
+proof for every position that contains it.
+
+**A VALUE A DRAW OF THE SAME SUBJECT ALREADY PRODUCED IS ASKED FOR AFTER THE STORE AND BEFORE THE
+DRAW**, and it is a third state beside drawn and replayed rather than either of them. It is not a
+weaker kind of proof — it is offered to the class's own schema and to the document before anything
+accepts it — but it must be *visible*, because a store that answers and a borrow that answers are
+different facts about coverage, and conflating them hides which one is doing the work.
+
+### A DECLARATION IN A `definitions` SECTION IS PROVED BY THAT ENTRY'S OWN CLASS, AND BY NOTHING
+THAT REFERENCES IT
+
+A section entry has **no instance location in a referring document**. The referrer's instance tree
+contains the entry's *content* at whatever position references it, not a slot named
+`definitions/<key>` — so a value placed at the declared pointer is a value at a location no
+instance of the referrer has, and the obligation can never discharge it there.
+
+**A containment rule that carries such a declaration to the referring root is claiming an
+obligation nothing can satisfy**, which is worse than claiming none: it reads as coverage. The
+declaration belongs to the entry's own pair, which does have an instance location for it, and that
+pair is where the proving value lives. Containment therefore **stops at a reference boundary** — a
+declaration travels within one document's instance tree and not across a `$ref`.
+
+### THE VALUE CLASS FOR A CONDITIONAL PARTITIONS ON THE CONDITION
+
+"A value the node admits" does not exercise what a dropped `if`/`then` was constraining, because an
+instance that fails the condition satisfies the conditional vacuously. A single class over the node
+therefore proves nothing about the widening: it can be an instance the document would have admitted
+with the keyword in place.
+
+**So a conditional's subject is TWO classes — the condition matching and the condition not
+matching** — which is the same shape the bound rows already take, where a bound's subject is both
+sides and the bound itself. **Only the matching one exercises the fact the widening dropped**, and
+it is the one the proof requires; the other is what shows the vacuous case is still admitted.
+
 **AND THIS IS A RULE ABOUT THE DRAW, NOT ABOUT THE RECORD.** The explosion is in generating into an
 inlined subtree, so substituting a fixture collapses it **whether or not the record inlined the
 bytes** — which makes it a change to how we grade rather than a change to the artifact. It is the

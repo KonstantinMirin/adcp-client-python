@@ -232,6 +232,24 @@ and that equality would need the same thing one level further out — the regres
 original argument was right to fear. Leaving the space cache-only is also refused: the saving is
 real, crosses checkouts, and changes no verdict — it buys back the draw and nothing else.
 
+**AND "AS IT FILLS" IS NOT A DEFERRAL: UNTIL THE FLOOR EXISTS, READING 2's STORE HALF IS
+UNOBSERVABLE AT EXACTLY THE PLACE THE READING IS ABOUT.** The proving values live in a
+cross-worktree cache that a check requires to be *outside* the repository — correctly, because a
+run may not write inside the checkout. The consequence is that a fresh checkout and a CI job hold a
+proving value for **no declaration at all**, so the half of reading 2 that says *every declaration
+holds a value that demonstrates it* reads as unmet for every one of them, whatever the cache on one
+machine contains.
+
+**A store that evaporates on checkout proves nothing**, which is the same argument that makes the
+accepts floor committed, and it applies here without modification. So the directory is created and
+promoted the moment values exist for it, under two conditions reading 2 states itself: **no entry
+records a budget cut**, and **every entry is a draw's own output** — never written by hand, because
+a hand-written proof is an exemption the first time the document changes under it.
+
+**A RUN MAY NOT WRITE INSIDE THE CHECKOUT; A PROMOTION MAY.** That distinction is what lets both
+rules hold at once, and it is already how the accepts floor works — the check forbidding a run to
+write there is not a check against the floor existing.
+
 A position whose draw never returns is held by nothing under any of these choices — two of them
 exceed 900 s on an 8,145,255-byte conjunction and one exceeds 600 s on a 6,832,209-byte node. That
 residue is not a currency question. It is the document-derived construction decision, and it is
