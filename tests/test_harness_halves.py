@@ -530,3 +530,103 @@ def test_a_hit_hands_back_a_copy_because_the_library_mutates_what_it_is_given() 
         first["__scribbled_on__"] = True
         second = canon.canonicalish({"type": "string", "minLength": 2})
     assert "__scribbled_on__" not in second
+
+
+# --------------------------------------------------------------------------- #
+# the DOCUMENT's own statement of a valid instance: `examples`
+# --------------------------------------------------------------------------- #
+def test_the_node_s_own_examples_answer_the_accepts_check_and_are_counted_apart() -> None:
+    """**The store, then ``examples``, then the draw** -- and the third state is visible.
+
+    ``examples`` is JSON Schema's own keyword for "here is a valid instance of this
+    schema", so where a node states one there is nothing to generate.  §8 already requires
+    the source to be reportable -- "a store that answers and a borrow that answers are
+    different facts about coverage" -- so what is asserted is the counter as well as the
+    pass: a reader of a green pair has to be able to tell which of the three answered.
+    """
+    document = {
+        "type": "object",
+        "required": ["a"],
+        "properties": {"a": {"type": "string"}},
+        "additionalProperties": False,
+        "examples": [{"a": "a realistic value"}],
+    }
+
+    taken: list[Any] = []
+
+    def entry_point(payload: Any) -> Any:
+        taken.append(payload)
+        return payload
+
+    res = harness.check_accepts(document, entry_point, examples=1)
+    assert res.outcome == "pass", res.detail
+    assert res.stated == 1, "the node states an instance and the draw was not needed"
+    assert res.replayed == 0 and res.examples == 1
+    assert taken == [{"a": "a realistic value"}], (
+        f"the instance the class saw is not the one the document states: {taken}"
+    )
+
+
+def test_an_examples_member_its_own_node_REFUSES_is_not_an_instance() -> None:
+    """The screen, which is the whole of the rule and is not a formality.
+
+    **Measured over the graded population: 115 pairs' node carries ``examples`` and the
+    node refuses every member of 64 of them**, because the bundle's root ``examples`` hold
+    ``{"description", "data"}`` rather than the instance -- and all 64 hold a valid
+    instance under ``data``, so the member is wrapped and not wrong.  The wrapper is NOT
+    unwrapped: draft-07 says a member IS an instance, and reading a key out of one would
+    make the harness interpret a convention the specification does not have.  So the
+    member is refused, the pair draws as before, and the repair is upstream.
+    """
+    wrapped = {
+        "type": "object",
+        "required": ["a"],
+        "properties": {"a": {"type": "string"}},
+        "examples": [{"description": "what this shows", "data": {"a": "x"}}],
+    }
+    assert harness.stated_instances(wrapped) == [], (
+        "a {description, data} wrapper was read as an instance"
+    )
+    assert harness.stated_instances({"type": "string"}) == []
+    mixed = {
+        "type": "object",
+        "required": ["a"],
+        "properties": {"a": {"type": "string"}},
+        "examples": [{"nope": 1}, {"a": "good"}, {"a": 2}],
+    }
+    assert harness.stated_instances(mixed) == [{"a": "good"}], (
+        "the screen kept a member the node refuses, or dropped one it admits"
+    )
+
+
+def test_a_stated_instance_is_not_copied_into_the_store() -> None:
+    """It is already committed -- in the document, in git, in the artifact CI reads.
+
+    The floor exists so every lane grades the same witness; an ``examples`` member
+    satisfies that on its own and moves only when the schema moves.  Copying it would make
+    one fact two and let the copy outlive the statement it came from, which is the drift
+    §8's "never hand-written" clause is about.
+    """
+
+    class _Store:
+        def __init__(self) -> None:
+            self.written: dict[str, Any] = {}
+
+        def get(self, key: str) -> Any:
+            return None
+
+        def put(self, key: str, instances: Any) -> None:
+            self.written[key] = instances
+
+    store = _Store()
+    document = {
+        "type": "object",
+        "required": ["a"],
+        "properties": {"a": {"type": "string"}},
+        "examples": [{"a": "stated"}],
+    }
+    res = harness.check_accepts(
+        document, lambda v: v, examples=1, corpus=store, identity={"d": "x"}
+    )
+    assert res.outcome == "pass" and res.stated == 1
+    assert store.written == {}, f"a stated instance was held: {store.written}"

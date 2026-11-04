@@ -923,7 +923,12 @@ class Fixtures:
     #: what turns the product into a sum.
     held: dict[tuple[str, str], Any] = field(default_factory=dict)
     #: How many fixtures came from each derivation, and how many could not be derived.
+    #: ``stated`` is the document's own ``examples`` keyword (:meth:`_stated`), which is a
+    #: THIRD source beside the held corpus and the derived draw and has to be counted
+    #: apart from both for §8's reason: "a store that answers and a borrow that answers
+    #: are different facts about coverage".
     replayed: int = 0
+    stated: int = 0
     derived: int = 0
     unavailable: int = 0
     #: ``digest of a frontier item's statements -> the subschema it is replaced by, or
@@ -1062,6 +1067,22 @@ class Fixtures:
         if not kept:
             return NONE
         conjunction: Any = kept[0] if len(kept) == 1 else {"allOf": list(kept)}
+        #: **WHAT ANY STATEMENT ABOUT THIS LOCATION SAYS A VALID INSTANCE OF IT LOOKS LIKE,
+        #: SCREENED AGAINST THE CONJUNCTION OF ALL OF THEM.**  The same rule
+        #: :meth:`_stated` applies at a referring position, applied to a frontier item:
+        #: where the document states an instance there is nothing to generate.  The screen
+        #: is the conjunction and not the stating statement, because several statements
+        #: decide one location and a member only one of them admits is not a pin -- which
+        #: is the empty-intersection clause this method exists for, arriving by a new door.
+        try:
+            for statement in kept:
+                for member in stated_instances(statement):
+                    if conforms(conjunction, member) is True:
+                        return member
+        except OverBudget:
+            raise
+        except Exception:  # noqa: BLE001 -- an unusable statement states nothing
+            pass
         narrowed, _ = self.reduced(conjunction, depth)
         try:
             instance = one_instance(narrowed, self.custom_formats)
@@ -1090,11 +1111,40 @@ class Fixtures:
             return NONE  # a cycle in the reference graph is no fixture
         answer = self._replayed(key)
         if answer is NONE:
+            answer = self._stated(key)
+        if answer is NONE:
             answer = self._derived(key, seen)
         if answer is NONE:
             self.unavailable += 1
         self.held[key] = answer
         return answer
+
+    def _stated(self, key: tuple[str, str]) -> Any:
+        """The referenced document's OWN ``examples``, which is the fixture with no draw.
+
+        **§8's fixture rule and JSON Schema's own keyword are the same sentence** (the
+        owner's decision, 2026-11-04).  The rule is that at a referring position the
+        instrument needs "one instance that document admits", derived from the document and
+        never hand-written -- and ``examples`` is the document's own statement of exactly
+        that, maintained by whoever maintains the schema.  112 of this bundle's portable
+        documents state one at their root, which is where a reference lands.
+
+        Asked after :meth:`_replayed` and before :meth:`_derived`, so the committed floor
+        still decides which witness is graded and this answers the positions it does not --
+        and it answers them for nothing, where :meth:`_derived` pays a whole draw.
+        Screened by the node it will stand for, which is :func:`stated_instances`' whole
+        content.
+        """
+        document, pointer = key
+        try:
+            node = self.node(document, pointer)
+        except Exception:  # noqa: BLE001 -- a pointer the record does not carry
+            return NONE
+        found = stated_instances(node)
+        if not found:
+            return NONE
+        self.stated += 1
+        return found[0]
 
     def _replayed(self, key: tuple[str, str]) -> Any:
         if self.corpus is None:
@@ -1913,6 +1963,59 @@ class AcceptsResult:
     replayed: int = 0
     corpus_key: str = ""
 
+    #: How many of :attr:`examples` came from the node's OWN ``examples`` keyword -- the
+    #: document's own statement of a valid instance of itself, screened by the document
+    #: before it counts (:func:`stated_instances`).  **A THIRD STATE BESIDE DRAWN AND
+    #: REPLAYED, and §8 already requires it to be visible**: "a store that answers and a
+    #: borrow that answers are different facts about coverage, and conflating them hides
+    #: which one is doing the work."  ``stated == examples`` is a pair whose evidence is
+    #: the schema author's, which is the strongest of the three and the only one that
+    #: costs nothing.
+    stated: int = 0
+
+
+def stated_instances(node: Any, *, validator_cls: Any = None) -> list[Any]:
+    """The members of ``node``'s own ``examples`` that ``node`` ADMITS, in document order.
+
+    **JSON Schema's own keyword for "here is a valid instance of this schema"**, which
+    this bundle states 4,280 times over the 1,625 documents of its directory -- 167 of
+    them inside the 1,054 PORTABLE documents the harness grades, 112 of those at a
+    document root.  §8's fixture rule says a fixture is DERIVED and never hand-written
+    because "a hand-written one is a thousand files to maintain and a silent exemption the
+    first time a document changes under it"; an ``examples`` member is neither.  It is
+    maintained with the schema, by the people who own the schema, and it is a derivation
+    in the strict sense this module already uses -- nothing is written down here that the
+    document does not state.
+
+    **THE SCREEN IS THE WHOLE OF IT, and it is not a formality: measured over the graded
+    population, 115 pairs' own node carries ``examples`` and the node REFUSES every member
+    of 64 of them.**  The cause is one convention, visible in the first member of every one
+    of the 64: the bundle's root ``examples`` hold ``{"description": ..., "data": <the
+    instance>}`` rather than the instance, and a root that requires its own keys refuses
+    that wrapper. 196 of the bundle's members take that shape.
+
+    **The wrapper is NOT unwrapped here, and that is a decision rather than an
+    omission.** draft-07 says a member of ``examples`` IS an instance; reading a ``data``
+    key out of one would make this function interpret a convention the specification does
+    not have, and the first document to spell the wrapper differently would get a silently
+    wrong instance. An ``examples`` member its own node refuses is an upstream defect, it
+    is reported as one, and the repair is a patch that is also the pull request (§1).
+
+    ``[]`` for a node with no ``examples``, a non-list ``examples``, or one whose every
+    member the node refuses -- all three mean "there is no stated instance here", and the
+    caller then does exactly what it did before this rule existed.
+    """
+    if not isinstance(node, Mapping):
+        return []
+    held = node.get("examples")
+    if not isinstance(held, list) or not held:
+        return []
+    try:
+        cls = validator_cls or validator_for(node)
+    except Exception:  # noqa: BLE001 -- a node with no validator states no instance
+        return []
+    return [m for m in held if conforms(node, m, validator_cls=cls) is True]
+
 
 @dataclass
 class LivenessResult:
@@ -2659,8 +2762,42 @@ def check_accepts(
     if isinstance(held, list) and len(held) < examples:
         held = None
 
+    #: **THE STORE, THEN THE DOCUMENT'S OWN ``examples``, THEN THE DRAW** (the owner's
+    #: decision, 2026-11-04).  ``examples`` is JSON Schema's own keyword for "here is a
+    #: valid instance of this schema", so where the node states one there is nothing to
+    #: generate: the schema author has already answered the question this check asks.  It
+    #: is better evidence as well as cheaper -- a realistic payload rather than a
+    #: generated one -- and it is maintained with the schema by the people who own it,
+    #: which is why it is not the hand-written fixture §8 forbids.
+    #:
+    #: **AFTER the store and not before it**, which is :class:`Layered`'s own reading one
+    #: key space over: which source answers decides WHICH witness the suite grades, and
+    #: the committed floor is the witness every lane and every fresh checkout agrees on.
+    #: A node whose ``examples`` changed upstream would otherwise silently re-point every
+    #: verdict that depends on it; this way the floor keeps deciding and ``examples``
+    #: answers exactly the pairs the floor does not.
+    #:
+    #: **SCREENED BY THE NODE, and the screen is load-bearing**: 64 of the 115 pairs whose
+    #: node carries ``examples`` have none the node admits, because the bundle's root
+    #: ``examples`` hold a ``{"description", "data"}`` wrapper rather than an instance.
+    #: :func:`stated_instances` carries that measurement and says why the wrapper is not
+    #: unwrapped.
+    stated = None
+    if held is None:
+        found = stated_instances(schema, validator_cls=validator_cls)
+        if len(found) >= examples:
+            stated = found
+
     try:
-        if held is None:
+        if held is None and stated is not None:
+            #: Through the SAME ``body`` a draw and a replay run through, so ``accept``,
+            #: the dump, the exemption reading and every counter are the ones a drawing
+            #: run produced; only ``from_schema`` is skipped.  :attr:`AcceptsResult.stated`
+            #: is what tells a reader which of the three answered.
+            for instance in stated[:examples]:
+                res.stated += 1
+                body(instance)
+        elif held is None:
             with (
                 canonicalisation_shared_within_one_call(),
                 validator_classes_shared_within_one_call(),
@@ -2756,7 +2893,17 @@ def check_accepts(
     #: The count is :attr:`AcceptsResult.examples` and not ``len(seen)``, because ``seen``
     #: is the CALLER's list and a caller may hand one that already holds something: what
     #: this call drew is what ``body`` counted.
-    if corpus is not None and held is None and res.outcome != "strategy_error":
+    #: **A STATED INSTANCE IS NOT HELD, because it is already committed -- in the
+    #: document, in git, in the artifact every lane and CI reads.**  The floor exists so
+    #: that "every lane, every fresh checkout and CI grade the same one" (:class:`Layered`),
+    #: and an ``examples`` member satisfies that on its own: it moves only when the schema
+    #: moves, and when it does, this check re-screens it and reports an upstream defect
+    #: with the document's name.  Copying it into a store would make one fact two, give it
+    #: a second maintenance point, and let the copy outlive the statement it came from --
+    #: which is exactly the drift §8's "never hand-written" clause is about.
+    if corpus is not None and held is None and not res.stated and res.outcome != (
+        "strategy_error"
+    ):
         #: **The whole draw and never a truncation, and NEVER SHORTER THAN WHAT IS ALREADY
         #: HELD.**  With the count out of the key one entry answers every setting, so a run
         #: at a LOW count must not overwrite a long entry with a short one -- that would
@@ -3034,6 +3181,17 @@ class _Draws:
         return None
 
     def _draw(self, schema: Any, custom_formats: Mapping[str, Any]) -> list[Any]:
+        #: **WHAT THE DERIVED SCHEMA ITSELF STATES, ASKED BEFORE ANYTHING IS GENERATED.**
+        #: :func:`check_widening`'s value classes are RESTRICTIONS of the node
+        #: (:func:`_restricted`), so a node carrying ``examples`` carries it into every
+        #: class derived from it -- and :func:`stated_instances` screens the member against
+        #: the restriction, so a member the class refuses is simply not an answer and the
+        #: draw runs as before.  Counted as a borrow and not as a draw, because that is
+        #: what it is: a value this module did not generate.
+        stated = stated_instances(schema)
+        if stated:
+            self.borrowed += 1
+            return [stated[0]]
         self.drawn += 1
         #: **The DERIVED schema is reduced before it is drawn from, and the value is
         #: screened against the SCHEMA AS DERIVED.**  Same rule, same seam: the reduction
