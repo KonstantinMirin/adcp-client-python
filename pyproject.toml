@@ -632,6 +632,50 @@ ignore = [
     # ``PLC0414`` is.
     "N818",
 
+    # ``A001``/``A004`` builtin shadowing: SIX findings and they are ONE NAME --
+    # ``Warning``, the root class of ``core/warning.json``, plus the five modules
+    # that import it.  The bundle names that subject, §4 says a name comes from
+    # the bundle and from nowhere else, and **upstream exports ``Warning`` from
+    # its generated types too**, so renaming it would break reading 10's drop-in
+    # as well as §4.  Declined for the same reason as ``N818``: the rule is
+    # reading a word the document chose.
+    #
+    # **The consumer-facing edge is real and is documentation, not a rename.**
+    # ``from adcp.types.core import *`` shadows the builtin ``Warning`` in the
+    # caller's namespace.  That is the protocol's choice of word, every typed
+    # consumer imports by name rather than by star, and the alternative is an
+    # emitted name that differs from the subject's own.
+    #
+    # **If this set ever grows past names the bundle chose, that is a different
+    # finding** -- a lowering that shadows ``id``, ``type`` or ``list`` of its
+    # own accord is a defect this decline must not cover, so the row that owns
+    # it states the set as one word from one document.
+    "A001", "A004",
+
+    # ``S105`` hardcoded-password-string: FOUR findings, every one an enum member
+    # whose value equals its name -- ``PASS = 'PASS'`` and its siblings read as a
+    # credential by a rule that matches on the word.  A schema ``enum`` member is
+    # a protocol value and §4 spells it from the bundle; there is no secret here
+    # and nothing to move to an environment variable.
+    "S105",
+
+    # ``N815`` mixed-case field in a class body: FOURTEEN findings, 13 of them in
+    # ``a2ui/``, and every one is the DOCUMENT'S OWN property key --
+    # ``literalString``, ``literalNumber``, ``literalBoolean``, ``parentId``.
+    # That domain spells its wire keys in camelCase.
+    #
+    # **This rule is not WRONG, it is PREMATURE, and the difference is worth
+    # keeping.**  Pydantic serialises by field name unless an alias carries the
+    # wire key, so today the field name IS the contract and renaming it would
+    # change what the SDK puts on the wire.  A snake_case field with
+    # ``alias='literalString'`` is idiomatic Python AND wire-identical -- which
+    # is exactly the ergonomics question `final-state.md`'s reading 10 owns, and
+    # exactly the kind of thing that must not be decided by a linter in the
+    # faithfulness half.  Declined here and OWED THERE: the row that builds the
+    # alias layer decides whether every field takes a snake_case spelling with
+    # the wire key as its alias, for all 14,570 fields and not for 14.
+    "N815",
+
     # ``PLC0414`` useless-import-alias (1,945): **this rule is WRONG for this
     # package and following it would break reading 7.**  ``X as X`` is the
     # PEP 484 explicit re-export form, and it is what tells a consumer's type
