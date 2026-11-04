@@ -1159,6 +1159,33 @@ That is the whole of the answer to the fencing. We cannot fix the schema's habit
 concept in five places; we decide the layers we emit it into, and the layering removes the hazard
 the prohibition was written for.
 
+**AND WHERE AN ENTRY'S HOME IS, THE RULE L0 STATES IS NOT STRONG ENOUGH — IT IS GROUP-RELATIVE,
+AND THAT IS THE DEFECT.** "The stating position the other stating positions reach through a
+reference" is read inside ONE entry, so two entries over one pair of documents answer in opposite
+directions and the arrows meet. Measured by documents refused on a reference cycle, over four
+candidate orders:
+
+| the home is | documents refused |
+| --- | --- |
+| the first stating position in bundle order | **222** |
+| the document the most siblings reach — L0's own rule | **13** |
+| the stating document of the smallest transitive reach | **10** |
+| **the group's earliest document in the DEPENDENCY ORDER that already exists** | **0** |
+
+**The last is acyclic by construction and the others are acyclic by luck.** The dependency order is
+the graph the walk already has — every reference it lowers, plus every edge the collection adds —
+so each new edge runs backwards along a topological order of all the others, and a cycle is
+unrepresentable rather than avoided. **A rule that must be measured for cycles is the wrong rule;
+the right one cannot produce them.**
+
+**AND "A RULE POSITION MINTS NO TYPE" NAMES TWO MORE POSITIONS THAN IT SAYS.** A CONJ position
+mints none either — §5 is explicit that inline conjuncts are the fields and rules of *this* class —
+and neither does a position beneath a `contains`, whose own cell already decides that the model
+states **the predicate** and not a transcription of the subschema. Measured: of the CONJ stating
+positions of a collected structure, **none** carries a class, and eight structures took one as a
+home and were left homeless by it. **A layer that collects a position no class is emitted at has
+collected a home that cannot declare.**
+
 **An entry lives in the NARROWEST namespace that contains every position referencing it**, which
 keeps a consumer's import close to where they met the concept and is derived rather than chosen:
 
