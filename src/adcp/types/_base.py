@@ -942,6 +942,59 @@ def applied_schema(root: dict, pointer: str) -> dict:
             # properties, so §2 composes a class whose ``coverage_rate`` field is the
             # base's declaration made required -- and the pair raised ``KeyError:
             # 'properties'`` instead of being graded.
+            #
+            # **THE EMPTY SCHEMA IS THE RIGHT ANSWER AT A KEY HOP AND THE WRONG ONE AT A
+            # SAME-INSTANCE HOP, AND THE DIFFERENCE IS WHETHER ``conjoined`` TRAVELLED**
+            # (``adcp-client-python-xid``).  The sentence above -- "every fact the pair is
+            # graded against comes from the conjoined statements the two lines above have
+            # already descended" -- is true only of the ``not same_instance`` arm, which
+            # is where that descent happens.  A SAME-INSTANCE hop does not descend the
+            # conjunction, because draft-07 holds a conjunct against the instance the node
+            # already describes; so at such a hop ``{}`` drops the held statement whole,
+            # and a pointer that continues BELOW the key then has nothing to index.
+            # Measured: ``KeyError: '0'`` at this function's foot for the four classes at
+            # ``media-buy/buy-products-request.json`` and
+            # ``media-buy/request-proposals-request.json``
+            # ``#/anyOf/1/properties/account/allOf/0/anyOf/<i>`` -- the walk substituted
+            # ``{}`` for the ``allOf`` the branch's own text does not hold and the next
+            # segment ``0`` indexed it.
+            #
+            # So at a same-instance hop the node below the key is the HELD STATEMENT'S own
+            # value at that key, which is what the document says there: the restatement is
+            # silent, and the one statement conjoined with it says exactly this.  That is
+            # the same reading as the gate above -- "a class stamped at a pointer the
+            # document's CONJUNCTION does not have is a defect in the walk" -- carried one
+            # hop further, to a pointer the conjunction does have.
+            #
+            # **ONE holder, or the empty schema as before.**  Measured over all 2,753
+            # pairs: this substitution fires 6 times, 4 of them at a same-instance
+            # ``allOf`` hop and every one of those with exactly ONE conjoined statement
+            # holding the key.  Two statements holding it would need a reading of how
+            # their two conjunct LISTS compose before an index could be resolved against
+            # either, and the index the walk wrote names a position in one list; no
+            # document reaches that today, and it stays on the old answer rather than
+            # being decided by a guess.
+            #
+            # The held statement is replaced in ``conjoined`` by itself MINUS that key,
+            # which is what the normal descent already does to the node it leaves: the
+            # block above has captured the node's own other facts through
+            # :func:`_conjunction`, and a key the walk is descending into is not also a
+            # conjunct of the thing below it.
+            if same_instance and len(holders := [
+                s for s in (*conjoined, *siblings) if isinstance(s, dict) and key in s
+            ]) == 1:
+                held = holders[0]
+                conjoined = [
+                    {k: v for k, v in s.items() if k != key} if s is held else s
+                    for s in conjoined
+                ]
+                siblings = [
+                    {k: v for k, v in s.items() if k != key} if s is held else s
+                    for s in siblings
+                ]
+                node = through_the_store(held[key], root)
+                cutting = node if isinstance(node, list) and key == "allOf" else None
+                continue
             node = {}
             continue
         node = node[key]
