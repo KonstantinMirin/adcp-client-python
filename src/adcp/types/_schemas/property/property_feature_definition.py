@@ -11,6 +11,7 @@ from adcp.types.constraints import HttpUrl
 
 from ..common._vocabularies import _VALUES_BINARY_QUANTITATIVE_CATEGORICAL
 from ..core.ext import ExtensionObject
+from ..core.signal_listing import ObjMinMax
 
 
 class PropertyFeatureDefinitionType(StrEnum):
@@ -20,18 +21,6 @@ class PropertyFeatureDefinitionType(StrEnum):
     BINARY = _VALUES_BINARY_QUANTITATIVE_CATEGORICAL[0]
     QUANTITATIVE = _VALUES_BINARY_QUANTITATIVE_CATEGORICAL[1]
     CATEGORICAL = _VALUES_BINARY_QUANTITATIVE_CATEGORICAL[2]
-
-
-class Range(AdCPBaseModel):
-    """
-    For quantitative features, the valid range of values
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='property/property-feature-definition.json', pointer='#/properties/range')
-    min: Annotated[float, Field(description='Minimum value')]
-    max: Annotated[float, Field(description='Maximum value')]
 
 
 class Coverage(AdCPBaseModel):
@@ -58,7 +47,7 @@ class PropertyFeatureDefinition(AdCPBaseModel):
     name: Annotated[str, Field(description='Human-readable name for the feature')]
     description: Annotated[str | None, Field(description='Description of what this feature measures or represents')] = None
     type: Annotated[PropertyFeatureDefinitionType, Field(description='The type of values this feature produces: binary (true/false), quantitative (numeric range), categorical (enumerated values)')]
-    range: Annotated[Range | None, Field(description='For quantitative features, the valid range of values')] = None
+    range: Annotated[ObjMinMax | None, Field(description='For quantitative features, the valid range of values')] = None
     allowed_values: Annotated[list[str] | None, Field(description='For categorical features, the set of valid values')] = None
     coverage: Annotated[Coverage | None, Field(description='What this feature covers (empty arrays = all)')] = None
     methodology_url: Annotated[HttpUrl, Field(description='URL to documentation explaining how this feature is calculated/measured')]

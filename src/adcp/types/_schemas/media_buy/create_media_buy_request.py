@@ -10,7 +10,6 @@ from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, 
 from adcp.types._runtime import ConditionalRequired, Dependencies, ForbiddenGroups, Match, Rule
 from adcp.types.constraints import (
     FloatMin0Max1,
-    GetAccountFinancialsResponseSuccessCurrency,
     GovernanceContext,
     HttpUrl,
     IoAcceptanceSignatory,
@@ -18,7 +17,6 @@ from adcp.types.constraints import (
     StrMaxLen100,
     StrMinLen1,
     StrMinLen16,
-    StrMinLen32,
     SyncAccountsRequestIdempotencyKey,
 )
 
@@ -31,13 +29,13 @@ from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
 from ..core.media_buy_frequency_cap import MediaBuyFrequencyCap
 from ..core.opportunity_context import OpportunityContext
-from ..core.push_notification_config import PushNotificationConfig
+from ..core.push_notification_config import Authentication, PushNotificationConfig
 from ..core.reporting_webhook import ReportingWebhook
 from ..core.start_timing import StartTiming
 from ..core.version_envelope import AdCPVersionEnvelope
 from ..enums.advertiser_industry import AdvertiserIndustry
-from ..enums.auth_scheme import AuthenticationScheme
 from ..enums.pacing import Pacing
+from .change_term_constraints import Money
 from .package_request import PackageRequest
 
 
@@ -50,18 +48,6 @@ class Opportunity(OpportunityContext):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/create-media-buy-request.json', pointer='#/properties/opportunity')
     status: Annotated[Literal['closed'] | None, Field(description='Whether the planning cycle remains open. On calls after initial creation, omission means no status update and MUST NOT reopen or close the opportunity implicitly, except that successful create_media_buy proposal execution explicitly infers accepted closure.')] = None
-
-
-class TotalBudget(AdCPBaseModel):
-    """
-    Hard aggregate lifetime budget for the media buy. Required when executing a proposal and for seller-optimized explicit packages. Optional in fixed explicit-package mode; when present there, amount MUST equal the sum of package budgets. For a fixed proposal, the publisher applies allocation percentages to this amount. For a seller-optimized proposal or explicit buy, packages draw dynamically from this shared total.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/create-media-buy-request.json', pointer='#/properties/total_budget')
-    amount: Annotated[NonNegativeFloat, Field(description='Total budget amount')]
-    currency: Annotated[GetAccountFinancialsResponseSuccessCurrency, Field(description='ISO 4217 currency code')]
 
 
 class IoAcceptance(AdCPBaseModel):
@@ -86,18 +72,6 @@ class Bidding(BiddingPolicy):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/create-media-buy-request.json', pointer='#/properties/bidding')
-
-
-class Authentication(AdCPBaseModel):
-    """
-    Legacy authentication configuration for webhook delivery (A2A-compatible). Opts the receiver into Bearer or HMAC-SHA256 signing. Both schemes are deprecated; the preferred signing profile for new integrations is RFC 9421, where the seller signs with a key published at its brand.json agents[] entry and the buyer verifies against the seller's JWKS — no shared secret crosses the wire (see docs/building/by-layer/L1/security.mdx#webhook-callbacks). This field is required in AdCP 3.x; the requirement is removed in AdCP 4.0 when the default RFC 9421 path becomes the only path.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/create-media-buy-request.json', pointer='#/properties/artifact_webhook/properties/authentication')
-    schemes: Annotated[list[AuthenticationScheme], Field(description="Array of authentication schemes. ['Bearer'] for simple token auth, ['HMAC-SHA256'] for legacy shared-secret signing. Both are deprecated; new integrations SHOULD use the RFC 9421 webhook signing profile instead.", max_length=1, min_length=1)]
-    credentials: Annotated[StrMinLen32, Field(description='Credentials for the legacy scheme. For Bearer: token sent in Authorization header. For HMAC-SHA256: shared secret used to generate signature. Minimum 32 characters. Exchanged out-of-band during onboarding.')]
 
 
 class DeliveryMode(StrEnum):
@@ -159,7 +133,7 @@ class CreateMediaBuyRequest(BranchDispatchMixin, AdCPVersionEnvelope):
     account: Annotated[AccountReference, Field(description='Account to bill for this media buy. Pass a natural key (brand, operator, optional sandbox) or a seller-assigned account_id from list_accounts.')]
     proposal_id: Annotated[str | None, Field(description="ID of the exact committed proposal snapshot to execute. With total_budget, the publisher creates packages using the proposal's fixed percentages or seller-optimized constraints. Mutually exclusive: provide packages or proposal_id, not both. AdCP 3.2 request_proposals and ordinary refine_proposals revisions issue drafts; refine_proposals action finalize creates the executable committed hold. Sellers reject draft, declined, or previously executed snapshots, while exact retries with the original idempotency key replay historical success. Changed commercial terms are issued under a new proposal_id, so no separate proposal version is required.")] = None
     opportunity: Annotated[Opportunity | None, Field(description='Optional planning-cycle closure. Sellers infer successful proposal execution as closed with close_reason accepted_with_seller when status is omitted; when status is present it MUST be closed with that reason. If the proposal was issued under an opportunity_id, a supplied ID MUST match it.')] = None
-    total_budget: Annotated[TotalBudget | None, Field(description='Hard aggregate lifetime budget for the media buy. Required when executing a proposal and for seller-optimized explicit packages. Optional in fixed explicit-package mode; when present there, amount MUST equal the sum of package budgets. For a fixed proposal, the publisher applies allocation percentages to this amount. For a seller-optimized proposal or explicit buy, packages draw dynamically from this shared total.')] = None
+    total_budget: Annotated[Money | None, Field(description='Hard aggregate lifetime budget for the media buy. Required when executing a proposal and for seller-optimized explicit packages. Optional in fixed explicit-package mode; when present there, amount MUST equal the sum of package budgets. For a fixed proposal, the publisher applies allocation percentages to this amount. For a seller-optimized proposal or explicit buy, packages draw dynamically from this shared total.')] = None
     daily_budget_cap: Annotated[NonNegativeFloat | None, Field(description='Optional hard aggregate daily spend ceiling in the media-buy currency. It limits total spend without allocating package amounts. Package caps are subordinate and need not sum to it. Requires advertised media_buy budget-capping scope; otherwise rejected with UNSUPPORTED_FEATURE.')] = None
     frequency_cap: Annotated[MediaBuyFrequencyCap | None, Field(description='Optional max-impression cap using one counter across explicit packages. Requires advertised aggregate_frequency_capping and compatible media_buy_support on every product; otherwise sellers MUST reject with UNSUPPORTED_FEATURE before any mutation and MUST NOT silently drop, soften, or clamp the cap. Omit when executing proposal_id because accepted terms are authoritative.')] = None
     budget_cap_timezone: Annotated[StrMinLen1 | None, Field(description='Optional shared IANA day boundary override for all caps. Requires buyer_timezone_override; otherwise rejected with UNSUPPORTED_FEATURE. When omitted, budget_capping.timezone_basis selects Account.timezone or the advertised fixed_timezone.')] = None
@@ -246,7 +220,7 @@ class ExplicitPackagesWithSellerOptimizedAllocation(CreateMediaBuyRequest):
     )
     budget_allocation: Annotated[ExplicitPackagesWithSellerOptimizedAllocationBudgetAllocation, Field(description='How budget is allocated across explicit packages. Omission means fixed allocation (legacy-compatible). Buyer agents SHOULD send budget_allocation explicitly ({mode: "fixed"} or seller_optimized) rather than rely on omission, and when the principal\'s instruction does not determine whether the budget is one shared pool across packages or split per package, SHOULD ask the principal rather than guess. seller_optimized requires advertised media_buy.features.seller_optimized_budget; inside it, package budget caps, min_spend_target, and package pacing each require their own advertised sub-capability (seller_optimized_package_budgets, seller_optimized_min_spend_targets, seller_optimized_package_pacing), otherwise the request is rejected with UNSUPPORTED_FEATURE before any over-subscription validation. In proposal mode the committed proposal supplies this configuration and callers MUST omit it here.')]
     packages: Annotated[list[PackageRequest], Field(description='Array of package configurations. Required when not using proposal_id. Mutually exclusive: provide packages or proposal_id, not both. Fixed allocation requires budget on every package. Seller-optimized allocation permits package budget to be omitted or to act as a hard cap. When executing a proposal, omit packages; the seller derives them from the committed proposal.', min_length=1)]
-    total_budget: Annotated[TotalBudget, Field(description='Hard aggregate lifetime budget for the media buy. Required when executing a proposal and for seller-optimized explicit packages. Optional in fixed explicit-package mode; when present there, amount MUST equal the sum of package budgets. For a fixed proposal, the publisher applies allocation percentages to this amount. For a seller-optimized proposal or explicit buy, packages draw dynamically from this shared total.')]
+    total_budget: Annotated[Money, Field(description='Hard aggregate lifetime budget for the media buy. Required when executing a proposal and for seller-optimized explicit packages. Optional in fixed explicit-package mode; when present there, amount MUST equal the sum of package budgets. For a fixed proposal, the publisher applies allocation percentages to this amount. For a seller-optimized proposal or explicit buy, packages draw dynamically from this shared total.')]
 
 
 class CommittedProposalExecution(CreateMediaBuyRequest):
@@ -258,7 +232,7 @@ class CommittedProposalExecution(CreateMediaBuyRequest):
         ForbiddenGroups((('packages',), ('budget_allocation',), ('frequency_cap',))),
     )
     proposal_id: Annotated[str, Field(description="ID of the exact committed proposal snapshot to execute. With total_budget, the publisher creates packages using the proposal's fixed percentages or seller-optimized constraints. Mutually exclusive: provide packages or proposal_id, not both. AdCP 3.2 request_proposals and ordinary refine_proposals revisions issue drafts; refine_proposals action finalize creates the executable committed hold. Sellers reject draft, declined, or previously executed snapshots, while exact retries with the original idempotency key replay historical success. Changed commercial terms are issued under a new proposal_id, so no separate proposal version is required.")]
-    total_budget: Annotated[TotalBudget, Field(description='Hard aggregate lifetime budget for the media buy. Required when executing a proposal and for seller-optimized explicit packages. Optional in fixed explicit-package mode; when present there, amount MUST equal the sum of package budgets. For a fixed proposal, the publisher applies allocation percentages to this amount. For a seller-optimized proposal or explicit buy, packages draw dynamically from this shared total.')]
+    total_budget: Annotated[Money, Field(description='Hard aggregate lifetime budget for the media buy. Required when executing a proposal and for seller-optimized explicit packages. Optional in fixed explicit-package mode; when present there, amount MUST equal the sum of package budgets. For a fixed proposal, the publisher applies allocation percentages to this amount. For a seller-optimized proposal or explicit buy, packages draw dynamically from this shared total.')]
 
 
 CreateMediaBuyRequest._branch_models = (ExplicitPackagesWithFixedAllocation, ExplicitPackagesWithSellerOptimizedAllocation, CommittedProposalExecution,)

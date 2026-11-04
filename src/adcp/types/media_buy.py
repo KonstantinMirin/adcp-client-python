@@ -121,7 +121,6 @@ from ._schemas.media_buy.change_term_constraints import FlightChangeConstraints 
 from ._schemas.media_buy.change_term_constraints import MediaBuyChangeTermConstraints as MediaBuyChangeTermConstraints
 from ._schemas.media_buy.change_term_constraints import PackageCountConstraints as PackageCountConstraints
 from ._schemas.media_buy.commercial_terms import CommercialTerms as CommercialTerms
-from ._schemas.media_buy.commercial_terms import Fee as Fee
 from ._schemas.media_buy.control_media_buy_async_response_input_required import (
     ControlMediaBuyInputRequired as ControlMediaBuyInputRequired,
 )
@@ -199,9 +198,9 @@ from ._schemas.media_buy.get_products_async_response_working import GetProductsW
 from ._schemas.media_buy.get_products_rejected import GetProductsRejected as GetProductsRejected
 from ._schemas.media_buy.get_products_request import FieldsItem as FieldsItem
 from ._schemas.media_buy.get_products_request import GetProductsRequest as GetProductsRequest
-from ._schemas.media_buy.get_products_request import RefineItemProduct as RefineItemProduct
-from ._schemas.media_buy.get_products_request import RefineItemProposal as RefineItemProposal
-from ._schemas.media_buy.get_products_request import RefineItemRequest as RefineItemRequest
+from ._schemas.media_buy.get_products_request import ObjScopeAsk as ObjScopeAsk
+from ._schemas.media_buy.get_products_request import ObjScopeProductIdActionAsk as ObjScopeProductIdActionAsk
+from ._schemas.media_buy.get_products_request import ObjScopeProposalIdActionAsk as ObjScopeProposalIdActionAsk
 from ._schemas.media_buy.get_products_response import GetProductsResponse as GetProductsResponse
 from ._schemas.media_buy.get_products_response import RefinementAppliedItemProduct as RefinementAppliedItemProduct
 from ._schemas.media_buy.get_products_response import RefinementAppliedItemProposal as RefinementAppliedItemProposal
@@ -248,7 +247,6 @@ from ._schemas.media_buy.outcome_target import GoalEvent as GoalEvent
 from ._schemas.media_buy.outcome_target import GoalMetric as GoalMetric
 from ._schemas.media_buy.outcome_target import OutcomeTarget as OutcomeTarget
 from ._schemas.media_buy.package_control import PackageControl as PackageControl
-from ._schemas.media_buy.package_request import CommittedMetricsItemStandard as CommittedMetricsItemStandard
 from ._schemas.media_buy.package_request import CommittedMetricsItemVendor as CommittedMetricsItemVendor
 from ._schemas.media_buy.package_request import PackageRequest as PackageRequest
 from ._schemas.media_buy.package_update import PackageUpdate as PackageUpdate
@@ -270,15 +268,6 @@ from ._schemas.media_buy.product_purchase import ProductPurchase as ProductPurch
 from ._schemas.media_buy.product_purchase import StartTime as StartTime
 from ._schemas.media_buy.product_purchase_input import ProductPurchaseInput as ProductPurchaseInput
 from ._schemas.media_buy.product_refinement import ProductRefinementRequests as ProductRefinementRequests
-from ._schemas.media_buy.product_refinement import (
-    ProductRefinementRequestsItemProduct as ProductRefinementRequestsItemProduct,
-)
-from ._schemas.media_buy.product_refinement import (
-    ProductRefinementRequestsItemProposal as ProductRefinementRequestsItemProposal,
-)
-from ._schemas.media_buy.product_refinement import (
-    ProductRefinementRequestsItemRequest as ProductRefinementRequestsItemRequest,
-)
 from ._schemas.media_buy.proposal_budget_constraint import ProposalBudgetConstraint as ProposalBudgetConstraint
 from ._schemas.media_buy.proposal_decline import ProposalDecline as ProposalDecline
 from ._schemas.media_buy.proposal_refinement import ProposalRefinement as ProposalRefinement
@@ -504,7 +493,6 @@ __all__ = [
     'CommitmentError',
     'CommitmentSubmitted',
     'CommittedMediaBuy',
-    'CommittedMetricsItemStandard',
     'CommittedMetricsItemVendor',
     'CommittedProposalExecution',
     'CompatibilityPurchaseCoordinatorInput',
@@ -541,7 +529,6 @@ __all__ = [
     'FailedLookup',
     'FailedReportingConsumerStatus',
     'FailedReportingReceipt',
-    'Fee',
     'FieldsItem',
     'FlightChangeConstraints',
     'FormatOptionRefs',
@@ -575,6 +562,9 @@ __all__ = [
     'MediaBuyDeliveryWebhookResult',
     'MediaBuysItemIndicatorsItemType',
     'MinSpendTarget',
+    'ObjScopeAsk',
+    'ObjScopeProductIdActionAsk',
+    'ObjScopeProposalIdActionAsk',
     'OperationalFailure',
     'OptimizationGoals',
     'OutcomeTarget',
@@ -592,9 +582,6 @@ __all__ = [
     'ProductPurchase',
     'ProductPurchaseInput',
     'ProductRefinementRequests',
-    'ProductRefinementRequestsItemProduct',
-    'ProductRefinementRequestsItemProposal',
-    'ProductRefinementRequestsItemRequest',
     'ProductResponseFields',
     'ProposalBudgetConstraint',
     'ProposalDecline',
@@ -617,9 +604,6 @@ __all__ = [
     'RecordedReportingAdjustmentReceipt',
     'RecordedReportingConsumerStatus',
     'RecordedReportingReceipt',
-    'RefineItemProduct',
-    'RefineItemProposal',
-    'RefineItemRequest',
     'RefineProposalsInputRequired',
     'RefineProposalsRequest',
     'RefineProposalsResponse',

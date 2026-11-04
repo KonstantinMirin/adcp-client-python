@@ -35,10 +35,19 @@ def main() -> int:
 
     import adcp.types._schemas as pkg
 
+    # **A PACKAGE ROOT IS A DOCUMENT'S MODULE, so ``ispkg`` is NOT a screen here** --
+    # measured at ``sdk/collapse``, and it is the kind of blindness this suite's own
+    # "a check that enumerates a subset reports on that subset only" rule is about.
+    # ``emit.module_file``'s layout rule writes a document whose own path is also a
+    # DIRECTORY of the bundle to ``<path>/__init__.py``, so ``brand.json``'s module is
+    # ``adcp.types._schemas.brand`` and ``pkgutil`` reports it as a package.  Skipping
+    # those made ``FontFileStyle`` read ONE carrier while the tree held TWO -- the true
+    # declaration in ``brand/__init__.py``, which this walk could not see, beside a second
+    # class in ``brand/get_brand_identity_response.py``, which it could -- so the gate was
+    # green while reading 4 was false for that entry, and it went red the moment reading
+    # 4's object layer removed the duplicate and left the invisible one alone.
     names = sorted(
-        info.name
-        for info in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".")
-        if not info.ispkg
+        info.name for info in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".")
     )
     # ``enum.Enum`` and not ``StrEnum``: §5's ``enum`` row reads the base off the members,
     # so an integer vocabulary is an ``IntEnum``, and a census naming one base would miss

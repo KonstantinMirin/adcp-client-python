@@ -6,8 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import HttpUrl
+from adcp.types._base import SchemaRef
 
 from ..core.context import ContextObject
 from ..core.error import Error
@@ -16,7 +15,7 @@ from ..core.format import Format
 from ..core.pagination_response import PaginationResponse
 from ..core.protocol_envelope import ProtocolEnvelope
 from ..core.version_envelope import AdCPVersionEnvelope
-from ..enums.creative_agent_capability import CreativeAgentCapability
+from ..creative.list_creative_formats_response import CreativeAgentsItem
 
 
 class Source(StrEnum):
@@ -26,13 +25,6 @@ class Source(StrEnum):
     PUBLISHER = 'publisher'
     AAO_MIRROR = 'aao_mirror'
     AGENT_DERIVED = 'agent_derived'
-
-
-class CreativeAgentsItem(AdCPBaseModel):
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/list-creative-formats-response.json', pointer='#/properties/creative_agents/items')
-    agent_url: Annotated[HttpUrl, Field(description="Base URL for the creative agent (e.g., 'https://reference.example.com', 'https://dco.example.com').")]
-    agent_name: Annotated[str | None, Field(description='Human-readable name for the creative agent')] = None
-    capabilities: Annotated[list[CreativeAgentCapability] | None, Field(description='Capabilities this creative agent provides')] = None
 
 
 class ListCreativeFormatsResponse(AdCPVersionEnvelope, ProtocolEnvelope):

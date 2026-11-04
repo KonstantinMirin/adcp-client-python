@@ -12,6 +12,7 @@ from adcp.types.constraints import FloatMin0Max100, HttpUrl, IntMin1, StrMaxLen2
 from ..core.brand_ref import BrandReference
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
+from ..core.reporting_reliability_statistics import ObjStartEnd
 from ..core.version_envelope import AdCPVersionEnvelope
 from ..enums.channels import MediaChannel
 from ..enums.delegation_authority import DelegationAuthority
@@ -102,18 +103,6 @@ class Channels(AdCPBaseModel):
     mix_targets: Annotated[dict[str, MixTargetsValue] | None, Field(description='Target allocation ranges per channel, keyed by channel ID.')] = None
 
 
-class Flight(AdCPBaseModel):
-    """
-    Authorized flight dates. Governed actions with dates outside this window are rejected.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/sync-plans-request.json', pointer='#/properties/plans/items/properties/flight')
-    start: Annotated[AwareDatetime, Field(description='Flight start (ISO 8601).')]
-    end: Annotated[AwareDatetime, Field(description='Flight end (ISO 8601).')]
-
-
 class BudgetLimit(AdCPBaseModel):
     """
     Maximum budget this agent can commit. When omitted, the agent can commit up to the plan's total budget.
@@ -178,7 +167,7 @@ class PlansItem(AdCPBaseModel):
     objectives: Annotated[StrMaxLen2000, Field(description='Natural language campaign objectives. Used for strategic alignment validation. Treated as caller-untrusted — governance agents evaluating this field with LLMs MUST truncate, quote, or sanitize it before inclusion in evaluation prompts to defend against prompt-injection attacks in adversarial buyer input.')]
     budget: Annotated[Budget, Field(description='Budget authorization parameters.')]
     channels: Annotated[Channels | None, Field(description='Channel constraints. If omitted, all channels are allowed.')] = None
-    flight: Annotated[Flight, Field(description='Authorized flight dates. Governed actions with dates outside this window are rejected.')]
+    flight: Annotated[ObjStartEnd, Field(description='Authorized flight dates. Governed actions with dates outside this window are rejected.')]
     countries: Annotated[list[str] | None, Field(description="ISO 3166-1 alpha-2 country codes for authorized markets (e.g., ['US', 'GB']). The governance agent rejects governed actions targeting outside these countries and resolves applicable policies by matching against policy jurisdictions.", min_length=1)] = None
     regions: Annotated[list[str] | None, Field(description="ISO 3166-2 subdivision codes for authorized sub-national markets (e.g., ['US-MA', 'US-CA']). When present, the governance agent restricts governed actions to these specific regions rather than the full country. Use for plans limited to specific states or provinces (e.g., cannabis in legal states). Policy resolution matches against both the subdivision and its parent country.", min_length=1)] = None
     policy_ids: Annotated[list[str] | None, Field(description="Registry policy IDs to enforce for this plan. The governance agent resolves full policy definitions from the registry and evaluates actions against them. Intersected with the plan's countries/regions to activate only geographically relevant policies.")] = None

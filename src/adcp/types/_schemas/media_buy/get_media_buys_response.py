@@ -35,6 +35,7 @@ from ..core.impairment import Impairment
 from ..core.indicator import Indicator
 from ..core.indicator_bearing import IndicatorBearingResourceState
 from ..core.indicator_scope import IndicatorScope
+from ..core.media_buy import ObjCanceledAtCanceledByReason
 from ..core.media_buy_available_action import MediaBuyAvailableAction
 from ..core.media_buy_frequency_cap import MediaBuyFrequencyCap
 from ..core.optimization_goal import OptimizationGoal
@@ -45,8 +46,7 @@ from ..core.protocol_envelope import ProtocolEnvelope
 from ..core.targeting import TargetingOverlay
 from ..core.version_envelope import AdCPVersionEnvelope
 from ..core.webhook_activity_record import WebhookActivityRecord
-from ..creative.list_creatives_response import AssignmentIndicatorType
-from ..enums.canceled_by import CanceledBy
+from ..creative.list_creatives_response import AssignmentIndicatorType, ObjType
 from ..enums.creative_approval_status import CreativeApprovalStatus
 from ..enums.delivery_status import DeliveryStatus
 from ..enums.media_buy_health import MediaBuyHealth
@@ -79,19 +79,6 @@ class MediaBuysItemBidding(BiddingPolicy):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buys-response.json', pointer='#/properties/media_buys/items/properties/bidding')
 
 
-class MediaBuysItemCancellation(AdCPBaseModel):
-    """
-    Cancellation metadata. Present only when status is 'canceled'.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buys-response.json', pointer='#/properties/media_buys/items/properties/cancellation')
-    canceled_at: Annotated[AwareDatetime, Field(description='ISO 8601 timestamp when this media buy was canceled.')]
-    canceled_by: Annotated[CanceledBy, Field(description='Which party initiated the cancellation.')]
-    reason: Annotated[StrMaxLen500 | None, Field(description='Reason the media buy was canceled.')] = None
-
-
 class HistoryItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
@@ -114,30 +101,6 @@ class PackagesItemBidding(BiddingPolicy):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buys-response.json', pointer='#/properties/media_buys/items/properties/packages/items/properties/bidding')
-
-
-class PackagesItemCancellation(AdCPBaseModel):
-    """
-    Cancellation metadata. Present only when canceled is true.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buys-response.json', pointer='#/properties/media_buys/items/properties/packages/items/properties/cancellation')
-    canceled_at: Annotated[AwareDatetime, Field(description='ISO 8601 timestamp when this package was canceled.')]
-    canceled_by: Annotated[CanceledBy, Field(description='Which party initiated the package cancellation.')]
-    reason: Annotated[StrMaxLen500 | None, Field(description='Reason the package was canceled.')] = None
-
-
-class CreativeApprovalsItemIndicatorsItem(Indicator):
-    """
-    A compact current seller assertion identifying a material risk or optimization opportunity that warrants buyer attention on the containing media buy, package, or package–creative relationship. An indicator is read-side state, not an error, warning, durable event record, authorization, executable action, or independently addressable resource. The responding seller is the source. Different sellers may use different methodologies for the same standard type; native scores, evaluation windows, suggested actions, deep links, and upstream attribution belong in ext.
-    """
-    model_config = ConfigDict(
-        extra='allow',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buys-response.json', pointer='#/properties/media_buys/items/properties/packages/items/properties/creative_approvals/items/allOf/1/properties/indicators/items')
-    type: Annotated[AssignmentIndicatorType, Field(description="A seller-asserted material risk or optimization opportunity that currently warrants buyer attention on an AdCP resource relationship. AdCP standardizes the broad meaning of each value for the protocol release; it does not standardize or version the seller's detection methodology or prescribe a universal remedy.")]
 
 
 CreativeApprovalsItemIndicatorTypesEvaluatedItem = Annotated[AssignmentIndicatorType, Field(description="A seller-asserted material risk or optimization opportunity that currently warrants buyer attention on an AdCP resource relationship. AdCP standardizes the broad meaning of each value for the protocol release; it does not standardize or version the seller's detection methodology or prescribe a universal remedy.")]
@@ -166,7 +129,7 @@ class CreativeApprovalsItem(IndicatorBearingResourceState):
     approval_status: CreativeApprovalStatus
     rejection_reason: Annotated[str | None, Field(description="Human-readable explanation of why the creative was rejected. Present only when approval_status is 'rejected'.")] = None
     approval_scopes: Annotated[list[ScopedCreativeApproval] | None, Field(description='Complete, disjoint publisher/placement approval partition when approval_status is partially_approved. A normalized scope appears once. For one publisher, use either one publisher-wide row or placement-specific rows, never both. Omit when one approval_status applies uniformly to the whole assignment. The same scoped outcomes are mirrored on list_creatives.', json_schema_extra={'uniqueItems': True}, min_length=2)] = None
-    indicators: Annotated[list[CreativeApprovalsItemIndicatorsItem] | None, Field(description='Current seller indicators that are true for this creative in this package. The enclosing media buy, package, and creative approval supply the default delivery scope; an indicator may narrow further with scope. Omitted means unknown or not evaluated. A present empty array means the seller completed the evaluation identified by indicators_evaluated_scope at indicators_as_of and asserts no current indicator in that evaluated scope.', json_schema_extra={'uniqueItems': True})] = None
+    indicators: Annotated[list[ObjType] | None, Field(description='Current seller indicators that are true for this creative in this package. The enclosing media buy, package, and creative approval supply the default delivery scope; an indicator may narrow further with scope. Omitted means unknown or not evaluated. A present empty array means the seller completed the evaluation identified by indicators_evaluated_scope at indicators_as_of and asserts no current indicator in that evaluated scope.', json_schema_extra={'uniqueItems': True})] = None
     indicator_types_evaluated: Annotated[list[CreativeApprovalsItemIndicatorTypesEvaluatedItem] | None, Field(description='Indicator types covered by this assignment snapshot. Required whenever indicators is present; omitted types remain unknown.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     indicators_as_of: Annotated[AwareDatetime | None, Field(description='When the seller last completed the evaluation represented by indicators for this relationship. Required whenever indicators is present, including an empty array.')] = None
     indicators_evaluated_scope: Annotated[list[IndicatorScope] | None, Field(description='Optional publisher or placement scopes covered by this evaluation. Omit when indicators covers the whole package–creative assignment. When present, scopes not listed remain unknown; every returned indicator.scope entry MUST be contained by this set.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
@@ -252,7 +215,7 @@ class PackagesItem(IndicatorBearingResourceState):
     end_time: Annotated[AwareDatetime | None, Field(description='ISO 8601 flight end time for this package')] = None
     paused: Annotated[bool | None, Field(description='Whether this package is currently paused by the buyer')] = None
     canceled: Annotated[bool | None, Field(description='Whether this package has been canceled. Canceled packages stop delivery and cannot be reactivated.')] = None
-    cancellation: Annotated[PackagesItemCancellation | None, Field(description='Cancellation metadata. Present only when canceled is true.')] = None
+    cancellation: Annotated[ObjCanceledAtCanceledByReason | None, Field(description='Cancellation metadata. Present only when canceled is true.')] = None
     creative_deadline: Annotated[AwareDatetime | None, Field(description="ISO 8601 timestamp for creative upload or change deadline for this package. After this deadline, creative changes are rejected. When absent, the media buy's creative_deadline applies.")] = None
     context: Annotated[ContextObject | None, Field(description='Opaque package-level correlation data echoed unchanged from the create_media_buy package request. Sellers MUST include persisted package context on read surfaces when the package was created through AdCP with context, so buyers can reconcile seller-assigned package_id values with their own line items; this is the legacy-safe fallback when an older seller did not echo product_id on the create response. Sellers MAY omit context for packages created outside AdCP or created without context. Sellers MUST NOT parse this object for business logic.')] = None
     creative_approvals: Annotated[list[CreativeApprovalsItem] | None, Field(description='Approval status for each creative assigned to this package. Absent when no creatives have been assigned.')] = None
@@ -331,7 +294,7 @@ class MediaBuysItem(IndicatorBearingResourceState):
     end_time: Annotated[AwareDatetime | None, Field(description='ISO 8601 flight end time for this media buy (latest package end_time). Avoids requiring buyers to compute max(packages[].end_time).')] = None
     creative_deadline: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp for creative upload deadline')] = None
     confirmed_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp when the seller committed to this media buy. May be null until seller commitment occurs in deferred/manual approval flows. Once populated, remains stable through later pause, resume, activation, completion, cancellation, and reporting transitions.')]
-    cancellation: Annotated[MediaBuysItemCancellation | None, Field(description="Cancellation metadata. Present only when status is 'canceled'.")] = None
+    cancellation: Annotated[ObjCanceledAtCanceledByReason | None, Field(description="Cancellation metadata. Present only when status is 'canceled'.")] = None
     revision: Annotated[IntMin1, Field(description='Current optimistic concurrency token. Pass this in update_media_buy requests intended to change state. Sellers increment it on mutating state changes/updates and reject stale tokens with CONFLICT when a revision token is provided.')]
     created_at: Annotated[AwareDatetime | None, Field(description='Creation timestamp')] = None
     updated_at: Annotated[AwareDatetime | None, Field(description='Last update timestamp')] = None

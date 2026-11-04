@@ -6,7 +6,6 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
-from adcp.types.constraints import FloatMin0Max1
 from adcp.types.envelopes import FailedResponse
 
 from ..core.context import ContextObject
@@ -15,7 +14,7 @@ from ..core.ext import ExtensionObject
 from ..core.protocol_envelope import ProtocolEnvelope
 from ..core.version_envelope import AdCPVersionEnvelope
 from ..enums.binary_verdict import BinaryVerdict
-from ..enums.feature_check_status import FeatureCheckStatus
+from .calibrate_content_response import FeaturesItem
 
 
 class ValidateContentDeliveryResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope):
@@ -45,15 +44,6 @@ class Summary(AdCPBaseModel):
     total_records: int
     passed_records: int
     failed_records: int
-
-
-class FeaturesItem(AdCPBaseModel):
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/validate-content-delivery-response.json', pointer='#/oneOf/0/properties/results/items/properties/features/items')
-    feature_id: Annotated[str, Field(description="Which feature was evaluated. Data features come from the content-standards feature catalog (e.g., 'brand_safety', 'brand_suitability', 'image_dpi'). Record-level structural checks use reserved namespaces: 'record:malformed_artifact', 'delivery:authorization'. Reserved prefixes: 'record:', 'delivery:'.")]
-    status: FeatureCheckStatus
-    policy_id: Annotated[str | None, Field(description='Registry policy ID that triggered this result. Present when the result originates from a specific registry policy (e.g., GARM category, CSBS standard). Enables programmatic routing by looking up the policy in the registry.')] = None
-    explanation: Annotated[str | None, Field(description="Directional human-readable explanation (e.g., 'Below minimum resolution for display placement'). Avoid quantitative thresholds — the evaluator is the oracle.")] = None
-    confidence: Annotated[FloatMin0Max1 | None, Field(description='Optional evaluator confidence in this result (0-1). Distinguishes certain verdicts from ambiguous ones.')] = None
 
 
 class ResultsItem(AdCPBaseModel):

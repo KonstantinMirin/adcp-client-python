@@ -7,11 +7,12 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types.constraints import (
-    AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain,
     AgentReportingDestinationFileTransferDestinationTransport,
     StrMinLen1MaxLen255,
     StrMinLen1MaxLen2048,
 )
+
+from .reporting_dataset_share_destination import ObjDomain
 
 
 class ReportingWriteDestination(BranchDispatchMixin, AdCPBaseModel):
@@ -36,24 +37,13 @@ class ReportingWriteDestinationExisting(ReportingWriteDestination):
     destination_ref: Annotated[StrMinLen1MaxLen255, Field(description='Seller-issued immutable destination-generation reference returned by sync_agent_configuration, an earlier sync, or bilateral setup.')]
 
 
-class Provider(AdCPBaseModel):
-    """
-    Platform hosting the destination.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-write-destination.json', pointer='#/oneOf/1/properties/provider')
-    domain: AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain
-
-
 class ProvisionBinding(ReportingWriteDestination):
     model_config = ConfigDict(
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-write-destination.json', pointer='#/oneOf/1')
     mode: Literal['provision']
-    provider: Annotated[Provider, Field(description='Platform hosting the destination.')]
+    provider: Annotated[ObjDomain, Field(description='Platform hosting the destination.')]
     location: Annotated[StrMinLen1MaxLen2048, Field(description='Provider-native bucket, prefix, project/dataset, catalog/schema, or equivalent locator. It MUST NOT contain an embedded credential or signed URL.')]
     access_mode: Annotated[AgentReportingDestinationFileTransferDestinationTransport | None, Field(description='Optional provider access family used for capability matching.')] = None
 

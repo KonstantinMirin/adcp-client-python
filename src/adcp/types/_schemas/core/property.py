@@ -9,19 +9,10 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 
 from ..enums.channels import MediaChannel
-from ..enums.identifier_types import PropertyIdentifierTypes
 from ..enums.property_type import PropertyType
+from .canonical_placement import IdentifiersItem
 from .property_id import PropertyID
 from .property_tag import PropertyTag
-
-
-class IdentifiersItem(AdCPBaseModel):
-    model_config = ConfigDict(
-        extra='allow',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/property.json', pointer='#/properties/identifiers/items')
-    type: Annotated[PropertyIdentifierTypes, Field(description='Type of identifier for this property')]
-    value: Annotated[str, Field(description="The identifier value. For domain type: 'example.com' matches base domain plus www and m subdomains; 'edition.example.com' matches that specific subdomain; '*.example.com' matches ALL subdomains but NOT base domain")]
 
 
 class Property(AdCPBaseModel):

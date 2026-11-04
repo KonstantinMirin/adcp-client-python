@@ -9,7 +9,7 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule, UniqueItems
 from adcp.types.constraints import BrandDiscoveryAgentId, NonEmptyList, StrMinLen1MaxLen255
 
-from .creative_localization_readback import UnmatchedLocaleAction
+from .creative_localization_readback import LocaleFallbacksItem, UnmatchedLocaleAction
 from .locale_tag import LanguageTag
 from .localized_creative_asset import LocalizedCreativeAsset
 
@@ -37,15 +37,6 @@ class TargetVariantsItem(AdCPBaseModel):
     locale_variant_id: Annotated[StrMinLen1MaxLen255, Field(description='Buyer-assigned stable identity for this target locale variant. The same value round-trips through sync_creatives, list_creatives, and localized delivery reporting.')]
     locale: LanguageTag
     assets: Annotated[dict[BrandDiscoveryAgentId, LocalizedCreativeAsset | NonEmptyList[LocalizedCreativeAsset]], Field(description='Materialized locale-specific asset overrides keyed by the same slot IDs as the source creative. Missing slots inherit source assets.', min_length=1)]
-
-
-class LocaleFallbacksItem(AdCPBaseModel):
-    model_config = ConfigDict(
-        extra='allow',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/creative-localization.json', pointer='#/properties/locale_fallbacks/items')
-    language_range: Annotated[LanguageTag, Field(description='Canonical concrete BCP 47 range matched against progressively truncated requested ranges. Wildcards are not supported.')]
-    locale_variant_id: Annotated[StrMinLen1MaxLen255, Field(description='Source or target locale variant to serve when this explicit fallback rule matches.')]
 
 
 class CreativeLocalization(AdCPBaseModel):

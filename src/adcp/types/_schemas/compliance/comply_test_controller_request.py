@@ -12,7 +12,6 @@ from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import (
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
     FloatMin0Max100,
-    GetAccountFinancialsResponseSuccessCurrency,
     StrMaxLen128,
     StrMaxLen2000,
     StrMinLen1,
@@ -21,11 +20,11 @@ from adcp.types.constraints import (
     StrMinLen1MaxLen2000,
 )
 
+from ..core.account import CreditLimit
 from ..core.brand_ref import BrandReference
 from ..core.committed_metric import Qualifier
 from ..core.context import ContextObject
-from ..core.delivery_metrics import DoohMetrics, Kind, Viewability
-from ..core.duration import Duration
+from ..core.delivery_metrics import DoohMetrics, ObjKindPeriod, Viewability
 from ..core.ext import ExtensionObject
 from ..core.reporting_status_issue import ReportingStatusSeverity
 from ..core.vendor_metric_id import VendorMetricID
@@ -85,40 +84,6 @@ class ParamsDoohMetrics(DoohMetrics):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='compliance/comply-test-controller-request.json', pointer='#/properties/params/properties/dooh_metrics')
-
-
-class ReportedSpend(AdCPBaseModel):
-    """
-    Spend as reported in delivery data. Does not affect budget. Used by simulate_delivery.
-    """
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='compliance/comply-test-controller-request.json', pointer='#/properties/params/properties/reported_spend')
-    amount: NonNegativeFloat
-    currency: GetAccountFinancialsResponseSuccessCurrency
-
-
-class Period(Duration):
-    """
-    Duration of the measurement window. REQUIRED when kind is `period` or `rolling`. Matches the `period` field in delivery-metrics.json's reach_window block.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='compliance/comply-test-controller-request.json', pointer='#/properties/params/properties/reach_window/properties/period')
-
-
-class ReachWindow(AdCPBaseModel):
-    """
-    Measurement window semantics to attach to the simulated reach and frequency values. Used by simulate_delivery. When present, sellers MUST populate `reach_window` on the delivery row so buyers can determine the window semantics (cumulative vs. period vs. rolling). Omitting this param produces a row with no `reach_window` — valid per schema but sum-unsafe. Mirrors the `reach_window` shape in delivery-metrics.json.
-    """
-    model_config = ConfigDict(
-        extra='allow',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='compliance/comply-test-controller-request.json', pointer='#/properties/params/properties/reach_window')
-    _adcp_rules: ClassVar[tuple[Rule, ...]] = (
-        ConditionalRequired((Match('kind', True, ('period', 'rolling')),), require=('period',), forbid=()),
-    )
-    kind: Annotated[Kind, Field(description='Window kind. `cumulative` — no period field required. `period` and `rolling` — period field REQUIRED.')]
-    period: Annotated[Period | None, Field(description="Duration of the measurement window. REQUIRED when kind is `period` or `rolling`. Matches the `period` field in delivery-metrics.json's reach_window block.")] = None
 
 
 class ParamsViewability(Viewability):
@@ -205,11 +170,11 @@ class Params(AdCPBaseModel):
     delivery_date: Annotated[date | None, Field(description="Calendar date, in the product's reporting_capabilities.timezone, attributable to this simulated delivery batch. Used by simulate_delivery to seed deterministic date-range tests. When get_media_buy_delivery supplies start_date or end_date, dated batches are included when delivery_date is greater than or equal to start_date and strictly less than end_date. Omit to preserve cumulative, unfiltered simulation behavior.")] = None
     conversion_value: Annotated[NonNegativeFloat | None, Field(description='Total attributed conversion value to simulate in the delivery reporting currency. Used by simulate_delivery.')] = None
     commissionable_value: Annotated[NonNegativeFloat | None, Field(description='Settled attributed value eligible for revenue-share commission to simulate in the delivery reporting currency. Used by simulate_delivery.')] = None
-    reported_spend: Annotated[ReportedSpend | None, Field(description='Spend as reported in delivery data. Does not affect budget. Used by simulate_delivery.')] = None
+    reported_spend: Annotated[CreditLimit | None, Field(description='Spend as reported in delivery data. Does not affect budget. Used by simulate_delivery.')] = None
     reach: Annotated[NonNegativeFloat | None, Field(description="Unique reach count to inject into the simulated delivery row. Used by simulate_delivery. The unit of measurement matches the reach_unit declared on the media buy's optimization goal. When supplied, sellers MUST surface this value at `totals.reach` in the next get_media_buy_delivery response.")] = None
     frequency: Annotated[NonNegativeFloat | None, Field(description='Average frequency per reach unit to inject. Used by simulate_delivery. When supplied, sellers MUST surface this value at `totals.frequency`, including frequency-only delivery. The measurement window for this frequency value is declared in `reach_window` when also present.')] = None
     reach_unit: Annotated[ReachUnit | None, Field(description='Unit for an injected reach or frequency value. Used by simulate_delivery. When supplied with reach or frequency, sellers MUST surface it on the corresponding delivery row.')] = None
-    reach_window: Annotated[ReachWindow | None, Field(description='Measurement window semantics to attach to the simulated reach and frequency values. Used by simulate_delivery. When present, sellers MUST populate `reach_window` on the delivery row so buyers can determine the window semantics (cumulative vs. period vs. rolling). Omitting this param produces a row with no `reach_window` — valid per schema but sum-unsafe. Mirrors the `reach_window` shape in delivery-metrics.json.')] = None
+    reach_window: Annotated[ObjKindPeriod | None, Field(description='Measurement window semantics to attach to the simulated reach and frequency values. Used by simulate_delivery. When present, sellers MUST populate `reach_window` on the delivery row so buyers can determine the window semantics (cumulative vs. period vs. rolling). Omitting this param produces a row with no `reach_window` — valid per schema but sum-unsafe. Mirrors the `reach_window` shape in delivery-metrics.json.')] = None
     viewability: Annotated[ParamsViewability | None, Field(description='Viewability metrics to inject into simulated delivery. Uses the canonical delivery viewability shape, including viewed-seconds distributions. This media-buy-scoped form is valid only for a single-package buy, where the reference seller surfaces the same values at package and media-buy totals grain.')] = None
     vendor_metric_values: Annotated[list[VendorMetricValue] | None, Field(description="Vendor-defined metric values to inject into the next delivery report. Used by simulate_delivery. The reference seller reconciles these rows against each package's seller-stamped committed_metrics contract.")] = None
     vendor_metric_values_by_package: Annotated[dict[str, list[VendorMetricValue]] | None, Field(description='Package-scoped vendor-defined values to inject, keyed by package_id. Used by simulate_delivery for multi-package buys. Sellers MUST use this form whenever more than one package could carry the same vendor/metric_id key; the legacy media-buy-scoped vendor_metric_values form is unambiguous only for a single-package buy.')] = None

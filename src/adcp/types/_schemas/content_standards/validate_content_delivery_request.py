@@ -11,15 +11,7 @@ from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
 from ..core.version_envelope import AdCPVersionEnvelope
 from .artifact import Artifact
-
-
-class BrandContext(AdCPBaseModel):
-    """
-    Brand information for policy evaluation. Schema TBD - placeholder for brand identifiers.
-    """
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/validate-content-delivery-request.json', pointer='#/properties/records/items/properties/brand_context')
-    brand_id: Annotated[str | None, Field(description='Brand identifier')] = None
-    sku_id: Annotated[str | None, Field(description='Product/SKU identifier if applicable')] = None
+from .get_media_buy_artifacts_response import ObjBrandIdSkuId
 
 
 class RecordsItem(AdCPBaseModel):
@@ -30,7 +22,7 @@ class RecordsItem(AdCPBaseModel):
     artifact: Annotated[Artifact, Field(description='Artifact where ad was delivered')]
     country: Annotated[str | None, Field(description='ISO 3166-1 alpha-2 country code where delivery occurred')] = None
     channel: Annotated[str | None, Field(description='Channel type (e.g., display, video, audio, social)')] = None
-    brand_context: Annotated[BrandContext | None, Field(description='Brand information for policy evaluation. Schema TBD - placeholder for brand identifiers.')] = None
+    brand_context: Annotated[ObjBrandIdSkuId | None, Field(description='Brand information for policy evaluation. Schema TBD - placeholder for brand identifiers.')] = None
 
 
 class ValidateContentDeliveryRequest(AdCPVersionEnvelope):

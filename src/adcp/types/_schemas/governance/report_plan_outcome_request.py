@@ -19,6 +19,7 @@ from adcp.types.constraints import (
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
 from ..core.planned_delivery import PlannedDelivery
+from ..core.reporting_reliability_statistics import ObjStartEnd
 from ..core.version_envelope import AdCPVersionEnvelope
 from ..enums.outcome_type import OutcomeType
 from ..enums.purchase_type import PurchaseType
@@ -49,18 +50,6 @@ class SellerResponse(AdCPBaseModel):
     creative_deadline: Annotated[AwareDatetime | None, Field(description='ISO 8601 deadline for creative submission.')] = None
 
 
-class ReportingPeriod(AdCPBaseModel):
-    """
-    Start and end timestamps for the reporting window.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/report-plan-outcome-request.json', pointer='#/properties/delivery/properties/reporting_period')
-    start: AwareDatetime
-    end: AwareDatetime
-
-
 class Delivery(AdCPBaseModel):
     """
     Buyer-attributed observation compared with the canonical seller delivery statement identified by check_id. This evidence never overwrites seller evidence or creates a second commitment. A conflict produces an explicit disputed reconciliation state while the operational period is open; the plan owner may close it without asserting final billing truth.
@@ -77,7 +66,7 @@ class Delivery(AdCPBaseModel):
     observed_at: AwareDatetime
     seller_statement_id: Annotated[str | None, Field(description='Seller statement identifier as received by the buyer. Required for seller_statement_copy.')] = None
     seller_statement_digest: Annotated[ZipAssetDigest | None, Field(description='Digest received with the seller statement. Governance compares it to the seller-authenticated canonical digest.')] = None
-    reporting_period: Annotated[ReportingPeriod, Field(description='Start and end timestamps for the reporting window.')]
+    reporting_period: Annotated[ObjStartEnd, Field(description='Start and end timestamps for the reporting window.')]
     cumulative_spend: Annotated[NonNegativeFloat, Field(description='Buyer-attributed cumulative spend for the governed action.')]
     currency: GetAccountFinancialsResponseSuccessCurrency
     period_closed: Annotated[bool | None, Field(description='Buyer-declared operational closure of this governance reporting period. When true, governance freezes the period after recording this observation. An unresolved mismatch becomes closed_unresolved and no longer blocks later governance. Closure is not final billing or commercial settlement. Only the authenticated plan owner may set this to true; the governance agent MUST reject it from any other authenticated reporter.')] = False

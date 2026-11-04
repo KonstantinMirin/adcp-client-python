@@ -3,55 +3,16 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, TypeAdapter
+from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import SchemaRef
 
 from ..core.account_ref import AccountReference
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
 from ..core.pagination_request import PaginationRequest
-from ..core.tasks_list_request import SortField
+from ..core.tasks_list_request import Filters, Sort
 from ..core.version_envelope import AdCPVersionEnvelope
-from ..enums.adcp_protocol import AdCPProtocol
-from ..enums.sort_direction import SortDirection
-from ..enums.task_status import TaskStatus
-from ..enums.task_type import TaskType
-
-
-class Filters(AdCPBaseModel):
-    """
-    Filter criteria for querying tasks
-    """
-    model_config = ConfigDict(
-        extra='allow',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/list-tasks-request.json', pointer='#/properties/filters')
-    protocol: Annotated[AdCPProtocol | None, Field(description='Filter by single AdCP protocol')] = None
-    protocols: Annotated[list[AdCPProtocol] | None, Field(description='Filter by multiple AdCP protocols', min_length=1)] = None
-    status: Annotated[TaskStatus | None, Field(description='Filter by single task status')] = None
-    statuses: Annotated[list[TaskStatus] | None, Field(description='Filter by multiple task statuses', min_length=1)] = None
-    task_type: Annotated[TaskType | None, Field(description='Filter by single task type')] = None
-    task_types: Annotated[list[TaskType] | None, Field(description='Filter by multiple task types', min_length=1)] = None
-    created_after: Annotated[AwareDatetime | None, Field(description='Filter tasks created after this date (ISO 8601)')] = None
-    created_before: Annotated[AwareDatetime | None, Field(description='Filter tasks created before this date (ISO 8601)')] = None
-    updated_after: Annotated[AwareDatetime | None, Field(description='Filter tasks last updated after this date (ISO 8601)')] = None
-    updated_before: Annotated[AwareDatetime | None, Field(description='Filter tasks last updated before this date (ISO 8601)')] = None
-    task_ids: Annotated[list[str] | None, Field(description='Filter by specific task IDs', max_length=100, min_length=1)] = None
-    context_contains: Annotated[str | None, Field(description='Filter tasks where context contains this text (searches media_buy_id, signal_id, etc.)')] = None
-    has_webhook: Annotated[bool | None, Field(description='Filter tasks that have webhook configuration when true')] = None
-
-
-class Sort(AdCPBaseModel):
-    """
-    Sorting parameters
-    """
-    model_config = ConfigDict(
-        extra='allow',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/list-tasks-request.json', pointer='#/properties/sort')
-    field: Annotated[SortField | None, Field(description='Field to sort by')] = 'created_at'
-    direction: Annotated[SortDirection | None, Field(default_factory=lambda: TypeAdapter(SortDirection).validate_python('desc'), description='Sort direction', json_schema_extra={'default': 'desc'})]
 
 
 class ListTasksRequest(AdCPVersionEnvelope):

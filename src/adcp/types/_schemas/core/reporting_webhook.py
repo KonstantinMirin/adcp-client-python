@@ -8,22 +8,10 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import HttpUrl, StrMinLen16, StrMinLen32
+from adcp.types.constraints import HttpUrl, StrMinLen16
 
-from ..enums.auth_scheme import AuthenticationScheme
 from ..enums.available_metric import AvailableMetric
-
-
-class Authentication(AdCPBaseModel):
-    """
-    Legacy authentication configuration for webhook delivery (A2A-compatible). Opts the receiver into Bearer or HMAC-SHA256 signing. Both schemes are deprecated; the preferred signing profile for new integrations is RFC 9421, where the seller signs with a key published at its brand.json agents[] entry and the buyer verifies against the seller's JWKS — no shared secret crosses the wire (see docs/building/by-layer/L1/security.mdx#webhook-callbacks). This field is required in AdCP 3.x; the requirement is removed in AdCP 4.0 when the default RFC 9421 path becomes the only path.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-webhook.json', pointer='#/properties/authentication')
-    schemes: Annotated[list[AuthenticationScheme], Field(description="Array of authentication schemes. ['Bearer'] for simple token auth, ['HMAC-SHA256'] for legacy shared-secret signing. Both are deprecated; new integrations SHOULD use the RFC 9421 webhook signing profile instead.", max_length=1, min_length=1)]
-    credentials: Annotated[StrMinLen32, Field(description='Credentials for the legacy scheme. For Bearer: token sent in Authorization header. For HMAC-SHA256: shared secret used to generate signature. Minimum 32 characters. Exchanged out-of-band during onboarding.')]
+from .push_notification_config import Authentication
 
 
 class ReportingFrequency(StrEnum):

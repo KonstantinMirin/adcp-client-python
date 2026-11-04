@@ -6,32 +6,11 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
-from adcp.types.constraints import (
-    AccountChangeRecordedWebhookSubscriberId,
-    AgentWebhookChallengeChallenge,
-    ComplyTestControllerRequestParamsIdentifierValueDigestsItem,
-    HttpUrl,
-)
+from adcp.types._runtime import Rule, UniqueItems
+from adcp.types.constraints import AccountChangeRecordedWebhookSubscriberId, AgentWebhookChallengeChallenge, HttpUrl
 
 from ..enums.notification_type import NotificationType
-from .agent_webhook_challenge import Mode
-
-
-class DeliveryAuth(AdCPBaseModel):
-    """
-    Authentication/signing mode the seller will use for subsequent webhooks delivered to this notification config.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/webhook-challenge.json', pointer='#/properties/delivery_auth')
-    _adcp_rules: ClassVar[tuple[Rule, ...]] = (
-        ConditionalRequired((Match('mode', True, ('rfc9421',)),), require=(), forbid=('credential_fingerprint',)),
-        ConditionalRequired((Match('mode', True, ('Bearer', 'HMAC-SHA256')),), require=('credential_fingerprint',), forbid=()),
-    )
-    mode: Annotated[Mode, Field(description='Future webhook delivery authentication mode. `rfc9421` is used when notification_configs[].authentication is absent; Bearer and HMAC-SHA256 are the deprecated legacy modes selected by notification_configs[].authentication.')]
-    credential_fingerprint: Annotated[ComplyTestControllerRequestParamsIdentifierValueDigestsItem | None, Field(description='SHA-256 hex fingerprint of the exact legacy credential string supplied in notification_configs[].authentication.credentials. Required when mode is Bearer or HMAC-SHA256; absent for rfc9421.')] = None
+from .agent_webhook_challenge import ObjModeCredentialFingerprint
 
 
 class WebhookChallenge(AdCPBaseModel):
@@ -50,7 +29,7 @@ class WebhookChallenge(AdCPBaseModel):
     account_id: Annotated[str, Field(description='Seller account identifier for the account whose notification_configs[] entry is being challenged.')]
     subscriber_id: Annotated[AccountChangeRecordedWebhookSubscriberId, Field(description='Buyer-supplied subscriber identifier from the notification_configs[] entry being challenged.')]
     seller_agent_url: Annotated[HttpUrl, Field(description='Exact seller agent URL whose RFC 9421 webhook profile key signs this challenge and that will send subsequent webhooks.')]
-    delivery_auth: Annotated[DeliveryAuth, Field(description='Authentication/signing mode the seller will use for subsequent webhooks delivered to this notification config.')]
+    delivery_auth: Annotated[ObjModeCredentialFingerprint, Field(description='Authentication/signing mode the seller will use for subsequent webhooks delivered to this notification config.')]
     event_types: Annotated[list[NotificationType], Field(description='Normalized notification types requested by the subscriber at the time of the challenge. Part of the endpoint proof scope; changing event_types[] requires a fresh challenge before the new set can become active.', json_schema_extra={'uniqueItems': True}, min_length=1)]
 
 

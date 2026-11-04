@@ -23,12 +23,12 @@ from ..core.ext import ExtensionObject
 from ..core.format_id import FormatReferenceStructuredObject
 from ..core.format_option_ref import FormatOptionReference
 from ..core.measurement_terms import MeasurementTerms
+from ..core.missing_metric import ObjScopeMetricIdQualifier
 from ..core.optimization_goal import OptimizationGoal
 from ..core.performance_standard import PerformanceStandard
 from ..core.targeting_input import TargetingOverlayInput
 from ..core.vendor_metric_id import VendorMetricID
 from ..core.version_envelope import AdCPVersionEnvelope
-from ..enums.available_metric import AvailableMetric
 from ..enums.pacing import Pacing
 
 
@@ -40,16 +40,6 @@ class Bidding(BiddingPolicy):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/package-request.json', pointer='#/properties/bidding')
-
-
-class CommittedMetricsItemStandard(AdCPBaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/package-request.json', pointer='#/properties/committed_metrics/items/oneOf/0')
-    scope: Annotated[Literal['standard'], Field(description='Standard metric from the closed `available-metric.json` enum.')]
-    metric_id: Annotated[AvailableMetric, Field(description="Identifier for the standard metric. MUST be present in the product's `reporting_capabilities.available_metrics`.")]
-    qualifier: Annotated[CanonicalMetricQualifier | None, Field(description='Disambiguator — same shape as on the response-side `committed_metrics`. Required when the buyer wants to pin a specific measurement path: `viewability_standard` for MRC vs GroupM viewability; `completion_source` for seller- vs vendor-attested `completion_rate`; `attribution_methodology` for how attribution was computed (deterministic_purchase, probabilistic, panel_based, modeled); `attribution_window` for the time window over which outcomes are attributed. See response-side description for full semantics.')] = None
 
 
 class CommittedMetricsItemVendor(AdCPBaseModel):
@@ -116,7 +106,7 @@ class PackageRequest(AdCPVersionEnvelope):
     audience_evidence_pins: Annotated[list[AudienceEvidencePin] | None, Field(description="Exact immutable evidence snapshots selected by the buyer during discovery. The seller MUST match evidence_id, snapshot_id, version, and content_digest against one published snapshot and MUST reject catalog mutation, snapshot reuse, missing snapshots, or substitutions. Every accepted pin MUST be echoed in the confirmed package's audience_evidence_selections with decision_use package_construction.", min_length=1)] = None
     measurement_terms: Annotated[MeasurementTerms | None, Field(description="Buyer's proposed billing measurement and makegood terms. Overrides product defaults. Seller accepts (echoed on confirmed package), rejects with TERMS_REJECTED, or adjusts. When absent, product's measurement_terms apply.")] = None
     performance_standards: Annotated[list[PerformanceStandard] | None, Field(description="Buyer's proposed performance standards for this package. Overrides product defaults. Seller accepts, rejects with TERMS_REJECTED, or adjusts. When absent, product's performance_standards apply.", min_length=1)] = None
-    committed_metrics: Annotated[list[CommittedMetricsItemStandard | CommittedMetricsItemVendor] | None, Field(description="Buyer's proposed reporting contract for this package — the metrics the buyer wants the seller to commit to populating in delivery reports. Same negotiation pattern as `measurement_terms` and `performance_standards`: seller accepts (echoes on confirmed package with `committed_at` stamped), rejects with `TERMS_REJECTED` (with explanation of which entries were unworkable), or normalizes (echoes a different but compatible list — buyer can accept by retrying with the normalized terms). When absent, the seller decides what to commit based on the product's `available_metrics` and the buyer's `required_metrics` filter on `get_products`. Each entry uses an explicit `scope` discriminator (`standard` or `vendor`) and identifies the metric — request-side entries do NOT carry `committed_at`; that timestamp is stamped by the seller on accept. Constraints on what the buyer MAY propose: each `scope: standard` entry's `metric_id` MUST be in the product's `available_metrics`, and each `scope: vendor` entry's `(vendor, metric_id)` MUST appear in the product's `vendor_metrics` — sellers SHOULD reject with `TERMS_REJECTED` and reference the offending entry when the proposal exceeds product capability.", min_length=1)] = None
+    committed_metrics: Annotated[list[ObjScopeMetricIdQualifier | CommittedMetricsItemVendor] | None, Field(description="Buyer's proposed reporting contract for this package — the metrics the buyer wants the seller to commit to populating in delivery reports. Same negotiation pattern as `measurement_terms` and `performance_standards`: seller accepts (echoes on confirmed package with `committed_at` stamped), rejects with `TERMS_REJECTED` (with explanation of which entries were unworkable), or normalizes (echoes a different but compatible list — buyer can accept by retrying with the normalized terms). When absent, the seller decides what to commit based on the product's `available_metrics` and the buyer's `required_metrics` filter on `get_products`. Each entry uses an explicit `scope` discriminator (`standard` or `vendor`) and identifies the metric — request-side entries do NOT carry `committed_at`; that timestamp is stamped by the seller on accept. Constraints on what the buyer MAY propose: each `scope: standard` entry's `metric_id` MUST be in the product's `available_metrics`, and each `scope: vendor` entry's `(vendor, metric_id)` MUST appear in the product's `vendor_metrics` — sellers SHOULD reject with `TERMS_REJECTED` and reference the offending entry when the proposal exceeds product capability.", min_length=1)] = None
     creative_assignments: Annotated[list[CreativeAssignment] | None, Field(description='Assign existing library creatives to this package with optional rotation, grouping, weights, and placement targeting. rotation_mode is package-scoped: omission resolves to weighted, and every assignment MUST resolve to the same effective mode. In sequential mode, sequence_position MUST be unique within each package-local group. Sellers reject conflicts with VALIDATION_ERROR before creating the package.', min_length=1)] = None
     creatives: Annotated[list[CreativesItem] | None, Field(description="Upload creative assets inline and assign to this package. Native localization is not accepted on this path; use sync_creatives before assigning the library creative. When the seller also advertises creative.has_creative_library: true, these creatives enter the seller's creative library and can be reused by creative_id while retained; inline-only sellers may store them as package-scoped assets. Use creative_assignments instead for existing library creatives.", max_length=100, min_length=1)] = None
     agency_estimate_number: Annotated[StrMaxLen100 | None, Field(description='Agency estimate or authorization number for this package. Overrides the media buy-level estimate number when different packages correspond to different agency estimates (e.g., different stations or flights within the same buy).')] = None

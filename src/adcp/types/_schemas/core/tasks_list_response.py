@@ -18,7 +18,7 @@ from .protocol_envelope import ProtocolEnvelope
 from .version_envelope import AdCPVersionEnvelope
 
 
-class DomainBreakdown(AdCPBaseModel):
+class ObjMediaBuySignalsCreative(AdCPBaseModel):
     """
     Count of tasks by domain
     """
@@ -53,7 +53,7 @@ class QuerySummary(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/tasks-list-response.json', pointer='#/properties/query_summary')
     total_matching: Annotated[NonNegativeInt | None, Field(description='Total number of tasks matching filters (across all pages)')] = None
     returned: Annotated[NonNegativeInt | None, Field(description='Number of tasks returned in this response')] = None
-    domain_breakdown: Annotated[DomainBreakdown | None, Field(description='Count of tasks by domain')] = None
+    domain_breakdown: Annotated[ObjMediaBuySignalsCreative | None, Field(description='Count of tasks by domain')] = None
     status_breakdown: Annotated[dict[str, NonNegativeInt] | None, Field(description='Count of tasks by status')] = None
     filters_applied: Annotated[list[str] | None, Field(description='List of filters that were applied to the query')] = None
     sort_applied: Annotated[SortApplied | None, Field(description='Sort order that was applied')] = None

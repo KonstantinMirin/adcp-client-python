@@ -69,7 +69,7 @@ class NotificationType(StrEnum):
     WINDOW_UPDATE = 'window_update'
 
 
-class ReportingPeriod(AdCPBaseModel):
+class ObjStartEndTimezone(AdCPBaseModel):
     """
     Half-open period for the report: start is inclusive and end is exclusive. Both are instants. For a date-bounded request they are the instants at which start_date and end_date begin in the reporting timezone (the in-scope products' reporting_capabilities.timezone, echoed in timezone). They fall on UTC midnight only when that timezone is UTC. An exact reporting_revision_id read returns the revision's period instead, whose source_timezone names its calendar.
     """
@@ -440,7 +440,7 @@ class GetMediaBuyDeliveryResponse(AdCPVersionEnvelope, ProtocolEnvelope):
     unavailable_count: Annotated[NonNegativeInt | None, Field(description='Number of media buys with reporting_delayed or failed status (only present in webhook deliveries when partial_data is true)')] = None
     sequence_number: Annotated[IntMin1 | None, Field(description='Sequential notification number (only present in webhook deliveries, starts at 1)')] = None
     next_expected_at: Annotated[AwareDatetime | None, Field(description="ISO 8601 timestamp for next expected notification (only present in webhook deliveries when notification_type is not 'final')")] = None
-    reporting_period: Annotated[ReportingPeriod, Field(description="Half-open period for the report: start is inclusive and end is exclusive. Both are instants. For a date-bounded request they are the instants at which start_date and end_date begin in the reporting timezone (the in-scope products' reporting_capabilities.timezone, echoed in timezone). They fall on UTC midnight only when that timezone is UTC. An exact reporting_revision_id read returns the revision's period instead, whose source_timezone names its calendar.")]
+    reporting_period: Annotated[ObjStartEndTimezone, Field(description="Half-open period for the report: start is inclusive and end is exclusive. Both are instants. For a date-bounded request they are the instants at which start_date and end_date begin in the reporting timezone (the in-scope products' reporting_capabilities.timezone, echoed in timezone). They fall on UTC midnight only when that timezone is UTC. An exact reporting_revision_id read returns the revision's period instead, whose source_timezone names its calendar.")]
     reporting_revision_binding: Annotated[ReportingRevisionBinding | None, Field(description='Present only for a reporting_revision_id selector. Binds the complete ordered reporting_rows sequence obtained by concatenating every cursor page to one immutable Reliable Reporting revision; consumers verify content_sha256 over RFC 8785 JCS of {reporting_revision_id,row_count,control_totals,reporting_rows} before using it as revision evidence.')] = None
     reporting_revision: Annotated[ReportingRevision | None, Field(description='Full immutable revision metadata, identical to the get_reporting_status revision record.')] = None
     reporting_rows: Annotated[list[dict[str, Any]] | None, Field(description="One page of authoritative logical rows for an exact reporting_revision_id read. Validate every row against the revision's digest-pinned schema; concatenate pages in cursor order before verifying the binding digest.")] = None

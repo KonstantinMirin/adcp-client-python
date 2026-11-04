@@ -4,9 +4,9 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
@@ -20,6 +20,7 @@ from ..core.ext import ExtensionObject
 from ..core.pagination_request import PaginationRequest
 from ..core.reporting_coverage import ReportingMediaBuyId
 from ..core.reporting_delivery_offering import ReportingFeedPurpose
+from ..core.reporting_reliability_statistics import ObjStartEnd
 from ..core.version_envelope import AdCPVersionEnvelope
 from ..enums.reporting_finality import ReportingFinality
 from ..enums.reporting_health import ReportingHealth
@@ -32,18 +33,6 @@ class ReportingStatusView(StrEnum):
     SUMMARY = 'summary'
     PERIODS = 'periods'
     REVISION = 'revision'
-
-
-class Period(AdCPBaseModel):
-    """
-    Half-open summary/periods horizon. Omit for the seller's documented operational default horizon; the response always echoes the evaluated scope.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-reporting-status-request.json', pointer='#/properties/period')
-    start: AwareDatetime
-    end: AwareDatetime
 
 
 class GetReportingStatusRequest(AdCPVersionEnvelope):
@@ -66,7 +55,7 @@ class GetReportingStatusRequest(AdCPVersionEnvelope):
     media_buy_ids: Annotated[list[ReportingMediaBuyId] | None, Field(description='Optional summary/periods scope. Omit for every accessible media buy in the account.', json_schema_extra={'uniqueItems': True}, max_length=100, min_length=1)] = None
     delivery_config_ids: Annotated[list[AccountChangeRecordedWebhookSubscriberId] | None, Field(description='Optional summary/periods scope. Use to reconcile billing, analytics, and pacing independently. Omit for every active caller-owned configuration.', json_schema_extra={'uniqueItems': True}, max_length=16, min_length=1)] = None
     feed_purposes: Annotated[list[ReportingFeedPurpose] | None, Field(description='Optional summary/periods feed filter. The response echoes exact resolved configuration generations so this never creates an opaque aggregate.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    period: Annotated[Period | None, Field(description="Half-open summary/periods horizon. Omit for the seller's documented operational default horizon; the response always echoes the evaluated scope.")] = None
+    period: Annotated[ObjStartEnd | None, Field(description="Half-open summary/periods horizon. Omit for the seller's documented operational default horizon; the response always echoes the evaluated scope.")] = None
     health: Annotated[list[ReportingHealth] | None, Field(description='Periods-view result filter only; it never changes summary health.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     finality: Annotated[list[ReportingFinality] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     reporting_revision_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId | None, Field(description='Exact retained revision to resolve in revision view.')] = None

@@ -405,15 +405,27 @@ def admitted() -> catalogue.Admitted:
 
 
 @pytest.fixture(scope="module")
-def l2(admitted: catalogue.Admitted) -> catalogue.Shapes:
-    """§3a's layer L2: the OBJECT TYPES the bundle states."""
-    return catalogue.collect_shapes(admitted, "L2")
+def standing() -> dict[str, int]:
+    """§3a's home rule's own input: the dependency order the arrows already run in.
+
+    ``emit.standing_order`` is the one derivation of it and this is the RUN's own reading,
+    handed to the collection exactly as the run hands it -- §3a's "a derived reading of
+    the bundle is an argument, not something a callee recomputes", which is also what keeps
+    this module's figures and the emitter's one answer.
+    """
+    return emit.standing_order(BUNDLE)
 
 
 @pytest.fixture(scope="module")
-def l3(admitted: catalogue.Admitted) -> catalogue.Shapes:
+def l2(admitted: catalogue.Admitted, standing: dict[str, int]) -> catalogue.Shapes:
+    """§3a's layer L2: the OBJECT TYPES the bundle states."""
+    return catalogue.collect_shapes(admitted, "L2", standing)
+
+
+@pytest.fixture(scope="module")
+def l3(admitted: catalogue.Admitted, standing: dict[str, int]) -> catalogue.Shapes:
     """§3a's layer L3: the ARRAY TYPES the bundle states."""
-    return catalogue.collect_shapes(admitted, "L3")
+    return catalogue.collect_shapes(admitted, "L3", standing)
 
 
 @pytest.mark.parametrize("layer", ["L2", "L3"])
@@ -422,11 +434,16 @@ def test_each_structural_layer_partitions_every_structure_stated_more_than_once(
 ) -> None:
     """§3a's cases account for every repeated STRUCTURE of the layer, each exactly once.
 
-    **One census per layer, which is reading 4's own ``Decided by``**, and the five parts
-    are §3a's three-way split with the two cases that split has no members in at L0: a
-    structure stated in one document is §4's content dedup's, and a structure stated at
-    nothing but document ROOTS is §1's -- both obliged to declare, so there is nothing for
-    this layer to stop minting.
+    **One census per layer, which is reading 4's own ``Decided by``**, and the six parts
+    are §3a's three-way split with the three cases that split has no members in at L0: a
+    structure stated in one document is §4's content dedup's, one stated at nothing but
+    document ROOTS is §1's -- both obliged to declare, so there is nothing for this layer
+    to stop minting -- and one stated at nothing but positions INSIDE a rule is
+    ``adcp-client-python-q5g``'s, where nothing declares at all.
+
+    ``not_collected`` is the layer that collects nothing, which is L3's by derivation and
+    is empty at L2: a structure the bundle titles nowhere is NAMED FROM ITSELF at the
+    object layer (``docs/plan/rebuild-plan.md``, 2026-11-04) and collected like any other.
 
     The arithmetic alone is not the property: two parts whose sizes sum correctly can both
     miss a structure and double-count another, which is why ``partitions`` reports the
@@ -442,10 +459,11 @@ def test_each_structural_layer_partitions_every_structure_stated_more_than_once(
     partitions(
         repeated,
         one_document=[group[0].key for group in shapes.restated],
-        named=list(shapes.entries),
-        untitled=[group[0].key for group in shapes.untitled],
+        collected=list(shapes.entries),
+        not_collected=[group[0].key for group in shapes.untitled],
         conflicting=[conflict.key for conflict in shapes.conflicting],
         every_position_a_root=[group[0].key for group in shapes.duplicated],
+        no_position_declares=[group[0].key for group in shapes.declaring_nothing],
     )
 
 
@@ -453,27 +471,47 @@ def test_each_structural_layer_partitions_every_structure_stated_more_than_once(
 def test_a_structural_layers_naming_split_is_the_bundles_own(
     layer: str, l2: catalogue.Shapes, l3: catalogue.Shapes
 ) -> None:
-    """§3a's three-way split, each case read off the bundle and never minted here.
+    """§4's THREE STEPS, each read off the bundle or off the structure and never minted.
 
-    * a NAMED entry carries exactly one title, or several of which exactly one belongs to
-      a document ROOT -- ``catalogue.the_name``'s rule, which §3a's correction of
-      2026-11-02 states;
-    * an UNTITLED group carries no title at any position.  **A ``description`` is not a
-      title**, which is §3a's own sentence -- "a description states what a thing IS, not
-      what it is CALLED, so it mints no name" -- and is checked here because an untitled
-      structure with a description is the commonest shape in this population and the one a
-      lane is most tempted to name from;
+    * **step 1**, a titled entry, carries exactly one title, or several of which exactly
+      one belongs to a document ROOT -- ``catalogue.the_name``'s rule, which §3a's
+      correction of 2026-11-02 states;
+    * **step 2 and step 3** carry no title at any position, which is what sends them to a
+      derivation at all.  **A ``description`` is not a title**, which is §3a's own
+      sentence -- "a description states what a thing IS, not what it is CALLED, so it
+      mints no name" -- and is checked here because an untitled structure with a
+      description is the commonest shape in this population and the one a lane is most
+      tempted to name from.  **Step 2's name is the structure's own field set and nothing
+      else**: every word of it is read back out of the home's own ``properties``, which is
+      what makes it a name the type can PROVE -- "this is the type with these fields" --
+      rather than a subject one position's property key claims.  **Step 3 mints nothing at
+      all**, which is "the declaring position" held by the absence of a name: §4 spells it
+      where the class is declared;
     * a CONFLICTING group carries two or more titles and no single rooted one, and no name
       is picked for it.
     """
     shapes = {"L2": l2, "L3": l3}[layer]
-    for entry in claimed(f"{layer} entries the bundle names", shapes.entries.values()):
+    for entry in claimed(f"{layer} entries this layer collects", shapes.entries.values()):
         titles = {p.title for p in entry.positions if p.title is not None}
-        assert entry.title in titles, (entry.title, sorted(titles))
-        if len(titles) > 1:
-            rooted = {p.title for p in entry.positions if p.is_a_root and p.title}
-            assert rooted == {entry.title}, (sorted(titles), sorted(rooted))
-    for group in claimed(f"{layer} groups the bundle titles nowhere", shapes.untitled):
+        if entry.step == 1:
+            assert entry.title in titles, (entry.title, sorted(titles))
+            assert entry.name is None, (entry.title, entry.name)
+            if len(titles) > 1:
+                rooted = {p.title for p in entry.positions if p.is_a_root and p.title}
+                assert rooted == {entry.title}, (sorted(titles), sorted(rooted))
+            continue
+        assert not titles, (entry.step, sorted(titles))
+        assert entry.title is None, (entry.step, entry.title)
+        if entry.step == 3:
+            assert entry.name is None, (entry.step, entry.name)
+            continue
+        assert entry.name == catalogue.structure_in_words(entry.at.fields), (
+            entry.name,
+            entry.at.fields,
+        )
+    for group in claimed(f"{layer} groups this layer does not collect", [
+        *shapes.untitled, *shapes.declaring_nothing
+    ]):
         assert not [p.title for p in group if p.title is not None], group[0].key
     for conflict in shapes.conflicting:
         assert len(conflict.titles) > 1, conflict.titles
@@ -481,13 +519,23 @@ def test_a_structural_layers_naming_split_is_the_bundles_own(
         assert len(rooted) != 1, (conflict.titles, sorted(rooted))
 
 
-def test_no_two_classes_carry_one_named_object_type(l2: catalogue.Shapes) -> None:
-    """**THE L2 GATE**: an object type the bundle NAMES is written once and referenced.
+def test_no_object_structure_emits_more_than_one_definition(l2: catalogue.Shapes) -> None:
+    """**THE L2 GATE**: an object structure is written once and referenced.
 
     Reading 4: "a type stated at more than one position is written once and referenced,
     never restated -- and this reading ranges over ALL FOUR of the catalogue's layers".
-    So for every entry the bundle names, the position that DECLARES it carries a class and
-    every restating position carries none.
+    So for every entry this layer collects, the position that DECLARES it carries a class
+    and every restating position carries none.
+
+    **It is an INVARIANT and not a census**: "there are N of these" freezes the tree and
+    "this cannot happen" survives a refactor, so nothing here counts the entries or the
+    positions -- and **an ALIAS is a name and not a type**, which is why what is read is
+    the ``__adcp_schema__`` a CLASS STATEMENT binds and not the names a module exports.
+
+    **It ranges over the structures the bundle titles NOWHERE as well, since 2026-11-04**
+    (``docs/plan/rebuild-plan.md``, "A STRUCTURE THE BUNDLE NEVER TITLES IS NAMED FROM
+    ITSELF").  That is the whole of what widened: the obligation was already stated over
+    every entry, and the untitled structures became entries.
 
     **Read off the CLASS STATEMENTS of a fresh emission and keyed on the pointer each one
     carries**, not off the tree's text by name and not off a rendered annotation: a class
@@ -527,16 +575,16 @@ def test_no_two_classes_carry_one_named_object_type(l2: catalogue.Shapes) -> Non
                     key = (document.value, pointer.value.lstrip("#"))
                     declaring.setdefault(key, []).append(node.name)
 
-    entries = claimed("L2 entries the bundle names", l2.entries.values())
+    entries = claimed("L2 entries this layer collects", l2.entries.values())
     homeless = {
-        entry.title: f"{entry.at.document}{entry.at.pointer or ' /'}"
+        entry.spelled: f"{entry.at.document}{entry.at.pointer or ' /'}"
         for entry in entries
         if not declaring.get((entry.at.document, entry.at.pointer))
     }
     assert not homeless, json.dumps(homeless, indent=2)
 
     restated = {
-        f"{entry.title} @ {p.document}{p.pointer}": declaring[(p.document, p.pointer)]
+        f"{entry.spelled} @ {p.document}{p.pointer}": declaring[(p.document, p.pointer)]
         for entry in entries
         for p in entry.restating
         if (p.document, p.pointer) in declaring

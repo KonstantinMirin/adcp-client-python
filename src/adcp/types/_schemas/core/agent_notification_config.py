@@ -7,23 +7,11 @@ from pydantic import AfterValidator, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import NotValue, Rule, UniqueItems
-from adcp.types.constraints import AccountChangeRecordedWebhookSubscriberId, HttpUrl, StrMinLen32
+from adcp.types.constraints import AccountChangeRecordedWebhookSubscriberId, HttpUrl
 
-from ..enums.auth_scheme import AuthenticationScheme
 from ..enums.notification_type import NotificationType
 from .ext import ExtensionObject
-
-
-class Authentication(AdCPBaseModel):
-    """
-    Legacy authentication selector. Same precedence and semantics as `push-notification-config.authentication` and account-level `notification-config.authentication`: presence opts the seller into Bearer or HMAC-SHA256 signing; absence selects the default RFC 9421 webhook profile keyed off the seller's brand.json `agents[]` JWKS. Deprecated; removed in AdCP 4.0. Credentials are write-only and MUST NOT be echoed on reads.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/agent-notification-config.json', pointer='#/properties/authentication')
-    schemes: Annotated[list[AuthenticationScheme], Field(max_length=1, min_length=1)]
-    credentials: Annotated[StrMinLen32 | None, Field(description='Credentials for the legacy scheme. Bearer: token. HMAC-SHA256: shared secret. Minimum 32 characters. Exchanged out-of-band during onboarding. Write-only.')] = None
+from .notification_config import Authentication
 
 
 class AgentNotificationConfig(AdCPBaseModel):

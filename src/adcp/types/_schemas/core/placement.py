@@ -14,23 +14,13 @@ from adcp.types.constraints import (
 
 from ..enums.audio_distribution_type import AudioDistributionType
 from ..enums.dooh_motion_type import DOOHMotionType
-from ..enums.identifier_types import PropertyIdentifierTypes
 from ..enums.social_placement_surface import SocialPlacementSurface
 from ..enums.sponsored_placement_type import SponsoredPlacementType
 from ..enums.video_placement_type import VideoPlacementType
-from .canonical_placement import Kind, Mode
+from .canonical_placement import IdentifiersItem, Kind, Mode
 from .format_id import FormatReferenceStructuredObject
 from .product_format_declaration import ProductFormatDeclaration
 from .seller_agent_ref import SellerAgentReference
-
-
-class IdentifiersItem(AdCPBaseModel):
-    model_config = ConfigDict(
-        extra='allow',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/placement.json', pointer='#/properties/identifiers/items')
-    type: PropertyIdentifierTypes
-    value: Annotated[str, Field(description='Identifier value, optionally authority-prefixed for externally governed IDs (e.g., space:1234931339).')]
 
 
 class ProductDoohScreenResolution(AdCPBaseModel):

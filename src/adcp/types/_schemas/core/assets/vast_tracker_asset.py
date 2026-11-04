@@ -4,28 +4,18 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AfterValidator, ConfigDict, Field, NonNegativeInt, TypeAdapter
+from pydantic import AfterValidator, ConfigDict, Field, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NotValue, Rule
 from adcp.types.constraints import DAASTTrackerAssetOffset
 
-from ...enums.macro_value_context import MacroValueContext
 from ...enums.vast_tracking_event import VASTTrackingEvent
 from .._vocabularies import _VALUES_LINEAR_NON_LINEAR_COMPANION
 from ..macro_bearing_url import MacroBearingURL
 from ..macro_declaration import MacroDeclaration
 from ..provenance import Provenance
-
-
-class Location(AdCPBaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/vast-tracker-asset.json', pointer='#/properties/macro_declarations/items/allOf/1/properties/location')
-    field: Annotated[Literal['url'], Field(description='Asset field containing this occurrence.')]
-    occurrence: Annotated[NonNegativeInt, Field(description='Zero-based occurrence of this exact token within the named field.')]
-    context: MacroValueContext
+from .daast_tracker_asset import Location
 
 
 class MacroDeclarationsItem(MacroDeclaration):

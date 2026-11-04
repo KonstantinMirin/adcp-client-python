@@ -13,22 +13,11 @@ from ..enums.audience_evidence_methodology import AudienceEvidenceMethodology
 from ..enums.audience_resolution_method import AudienceResolutionMethod
 from ..enums.audience_subject_type import AudienceSubjectType
 from .audience_characteristic import AudienceCharacteristic
-from .audience_evidence import Relationship, Unit
+from .audience_evidence import Baseline, Relationship, Unit
 from .audience_evidence_requirements import EvidenceType
 from .brand_key import BrandKey
 from .date_range import DateRange
 from .ext import ExtensionObject
-
-
-class Baseline(AdCPBaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/canonical-audience-evidence.json', pointer='#/properties/baseline')
-    system: AdCPUrl
-    population_id: StrMinLen1
-    version: StrMinLen1
-    description: str | None = None
 
 
 class CanonicalAudienceEvidence(AdCPBaseModel):

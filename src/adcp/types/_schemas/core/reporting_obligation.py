@@ -23,18 +23,9 @@ from ..enums.reporting_health import ReportingHealth
 from .reporting_coverage import ReportingCoverage, ReportingMediaBuyId
 from .reporting_delivery_offering import ReportingFeedPurpose
 from .reporting_reconciliation_mode import ReportingReconciliationMode
+from .reporting_revision import ObjStartEndSourceTimezone
 from .reporting_schedule import ReportingSchedule
 from .reporting_status_issue import ReportingStatusIssue
-
-
-class Period(AdCPBaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-obligation.json', pointer='#/properties/period')
-    start: AwareDatetime
-    end: AwareDatetime
-    source_timezone: StrMinLen1
 
 
 class ReconciliationStatus(StrEnum):
@@ -83,7 +74,7 @@ class ReportingObligation(AdCPBaseModel):
     media_buy_ids: Annotated[list[ReportingMediaBuyId], Field(description='Exact frozen media-buy denominator resolved for this period, including buys with zero rows. An empty array is the definitive zero-buy set; omission is never used to mean all, empty, or unknown.', json_schema_extra={'uniqueItems': True})]
     scope_resolved_at: Annotated[AwareDatetime, Field(description='Instant at which the configured scope was resolved and frozen for this obligation. For all_media_buys, include every caller-authorized account media buy whose effective flight overlaps the half-open period and was known by this cutoff. Later-created or backdated buys do not rewrite this obligation.')]
     coverage: Annotated[ReportingCoverage, Field(description='Immutable effective coverage of the exact selected offering at this period boundary. Delivery health is evaluated separately over the covered denominator.')]
-    period: Period
+    period: ObjStartEndSourceTimezone
     expected_at: AwareDatetime
     schedule: Annotated[ReportingSchedule, Field(description='Resolved immutable schedule generation that created this obligation.')]
     destination_ref: Annotated[StrMinLen1MaxLen255 | None, Field(description='Immutable caller-owned destination generation selected by this account-authorized obligation. The account/configuration join—not possession of this reusable reference—authorizes disclosure. Present when and only when the obligation’s configuration selects a managed-delivery offering; Core (API-delivered) obligations omit every destination and materialization field.')] = None

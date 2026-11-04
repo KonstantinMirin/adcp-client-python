@@ -13,7 +13,6 @@ from adcp.types.constraints import (
     FloatMin0Max1,
     GeoForecastDimensionCode,
     GetAccountFinancialsResponseSuccessCurrency,
-    HttpUrl,
     IntMin1,
 )
 
@@ -22,10 +21,8 @@ from ..enums.available_metric import AvailableMetric
 from ..enums.channels import MediaChannel
 from ..enums.delivery_type import DeliveryType
 from ..enums.exclusivity import Exclusivity
-from ..enums.metro_system import MetroAreaSystem
 from ..enums.performance_standard_metric import PerformanceStandardMetric
 from ..enums.pricing_structure import PricingStructure
-from ..enums.response_type import TMPResponseType
 from ..enums.social_placement_surface import SocialPlacementSurface
 from ..enums.sponsored_placement_type import SponsoredPlacementType
 from ..enums.video_placement_type import VideoPlacementType
@@ -38,6 +35,7 @@ from .ext import ExtensionObject
 from .format_option_ref import FormatOptionReference
 from .postal_area import PostalArea
 from .product_audience_evidence_requirements import ProductAudienceEvidenceRequirements
+from .product_filters import ObjProvidersResponseTypes, ObjSystemCode
 from .property_list_ref import PropertyListReference
 from .targeting import TargetingOverlayGeoProximity
 from .vendor_metric_id import VendorMetricID
@@ -53,34 +51,6 @@ class AvailabilityHorizon(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-offer-filters.json', pointer='#/properties/availability_horizon')
     start_time: Annotated[AwareDatetime, Field(description='Inclusive horizon start (RFC 3339 date-time with timezone offset).')]
     end_time: Annotated[AwareDatetime, Field(description='Exclusive horizon end (RFC 3339 date-time with timezone offset). MUST be after start_time.')]
-
-
-class MetrosItem(AdCPBaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-offer-filters.json', pointer='#/properties/metros/items')
-    system: Annotated[MetroAreaSystem, Field(description='Metro classification system')]
-    code: Annotated[str, Field(description="Metro code within the system (e.g., '501' for NYC DMA)")]
-
-
-class ProvidersItem(AdCPBaseModel):
-    model_config = ConfigDict(
-        extra='allow',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-offer-filters.json', pointer='#/properties/trusted_match/properties/providers/items')
-    agent_url: HttpUrl
-    context_match: bool | None = None
-    identity_match: bool | None = None
-
-
-class TrustedMatch(AdCPBaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-offer-filters.json', pointer='#/properties/trusted_match')
-    providers: Annotated[list[ProvidersItem] | None, Field(min_length=1)] = None
-    response_types: Annotated[list[TMPResponseType] | None, Field(min_length=1)] = None
 
 
 class RequiredFeatures(CanonicalMediaBuyFeatures):
@@ -151,7 +121,7 @@ class ProductOfferFilters(AdCPBaseModel):
     budget_range: BudgetRange | None = None
     countries: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem] | None, Field(description="Filter by country coverage using ISO 3166-1 alpha-2 codes (e.g., ['US', 'CA', 'GB']). Returns products whose geographic coverage includes at least one of the specified countries. This is a product attribute filter, not a delivery-targeting instruction.", min_length=1)] = None
     regions: Annotated[list[GeoForecastDimensionCode] | None, Field(description='Inventory coverage in the specified ISO 3166-2 subdivisions: OR within this field, AND across offer filters. Does not add delivery targeting, require targeting support, or rescope pricing or forecasts.', min_length=1)] = None
-    metros: Annotated[list[MetrosItem] | None, Field(description='Inventory coverage in the specified metro areas (system and code): OR within this field, AND across offer filters. Does not add delivery targeting, require targeting support, or rescope pricing or forecasts.', min_length=1)] = None
+    metros: Annotated[list[ObjSystemCode] | None, Field(description='Inventory coverage in the specified metro areas (system and code): OR within this field, AND across offer filters. Does not add delivery targeting, require targeting support, or rescope pricing or forecasts.', min_length=1)] = None
     postal_areas: Annotated[list[PostalArea] | None, Field(description='Inventory coverage in the specified postal areas: OR within this field, AND across offer filters. Does not add delivery targeting, require targeting support, or rescope pricing or forecasts.', min_length=1)] = None
     geo_proximity: Annotated[TargetingOverlayGeoProximity | None, Field(description='Inventory coverage in the specified proximity boundaries: OR within this field, AND across offer filters. Does not add delivery targeting, require targeting support, or rescope pricing or forecasts.')] = None
     property_list: Annotated[PropertyListReference | None, Field(description='Reference to an externally managed property list. When provided, the seller filters products to only those available on properties in the list. This narrows which publisher inventory is returned; it is a product attribute filter, not a delivery-targeting instruction.')] = None
@@ -160,7 +130,7 @@ class ProductOfferFilters(AdCPBaseModel):
     audio_distribution_types: Annotated[list[AudioDistributionType] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     sponsored_placement_types: Annotated[list[SponsoredPlacementType] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     social_placement_surfaces: Annotated[list[SocialPlacementSurface] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    trusted_match: TrustedMatch | None = None
+    trusted_match: ObjProvidersResponseTypes | None = None
     required_features: Annotated[RequiredFeatures | None, Field(description='Canonical protocol features the seller must support.')] = None
     required_performance_standards: Annotated[list[RequiredPerformanceStandardsItem] | None, Field(min_length=1)] = None
     required_metrics: Annotated[list[AvailableMetric] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None

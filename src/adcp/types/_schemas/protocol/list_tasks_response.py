@@ -3,75 +3,16 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
+from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import SchemaRef
 
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
 from ..core.pagination_response import PaginationResponse
 from ..core.protocol_envelope import ProtocolEnvelope
-from ..core.tasks_list_response import Domain
+from ..core.tasks_list_response import QuerySummary, TasksItem
 from ..core.version_envelope import AdCPVersionEnvelope
-from ..enums.sort_direction import SortDirection
-from ..enums.task_status import TaskStatus
-from ..enums.task_type import TaskType
-
-
-class DomainBreakdown(AdCPBaseModel):
-    """
-    Count of tasks by domain
-    """
-    model_config = ConfigDict(
-        extra='allow',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/list-tasks-response.json', pointer='#/properties/query_summary/properties/domain_breakdown')
-    media_buy: Annotated[NonNegativeInt | None, Field(alias='media-buy', description='Number of media-buy tasks in results')] = None
-    signals: Annotated[NonNegativeInt | None, Field(description='Number of signals tasks in results')] = None
-    creative: Annotated[NonNegativeInt | None, Field(description='Number of creative tasks in results')] = None
-
-
-class SortApplied(AdCPBaseModel):
-    """
-    Sort order that was applied
-    """
-    model_config = ConfigDict(
-        extra='allow',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/list-tasks-response.json', pointer='#/properties/query_summary/properties/sort_applied')
-    field: str
-    direction: SortDirection
-
-
-class QuerySummary(AdCPBaseModel):
-    """
-    Summary of the query that was executed
-    """
-    model_config = ConfigDict(
-        extra='allow',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/list-tasks-response.json', pointer='#/properties/query_summary')
-    total_matching: Annotated[NonNegativeInt | None, Field(description='Total number of tasks matching filters (across all pages)')] = None
-    returned: Annotated[NonNegativeInt | None, Field(description='Number of tasks returned in this response')] = None
-    domain_breakdown: Annotated[DomainBreakdown | None, Field(description='Count of tasks by domain')] = None
-    status_breakdown: Annotated[dict[str, NonNegativeInt] | None, Field(description='Count of tasks by status')] = None
-    filters_applied: Annotated[list[str] | None, Field(description='List of filters that were applied to the query')] = None
-    sort_applied: Annotated[SortApplied | None, Field(description='Sort order that was applied')] = None
-
-
-class TasksItem(AdCPBaseModel):
-    model_config = ConfigDict(
-        extra='allow',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/list-tasks-response.json', pointer='#/properties/tasks/items')
-    task_id: Annotated[str, Field(description='Unique identifier for this task')]
-    task_type: Annotated[TaskType, Field(description='Type of AdCP operation')]
-    domain: Annotated[Domain, Field(description='AdCP domain this task belongs to')]
-    status: Annotated[TaskStatus, Field(description='Current task status')]
-    created_at: Annotated[AwareDatetime, Field(description='When the task was initially created (ISO 8601)')]
-    updated_at: Annotated[AwareDatetime, Field(description='When the task was last updated (ISO 8601)')]
-    completed_at: Annotated[AwareDatetime | None, Field(description='When the task completed (ISO 8601, only for completed/failed/canceled tasks)')] = None
-    has_webhook: Annotated[bool | None, Field(description='Whether this task has webhook configuration')] = None
 
 
 class ListTasksResponse(AdCPVersionEnvelope, ProtocolEnvelope):

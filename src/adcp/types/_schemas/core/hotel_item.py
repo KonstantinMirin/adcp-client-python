@@ -9,28 +9,15 @@ from pydantic import ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types.constraints import (
     AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem,
-    FloatMinNeg90Max90,
-    FloatMinNeg180Max180,
     HotelItemCheckInTime,
     HttpUrl,
     StarRating,
 )
 
+from .destination_item import ObjLatLng
 from .ext import ExtensionObject
 from .offering_asset_group import OfferingAssetGroup
 from .price import Price
-
-
-class Location(AdCPBaseModel):
-    """
-    Geographic coordinates of the property.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/hotel-item.json', pointer='#/properties/location')
-    lat: Annotated[FloatMinNeg90Max90, Field(description='Latitude in decimal degrees (WGS 84).')]
-    lng: Annotated[FloatMinNeg180Max180, Field(description='Longitude in decimal degrees (WGS 84).')]
 
 
 class Address(AdCPBaseModel):
@@ -59,7 +46,7 @@ class HotelItem(AdCPBaseModel):
     hotel_id: Annotated[str, Field(description='Unique identifier for this property. Used to match remarketing events and inventory feeds to the correct hotel.')]
     name: Annotated[str, Field(description="Property name (e.g., 'Grand Hotel Amsterdam', 'Seaside Resort & Spa').")]
     description: Annotated[str | None, Field(description='Property description highlighting features and location.')] = None
-    location: Annotated[Location, Field(description='Geographic coordinates of the property.')]
+    location: Annotated[ObjLatLng, Field(description='Geographic coordinates of the property.')]
     address: Annotated[Address | None, Field(description='Structured address for display and geocoding.')] = None
     star_rating: Annotated[StarRating | None, Field(description='Official star rating (1–5).')] = None
     price: Annotated[Price | None, Field(description="Nightly rate or starting price. Use period 'night' for nightly rates.")] = None

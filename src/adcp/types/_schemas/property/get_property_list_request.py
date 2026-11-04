@@ -5,25 +5,13 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import PaginationMaxResults
+from adcp.types._base import SchemaRef
 
+from ..collection.get_collection_list_request import ObjMaxResultsCursor
 from ..core.account_ref import AccountReference
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
 from ..core.version_envelope import AdCPVersionEnvelope
-
-
-class Pagination(AdCPBaseModel):
-    """
-    Pagination parameters. Uses higher limits than standard pagination because property lists can contain tens of thousands of identifiers.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='property/get-property-list-request.json', pointer='#/properties/pagination')
-    max_results: Annotated[PaginationMaxResults | None, Field(description='Maximum number of identifiers to return per page')] = 1000
-    cursor: Annotated[str | None, Field(description='Opaque cursor from a previous response to fetch the next page')] = None
 
 
 class GetPropertyListRequest(AdCPVersionEnvelope):
@@ -37,7 +25,7 @@ class GetPropertyListRequest(AdCPVersionEnvelope):
     list_id: Annotated[str, Field(description='ID of the property list to retrieve')]
     account: Annotated[AccountReference | None, Field(description='Account that owns the list. Required when the authenticated agent has access to multiple accounts and the list_id is not globally unique within that scope; optional otherwise.')] = None
     resolve: Annotated[bool | None, Field(description='Whether to apply filters and return resolved identifiers (default: true)')] = True
-    pagination: Annotated[Pagination | None, Field(description='Pagination parameters. Uses higher limits than standard pagination because property lists can contain tens of thousands of identifiers.')] = None
+    pagination: Annotated[ObjMaxResultsCursor | None, Field(description='Pagination parameters. Uses higher limits than standard pagination because property lists can contain tens of thousands of identifiers.')] = None
     context: ContextObject | None = None
     ext: ExtensionObject | None = None
 

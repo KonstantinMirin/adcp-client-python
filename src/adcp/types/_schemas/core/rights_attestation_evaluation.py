@@ -10,27 +10,9 @@ from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule
 from adcp.types.constraints import StrMinLen1, StrMinLen1MaxLen1024, ZipAssetDigest
 
 from .attestation_evaluation import AttestationEvaluation
-from .attestation_issuer import AttestationBrandIssuer
 from .attestation_reference import AttestationReference
-from .attestation_subject import AttestationResourceSubject
 from .ext import ExtensionObject
-
-
-class Issuer(AttestationBrandIssuer):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/rights-attestation-evaluation.json', pointer='#/properties/reference/allOf/1/properties/issuer')
-    type: Annotated[Literal['brand'], Field(description='The issuer is identified by an AdCP BrandRef.')]
-
-
-class Subject(AttestationResourceSubject):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/rights-attestation-evaluation.json', pointer='#/properties/reference/allOf/1/properties/subject')
-    resource_type: Annotated[Literal['https://adcontextprotocol.org/claims/subjects/rights-grant'], Field(description='Open, absolute URI naming the subject vocabulary, such as https://adcontextprotocol.org/claims/subjects/signal. AdCP does not maintain an exhaustive enum.')]
-    content_digest: Annotated[ZipAssetDigest, Field(description='Optional SHA-256 pin for the exact content or immutable snapshot identified by this resource subject. This is part of the complete typed subject identity and is distinct from AttestationReference.content_digest, which pins credential bytes.')]
+from .rights_constraint import ObjTypeBrand, ObjTypeResourceType
 
 
 class Reference(AttestationReference):
@@ -41,9 +23,9 @@ class Reference(AttestationReference):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/rights-attestation-evaluation.json', pointer='#/properties/reference')
-    issuer: Issuer
+    issuer: ObjTypeBrand
     claim_type: Annotated[Literal['https://adcontextprotocol.org/claims/rights/grant'], Field(description='Open, absolute URI identifying the claim vocabulary. The URI is an identifier and need not be dereferenceable. AdCP does not maintain an enum of approved claims.')]
-    subject: Subject
+    subject: ObjTypeResourceType
 
 
 class ActionBinding(AdCPBaseModel):

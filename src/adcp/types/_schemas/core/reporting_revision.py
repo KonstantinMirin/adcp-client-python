@@ -23,7 +23,7 @@ from .reporting_control_total import ReportingControlTotal
 from .reporting_coverage import ReportingCoverage, ReportingMediaBuyId
 
 
-class Period(AdCPBaseModel):
+class ObjStartEndSourceTimezone(AdCPBaseModel):
     """
     Half-open reporting interval with its source calendar boundary.
     """
@@ -79,7 +79,7 @@ class ReportingRevision(AdCPBaseModel):
     account_id: StrMinLen1
     media_buy_ids: Annotated[list[ReportingMediaBuyId], Field(description='Exact frozen media-buy denominator inherited from the obligation, including buys with zero rows. An empty array proves a zero-buy period rather than an unknown denominator.', json_schema_extra={'uniqueItems': True})]
     coverage: Annotated[ReportingCoverage, Field(description='Frozen product/package denominator represented by this logical content. The same coverage follows the revision to every destination.')]
-    period: Annotated[Period, Field(description='Half-open reporting interval with its source calendar boundary.')]
+    period: Annotated[ObjStartEndSourceTimezone, Field(description='Half-open reporting interval with its source calendar boundary.')]
     finality: ReportingFinality
     finality_basis: Annotated[FinalityBasis | None, Field(description='Why an official revision is considered final: an authoritative source signal, a versioned contractual cutoff, or a versioned stabilization rule.')] = None
     finality_policy_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId | None, Field(description='Immutable policy/version reference that defines the selected finality basis. It MUST be bound by report_definition_id.')] = None

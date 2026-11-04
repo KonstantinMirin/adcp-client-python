@@ -25,7 +25,7 @@ class Signals(AdCPBaseModel):
     segments: Annotated[list[str] | None, Field(description='Contextual segment identifiers combined across provider responses.')] = None
 
 
-class TargetingKvsItem(AdCPBaseModel):
+class ObjKeyValue(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -34,7 +34,7 @@ class TargetingKvsItem(AdCPBaseModel):
     value: Annotated[str, Field(description='Targeting value preserved unchanged by the router.')]
 
 
-ContextMatchResponseRouterPublisherTargetingKvs = Annotated[list[TargetingKvsItem], Field(description='Provider-local key-value pairs for ad-server targeting. The router preserves each pair unchanged and attributes it by provider_id; the publisher maps the tuple (provider_id, key) to a local ad-server destination.')]
+ContextMatchResponseRouterPublisherTargetingKvs = Annotated[list[ObjKeyValue], Field(description='Provider-local key-value pairs for ad-server targeting. The router preserves each pair unchanged and attributes it by provider_id; the publisher maps the tuple (provider_id, key) to a local ad-server destination.')]
 
 
 class SignalsByProviderValue(AdCPBaseModel):

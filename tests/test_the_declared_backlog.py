@@ -33,7 +33,7 @@ from compiled import compiled
 from nodeset import claimed, ratchet
 
 from adcp.types._base import SchemaBound, SchemaRef
-from codegen import bundle, harness
+from codegen import bundle, catalogue, emit, harness
 
 REPO = Path(__file__).resolve().parents[1]
 BUNDLE = REPO / "schemas" / "cache" / "3.2"
@@ -180,7 +180,7 @@ def _carried() -> dict[tuple[str, str, str], Any]:
 #:   until ``sdk/ident``, because ``Rules.dropped`` had four producers and one
 #:   consumer and ``lower_composition`` read the screen and the distinct set and
 #:   never the dropped set.
-#: * ``maxLength`` at the KEYWORD rung -- **1 site**, and it is the only one of the 128 that
+#: * ``maxLength`` at the KEYWORD rung -- **1 site**, and it is the only one of them that
 #:   is a plain keyword rather than a structural answer:
 #:   ``compliance/comply-test-controller-response.json`` at
 #:   ``#/oneOf/6/properties/recorded_calls/items/properties/payload``.
@@ -188,7 +188,27 @@ def _carried() -> dict[tuple[str, str, str], Any]:
 #:   ``if`` row cannot reduce to a clause list and §8 sentence 3b's complement cannot
 #:   reach: it states no ``required``, and a clause tests a key that is PRESENT.
 #:
-#: **SEVEN CAUSES, NOT 128**, which is the reading ``codegen/dump_exemptions.py``'s own
+#: **RE-PINNED AT ``sdk/collapse``: 128 IN 63 -> 126 IN 62, AND IT IS §3a's OWN PREDICTED
+#: DENOMINATOR AND NOT PROGRESS.**  §3a: "An approximation is counted today at the
+#: declaration SITE, because each position derives its own type and a dropped fact is
+#: dropped at that position.  **Under a catalogue the denominator becomes the ENTRY** ...
+#: whatever they become must be re-derived and reported as a changed denominator rather
+#: than as progress."  Reading 4's object layer now collects the structures the bundle
+#: titles nowhere, so a position that RESTATES one declares no class and drops no fact.
+#:
+#: **The two that left are one fact each, already declared at the entry's home**, and that
+#: is why this is the §8-sentence-2 reading at a second scope rather than a loosening:
+#: ``content-standards/update-content-standards-request.json``'s
+#: ``#/properties/calibration_exemplars`` is the same structure
+#: ``content-standards/create-content-standards-request.json`` states, so the two
+#: inseparable ``oneOf``\\ s beneath it are the ones pinned two lines above at the
+#: ``create-`` document -- which are live and unmoved.  **Nothing arrived**: ``declared and
+#: not pinned`` is empty, so no widening is new and none became silent (the silent
+#: direction is :data:`UNDERDETERMINED_UNIONS`, unchanged at 88, with
+#: ``harness.underdetermined_census`` resolving a site beneath a collapsed position to the
+#: entry's home exactly as it already resolves an inlined occurrence to its stating site).
+#:
+#: **SEVEN CAUSES, NOT 126**, which is the reading ``codegen/dump_exemptions.py``'s own
 #: instrument records for the same shape: one row at 89 conditions, one derivation at 25
 #: unions, one cell at 7 containers, one conditional shape at 4 nodes, one discarded drop
 #: set at 2, one keyword at 1.  The pointer count and
@@ -296,8 +316,6 @@ DECLARED_WIDENINGS = {
     ('content-standards/get-content-standards-response.json', '#/oneOf', 'oneOf'),
     ('content-standards/get-media-buy-artifacts-response.json', '#/oneOf', 'oneOf'),
     ('content-standards/list-content-standards-response.json', '#/oneOf', 'oneOf'),
-    ('content-standards/update-content-standards-request.json', '#/properties/calibration_exemplars/properties/fail/items/oneOf', 'oneOf'),
-    ('content-standards/update-content-standards-request.json', '#/properties/calibration_exemplars/properties/pass/items/oneOf', 'oneOf'),
     ('content-standards/validate-content-delivery-response.json', '#/oneOf', 'oneOf'),
     ('core/evaluator-spec.json', '#/oneOf', 'oneOf'),
     ('media-buy/build-creative-response.json', '#/oneOf', 'oneOf'),
@@ -475,8 +493,21 @@ def test_the_underdetermined_equality_holds_in_both_directions() -> None:
         if isinstance(got := bundle.recorded(BUNDLE, document, known), tuple)
     }
     claimed("documents of record a fresh run emits", set(records))
+    # **§3a's CATALOGUE as the SECOND resolution** (``harness.underdetermined_census``): a
+    # position whose type is a catalogue entry declares nothing in this module, so a union
+    # beneath it is the ENTRY's site and is counted at the entry's home.  Read off the one
+    # collection the run reads, so this instrument and the walk cannot disagree about which
+    # positions those are.
+    collapsed = {
+        document: frozenset(row)
+        for document, row in catalogue.collect_shapes(
+            catalogue.Admitted(BUNDLE), "L2", emit.standing_order(BUNDLE)
+        )
+        .restating()
+        .items()
+    }
     stale, silent = harness.underdetermined_census(
-        [one for sites in out.approximations.values() for one in sites], records
+        [one for sites in out.approximations.values() for one in sites], records, collapsed
     )
     at = [one.split(": ", 1)[0] for one in silent]
     disagreements: list[Any] = []

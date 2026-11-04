@@ -16,7 +16,7 @@ from .signal_id import SignalID
 from .signal_ref import SignalRef
 
 
-class Range(AdCPBaseModel):
+class ObjMinMax(AdCPBaseModel):
     """
     Valid range for numeric signals. Present when value_type is 'numeric'.
     """
@@ -51,9 +51,9 @@ class SignalListing(AdCPBaseModel):
     last_updated: Annotated[AwareDatetime | None, Field(description='When this listing record was last updated. This indicates freshness of the listing record, not an attestation that the underlying data or model was refreshed at that time.')] = None
     value_type: Annotated[SignalValueType | None, Field(description="The data type of this signal's values. Required when signal_ref.scope is 'product'.")] = None
     categories: Annotated[list[str] | None, Field(description="Valid values for categorical signals. Present when value_type is 'categorical'.", min_length=1)] = None
-    range: Annotated[Range | None, Field(description="Valid range for numeric signals. Present when value_type is 'numeric'.")] = None
+    range: Annotated[ObjMinMax | None, Field(description="Valid range for numeric signals. Present when value_type is 'numeric'.")] = None
     restricted_attributes: Annotated[list[RestrictedAttribute] | None, Field(description='Restricted attribute categories this listing touches. Required with demographic_predicate and must include age. For referenced provider/source signals, any projected values must match the authoritative definition.', min_length=1)] = None
     demographic_predicate: Annotated[DemographicPredicate | None, Field(description='Machine-readable demographic meaning. For product-local signals this listing is authoritative; for data-provider and signal-source refs, any projected value MUST match the referenced authoritative definition. Signal names alone never establish demographic semantics.')] = None
 
 
-__all__ = ["Range", "SignalListing"]
+__all__ = ["ObjMinMax", "SignalListing"]

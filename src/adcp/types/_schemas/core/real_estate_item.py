@@ -7,31 +7,13 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field, NonNegativeFloat, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import (
-    AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem,
-    FloatMinNeg90Max90,
-    FloatMinNeg180Max180,
-    HttpUrl,
-)
+from adcp.types.constraints import HttpUrl
 
+from .destination_item import ObjLatLng
 from .ext import ExtensionObject
+from .hotel_item import Address
 from .offering_asset_group import OfferingAssetGroup
 from .price import Price
-
-
-class Address(AdCPBaseModel):
-    """
-    Property address.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/real-estate-item.json', pointer='#/properties/address')
-    street: Annotated[str | None, Field(description='Street address.')] = None
-    city: Annotated[str | None, Field(description='City name.')] = None
-    region: Annotated[str | None, Field(description='State, province, or region.')] = None
-    postal_code: Annotated[str | None, Field(description='Postal or ZIP code.')] = None
-    country: Annotated[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem | None, Field(description='ISO 3166-1 alpha-2 country code.')] = None
 
 
 class PropertyType(StrEnum):
@@ -74,18 +56,6 @@ class Area(AdCPBaseModel):
     unit: Annotated[Unit, Field(description='Area unit.')]
 
 
-class Location(AdCPBaseModel):
-    """
-    Geographic coordinates of the property.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/real-estate-item.json', pointer='#/properties/location')
-    lat: Annotated[FloatMinNeg90Max90, Field(description='Latitude in decimal degrees (WGS 84).')]
-    lng: Annotated[FloatMinNeg180Max180, Field(description='Longitude in decimal degrees (WGS 84).')]
-
-
 class RealEstateItem(AdCPBaseModel):
     """
     A property listing within a real-estate-type catalog. Carries the address, pricing, and specification data that platforms use for real estate ads and dynamic remarketing. Maps to Google DynamicRealEstateAsset, Meta home listing catalogs, and similar formats.
@@ -104,7 +74,7 @@ class RealEstateItem(AdCPBaseModel):
     bathrooms: Annotated[NonNegativeFloat | None, Field(description='Number of bathrooms (e.g., 2.5 for two full and one half bath).')] = None
     area: Annotated[Area | None, Field(description='Property size.')] = None
     description: Annotated[str | None, Field(description='Property description.')] = None
-    location: Annotated[Location | None, Field(description='Geographic coordinates of the property.')] = None
+    location: Annotated[ObjLatLng | None, Field(description='Geographic coordinates of the property.')] = None
     image_url: Annotated[HttpUrl | None, Field(description='Primary property image URL.')] = None
     url: Annotated[HttpUrl | None, Field(description='Listing page URL.')] = None
     neighborhood: Annotated[str | None, Field(description='Neighborhood or area name.')] = None

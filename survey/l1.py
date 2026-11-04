@@ -18,7 +18,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from codegen import catalogue, constraints
+from codegen import catalogue, constraints, emit
 
 
 def l0(bundle_dir: Path) -> None:
@@ -61,20 +61,35 @@ def l1(bundle_dir: Path) -> None:
 
 def structural(bundle_dir: Path, layer: str, key: str) -> None:
     print(f"=== {layer}  key: {key} ===")
-    found = catalogue.collect_shapes(catalogue.Admitted(bundle_dir), layer)
+    # ``emit.standing_order`` is §3a's home rule's own input and the RUN's own reading of
+    # it, handed in rather than recomputed here -- which is this file's own rule about a
+    # derived reading having one owner.
+    found = catalogue.collect_shapes(
+        catalogue.Admitted(bundle_dir), layer, emit.standing_order(bundle_dir)
+    )
     keys = collections.Counter(p.key for p in found.positions)
     print(f"  stating positions                 {len(found.positions)}")
     print(f"  distinct structures               {len(keys)}")
     print(f"  stated at more than one position  {len([k for k, n in keys.items() if n > 1])}")
     print(f"  one document only (§4's dedup)    {len(found.restated)}")
-    print(f"  NAMED entries -- the collapse     {len(found.entries)}"
+    print(f"  COLLECTED entries                 {len(found.entries)}"
           f"  restating positions {sum(len(e.restating) for e in found.entries.values())}")
+    steps = collections.Counter(e.step for e in found.entries.values())
+    print(f"    §4 step 1  the bundle's title   {steps[1]}"
+          f"  restating {sum(len(e.restating) for e in found.entries.values() if e.step == 1)}")
+    print(f"    §4 step 2  the structure in words {steps[2]}"
+          f"  restating {sum(len(e.restating) for e in found.entries.values() if e.step == 2)}")
+    print(f"    §4 step 3  the declaring position {steps[3]}"
+          f"  restating {sum(len(e.restating) for e in found.entries.values() if e.step == 3)}")
     print(f"  withheld, enumerated              {len(found.withheld)}")
-    print(f"  untitled -- the upstream ask      {len(found.untitled)}"
+    print(f"  undeclared, enumerated            {len(found.undeclared)}")
+    print(f"  NOT COLLECTED, no title anywhere  {len(found.untitled)}"
           f"  positions {sum(len(g) for g in found.untitled)}")
     print(f"  conflicting titles                {len(found.conflicting)}")
     print(f"  every position a document ROOT    {len(found.duplicated)}"
           f"  positions {sum(len(g) for g in found.duplicated)}")
+    print(f"  no position declares a class      {len(found.declaring_nothing)}"
+          f"  positions {sum(len(g) for g in found.declaring_nothing)}")
 
 
 def main() -> None:

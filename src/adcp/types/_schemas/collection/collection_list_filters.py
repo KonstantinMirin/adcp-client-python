@@ -9,18 +9,9 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 
 from ..core.content_rating import ContentRating
 from ..enums.collection_kind import CollectionKind
-from ..enums.distribution_identifier_type import DistributionIdentifierType
 from ..enums.genre_taxonomy import GenreTaxonomy
 from ..enums.production_quality import ProductionQuality
-
-
-class ExcludeDistributionIdsItem(AdCPBaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='collection/collection-list-filters.json', pointer='#/properties/exclude_distribution_ids/items')
-    type: Annotated[DistributionIdentifierType, Field(description='Type of distribution identifier')]
-    value: Annotated[str, Field(description='The identifier value')]
+from .base_collection_source import IdentifiersItem
 
 
 class CollectionListFilters(AdCPBaseModel):
@@ -37,7 +28,7 @@ class CollectionListFilters(AdCPBaseModel):
     genres_include: Annotated[list[str] | None, Field(description='Include only collections with any of these genres (OR logic). Collections without genre metadata are excluded. Values are interpreted against genre_taxonomy when present.', min_length=1)] = None
     genre_taxonomy: Annotated[GenreTaxonomy | None, Field(description='Taxonomy for genre filter values. When present, genres_include and genres_exclude values are interpreted as taxonomy IDs.')] = None
     kinds: Annotated[list[CollectionKind] | None, Field(description='Filter to these collection kinds', min_length=1)] = None
-    exclude_distribution_ids: Annotated[list[ExcludeDistributionIdsItem] | None, Field(description='Always exclude collections with these distribution identifiers', min_length=1)] = None
+    exclude_distribution_ids: Annotated[list[IdentifiersItem] | None, Field(description='Always exclude collections with these distribution identifiers', min_length=1)] = None
     production_quality: Annotated[list[ProductionQuality] | None, Field(description='Filter by production quality tier', min_length=1)] = None
 
 

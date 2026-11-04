@@ -4,13 +4,14 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Dependencies, ForbiddenGroups, Match, NegatedConditional, Rule
-from adcp.types.constraints import GetAccountFinancialsResponseSuccessCurrency, HttpUrl, IntMin1, StrMinLen1
+from adcp.types.constraints import GetAccountFinancialsResponseSuccessCurrency, IntMin1, StrMinLen1
 from adcp.types.envelopes import FailedResponse
 
+from ..core.account import CreditLimit, ObjUrlMessageExpiresAt
 from ..core.account_authorization import AccountAuthorization
 from ..core.account_identity_change import AccountIdentityChange
 from ..core.account_identity_change_preview import AccountIdentityChangePreview
@@ -57,25 +58,6 @@ class Action(StrEnum):
     FAILED = 'failed'
 
 
-class Setup(AdCPBaseModel):
-    """
-    Setup information for pending accounts. Provides the agent (or human) with next steps to complete account activation.
-    """
-    model_config = ConfigDict(
-        extra='allow',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='account/sync-accounts-response.json', pointer='#/oneOf/0/properties/accounts/items/properties/setup')
-    url: Annotated[HttpUrl | None, Field(description='URL where the human can complete the required action (credit application, legal agreement, add funds)')] = None
-    message: Annotated[str, Field(description="Human-readable description of what's needed")]
-    expires_at: Annotated[AwareDatetime | None, Field(description='When this setup link expires')] = None
-
-
-class CreditLimit(AdCPBaseModel):
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='account/sync-accounts-response.json', pointer='#/oneOf/0/properties/accounts/items/properties/credit_limit')
-    amount: NonNegativeFloat
-    currency: GetAccountFinancialsResponseSuccessCurrency
-
-
 class AccountsItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
@@ -106,7 +88,7 @@ class AccountsItem(AdCPBaseModel):
     billing: Annotated[BillingParty | None, Field(description='Who is invoiced on this account. Matches the requested billing model.')] = None
     billing_entity: Annotated[BusinessEntity | None, Field(description='Current canonical business entity for the party responsible for payment. Sellers MAY add verified fields, but MUST NOT return data from a different entity. During an operator-domain handoff this remains the current entity until approval applies atomically; destination_billing_entity is staged and write-only. Bank details are omitted (write-only).')] = None
     account_scope: AccountScope | None = None
-    setup: Annotated[Setup | None, Field(description='Setup information for pending accounts. Provides the agent (or human) with next steps to complete account activation.')] = None
+    setup: Annotated[ObjUrlMessageExpiresAt | None, Field(description='Setup information for pending accounts. Provides the agent (or human) with next steps to complete account activation.')] = None
     rate_card: Annotated[str | None, Field(description='Rate card applied to this account')] = None
     payment_terms: Annotated[PaymentTerms | None, Field(description='Payment terms agreed for this account. When the account is active, these are the binding terms for all invoices on this account.')] = None
     credit_limit: CreditLimit | None = None

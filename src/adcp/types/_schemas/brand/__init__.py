@@ -351,7 +351,7 @@ class FontFileStyle(StrEnum):
     OBLIQUE = 'oblique'
 
 
-class FontFile(AdCPBaseModel):
+class ObjUrlWeightWeightRangeStyle(AdCPBaseModel):
     """
     A font file with weight, style, and variable font metadata
     """
@@ -374,7 +374,7 @@ class BrandDiscoveryFontRoleFamily(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/font_role/oneOf/1')
     family: Annotated[str, Field(description="CSS font-family name (e.g., 'Brand Sans')")]
-    files: Annotated[list[FontFile] | None, Field(description='Font files for different weights and styles', max_length=36)] = None
+    files: Annotated[list[ObjUrlWeightWeightRangeStyle] | None, Field(description='Font files for different weights and styles', max_length=36)] = None
     opentype_features: Annotated[list[BrandDiscoveryFontRoleOpentypeFeaturesItem] | None, Field(description="OpenType feature tags to enable (e.g., ['ss01', 'tnum', 'cv01']). These are four-character tags per the OpenType spec.", max_length=20)] = None
     fallbacks: Annotated[list[StrMaxLen100] | None, Field(description="Ordered fallback font-family names for when the primary font is unavailable or does not support the required script (e.g., ['Noto Sans Arabic', 'Noto Sans SC', 'sans-serif'])", max_length=10)] = None
 
@@ -1619,4 +1619,4 @@ BrandDiscovery._branch_models = (AuthoritativeLocationRedirect, HouseRedirect, B
 BrandDiscovery.model_rebuild(force=True)
 
 
-__all__ = ["Agents", "Asset", "AssetLibrary", "AuthorizedOperator", "BorderRadius", "Brand", "BrandAgentEntry", "BrandDiscovery", "BrandDiscoveryBrandAgent", "BrandDiscoveryContact", "BrandDiscoveryFontRole", "BrandId", "BrandShapes", "ColorConstraint", "ColorRef", "ColorValue", "Colors", "Colorway", "CompositionRules", "DataSubjectContestation", "Domain", "Elevation", "FontFile", "Fonts", "GraphicElement", "GraphicStyle", "GuidelineSeverity", "HexColor", "House", "Iconography", "IdentityRelyingParty", "KellerType", "LocalizedName", "LocalizedScalar", "LocalizedStringList", "LocalizedStringListEntry", "Logo", "LogoId", "LogoPlacement", "LogoUsageRule", "MarkLockup", "MotionGuidelines", "PhotographyStyle", "PortfolioEntry", "ProductCatalog", "Property", "RightsAgent", "Spacing", "Trademark", "TypeScaleEntry", "VisualGuidelines"]
+__all__ = ["Agents", "Asset", "AssetLibrary", "AuthorizedOperator", "BorderRadius", "Brand", "BrandAgentEntry", "BrandDiscovery", "BrandDiscoveryBrandAgent", "BrandDiscoveryContact", "BrandDiscoveryFontRole", "BrandId", "BrandShapes", "ColorConstraint", "ColorRef", "ColorValue", "Colors", "Colorway", "CompositionRules", "DataSubjectContestation", "Domain", "Elevation", "Fonts", "GraphicElement", "GraphicStyle", "GuidelineSeverity", "HexColor", "House", "Iconography", "IdentityRelyingParty", "KellerType", "LocalizedName", "LocalizedScalar", "LocalizedStringList", "LocalizedStringListEntry", "Logo", "LogoId", "LogoPlacement", "LogoUsageRule", "MarkLockup", "MotionGuidelines", "ObjUrlWeightWeightRangeStyle", "PhotographyStyle", "PortfolioEntry", "ProductCatalog", "Property", "RightsAgent", "Spacing", "Trademark", "TypeScaleEntry", "VisualGuidelines"]

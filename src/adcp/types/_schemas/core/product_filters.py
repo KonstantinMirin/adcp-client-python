@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from datetime import date
 from enum import StrEnum
-from typing import Annotated, Any, ClassVar, Literal
+from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, TypeAdapter
 
@@ -11,8 +11,6 @@ from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Presence, PresenceGroups, RequiredGroups, Rule, UniqueItems
 from adcp.types.constraints import (
     AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem,
-    FloatGt0,
-    FloatMin1,
     FloatMinNeg90Max90,
     FloatMinNeg180Max180,
     GetAccountFinancialsResponseSuccessCurrency,
@@ -27,7 +25,6 @@ from ..enums.available_metric import AvailableMetric
 from ..enums.channels import MediaChannel
 from ..enums.cloud_storage_protocol import CloudStorageProtocol
 from ..enums.delivery_type import DeliveryType
-from ..enums.distance_unit import DistanceUnit
 from ..enums.exclusivity import Exclusivity
 from ..enums.geo_level import GeographicTargetingLevel
 from ..enums.match_type import MatchType
@@ -37,15 +34,14 @@ from ..enums.response_type import TMPResponseType
 from ..enums.social_placement_surface import SocialPlacementSurface
 from ..enums.sponsored_placement_type import SponsoredPlacementType
 from ..enums.transport_mode import TransportMode
-from ..enums.travel_time_unit import TravelTimeUnit
 from ..enums.video_placement_type import VideoPlacementType
 from ._vocabularies import _VALUES_INCLUDE_EXCLUDE
-from .audience_activation_method import AdCPAudienceSync, DirectionsItem
+from .audience_activation_method import AdCPAudienceSync, DirectionsItem, ObjAgentUrl
 from .audience_evidence_requirements import AudienceEvidenceRequirements
 from .brand_ref import BrandReference
 from .budget_range import BudgetRange
 from .canonical_format_kind import CanonicalFormatKind
-from .catchment import GeometryType
+from .catchment import ObjTypeCoordinates, Radius, TravelTime
 from .ext import ExtensionObject
 from .format_id import FormatReferenceStructuredObject
 from .format_option_ref import FormatOptionReference
@@ -58,7 +54,7 @@ from .vendor_metric_id import VendorMetricID
 PricingCurrenciesItem = Annotated[GetAccountFinancialsResponseSuccessCurrency, Field(description="ISO 4217 currency code (e.g., 'USD', 'EUR', 'GBP')")]
 
 
-class MetrosItem(AdCPBaseModel):
+class ObjSystemCode(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -77,7 +73,7 @@ class ProvidersItem(AdCPBaseModel):
     identity_match: Annotated[bool | None, Field(description='When true, require this provider to support identity match.')] = None
 
 
-class TrustedMatch(AdCPBaseModel):
+class ObjProvidersResponseTypes(AdCPBaseModel):
     """
     Filter products by Trusted Match Protocol capabilities. Only products with matching TMP support are returned.
     """
@@ -89,17 +85,6 @@ class TrustedMatch(AdCPBaseModel):
     response_types: Annotated[list[TMPResponseType] | None, Field(description="Filter to products supporting specific TMP response types (e.g., 'activation', 'creative', 'catalog_items'). Products must support at least one of the listed types.", min_length=1)] = None
 
 
-class BuyerAgent(AdCPBaseModel):
-    """
-    Require this buyer agent on tmp_identity_match entries. Buyers typically filter on their own agent_url.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-filters.json', pointer='#/properties/audience_activation_methods/items/oneOf/1/properties/buyer_agent')
-    agent_url: HttpUrl
-
-
 class AudienceActivationMethodsItemTmpIdentityMatch(AdCPBaseModel):
     """
     Filter by TMP identity-match path, optionally pinned to a specific buyer agent.
@@ -109,7 +94,7 @@ class AudienceActivationMethodsItemTmpIdentityMatch(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-filters.json', pointer='#/properties/audience_activation_methods/items/oneOf/1')
     pattern: Literal['tmp_identity_match']
-    buyer_agent: Annotated[BuyerAgent | None, Field(description='Require this buyer agent on tmp_identity_match entries. Buyers typically filter on their own agent_url.')] = None
+    buyer_agent: Annotated[ObjAgentUrl | None, Field(description='Require this buyer agent on tmp_identity_match entries. Buyers typically filter on their own agent_url.')] = None
 
 
 class AudienceActivationMethodsItemFileTransfer(AdCPBaseModel):
@@ -232,42 +217,6 @@ SignalTargetingItem._branch_models = (SignalTargetingItemBinary, SignalTargeting
 SignalTargetingItem.model_rebuild(force=True)
 
 
-class TravelTime(AdCPBaseModel):
-    """
-    Travel time limit for isochrone calculation
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-filters.json', pointer='#/properties/geo_proximity/items/properties/travel_time')
-    value: Annotated[FloatMin1, Field(description='Travel time limit')]
-    unit: TravelTimeUnit
-
-
-class Radius(AdCPBaseModel):
-    """
-    Simple radius from the point
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-filters.json', pointer='#/properties/geo_proximity/items/properties/radius')
-    value: Annotated[FloatGt0, Field(description='Radius distance')]
-    unit: Annotated[DistanceUnit, Field(description='Distance unit')]
-
-
-class Geometry(AdCPBaseModel):
-    """
-    Pre-computed GeoJSON geometry defining the proximity boundary
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-filters.json', pointer='#/properties/geo_proximity/items/properties/geometry')
-    type: Annotated[GeometryType, Field(description='GeoJSON geometry type')]
-    coordinates: Annotated[list[Any], Field(description='GeoJSON coordinates array')]
-
-
 class GeoProximityItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
@@ -282,7 +231,7 @@ class GeoProximityItem(AdCPBaseModel):
     travel_time: Annotated[TravelTime | None, Field(description='Travel time limit for isochrone calculation')] = None
     transport_mode: Annotated[TransportMode | None, Field(description='Transportation mode for isochrone calculation. Required when travel_time is provided.')] = None
     radius: Annotated[Radius | None, Field(description='Simple radius from the point')] = None
-    geometry: Annotated[Geometry | None, Field(description='Pre-computed GeoJSON geometry defining the proximity boundary')] = None
+    geometry: Annotated[ObjTypeCoordinates | None, Field(description='Pre-computed GeoJSON geometry defining the proximity boundary')] = None
 
 
 class RequiredVendorMetricsItem(AdCPBaseModel):
@@ -341,14 +290,14 @@ class ProductFilters(AdCPBaseModel):
     budget_range: Annotated[BudgetRange | None, Field(description='Budget range to filter appropriate products')] = None
     countries: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem] | None, Field(description='DEPRECATED legacy coverage filter. On compact discovery tasks use criteria.offer_filters.countries. Return products whose inventory covers at least one requested area; this does not impose delivery targeting or require selectable targeting support. Retained get_products handlers MUST preserve the original coverage predicate.', min_length=1)] = None
     regions: Annotated[list[RegionsItem] | None, Field(description='DEPRECATED legacy coverage filter. On compact discovery tasks use criteria.offer_filters.regions. Return products whose inventory covers at least one requested area; this does not impose delivery targeting or require selectable targeting support. Retained get_products handlers MUST preserve the original coverage predicate.', min_length=1)] = None
-    metros: Annotated[list[MetrosItem] | None, Field(description='DEPRECATED legacy coverage filter. On compact discovery tasks use criteria.offer_filters.metros. Return products whose inventory covers at least one requested area; this does not impose delivery targeting or require selectable targeting support. Retained get_products handlers MUST preserve the original coverage predicate.', min_length=1)] = None
+    metros: Annotated[list[ObjSystemCode] | None, Field(description='DEPRECATED legacy coverage filter. On compact discovery tasks use criteria.offer_filters.metros. Return products whose inventory covers at least one requested area; this does not impose delivery targeting or require selectable targeting support. Retained get_products handlers MUST preserve the original coverage predicate.', min_length=1)] = None
     channels: Annotated[list[MediaChannel] | None, Field(description="Filter by advertising channels (e.g., ['display', 'ctv', 'dooh'])", min_length=1)] = None
     video_placement_types: Annotated[list[VideoPlacementType] | None, Field(description='Filter product metadata by declared video placement types, using IAB Tech Lab/OpenRTB 2.6 video.plcmt definitions with AdCP-native names. A product matches when its declared array intersects the requested array. This is discovery classification only and does not promise delivery exclusively on a requested type; buyers needing exact placement inventory use targeting_overlay.placement_selection against targetable placements. This filter has set semantics for wholesale feed canonicalization.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     audio_distribution_types: Annotated[list[AudioDistributionType] | None, Field(description='Filter product metadata by declared audio distribution types, using IAB Tech Lab/OpenRTB 2.6 audio.feed definitions with AdCP-native names. A product matches when its declared array intersects the requested array. This is discovery classification only and does not promise delivery exclusively on a requested type. This filter has set semantics for wholesale feed canonicalization.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     sponsored_placement_types: Annotated[list[SponsoredPlacementType] | None, Field(description='Filter retail-media product metadata by declared sponsored-placement types (sponsored search, sponsored display, or sponsored native). A product matches when its declared array intersects the requested array. This is discovery classification only and does not promise delivery exclusively on a requested type. This filter has set semantics for wholesale feed canonicalization.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     social_placement_surfaces: Annotated[list[SocialPlacementSurface] | None, Field(description='Filter social-product metadata by declared placement surfaces (feed, stories, short_video, explore, or search). A product matches when its declared array intersects the requested array. This is discovery classification only and does not promise delivery exclusively on a requested surface; buyers needing an exact public placement use targeting_overlay.placement_selection. This filter has set semantics for wholesale feed canonicalization.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     required_axe_integrations: Annotated[list[HttpUrl] | None, Field(description='Deprecated: Use trusted_match filter instead. Filter to products executable through specific agentic ad exchanges. URLs are canonical identifiers.', min_length=1)] = None
-    trusted_match: Annotated[TrustedMatch | None, Field(description='Filter products by Trusted Match Protocol capabilities. Only products with matching TMP support are returned.')] = None
+    trusted_match: Annotated[ObjProvidersResponseTypes | None, Field(description='Filter products by Trusted Match Protocol capabilities. Only products with matching TMP support are returned.')] = None
     audience_activation_methods: Annotated[list[AdCPAudienceSync | AudienceActivationMethodsItemTmpIdentityMatch | AudienceActivationMethodsItemFileTransfer | AudienceActivationMethodsItemDatasetQuery | AudienceActivationMethodsItemCleanRoom | AudienceActivationMethodsItemPlatformDistribution] | None, Field(description="Filter to products whose audience_activation.methods matches at least one requested entry (OR across entries). Within an entry every specified field must match (AND); omitted optional fields are wildcards; directions matches on non-empty intersection, and a method that omits directions matches any requested directions; vendor matches on domain, plus brand_id when specified. Fields inapplicable to the requested pattern (e.g. transport on a clean_room entry) make that entry unsatisfiable. Sellers MUST exclude products with no audience_activation declaration when this filter is present; exclusions MAY be reported via filter_diagnostics.excluded_by. Experimental: part of the media_buy.audience_activation surface — buyers SHOULD check the seller's experimental_features before filtering on it; sellers that do not list the feature ignore this filter.", json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     required_features: Annotated[MediaBuyFeatures | None, Field(description='Filter to products from sellers supporting specific protocol features. Only features set to true are used for filtering.')] = None
     required_geo_targeting: Annotated[list[RequiredGeoTargetingItem] | None, Field(description='DEPRECATED. Use get_products.required_overlay_support, which is product-scoped and applies consistently to geographic and non-geographic targeting dimensions.', min_length=1)] = None

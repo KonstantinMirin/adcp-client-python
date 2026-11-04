@@ -9,20 +9,18 @@ from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, PropertyCount, Rule
 from adcp.types.constraints import (
     AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem,
-    AdCPUrl,
     BrandDiscoveryColorValue,
     BrandDiscoveryFontRoleOpentypeFeaturesItem,
     DictMinProperties1,
     DictMinProperties1MaxProperties1,
     HttpUrl,
-    IntMin100Max900,
     NonEmptyList,
     StrMaxLen100,
     StrMinLen1,
 )
 from adcp.types.envelopes import FailedResponse
 
-from ..brand import Background, FontFileStyle, KellerType, LogoOrientation, LogoVariant
+from ..brand import Background, KellerType, LogoOrientation, LogoVariant, ObjUrlWeightWeightRangeStyle
 from ..core.context import ContextObject
 from ..core.error import Error
 from ..core.ext import ExtensionObject
@@ -49,7 +47,7 @@ class GetBrandIdentityResponse(BranchDispatchMixin, AdCPVersionEnvelope, Protoco
         return "oneOf"
 
 
-class House(AdCPBaseModel):
+class ObjDomainName(AdCPBaseModel):
     """
     The house (corporate entity) this brand belongs to. Always returned regardless of authorization level.
     """
@@ -91,24 +89,13 @@ class Colors(AdCPBaseModel):
     text: BrandDiscoveryColorValue | NonEmptyList[BrandDiscoveryColorValue] | None = None
 
 
-class FilesItem(AdCPBaseModel):
-    model_config = ConfigDict(
-        extra='allow',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/get-brand-identity-response.json', pointer='#/oneOf/0/properties/fonts/definitions/font_role/oneOf/1/properties/files/items')
-    url: Annotated[AdCPUrl, Field(description='HTTPS URL to the font file')]
-    weight: Annotated[IntMin100Max900 | None, Field(description='CSS numeric font-weight')] = None
-    weight_range: Annotated[list[IntMin100Max900] | None, Field(description='Variable font weight axis range as [min, max]', max_length=2, min_length=2)] = None
-    style: Annotated[FontFileStyle | None, Field(description='CSS font-style')] = None
-
-
 class GetBrandIdentityResponseFontRoleFamily(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/get-brand-identity-response.json', pointer='#/oneOf/0/properties/fonts/definitions/font_role/oneOf/1')
     family: Annotated[str, Field(description='CSS font-family name')]
-    files: Annotated[list[FilesItem] | None, Field(max_length=36)] = None
+    files: Annotated[list[ObjUrlWeightWeightRangeStyle] | None, Field(max_length=36)] = None
     opentype_features: Annotated[list[BrandDiscoveryFontRoleOpentypeFeaturesItem] | None, Field(description="OpenType feature tags to enable (e.g., ['ss01', 'tnum'])", max_length=20)] = None
     fallbacks: Annotated[list[StrMaxLen100] | None, Field(description='Ordered fallback font-family names for script coverage', max_length=10)] = None
 
@@ -202,7 +189,7 @@ class GetBrandIdentitySuccess(GetBrandIdentityResponse):
         ForbiddenGroups((('errors',),)),
     )
     brand_id: Annotated[str, Field(description='Brand identifier')]
-    house: Annotated[House, Field(description='The house (corporate entity) this brand belongs to. Always returned regardless of authorization level.')]
+    house: Annotated[ObjDomainName, Field(description='The house (corporate entity) this brand belongs to. Always returned regardless of authorization level.')]
     names: Annotated[list[DictMinProperties1[str, str]], Field(description="Localized brand names with BCP 47 locale code keys (e.g., 'en_US', 'fr_CA'). Bare language codes ('en') are accepted as wildcards for backwards compatibility.")]
     description: Annotated[str | None, Field(description='Brand description')] = None
     industries: Annotated[list[str] | None, Field(description='Brand industries.', min_length=1)] = None

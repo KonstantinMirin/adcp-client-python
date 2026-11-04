@@ -9,7 +9,6 @@ from pydantic import ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Dependencies, Match, Rule, UniqueItems
 from adcp.types.constraints import (
-    AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain,
     AgentReportingDestinationFileTransferDestinationTransport,
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
     HttpUrl,
@@ -22,7 +21,7 @@ from adcp.types.constraints import (
 
 from ..enums.reporting_finality import ReportingFinality
 from .reporting_canonicalization_contract import ReportingPrimaryKey
-from .reporting_dataset_share_destination import ReportingCloud
+from .reporting_dataset_share_destination import ObjDomain, ReportingCloud
 from .reporting_delivery_method import FileFormat, ReportingOrchestration
 from .reporting_reconciliation_mode import ReportingReconciliationMode
 from .reporting_resource import ReportingReaderCompatibilityItem
@@ -75,17 +74,6 @@ class DestinationModesItem(StrEnum):
     EXISTING = 'existing'
 
 
-class MethodProvider(AdCPBaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-delivery-offering.json', pointer='#/properties/method/properties/provider')
-    domain: AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain
-
-
-ProducerIdentityProvider = MethodProvider
-
-
 class ProducerIdentity(AdCPBaseModel):
     """
     Seller principal a buyer grants access to for this exact buyer-hosted destination offering.
@@ -98,7 +86,7 @@ class ProducerIdentity(AdCPBaseModel):
         Dependencies('cloud', ('region',)),
         Dependencies('region', ('cloud',)),
     )
-    provider: ProducerIdentityProvider
+    provider: ObjDomain
     identity: StrMinLen1MaxLen512
     cloud: ReportingCloud | None = None
     region: StrMinLen1MaxLen128 | None = None
@@ -123,7 +111,7 @@ class Method(AdCPBaseModel):
     transport: AgentReportingDestinationFileTransferDestinationTransport
     orchestration: ReportingOrchestration
     destination_modes: Annotated[list[DestinationModesItem], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
-    provider: MethodProvider | None = None
+    provider: ObjDomain | None = None
     format: FileFormat | None = None
     access_mode: AgentReportingDestinationFileTransferDestinationTransport | None = None
     producer_identity: Annotated[ProducerIdentity | None, Field(description='Seller principal a buyer grants access to for this exact buyer-hosted destination offering.')] = None

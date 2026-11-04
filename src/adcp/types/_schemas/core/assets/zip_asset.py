@@ -9,17 +9,7 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types.constraints import HttpUrl, ZipAssetDigest
 
 from ..provenance import Provenance
-
-
-class Accessibility(AdCPBaseModel):
-    """
-    Self-declared accessibility properties for this opaque creative
-    """
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/zip-asset.json', pointer='#/properties/accessibility')
-    alt_text: Annotated[str | None, Field(description='Text alternative describing the creative content')] = None
-    keyboard_navigable: Annotated[bool | None, Field(description='Whether the creative can be fully operated via keyboard')] = None
-    motion_control: Annotated[bool | None, Field(description='Whether the creative respects prefers-reduced-motion or provides pause/stop controls')] = None
-    screen_reader_tested: Annotated[bool | None, Field(description='Whether the creative has been tested with screen readers')] = None
+from .html_asset import Accessibility
 
 
 class ZipAsset(AdCPBaseModel):

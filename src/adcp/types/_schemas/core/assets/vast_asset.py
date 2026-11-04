@@ -8,12 +8,12 @@ from pydantic import ConfigDict, Field, NonNegativeInt
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types.constraints import HttpUrl
 
-from ...enums.macro_value_context import MacroValueContext
 from ...enums.vast_tracking_event import VASTTrackingEvent
 from ...enums.vast_version import VASTVersion
 from ..macro_bearing_url import MacroBearingURL
 from ..macro_declaration import MacroDeclaration
 from ..provenance import Provenance
+from .daast_asset import DAASTAssetInlineMacroDeclarationsItem, DAASTAssetUrlMacroDeclarationsItem
 
 
 class VASTAsset(BranchDispatchMixin, AdCPBaseModel):
@@ -41,27 +41,6 @@ class VASTAsset(BranchDispatchMixin, AdCPBaseModel):
     provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this asset, overrides manifest-level provenance')] = None
 
 
-class VASTAssetUrlMacroDeclarationsItemLocation(AdCPBaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/vast-asset.json', pointer='#/oneOf/0/properties/macro_declarations/items/properties/location')
-    field: Annotated[Literal['url'], Field(description='Asset field containing this occurrence.')]
-    occurrence: Annotated[NonNegativeInt, Field(description='Zero-based occurrence of this exact token within the named field.')]
-    context: MacroValueContext
-
-
-class VASTAssetUrlMacroDeclarationsItem(MacroDeclaration):
-    """
-    The source-faithful contract for one occurrence of one macro token. It identifies the current dialect, verified mapping status, exact asset-field occurrence, next processing operation, actor, and encoding. Translation and concrete value resolution are separate operations: a translator emits the declared native token and replaces this declaration with the target declaration. Unknown tokens are always byte-preserved.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/vast-asset.json', pointer='#/oneOf/0/properties/macro_declarations/items')
-    location: VASTAssetUrlMacroDeclarationsItemLocation
-
-
 class VASTAssetUrl(VASTAsset):
     model_config = ConfigDict(
         extra='allow',
@@ -69,28 +48,7 @@ class VASTAssetUrl(VASTAsset):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/vast-asset.json', pointer='#/oneOf/0')
     delivery_type: Annotated[Literal['url'], Field(description='Discriminator indicating VAST is delivered via URL endpoint')]
     url: Annotated[MacroBearingURL, Field(description='URL endpoint returning VAST XML. Macro delimiters remain byte-preserved; declarations distinguish occurrences in this locator URL from occurrences in inline or fetched VAST content.')]
-    macro_declarations: Annotated[list[VASTAssetUrlMacroDeclarationsItem] | None, Field(description='One declaration per exact occurrence in a field carried by this asset. A URL-delivered asset can declare only occurrences in its locator `url`; tokens discovered later in a fetched VAST response require document validation evidence or an inline/snapshotted asset and MUST NOT be guessed from the locator. IAB tokens cite a registry namespace and revision rather than copying the live registry into AdCP.', min_length=1)] = None
-
-
-class VASTAssetInlineMacroDeclarationsItemLocation(AdCPBaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/vast-asset.json', pointer='#/oneOf/1/properties/macro_declarations/items/properties/location')
-    field: Annotated[Literal['content'], Field(description='Asset field containing this occurrence.')]
-    occurrence: Annotated[NonNegativeInt, Field(description='Zero-based occurrence of this exact token within the named field.')]
-    context: MacroValueContext
-
-
-class VASTAssetInlineMacroDeclarationsItem(MacroDeclaration):
-    """
-    The source-faithful contract for one occurrence of one macro token. It identifies the current dialect, verified mapping status, exact asset-field occurrence, next processing operation, actor, and encoding. Translation and concrete value resolution are separate operations: a translator emits the declared native token and replaces this declaration with the target declaration. Unknown tokens are always byte-preserved.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/vast-asset.json', pointer='#/oneOf/1/properties/macro_declarations/items')
-    location: VASTAssetInlineMacroDeclarationsItemLocation
+    macro_declarations: Annotated[list[DAASTAssetUrlMacroDeclarationsItem] | None, Field(description='One declaration per exact occurrence in a field carried by this asset. A URL-delivered asset can declare only occurrences in its locator `url`; tokens discovered later in a fetched VAST response require document validation evidence or an inline/snapshotted asset and MUST NOT be guessed from the locator. IAB tokens cite a registry namespace and revision rather than copying the live registry into AdCP.', min_length=1)] = None
 
 
 class VASTAssetInline(VASTAsset):
@@ -100,7 +58,7 @@ class VASTAssetInline(VASTAsset):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/vast-asset.json', pointer='#/oneOf/1')
     delivery_type: Annotated[Literal['inline'], Field(description='Discriminator indicating VAST is delivered as inline XML content')]
     content: Annotated[str, Field(description='Inline VAST XML content')]
-    macro_declarations: Annotated[list[VASTAssetInlineMacroDeclarationsItem] | None, Field(description='One declaration per exact occurrence in a field carried by this asset. A URL-delivered asset can declare only occurrences in its locator `url`; tokens discovered later in a fetched VAST response require document validation evidence or an inline/snapshotted asset and MUST NOT be guessed from the locator. IAB tokens cite a registry namespace and revision rather than copying the live registry into AdCP.', min_length=1)] = None
+    macro_declarations: Annotated[list[DAASTAssetInlineMacroDeclarationsItem] | None, Field(description='One declaration per exact occurrence in a field carried by this asset. A URL-delivered asset can declare only occurrences in its locator `url`; tokens discovered later in a fetched VAST response require document validation evidence or an inline/snapshotted asset and MUST NOT be guessed from the locator. IAB tokens cite a registry namespace and revision rather than copying the live registry into AdCP.', min_length=1)] = None
 
 
 VASTAsset._branch_models = (VASTAssetUrl, VASTAssetInline,)

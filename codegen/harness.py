@@ -6336,6 +6336,7 @@ def _inseparable(
 def underdetermined_census(
     declared: Sequence[Approximation],
     records: Mapping[str, tuple[Mapping[str, Any], bundle.Origins]],
+    collapsed: Mapping[str, Collection[str]] = {},
 ) -> tuple[list[str], list[str]]:
     """Section 8's UNDERDETERMINED equality, in BOTH directions.
 
@@ -6358,6 +6359,28 @@ def underdetermined_census(
     states rather than being counted as a site of its own.  Without that resolution the
     silent direction reports 89 sites for 24 unions and the equality is about the reference
     graph instead of about the declarations.
+
+    **AND §3a's CATALOGUE IS THE SECOND RESOLUTION, for the same reason the first one is
+    here.**  This docstring's own sentence about L0 -- "§3a settled the same question for a
+    vocabulary: *the entry, not the declaration site*" -- reaches L2 the moment the object
+    layer collects: a position whose type is a catalogue entry declares **nothing** in this
+    module, so a union beneath it is not a site this document's module could declare at,
+    and the entry's HOME states the same structure and is counted there.  ``collapsed`` is
+    ``catalogue.Shapes.restating`` read for its pointers, document -> the pointers this
+    document RESTATES, and a site at or beneath one of them resolves to the home's.
+
+    Measured over this bundle: two sites,
+    ``content-standards/update-content-standards-request.json`` at
+    ``#/properties/calibration_exemplars/properties/{pass,fail}/items/oneOf``, whose
+    ``calibration_exemplars`` is the same structure
+    ``content-standards/create-content-standards-request.json`` states and whose two
+    inseparable unions are declared there.  Without the resolution the silent direction
+    reports them as undeclared, which is the per-DOCUMENT reading of a fact the catalogue
+    makes per ENTRY -- and the class a consumer actually holds carries the declaration.
+
+    Empty by default, which is the reading this instrument had before the object layer
+    collected anything: a run with no catalogue restates every structure and every site is
+    its own document's.
     """
     declared_at = {
         (one.document, one.pointer)
@@ -6366,8 +6389,12 @@ def underdetermined_census(
     }
     inseparable = {
         site
-        for record, origins in records.values()
+        for document, (record, origins) in records.items()
         for site in inseparable_sites(record, origins)
+        if not any(
+            site[0] == document and site[1].lstrip("#").startswith(at)
+            for at in collapsed.get(document, ())
+        )
     }
     return (
         sorted(f"{d}{p}: declared UNDERDETERMINED and the derivation separates it" for d, p in declared_at - inseparable),
