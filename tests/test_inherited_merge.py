@@ -41,13 +41,13 @@ class _NoReferences:
 
     ``resolve_node`` is the one member the rule reads, and every declaration in this file
     is written inline -- so it answers ``None`` for every URI, which is
-    :func:`codegen.intersect._dereferenced`'s "leave the declaration as written".  A stub
+    :func:`codegen.intersect.dereferenced`'s "leave the declaration as written".  A stub
     and not a :class:`codegen.compiler.Module`, because needing one would mean the rule is
     not pure over its two declarations and this file's whole claim would be false.
     """
 
     @staticmethod
-    def resolve_node(uri: str) -> dict | None:
+    def resolve_node(_uri: str) -> dict | None:
         return None
 
 
@@ -148,7 +148,7 @@ def test_a_restatement_that_adds_nothing_leaves_the_field_inherited() -> None:
     assert out.own == {} and out.reuse == {} and out.distinct == set()
 
 
-def test_a_restatement_differing_only_in_what_a_READER_sees_states_the_field() -> None:
+def test_a_restatement_differing_only_in_what_a_reader_sees_states_the_field() -> None:
     """The third arm: §6's description-authority rule.
 
     "A document's own declaration governs the annotation at its own pointer", so a
@@ -164,7 +164,7 @@ def test_a_restatement_differing_only_in_what_a_READER_sees_states_the_field() -
     assert out.own == {"a": base | child}
 
 
-def test_a_restatement_that_only_annotates_reuses_the_bases_DECIDED_field() -> None:
+def test_a_restatement_that_only_annotates_reuses_the_bases_decided_field() -> None:
     """The third arm's EMPTY half, which is the one that reaches ``_reused``.
 
     A restatement with no constraining content of its own says nothing about the instance,
@@ -185,13 +185,13 @@ def test_a_restatement_that_only_annotates_reuses_the_bases_DECIDED_field() -> N
     assert out.own["a"]["description"] == "the document's own"
 
 
-def test_a_requiredness_the_base_does_not_have_is_a_NARROWING() -> None:
+def test_a_requiredness_the_base_does_not_have_is_a_narrowing() -> None:
     """The second arm through its other door: ``required`` moved and nothing else.
 
     Left inherited, the field keeps the base's optionality while the composing document's
     own ``required`` names it -- so the class accepts a payload the document refuses and
     renders a ``default: None`` the document does not state.  The restatement here is
-    EQUAL to the base, so ``_restatement`` is false and the requiredness is the whole of
+    EQUAL to the base, so ``restatement`` is false and the requiredness is the whole of
     what narrows.
     """
     held = ir.Field(name="a", wire="a", type=ir.TypeRef("str"), required=True)
@@ -208,7 +208,7 @@ def test_a_requiredness_the_base_does_not_have_is_a_NARROWING() -> None:
     assert out.reuse == {"a": held}
 
 
-def test_the_requiredness_OVERLAY_reaches_a_key_no_view_declares() -> None:
+def test_the_requiredness_overlay_reaches_a_key_no_view_declares() -> None:
     """§2's only permitted redeclaration, and the arm the per-key loop cannot reach.
 
     ``{"required": ["a"]}`` and nothing more: no view of this document declares ``a``, so
@@ -240,7 +240,7 @@ def test_an_overlay_for_a_required_name_no_view_declares_writes_nothing() -> Non
     assert out.own == {} and out.reuse == {} and out.distinct == set()
 
 
-def test_a_uniqueItems_taken_from_the_BASE_is_recorded_as_a_rule_the_class_inherits() -> None:
+def test_a_unique_items_taken_from_the_base_is_recorded_as_a_rule_the_class_inherits() -> None:
     """The ``distinct`` map: the keyword the intersection merged back in.
 
     A bare ``{"contains": ...}`` restatement over an array base intersects to the base's
@@ -257,7 +257,7 @@ def test_a_uniqueItems_taken_from_the_BASE_is_recorded_as_a_rule_the_class_inher
     assert out.own["xs"]["uniqueItems"] is True
 
 
-def test_a_uniqueItems_the_RESTATEMENT_states_itself_is_not_the_bases_rule() -> None:
+def test_a_unique_items_the_restatement_states_itself_is_not_the_bases_rule() -> None:
     """The control for the test above: ``distinct`` is about where the keyword CAME FROM.
 
     A restatement stating the keyword itself is stating its own fact, so the class that

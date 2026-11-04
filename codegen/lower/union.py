@@ -1601,7 +1601,7 @@ def lower_union(
         # branches to subclass.  §4 makes the base the symbol every referrer imports and
         # the thing ``isinstance(payload, Base)`` tests, which no annotation is.
         # Measured over the 1,054 portable documents: **0 union roots reach it** -- the
-        # arm inside ``_the_conjuncts_own_type`` fires first, because a union base always
+        # arm inside ``the_conjuncts_own_type`` fires first, because a union base always
         # composes the mixin and so always has ``bases``.
         return Refusal(
             "allOf",

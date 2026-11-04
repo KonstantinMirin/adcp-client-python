@@ -841,7 +841,7 @@ PINNED_VALUE_SITES_IGNORING_ANNOTATIONS = PINNED_VALUE_SITES | {
 }
 
 
-def _constraining(declaration: dict) -> dict:
+def constraining(declaration: dict) -> dict:
     """``declaration`` without the keys that annotate rather than constrain."""
     return {
         k: v
@@ -859,7 +859,7 @@ def _pins_only(branches: list[Any], *, annotations_count: bool) -> list[str] | N
     identically -- the three branches of ``core/canonical-media-buy-action.json`` state
     one and the same ``allOf`` -- is not a difference and does not exclude the site.
     """
-    read = (lambda d: d) if annotations_count else _constraining
+    read = (lambda d: d) if annotations_count else constraining
     views = [read(b) for b in branches]
     if any(set(v) != set(views[0]) for v in views):
         return None

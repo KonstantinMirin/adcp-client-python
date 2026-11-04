@@ -3883,7 +3883,7 @@ def _vocabulary(view: Any) -> list | None:
     """The value set ``view`` states, or ``None`` where it states none.
 
     A ``const`` is read as the one-member set it is, which is the same rewrite
-    ``codegen.intersect._as_enum`` makes when it lowers a node, and for the same reason: a
+    ``codegen.intersect.as_enum`` makes when it lowers a node, and for the same reason: a
     pin and a vocabulary are one axis, so one reader answers ``const`` against ``const``,
     ``const`` against ``enum`` and ``enum`` against ``enum``.  Read BEFORE
     :func:`_one_vocabulary` collapses the axis, because that collapse drops one of the
@@ -3921,7 +3921,7 @@ def _described_by_the_conjunct(node: dict, conjunct: dict) -> dict:
     composed node admits the intersection, and where one view's vocabulary is strictly
     inside the other's the intersection IS that view's declaration -- so that view is
     the one the document states at this pointer, and its description comes with it.
-    The EMITTER reads it the same way one step earlier: ``intersect._intersection`` decides
+    The EMITTER reads it the same way one step earlier: ``intersect.intersection`` decides
     the field from the narrowing declaration and carries that declaration's annotations
     (``intersect.RENDERED``), so the element type is the narrowing ``$ref``'s class and
     its docstring is that target's description.  §9 keeps the two spellings apart and
@@ -3960,7 +3960,7 @@ def _described_by_the_conjunct(node: dict, conjunct: dict) -> dict:
     The axis is the VOCABULARY and not every keyword :func:`_tighter` can order.  A
     conjunct narrowing a BOUND beside a description of its own has **0 sites** on this
     tree, and so does one widening a vocabulary; an arm for either would be a derivation
-    matching nothing (``_restatement``'s own precedent).  ``default`` is left out for the
+    matching nothing (``restatement``'s own precedent).  ``default`` is left out for the
     same measurement: the 7 sites where two views default a property differently are
     all at ``neither``, where this rule does not fire.
     """

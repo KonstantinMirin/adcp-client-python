@@ -52,13 +52,15 @@ graded; two are not, and the reason is stated rather than left to a reader:
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence, Set as AbstractSet
+from collections.abc import Mapping, Sequence
+from collections.abc import Set as AbstractSet
 from dataclasses import replace
 from enum import StrEnum
 from typing import Any
 
 from codegen import compiler, intersect, ir, keywords
 from codegen.keywords import Position
+
 # ``inherited`` is also the name :func:`lower_composition` gives the map of what the
 # ``$ref`` conjuncts' targets declare, which is the module's own argument -- so the module
 # is aliased rather than the local renamed: the local is the name §2's rule is stated in.
@@ -101,7 +103,7 @@ INLINE = frozenset({"type", "properties", "required"})
 #: decides: "beside a ``$ref`` whose target is an enumeration -> section 2's intersection of
 #: the two vocabularies, rendered as a ``Literal`` over the TARGET's MEMBERS".
 #:
-#: Both spellings, because :func:`_as_enum` is the one reading of them -- "a ``const`` is a
+#: Both spellings, because :func:`as_enum` is the one reading of them -- "a ``const`` is a
 #: one-member ``enum``, and that is a rewrite rather than a rung" -- so the intersection is
 #: ONE computation over ``const`` vs ``const``, ``const`` vs ``enum`` and ``enum`` vs
 #: ``enum``, exactly as the restatement predicate makes it.
@@ -115,7 +117,7 @@ INLINE = frozenset({"type", "properties", "required"})
 #: rule or a combinator and reaches a reader already (:func:`_a_rule_the_target_states`,
 #: ``lower.rules.on_a_value``, the combinator arm), so this is the only value-level
 #: conjunct the bundle states and ``const`` is the arm with no population -- written
-#: because :func:`_as_enum` makes it the same arm and leaving it out would be a second
+#: because :func:`as_enum` makes it the same arm and leaving it out would be a second
 #: reading of a pin.
 _A_VALUE_SET = frozenset({"enum", "const"})
 
@@ -472,8 +474,8 @@ def _surviving(
     target's own branch list, so renumbering would pair every survivor against the wrong
     branch node.
 
-    :func:`_provably_empty` is the whole of the test, and its docstring carries why it is
-    not :func:`_restatement`'s ``None``.
+    :func:`provably_empty` is the whole of the test, and its docstring carries why it is
+    not :func:`restatement`'s ``None``.
     """
     return replace(
         branches,
@@ -481,7 +483,7 @@ def _surviving(
             index
             for index, branch in enumerate(branches.of)
             if any(
-                intersect._provably_empty(stated, branch.declares.properties[key]) is not None
+                intersect.provably_empty(stated, branch.declares.properties[key]) is not None
                 for key, views in asserted.items()
                 if key in branch.declares.properties
                 for stated in views
@@ -571,7 +573,7 @@ def _the_vocabularys_intersection(
     reference: nodes.Reference,
     mod: compiler.Module,
 ) -> ir.Decided | Refusal:
-    """§5's ``enum`` row at CONJ: the TYPE :func:`_the_conjuncts_own_type` decided,
+    """§5's ``enum`` row at CONJ: the TYPE :func:`the_conjuncts_own_type` decided,
     narrowed to the intersection of the target's vocabulary with the conjuncts' own.
 
     "Beside a ``$ref`` whose target is an enumeration → §2's intersection of the two
@@ -589,7 +591,7 @@ def _the_vocabularys_intersection(
     that the rendered annotation is a function of the document's content (P7) and not of
     which conjunct the walk read first; the conjuncts are a FILTER over it.
 
-    **``const`` and ``enum`` are one computation** (:func:`_as_enum`, and
+    **``const`` and ``enum`` are one computation** (:func:`as_enum`, and
     :data:`_A_VALUE_SET` says why): a ``const`` is a one-member vocabulary, so a pin
     narrowing a target's members and a vocabulary narrowing them are the same intersection
     asked twice.
@@ -636,7 +638,7 @@ def _the_vocabularys_intersection(
         )
     surviving = list(members)
     for _at, conjunct in stated:
-        vocabulary = intersect._as_enum(intersect._constraining(conjunct)).get("enum")
+        vocabulary = intersect.as_enum(intersect.constraining(conjunct)).get("enum")
         if not isinstance(vocabulary, list):
             return Refusal(
                 "enum",
@@ -741,7 +743,7 @@ def _conjunct_base(
         # of this document at all** (``adcp-client-python-97w``).  It is a reference the
         # COMPOSITION carried in: §5's ``properties`` row composes two object declarations
         # as an ``allOf`` of the two, so where a base spells its half as a pointer into its
-        # own text, :func:`_intersection` plants that very pointer as a conjunct of a node
+        # own text, :func:`intersection` plants that very pointer as a conjunct of a node
         # belonging to this document -- and ``emit.based_edges`` is what resolves it, by
         # re-stating it as the fragment reference into the base that it is.
         # :meth:`Module.target` already has the arm (:attr:`inherited_targets`, asked by
@@ -856,7 +858,7 @@ def lower_composition(
     conflict and the document is refused.  A restatement that says the same thing or
     nothing is the subclass's field by its annotations alone, over the base's own type:
     the node where the two agree, the base's decided field where the restatement states
-    no constraint at all.  :func:`_restatement` is the whole of that decision, and it is
+    no constraint at all.  :func:`restatement` is the whole of that decision, and it is
     SYMMETRIC, so there is no order-dependent "last wins" to come back to -- a generator
     that let the later conjunct win made its accepted set a function of member order.
 
@@ -1021,7 +1023,7 @@ def lower_composition(
     #: reading '*X* is not a class, so it cannot be a base' are the unimplemented half of
     #: that sentence".  A ``minLength`` beside an ``allOf`` is one of those siblings.
     #:
-    #: CLAIMED here and read by :func:`_the_conjuncts_own_type`, which is the pair §3
+    #: CLAIMED here and read by :func:`the_conjuncts_own_type`, which is the pair §3
     #: requires of a lowering cell -- ``minLength``'s and ``minItems``' cells are a
     #: lowering effect at every position the walk decides a node at, so a screen that
     #: drops one promises "a later D2 row does" for a row that would have to be this one.
@@ -1045,7 +1047,7 @@ def lower_composition(
     #: it.  The TARGET and not its symbol alone, because the refusal for a node that
     #: declares fields has to name WHICH of §5's non-class targets this one is
     #: (:data:`_NOT_A_BASE`) and :attr:`Target.kind` is the one derivation of that.
-    #: Read once, by :func:`_the_conjuncts_own_type`, after the worklist.  The parsed
+    #: Read once, by :func:`the_conjuncts_own_type`, after the worklist.  The parsed
     #: REFERENCE rides beside the two, because a distributed branch is declared from it
     #: (:func:`_conjunct_base`).
     conjoined: list[tuple[str, compiler.Target, nodes.Reference]] = []
@@ -1141,14 +1143,14 @@ def lower_composition(
         # at the root and as an ``enum`` in a conjunct, which is the enum
         # narrowing and refuses here -- the intersection needs step 3's enum
         # lowering and cannot be stated from this row.
-        if intersect._restatement(node, prior, mod.resolve_node):
-            # The INTERSECTION and not the narrower node alone (section 2, :func:`_intersection`):
+        if intersect.restatement(node, prior, mod.resolve_node):
+            # The INTERSECTION and not the narrower node alone (section 2, :func:`intersection`):
             # both declarations apply to the same instance, so a keyword only the wider
             # one states is still the composed node's.
-            local[key], at[key] = intersect._intersection(node, prior, mod.resolve_node), where
-        elif intersect._restatement(prior, node, mod.resolve_node) is None:
+            local[key], at[key] = intersect.intersection(node, prior, mod.resolve_node), where
+        elif intersect.restatement(prior, node, mod.resolve_node) is None:
             return Refusal(
-                intersect._disagreeing(node, prior),
+                intersect.disagreeing(node, prior),
                 where,
                 f"{key!r} is declared at {at[key]} and again here, and neither "
                 "declaration narrows the other",
@@ -1247,7 +1249,7 @@ def lower_composition(
                 # BRANCH position's differs, which is why it reads the same field.
                 #
                 # So the symbol is recorded as a CONJOINED TYPE rather than as a base,
-                # and :func:`_the_conjuncts_own_type` below is what answers with it once
+                # and :func:`the_conjuncts_own_type` below is what answers with it once
                 # every conjunct has been read -- after, because the answer depends on
                 # what the OTHER conjuncts contribute: a type beside a field is not this
                 # row's shape at all, and the reading has to see the whole list before it
@@ -1284,7 +1286,7 @@ def lower_composition(
                     # (:func:`_asserted_properties`), which §2 is where every intersection
                     # is computed, and the raw declarations are all read before this loop
                     # starts.  The two answers that depend on the whole conjunct list are
-                    # still :func:`_the_conjuncts_own_type`'s and are unchanged.
+                    # still :func:`the_conjuncts_own_type`'s and are unchanged.
                     #
                     # **One survivor is not a distribution at all**: "(A | B | C) and D"
                     # with two disjuncts empty is "(C and D)", a conjunction of two
@@ -1538,7 +1540,7 @@ def lower_composition(
             # intersection of the members".
             #
             # Collected and read AFTER the whole list, for the reason
-            # :func:`_the_conjuncts_own_type` is: whether this conjunct narrows a TYPE or
+            # :func:`the_conjuncts_own_type` is: whether this conjunct narrows a TYPE or
             # has nothing to narrow depends on what the other conjuncts turned out to be,
             # which the conjunct carrying the value set cannot know.
             conjunct_values.append((where, conjunct))
@@ -1649,7 +1651,7 @@ def lower_composition(
         # carried the reference.  ``local`` is every key some view of this node declares,
         # which is the "declares no fields of its own" clause asked of the node and its
         # conjuncts together.
-        answered = intersect._the_conjuncts_own_type(
+        answered = intersect.the_conjuncts_own_type(
             node,
             conjoined,
             fields_declared=set(local) | set(inherited) | required,
@@ -1657,7 +1659,7 @@ def lower_composition(
             # **The node's own ``contains`` joins the conjuncts' rule sources**, which is
             # §5's ``$ref`` row at CONJ read whole: "the other conjuncts AND THE
             # ``allOf``'s SIBLINGS constrain it".  One list and not two, because
-            # :func:`_the_conjuncts_own_type` already folds its sources into a single
+            # :func:`the_conjuncts_own_type` already folds its sources into a single
             # ``beside`` and hands that to ``lower.rules.on_a_value`` -- which is the one
             # reader of a ``contains`` over a value, at every position, by §5's
             # ``contains`` row ("an ``AtLeastOne`` after-validator on the array's own
@@ -1782,8 +1784,8 @@ def lower_composition(
     pinned: dict[str, ir.TypeRef] = {}
     for key in sorted(set(own) & set(inherited) - set(reuse)):
         narrowed = normalise.pins_a_member(
-            intersect._constraining(own[key]),
-            intersect._constraining(intersect._dereferenced(inherited[key], mod.resolve_node)),
+            intersect.constraining(own[key]),
+            intersect.constraining(intersect.dereferenced(inherited[key], mod.resolve_node)),
             inherited_fields.get(key),
         )
         if narrowed is None or not _placeable(narrowed.path, mod):
@@ -1797,7 +1799,7 @@ def lower_composition(
     # rather than composed out of two decided ones.  So the one reader of a raw mapping
     # reads these too, at the pointer the key was declared at.
     parsed_own = {
-        key: intersect._parsed_property(declaration, at.get(key, f"{pointer}/properties/{key}"), mod)
+        key: intersect.parsed_property(declaration, at.get(key, f"{pointer}/properties/{key}"), mod)
         for key, declaration in own.items()
     }
     # **:func:`codegen.refusal.first_refusal` over the whole batch**, which is §2's one

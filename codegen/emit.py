@@ -1895,7 +1895,7 @@ def emit(
         # local edge by construction, and the composed node needs the answer: §5's
         # ``properties`` row composes two object declarations as an ``allOf`` of the two,
         # so where the base spells its half as a pointer into its own text,
-        # ``intersect._intersection`` plants that very pointer as a conjunct of a node
+        # ``intersect.intersection`` plants that very pointer as a conjunct of a node
         # belonging to THIS document.  Asked LAST, so a URI either the document or a
         # base's absolute text spells keeps the answer it already has.
         for uri, (edge, _node) in sorted(based_edges(document).items(), key=lambda kv: kv[0]):

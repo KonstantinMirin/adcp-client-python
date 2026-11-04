@@ -33,7 +33,7 @@ declaration on the sites.
 
 **Both forms are detected, because only one of them was.** The first sweep looked for a
 ``compiled(...)`` call inside a ``with mock.patch(...)`` block and found one of the two --
-the other assigns ``intersect._the_conjuncts_own_type = spy`` and restores it in a
+the other assigns ``intersect.the_conjuncts_own_type = spy`` and restores it in a
 ``finally``, which no ``with`` statement contains.  A rule that catches one spelling of a
 defect is a rule that reports the other as absent.
 """

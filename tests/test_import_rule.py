@@ -1139,7 +1139,7 @@ def test_the_parser_is_the_only_entry_that_reads_a_raw_mapping() -> None:
       (``domain_roots``);
     * ``codegen/compiler.py`` -- a ``definitions`` entry at DEF, parsed on demand when a
       ``$ref`` names it (§5: "an entry nothing references is not declared"), the MERGED
-      declaration §2's intersection rule hands back (``_parsed_property``), and a ``$ref``
+      declaration §2's intersection rule hands back (``parsed_property``), and a ``$ref``
       CONJUNCT, whose DOCUMENT HALF decides which of the two resolutions it is
       (``_conjunct_base``).
 
@@ -1200,7 +1200,7 @@ def test_the_parser_is_the_only_entry_that_reads_a_raw_mapping() -> None:
         # a ``definitions`` entry at DEF, parsed when a ``$ref`` names it (§5)
         ("compiler.py", "decide"),
         # the MERGED declaration §2's intersection rule hands back (§6)
-        ("intersect.py", "_parsed_property"),
+        ("intersect.py", "parsed_property"),
         # a ``$ref`` CONJUNCT, for the DOCUMENT HALF that says which resolution it is (§5's
         # ``$ref`` row at CONJ; ``adcp-client-python-10l.43``)
         ("lower/composition.py", "_conjunct_base"),

@@ -120,9 +120,9 @@ than move it.
 declarations lives in a module of its own, because purity is exactly the property that
 makes it gradeable alone", and §6 already classified ``restatement``, ``intersection`` and
 ``at_least_as_tight`` that way.  What went with them is everything those three compare or
-hand back -- ``declaring``, ``_constraining``, the tightness and container readings,
-``_restatement``, ``_provably_empty``, ``_parsed_property``, and §5's ``$ref``-row-at-CONJ
-applications ``_the_conjuncts_own_type`` and ``intersected_at_a_branch``.
+hand back -- ``declaring``, ``constraining``, the tightness and container readings,
+``restatement``, ``provably_empty``, ``parsed_property``, and §5's ``$ref``-row-at-CONJ
+applications ``the_conjuncts_own_type`` and ``intersected_at_a_branch``.
 
 **The ARROWS run one way now**, which is what the third move bought and is worth stating
 because two commits of this row did not have it: this module imports ``ir``, ``keywords``,
@@ -848,7 +848,7 @@ class Module:
     #: the URI alone** -- the other half of what :attr:`referenced` is here for.
     #:
     #: §2's intersection rule reads a BASE's declaration beside this document's own
-    #: (:func:`_intersection`), so every key the base alone declares reaches the composed
+    #: (:func:`intersection`), so every key the base alone declares reaches the composed
     #: node -- and a key the base declares as a ``$ref`` carries a reference this
     #: document's own text does not spell.  The site is real: draft-07 applies both
     #: conjuncts to the same instance, so the composed class holds that property and
@@ -1273,7 +1273,7 @@ class Module:
         cannot answer for the base's.
 
         **A reference is never DEREFERENCED into the field**, only into the predicate
-        (:func:`_restatement`).  The field is decided from the document's own ``$ref``,
+        (:func:`restatement`).  The field is decided from the document's own ``$ref``,
         because a cross-document reference is an IMPORT and not a copy (P2) -- the thing
         ``test_a_cross_document_reference_is_an_import_and_not_a_copy`` exists to catch.
 

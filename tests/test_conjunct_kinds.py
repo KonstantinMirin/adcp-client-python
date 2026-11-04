@@ -30,8 +30,7 @@ import itertools
 
 import pytest
 
-from codegen.lower.composition import CONJ_COMPOSES, Conjunct, INLINE, classify
-
+from codegen.lower.composition import CONJ_COMPOSES, INLINE, Conjunct, classify
 
 #: Every value a conjunct's key set can be classified as, so clause 1 can say the
 #: enumeration has no dead member and a new arm reddens here until it is reached.
@@ -52,8 +51,8 @@ def test_the_four_inline_families_are_the_ones_the_classifier_reads() -> None:
     have.  ``INLINE`` and ``CONJ_COMPOSES`` are read by name, so a keyword joining either
     one reddens here and the alphabet is widened deliberately.
     """
-    assert INLINE == frozenset({"type", "properties", "required"})
-    assert CONJ_COMPOSES == frozenset({"additionalProperties", "allOf"})
+    assert frozenset({"type", "properties", "required"}) == INLINE
+    assert frozenset({"additionalProperties", "allOf"}) == CONJ_COMPOSES
     assert set(INLINE | CONJ_COMPOSES) <= set(ALPHABET)
 
 

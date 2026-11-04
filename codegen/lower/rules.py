@@ -397,7 +397,7 @@ def as_the_object(rules: Sequence[Rule]) -> AsTheObject:
     which is a shape no row writes.
 
     Measured over the 1,054 portable documents at ``adcp-client-python-10l.63``: the one
-    caller is ``intersect._the_conjuncts_own_type``, 2 sites, both a ``ForbiddenGroups``
+    caller is ``intersect.the_conjuncts_own_type``, 2 sites, both a ``ForbiddenGroups``
     from ``not``/``required`` -- ``core/canonical-product.json`` and
     ``core/product.json`` -- and ``declined`` is empty at every one of them.
     """

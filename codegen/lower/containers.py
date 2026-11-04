@@ -289,7 +289,7 @@ def _the_conjuncts_constrain_the_array(node: nodes.Array) -> tuple[Any, ...] | R
     instance is one of its branches -- it is not a class a model can extend: the target
     is this node's own TYPE, and the other conjuncts and the ``allOf``'s siblings
     constrain it, which is §2's intersection at a node that declares no fields of its
-    own."  :func:`intersect._the_conjuncts_own_type` is that clause where the type comes
+    own."  :func:`intersect.the_conjuncts_own_type` is that clause where the type comes
     from a ``$ref`` conjunct; this is the same clause where it comes from the node's own
     ``type: array`` beside its own ``items``, and the array a node declares for itself is
     as little a class a model can extend as one it names by reference.

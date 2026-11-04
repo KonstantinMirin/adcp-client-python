@@ -62,7 +62,7 @@ def test_a_contains_beside_conjuncts_that_are_all_bases_refuses_on_contains() ->
     assert out.keyword == "contains"
 
 
-def test_a_contains_beside_a_CLASS_conjunct_is_not_this_screens_business() -> None:
+def test_a_contains_beside_a_class_conjunct_is_not_this_screens_business() -> None:
     """The same sibling with a non-empty ``conjoined``: §5's row has a type to constrain.
 
     ``conjoined`` is the list of ``$ref`` conjuncts whose target IS a class, so a non-empty
@@ -73,7 +73,7 @@ def test_a_contains_beside_a_CLASS_conjunct_is_not_this_screens_business() -> No
     assert screen(contains={"const": 1}, conjoined=("a base",)) is None
 
 
-def test_a_conjunct_that_is_a_VALUE_SET_refuses_at_its_own_pointer_and_keyword() -> None:
+def test_a_conjunct_that_is_a_value_set_refuses_at_its_own_pointer_and_keyword() -> None:
     """The second arm, population 0: an instance of a class is not a member of a vocabulary.
 
     The pointer is the CONJUNCT's and not the composing node's -- the keyword is on the
@@ -92,7 +92,7 @@ def test_a_conjunct_that_is_a_VALUE_SET_refuses_at_its_own_pointer_and_keyword()
     assert pinned.pointer == "/allOf/3"
 
 
-def test_a_BOUND_beside_conjuncts_that_are_all_bases_refuses_on_the_first_bound() -> None:
+def test_a_bound_beside_conjuncts_that_are_all_bases_refuses_on_the_first_bound() -> None:
     """The third arm, population 0: a bound on a string or a list says nothing about a class.
 
     The keyword named is ``min(facts)``, so a node stating several reports the first in

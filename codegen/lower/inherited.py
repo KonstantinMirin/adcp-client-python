@@ -15,7 +15,7 @@ answers that question has are the four arms of :func:`merge` below --
 **And the fifth answer is a REFUSAL**, which is the one §5(b) decides and this compiler
 does not yet write: a restatement that neither matches nor narrows.  The sentence it
 returns names the keyword the two declarations SHARE and disagree at, read through
-``$ref``, which is the reading :func:`codegen.intersect._disagreeing` exists for.
+``$ref``, which is the reading :func:`codegen.intersect.disagreeing` exists for.
 
 **Why a module and not a region.**  §5: "a module states one subject; a function answers
 one question about it."  The subject here is one property key under one composition, and
@@ -32,7 +32,8 @@ arm each pair takes, with no bundle, no module and no walk.
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Set as AbstractSet
+from collections.abc import Mapping
+from collections.abc import Set as AbstractSet
 from dataclasses import dataclass, field
 
 from codegen import compiler, intersect, ir
@@ -83,8 +84,8 @@ def merge(
     required: AbstractSet[str],
     inherited_required: AbstractSet[str],
     inherited_fields: Mapping[str, ir.Field],
-    inherited_from: Mapping[str, "compiler.Target"],
-    mod: "compiler.Module",
+    inherited_from: Mapping[str, compiler.Target],
+    mod: compiler.Module,
 ) -> Merged | Refusal:
     """§2's intersection per key: what each of ``local``'s declarations makes of the field.
 
@@ -103,7 +104,7 @@ def merge(
         if key not in inherited:
             out.own[key] = stating
             continue
-        verdict = intersect._restatement(stating, inherited[key], mod.resolve_node)
+        verdict = intersect.restatement(stating, inherited[key], mod.resolve_node)
         if verdict is None:
             # **THE KIND IS THE CELL'S AND NOT THIS SITE'S** (architecture §3, "a
             # refusal's kind is derived from the cell and never chosen at a raise
@@ -125,7 +126,7 @@ def merge(
             # really is the document's keeps its kind without a second reading.
             #
             # PROP and not ``position``: a restatement is a PROPERTY's declaration
-            # against the base's, which is the same reason :func:`_constraining` reads
+            # against the base's, which is the same reason :func:`constraining` reads
             # every declaration this arm compares at PROP.  The position is the restated
             # node's own and is taken from the structure, not recovered from the pointer.
             #
@@ -141,17 +142,17 @@ def merge(
             # carry a fact no declaration can absorb, and the three that carry NONE are
             # wider than their documents invisibly.  A rung is written when a
             # declaration has a form for the direction it drops in.
-            disagreeing = intersect._disagreeing(stating, inherited[key], mod.resolve_node)
+            disagreeing = intersect.disagreeing(stating, inherited[key], mod.resolve_node)
             # **The sentence states its own obstruction, which means the DEREFERENCED
             # reading and the two values at the keyword that failed** (``10l.92``).  It
-            # printed ``sorted(_constraining(...))`` of the RAW declarations, so a base
+            # printed ``sorted(constraining(...))`` of the RAW declarations, so a base
             # whose whole content is a bare reference read as "inherited states
             # ['$ref']" -- true of the text and not of what was compared, since
-            # :func:`_restatement` resolves such a base before it compares anything.
+            # :func:`restatement` resolves such a base before it compares anything.
             # Three refusals here said that, and the keyword they named was the
             # reference they had already resolved past.
-            inherited_read = intersect._constraining(intersect._dereferenced(inherited[key], mod.resolve_node))
-            stating_read = intersect._constraining(intersect._dereferenced(stating, mod.resolve_node))
+            inherited_read = intersect.constraining(intersect.dereferenced(inherited[key], mod.resolve_node))
+            stating_read = intersect.constraining(intersect.dereferenced(stating, mod.resolve_node))
             return Refusal(
                 disagreeing,
                 at[key],
@@ -176,7 +177,7 @@ def merge(
             # It narrows, so the subclass is the one that states it -- and **a
             # REQUIREDNESS the base does not have is a narrowing too**, which is the
             # half this read for as long as requiredness lived in ``required`` rather
-            # than in the declaration ``_restatement`` compares.  Left inherited, the
+            # than in the declaration ``restatement`` compares.  Left inherited, the
             # field keeps the base's optionality while the composing document's own
             # ``required`` names it, so the class ACCEPTS A PAYLOAD THE DOCUMENT
             # REFUSES and renders a ``default: None`` the document does not state.
@@ -191,7 +192,7 @@ def merge(
             # ground that "the content is the base's already, so there is nothing of the
             # base's to merge back in" -- and that is true of an EQUAL restatement and
             # false of one stating LESS.**  Once silence stopped being a loosening
-            # (:func:`_restatement`), a restatement that does not narrow can state
+            # (:func:`restatement`), a restatement that does not narrow can state
             # strictly less than the base, and lowering THAT node alone drops every fact
             # the base states.  The arm below already carries the sentence, for the same
             # shape reached without a requiredness move: "a restatement can reach this
@@ -213,9 +214,9 @@ def merge(
             # took ``Any``.  The asymmetry is the proof: the two sibling branches that
             # state no ``required`` reached the arm below and kept the base's type and
             # bound.
-            out.own[key] = intersect._intersection(stating, inherited[key], mod.resolve_node)
-            if not intersect._constraining(stating) or intersect._constraining(out.own[key]) == intersect._constraining(
-                intersect._dereferenced(inherited[key], mod.resolve_node)
+            out.own[key] = intersect.intersection(stating, inherited[key], mod.resolve_node)
+            if not intersect.constraining(stating) or intersect.constraining(out.own[key]) == intersect.constraining(
+                intersect.dereferenced(inherited[key], mod.resolve_node)
             ):
                 # **The restatement says nothing about the instance the base does not,
                 # so this is section 2's REQUIREDNESS OVERLAY and takes its answer**:
@@ -237,18 +238,18 @@ def merge(
                     return held
                 out.reuse[key] = held
                 out.own[key] = dict(inherited[key])
-            if intersect._constraining(out.own[key]).get("uniqueItems") is True and not intersect._constraining(
+            if intersect.constraining(out.own[key]).get("uniqueItems") is True and not intersect.constraining(
                 stating
             ).get("uniqueItems"):
                 out.distinct.add(key)
-        elif intersect._annotates_differently(stating, inherited[key]):
+        elif intersect.annotates_differently(stating, inherited[key]):
             # **It states the same thing about the INSTANCE and a different thing to the
             # READER**, so the subclass states the field: a document's own declaration
             # governs the annotation at its own pointer (the description-authority rule,
             # ``docs/plan/rebuild-plan.md`` §6), and a base's must not stand where the
             # document declares one itself.
             #
-            # ``_restatement`` returned False here, so the restatement's own
+            # ``restatement`` returned False here, so the restatement's own
             # constraining content is either EQUAL to the base's or EMPTY, and the two
             # reach the base's content by different routes:
             #
@@ -279,7 +280,7 @@ def merge(
             # a bare ``$ref``, and the resolved document carries the target's
             # annotations inline there -- so the document's conjunction gap-fills
             # nothing and the base's annotation must not stand
-            # (:func:`_annotates_differently`).  An EMPTY one resolves to nothing of its
+            # (:func:`annotates_differently`).  An EMPTY one resolves to nothing of its
             # own, so under ``allOf`` the base's declaration is the one that applies
             # where the restatement is silent, and the composed document states it:
             # measured on ``formats/canonical/responsive_creative.json``, whose
@@ -288,7 +289,7 @@ def merge(
             # the composed document states at that pointer.
             # **The INTERSECTION here too, and the arm below is no longer "the node
             # states nothing" but "the intersection is the base's".**  Once silence
-            # stopped being a loosening (:func:`_restatement`), a restatement can reach
+            # stopped being a loosening (:func:`restatement`), a restatement can reach
             # this arm stating LESS than the base -- ``{"type": "integer"}`` over
             # ``{"type": "integer", "minimum": 3}`` says the same thing about every
             # instance and differs only in its annotations -- and lowering THAT node
@@ -296,8 +297,8 @@ def merge(
             # to make unspellable.  The intersection is the base's content wearing this
             # document's annotations, and it is the same expression the EMPTY case used,
             # so there is one answer for both.
-            out.own[key] = intersect._intersection(stating, inherited[key], mod.resolve_node)
-            if not intersect._constraining(stating):
+            out.own[key] = intersect.intersection(stating, inherited[key], mod.resolve_node)
+            if not intersect.constraining(stating):
                 # The node has no type of ITS OWN, so the field is the base's DECIDED
                 # field: re-deciding declares the nested classes again, in this module,
                 # at a pointer this document does not have (:attr:`Shape.decided`).

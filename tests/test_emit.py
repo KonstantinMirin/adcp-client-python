@@ -108,9 +108,9 @@ from codegen.harness import (
     violated_keywords,
 )
 from codegen.keywords import Rung
+from codegen.lower import composition, names, objects, rules, scalars
 from codegen.lower import const as lower_const
 from codegen.lower import enum as lower_enum
-from codegen.lower import composition, names, objects, rules, scalars
 from codegen.lower import union as lower_union
 from codegen.refusal import Refusal
 from codegen.schema import nodes
@@ -3746,7 +3746,7 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
     # ``*-asset`` roots move from ``items`` to ``properties``: their branch's restatement
     # of ``macro_declarations`` stopped being "neither matches nor narrows" and the
     # document now reports the obstruction behind it -- the merged ``items`` node is
-    # typeless, because ``_intersection`` drops a base's whole-content ``$ref`` rather
+    # typeless, because ``intersection`` drops a base's whole-content ``$ref`` rather
     # than writing a node draft-07 reads as the target alone, so no row lowers its
     # ``properties``.  That is the second of this row's three pointer shapes and it is
     # named in the delivery as unfinished.
@@ -6919,7 +6919,7 @@ VALUE_RULE_CARRIERS: dict[str, list[tuple[str, str]]] = {
     #: ``NotValue`` carries TWO rows because its two positions are two different
     #: readings of §2's second half.  ROOT is a root alias: the node's own ``not`` beside
     #: its own type.  **CONJ is one conjunct stating the TYPE and another the RULE**
-    #: (``adcp-client-python-10l.21``, ``intersect._the_conjuncts_own_type``), so §2's
+    #: (``adcp-client-python-10l.21``, ``intersect.the_conjuncts_own_type``), so §2's
     #: intersection has to compose the two before either reaches an ``ir.TypeRef`` -- and
     #: that reading was the unwritten half, which is why 9 nodes refused there.
     "NotValue": [

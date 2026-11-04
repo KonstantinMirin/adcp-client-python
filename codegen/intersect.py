@@ -9,14 +9,14 @@ exactly the property that makes it gradeable alone".
 **What one subject this module states.**  §2 computes an intersection over DECLARATIONS
 and not over decided types: a property two conjuncts declare is ONE field, so the rule
 merges the two declarations and hands the merged one back to ``parse``
-(:func:`_parsed_property`) rather than composing two lowerings.  Everything here is that
-merge or a reading it compares: :func:`declaring` and :func:`_constraining` are what a
-declaration SAYS, :func:`_at_least_as_tight` and :func:`_restatement` are whether one
-declaration subsumes another, :func:`_intersection` is the merged declaration, and
-:func:`_provably_empty` is the one case where the merge admits nothing.
+(:func:`parsed_property`) rather than composing two lowerings.  Everything here is that
+merge or a reading it compares: :func:`declaring` and :func:`constraining` are what a
+declaration SAYS, :func:`at_least_as_tight` and :func:`restatement` are whether one
+declaration subsumes another, :func:`intersection` is the merged declaration, and
+:func:`provably_empty` is the one case where the merge admits nothing.
 
 **Two residents are not pure, and that is a layout question this row did not open.**
-:func:`_the_conjuncts_own_type` takes a :class:`codegen.compiler.Target` and returns an
+:func:`the_conjuncts_own_type` takes a :class:`codegen.compiler.Target` and returns an
 :class:`codegen.ir.Decided`, and :func:`intersected_at_a_branch` takes a
 :class:`codegen.compiler.Module` and calls the field builder.  Both are §5's ``$ref`` row
 at CONJ -- the intersection applied where the composing node declares no field set of its
@@ -47,7 +47,7 @@ def declaring(node: Mapping[str, Any], position: Position) -> dict[str, Any]:
     return {k: v for k, v in node.items() if keywords.declares(k, position)}
 
 
-def _constraining(node: Mapping[str, Any]) -> dict[str, Any]:
+def constraining(node: Mapping[str, Any]) -> dict[str, Any]:
     """What a declaration says about the INSTANCE.
 
     ``default``, ``description`` and every other key whose CELL carries nothing
@@ -77,7 +77,7 @@ def _constraining(node: Mapping[str, Any]) -> dict[str, Any]:
 RENDERED = ("default", "description")
 
 
-def _annotates_differently(child: dict, base: dict) -> bool:
+def annotates_differently(child: dict, base: dict) -> bool:
     """Would the two declarations render a different FIELD?
 
     Asked only of a restatement that says the same thing about the instance, where it
@@ -118,8 +118,8 @@ class Holds(StrEnum):
 #: **The subschema-valued keywords §2's intersection rule recurses into, and how each
 #: holds its subschemas.**  §2's "this holds at ANY DEPTH, including an overlay under
 #: ``items``" and §5's ``properties`` row are the two sentences, and this is the ONE
-#: declaration the readers take them from: :func:`_at_least_as_tight`, which asks whether
-#: the pair at such a keyword composes, and :func:`_intersection`, which writes the
+#: declaration the readers take them from: :func:`at_least_as_tight`, which asks whether
+#: the pair at such a keyword composes, and :func:`intersection`, which writes the
 #: composition at both of them.  The pair of keywords was spelled in both functions,
 #: which is the second copy of one keyword decision ``docs/plan/architecture.md`` §3
 #: forbids.
@@ -131,7 +131,7 @@ class Holds(StrEnum):
 #: ``items`` with different values and 8 of them lost a base's element declaration that
 #: way, which refused ``core/assets/vast-asset.json``,
 #: ``core/assets/daast-asset.json`` and the 9 documents chained behind them.
-#: :func:`_intersection` writes the composition at ``Holds.ONE`` now, the base's
+#: :func:`intersection` writes the composition at ``Holds.ONE`` now, the base's
 #: reference survives it as a ``$ref`` CONJUNCT where both sides declare an object, and
 #: §8's pairing carries the enclosing statement DOWN by key instead of dropping it at
 #: the first hop that moves to another instance (``adcp.types._base.applied_schema``) so
@@ -148,7 +148,7 @@ class Holds(StrEnum):
 HOLDS: Mapping[str, Holds] = {"items": Holds.ONE, "properties": Holds.PER_KEY}
 
 
-def _at_least_as_tight(
+def at_least_as_tight(
     keyword: str, c: Any, b: Any, resolve: Callable[[str], dict | None] | None = None
 ) -> bool:
     """Does ``c`` say at least what ``b`` says about the instance, at ``keyword``?
@@ -156,7 +156,7 @@ def _at_least_as_tight(
     Section 2's intersection rule, per keyword and in the three spellings it names: "an enum
     is the intersection of the members, a bound is the tighter one, a ``const`` must
     agree", plus "this holds at ANY DEPTH, including an overlay under ``items``".  The
-    predicate is what :func:`_restatement` needs and all it needs: where the child's
+    predicate is what :func:`restatement` needs and all it needs: where the child's
     statement subsumes the base's, the child IS the intersection and the field decided
     from it carries it.
 
@@ -179,7 +179,7 @@ def _at_least_as_tight(
         # one is a widening and refuses."  A conjunct that closes the composed object
         # admits a subset of what any other value admits, so a child stating ``false``
         # says at least what the base says at this keyword, whatever the base says -- and
-        # :func:`_intersection` then keeps the child's ``false``, which is the row's
+        # :func:`intersection` then keeps the child's ``false``, which is the row's
         # "closes the composed object" written as a merge.
         #
         # **MEASURED with ``Draft7Validator`` on the one live pair** --
@@ -208,10 +208,10 @@ def _at_least_as_tight(
         # supply, ``allOf`` applies both conjuncts to that same instance, so an instance
         # satisfying the composition supplies every key EITHER list names: the composed
         # accepted set is the intersection of the two, spelled as the union of the two
-        # lists (:func:`_intersection`'s own arm, which is where the union is written).
+        # lists (:func:`intersection`'s own arm, which is where the union is written).
         #
         # So a child naming FEWER keys than the base is not a loosening, for exactly the
-        # reason silence is not one (:func:`_restatement`): under ``allOf`` the base's
+        # reason silence is not one (:func:`restatement`): under ``allOf`` the base's
         # ``required`` applies wherever the child's does not name a key.  Without this
         # arm two different lists share a keyword neither ordering reads, the pair is
         # unordered and the caller refuses a document whose composition §2 decides.
@@ -229,7 +229,7 @@ def _at_least_as_tight(
         # ``core/audience-evidence-selection.json`` and
         # ``governance/check-governance-response.json``** (``adcp-client-python-10l.82``),
         # whose refusals were REPORTED on ``anyOf`` and on ``additionalProperties``
-        # because :func:`_disagreeing` names the first key of the whole disagreeing set
+        # because :func:`disagreeing` names the first key of the whole disagreeing set
         # and the base states both of those where the child is silent -- silence that is
         # not a loosening and was never the obstruction.  One shape under two keyword
         # headings, which is why a row grouped by ``Refusal.keyword`` is grouped by a
@@ -247,7 +247,7 @@ def _at_least_as_tight(
     # satisfying both."
     #
     # A DECLARATION holds one ``contains`` key, so two facts cannot be spelled in the
-    # merged declaration :func:`_intersection` hands back to the parser; keeping both
+    # merged declaration :func:`intersection` hands back to the parser; keeping both
     # means ``lower.rules.on_a_value`` taking several predicates where its signature takes
     # one (``contains: Any = None``).  Falling through to the closing ``False`` is
     # therefore the right answer for now and not an oversight: the caller refuses BY NAME
@@ -274,9 +274,9 @@ def _at_least_as_tight(
         # an instance and whether one narrows the other is a fact about the two TARGETS,
         # which no amount of reading the two references can answer."
         #
-        # :func:`_restatement` reads a bare reference through :func:`_dereferenced`
+        # :func:`restatement` reads a bare reference through :func:`dereferenced`
         # before it compares anything, so at the NODE level this question is already
-        # answered.  It arrives here from one level down: :func:`_intersection`'s
+        # answered.  It arrives here from one level down: :func:`intersection`'s
         # composition at ``items`` meets two element declarations that are each a bare
         # reference, and the keyword they SHARE is ``$ref`` itself.  Without this arm the
         # pair is unordered, the loop takes the BASE's reference as the tighter value,
@@ -300,7 +300,7 @@ def _at_least_as_tight(
         return (
             isinstance(target_c, dict)
             and isinstance(target_b, dict)
-            and _restatement(target_c, target_b, resolve) is not None
+            and restatement(target_c, target_b, resolve) is not None
         )
     held = HOLDS.get(keyword)
     if held is not None:
@@ -314,7 +314,7 @@ def _at_least_as_tight(
         #
         # A key only the CHILD declares says something more about the same instance, and
         # a key only the BASE declares is one the child is silent about -- and silence is
-        # not a loosening under ``allOf`` (:func:`_restatement`), because the base's
+        # not a loosening under ``allOf`` (:func:`restatement`), because the base's
         # declaration applies wherever the child is quiet.  Neither can make the
         # composition looser, so only the shared keys are asked about.
         #
@@ -327,13 +327,13 @@ def _at_least_as_tight(
         return all(
             isinstance(x, dict)
             and isinstance(y, dict)
-            and _restatement(x, y, resolve) is not None
+            and restatement(x, y, resolve) is not None
             for x, y in pairs
         )
     return False
 
 
-def _intersection(
+def intersection(
     child: dict, base: dict, resolve: Callable[[str], dict | None] | None = None
 ) -> dict:
     """The declaration a NARROWING restatement's field is decided from.
@@ -341,7 +341,7 @@ def _intersection(
     Section 2 in its own words: "where composed schemas constrain the same property, the field
     carries the INTERSECTION".  Under ``allOf`` both declarations apply to the same
     instance, so every keyword either one states is the composed node's -- the child's
-    value where both state one (:func:`_restatement` has already decided it is at least
+    value where both state one (:func:`restatement` has already decided it is at least
     as tight), the base's where only the base does.
 
     **The RENDERED annotations compose the same way, and §6's own rule says which wins:**
@@ -362,7 +362,7 @@ def _intersection(
     ``core/protocol-envelope.json``, whose envelope states the long "Relationship to
     per-task body-level ``context`` declarations" text as a ``$ref`` sibling while the
     document's own node resolves to ``core/context.json``'s own short text.
-    :func:`_dereferenced` is what makes the two readings one.
+    :func:`dereferenced` is what makes the two readings one.
 
     **This is a no-op at every site that narrowed before section 2's intersection rule landed**,
     and that is why it is safe: the old predicate required the child to state every
@@ -385,7 +385,7 @@ def _intersection(
     ``enum`` beside the ``const`` that narrows it, which is a shape no document states
     and which refused on ``const`` with "a later row does".
     """
-    c, b = _constraining(child), _constraining(base)
+    c, b = constraining(child), constraining(base)
     covered = set(c)
     for axis in _AXES:
         if covered & axis:
@@ -419,7 +419,7 @@ def _intersection(
     merged = {**{k: v for k, v in b.items() if k not in covered}, **c}
     # **At a keyword BOTH state, the TIGHTER value and not the child's**, which is what
     # makes this function symmetric in its constraining content rather than only in the
-    # direction :func:`_restatement` admits.  ``declare`` asks the predicate in both
+    # direction :func:`restatement` admits.  ``declare`` asks the predicate in both
     # directions and then merges in whichever one narrowed, so a merge that preferred the
     # first argument would make the result a function of which view the walk read first
     # -- the "last wins" this rule exists to have no reading of.
@@ -450,7 +450,7 @@ def _intersection(
                 **b[kw],
                 **c[kw],
                 **{
-                    k: _intersection(c[kw][k], b[kw][k], resolve)
+                    k: intersection(c[kw][k], b[kw][k], resolve)
                     for k in set(c[kw]) & set(b[kw])
                     if isinstance(c[kw][k], dict) and isinstance(b[kw][k], dict)
                 },
@@ -482,7 +482,7 @@ def _intersection(
             # A LIST-valued ``items`` is draft-07's tuple form, where position matters
             # and the two lists are not composed by this rule, so it falls through to
             # the tightness arm below with every other non-mapping value.
-            merged[kw] = _intersection(c[kw], b[kw], resolve)
+            merged[kw] = intersection(c[kw], b[kw], resolve)
         elif kw == "required" and isinstance(c[kw], list) and isinstance(b[kw], list):
             # **At ``required`` neither value is the tighter one either, and the
             # composition is the UNION** -- §2's intersection rule read at the one keyword
@@ -492,7 +492,7 @@ def _intersection(
             # union is what the composed declaration states.
             #
             # **This is the arm the predicate's own ``required`` rung needs beside it**
-            # (:func:`_at_least_as_tight`): that rung says the pair is always ordered, and
+            # (:func:`at_least_as_tight`): that rung says the pair is always ordered, and
             # it is only sound because the composition written here is the union.  Left to
             # the tightness fallback below, the merge would take the BASE's list and drop
             # the keys the child requires -- a model looser than its document at the
@@ -522,7 +522,7 @@ def _intersection(
             # **0 property pairs state the keyword on both sides**, so this arm is the one
             # written for the first one rather than a derivation matching something.
             merged[kw] = bool(c[kw]) or bool(b[kw])
-        elif not _at_least_as_tight(kw, c[kw], b[kw], resolve):
+        elif not at_least_as_tight(kw, c[kw], b[kw], resolve):
             merged[kw] = b[kw]
     # **The base's reference SURVIVES as a ``$ref`` CONJUNCT where both declarations
     # declare ``properties``**, which is §5's ``properties`` row at CONJ read where the
@@ -580,7 +580,7 @@ def _intersection(
         set(b) == {"$ref"}
         and "$ref" not in merged
         and _container_kind(c) is not None
-        and _container_kind(c) == _container_kind(_constraining(_dereferenced(base, resolve)))
+        and _container_kind(c) == _container_kind(constraining(dereferenced(base, resolve)))
     )
     # **The APPEND IS IDEMPOTENT, because ``allOf`` is: a conjunct already in the list
     # states nothing a second time.**  §2's rule is "composition merges by intersection"
@@ -627,7 +627,7 @@ def _intersection(
         own_conjuncts = own_conjuncts if isinstance(own_conjuncts, list) else []
         if {"$ref": b["$ref"]} not in own_conjuncts:
             merged["allOf"] = [*own_conjuncts, {"$ref": b["$ref"]}]
-    resolved = _dereferenced(child, resolve)
+    resolved = dereferenced(child, resolve)
     # **The BASE is gap-filled THROUGH ITS OWN REFERENCE, for the same reason the child
     # is read through one.**  §6's description-authority clause 3 is "silence
     # inherits", and silence means silent AFTER RESOLUTION on both sides: a base
@@ -646,7 +646,7 @@ def _intersection(
     # Gated on the base's reference having been DROPPED above, and the gate is
     # measured: read unconditionally, the base's target annotations also reach a
     # restatement whose own node resolves to something of its own, which is §6 clause
-    # 2's case and the 17 pointers :func:`_restatement` records.  Where the reference
+    # 2's case and the 17 pointers :func:`restatement` records.  Where the reference
     # was dropped there is nothing of the base's left for the child to disagree with,
     # so the annotation is the only thing the base still contributes.
     # **And the base's OWN annotation sibling wins over its target's**, which is §5's
@@ -661,7 +661,7 @@ def _intersection(
     # reference is still there, the base's own declaration is what applies and the
     # child has something to disagree with, which is this gate's own reason.
     based = (
-        {**_dereferenced(base, resolve), **base}
+        {**dereferenced(base, resolve), **base}
         if "$ref" in b and "$ref" not in merged and not conjoined_the_reference
         else base
     )
@@ -676,7 +676,7 @@ def _intersection(
 #: them answers for every member of the set and the base's are not merged in beside it.
 #:
 #: One set, ``{"const", "enum"}``: a ``const`` is a one-member vocabulary (the rewrite
-#: :func:`_as_enum` makes for the tightness predicate), so a ``const`` that narrows a
+#: :func:`as_enum` makes for the tightness predicate), so a ``const`` that narrows a
 #: base's ``enum`` REPLACES it rather than joining it.  The bounds are deliberately NOT
 #: axes: ``minItems`` and ``maxItems`` constrain the same instance from opposite sides
 #: and a child stating one says nothing about the other, so merging the base's is
@@ -736,7 +736,7 @@ def _type_words(stated: Any) -> frozenset[str]:
     """A ``type`` keyword's words as a set: one word, a list of words, or nothing.
 
     ``frozenset()`` for a ``type`` the node does not state and for one whose value is
-    neither a word nor a list of them, which is what makes :func:`_provably_empty`
+    neither a word nor a list of them, which is what makes :func:`provably_empty`
     answer "not provably" rather than "empty" for a malformed declaration.
     """
     if isinstance(stated, str):
@@ -746,7 +746,7 @@ def _type_words(stated: Any) -> frozenset[str]:
     return frozenset()
 
 
-def _provably_empty(child: dict, base: dict) -> str | None:
+def provably_empty(child: dict, base: dict) -> str | None:
     """The keyword at which two declarations of ONE property intersect to NOTHING, or
     ``None`` where this cannot prove they do.
 
@@ -757,7 +757,7 @@ def _provably_empty(child: dict, base: dict) -> str | None:
     this compiler cannot compute is the restatement row and not this one."
 
     **That last clause is the whole of why this is a predicate of its own and not
-    ``_restatement(...) is None``.**  :func:`_restatement` answers ``None`` for every
+    ``restatement(...) is None``.**  :func:`restatement` answers ``None`` for every
     pair it cannot ORDER, which is a strictly larger set than the pairs it can prove
     admit nothing -- its own docstring names the case: "a shared keyword where the CHILD
     is LOOSER refuses, where §2 would have the field carry the base's", and
@@ -765,13 +765,13 @@ def _provably_empty(child: dict, base: dict) -> str | None:
     dropped on that answer would be dropped for a conjunction that admits something,
     which is a model NARROWER than its document -- the one direction §2 forbids outright
     and the defect this whole clause is fenced against.  So the two questions are asked
-    by two functions: "can I order these" is :func:`_restatement`'s and "do these admit
+    by two functions: "can I order these" is :func:`restatement`'s and "do these admit
     nothing" is this one's, and nothing here is reused to answer the other.
 
     Two proofs, and deliberately no third:
 
-    * **Disjoint vocabularies.**  Read through :func:`_as_enum`, which is the same
-      rewrite :func:`_at_least_as_tight` compares through -- a ``const`` is a one-member
+    * **Disjoint vocabularies.**  Read through :func:`as_enum`, which is the same
+      rewrite :func:`at_least_as_tight` compares through -- a ``const`` is a one-member
       ``enum`` -- so ``const`` against ``const``, ``const`` against ``enum`` and ``enum``
       against ``enum`` are one reading and not three.  No member in common means no
       instance satisfies both, which is a proof and not an estimate.
@@ -787,7 +787,7 @@ def _provably_empty(child: dict, base: dict) -> str | None:
     nothing is a model WIDER than its document, which §2 permits and ``strict_validate``
     refuses the payload for.
     """
-    c, b = _as_enum(_constraining(child)), _as_enum(_constraining(base))
+    c, b = as_enum(constraining(child)), as_enum(constraining(base))
     if isinstance(c.get("enum"), list) and isinstance(b.get("enum"), list):
         if not [member for member in c["enum"] if member in b["enum"]]:
             return "enum"
@@ -797,13 +797,13 @@ def _provably_empty(child: dict, base: dict) -> str | None:
     return None
 
 
-def _restatement(
+def restatement(
     child: dict, base: dict, resolve: Callable[[str], dict | None] | None = None
 ) -> bool | None:
     """The merge rule as one decision about one restated property.
 
     ``True`` -- it NARROWS: everything ``base`` says about the instance it says at
-    least as tightly (:func:`_at_least_as_tight`), and it says something more.  The
+    least as tightly (:func:`at_least_as_tight`), and it says something more.  The
     subclass states it, and what it states IS the intersection.
 
     ``False`` -- it says nothing, or says exactly the same thing.  The field is
@@ -854,22 +854,22 @@ def _restatement(
     intersection.**  The old rule demanded the child keep every keyword the base states,
     for a sound reason at the time: the field was decided from the CHILD ALONE, so a
     keyword the child did not restate was a keyword the annotation dropped.  Now
-    :func:`_intersection` is what the field is decided from, every keyword either
+    :func:`intersection` is what the field is decided from, every keyword either
     declaration states reaches it, and the demand measures nothing -- under ``allOf``
     the base's statement applies wherever the child is quiet.  The two halves are one
     change and neither is correct without the other.
     """
-    # Both declarations read through :func:`_dereferenced`, and EVERY comparison below
+    # Both declarations read through :func:`dereferenced`, and EVERY comparison below
     # made on that same reading -- including the novelty test, which is the one that
     # went wrong when it was not.  Comparing a RAW intersection against a DEREFERENCED
     # base made two ``$ref``s to one target read as a narrowing, and the field then
     # carried the base's annotation at a pointer the document declares itself: measured
     # at 17 pointers, every one ``/properties/context/description``, which is §6's
     # description-authority clause 2 and the 15 facts it was written for.
-    dc, db = _dereferenced(child, resolve), _dereferenced(base, resolve)
-    c, b = _as_enum(_constraining(dc)), _as_enum(_constraining(db))
+    dc, db = dereferenced(child, resolve), dereferenced(base, resolve)
+    c, b = as_enum(constraining(dc)), as_enum(constraining(db))
     # **A ``const`` is a one-member ``enum``, and that is a rewrite rather than a rung**
-    # (:func:`_as_enum`, applied before anything is compared).  section 2's "a ``const`` must
+    # (:func:`as_enum`, applied before anything is compared).  section 2's "a ``const`` must
     # agree" is the intersection of a pinned value with a vocabulary, and writing the
     # two into one spelling is what lets ONE predicate answer ``const`` vs ``const``,
     # ``const`` vs ``enum`` and ``enum`` vs ``enum``.  Toward ``enum`` and not toward
@@ -889,7 +889,7 @@ def _restatement(
     if "$ref" in b and b.get("$ref") != c.get("$ref"):
         # **The base's whole constraining content is a ``$ref`` this predicate could
         # NOT resolve, so whether the restatement narrows it is unanswerable** -- and
-        # :func:`_at_least_as_tight`'s own rule decides that: "a keyword this cannot
+        # :func:`at_least_as_tight`'s own rule decides that: "a keyword this cannot
         # read is not tight enough and the caller refuses -- never admitted on the
         # ground that it is probably fine, which would be a model wider than its
         # document at a keyword nobody looked at."  ``$ref`` was the one keyword that
@@ -918,9 +918,9 @@ def _restatement(
         # :meth:`Module.resolve_node` reads both spellings now, so no pair in this bundle
         # reaches this clause.  **It stays, and a population of 0 is not "a derivation
         # matching nothing" here**: it is not an arm producing an outcome for a shape no
-        # document has, it is the one place :func:`_at_least_as_tight`'s refuse-what-you-
+        # document has, it is the one place :func:`at_least_as_tight`'s refuse-what-you-
         # cannot-read rule is spelled for ``$ref``, and deleting it ADMITS the unreadable
-        # pair rather than refusing it -- :func:`_intersection` then drops the base's
+        # pair rather than refusing it -- :func:`intersection` then drops the base's
         # reference (its ``covered`` arm) and the field is decided from the child alone
         # with every fact behind the reference gone.  Measured before the resolver read
         # the two spellings: emitted, the brand class dropped 6 of the 8 properties
@@ -930,16 +930,16 @@ def _restatement(
         # rather than through this one** (``adcp-client-python-97w``).  Once the base
         # dereferenced to its object, ``properties`` composed per key and ``type``
         # matched; what was left unordered was ``required``, and the rung for it is in
-        # :func:`_at_least_as_tight` where §2 already put it.
+        # :func:`at_least_as_tight` where §2 already put it.
         return None
-    if not all(_at_least_as_tight(k, c[k], b[k], resolve) for k in set(c) & set(b)):
+    if not all(at_least_as_tight(k, c[k], b[k], resolve) for k in set(c) & set(b)):
         return None
     # It narrows when the INTERSECTION says more than the base does.  Asked of the
     # intersection and not of the child, because that is what the field carries: a
     # child restating a strict SUBSET of the base's keywords with the same values
     # intersects to the base itself, states no new fact, and is the inherited field
-    # (``_annotates_differently`` then decides whether the annotations differ).
-    return _as_enum(_constraining(_intersection(dc, db, resolve))) != b
+    # (``annotates_differently`` then decides whether the annotations differ).
+    return as_enum(constraining(intersection(dc, db, resolve))) != b
 
 
 def _conjoins(child: dict, base: dict) -> bool:
@@ -951,13 +951,13 @@ def _conjoins(child: dict, base: dict) -> bool:
     the base says, and the other conjuncts are what it says more.  ``something beside
     it`` is what makes it a narrowing rather than a restatement of nothing -- a list
     holding the base and no other constraining conjunct says exactly what the base says,
-    which is :func:`_restatement`'s ``False``.
+    which is :func:`restatement`'s ``False``.
 
     **Asked of the base's OWN declaration and never of its dereferenced reading**, which
     is the whole point of the arm.  The conjunct and the base here are the SAME ``$ref``,
-    and :func:`_dereferenced` replaces the base's with the target's whole schema -- the
+    and :func:`dereferenced` replaces the base's with the target's whole schema -- the
     target's own ``allOf`` of conditionals included.  The predicate then meets two values
-    at ``allOf`` that have nothing to say to each other, ``_at_least_as_tight`` has no
+    at ``allOf`` that have nothing to say to each other, ``at_least_as_tight`` has no
     ordering for a conjunct list, and the document is refused for restating the reference
     VERBATIM.
 
@@ -968,17 +968,17 @@ def _conjoins(child: dict, base: dict) -> bool:
     ``{"items": {"allOf": [{"$ref": T}, {"properties": ...}]}}`` over the root's
     ``{"items": {"$ref": T}}``, where ``T`` is ``core/macro-declaration.json`` and its
     own root carries six ``if``/``then`` conjuncts.  It was the only ``allOf`` pair
-    ``_at_least_as_tight`` was ever asked about and the only one it answered False for.
+    ``at_least_as_tight`` was ever asked about and the only one it answered False for.
     """
-    conjuncts = _constraining(child).get("allOf")
+    conjuncts = constraining(child).get("allOf")
     if not isinstance(conjuncts, list):
         return False
-    stated = [_constraining(c) for c in conjuncts if isinstance(c, dict)]
-    b = _constraining(base)
+    stated = [constraining(c) for c in conjuncts if isinstance(c, dict)]
+    b = constraining(base)
     return b in stated and any(s and s != b for s in stated)
 
 
-def _dereferenced(
+def dereferenced(
     declaration: dict, resolve: Callable[[str], dict | None] | None
 ) -> dict:
     """A declaration that is nothing but a ``$ref``, read as what it references.
@@ -995,7 +995,7 @@ def _dereferenced(
     """
     if resolve is None:
         return declaration
-    content = _constraining(declaration)
+    content = constraining(declaration)
     if set(content) != {"$ref"}:
         return declaration
     target = resolve(content["$ref"])
@@ -1058,13 +1058,13 @@ def a_conjunct_declares_an_array(conjuncts: Iterable[Any], resolve: compiler.Res
     it.
 
     A conjunct that is nothing but a ``$ref`` is read as its TARGET, through
-    :func:`_dereferenced` and therefore by the same rule §2's intersection already reads
+    :func:`dereferenced` and therefore by the same rule §2's intersection already reads
     one by: whether the composed instance is an array is a fact about the TARGET, which
     no amount of reading the reference can answer.  ``None`` from the resolver leaves the
     conjunct as written, which states no ``type`` and so answers ``False`` -- the safe
     direction, and the same one :meth:`Module.resolve_node`'s undecidable arm points.
     """
-    return any(declares_an_array(_dereferenced(c, resolve), resolve) for c in conjuncts)
+    return any(declares_an_array(dereferenced(c, resolve), resolve) for c in conjuncts)
 
 
 #: The draft-07 type word each JSON value has.  ``bool`` before ``int`` because
@@ -1100,7 +1100,7 @@ def _entailed_type(members: list) -> str | None:
     return next(iter(found)) if len(found) == 1 else None
 
 
-def _as_enum(constraining: dict) -> dict:
+def as_enum(constraining: dict) -> dict:
     """``{"const": v}`` read as ``{"enum": [v]}`` plus the ``type`` it entails.
 
     So ONE predicate answers ``const`` against ``const``, ``const`` against ``enum``
@@ -1122,17 +1122,17 @@ def _as_enum(constraining: dict) -> dict:
     return out
 
 
-def _disagreeing(
+def disagreeing(
     child: dict, base: dict, resolve: Callable[[str], dict | None] | None = None
 ) -> str:
     """The keyword a refusal is reported on: **the first SHARED one the restatement does
     not say at least as much at**, read through the same two lenses
-    :func:`_restatement` compares through.
+    :func:`restatement` compares through.
 
     **It was ``min()`` over every key the two differ about, and that set contains keys
     only the BASE states -- which can never be the obstruction** (``10l.92``).  Under
     ``allOf`` the base's declaration applies wherever the child is quiet, so the child's
-    silence at a keyword is not a loosening and :func:`_restatement` does not read it as
+    silence at a keyword is not a loosening and :func:`restatement` does not read it as
     one: the predicate ranges over ``set(c) & set(b)`` alone.  A refusal naming a
     base-only key therefore attributes itself to a keyword nothing looked at.
 
@@ -1143,8 +1143,8 @@ def _disagreeing(
     under ``additionalProperties``, both base-only keys that sort first.  The row was
     handed to a lane as two keyword headings and is one shape.  The three that still
     refuse here all reported ``$ref``, because ``$`` sorts before every letter and the
-    base's whole content is a bare reference that :func:`_dereferenced` RESOLVES before
-    anything is compared -- so the reported keyword was one :func:`_restatement` never
+    base's whole content is a bare reference that :func:`dereferenced` RESOLVES before
+    anything is compared -- so the reported keyword was one :func:`restatement` never
     reads.
     Their obstructions, measured and now reported: ``required`` for both
     ``brand/verify-brand-claim-response.json`` and
@@ -1153,21 +1153,21 @@ def _disagreeing(
     ``media-buy/get-reporting-status-response.json``'s ``adcp_error`` (``false`` over the
     target's ``true``).
 
-    **The fallback is one arm and not a guess.** :func:`_restatement` answers ``None`` at
+    **The fallback is one arm and not a guess.** :func:`restatement` answers ``None`` at
     exactly two places: the tightness loop, which by construction leaves a failing shared
     keyword for this to find, and the arm for a base whose whole content is a ``$ref``
     this could not resolve -- where there is no shared keyword at all, the obstruction
     really is the unreadable reference, and the union reading below names it.
     """
-    dc, db = _dereferenced(child, resolve), _dereferenced(base, resolve)
-    c, b = _as_enum(_constraining(dc)), _as_enum(_constraining(db))
-    failing = sorted(k for k in set(c) & set(b) if not _at_least_as_tight(k, c[k], b[k], resolve))
+    dc, db = dereferenced(child, resolve), dereferenced(base, resolve)
+    c, b = as_enum(constraining(dc)), as_enum(constraining(db))
+    failing = sorted(k for k in set(c) & set(b) if not at_least_as_tight(k, c[k], b[k], resolve))
     if failing:
         return failing[0]
     return min({k for k in set(c) | set(b) if c.get(k) != b.get(k)} or {"allOf"})
 
 
-def _parsed_property(declaration: Any, at: str, mod: compiler.Module) -> nodes.Node | Refusal:
+def parsed_property(declaration: Any, at: str, mod: compiler.Module) -> nodes.Node | Refusal:
     """One property DECLARATION as the node it states, at the pointer it was declared at.
 
     The shape guard that stood inside :func:`fields` -- "property is not a schema" -- is
@@ -1260,7 +1260,7 @@ def _distributes(
     merges.**  Arm 1 refused a property this node and a target branch both declare,
     because "the branch's declaration is the target's rather than this module's, so there
     is nothing here to intersect".  ``adcp-client-python-10l.74`` computes that
-    intersection (``_restatement`` decides, ``_intersection`` computes, asked in both
+    intersection (``restatement`` decides, ``intersection`` computes, asked in both
     directions as ``declare`` already does), so the premise is false and the refusal is
     replaced by the answer §2 always gave.  Arm 2 left for the reason above.  Nothing
     screens this clause now: a node reaching it distributes, and what it distributes TO is
@@ -1274,7 +1274,7 @@ def _distributes(
     return branches
 
 
-def _the_conjuncts_own_type(
+def the_conjuncts_own_type(
     node: nodes.Base,
     conjoined: Sequence[tuple[str, compiler.Target, nodes.Base]],
     *,
@@ -1611,7 +1611,7 @@ def intersected_at_a_branch(
     ``status: Status | None`` where its target states ``Literal['submitted']``, required
     (``adcp-client-python-82m.23``, direction 2).
 
-    **The decision is :func:`_restatement`'s and the value is :func:`_intersection`'s**,
+    **The decision is :func:`restatement`'s and the value is :func:`intersection`'s**,
     which are the same two functions every other restatement in this module passes
     through -- so a shared key at a two-base branch and a shared key at a flat base
     cannot come to disagree about what §2's intersection IS.  The answers:
@@ -1626,7 +1626,7 @@ def intersected_at_a_branch(
       resource}``;
     * they agree BUT THE BRANCH REQUIRES THE KEY AND THE INHERITED FIELD IS OPTIONAL --
       the field is declared anyway.  ``required`` is not part of a property's own
-      declaration, so :func:`_restatement` cannot see it and reads such a pair as
+      declaration, so :func:`restatement` cannot see it and reads such a pair as
       identical; the shadow is then NOT harmless, because the field the MRO finds carries
       the node's requiredness and the branch's is what the document states at that
       pointer.  Measured: ``task_id`` at
@@ -1636,7 +1636,7 @@ def intersected_at_a_branch(
       ``status`` and ``task_id`` (``decline-proposals-response#/anyOf/1``,
       ``refine-proposals-response#/anyOf/1``, ``request-proposals-response#/anyOf/3``);
     * it is INCOMPATIBLE -- the caller refuses, and it must NOT drop the branch.
-      :func:`_provably_empty` is what licenses a drop and its docstring says why this is
+      :func:`provably_empty` is what licenses a drop and its docstring says why this is
       not that question: an intersection this compiler cannot ORDER is §5's restatement
       row, and a branch dropped for one admits instances the document admits, which is a
       model narrower than its document.
@@ -1679,9 +1679,9 @@ def intersected_at_a_branch(
         stated, theirs = views[0], declares.properties[key]
         # **The predicate is asked in BOTH directions, and only ONE of the two answers
         # declares a field** -- the asymmetry is the MRO's and the docstring's fourth
-        # paragraph carries it.  ``_restatement`` itself is symmetric, so asking both ways
+        # paragraph carries it.  ``restatement`` itself is symmetric, so asking both ways
         # is still how "incompatible" is told from "the node is the tighter one".
-        if _restatement(theirs, stated, mod.resolve_node):
+        if restatement(theirs, stated, mod.resolve_node):
             # **The BRANCH's declaration is the tighter one, and the field is declared
             # here.**  §2 has the field carry the intersection, which at this position the
             # branch already states -- but the two-base class's FIRST base is this node's,
@@ -1692,10 +1692,10 @@ def intersected_at_a_branch(
             # target's ten branches narrows it to that country's own members --
             # ``{"enum": ["zip", "zip_plus_four"]}`` for ``PostalCountrySystemUS`` -- so
             # without this arm every branch would carry the full vocabulary.
-            intersected = _intersection(theirs, stated, mod.resolve_node)
-        elif _restatement(stated, theirs, mod.resolve_node) is None:
+            intersected = intersection(theirs, stated, mod.resolve_node)
+        elif restatement(stated, theirs, mod.resolve_node) is None:
             return Refusal(
-                _disagreeing(stated, theirs),
+                disagreeing(stated, theirs),
                 f"{pointer}/properties/{key}",
                 f"what this node asserts about {key!r} and {symbol}'s declaration "
                 "of it neither match nor narrow one another in either direction, so "
@@ -1710,13 +1710,13 @@ def intersected_at_a_branch(
             # docstring's third bullet names.  The intersection is either declaration --
             # they say the same thing -- and it is the REQUIRED argument below that the
             # field exists for.
-            intersected = _intersection(theirs, stated, mod.resolve_node)
+            intersected = intersection(theirs, stated, mod.resolve_node)
         else:
             # Says the same thing, or nothing, and requires no more: the node's field and
             # the branch's are one field, so the base's shadowing the branch's loses
             # nothing.
             continue
-        merged = _parsed_property(intersected, f"{pointer}/properties/{key}", mod)
+        merged = parsed_property(intersected, f"{pointer}/properties/{key}", mod)
         if isinstance(merged, Refusal):
             return merged
         decided = objects.fields({key: merged}, [key] if key in required else (), pointer, mod)
