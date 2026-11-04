@@ -530,3 +530,231 @@ def test_a_hit_hands_back_a_copy_because_the_library_mutates_what_it_is_given() 
         first["__scribbled_on__"] = True
         second = canon.canonicalish({"type": "string", "minLength": 2})
     assert "__scribbled_on__" not in second
+
+
+# --------------------------------------------------------------------------- #
+# §8's residue clause: a combinator is COVERED, never ENUMERATED
+# --------------------------------------------------------------------------- #
+#: **A CONJUNCTION THE LIBRARY CANNOT MERGE WHOLE**, which is the shape §8 prices at 2^n,
+#: written by hand so the property is a property of the rule and not of one bundle.
+#: ``hypothesis_jsonschema``'s ``merged`` declines a conjunct holding an ``anyOf`` -- "due
+#: to product-like explosion in worst case", its own comment -- and ``canonicalish``
+#: rewrites an ``if``/``then`` into exactly that, so a discriminated dispatch is the
+#: bundle's own spelling of this shape (``compliance/comply-test-controller-request.json#``
+#: is thirty of them).  The whole-conjunction merge therefore fails, the ``allOf``
+#: survives into ``__from_schema``, and ``merged_as_strategies`` walks
+#: ``itertools.combinations`` of 25 inputs.
+#:
+#: 4,968 bytes.  **Measured: the library cannot BUILD the strategy for it inside 120 s**;
+#: with the cover the build is 0.52 s and the draw 0.23 s.  So this document is a control
+#: for "no constant factor reaches it" as well as a fixture.
+A_DISPATCH_CONJUNCTION: dict[str, Any] = {
+    "type": "object",
+    "properties": {"kind": {"type": "string"}, "payload": {"type": "object"}},
+    "required": ["kind"],
+    "allOf": [
+        {
+            "if": {"properties": {"kind": {"const": f"k{i}"}}, "required": ["kind"]},
+            "then": {
+                "required": ["payload"],
+                "properties": {
+                    "payload": {
+                        "required": [f"f{i}"],
+                        "properties": {f"f{i}": {"type": "integer"}},
+                    }
+                },
+            },
+        }
+        for i in range(24)
+    ],
+}
+
+
+def test_a_conjunction_is_covered_in_quadratic_intersections_and_never_in_a_power_set() -> None:
+    """§8: "a combinator root is not graded by drawing the power set of its branches".
+
+    The claim is about the SEARCH and not about the answer, so what is asserted is the
+    number of intersections the build pays and the fact that every input is in the cover.
+    A timing assertion is deliberately absent -- ``adcp-client-python-82m.34`` records what
+    a test that drives a real ``SIGALRM`` costs under contention -- and it is not needed:
+    an intersection count below ``n * n`` on a node whose power set is ``2 ** n`` is the
+    whole of the rule, and it is deterministic.
+    """
+    with harness.a_combinator_is_covered_and_never_enumerated() as cover:
+        harness.strategy(dict(A_DISPATCH_CONJUNCTION), {})
+    assert cover, "the root's conjunction never reached merged_as_strategies"
+    inputs, groups, intersections = cover[0]
+    assert inputs > len(A_DISPATCH_CONJUNCTION["allOf"]), (
+        f"the node's own keywords are an input beside its conjuncts: {inputs}"
+    )
+    assert intersections <= inputs * inputs, (
+        f"{intersections} intersections for {inputs} inputs is not a quadratic search"
+    )
+    assert intersections < 2**inputs, (
+        f"{intersections} against a power set of {2**inputs}"
+    )
+    assert groups <= inputs, f"a cover cannot hold more groups than it has inputs: {groups}"
+
+
+def test_every_value_the_cover_draws_is_one_the_WHOLE_conjunction_admits() -> None:
+    """The soundness half, and it is the document that says so.
+
+    A cover is a set of groups whose union is every input, each drawn from its own
+    intersection -- a SUPERSET of what the conjunction admits -- and then filtered by every
+    input's own validator.  So the saving is a statement about which intersections the
+    generator is offered and about nothing else, which is the same clause
+    ``Fixtures.reduced`` is held to.  Graded by asking the unreduced document.
+    """
+    with harness.a_combinator_is_covered_and_never_enumerated():
+        value = harness.one_instance(A_DISPATCH_CONJUNCTION, {})
+    assert harness.conforms(A_DISPATCH_CONJUNCTION, value) is True, (
+        f"the cover drew {value!r}, which its own document refuses"
+    )
+
+
+def test_a_conjunction_that_MERGES_gets_the_library_s_own_answer_and_one_group() -> None:
+    """The path almost every pair takes is unchanged, which is why nothing else moved.
+
+    The library's first iteration is the whole input set, and where that intersects it
+    stops there -- ``combined`` then supersets every later group.  This rule tries the
+    same thing first, so a mergeable conjunction is answered by one group and the only
+    intersection paid is that one.
+    """
+    merges = {
+        "allOf": [
+            {"type": "object", "properties": {"a": {"type": "string"}}, "required": ["a"]},
+            {"required": ["b"], "properties": {"b": {"type": "integer"}}},
+        ]
+    }
+    with harness.a_combinator_is_covered_and_never_enumerated() as cover:
+        harness.strategy(dict(merges), {})
+    for inputs, groups, intersections in cover:
+        assert groups == 1, f"{inputs} mergeable inputs became {groups} groups"
+        assert intersections == 1, f"a whole-set merge is one intersection, not {intersections}"
+
+
+def test_the_cover_is_installed_for_one_call_and_restored_even_on_a_raise() -> None:
+    """The lifetime, which is the only thing separating this from patching the library.
+
+    ``canonicalisation_shared_within_one_call``'s own rule: nothing is patched at import
+    time, so a caller of this module that did not ask for the rule gets the library exactly
+    as it ships.  Both exits are asserted, and the nested case too -- ``one_instance``
+    enters this inside a caller that may already have.
+    """
+    import hypothesis_jsonschema._from_schema as library  # the patched name
+
+    before = library.merged_as_strategies
+    with harness.a_combinator_is_covered_and_never_enumerated():
+        assert library.merged_as_strategies is not before
+        inner = library.merged_as_strategies
+        with harness.a_combinator_is_covered_and_never_enumerated():
+            assert library.merged_as_strategies is not inner
+        assert library.merged_as_strategies is inner, "a nested exit restored the wrong one"
+    assert library.merged_as_strategies is before
+
+    with pytest.raises(RuntimeError):
+        with harness.a_combinator_is_covered_and_never_enumerated():
+            raise RuntimeError("the body raised")
+    assert library.merged_as_strategies is before, (
+        "a raise must not leave the library patched"
+    )
+
+
+# --------------------------------------------------------------------------- #
+# the DOCUMENT's own statement of a valid instance: `examples`
+# --------------------------------------------------------------------------- #
+def test_the_node_s_own_examples_answer_the_accepts_check_and_are_counted_apart() -> None:
+    """**The store, then ``examples``, then the draw** -- and the third state is visible.
+
+    ``examples`` is JSON Schema's own keyword for "here is a valid instance of this
+    schema", so where a node states one there is nothing to generate.  §8 already requires
+    the source to be reportable -- "a store that answers and a borrow that answers are
+    different facts about coverage" -- so what is asserted is the counter as well as the
+    pass: a reader of a green pair has to be able to tell which of the three answered.
+    """
+    document = {
+        "type": "object",
+        "required": ["a"],
+        "properties": {"a": {"type": "string"}},
+        "additionalProperties": False,
+        "examples": [{"a": "a realistic value"}],
+    }
+
+    taken: list[Any] = []
+
+    def entry_point(payload: Any) -> Any:
+        taken.append(payload)
+        return payload
+
+    res = harness.check_accepts(document, entry_point, examples=1)
+    assert res.outcome == "pass", res.detail
+    assert res.stated == 1, "the node states an instance and the draw was not needed"
+    assert res.replayed == 0 and res.examples == 1
+    assert taken == [{"a": "a realistic value"}], (
+        f"the instance the class saw is not the one the document states: {taken}"
+    )
+
+
+def test_an_examples_member_its_own_node_REFUSES_is_not_an_instance() -> None:
+    """The screen, which is the whole of the rule and is not a formality.
+
+    **Measured over the graded population: 115 pairs' node carries ``examples`` and the
+    node refuses every member of 64 of them**, because the bundle's root ``examples`` hold
+    ``{"description", "data"}`` rather than the instance -- and all 64 hold a valid
+    instance under ``data``, so the member is wrapped and not wrong.  The wrapper is NOT
+    unwrapped: draft-07 says a member IS an instance, and reading a key out of one would
+    make the harness interpret a convention the specification does not have.  So the
+    member is refused, the pair draws as before, and the repair is upstream.
+    """
+    wrapped = {
+        "type": "object",
+        "required": ["a"],
+        "properties": {"a": {"type": "string"}},
+        "examples": [{"description": "what this shows", "data": {"a": "x"}}],
+    }
+    assert harness.stated_instances(wrapped) == [], (
+        "a {description, data} wrapper was read as an instance"
+    )
+    assert harness.stated_instances({"type": "string"}) == []
+    mixed = {
+        "type": "object",
+        "required": ["a"],
+        "properties": {"a": {"type": "string"}},
+        "examples": [{"nope": 1}, {"a": "good"}, {"a": 2}],
+    }
+    assert harness.stated_instances(mixed) == [{"a": "good"}], (
+        "the screen kept a member the node refuses, or dropped one it admits"
+    )
+
+
+def test_a_stated_instance_is_not_copied_into_the_store() -> None:
+    """It is already committed -- in the document, in git, in the artifact CI reads.
+
+    The floor exists so every lane grades the same witness; an ``examples`` member
+    satisfies that on its own and moves only when the schema moves.  Copying it would make
+    one fact two and let the copy outlive the statement it came from, which is the drift
+    §8's "never hand-written" clause is about.
+    """
+
+    class _Store:
+        def __init__(self) -> None:
+            self.written: dict[str, Any] = {}
+
+        def get(self, key: str) -> Any:
+            return None
+
+        def put(self, key: str, instances: Any) -> None:
+            self.written[key] = instances
+
+    store = _Store()
+    document = {
+        "type": "object",
+        "required": ["a"],
+        "properties": {"a": {"type": "string"}},
+        "examples": [{"a": "stated"}],
+    }
+    res = harness.check_accepts(
+        document, lambda v: v, examples=1, corpus=store, identity={"d": "x"}
+    )
+    assert res.outcome == "pass" and res.stated == 1
+    assert store.written == {}, f"a stated instance was held: {store.written}"
