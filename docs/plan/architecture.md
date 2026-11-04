@@ -1249,9 +1249,16 @@ it is handed, so **a draw pays canonicalisation inside the draw, over the schema
 from, and resolution pays it never.** A resolver that canonicalises pays it once per inlined
 occurrence and then hands the draw something it will canonicalise again.
 
-This also says why a timeout was never the fix for it: both the serialisation and the canonical
-round-trip are C calls, and a signal-based bound is delivered at a bytecode boundary. **A phase
-that cannot be preempted must be made to terminate, not bounded.**
+This also says why a timeout was never the fix for it, and the mechanism is the one
+`harness.within` already documents rather than the one I first wrote. **A one-shot `signal.alarm`
+does not bound anything**: the signal can land where Python DISCARDS the exception it raises — a
+garbage-collection callback or a `__del__`, and `hypothesis` installs one — so the alarm fires, is
+ignored, and nothing is left to fire again. Measured there: two such firings, then thirteen minutes
+against a 45-second budget. `within`'s timer repeats for exactly that reason, so a swallowed signal
+costs the interval and not the bound.
+
+**A phase that cannot be preempted must be made to terminate, not bounded** — and a bound whose
+delivery is probabilistic must repeat, or it is reporting a guarantee it does not have.
 
 ### The node, and the parser that is the one reading
 

@@ -305,10 +305,23 @@ addopts = "-n auto --maxprocesses=10 --dist=loadgroup"
 # grade's own budget belongs on the pair grade, as a marker on that test, and that
 # is a row -- not a figure here that every other check then has to live under.
 #
-# **AND A BOUND IS NOT A FIX.**  It does not reach a phase inside a C call: SIGALRM
-# is delivered at a bytecode boundary, and ``harness.resolve`` has held a worker
-# for thirteen minutes against a 25 s bound.  That is a defect with its own row,
-# and this declaration must not be read as having answered it.
+# **AND THIS BOUND IS PROBABILISTIC, WHICH IS NOT THE REASON I FIRST GAVE.**
+# ``pytest-timeout``'s signal method arms a ONE-SHOT ``signal.alarm``, and
+# ``harness.within``'s own docstring measures what that costs: the signal can land
+# in a context where Python DISCARDS the exception it raises -- a
+# garbage-collection callback or a ``__del__`` -- and ``hypothesis`` installs one
+# (``junkdrawer.gc_callback``).  A one-shot alarm fired twice inside that callback,
+# was ignored both times with "Exception ignored in", and the pair then ran
+# thirteen minutes against a 45 s budget with no alarm left to fire.  That is why
+# ``within``'s own timer REPEATS until its block exits, so a swallowed signal costs
+# the interval and not the bound.
+#
+# So ``timeout`` here bounds a test only where the alarm happens to land somewhere
+# Python can raise -- which is a backstop and not a guarantee, and two consecutive
+# invocations of the same grade differed by exactly that.  **A phase that cannot be
+# preempted must be made to terminate; a bound is not a fix.**  Making this bound
+# repeat the way ``within`` does is a row against ``pytest-timeout``'s mechanism,
+# not a figure to change here.
 timeout = 900
 timeout_method = "signal"
 
