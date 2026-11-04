@@ -2236,6 +2236,24 @@ but it must be said out loud because it moves where a defect is found. And **the
 from the referenced document, never hand-written**: a hand-written one is a thousand files to
 maintain and a silent exemption the first time a document changes under it.
 
+**AND THAT REASON IS ABOUT SCALE AND SILENCE, SO IT DOES NOT REACH A HANDFUL.** The hazard named
+above is a thousand files drifting invisibly. Neither half holds for a few: an instance the store
+holds is **re-offered to its own document on every read**, so one that stops being admitted
+**reddens with that document's name**. The drift the rule exists to prevent is self-reporting at
+this size, which is the whole difference.
+
+So where a DRAW CANNOT PRODUCE AN INSTANCE AT ALL — a strategy builder that will not terminate on
+the document's own form — **a hand-written instance is admissible for that document, screened, and
+counted**: it is admitted by its own document, its pair passes all three checks, it records no
+budget cut, and the commit names it as hand-written so no reader mistakes it for a drawn one.
+**It is the generator's defect that is being worked around, and the stopgap is not the fix**: the
+next document of the same form hits the same wall, and a hand-written entry is replaced by a drawn
+one the moment a draw can produce it.
+
+**WHAT MAKES THIS NOT AN EXEMPTION is that nothing is excused.** The pair is graded, by the same
+three checks, against the same document; only the *provenance of the value* changes, and that is
+recorded rather than hidden. An exemption would be the pair passing without being graded.
+
 **THE FOUR OBLIGATIONS BELOW ARE SUBSUMED BY IT.** Branch pairs green and the dispatch resolving
 are what "graded there" means; disjointness stays its own obligation because no fixture shows it;
 and obligation 3 was already withdrawn.
