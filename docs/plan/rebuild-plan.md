@@ -841,19 +841,46 @@ pattern is the compiler declining to find one.
 
 **The derivation, in order, and there is no fourth step:**
 
-1. **The bundle's own name for the subject** where it names one — a `title`, a `definitions` key,
-   the property the constraint belongs to.
-2. **Else the constraint, in words**: `StrMaxLen100`, `NonEmptyList`.
+1. **The constraint, in words**: `StrMaxLen100`, `IntMin0Max150`, `NonEmptyList`.
+2. **Else the bundle's own name for the subject**, where the bundle names **the constraint
+   itself** — a titled `definitions` entry whose subject IS the constrained scalar.
 3. **Else the declaring position**, which is §1's rule for a symbol carrying no
    `__adcp_schema__` — the declaring position is its catalogue entry's home. **Two constraints
-   that collide at step 2 separate here**, never by a hash of either.
+   that collide at step 1 separate here**, never by a hash of either.
 4. Where none of the three answers, the type is **pending a name**, and that is an upstream ask
    stated over a named set of the bundle. **A digest is what the compiler writes INSTEAD of filing
-   that ask**, which is why it is a defect and not a convention — the same relation an index has
-   to a branch nobody named.
+   that ask**, which is why it is a defect and not a convention.
 
-A digest and an index are the same failure at different layers, so they are one rule and not two:
-**no name the compiler mints contains a content digest or a positional index.**
+**THE CONSTRAINT BEATS THE PROPERTY NAME, AND THIS REVERSES THE ORDER AS FIRST WRITTEN.** It said
+the bundle's name first, and a lane measured what that costs: a constrained scalar's identity *is*
+its constraint, so naming it for a concept makes the symbol a function of **which position claimed
+it first**. `^[A-Z]{3}$` sits at 86 positions in 62 documents, and they are `currency` AND
+`airport_code` — one name is right for one of them and wrong for the other, which is reading 4's
+own failure in a new spelling. D5 already said it: *an alias names a constraint, never a concept.*
+So a domain word is admissible only where the bundle names the constraint as its subject, which
+step 2 is, and not where a property happens to carry it.
+
+### A POSITIONAL INDEX IS A DECLARED PLACEHOLDER, NOT A NAME — AND NOT A LICENCE EITHER
+
+The absolute form of this rule — *no name the compiler mints contains a content digest or a
+positional index* — **contradicts §4's own union-branch candidate 5**, `<Base>Branch<i>`, which is
+what a branch takes when its title, its pins, its required set and its `$ref` target all answer
+nothing. One of the two sentences had to go, and it is the absolute one, because the index is not
+the same failure as a digest:
+
+- **A digest is derived from the thing and tells a reader nothing.** Something else always could
+  have been derived — the constraint in words — so a digest is the compiler declining to look.
+- **An index is derived from the POSITION, and where the position is genuinely the only thing that
+  distinguishes the branch, there is nothing else to derive from.** Nothing in the bundle names it.
+
+So an index is **step 4's state made visible**: the branch is *pending a name*, exactly as a
+step-3 constrained scalar is, and exactly as that set is filed upstream. The rule becomes:
+
+**A MINTED NAME CARRIES A CONTENT DIGEST NEVER, AND A POSITIONAL INDEX ONLY AS A DECLARED
+PLACEHOLDER WITH THE ASK FILED.** The gate therefore does not assert the indexed set is empty — it
+asserts that **the set of index-named symbols equals the set the upstream ask names**, so an index
+that appears without an ask is a defect and an ask that is answered removes a name. A placeholder
+nobody has filed is the same evasion as a digest, one step further on.
 
 **A bare `$ref` branch is named for its TARGET, and the index is the candidate after that (decided
 2026-10-29; corrected on implementation the same day).** The name is the target's
