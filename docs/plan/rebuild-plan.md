@@ -2236,6 +2236,31 @@ but it must be said out loud because it moves where a defect is found. And **the
 from the referenced document, never hand-written**: a hand-written one is a thousand files to
 maintain and a silent exemption the first time a document changes under it.
 
+**AND THE BUNDLE ALREADY STATES ITS OWN INSTANCES: `examples` IS THE SOURCE, AND THE HARNESS USES
+IT (the owner's decision).** `examples` is JSON Schema's keyword for *this is a valid instance of
+this schema* — the author's own declaration, living in the schema and maintained with it. The
+bundle carries **4,280 occurrences, 154 of them at a document root**, and the instrument generated
+values at those positions instead of reading them.
+
+**So the instance lookup is: the committed store, then `examples`, then a draw.** An `examples`
+member is screened exactly as a held instance is, and one the document REFUSES is an upstream
+defect to be filed — never a reason to bypass the mechanism. It is better than a drawn value as
+well as cheaper: a realistic payload rather than a generated one, and at a referring position the
+referenced document's own `examples` is the natural fixture with no draw at all.
+
+**AND WHERE A NODE CARRIES NONE AND A DRAW CANNOT PRODUCE ONE, THE ANSWER IS TO PATCH THE SCHEMA
+AND SEND THE PATCH UPSTREAM** — not to keep an instance of our own. §1 already decides what a patch
+is: *"Every patch is also the upstream pull request … carrying one is a way of shipping the fix
+early rather than a way of living without it, and the patch disappears when the backport lands."*
+An `examples` keyword is the protocol's own statement, reviewed by the people who own the schema
+and useful to every other implementation; **an instance in our store is ours alone to maintain and
+means nothing to anyone else.** The maintenance question below does not arise for a patch, because
+there is nothing of ours to maintain.
+
+**THE HAND-WRITTEN INSTANCE IS THEREFORE THE LAST RESORT AND NOT THE ANSWER** — reached only where
+a node has no `examples`, no terminating draw, and no upstream answer yet. Its allowance stands, on
+the reasoning below, and it is expected to be empty.
+
 **AND THAT REASON IS ABOUT SCALE AND SILENCE, SO IT DOES NOT REACH A HANDFUL.** The hazard named
 above is a thousand files drifting invisibly. Neither half holds for a few: an instance the store
 holds is **re-offered to its own document on every read**, so one that stops being admitted
