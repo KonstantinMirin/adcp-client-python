@@ -2213,7 +2213,8 @@ where a fixture per conjunct is the empty intersection this section already meas
 **AND THE SUBSTITUTION IS A STATEMENT ABOUT GENERATION ONLY.** Every instance a substitution
 produced is screened against the pair's own node before the class sees it, so no pair is graded on
 a value its document does not admit, and no pair stops being graded on a value it is graded on
-today. Measured over all 2,753 pairs: **six gained a verdict, none lost one, none changed.**
+today, and the comparison is over EVERY pair: a change to generation is sound when pairs gain a
+verdict and none loses or changes one.
 
 **A REFERENCED DOCUMENT'S OWN INSTANCE IS SUBSTITUTED WHERE IT DESCRIBES AN INSTANCE OF ITS OWN, AND
 NOWHERE ELSE.** PROP, ELEM, MAPV, KEY, DEF, and a whole `anyOf`/`oneOf` branch are such positions:
@@ -2303,9 +2304,31 @@ recorded rather than hidden. An exemption would be the pair passing without bein
 are what "graded there" means; disjointness stays its own obligation because no fixture shows it;
 and obligation 3 was already withdrawn.
 
-**A COMBINATOR ROOT IS NOT GRADED BY DRAWING THE POWER SET OF ITS BRANCHES.** Every branch of a
-union is its own class and therefore its own pair, graded on its own; drawing the root re-draws
-what has already been verified one branch at a time — and it does so by enumerating **every SUBSET
+**A COMBINATOR ROOT IS NOT GRADED BY DRAWING THE POWER SET OF ITS STATEMENTS — AND THE COMBINATOR
+THAT COSTS THAT IS THE CONJUNCTION, NOT THE UNION. This REVERSES the sentence below, which named
+the union.** Measured on the four pairs no bound could grade: three have no `oneOf` or `anyOf` at
+their root at all. The root combinator is `allOf`, with 18, 31 and 2 conjuncts, and **none of those
+51 conjuncts carries a pair** — because a conjunct is not an alternative, and a value for one
+conjunct is not a value for the root.
+
+**A `oneOf` root is already a sum.** Its branches each emit a class, each carries a pair, and the
+generator takes one branch at a time. There was never a power set there to avoid.
+
+**An `allOf` root is the one that is 2^n, and the cost is in the SEARCH rather than the
+intersection.** The only way to generate from an intersection is to intersect the statements first,
+and finding which of them will intersect is what enumerates subsets. So the rule is about that
+search: **the statements are covered by one greedy pass, each group is drawn from its own
+intersection and screened by every statement, and the cost is n² intersections and never 2^n.**
+Nothing is re-keyed onto a branch, no class is added, and no pair moves.
+
+**AND THE REFUSES DIRECTION KEEPS THE ROOT, AT NO COST.** The refusal witness is not generated — it
+is the accepted instance perturbed one keyword at a time, screened against the root, measured at
+0.1 ms. So `oneOf`'s "an instance two branches admit is refused" is decided by the root's own
+validator, and no reduction of what the GENERATOR is offered can weaken it. This is the hole in the
+reasoning that named the union, and it is why that reasoning had to be checked before it was built.
+
+**What the sentence below is still right about** is that a union's branches are each verified on
+their own, so the root's own draw re-derives what is already decided — and it does so by enumerating **every SUBSET
 of the branches**, because the canonicaliser must merge each combination to know what the union
 admits. That is `2^n`, not a product, and it is why no constant factor reaches it: an eighteen-branch
 site is a quarter of a million subsets, and a generous budget completes a fraction of one percent
