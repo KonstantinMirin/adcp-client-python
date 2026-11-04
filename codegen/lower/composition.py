@@ -413,7 +413,7 @@ def _a_rule_the_target_states(uri: str, mod: compiler.Module) -> dict | None:
     return stating
 
 
-def _asserted_properties(
+def asserted_properties(
     node: nodes.Base, conjuncts: Sequence[nodes.Conjunct]
 ) -> dict[str, list[dict]]:
     """Every DECLARATION this node and its conjuncts state about each property key.
@@ -454,7 +454,7 @@ def _asserted_properties(
     return out
 
 
-def _surviving(
+def surviving(
     asserted: Mapping[str, list[dict]], branches: compiler.TargetBranches
 ) -> compiler.TargetBranches:
     """``branches`` with every branch whose intersection with what this node asserts is
@@ -1283,7 +1283,7 @@ def lower_composition(
                     # **§5's distribution clause drops a branch whose intersection with
                     # what this node asserts is PROVABLY empty, and the drop is decided
                     # HERE because it can be** -- it is a question about DECLARATIONS
-                    # (:func:`_asserted_properties`), which §2 is where every intersection
+                    # (:func:`asserted_properties`), which §2 is where every intersection
                     # is computed, and the raw declarations are all read before this loop
                     # starts.  The two answers that depend on the whole conjunct list are
                     # still :func:`the_conjuncts_own_type`'s and are unchanged.
@@ -1299,8 +1299,8 @@ def lower_composition(
                     # through the machinery that already answers it for every other class
                     # base -- so nothing shadows anything and no second intersection is
                     # written.
-                    asserted = _asserted_properties(node, conjuncts)
-                    live = _surviving(asserted, target.branches)
+                    asserted = asserted_properties(node, conjuncts)
+                    live = surviving(asserted, target.branches)
                     if not live.live:
                         # Every disjunct empty, which is the node §5's empty-intersection
                         # row IS about: "the node admits nothing, which is a contradiction
@@ -1720,7 +1720,7 @@ def lower_composition(
             discriminator=branches.discriminator,
             combinator=branches.combinator,
             branches=tuple(
-                ir.TypeRef(_distributed_pointer(where, branches, j), local=True)
+                ir.TypeRef(distributed_pointer(where, branches, j), local=True)
                 for j in range(len(branches.of))
             ),
         )
@@ -1907,7 +1907,7 @@ def lower_composition(
     if distributing is None or isinstance(declared, Refusal):
         return declared
     return _distribute(
-        declared, *distributing, asserted=_asserted_properties(node, conjuncts), mod=mod
+        declared, *distributing, asserted=asserted_properties(node, conjuncts), mod=mod
     )
 
 
@@ -2000,7 +2000,7 @@ def a_sibling_with_no_type_to_constrain(
     return None
 
 
-def _distributed_pointer(where: str, branches: compiler.TargetBranches, index: int) -> str:
+def distributed_pointer(where: str, branches: compiler.TargetBranches, index: int) -> str:
     """Where the class for one DISTRIBUTED branch sits, as a pointer of this document.
 
     ``<the conjunct>/<the target's combinator>/<index>``, and it is **a pointer the
@@ -2066,7 +2066,7 @@ def _distribute(
     # filtered out: the index IS the pointer, so renumbering would pair every survivor
     # against the wrong branch node.
     for index, branch in branches.live:
-        pointer = _distributed_pointer(where, branches, index)
+        pointer = distributed_pointer(where, branches, index)
         if branch.naming is None:
             # §4 "Names" derives a branch's name from its own declaration, and the facts
             # that declaration states were recorded by the module that declared it.  A

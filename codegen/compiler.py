@@ -601,7 +601,7 @@ class TargetBranches:
     #:
     #: Recorded as a set of indices rather than by filtering :attr:`of`, and the reason
     #: is the POINTER: a branch class sits at ``<conjunct>/<combinator>/<index>``
-    #: (:func:`_distributed_pointer`), which is the target's own branch position in the
+    #: (:func:`lower.composition.distributed_pointer`), which is the target's own branch position in the
     #: document of record -- so a dropped branch must not renumber the ones after it, or
     #: §8 would pair every surviving class against the wrong branch node.  Keeping the
     #: list whole and the drop beside it makes that impossible to get wrong, and it keeps

@@ -580,10 +580,23 @@ class Inherited:
     which is where §4 "Names"'s ``const`` choice and §4's dispatch derivation read the
     ``const`` pin.  Carried together because they are one resolution -- asked twice, the
     second ask is a second reading of what a ``$ref`` names.
+
+    **A THIRD THING COMES OUT OF THE SAME RESOLUTION WHERE THE TARGET DECLARES NO FIELD
+    SET OF ITS OWN**: its BRANCHES, because §4's union row then DISTRIBUTES the branch
+    over them and the distribution needs each one's symbol, its :class:`compiler.Shape`
+    and §4's naming facts (:class:`compiler.TargetBranches`).  ``None`` at every target
+    a branch can stand two bases on, so the PRESENCE of this field is "this branch
+    distributes" -- stated once, by the resolution, rather than re-derived from the kind
+    and the shape at each reader.
     """
 
     symbol: str
     shape: compiler.Shape
+    #: §4's union row at a target that is a DISPATCH ROOT declaring nothing of its own:
+    #: "the target, which supplies the fields" supplies none.  :func:`_inherited` carries
+    #: the condition and why it is the target's own FIELD SET and not whether it
+    #: dispatches.
+    distributes: compiler.TargetBranches | None = None
 
 
 @dataclass(frozen=True)
@@ -1306,6 +1319,161 @@ def overlapping(planned: Sequence[Branch], node: nodes.Union) -> list[str]:
     ]
 
 
+def _distributing(
+    node: nodes.Union, planned: list[Branch], mod: compiler.Module
+) -> dict[str, compiler.TargetBranches] | Refusal:
+    """Which branches DISTRIBUTE, and the live branch list each one distributes over.
+
+    §4's union row: a ``$ref`` branch whose target is a dispatch root declaring nothing
+    of its own is **one class per branch of the target**, each with that branch and this
+    union's base.  :attr:`Inherited.distributes` is the resolution's own answer to
+    "does this branch distribute"; what is left here is §5's distribution clause, which
+    is the same clause read at CONJ and reached through the same two functions.
+
+    **The EMPTY products are dropped and the ONE-SURVIVOR case is not a distribution at
+    all**, exactly as ``lower.composition.lower_composition`` reads it: "``(A | B | C)
+    and D`` with ``A and D`` empty is exactly ``(B and D) | (C and D)``", so a product
+    whose intersection with what this union's own node asserts is PROVABLY empty is
+    dropped and the accepted set is unchanged; and one survivor is a conjunction of two
+    declarations and nothing more, so the branch is §4's two bases with the SURVIVOR as
+    the target and falls through to that arm with no special case.  The plan is rewritten
+    in place for it -- there is one list of plans and one reading of what each branch
+    inherits, and a second carrier beside it would be a second answer.
+
+    What the node ASSERTS is its own declarations and its conjuncts', read off the raw
+    declarations by the one function that reads them (``composition.asserted_properties``):
+    those are the facts the base contributes to every product through the base class, so
+    they are the other side of §2's intersection at each one.
+
+    **0 of this bundle's roots reach the all-empty refusal**, which is §5's
+    empty-intersection row and not this one: the two sites that distribute are branches
+    of a root declaring no property at all, so nothing is asserted and nothing can be
+    proved empty.
+    """
+    out: dict[str, compiler.TargetBranches] = {}
+    asserted = composition.asserted_properties(node, node.conjuncts)
+    for i, plan in enumerate(planned):
+        if plan.inherits is None or plan.inherits.distributes is None:
+            continue
+        live = composition.surviving(asserted, plan.inherits.distributes)
+        if not live.live:
+            return Refusal(
+                "$ref",
+                plan.pointer,
+                f"every branch of {plan.inherits.symbol} intersects to nothing with what "
+                f"this union asserts about {sorted(asserted)}: section 4's union row "
+                "distributes this branch over the target's branches and drops an empty "
+                "one, and with every branch empty the branch admits no instance at all",
+                kind=Kind.VERDICT,
+            )
+        if len(live.live) == 1:
+            survivor = live.live[0][1]
+            mod.importing(survivor.symbol, survivor.where)
+            planned[i] = replace(
+                plan, inherits=Inherited(symbol=survivor.symbol, shape=survivor.declares)
+            )
+            continue
+        out[plan.pointer] = live
+    return out
+
+
+def _products(
+    plan: Branch, distributed: Mapping[str, compiler.TargetBranches]
+) -> list[tuple[str, compiler.Target]]:
+    """One ``(pointer, target branch)`` pair per LIVE product of a distributing branch,
+    and the empty list for every other branch.
+
+    The pointer is ``composition.distributed_pointer``'s -- ``<the branch>/<the target's
+    combinator>/<index>`` -- which is a pointer the document of RECORD holds: §3 inlines
+    every cross-document ``$ref`` unchanged, so the branch's own pointer carries the
+    target's root in the record and the target's branch list hangs off it there.  That is
+    also what makes each product GRADEABLE, and it is the same reading §5's distribution
+    at CONJ already makes of the same arrangement.
+    """
+    branches = distributed.get(plan.pointer)
+    if branches is None:
+        return []
+    return [
+        (composition.distributed_pointer(plan.pointer, branches, index), product)
+        for index, product in branches.live
+    ]
+
+
+def _branch_classes(
+    plan: Branch, distributed: Mapping[str, compiler.TargetBranches]
+) -> list[str]:
+    """The pointers of the CLASSES one branch contributes to its base's branch list.
+
+    Its own, or -- where it distributes -- its products', because no class is declared at
+    a distributing branch's own pointer.  One reading for the base's ``branches`` slot and
+    for the ``ir.UnionInstall`` the module's trailer writes, which is why the pointers
+    are returned rather than the two readers each deriving them.
+    """
+    products = _products(plan, distributed)
+    return [at for at, _ in products] if products else [plan.pointer]
+
+
+def _declare_products(
+    plan: Branch,
+    branches: compiler.TargetBranches,
+    pointer: str,
+    base_shape: compiler.Shape,
+    mod: compiler.Module,
+) -> Refusal | None:
+    """One class per live branch of a distributing branch's target.
+
+    **Nothing of the target is COPIED**: each product declares no field of its own beyond
+    §2's intersection below, and its symbol is imported from the declarer
+    (:attr:`compiler.Target.where`) -- the same three things a ``$ref`` BRANCH already
+    crosses a module boundary with, read one level into the target.
+
+    §2's RESTATEMENT rule is the one thing a product does declare, and it is the same
+    call the two-base arm makes for the same reason: the base is FIRST in the MRO, so a
+    key the base and the product's target branch both declare would be decided the wrong
+    way round and the target's declaration shadowed.
+    :func:`intersect.intersected_at_a_branch` carries the measurement.
+    """
+    for at, product in _products(plan, {plan.pointer: branches}):
+        mod.importing(product.symbol, product.where)
+        # §6 clause 3 at a product: silence inherits, and what it inherits is the TARGET
+        # BRANCH's description, because that is what the composed document states at the
+        # product's own pointer.  The branch node's own annotation still wins where it
+        # states one, which is ``declare_object``'s reading and not this site's.
+        inherited = product.declares.description
+        own = intersect.intersected_at_a_branch(
+            {key: [declaration] for key, declaration in base_shape.properties.items()},
+            product.declares,
+            product.symbol,
+            at,
+            base_shape.required,
+            mod,
+        )
+        if isinstance(own, Refusal):
+            return own
+        made = objects.declare_object(
+            plan.parsed,
+            at,
+            mod,
+            own,
+            compiler.Shape(
+                {**base_shape.properties, **product.declares.properties},
+                base_shape.required | product.declares.required,
+                decided={**base_shape.decided, **product.declares.decided},
+                extra=compiler.stated_extra(product.declares.extra, base_shape.extra),
+                description=inherited,
+            ),
+            Position.BRANCH,
+            bases=(
+                ir.TypeRef(pointer, local=True),
+                ir.TypeRef(product.symbol, local=True),
+            ),
+            description=inherited,
+        )
+        if isinstance(made, Refusal):
+            return made
+    return None
+
+
 def lower_union(
     node: nodes.Union,
     mod: compiler.Module,
@@ -1513,10 +1681,39 @@ def lower_union(
     # colliding with a class elsewhere in the document -- strictly wider than the per-union
     # check it replaces).  The other -- a branch with no identity -- is gone entirely,
     # because §4's fourth rung answers for every branch whose index is recorded.
+    # **§4's union row AT A BRANCH WHOSE TARGET DECLARES NOTHING, resolved after the
+    # dispatch derivation and before any name** (``adcp-client-python-iw7``).  AFTER,
+    # because §4's derivation and §8's third equality range over the branches THE
+    # DOCUMENT WRITES -- ``harness.inseparable_unions`` reads the document and this
+    # function must not answer a separability question over a branch list the document
+    # does not hold.  BEFORE the names, because the products are the classes that need
+    # them and the branch itself is no longer one.
+    distributed = _distributing(node, planned, mod)
+    if isinstance(distributed, Refusal):
+        return distributed
     for i, plan in enumerate(planned):
         mod.hops[plan.pointer] = replace(
             _naming_facts(plan.node, plan.properties, plan.inherits), parent=pointer, index=i
         )
+        # **§4's branch candidates with the ENCLOSING CONJUNCTION as the parent**, which
+        # is the hop recorded one line up: each product is named for what distinguishes
+        # it -- the target branch's own title, else its pins, else its required set --
+        # and the branch it came from is the ancestor segment §4's collision rule spends.
+        # No new naming rule and no index of this loop's own: the target branch's hop
+        # already carries the index its declaring module gave it, exactly as §5's
+        # distribution at CONJ keeps it (``lower.composition._distribute``).
+        for at, product in _products(plan, distributed):
+            if product.naming is None:
+                return Refusal(
+                    "$ref",
+                    at,
+                    f"{product.symbol} is a branch of this branch's target and carries "
+                    "none of section 4's three naming facts, so the class the "
+                    "distribution declares for it has no name to derive: the declaring "
+                    "module records them with the branch's hop and this run resolved none",
+                    kind=Kind.VERDICT,
+                )
+            mod.hops[at] = replace(product.naming, parent=plan.pointer)
 
     mod.imports.add((ir.BASE_MODULE, "AdCPBaseModel"))
     # The mixin's import is NOT added here: ``lower.composition.dispatching_bases`` adds it where
@@ -1537,7 +1734,16 @@ def lower_union(
     # :class:`codegen.ir.UnionInstall` below -- so the two cannot come to disagree about
     # which classes are this base's branches.  Each one names a branch by POINTER until
     # ``lower/names.py`` binds it (§7).
-    branches = tuple(ir.TypeRef(p.pointer, local=True) for p in planned)
+    # **A DISTRIBUTING branch contributes its PRODUCTS here and not itself**, because the
+    # products are this base's branches: no class is declared at the branch's own pointer
+    # at all, so a ``TypeRef`` to it would name nothing and the base would dispatch to a
+    # class that does not exist.  Both readers take the one list, which is what keeps
+    # ``_branch_models`` and the declaration's branch slot from disagreeing.
+    branches = tuple(
+        ir.TypeRef(at, local=True)
+        for plan in planned
+        for at in _branch_classes(plan, distributed)
+    )
     # **THE ROOT'S SIBLINGS COMPILE ONTO THE BASE, and the reader is the one §5 names**
     # (§14 step 9).  :data:`ROOT_CONJUNCTS` refused a root carrying ``allOf``,
     # ``properties``, ``required`` or ``additionalProperties`` here, on the ground that a
@@ -1626,6 +1832,19 @@ def lower_union(
         # field of :class:`Branch`, except for the one shape whose reader needs the
         # resolved target: ``_plan`` has already admitted the keyword set, so the node
         # is what decides which reader reads it.
+        if plan.pointer in distributed:
+            # **§4's union row DISTRIBUTED: one class per branch of the target, each with
+            # that branch and this union's base** (``adcp-client-python-iw7``).  Each
+            # product declares fields, each one dispatches, and ``isinstance`` holds
+            # against both bases -- which the one-line alternative of binding
+            # ``_branch_models`` onto the derived class does not, and which is why that
+            # form is refused.  The arrangement is §4's two bases unchanged: the base
+            # supplies the dispatch and the other base supplies the field set, read one
+            # level into the target rather than at its root.
+            products = _declare_products(plan, distributed[plan.pointer], pointer, base_shape, mod)
+            if isinstance(products, Refusal):
+                return products
+            continue
         if plan.inherits is not None:
             # **§4's two bases.**  No fields of its own: the target supplies them, so
             # the class body is the ``__adcp_schema__`` of the BRANCH's own pointer and
@@ -2429,7 +2648,37 @@ def _inherited(parsed: nodes.Node, mod: compiler.Module) -> Inherited | Refusal:
             "the base a $ref branch takes its fields from",
             kind=Kind.VERDICT,
         )
-    return Inherited(symbol=symbol, shape=bound.declares)
+    return Inherited(
+        symbol=symbol,
+        shape=bound.declares,
+        # **§4's union row, AND WHERE THE TARGET IS ITSELF A UNION ROOT THAT DECLARES
+        # NOTHING, THE BRANCH DISTRIBUTES** (``adcp-client-python-iw7``).  "The target,
+        # which supplies the fields" is true exactly while the target declares fields of
+        # its own; a dispatch root whose every property sits on its branches declares
+        # none, so a two-base class over it inherits an EMPTY field set, dispatches
+        # nothing -- §4 part 3 gives the union to the class that *declares*
+        # ``_branch_models`` and this derived class does not -- and ``extra: ignore``
+        # drops the whole payload.  Measured on both sites:
+        # ``model_fields_set == set()``, ``model_extra is None``, and
+        # ``model_dump(mode="json", by_alias=True)`` is ``{}`` from a payload the
+        # document admits.
+        #
+        # **THE CONDITION IS THE TARGET'S OWN FIELD SET AND NOT WHETHER IT DISPATCHES.**
+        # 580 classes of this tree have a dispatching base AND fields, and §4's two-base
+        # rule is right for every one of them -- the target supplies those fields and the
+        # branch inherits them.  2 of 2,753 have a target that declares nothing, which is
+        # this condition and nothing wider.
+        #
+        # The distribution itself is :func:`lower_union`'s, because the products are
+        # classes of the ENCLOSING union and only that function holds its base.
+        distributes=(
+            bound.branches
+            if bound.kind is compiler.TargetKind.UNION
+            and bound.branches is not None
+            and not bound.declares.properties
+            else None
+        ),
+    )
 
 
 def _plan(node: nodes.Union, i: int, mod: compiler.Module) -> Branch | Refusal:
