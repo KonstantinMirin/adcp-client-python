@@ -1213,6 +1213,28 @@ grades against. A resolver that canonicalises while it inlines writes a document
 does not state, and every reader downstream then needs a fold to undo each rewriting — the
 verifier carries folds of that kind today. An inliner that changes nothing needs none.
 
+**AN INLINER IS KEYED ON THE NODE'S IDENTITY, NEVER ON ITS TEXT.** A key or a copy made of a
+subtree's text costs **the text times the depth** at which it appears, because every ancestor
+serialises its descendants again; a key made of the node's identity costs **the DAG**.
+`bundle.stored` exists because the record's text is a DAG, and **every reader of the record has to
+be one too** — a reader that walks it as the tree the DAG unfolds to pays the unfolding, and the
+unfolding is what the storage was written to avoid.
+
+The figure to keep is not a total but a ratio taken *before* anything resolves: a single stored
+entry can be fifteen times its own document's distinct content when written out as text. Resolving
+two references to it then costs that again per occurrence, which is how a node of a few kilobytes
+reaches tens of gigabytes.
+
+**AND THE ACCEPTS RESOLVER INLINES AND DOES NOT CANONICALISE**, which is a statement about where a
+cost belongs rather than about correctness. The draw's own strategy builder canonicalises whatever
+it is handed, so **a draw pays canonicalisation inside the draw, over the schema it will generate
+from, and resolution pays it never.** A resolver that canonicalises pays it once per inlined
+occurrence and then hands the draw something it will canonicalise again.
+
+This also says why a timeout was never the fix for it: both the serialisation and the canonical
+round-trip are C calls, and a signal-based bound is delivered at a bytecode boundary. **A phase
+that cannot be preempted must be made to terminate, not bounded.**
+
 ### The node, and the parser that is the one reading
 
 `codegen/schema/nodes.py` declares the in-memory form, and it is a **typed representation of a
