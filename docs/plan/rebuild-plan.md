@@ -2161,7 +2161,41 @@ inlined subtree, so substituting a fixture collapses it **whether or not the rec
 bytes** — which makes it a change to how we grade rather than a change to the artifact. It is the
 cheap half of what un-inlining would buy.
 
-**A REFERRING POSITION IS ONE WHERE THE REFERENCED DOCUMENT DESCRIBES AN INSTANCE OF ITS OWN, AND
+**A REFERRING POSITION IS WHERE A REFERENCE LANDS IN THE NODE BEING GRADED, AND NEVER WHERE A
+`$ref` STRING APPEARS IN THE RAW DOCUMENT.** The record's own text cannot say a subtree came from
+elsewhere — that is a fact about the record, and not a reason the GRADED NODE cannot be asked.
+`applied_schema` conjoins what the enclosing nodes assert about the same instance, so a reference
+routinely arrives at a pointer **the document does not spell**. Measured on
+`media-buy/refine-proposals-response.json#/properties/results/items/oneOf/0`, cut at every bound
+including 3,600 s: the raw branch is **454 bytes and holds no `$ref` at all**, while the graded node
+is **683,849 bytes, of which 683,144 sit in one spliced `allOf` conjunct** holding the whole of
+`core/canonical-proposal.json`. **The raw reading was correct to find nothing**, which is what makes
+this a change of key and not a defect in the lookup.
+
+**AND A FIXTURE POSITION IS EVERY INSTANCE LOCATION THE NODE DECIDES, WITH ITS VALUE DRAWN FROM THE
+CONJUNCTION OF EVERY STATEMENT ABOUT IT.** Several conjuncts can each state part of what one key or
+one element must satisfy, so **one value for the location** is the answer that cannot be empty,
+where a fixture per conjunct is the empty intersection this section already measures.
+
+- **A CONSEQUENT IS A SCOPE OF ITS OWN AND NOT A CONJUNCT.** A `then` or an `else` states its part
+  only when its condition matches. Read as a conjunct, the thirty consequents of
+  `compliance/comply-test-controller-request.json#` demanded a single value satisfying all thirty
+  scenarios at once, and took 193.85 s to report that none exists.
+- **A UNION BRANCH IS AN ALTERNATIVE, so no single value answers for it** — what is substituted is
+  the branch's own reduction. Pinning a union from the union node alone produced
+  `{"allOf": [{"oneOf": [{"const": null}]}, {"type": "object", …}]}`: an empty strategy, with
+  1.16 MB left untouched and 48 s spent.
+- **NOTHING UNDER `not` OR `if` IS SUBSTITUTED AT ALL**, because there a restriction WIDENS, so a
+  pin would narrow the admitted set rather than sample it.
+- `patternProperties` and `contains` are conjoined and never replaced — read as a conflict with
+  `items`, `contains` left a 494,960-byte frontier empty.
+
+**AND THE SUBSTITUTION IS A STATEMENT ABOUT GENERATION ONLY.** Every instance a substitution
+produced is screened against the pair's own node before the class sees it, so no pair is graded on
+a value its document does not admit, and no pair stops being graded on a value it is graded on
+today. Measured over all 2,753 pairs: **six gained a verdict, none lost one, none changed.**
+
+**A REFERENCED DOCUMENT'S OWN INSTANCE IS SUBSTITUTED WHERE IT DESCRIBES AN INSTANCE OF ITS OWN, AND
 NOWHERE ELSE.** PROP, ELEM, MAPV, KEY, DEF, and a whole `anyOf`/`oneOf` branch are such positions:
 the referenced document is the entire answer about one value, and one value it admits is a fixture.
 
