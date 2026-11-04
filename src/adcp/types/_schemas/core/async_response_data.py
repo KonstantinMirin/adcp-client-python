@@ -18,7 +18,7 @@ from ..media_buy.build_creative_async_response_input_required import BuildCreati
 from ..media_buy.build_creative_async_response_submitted import BuildCreativeSubmitted
 from ..media_buy.build_creative_async_response_working import BuildCreativeWorking
 from ..media_buy.build_creative_response import BuildCreativeResponse
-from ..media_buy.control_media_buy_response import ControlMediaBuyResponse
+from ..media_buy.control_media_buy_response import ControlApplied, ControlError, ControlMediaBuyResponse, ControlSubmitted
 from ..media_buy.create_media_buy_async_response_input_required import CreateMediaBuyInputRequired
 from ..media_buy.create_media_buy_async_response_submitted import CreateMediaBuySubmitted
 from ..media_buy.create_media_buy_async_response_working import CreateMediaBuyWorking
@@ -29,7 +29,7 @@ from ..media_buy.get_products_async_response_submitted import GetProductsSubmitt
 from ..media_buy.get_products_async_response_working import GetProductsWorking
 from ..media_buy.get_products_rejected import GetProductsRejected
 from ..media_buy.get_products_response import GetProductsResponse
-from ..media_buy.media_buy_commitment_response import MediaBuyCommitmentResponse
+from ..media_buy.media_buy_commitment_response import CommitmentError, CommitmentSubmitted, CommittedMediaBuy, MediaBuyCommitmentResponse
 from ..media_buy.media_buy_delivery_webhook_result import MediaBuyDeliveryWebhookResult
 from ..media_buy.refine_proposals_async_response_submitted import RefineProposalsSubmitted
 from ..media_buy.refine_proposals_response import RefineProposalsResponse
@@ -167,18 +167,64 @@ class AdCPAsyncResponseDataDeclineProposalsResponse(AdCPAsyncResponseData, Decli
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/async-response-data.json', pointer='#/anyOf/9')
 
 
-class AdCPAsyncResponseDataMediaBuyCommitmentResponse(AdCPAsyncResponseData, MediaBuyCommitmentResponse):
+class MediaBuyCommitmentResponseCompleted(AdCPAsyncResponseData, CommittedMediaBuy):
     """
     Shared terminal response for buy_products and accept_proposal; originating task identity is carried by the task envelope and manifest resolver.
     """
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/async-response-data.json', pointer='#/anyOf/10')
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/async-response-data.json', pointer='#/anyOf/10/oneOf/0')
 
 
-class AdCPAsyncResponseDataControlMediaBuyResponse(AdCPAsyncResponseData, ControlMediaBuyResponse):
+class MediaBuyCommitmentResponseFailed(AdCPAsyncResponseData, CommitmentError):
+    """
+    Shared terminal response for buy_products and accept_proposal; originating task identity is carried by the task envelope and manifest resolver.
+    """
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/async-response-data.json', pointer='#/anyOf/10/oneOf/1')
+
+
+class MediaBuyCommitmentResponseSubmitted(AdCPAsyncResponseData, CommitmentSubmitted):
+    """
+    Shared terminal response for buy_products and accept_proposal; originating task identity is carried by the task envelope and manifest resolver.
+    """
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/async-response-data.json', pointer='#/anyOf/10/oneOf/2')
+
+
+class ControlMediaBuyResponseCompleted(AdCPAsyncResponseData, ControlApplied):
     """
     Terminal response for control_media_buy
     """
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/async-response-data.json', pointer='#/anyOf/11')
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/async-response-data.json', pointer='#/anyOf/11/oneOf/0')
+
+
+class ControlMediaBuyResponseFailed(AdCPAsyncResponseData, ControlError):
+    """
+    Terminal response for control_media_buy
+    """
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/async-response-data.json', pointer='#/anyOf/11/oneOf/1')
+
+
+class ControlMediaBuyResponseSubmitted(AdCPAsyncResponseData, ControlSubmitted):
+    """
+    Terminal response for control_media_buy
+    """
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/async-response-data.json', pointer='#/anyOf/11/oneOf/2')
 
 
 class AdCPAsyncResponseDataCompactTaskSubmitted(AdCPAsyncResponseData, CompactTaskSubmitted):
@@ -481,7 +527,7 @@ class SyncCatalogsAsyncSubmitted(AdCPAsyncResponseData, SyncCatalogsSubmitted):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/async-response-data.json', pointer='#/anyOf/41')
 
 
-AdCPAsyncResponseData._branch_models = (AdCPAsyncResponseDataGetProductsResponse, AdCPAsyncResponseDataRejected, GetProductsAsyncWorking, GetProductsAsyncInputRequired, GetProductsAsyncSubmitted, AdCPAsyncResponseDataRequestProposalsResponse, RequestProposalsAsyncSubmitted, AdCPAsyncResponseDataRefineProposalsResponse, RefineProposalsAsyncSubmitted, AdCPAsyncResponseDataDeclineProposalsResponse, AdCPAsyncResponseDataMediaBuyCommitmentResponse, AdCPAsyncResponseDataControlMediaBuyResponse, AdCPAsyncResponseDataCompactTaskSubmitted, AdCPAsyncResponseDataCompactTaskWorking, AdCPAsyncResponseDataCompactTaskInputRequired, AdCPAsyncResponseDataGetSignalsResponse, GetSignalsAsyncWorking, GetSignalsAsyncSubmitted, AdCPAsyncResponseDataCreateMediaBuyResponse, CreateMediaBuyAsyncWorking, CreateMediaBuyAsyncInputRequired, CreateMediaBuyAsyncSubmitted, AdCPAsyncResponseDataUpdateMediaBuyResponse, UpdateMediaBuyAsyncWorking, UpdateMediaBuyAsyncInputRequired, UpdateMediaBuyAsyncSubmitted, AdCPAsyncResponseDataMediaBuyDeliveryWebhookResult, AdCPAsyncResponseDataBuildCreativeResponse, AdCPAsyncResponseDataPreviewCreativeResponse, BuildCreativeAsyncWorking, BuildCreativeAsyncInputRequired, BuildCreativeAsyncSubmitted, AdCPAsyncResponseDataGetCreativeFeaturesResponse, GetCreativeFeaturesAsyncSubmitted, AdCPAsyncResponseDataSyncCreativesResponse, SyncCreativesAsyncWorking, SyncCreativesAsyncInputRequired, SyncCreativesAsyncSubmitted, AdCPAsyncResponseDataSyncCatalogsResponse, SyncCatalogsAsyncWorking, SyncCatalogsAsyncInputRequired, SyncCatalogsAsyncSubmitted,)
+AdCPAsyncResponseData._branch_models = (AdCPAsyncResponseDataGetProductsResponse, AdCPAsyncResponseDataRejected, GetProductsAsyncWorking, GetProductsAsyncInputRequired, GetProductsAsyncSubmitted, AdCPAsyncResponseDataRequestProposalsResponse, RequestProposalsAsyncSubmitted, AdCPAsyncResponseDataRefineProposalsResponse, RefineProposalsAsyncSubmitted, AdCPAsyncResponseDataDeclineProposalsResponse, MediaBuyCommitmentResponseCompleted, MediaBuyCommitmentResponseFailed, MediaBuyCommitmentResponseSubmitted, ControlMediaBuyResponseCompleted, ControlMediaBuyResponseFailed, ControlMediaBuyResponseSubmitted, AdCPAsyncResponseDataCompactTaskSubmitted, AdCPAsyncResponseDataCompactTaskWorking, AdCPAsyncResponseDataCompactTaskInputRequired, AdCPAsyncResponseDataGetSignalsResponse, GetSignalsAsyncWorking, GetSignalsAsyncSubmitted, AdCPAsyncResponseDataCreateMediaBuyResponse, CreateMediaBuyAsyncWorking, CreateMediaBuyAsyncInputRequired, CreateMediaBuyAsyncSubmitted, AdCPAsyncResponseDataUpdateMediaBuyResponse, UpdateMediaBuyAsyncWorking, UpdateMediaBuyAsyncInputRequired, UpdateMediaBuyAsyncSubmitted, AdCPAsyncResponseDataMediaBuyDeliveryWebhookResult, AdCPAsyncResponseDataBuildCreativeResponse, AdCPAsyncResponseDataPreviewCreativeResponse, BuildCreativeAsyncWorking, BuildCreativeAsyncInputRequired, BuildCreativeAsyncSubmitted, AdCPAsyncResponseDataGetCreativeFeaturesResponse, GetCreativeFeaturesAsyncSubmitted, AdCPAsyncResponseDataSyncCreativesResponse, SyncCreativesAsyncWorking, SyncCreativesAsyncInputRequired, SyncCreativesAsyncSubmitted, AdCPAsyncResponseDataSyncCatalogsResponse, SyncCatalogsAsyncWorking, SyncCatalogsAsyncInputRequired, SyncCatalogsAsyncSubmitted,)
 AdCPAsyncResponseData.model_rebuild(force=True)
 
 

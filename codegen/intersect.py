@@ -722,6 +722,9 @@ def _container_kind(constraining: Mapping[str, Any]) -> str | None:
     Both are declarations this cannot read as one container, and the caller's rule is
     that two declarations compose as a conjunct only where they agree on which container
     they are about.
+
+    **AND A BARE UNION DECLARES THE CONTAINER ITS BRANCHES AGREE ON**
+    (:func:`_branches_declare`), which is the keyword-group entailment read one step out.
     """
     words = _type_words(constraining.get("type")) & {"object", "array"}
     if len(words) == 1:
@@ -729,7 +732,54 @@ def _container_kind(constraining: Mapping[str, Any]) -> str | None:
     if words:
         return None
     found = {kind for kind, group in _CONTAINER_KEYWORDS.items() if group & set(constraining)}
-    return next(iter(found)) if len(found) == 1 else None
+    if len(found) == 1:
+        return next(iter(found))
+    if found:
+        return None
+    return _branches_declare(constraining)
+
+
+def _branches_declare(declaration: Mapping[str, Any]) -> str | None:
+    """The container a node declaring NOTHING BUT A UNION declares: the one every branch
+    declares, and ``None`` where they disagree or where any branch declares none.
+
+    ``adcp-client-python-97w``.  The same entailment :func:`_container_kind`'s
+    keyword-group arm makes, read one step out: draft-07 admits an instance only through
+    a branch, so a ``oneOf`` every branch of which declares an object has said the
+    instance is an object as surely as ``type: object`` does.
+
+    **A DISPATCH ROOT is exactly that declaration**, and that is why this clause exists:
+    §4 puts every property on the branches and such a root states no ``type`` of its own,
+    so read without it a union root declares no container at all and
+    :func:`intersection`'s ``conjoined_the_reference`` never fires against one -- the
+    base's reference is dropped and the field is decided from the restatement alone.
+    Measured: ``core/attestation-subject.json``, a ``oneOf`` of three objects, beside
+    ``governance/check-governance-request.json``'s object restatement of ``subject`` at
+    ``/properties/runtime_attestations/items/allOf/1/properties/subject``.  The emitted
+    ``Subject``'s bases were ``(AdCPBaseModel,)`` -- no union root in the MRO at all, so
+    the conjunct was DROPPED and not composed-and-not-dispatched -- it carried the
+    restatement's ``type``/``resource_type`` and nothing else, and ``extra: ignore``
+    discarded the rest of the payload.  ``core/audience-evidence.json`` is the control:
+    it SPELLS the same composition in its own document text and emits
+    ``Subject(AttestationResourceSubject)``, which is what this clause makes the implicit
+    composition do too.
+
+    Asked of ONE combinator: a node stating both ``oneOf`` and ``anyOf`` is two unions
+    over one instance and this makes no claim about it (the bundle states 0).  A branch
+    list that is empty, or one holding a non-mapping, declares nothing either -- both are
+    refused by name elsewhere, and answering ``None`` here leaves that report where it is.
+    """
+    listed = [
+        declaration[keyword]
+        for keyword in ("oneOf", "anyOf")
+        if isinstance(declaration.get(keyword), list)
+    ]
+    if len(listed) != 1 or not listed[0]:
+        return None
+    if not all(isinstance(branch, Mapping) for branch in listed[0]):
+        return None
+    kinds = {_container_kind(constraining(branch)) for branch in listed[0]}
+    return next(iter(kinds)) if len(kinds) == 1 and None not in kinds else None
 
 
 def _type_words(stated: Any) -> frozenset[str]:
