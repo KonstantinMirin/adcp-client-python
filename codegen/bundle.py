@@ -750,7 +750,7 @@ def constrained_to_object(doc: dict) -> frozenset[str]:
     draft-07 applies a root's assertions and its combinator branch's to the SAME
     instance, so ``{"type": "object", "oneOf": [{"properties": {...}}]}`` admits only
     objects and the branch at ``/oneOf/0`` does not have to restate it.  Read in
-    ISOLATION that branch admits a non-object, which is what ``compiler.lower_object``
+    ISOLATION that branch admits a non-object, which is what ``lower.objects.lower_object``
     refused it for -- a fact three lines up in its own document.  10 documents of the
     3.2 bundle were refused for exactly that, and another 34 chained off them through
     a ``$ref``.
@@ -792,7 +792,7 @@ def reported_drops(doc: object) -> tuple[tuple[str, str], ...]:
     one position and not another is a defect in the CHANNEL, not a second decision."
 
     **This is that channel, and it cannot screen a position.**  The defect it replaces
-    was ``compiler.lower_composition``'s conjunct worklist, which saw CONJ and nothing
+    was ``lower.composition.lower_composition``'s conjunct worklist, which saw CONJ and nothing
     else: ``media-buy/sync-catalogs-request.json`` states ``errorMessage`` twice, at
     ``/allOf/1`` under a ``not`` and at ``/then`` beside a ``required``, and the reader
     was told about the first alone -- the second reached no reader at all, because

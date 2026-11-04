@@ -48,7 +48,7 @@ implies them.**  A handler never sees a mapping the document does not state:
   keyword the walk itself inserted" is why that reading is the parser's;
 * the extras store rebuilt as a mapping -- a typed ``additionalProperties`` on a class is
   the ``dict[K, V]`` §5 says a typed one is, and :attr:`nodes.Object.extras` is that
-  mapping NODE, built here, where ``compiler.declare_object`` built a synthetic
+  mapping NODE, built here, where ``lower.objects.declare_object`` built a synthetic
   ``{"type": "object", "additionalProperties": ap, ...}`` and handed it to the dispatch;
 * the multi-type cut -- one member per type word, each holding only the keywords that
   word can carry (:data:`ARM`), which is draft-07's own semantics.
@@ -197,7 +197,7 @@ def parse(
         # Not a schema.  The kind that can hold the value and let the handler name the
         # keyword is :class:`nodes.Typeless`, whose own answer is ``Any``; every caller
         # that can be handed a non-mapping refuses it by the document's own keyword
-        # (``containers._value``, ``compiler.fields``), which is a reading the kind's
+        # (``containers._value``, ``lower.objects.fields``), which is a reading the kind's
         # conversion moves here.
         return nodes.Typeless(
             document=source.document, pointer=pointer, position=position
@@ -253,7 +253,7 @@ def parse(
     #
     # Measured over every node of the 1,054 portable documents: **4 composing nodes state
     # a non-object ``type`` word and all 4 state ``array``** -- the same 4
-    # ``compiler.declare_object``'s type screen measured.  A word no handler claims the
+    # ``lower.objects.declare_object``'s type screen measured.  A word no handler claims the
     # keyword for refuses on ``allOf`` through that handler's own screen, with the kind the
     # cell gives it, which is loud and is not a verdict about the document.
     if "$ref" in raw:
@@ -312,7 +312,7 @@ def parse(
         # names the document states reached no node field at all.  §5's ``required`` row
         # decides the fact at every one of those positions ("BRANCH -> the branch class's
         # requiredness"; "ROOT beside a union -> required on the base's fields"), and the
-        # carrier is one :class:`nodes.Object` already has: ``compiler.lower_composition``
+        # carrier is one :class:`nodes.Object` already has: ``lower.composition.lower_composition``
         # takes :attr:`nodes.Object.required` off every kind that can state one, so the
         # names reach the class that narrows them without a second reading anywhere.
         # ``_object`` reads a missing map as ``{}``, which is what such a node declares.
@@ -342,7 +342,7 @@ def parse(
         # ``{}``, which IS true".  That reason is sound for a branch stating nothing and
         # false for one stating a ``not`` over ``required`` or a presence combinator: such
         # a branch narrows the base by exactly the rule it carries, which
-        # ``compiler.declare_object`` writes for whatever node it declares.
+        # ``lower.objects.declare_object`` writes for whatever node it declares.
         # ``formats/canonical/display_tag.json``, ``html5.json`` and ``image.json`` are
         # the measured case -- their "responsive" branch states ``anyOf`` over four
         # dimension names and their "none" branch states only a ``not`` over seven.
@@ -355,7 +355,7 @@ def parse(
         # a fact about a VALUE, which no class carries, and reading it as an object costs
         # 22 documents (measured: ``emitted`` 923 -> 901, all 22 chained behind the
         # branches that stopped being scalars).  A RULE is precisely the thing a class
-        # with no fields can carry -- ``compiler.declare_object`` writes the tuple for
+        # with no fields can carry -- ``lower.objects.declare_object`` writes the tuple for
         # whatever node it declares -- so the test is that every declaration is one, read
         # off :attr:`nodes.Base.rules`, which is :func:`_rule_sources`' own answer at this
         # position and already includes a presence-only combinator.  Nothing is named
@@ -502,7 +502,7 @@ def _object(
 
     :attr:`nodes.Object.properties` holds the CHILD NODES, in the document's own key
     order, so the class's field order is the document's.  The pointer of a property is
-    ``<pointer>/properties/<key>`` -- the spelling ``compiler.fields`` already used, so a
+    ``<pointer>/properties/<key>`` -- the spelling ``lower.objects.fields`` already used, so a
     refusal inside a property names the pointer it named before.
 
     :attr:`nodes.Object.extras` is the second rewrite retired.  A TYPED
@@ -565,7 +565,7 @@ def extras_store(
     """The extras STORE of a class with a typed ``additionalProperties``: §2's SECOND
     node rewrite, retired.
 
-    ``compiler.declare_object`` synthesised ``{"type": "object", "additionalProperties":
+    ``lower.objects.declare_object`` synthesised ``{"type": "object", "additionalProperties":
     ap, "propertyNames": ...}`` and handed it to the dispatch -- a node the document does
     not have, which is exactly the defect §2 names.  The reading is the parser's and it is
     made here: a typed ``additionalProperties`` on a class is the ``dict[K, V]`` §5 says a
@@ -576,7 +576,7 @@ def extras_store(
     ``true`` everywhere, and ``true`` is the extra POLICY rather than a value type.
 
     Public, because two callers meet the shape: :func:`_object`, which is the converted
-    reading, and ``compiler.declare_object`` for the composing row and the union branch
+    reading, and ``lower.objects.declare_object`` for the composing row and the union branch
     that still read their own declaration (§14 step 5's staging).  One construction, two
     call sites -- never two constructions.
     """
@@ -646,7 +646,7 @@ def _array(
     ``contains`` predicate as stated, and the ``allOf`` conjuncts that constrain it.
 
     :attr:`nodes.Array.distinct` is the third rewrite retired on the array side:
-    ``compiler.fields`` stripped ``uniqueItems`` off a property's declaration before the
+    ``lower.objects.fields`` stripped ``uniqueItems`` off a property's declaration before the
     array row saw it, so the array was decided from a mapping the document does not state.
     The fact is read once here and the class holding the array reads it off the node.
 
@@ -751,7 +751,7 @@ def _borne_by_a_conjunct(
 
     **Draft-07 conjoins a conjunct with the node that holds it**, which is the same
     reading :func:`applies_to_one_instance` makes for §4's disjointness derivation and
-    the reason ``compiler.lower_composition`` takes a conjunct's ``properties`` as the
+    the reason ``lower.composition.lower_composition`` takes a conjunct's ``properties`` as the
     composed node's fields.  So a conjunct stating ``oneOf``/``anyOf`` states it about
     THIS node's instance, and §5's ``oneOf``/``anyOf`` row has the cell for it: "CONJ ->
     one class per branch over the composed bases".  The classification is the parser's
@@ -773,7 +773,7 @@ def _borne_by_a_conjunct(
       class-per-branch answer.  Measured over the 1,054 portable documents: **0 nodes**;
     * the conjunct states anything else beside the combinator.  Then the conjunct also
       contributes to the composed class, and the conjunction of ITS contribution with
-      its own branch list is the thing ``compiler._refuse_a_combinator_of_shapes``
+      its own branch list is the thing ``lower.composition._refuse_a_combinator_of_shapes``
       refuses for having no pointer.  Measured: **0 of the 7 sites** -- every conjunct
       carrying a combinator of shapes in this bundle states the keyword and annotations
       alone.
@@ -869,7 +869,7 @@ def _union(
         branch_raw=tuple(branches),
         # §5's ``required`` row at ROOT beside a union -- "required on the base's
         # fields, and the names recorded in ``_ROOT_REQUIRED``" -- read the way every
-        # other kind that can state one reads it, so ``compiler.lower_composition``
+        # other kind that can state one reads it, so ``lower.composition.lower_composition``
         # takes the node's requiredness off one field name whatever kind it is handed.
         required=tuple(raw["required"]) if isinstance(raw.get("required"), list) else (),
         word=word,
@@ -998,7 +998,7 @@ def _requires_as_a_type(raw: Mapping[str, Any], position: Position) -> bool:
     which needs no node of its own.  Everywhere else the row is the requiredness OF the
     node ("BRANCH -> the branch class's requiredness", "ROOT beside a union -> required on
     the base's fields"), which is :attr:`nodes.Object.required` and
-    ``compiler.lower_composition``'s reading of it.
+    ``lower.composition.lower_composition``'s reading of it.
 
     So the split is the CELL's ``effect`` and this is a reader of the table, the way
     :func:`_rule_sources` and :func:`presence_only` are -- not a position named here,
@@ -1290,7 +1290,7 @@ def applies_to_one_instance(node: Any, position: Position) -> list[Mapping[str, 
 
     Draft-07 conjoins an ``allOf`` conjunct with the node that holds it, so a fact a
     conjunct states is a fact about the instance the node describes -- which is D7's own
-    wording and the reason ``compiler.lower_composition`` reads a conjunct's
+    wording and the reason ``lower.composition.lower_composition`` reads a conjunct's
     ``properties`` as the composing node's fields and hands its rule sources to
     ``compiler.rules_at`` as that node's own.  Every reading of a BRANCH's declaration
     owes the same descent, and §4's disjointness derivation is three of them: what the

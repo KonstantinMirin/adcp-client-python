@@ -112,7 +112,7 @@ class Base:
     #: refuse on -- a key with no row, or a lowering cell the kind's
     #: handler does not claim.  Names only and no values, because that is all the screen
     #: reads; a key that annotates without constraining is in :attr:`annotations`
-    #: instead.  ``compiler.check_keywords`` and ``compiler.declaring``'s callers read
+    #: instead.  ``compiler.check_keywords`` and ``intersect.declaring``'s callers read
     #: this, so the screen is a reader of the node and of the table and of nothing else.
     declares: tuple[str, ...] = ()
     #: The keys in the ``x-`` namespace with no row in §6, sorted: admitted by the prefix
@@ -304,7 +304,7 @@ class Composition(Base):
     #: it cannot be a base' are the unimplemented half of that sentence".  A bound stated
     #: beside the ``allOf`` is one of those siblings, so it constrains the type the
     #: conjuncts supply; a node whose conjuncts are all class BASES has no such type and
-    #: ``compiler.lower_composition`` refuses there, exactly as it does for a ``contains``
+    #: ``lower.composition.lower_composition`` refuses there, exactly as it does for a ``contains``
     #: and for a value set.
     #:
     #: :attr:`contains` is the precedent and the arrangement is deliberately the same: the
@@ -360,7 +360,7 @@ class Union(Base):
     same, onto the base"), :attr:`Base.declared` the ``properties``, :attr:`required` the
     ``required``, :attr:`Base.extra` the ``additionalProperties``.  The mapping was a
     fifth reading of those four and **nothing in ``codegen/`` read it**:
-    ``compiler.lower_composition`` took the conjunct list off :attr:`conjuncts` the day
+    ``lower.composition.lower_composition`` took the conjunct list off :attr:`conjuncts` the day
     the parser built it (``adcp-client-python-10l.37``) and the other three were never
     read out of it at all.  So it carried the document's own subtrees for no reader, and
     ``adcp-client-python-3be.9`` deleted it on that measurement -- the guard that should
@@ -414,7 +414,7 @@ class Union(Base):
     #: :attr:`Base.declared` and :attr:`Base.extra` are fields too: §5's ``required``
     #: row at ROOT beside a union is "required on the base's fields, and the names
     #: recorded in ``_ROOT_REQUIRED``", and the reader of that is
-    #: ``compiler.lower_composition``, which takes this field off every kind that can
+    #: ``lower.composition.lower_composition``, which takes this field off every kind that can
     #: state one (:attr:`Composition.required`, :attr:`Object.required`).  So one
     #: spelling serves the three kinds, and :attr:`conjuncts` carries what is left of
     #: §4's "every keyword beside the combinator".
@@ -433,7 +433,7 @@ class Object(Base):
     :attr:`properties` holds the CHILD NODES, parsed at PROP, in the document's own
     key order.  :attr:`extras` is ``additionalProperties`` read ONCE, here, as the
     typed value schema §5 says a typed one is -- which is the second of §2's three
-    node rewrites, retired: ``compiler.declare_object`` built a synthetic
+    node rewrites, retired: ``lower.objects.declare_object`` built a synthetic
     ``{"type": "object", "additionalProperties": ap, ...}`` mapping and handed it to
     the dispatch, which is a node the document does not have.  :attr:`key` is
     ``propertyNames`` at KEY, read once here for the same reason.
@@ -497,7 +497,7 @@ class Array(Base):
     """``type: array``: the element at ELEM, the bounds, distinct, contains.
 
     :attr:`distinct` is the third of §2's three node rewrites, retired on the array
-    side: ``compiler.fields`` stripped ``uniqueItems`` off a property's declaration
+    side: ``lower.objects.fields`` stripped ``uniqueItems`` off a property's declaration
     before the array row saw it, so the array was decided from a mapping the document
     does not state.  The fact is read once, here, and the class holding the array
     reads it off the node.

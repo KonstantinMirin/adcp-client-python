@@ -164,7 +164,7 @@ def union_root(doc: dict) -> bool:
 
     A combinator of ``required`` GROUPS is not a union: a branch declaring no property
     has no shape to subclass -- ``lower.union._plan`` refuses exactly that -- so such a
-    root is a rule on one class (D6) and ``compiler.lower_object`` reads it.  Both
+    root is a rule on one class (D6) and ``lower.objects.lower_object`` reads it.  Both
     readings are each step's own and they meet here.
     """
     kw = union.keyword(doc)

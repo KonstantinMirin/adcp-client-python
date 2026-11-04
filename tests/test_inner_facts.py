@@ -109,7 +109,7 @@ def _stated_default(document: str, root: Any, sub: Any) -> Any:
     reports a drop the derivation calls invented.
 
     The node's OWN ``default`` wins where it states one, which is the precedence §5's
-    ``$ref`` row gives a ``description`` sibling and the same order ``compiler.fields``
+    ``$ref`` row gives a ``description`` sibling and the same order ``lower.objects.fields``
     reads the two in.  ``MISSING`` where neither states one, so a ``default: null`` -- a
     legal JSON value, and in this bundle -- is not read as an absence.
     """
@@ -159,12 +159,12 @@ def _defaults_on_required_properties() -> dict[tuple[str, str], Any]:
     Read off the documents rather than off the run, so the set this check ranges over
     is a property of the bundle and the emitter's own record is what gets compared to
     it.  One level of ``properties`` only: the drop is reported at the pointer
-    ``compiler.fields`` is handed, and a nested object's own properties are reached
+    ``lower.objects.fields`` is handed, and a nested object's own properties are reached
     through their own node at their own pointer, which this enumerates too by walking
     every node the bundle yields.
 
     **A union BRANCH is enumerated against its enclosing object's declarations too**,
-    because §2's intersection rule is what ``compiler.fields`` hands the branch: a branch
+    because §2's intersection rule is what ``lower.objects.fields`` hands the branch: a branch
     of a worded object inherits the object's ``properties`` and its ``required``, so a
     key the object requires and states a ``default`` on is required AND defaulted at the
     branch's own pointer -- the branch restating the key without a default does not
@@ -179,7 +179,7 @@ def _defaults_on_required_properties() -> dict[tuple[str, str], Any]:
     what reaches that.**  §2's intersection is followed as far as the pointer goes, so
     the ``default`` may be the enclosing object's while the ``required`` is a branch's
     OWN -- and then the key is required and defaulted at the branch, which is exactly
-    what ``compiler.fields`` is handed there.  Two readings this had and now does not:
+    what ``lower.objects.fields`` is handed there.  Two readings this had and now does not:
     it descended ONE combinator hop, so a branch of a branch was outside the
     enumeration; and it asked the enclosing node's ``required`` before looking at any
     branch at all, so a default the object states WITHOUT requiring was never carried
@@ -235,7 +235,7 @@ def test_every_drop_the_run_reports_is_a_default_on_a_property_its_document_requ
     not state at that shape would be the emitter discarding something else under this
     row's name; and the DOCUMENTS with the shape that this run never reached are
     reported as their own part rather than left in a difference of two totals, because
-    a document refused on another row's keyword never reaches ``compiler.fields`` at
+    a document refused on another row's keyword never reaches ``lower.objects.fields`` at
     all and its default is neither dropped nor rendered.
     """
     out = compiled(BUNDLE, sorted(bundle.portable(BUNDLE)))
@@ -513,7 +513,7 @@ def test_a_root_required_the_branches_declare_is_root_required_and_not_a_field(
     The row reads "required on the base's fields, and the names recorded in
     ``_ROOT_REQUIRED``, so a refusal can separate a field the root requires from one
     that SELECTS A BRANCH" -- which presupposes that a name selecting a branch is not a
-    field of the base.  ``compiler.fields`` refused the document instead, on the ground
+    field of the base.  ``lower.objects.fields`` refused the document instead, on the ground
     that the name is a presence rule with no field, and
     ``core/product-format-declaration.json`` was 1 of this row's 3 primary refusals and
     8 of the 11 documents the row held.

@@ -44,10 +44,11 @@ from compiled import compiled
 from conftest import refusal_from
 
 from adcp.types import _base, constraints
-from codegen import bundle, compiler, emit, ir, keywords, refusal, render, store
+from codegen import bundle, compiler, emit, intersect, ir, keywords, refusal, render, store
 from codegen import constraints as constraints_module
 from codegen.harness import Pair, check_pair, violated_keywords
-from codegen.lower import names
+from codegen.lower import composition, names
+from codegen.lower import inherited as inherited_row
 from codegen.refusal import Kind, Refusal
 from codegen.schema import nodes
 from codegen.schema import nodes as schema_nodes
@@ -205,7 +206,7 @@ def test_a_required_only_conjunct_has_no_population_so_the_arm_is_not_built() ->
         for i, c in enumerate(bundle.read(BUNDLE, d).get("allOf") or []):
             conjuncts.add(f"{d}#/allOf/{i}")
             if isinstance(c, dict) and set(
-                compiler.declaring(c, keywords.Position.CONJ)
+                intersect.declaring(c, keywords.Position.CONJ)
             ) == {"required"}:
                 found.append(f"{d}#/allOf/{i}")
     # The set this ranges over is named NON-EMPTY first: "no conjunct states only
@@ -251,12 +252,12 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     # reason the row's selector carried a root clause: a NESTED ``allOf`` is a different
     # step's measurement (``test_emit.py`` counts it), and stubbing the whole arm would
     # take those documents out of ``without`` as well and inflate this row's delta.
-    # **The row is reached at ``compiler.lower_composition`` now**, because §14 step 5
+    # **The row is reached at ``lower.composition.lower_composition`` now**, because §14 step 5
     # made ``lower/composition.py`` the handler and ``emit`` no longer names the function
     # at all.  The patch has to be where the CALL resolves or the perturbation is inert
     # and this check passes vacuously -- which is what ``tests/nodeset.py``'s non-empty
     # assertion is for, and it is what caught the stale target.
-    composing_at_a_root = compiler.lower_composition
+    composing_at_a_root = composition.lower_composition
 
     def without_the_root_arm(node, mod, *rest, **kw):
         # The POSITION and the POINTER are the node's own fields: §14 step 7 took the
@@ -278,7 +279,7 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
             return Refusal("allOf", pointer, refusal.DEFERRED_TO_A_LATER_ROW, kind=Kind.DEFERRED)
         return composing_at_a_root(node, mod, *rest, **kw)
 
-    with mock.patch.object(compiler, "lower_composition", without_the_root_arm), store.perturbed():
+    with mock.patch.object(composition, "lower_composition", without_the_root_arm), store.perturbed():
         # ``emit.emit`` and NOT ``compiled``: this is a PERTURBATION, and
         # ``tests/compiled.py``'s key is a digest of ``codegen/``'s source, which a
         # runtime patch does not move -- so the cache would hand back the UNPERTURBED
@@ -639,7 +640,7 @@ def test_a_composing_root_reaches_one_arm_and_nothing_can_claim_it_twice() -> No
     #
     # Read off the field the handler reads (``adcp-client-python-3be.9``).  It was
     # ``nodes.Union.siblings``, a keyword mapping holding the ``allOf`` as the document
-    # states it -- and ``compiler.lower_composition`` stopped reading that mapping at
+    # states it -- and ``lower.composition.lower_composition`` stopped reading that mapping at
     # ``adcp-client-python-10l.37``, so the assertion graded a carrier no handler took the
     # list off.  The mapping is deleted; this is the same clause over ``conjuncts``.
     for d in both:
@@ -898,10 +899,10 @@ def test_a_restatement_contradicting_the_base_still_refuses_rather_than_merging(
     """The merge does not reach a restatement that DISAGREES, and that is the one
     thing a merge of the base's content could quietly swallow.
 
-    ``_restatement`` is asked first: a declaration that says something at a keyword the
+    ``restatement`` is asked first: a declaration that says something at a keyword the
     base also states which is NOT at least as tight is ``None``, and the document
     refuses by the keyword the two disagree about.  Only a restatement at least as tight
-    everywhere the two overlap reaches :func:`compiler._intersection`, so there is no
+    everywhere the two overlap reaches :func:`intersect.intersection`, so there is no
     reading on which a disagreement is merged away.
 
     **The bound DROPPED is no longer here, and that is D7 rather than a relaxation.**
@@ -913,7 +914,7 @@ def test_a_restatement_contradicting_the_base_still_refuses_rather_than_merging(
     (``media-buy/get-media-buys-response.json``'s ``indicators``).
     """
     base = {"type": "integer", "minimum": 3, "description": "the base's floor"}
-    # The keyword is ``_disagreeing``'s: the FIRST the two do not agree about, in
+    # The keyword is ``disagreeing``'s: the FIRST the two do not agree about, in
     # sorted order.  So a restatement disagreeing about both the type and the bound
     # is reported on ``minimum`` -- a tiebreak, not a judgement about which mattered.
     #
@@ -1009,7 +1010,7 @@ def test_a_lost_inherited_fact_lets_the_model_accept_what_the_document_refuses(
     the one the lost fact names and not whatever else the probe's document demands.
     """
     monkeypatch.setattr(
-        compiler,
+        inherited_row,
         "_reused",
         lambda key, held, source, pointer, mod: ir.Field(
             name=key, wire=key, type=ir.TypeRef("typing.Any"), required=False
@@ -1061,7 +1062,7 @@ def test_a_documents_own_declaration_carries_the_description_at_its_own_pointer(
     a composed base's declaration of the same key.
 
     The restatement says the same thing about the instance as the base's -- the same
-    ``$ref``, so ``_restatement`` reads it as adding nothing -- and a different thing
+    ``$ref``, so ``restatement`` reads it as adding nothing -- and a different thing
     to the reader.  Left inherited, the class states at ``/properties/ctx`` a
     description its own document does not, which was the state of every response root
     composing ``core/protocol-envelope.json`` and declaring ``context`` itself -- 15
@@ -1110,7 +1111,7 @@ def test_the_wrong_text_at_that_pointer_shows_on_both_sides(
     """The rule BROKEN ON PURPOSE, because a description rule whose breach cannot be
     read off the two sides is not a rule.
 
-    ``_annotates_differently`` forced to ``False`` is exactly the emitter before
+    ``annotates_differently`` forced to ``False`` is exactly the emitter before
     this branch existed: the restatement adds nothing constraining, so the field is
     inherited and the class carries the BASE's text at a pointer its own document
     declares. The same probe bundle, two emitters -- and the two sides separate them by
@@ -1122,7 +1123,7 @@ def test_the_wrong_text_at_that_pointer_shows_on_both_sides(
     so the reach is this probe's: ``docs/plan/rebuild-plan.md`` §8 assigns the
     population-wide claim to the annotation COVERAGE obligation, which is not built.
     """
-    monkeypatch.setattr(compiler, "_annotates_differently", lambda child, base: False)
+    monkeypatch.setattr(intersect, "annotates_differently", lambda child, base: False)
     cls, text, schema = _emit_probe(
         tmp_path,
         monkeypatch,
@@ -1296,7 +1297,7 @@ def _lower(
     a type where the section says the node has one.
     """
     mod = emit.Module(document="probe.json", targets=targets or {})
-    return compiler.lower_composition(_probe_node(doc, mod), mod)
+    return composition.lower_composition(_probe_node(doc, mod), mod)
 
 
 def test_an_incompatible_restatement_refuses_by_name_pointer_and_keyword() -> None:
@@ -1332,7 +1333,7 @@ def test_the_rule_is_symmetric_so_the_order_the_declarations_are_read_in_cannot_
     A generator that let the later conjunct win made its accepted set a function
     of member order, which is invisible in the output.  Asserted on the decision
     itself, over every outcome it has to distinguish, and then on the OUTPUT -- because
-    under D7 the decision's answer is one half and :func:`compiler._intersection` is the
+    under D7 the decision's answer is one half and :func:`intersect.intersection` is the
     other, and it is the pair that has to be order-independent.
 
     **A TIGHTER bound narrows and a looser one refuses, which is D7 in its own words:**
@@ -1346,21 +1347,21 @@ def test_the_rule_is_symmetric_so_the_order_the_declarations_are_read_in_cannot_
     """
     typed = {"type": "integer", "minimum": 1}
     tighter = {"type": "integer", "minimum": 2}
-    assert compiler._restatement({"default": 1}, typed) is False  # annotation-only: inherited
-    assert compiler._restatement(dict(typed), typed) is False  # identical: inherited
-    assert compiler._restatement({**typed, "maximum": 9}, typed) is True  # adds a keyword
-    assert compiler._restatement(tighter, typed) is True  # D7: a bound is the tighter one
-    assert compiler._restatement({"type": "string"}, typed) is None  # a different type
+    assert intersect.restatement({"default": 1}, typed) is False  # annotation-only: inherited
+    assert intersect.restatement(dict(typed), typed) is False  # identical: inherited
+    assert intersect.restatement({**typed, "maximum": 9}, typed) is True  # adds a keyword
+    assert intersect.restatement(tighter, typed) is True  # D7: a bound is the tighter one
+    assert intersect.restatement({"type": "string"}, typed) is None  # a different type
     # The asymmetry is the rule working, not the rule disagreeing with itself: exactly
     # one direction of a narrowing is a narrowing.  The LOOSER direction refuses -- a
     # KNOWN CEILING D7 would have carry the base's bound, measured at 0 sites -- and a
     # restatement that says less and the same is inherited.
-    assert compiler._restatement(typed, tighter) is None
-    assert compiler._restatement(typed, {**typed, "maximum": 9}) is False
+    assert intersect.restatement(typed, tighter) is None
+    assert intersect.restatement(typed, {**typed, "maximum": 9}) is False
     # And the OUTPUT does not depend on which view was read first.
     both = {"type": "integer", "minimum": 2, "maximum": 9}
-    assert compiler._intersection(tighter, {**typed, "maximum": 9}) == both
-    assert compiler._intersection({**typed, "maximum": 9}, tighter) == both
+    assert intersect.intersection(tighter, {**typed, "maximum": 9}) == both
+    assert intersect.intersection({**typed, "maximum": 9}, tighter) == both
 
 
 @pytest.mark.parametrize(
@@ -1441,7 +1442,7 @@ def test_a_constraining_sibling_of_a_ref_conjunct_compiles_to_nothing_and_is_rep
             )
         },
     )
-    compiler.lower_composition(_probe_node(doc, mod), mod)
+    composition.lower_composition(_probe_node(doc, mod), mod)
     assert "ProbeBase" in {symbol for _, symbol in mod.imports}
     assert [line for line in mod.carries_nothing if "minimum" in line], mod.carries_nothing
     assert "/allOf/0: minimum" in mod.carries_nothing[0], mod.carries_nothing
@@ -1502,7 +1503,7 @@ def test_a_keyword_at_the_root_beside_the_conjunct_list_refuses() -> None:
     ``if``, ``not`` and ``min``/``maxProperties`` were in the refusing list and are NOT
     keywords this row reports any more: ``salesagent-j3k2l.22`` admits D6's families at
     a composing root, where the rule attaches to the class this row declares
-    (``compiler.declare_object`` writes the tuple).  They are asserted on the admitting
+    (``lower.objects.declare_object`` writes the tuple).  They are asserted on the admitting
     side below, so the keywords that moved are graded rather than merely dropped.
 
     ``definitions`` left the list before them, at `salesagent-j3k2l.20`: a section is
@@ -1555,7 +1556,7 @@ def test_a_keyword_at_the_root_beside_the_conjunct_list_refuses() -> None:
             keyword: value,
             **also,
         }
-        compiler.lower_composition(_probe_node(doc, mod), mod)
+        composition.lower_composition(_probe_node(doc, mod), mod)
         # The walk declares at a POINTER and ``lower/names.py`` binds the name (§7), so
         # the probe asks the pass for the symbol rather than the walk.
         mod.hops[""] = names.Root("Probe")

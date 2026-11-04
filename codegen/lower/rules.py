@@ -64,7 +64,7 @@ position where no class encloses the value.  A property whose declaration is an 
 still sits in the class that holds the property, so the clause above is unchanged and the
 rule is declared there -- the reader that writes it must see through the composition
 rather than the rule move to the value's own type."  So :func:`_distinct`'s gate is
-``compiler.declares_an_array``, which reads a conjunct through its ``$ref``, and the
+``intersect.declares_an_array``, which reads a conjunct through its ``$ref``, and the
 resolver it needs is the one parameter :func:`lower` takes that is not a fact of the
 node.
 
@@ -109,7 +109,7 @@ from adcp.types._runtime import (
     UniqueItems,
     ValueRule,
 )
-from codegen import compiler
+from codegen import compiler, intersect
 from codegen.keywords import Position
 from codegen.schema import parse as schema
 
@@ -184,7 +184,7 @@ class Lowered:
     #: Names only, because the keyword's two consequences belong to the compiler: it
     #: is stripped off the declaration before the array row sees it, and it is
     #: rendered onto the field as the ``json_schema_extra`` half of the fact the
-    #: ``UniqueItems`` rule enforces (``compiler.fields``, ``ir.Field.distinct``).
+    #: ``UniqueItems`` rule enforces (``lower.objects.fields``, ``ir.Field.distinct``).
     #: A declaration re-cut
     #: here instead would put the walk's input in two modules.
     distinct: tuple[str, ...] = ()
@@ -212,7 +212,7 @@ def lower(
 
     ``resolve`` is the fourth and belongs to the same reduction as the second:
     :func:`_distinct` has to answer "is this property an ARRAY" of a declaration that
-    may say so through a ``$ref`` under an ``allOf``, and ``compiler.declares_an_array``
+    may say so through a ``$ref`` under an ``allOf``, and ``intersect.declares_an_array``
     is the one reading of that.  ``None`` is the safe arm -- a composing declaration is
     then not claimed, and the handler that claimed the keyword reports or refuses -- so a
     caller with no run to resolve against loses no fact silently.
@@ -397,7 +397,7 @@ def as_the_object(rules: Sequence[Rule]) -> AsTheObject:
     which is a shape no row writes.
 
     Measured over the 1,054 portable documents at ``adcp-client-python-10l.63``: the one
-    caller is ``compiler._the_conjuncts_own_type``, 2 sites, both a ``ForbiddenGroups``
+    caller is ``intersect.the_conjuncts_own_type``, 2 sites, both a ``ForbiddenGroups``
     from ``not``/``required`` -- ``core/canonical-product.json`` and
     ``core/product.json`` -- and ``declined`` is empty at every one of them.
     """
@@ -616,7 +616,7 @@ def _count(node: Mapping[str, Any], out: Lowered, extra_stated: bool) -> None:
             # **AND THE DESIGN DOCUMENTS DID MOVE IT**: §8 sentence 4's second consequence
             # (2026-11-03) decides that such a count "is answered by the class KEEPING the
             # keys the document counts.  Declaring it would be declaring a difference the
-            # walk created."  ``compiler.declare_object`` takes that reversal at exactly
+            # walk created."  ``lower.objects.declare_object`` takes that reversal at exactly
             # the nodes a count rides over, so ``extra_stated`` is now true wherever a
             # class carries one and this arm is reached by no class of this bundle.
             #
@@ -747,7 +747,7 @@ def _distinct(
     node this declines leaves the keyword on the declaration, where the array row
     refuses it by name.
 
-    **The gate is ``compiler.declares_an_array`` and not this declaration's own ``type``
+    **The gate is ``intersect.declares_an_array`` and not this declaration's own ``type``
     word, because §2's clause of 2026-10-29 says a COMPOSING declaration is still a
     property of the class that holds it**: "A property whose declaration is an ``allOf``
     still sits in the class that holds the property ... the reader that writes it must
@@ -762,7 +762,7 @@ def _distinct(
         key
         for key, declaration in declared.items()
         if isinstance(declaration, dict)
-        and compiler.declares_an_array(declaration, resolve)
+        and intersect.declares_an_array(declaration, resolve)
         and declaration.get("uniqueItems") is True
     ]
     if not claimed:
@@ -899,11 +899,11 @@ def _whole(value: Any) -> int | None:
 def _keys(sub: dict) -> set[str]:
     """The keys of ``sub`` that SAY something about an instance.
 
-    ``compiler.declaring`` at RULE, because every node this module reads is inside a
+    ``intersect.declaring`` at RULE, because every node this module reads is inside a
     conditional or a ``not``: a key that annotates without constraining is not part of
     what a rule TESTS.
     """
-    return set(compiler.declaring(sub, Position.RULE))
+    return set(intersect.declaring(sub, Position.RULE))
 
 
 def _required_groups(sub: Any) -> list[tuple[str, ...]] | None:

@@ -50,7 +50,7 @@ from pydantic import ValidationError
 
 from adcp.types import _base
 from adcp.types._base import applied_schema
-from codegen import bundle, compiler, emit
+from codegen import bundle, emit, intersect
 from codegen.keywords import Position
 from codegen.refusal import Refusal
 from tests.nodeset import claimed, partitions
@@ -1192,7 +1192,7 @@ def test_two_symbols_at_one_pointer_is_refused_rather_than_ordered() -> None:
     ``AliasDecl`` and then a ``ClassDecl`` at one pointer, because §4 parses a class's
     extras store at the CLASS's own pointer and the store was reaching the walk's
     per-node entry -- which names
-    the node at a pointer the bundle's ``$ref``\\ s name.  ``compiler.declare_object``
+    the node at a pointer the bundle's ``$ref``\\ s name.  ``lower.objects.declare_object``
     sends the store to THE DISPATCH now, so the only node that does not own the pointer
     it carries makes no statement about it, and the test below reads 0 again.
 
@@ -1653,12 +1653,12 @@ def test_a_local_reference_cycle_refuses_rather_than_recurring(tmp_path: Path) -
 
 
 #: A local pointer reached through an ``allOf`` CONJUNCT, which is
-#: ``adcp-client-python-10l.43``'s shape: the conjunct arm of ``compiler.lower_composition``
+#: ``adcp-client-python-10l.43``'s shape: the conjunct arm of ``lower.composition.lower_composition``
 #: is the one caller that meets a reference without going through
 #: ``nodes.Reference.head``, so it asked the binder for a pointer that is not a binding at
 #: all.  Both halves of the live population are here -- a conjunct that restates a property
 #: (``core/account-identity-change-preview.json``) and one that states only ``required``
-#: (``core/registry-event.json``) -- because the second reaches ``compiler._reused``, whose
+#: (``core/registry-event.json``) -- because the second reaches ``lower.composition._reused``, whose
 #: import screen is about crossing a module boundary and this does not cross one.
 CONJUNCT_LOCAL = {
     "title": "Preview",
@@ -1674,7 +1674,7 @@ CONJUNCT_LOCAL = {
         },
         # The ANNOTATION-ONLY half: the conjunct restates a key the base declares with
         # nothing but a ``description``, so the subclass re-uses the base's DECIDED field
-        # (``compiler._reused``) -- whose type names a POINTER this module declares
+        # (``lower.composition._reused``) -- whose type names a POINTER this module declares
         # (``#/definitions/area``) and imports from nowhere.  Probed by making it fail:
         # with the screen asked of ``source is None`` alone, this refuses with "symbols no
         # document this run lowered declares" of a symbol in its own module.
@@ -1714,7 +1714,7 @@ def test_a_local_pointer_as_an_allOf_conjunct_resolves_through_the_local_resolve
     A local pointer as an ``allOf`` conjunct is an ordinary draft-07 document, and the walk
     already has the one resolver for it -- ``compiler.local_reference``, which
     ``lower.references.lower`` reaches by branching on the document half.
-    ``compiler.lower_composition``'s conjunct arm asked ``Module.target`` for every
+    ``lower.composition.lower_composition``'s conjunct arm asked ``Module.target`` for every
     reference instead, so a local one got ``emit.answer``'s loud "this is not a binding at
     all" as the DOCUMENT's verdict -- charging two documents for a routing gap in the
     compiler.
@@ -1728,7 +1728,7 @@ def test_a_local_pointer_as_an_allOf_conjunct_resolves_through_the_local_resolve
       :class:`compiler.Target` carries an EMPTY module, so recording one would name ``""``
       as the module to import from;
     * the re-used field's type names the entry's OWN pointer-derived symbol, which is
-      ``compiler._reused``'s "the base is in this module" arm reached through a
+      ``lower.composition._reused``'s "the base is in this module" arm reached through a
       :class:`compiler.Target` rather than through its absence.
     """
     root = write_bundle(tmp_path, {"core/preview.json": CONJUNCT_LOCAL})
@@ -2274,14 +2274,14 @@ BARE_REF_ROOT = {
 def bare_ref_roots() -> list[str]:
     """The portable documents whose root states a ``$ref`` and nothing constraining.
 
-    ``compiler.declaring`` at ROOT is the one reading of "which keys does this node
+    ``intersect.declaring`` at ROOT is the one reading of "which keys does this node
     state about an instance", so the population is the screen's own answer and not a
     second list of annotation keys.
     """
     return sorted(
         document
         for document in bundle.portable(BUNDLE)
-        if set(compiler.declaring(bundle.read(BUNDLE, document), Position.ROOT)) == {"$ref"}
+        if set(intersect.declaring(bundle.read(BUNDLE, document), Position.ROOT)) == {"$ref"}
     )
 
 

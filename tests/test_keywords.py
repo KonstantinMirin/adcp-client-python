@@ -404,20 +404,20 @@ def test_the_descent_column_is_the_one_the_bundles_walk_descends_by() -> None:
 #: **Ten sites left the census on this row and the removals are listed on the bead**: the
 #: verifier's three descent tuples, its combinator arm and its value-class arms now read
 #: the descent column; the ordering keywords are :data:`keywords.RANGES`, read by both
-#: halves; ``compiler._CONTAINER_KEYWORDS`` is
+#: halves; ``intersect._CONTAINER_KEYWORDS`` is
 #: :func:`keywords.constrains_container`; and the root-sibling tuple is written once.
 _SURVIVING_SITES: dict[tuple[str, tuple[str, ...]], str] = {
-    ("codegen.compiler", ("additionalProperties", "properties", "propertyNames", "required", "type")):
+    ("codegen.lower.objects", ("additionalProperties", "properties", "propertyNames", "required", "type")):
         "lower_object's coverage: the cells an OBJECT node's handler writes.  "
         "patternProperties, minProperties, maxProperties and dependencies are LOWERED "
         "cells at the same position that this handler has no code for, which is what "
         "makes them deferrals -- so the set is the handler's and not the position's.",
-    ("codegen.compiler", ("properties", "required", "type")):
+    ("codegen.lower.composition", ("properties", "required", "type")):
         "INLINE: what an allOf CONJUNCT may carry and still be an inline object "
         "declaring fields.  additionalProperties is absent on purpose (D8 derives extra "
         "from the root's), which is a decision about this reader and not about the "
         "keyword's cell.",
-    ("codegen.compiler", ("additionalProperties", "allOf", "properties", "required", "type")):
+    ("codegen.lower.composition", ("additionalProperties", "allOf", "properties", "required", "type")):
         "COMPOSING: what the composing node itself may carry beside its conjunct list.  "
         "D6's rule families are deliberately NOT here and are added per node by "
         "rules_at, because the admissible set is a function of the node.",
@@ -634,7 +634,7 @@ def test_the_census_is_blind_to_a_collection_naming_an_unlisted_keyword() -> Non
     or ``contentEncoding``.  Measured on this tree, two sites are invisible for that reason
     (``codegen.ir:FACTS``, whose own comment already admits §11 wants it derived, and
     ``harness._PAD_FORBIDS``), and a third was at the base of this row
-    (``compiler._CONTAINER_KEYWORDS``'s array set, which named ``additionalItems``).
+    (``intersect._CONTAINER_KEYWORDS``'s array set, which named ``additionalItems``).
 
     Completing ``DRAFT07`` would move the census number every lane reads off that command,
     so it is not done here: this test is the blind spot WRITTEN DOWN, and it reddens if the

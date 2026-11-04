@@ -146,7 +146,7 @@ def pins_a_member(
 
     **A pin OUTSIDE the base's vocabulary is NOT this row's to report.**  The two
     declarations apply to one instance, so their intersection is empty and the node admits
-    nothing -- which is §5's empty-intersection row, computed by ``_intersection`` before
+    nothing -- which is §5's empty-intersection row, computed by ``intersection`` before
     this function is reached, on the declarations and not on a decided type.  Returning
     ``None`` leaves that answer where it already is rather than giving the same fact a
     second reporter.

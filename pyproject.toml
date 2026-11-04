@@ -362,6 +362,7 @@ files = [
     "codegen/schema",
     "codegen/lower",
     "codegen/compiler.py",
+    "codegen/intersect.py",
     "codegen/emit.py",
     "codegen/store.py",
     "codegen/constraints.py",

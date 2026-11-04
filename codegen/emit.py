@@ -112,7 +112,7 @@ from pathlib import Path
 from typing import Any
 
 from adcp.types._base import Approximation
-from codegen import bundle, catalogue, compiler, harness, ir, keywords, refusal, render, store
+from codegen import bundle, catalogue, compiler, harness, intersect, ir, keywords, refusal, render, store
 from codegen import constraints as constraints_module
 from codegen.compiler import (
     Module,
@@ -154,7 +154,7 @@ EMITTED_SUFFIXES = frozenset({".py", ".json"})
 #: inherits (``inherited_sites``).  ``CONJ`` is the ``allOf`` conjunct §5's row is
 #: written for; the other two are §2's intersection rule read one level down, and they
 #: are DERIVED from the same declaration the rule's recursion is --
-#: :data:`compiler.HOLDS`, whose keywords' subschemas sit at ``ELEM`` (``items``) and
+#: :data:`intersect.HOLDS`, whose keywords' subschemas sit at ``ELEM`` (``items``) and
 #: ``PROP`` (``properties``).  A restatement composing a base's declaration of a
 #: property or of an element composes whatever that declaration names, so the target it
 #: names is a base of the composed class exactly as a conjunct's target is.
@@ -164,7 +164,7 @@ EMITTED_SUFFIXES = frozenset({".py", ".json"})
 #: disagree with the rule whose recursion produced the site.
 BASE_POSITIONS: frozenset[Position] = frozenset({Position.CONJ}) | frozenset(
     answer.descends
-    for keyword in compiler.HOLDS
+    for keyword in intersect.HOLDS
     if (answer := keywords.cell(keyword, Position.PROP)) is not None
     and answer.descends is not None
 )
@@ -582,7 +582,7 @@ def exported(
        subclass inherits the base's fields and may restate one, and the plan's
        description-authority clause 2 says a restatement is then the base's FIELD wearing
        this document's annotations -- so the base's own field TYPES cross into every
-       module that composes it (``compiler.lower_composition``'s ``inherited_fields``, read off
+       module that composes it (``lower.composition.lower_composition``'s ``inherited_fields``, read off
        ``Target.shape.decided``).  ``formats/canonical/_base.py``'s
        ``CanonicalFormatBaseSlotsItem`` is one: 7 modules import it and no ``$ref``
        names it.  Re-deciding the base's node instead was measured and is wrong -- it
@@ -1511,9 +1511,9 @@ def emit(
     #: binder closure kept for exactly this reason.  **That caller is
     #: ``lower.union._targeted``** -- §4's dispatch derivation asking a QUESTION about a
     #: branch rather than declaring it -- and it was
-    #: ``compiler.lower_composition``'s ``$ref``-conjunct arm as well until
+    #: ``lower.composition.lower_composition``'s ``$ref``-conjunct arm as well until
     #: ``adcp-client-python-10l.43`` routed that one through ``compiler.local_reference``
-    #: (``compiler._conjunct_base``).  Measured after the routing, over the 1,054 portable
+    #: (``lower.composition._conjunct_base``).  Measured after the routing, over the 1,054 portable
     #: documents: **31 sites in 6 documents ask by a local URI, every one of them at a
     #: ``oneOf``/``anyOf`` BRANCH, and all 6 emit** -- ``_targeted`` reads the refusal as
     #: "names no class" and answers ``None``, which is the derivation's own allowed
@@ -1663,7 +1663,7 @@ def emit(
             # to reach here too, and its documents were charged a VERDICT for a routing
             # gap -- ``core/account-identity-change-preview.json`` and
             # ``core/registry-event.json``, plus 2 through the chain; all 4 emit now that
-            # ``compiler._conjunct_base`` branches on the parser's document half.  What is
+            # ``lower.composition._conjunct_base`` branches on the parser's document half.  What is
             # left is ``_targeted``'s 31 sites in 6 documents, all at a ``oneOf``/``anyOf``
             # BRANCH and all 6 emitting, so the arm has a live caller and raising §2's
             # exception here would fail the build on 6 documents that are fine.  It also
@@ -1895,7 +1895,7 @@ def emit(
         # local edge by construction, and the composed node needs the answer: §5's
         # ``properties`` row composes two object declarations as an ``allOf`` of the two,
         # so where the base spells its half as a pointer into its own text,
-        # ``compiler._intersection`` plants that very pointer as a conjunct of a node
+        # ``intersect.intersection`` plants that very pointer as a conjunct of a node
         # belonging to THIS document.  Asked LAST, so a URI either the document or a
         # base's absolute text spells keeps the answer it already has.
         for uri, (edge, _node) in sorted(based_edges(document).items(), key=lambda kv: kv[0]):

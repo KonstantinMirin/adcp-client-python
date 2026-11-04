@@ -424,7 +424,7 @@ class ClassDecl:
         is ``TypeError: duplicate base class`` at IMPORT, three test files away from the
         walk that built it, and it charges a document that did nothing wrong.
 
-        **Here and not in ``compiler.dispatching_bases``**, which ``adcp-client-python-10l.105``
+        **Here and not in ``lower.composition.dispatching_bases``**, which ``adcp-client-python-10l.105``
         measured: that function is called from two sites (``compiler``'s distribution arm
         and ``lower/union.py``) and is not the chokepoint every base list passes through.
         This is -- every class declaration constructs one, on every route.
@@ -774,7 +774,7 @@ def symbols(decided: TypeRef) -> set[str]:
     Read off the :class:`TypeRef` TREE rather than off any rendered text: a local arm
     is marked ``local`` where it is decided, so this enumerates the symbols instead of
     matching identifiers in an annotation and guessing which are types.  Two readers ask
-    -- ``compiler._reused``, for the symbols a re-used inherited field needs importable,
+    -- ``lower.composition._reused``, for the symbols a re-used inherited field needs importable,
     and ``emit.exported``, for the names a module's ``__all__`` carries -- and a second
     copy of the walk is how the two come to disagree about what a type names.
     """

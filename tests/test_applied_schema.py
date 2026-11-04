@@ -8,7 +8,7 @@ constants that are re-measured once per epic.
 **The defect.**  draft-07 applies a root's assertions and its combinator branch's to
 the SAME instance, so ``{"type": "object", "oneOf": [{"properties": {...}}]}`` admits
 only objects and the branch at ``/oneOf/0`` does not restate it.  Read in ISOLATION
-that branch admits a string, so ``compiler.lower_object`` refused to build a class
+that branch admits a string, so ``lower.objects.lower_object`` refused to build a class
 for it -- 10 documents of the 3.2 bundle, with 34 more chaining off them through a
 ``$ref`` -- and ``_base.schema_at`` returned that same isolated node as the schema a
 branch class would then be graded against.  Fixing only the first turned one defect
@@ -685,7 +685,7 @@ def test_no_document_in_the_bundle_reaches_the_refusal_any_more() -> None:
     # the population() run. Those two populations have been confused in three
     # briefings; read 691 as a module count and the tree looks stale by nine.
     # 686 -> 691 at ``salesagent-j3k2l.40``: a union BRANCH that composes is lowered
-    # by ``compiler.lower_composition`` now, so 3 of the 10 documents waiting on the
+    # by ``lower.composition.lower_composition`` now, so 3 of the 10 documents waiting on the
     # shared conjunct reader emit and 2 chained onto them follow.
     # 691 -> 705 at ``salesagent-j3k2l.28``: three refusals are gone -- two whose
     # stated reason was a claim about a harness ``.32``/``.33`` had already changed,

@@ -199,6 +199,7 @@ THE_WALK = frozenset(
         "codegen.render",
         "codegen.emit",
         "codegen.compiler",
+        "codegen.intersect",
         "codegen.constraints",
     }
 )
@@ -646,7 +647,7 @@ def test_the_python_text_rule_catches_the_four_texts_it_replaced(tmp_path: Path)
 #: * ``codegen/lower/union.py`` -- §4 "Names"'s three branch rules and §4's dispatch
 #:   derivation are readings of a branch's own DECLARATION (its title, its ``const`` pin,
 #:   its ``required`` set), which ``nodes.Union.branch_raw`` is the carrier for;
-#: * ``codegen/compiler.py`` -- §6 keeps ``restatement``, ``intersection`` and
+#: * ``codegen/intersect.py`` -- §6 keeps ``restatement``, ``intersection`` and
 #:   ``at_least_as_tight`` as pure functions over DECLARATIONS, because §2's intersection
 #:   rule merges two declarations of one property and hands the merged one back to
 #:   ``parse``.  ``nodes.Conjunct.raw``, ``nodes.Base.declared`` and
@@ -664,13 +665,42 @@ def test_the_python_text_rule_catches_the_four_texts_it_replaced(tmp_path: Path)
 #:
 #:   **AND IT IS ``compiler.py``'s ENTRY FOLLOWING THE CODE, NOT A FIFTH PERMISSION.**
 #:   The two mappings :func:`codegen.lower.normalise.pins_a_member` reads are the two the
-#:   entry above already covers, handed to it at its one call site
-#:   (``compiler._inherited_narrowings``): ``own[key]`` is §2's intersection of the two
+#:   entry above already covers, handed to it at its one call site -- the PASS B loop of
+#:   ``lower.composition.lower_composition``: ``own[key]`` is §2's intersection of the two
 #:   declarations and ``inherited[key]`` is the base's own, dereferenced.  So the set
 #:   gains an entry and admits no new READING -- the restatement ``adcp-client-python-7ko``
 #:   asks this data for, and the same move ``adcp-client-python-g4z`` made when the set
 #:   went from four entries to six.  ``adcp-client-python-d54`` is this entry; the
 #:   detector's name-based blind spot is still ``adcp-client-python-7ko``.
+#: * ``codegen/lower/composition.py`` -- the COMPOSING row: ``lower_composition`` reads a
+#:   ``$ref`` conjunct's own declaration for §5's ``$ref`` row at CONJ, and §4 gives it
+#:   ``nodes.Conjunct.raw`` as the carrier.  **This entry is the one the set's own ratchet
+#:   does not cover**, and the reason is measurable rather than a judgement: this reading
+#:   and the one above were BOTH ``compiler.py``'s, one permitted module became two when
+#:   ``adcp-client-python-g4z`` separated §6's pure rule from §5's composing row, and the
+#:   permission is unchanged -- 4 entries to 5 with no new reading admitted and
+#:   ``compiler.py`` off the list entirely.
+#: * ``codegen/compiler.py`` -- ``local_reference``, which is the one place a LOCAL
+#:   ``$ref`` is resolved, reads the target declaration's ``default`` so that draft-07's
+#:   replacement of a ``$ref`` node by its target reaches the referring field
+#:   (``adcp-client-python-10l.26``).  :attr:`compiler.Module.local` is the carrier: the
+#:   context holds this document's own nodes as declarations, because a local pointer is
+#:   resolved after the parse and not during it.
+#:
+#:
+#: **THE SET WENT 5 ENTRIES TO 7 AT ``adcp-client-python-g4z`` AND ADMITTED NO NEW
+#: READING**, which is the one thing a ratcheting set has to be able to say about itself.
+#: Three of the entries above were ONE entry -- ``compiler.py`` -- whose sentence named
+#: §6's pure functions and nothing else, while the module's actual reads were §6's rule,
+#: §5's composing row AND ``local_reference``'s ``default``.  The row that split that
+#: module into ``intersect.py``, ``lower/composition.py`` and the context separated the
+#: three readings, and each now carries the sentence that forces it.  So the COUNT grew by
+#: two and the PERMISSION is the same set of lines; what the old entry hid is that one of
+#: its three readings had no sentence at all.  ``lower/normalise.py`` is
+#: ``adcp-client-python-d54``'s and is the fifth, landed beside this row rather than by
+#: it.  The set may still only shrink from here, and the honest next shrink is
+#: ``local_reference`` reaching ``lower/references.py``.
+#:
 #: ``codegen/emit.py`` is NOT in this set and §14 step 7 is what removed it.  It held
 #: ``_composed_nodes``, the pointers a document's root ``allOf`` NAMES -- a fact about the
 #: bundle's reference GRAPH, which §11 puts in the source layer.  It is ``bundle.composed``
@@ -683,6 +713,8 @@ MAY_READ_A_DECLARATION = frozenset(
         "lower/rules.py",
         "lower/union.py",
         "lower/normalise.py",
+        "intersect.py",
+        "lower/composition.py",
         "compiler.py",
     }
 )
@@ -1107,7 +1139,7 @@ def test_the_parser_is_the_only_entry_that_reads_a_raw_mapping() -> None:
       (``domain_roots``);
     * ``codegen/compiler.py`` -- a ``definitions`` entry at DEF, parsed on demand when a
       ``$ref`` names it (§5: "an entry nothing references is not declared"), the MERGED
-      declaration §2's intersection rule hands back (``_parsed_property``), and a ``$ref``
+      declaration §2's intersection rule hands back (``parsed_property``), and a ``$ref``
       CONJUNCT, whose DOCUMENT HALF decides which of the two resolutions it is
       (``_conjunct_base``).
 
@@ -1168,10 +1200,10 @@ def test_the_parser_is_the_only_entry_that_reads_a_raw_mapping() -> None:
         # a ``definitions`` entry at DEF, parsed when a ``$ref`` names it (§5)
         ("compiler.py", "decide"),
         # the MERGED declaration §2's intersection rule hands back (§6)
-        ("compiler.py", "_parsed_property"),
+        ("intersect.py", "parsed_property"),
         # a ``$ref`` CONJUNCT, for the DOCUMENT HALF that says which resolution it is (§5's
         # ``$ref`` row at CONJ; ``adcp-client-python-10l.43``)
-        ("compiler.py", "_conjunct_base"),
+        ("lower/composition.py", "_conjunct_base"),
     }, sorted(sites)
 
 
@@ -1185,7 +1217,7 @@ A_MAPPING = frozenset({"doc", "declaration", "conjunct", "branch", "sub", "raw",
 #: The decision layer, which is where §4's rule bites.  ``bundle.py`` owns every file read
 #: and every fact derived from a document (§4), and ``harness.py`` reads the document of
 #: record because that is what a verifier does (§9), so neither is in scope here.
-DECIDES = ("compiler.py", "emit.py", "lower/", "schema/")
+DECIDES = ("compiler.py", "intersect.py", "emit.py", "lower/", "schema/")
 
 
 def _declaration_reads(path: Path) -> set[str]:

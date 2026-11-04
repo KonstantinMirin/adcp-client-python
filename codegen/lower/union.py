@@ -30,7 +30,7 @@ base's own schema then, and the rebuild after the branch definitions is what ins
 union.
 
 WHAT A BRANCH IS.  A branch is a class this module DECLARES: from the branch's own
-``properties``; or, where the branch COMPOSES, from ``compiler.lower_composition`` with
+``properties``; or, where the branch COMPOSES, from ``lower.composition.lower_composition`` with
 this base as its ``bases`` (``salesagent-j3k2l.40``); or, where the branch is a bare
 ``$ref``, **from TWO BASES** -- the target, which supplies the fields, and this union's
 base, which supplies the dispatch (§4, ``salesagent-j3k2l.59``); or, where the branch is
@@ -57,7 +57,7 @@ OWN ``#/<kw>/<i>`` pointer, carrying its own ``__adcp_schema__``, whose bases ar
 base and the target.  So ``isinstance(payload, Base)`` holds, the target's fields arrive
 by inheritance and nothing of the target is copied (P2), and the branch grades against its
 own node -- which the resolved document states as the target's content, so every inherited
-fact is one the branch's OWN pointer states.  ``compiler.lower_composition`` is the reader,
+fact is one the branch's OWN pointer states.  ``lower.composition.lower_composition`` is the reader,
 handed the branch as the one-conjunct composition a ``$ref`` branch IS: the same binder,
 the same inherited :class:`compiler.Shape` and the same ``bases`` argument the composing
 branch above already uses, so there is no second reading of what a ``$ref`` conjunct
@@ -88,7 +88,7 @@ An ``allOf`` conjunct list used to be the fourth entry here and is not one: it w
 unlowerable, only unreachable.  The conjuncts sit at the branch's own node, so each of
 them has a pointer the pairing reads, and what was missing was that the conjunct reader
 lived in the product row where D13 keeps a lowering from importing it.  The reader is
-``compiler.lower_composition`` now, so a composing branch is a class like any other --
+``lower.composition.lower_composition`` now, so a composing branch is a class like any other --
 the union base FIRST, because ``isinstance(payload, Base)`` depends on it, and the
 conjuncts' own bases after.  The branch's ``type`` is still read BEFORE its conjunct
 list, because a branch whose type is not an object cannot be a class whatever else it
@@ -168,9 +168,9 @@ from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass, replace
 from typing import Any
 
-from codegen import bundle, compiler, ir, keywords
+from codegen import bundle, compiler, intersect, ir, keywords
 from codegen.keywords import Position
-from codegen.lower import approximate, names
+from codegen.lower import approximate, composition, names, objects
 from codegen.refusal import Kind, Refusal
 from codegen.schema import nodes
 from codegen.schema import parse as schema
@@ -267,7 +267,7 @@ ROOT_CONJUNCTS = nodes.ROOT_SIBLINGS
 #:
 #: ``allOf`` at the BRANCH node is a conjunct list the branch's own pointer addresses,
 #: so unlike the root case it is genuinely lowerable -- and it IS lowered:
-#: :func:`lower_union` hands such a branch to ``compiler.lower_composition`` with the
+#: :func:`lower_union` hands such a branch to ``lower.composition.lower_composition`` with the
 #: union base as ``bases``.  The keyword is in this set so the screen admits it; the
 #: dispatch at the bottom of :func:`lower_union` is what reads it.
 #:
@@ -602,7 +602,7 @@ class Enclosing:
     **The MIXIN is not this carrier's business, and that was a mistake this held once.**
     The enclosing base already carries ``BranchDispatchMixin``, so naming it beside this
     base would put a class before its own subclass -- but that is a fact about the BASE
-    LIST and not about the route, and :func:`compiler.dispatching_bases` is the one
+    LIST and not about the route, and :func:`lower.composition.dispatching_bases` is the one
     reading of it (§5, decided 2026-10-29).  Keyed to the carrier instead, the suppression
     missed a nested union that reaches ``lower_union`` through the DISPATCH rather than
     through the branch loop below, and ``core/postal-area.json`` emitted a module that
@@ -1290,7 +1290,7 @@ def overlapping(planned: Sequence[Branch], node: nodes.Union) -> list[str]:
     ("every keyword beside the combinator compiles onto the base, and every branch
     inherits it") and the first separator's presence gate is the one reading that asks the
     question.  :attr:`nodes.Union.required` is the node's own, which is the same field
-    ``compiler.lower_composition`` takes for ``_ROOT_REQUIRED`` -- one spelling, so the
+    ``lower.composition.lower_composition`` takes for ``_ROOT_REQUIRED`` -- one spelling, so the
     separator and the emitted base cannot come to disagree about what the root requires.
     """
     applied = [applied_type(node, i) for i in range(len(planned))]
@@ -1519,7 +1519,7 @@ def lower_union(
         )
 
     mod.imports.add((ir.BASE_MODULE, "AdCPBaseModel"))
-    # The mixin's import is NOT added here: ``compiler.dispatching_bases`` adds it where
+    # The mixin's import is NOT added here: ``lower.composition.dispatching_bases`` adds it where
     # it NAMES the mixin, so the import and the name are one decision.  Added here too, a
     # base whose list already carries the mixin would import a symbol it does not spell.
     mod.imports.add(("typing", "ClassVar"))
@@ -1547,7 +1547,7 @@ def lower_union(
     # ROOT'S SIBLINGS", and ``_base.applied_schema`` is the one reading of that pointer
     # -- so the fact IS at the branch's own pointer and the pairing reads it there.
     #
-    # ``compiler.lower_composition`` and not a reader of this module's own, because §5
+    # ``lower.composition.lower_composition`` and not a reader of this module's own, because §5
     # says the keywords "compile as they would on any class -- fields, ``extra``, bases,
     # rules" and that function is where a class with conjuncts, own properties, a
     # requiredness and an extra policy is assembled.  A root stating NONE of the four
@@ -1561,22 +1561,22 @@ def lower_union(
     # subclass.  Same sentence as ``base_if_none_composes``'s, at the other end -- there
     # the caller says what the base would be if nothing composed, here it says what the
     # base IS.
-    stated_base = compiler.lower_composition(
+    stated_base = composition.lower_composition(
         node,
         mod,
         # The mixin FIRST, because the MRO is what finds its
         # ``__get_pydantic_core_schema__``, and the model base only where the root
         # composes nothing -- a root that composes reaches ``AdCPBaseModel`` through its
         # conjuncts' own classes, and naming it beside them puts a class before two of
-        # its own subclasses (``compiler.lower_composition``'s
+        # its own subclasses (``lower.composition.lower_composition``'s
         # ``base_if_none_composes``).
         #
-        # **``compiler.dispatching_bases`` decides whether it is named, and this site does
+        # **``lower.composition.dispatching_bases`` decides whether it is named, and this site does
         # not** (§5, "the dispatch mixin is named where no base already carries it"): with
         # an :class:`Enclosing` the list is the enclosing base, which carries the mixin
         # already, and the suppression that used to be this conditional's other arm is now
         # a function of the LIST.  One reading, which the dispatch route asks too.
-        bases=compiler.dispatching_bases(
+        bases=composition.dispatching_bases(
             (enclosing.base,) if enclosing is not None else (), mod
         ),
         base_if_none_composes=(
@@ -1601,7 +1601,7 @@ def lower_union(
         # branches to subclass.  §4 makes the base the symbol every referrer imports and
         # the thing ``isinstance(payload, Base)`` tests, which no annotation is.
         # Measured over the 1,054 portable documents: **0 union roots reach it** -- the
-        # arm inside ``_the_conjuncts_own_type`` fires first, because a union base always
+        # arm inside ``the_conjuncts_own_type`` fires first, because a union base always
         # composes the mixin and so always has ``bases``.
         return Refusal(
             "allOf",
@@ -1649,7 +1649,7 @@ def lower_union(
             # the entry declares a ``description`` -- so the two branch classes of
             # ``core/requirements/catalog-field-binding.json`` carried no description at
             # all where the document states one at their own pointers.
-            # ``compiler.fields`` transcribes a ``$ref`` sibling's description onto a
+            # ``lower.objects.fields`` transcribes a ``$ref`` sibling's description onto a
             # FIELD, and a branch class named off a reference has no such carrier.
             #
             # The same clause and the same spelling as ``lower_composition``'s, which
@@ -1671,13 +1671,13 @@ def lower_union(
             # required, so the class admitted ``{"task_id": "0"}`` and the document
             # refuses it.
             #
-            # ``compiler.intersected_at_a_branch`` is the SAME reading §5's distribution
+            # ``intersect.intersected_at_a_branch`` is the SAME reading §5's distribution
             # makes of the same arrangement -- the node's class first, the target second
             # -- and its docstring carries the measurement.  It is called with the base's
             # property map as what the node ASSERTS, because that map is exactly what the
             # MRO will hand this branch, and with the base's ``required`` as the
             # requiredness the shadowing field carries.
-            own = compiler.intersected_at_a_branch(
+            own = intersect.intersected_at_a_branch(
                 {key: [node] for key, node in base_shape.properties.items()},
                 plan.inherits.shape,
                 plan.inherits.symbol,
@@ -1687,7 +1687,7 @@ def lower_union(
             )
             if isinstance(own, Refusal):
                 return own
-            declared = compiler.declare_object(
+            declared = objects.declare_object(
                 plan.parsed,
                 plan.pointer,
                 mod,
@@ -1767,7 +1767,7 @@ def lower_union(
         # own combinator is their kind by §5's arm order.  It does NOT claim a branch that
         # reaches a union some other way -- a branch composing a ``$ref`` whose target is a
         # union root is a :class:`nodes.Composition` here, and §5's ``$ref`` row
-        # distributes it inside ``compiler.lower_composition`` instead.  That is
+        # distributes it inside ``lower.composition.lower_composition`` instead.  That is
         # ``core/postal-area.json`` at ``/anyOf/0``, and a census of "the branches that
         # reach this arm" went stale the moment that row landed, which is why the claim is
         # the classification and not a number.
@@ -1785,7 +1785,7 @@ def lower_union(
         # itself (§6) -- and the class rows take the NODE.  ``lower_composition`` still
         # reads a declaration, which is §2's own decision about the conjunct merge.
         if "allOf" in plan.node:
-            composed = compiler.lower_composition(
+            composed = composition.lower_composition(
                 plan.parsed,
                 mod,
                 bases=(ir.TypeRef(pointer, local=True),),
@@ -1830,14 +1830,14 @@ def lower_union(
             # bases the tree already carried byte-identical, and is the measurement the
             # base's own site above records.
             composing = (
-                compiler.lower_composition(
+                composition.lower_composition(
                     plan.parsed,
                     mod,
                     bases=(ir.TypeRef(pointer, local=True),),
                     inherits=base_shape,
                 )
                 if base_shape.properties
-                else compiler.lower_object(
+                else objects.lower_object(
                     plan.parsed,
                     mod,
                     bases=(ir.TypeRef(pointer, local=True),),
@@ -1996,7 +1996,7 @@ _NESTED_SIBLING = (
 def carried_by_a_class(node: nodes.Union) -> frozenset[str]:
     """The siblings of this union a composed CLASS consumes, DERIVED (§8).
 
-    Two readings and neither is retyped here.  :data:`compiler.COMPOSING` is the one
+    Two readings and neither is retyped here.  :data:`lower.composition.COMPOSING` is the one
     declaration of what a composing node carries beside its conjunct list -- fields, a
     requiredness, an extra policy, a conjunct list -- and ``compiler.rules_at``'s
     ``screen`` is D6's one reading of the rule sources THIS node states at THIS position,
@@ -2010,7 +2010,7 @@ def carried_by_a_class(node: nodes.Union) -> frozenset[str]:
     sibling with nowhere to go.  What is left is exactly the siblings §8 says become a
     base.
     """
-    claimed = compiler.COMPOSING | compiler.rules_at(node, position=node.position).screen
+    claimed = composition.COMPOSING | compiler.rules_at(node, position=node.position).screen
     return frozenset(claimed) - {node.combinator, "type"}
 
 
@@ -2354,7 +2354,7 @@ def _inherited(parsed: nodes.Node, mod: compiler.Module) -> Inherited | Refusal:
     §4: a ``$ref`` branch is a class with TWO BASES, and the target is the one that
     supplies the fields.  So the target has to be a CLASS, and the two things this needs
     off it -- the symbol and the :class:`compiler.Shape` -- are the two things a ``$ref``
-    conjunct's base already takes from ``mod.target`` in ``compiler.lower_composition``.
+    conjunct's base already takes from ``mod.target`` in ``lower.composition.lower_composition``.
 
     **``compiler.lower_node`` is what reads the reference**, and it is read ONCE here,
     because its ``$ref`` arm is the one place in this generator that decides
@@ -2448,7 +2448,7 @@ def _plan(node: nodes.Union, i: int, mod: compiler.Module) -> Branch | Refusal:
             f"a branch is {type(branch).__name__}, not a schema",
             kind=Kind.VERDICT,
         )
-    live = set(compiler.declaring(branch, Position.BRANCH))
+    live = set(intersect.declaring(branch, Position.BRANCH))
     if live == {"$ref"}:
         # **§4's two bases.**  The branch is a class at its OWN pointer whose bases are
         # the union's base and the ``$ref`` target: the target supplies the fields and
@@ -2469,7 +2469,7 @@ def _plan(node: nodes.Union, i: int, mod: compiler.Module) -> Branch | Refusal:
             inherits=inherits,
         )
     # The branch's own D6 rules: the keywords are admitted here and the TUPLE is
-    # written by ``compiler.declare_object``, which ``lower_object`` below reaches.
+    # written by ``lower.objects.declare_object``, which ``lower_object`` below reaches.
     # ONE reading, and the dispatch derivation takes the other half of it: ``forbids``
     # is the names this branch's ``not`` forbids by name, which is §4's third source
     # (:func:`separates`), so the rule the branch carries and the separator the root is
@@ -2533,7 +2533,7 @@ def _plan(node: nodes.Union, i: int, mod: compiler.Module) -> Branch | Refusal:
         # What it needs is the conjuncts BOUND, and it has them: a branch class's bases
         # are already the union base (§4, and ``isinstance(payload, Base)`` depends on
         # it), so a composing branch wants that base AND whatever its conjuncts name --
-        # which is ``compiler.lower_composition``'s ``bases`` argument, prepending the
+        # which is ``lower.composition.lower_composition``'s ``bases`` argument, prepending the
         # union base to the conjuncts' own.  ``compiler.decide`` is not the way to it and
         # never was: it would declare a composition class that does not descend from
         # this base, so the branch would not answer ``isinstance``, which is the same
@@ -2587,7 +2587,7 @@ def _plan(node: nodes.Union, i: int, mod: compiler.Module) -> Branch | Refusal:
         # note: such a branch parsed as :class:`nodes.Typeless`, which has no ``required``
         # field, so the names reached nothing.  It parses as an object with an empty
         # property map now (``schema.parse``'s ``type`` arm), and the branch loop's object
-        # arm declares it by ``compiler.lower_composition`` over the base -- which is how
+        # arm declares it by ``lower.composition.lower_composition`` over the base -- which is how
         # ``account/sync-accounts-request.json`` already emits the identical shape stated
         # through an ``allOf`` conjunct.
         #

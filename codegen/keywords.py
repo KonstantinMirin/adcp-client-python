@@ -1843,7 +1843,7 @@ def constrains_container(word: str) -> frozenset[str]:
     (``adcp-client-python-3be.8``): §5's ``objects`` and ``arrays`` sub-grids are the
     keyword FAMILIES (:func:`grid_of`), and :data:`ARM` names the ones draft-07 cuts onto
     that type word.  The union is what "this keyword declares the instance to be an
-    ``object``" means, which is the question ``compiler._container_kind`` asks of two
+    ``object``" means, which is the question ``intersect._container_kind`` asks of two
     declarations before it decides whether they declare ONE container.
 
     The two columns are needed TOGETHER and neither alone, which is what makes this a

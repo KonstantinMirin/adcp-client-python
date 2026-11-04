@@ -62,7 +62,7 @@ def test_a_reported_drop_reaches_every_position_the_keyword_occupies() -> None:
     """The count of reported drops naming the keyword equals the count of occurrences.
 
     §7's own settling reading.  Before this row the channel was
-    ``compiler.lower_composition``'s, which screens CONJ, so the ``/allOf/1`` occurrence
+    ``lower.composition.lower_composition``'s, which screens CONJ, so the ``/allOf/1`` occurrence
     was reported and the ``/then`` one was reported nowhere -- one note for two
     occurrences, with no reader able to see that the class carries nothing for the
     second.

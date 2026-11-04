@@ -458,7 +458,7 @@ SAME_INSTANCE_FACTS = ("properties", "required", "additionalProperties")
 #: ``core/version-envelope.json`` states its own ``description`` beside the conjunct,
 #: so the root's wins at the root -- which is what both halves already do, the
 #: verifier by starting from the node and the emitter by
-#: ``compiler.lower_composition``'s ``inherited_description``.  Spliced into a BRANCH
+#: ``lower.composition.lower_composition``'s ``inherited_description``.  Spliced into a BRANCH
 #: with its annotations intact, the conjunct's description arrives at a pointer the
 #: root has already answered it at, and a branch class that is silent -- as a subclass
 #: with no docstring of its own is -- reads as dropping a fact 14 pairs over 7
