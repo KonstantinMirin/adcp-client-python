@@ -2327,18 +2327,62 @@ class _Draws:
     #: which run paid for its evidence.
     drawn: int = 0
     replayed: int = 0
+    #: How many answers came from a draw ANOTHER check of this pair already paid for
+    #: (:meth:`one`'s ``borrowed``).  Counted apart from ``drawn`` and from ``replayed``
+    #: because it is a third thing: not this check's draw, and not a held entry either --
+    #: the first run that borrows one also HOLDS it, so the next run reports it replayed.
+    borrowed: int = 0
 
     def one(
-        self, schema: Any, position: Any, custom_formats: Mapping[str, Any]
+        self,
+        schema: Any,
+        position: Any,
+        custom_formats: Mapping[str, Any],
+        borrowed: Sequence[Any] = (),
     ) -> list[Any]:
-        """``[one instance of schema]``, or ``[None, why not]`` -- held under ``position``."""
+        """``[one instance of schema]``, or ``[None, why not]`` -- held under ``position``.
+
+        **``borrowed`` are values a draw of THIS PAIR has already produced**, offered to
+        ``schema`` in order, and the first one it admits is the answer.  Asked after the
+        store and before the draw, so a held entry still decides which witness is graded
+        and nothing about a warm run changes.
+
+        **Why it exists, measured.**  :func:`check_widening`'s value class for a
+        same-instance keyword is the node AS IT STANDS conjoined with its host, and at a
+        pointer whose segments are all same-instance hops the host is the pair's own node
+        -- so the class is the document, and drawing it is a whole-document draw the
+        ACCEPTS check has already paid for and committed.  On ``adagents.json#`` the
+        subject is **2,490,001 bytes of resolved document for a 384-byte conjunct**, and a
+        process drawing it reached 2.9 GB of RSS without finishing inside 600 s while the
+        accepts floor held an instance of exactly that node.  90 of the bundle's 103
+        provable declarations sit at such a pointer.
+
+        **It is not a weaker value and the schema is what says so.**  The candidate is
+        offered to the SAME schema a draw would have been asked for, so it is admitted on
+        the same terms -- the one difference is which of this pair's draws produced it, and
+        :func:`check_widening` then validates it against the document's node and against
+        the whole document before the entry point is shown anything, exactly as it does a
+        drawn one.  Nothing is hand-written: a borrowed value is ``check_accepts``' own
+        output, which is the rule the accepts corpus already follows.  For a class that
+        PINS a value -- an ``enum`` member, a ``format`` shape, a bound -- a borrowed
+        candidate almost never conforms and the draw happens; the saving is exactly where
+        the class is the node, which is where the cost is.
+
+        This is :func:`_bases`' own sentence one level down -- "the base instance is a FREE
+        CHOICE among the ones the accepts check already drew" -- applied to the value.
+        """
         if self.corpus is None or self.identity is None:
-            return self._draw(schema, custom_formats)
+            answer = self._borrowed(schema, borrowed)
+            return self._draw(schema, custom_formats) if answer is None else answer
         key = corpus_key(self.identity, custom_formats=custom_formats, position=position)
         held = self.corpus.get(key)
         if isinstance(held, list) and held:
             self.replayed += 1
             return held
+        answer = self._borrowed(schema, borrowed)
+        if answer is not None:
+            self.corpus.put(key, answer)
+            return answer
         answer = self._draw(schema, custom_formats)
         #: **A cut is not an answer, so nothing holds it** -- ``check_accepts``' own
         #: ``res.outcome != "strategy_error"`` clause, for this key space.
@@ -2349,6 +2393,25 @@ class _Draws:
         if not records_a_cut(answer):
             self.corpus.put(key, answer)
         return answer
+
+    def _borrowed(self, schema: Any, candidates: Sequence[Any]) -> list[Any] | None:
+        """The first of ``candidates`` the schema admits, or ``None``.
+
+        ``conforms`` and not a second validator: a schema it cannot build a validator for
+        answers ``None``, which is neither admitted nor refused, so such a schema borrows
+        nothing and the draw decides.
+        """
+        if not candidates:
+            return None
+        try:
+            validator_cls = validator_for(schema)
+        except Exception:  # noqa: BLE001 -- a schema with no validator borrows nothing
+            return None
+        for candidate in candidates:
+            if conforms(schema, candidate, validator_cls=validator_cls) is True:
+                self.borrowed += 1
+                return [candidate]
+        return None
 
     def _draw(self, schema: Any, custom_formats: Mapping[str, Any]) -> list[Any]:
         self.drawn += 1
@@ -2682,17 +2745,42 @@ def _settled(node: Any, root: Any) -> Any:
     """
     if not isinstance(node, Mapping):
         return node
-    return _composed(_normalize(node, root, declared_null=True), root)
+    return _written_and_settled(node, root)[1]
+
+
+def _written_and_settled(node: Any, root: Any) -> tuple[Any, Any]:
+    """:func:`_settled` and the node it was settled FROM, which is one reading in two
+    halves because the two halves answer two different questions about one pointer.
+
+    **The composed half decides what the document STATES at a pointer; the written half
+    decides what a pointer SPELLS.**  :func:`_composed` folds a conjunct's facts into the
+    node it composes and removes ``allOf`` from the merged node for exactly that reason --
+    the fact is now at the composing pointer and must not also be found one hop away.
+    What it cannot do is remove the ``allOf`` segment from the POINTER LANGUAGE: a fact
+    outside ``FOLDED_FACTS`` is not folded anywhere, so the document still states it at
+    ``#/allOf/0`` and ``emit`` declares it there.
+
+    Measured over the 1,054 portable documents: **90 of the 103 provable declarations sit
+    at a pointer ending ``/allOf/N``** -- every ``if`` the bundle states but one, and two
+    of the four ``else`` -- and every one of them was reported "the document states no
+    such keyword at that pointer" by :func:`check_widening` with nothing drawn, because
+    the merged node the walk was descending from no longer carried the list the segment
+    names.  :func:`_steps` therefore takes a same-instance LIST hop on the written half
+    and everything else on the composed one.
+    """
+    written = _normalize(node, root, declared_null=True) if isinstance(node, Mapping) else node
+    return written, (_composed(written, root) if isinstance(written, Mapping) else written)
 
 
 def _steps(
     pointer: str, schema: Any
-) -> tuple[list[tuple[Any, Any]], Any] | None:
+) -> tuple[list[tuple[Any, Any]], Any, Any] | None:
     """Each instance segment the pointer's location is made of, with the DOCUMENT's own
-    subschema for the value at it -- and the node the pointer itself names.
+    subschema for the value at it -- the node the pointer itself names, and the node at
+    the instance LOCATION that node is a statement about.
 
     :func:`instance_path` is the segments alone, :func:`_reached` is the subschemas and
-    :func:`check_widening` is the last node: one walk answers all three, because a path
+    :func:`check_widening` is the last two: one walk answers all three, because a path
     whose intermediate nodes are read by a DIFFERENT reading of the pointer than the path
     itself is two walks that can disagree about which node a segment names.
 
@@ -2704,19 +2792,47 @@ def _steps(
     ``core/account-with-authorization.json``, whose widening is declared at the composed
     pointer (``emit._folded``) and whose raw document holds the keyword one ``allOf/1``
     hop away, so the obligation reported "the document states no such keyword".
+
+    **A SAME-INSTANCE LIST HOP IS TAKEN ON THE WRITTEN HALF, because composition CONSUMES
+    the list the segment names** (:func:`_written_and_settled`).  That paragraph is about a
+    fact the fold MOVES, and the fold moves only ``FOLDED_FACTS``: an ``if`` is not one, so
+    the document states it at ``#/allOf/0`` and nowhere else, while the merged node the
+    walk was descending from had no ``allOf`` left to descend through.  90 of the bundle's
+    103 provable declarations sit at such a pointer and every one of them reported "the
+    document states no such keyword" with nothing drawn.
+
+    **``host`` is the node at the last INSTANCE segment AS THE DOCUMENT WRITES IT, which
+    is what a same-instance hop is a statement about, and ``None`` where the pointer ends
+    at that segment and there is no hop.**  ``#/properties/age/allOf/1`` describes the
+    value under ``age``, and what that value has to satisfy is everything the document
+    says about ``age`` -- that conjunct AND its siblings -- so a caller that drew from the
+    conjunct alone draws a value the document refuses.  Measured on
+    ``core/demographic-reporting-capability.json``, whose ``age`` states two conditionals:
+    drawn from ``allOf/1`` alone the value declared ``exact_predicates`` without the four
+    names ``allOf/0`` then demands, and the placement reported a payload the document
+    refuses.
+
+    The WRITTEN half and not the composed one, for the same reason the list hop takes it:
+    ``_composed`` removes the conjunct list, so the composed node at ``age`` has lost the
+    sibling conditional that refused the value.  ``None`` rather than the node itself
+    where no hop was taken, so a caller cannot conjoin a node with itself and every
+    declaration this check already proved draws exactly what it drew.
     """
     segments = [s for s in pointer.lstrip("#").split("/") if s]
     out: list[tuple[Any, Any]] = []
-    node = _settled(schema, schema)
+    written, node = _written_and_settled(schema, schema)
+    at_location, hops = written, 0
     i = 0
     while i < len(segments):
         word = segments[i]
         if word == "properties" and i + 1 < len(segments):
-            node = _settled(_down(node, word, segments[i + 1]), schema)
+            written, node = _written_and_settled(_down(node, word, segments[i + 1]), schema)
+            at_location, hops = written, 0
             out.append((bundle.unescape_key(segments[i + 1]), node))
             i += 2
         elif word == "items":
-            node = _settled(_down(node, word), schema)
+            written, node = _written_and_settled(_down(node, word), schema)
+            at_location, hops = written, 0
             out.append((0, node))
             i += 1
         elif word in _MAPPING_VALUE and i + _MAPPING_VALUE[word] <= len(segments):
@@ -2725,7 +2841,10 @@ def _steps(
             key = _mapping_key(node, expression)
             if key is None:
                 return None
-            node = _settled(_down(node, *segments[i : i + spent]), schema)
+            written, node = _written_and_settled(
+                _down(node, *segments[i : i + spent]), schema
+            )
+            at_location, hops = written, 0
             out.append((key, node))
             i += spent
         elif word in _DESCEND_LIST and i + 1 < len(segments):
@@ -2733,14 +2852,27 @@ def _steps(
             # segments spent (the keyword and the index).  ``_DESCEND_LIST`` is the
             # descent column's own answer to "which keywords hold their subschemas in a
             # list", so the three are read here and not restated.
-            node = _settled(_down(node, word, segments[i + 1]), schema)
+            #
+            # **Off ``written`` and not off ``node``**, because ``_composed`` removes
+            # ``allOf`` from the merged node and the pointer still spells it; the
+            # docstring above carries the measurement.  ``node`` is the fall-back and not
+            # dead code -- a conjunct whose own statement is a combinator IS kept on the
+            # merged node, and a ``oneOf``/``anyOf`` hop is a branch list the fold never
+            # touches, so the written half answers for ``allOf`` and the composed half for
+            # the hops that were already reachable.
+            child = _down(written, word, segments[i + 1])
+            if child is None:
+                child = _down(node, word, segments[i + 1])
+            written, node = _written_and_settled(child, schema)
+            hops += 1
             i += 2
         elif word in ("then", "else"):
-            node = _settled(_down(node, word), schema)
+            written, node = _written_and_settled(_down(node, word), schema)
+            hops += 1
             i += 1  # a same-instance hop
         else:
             return None
-    return out, node
+    return out, node, (at_location if hops else None)
 
 
 def _reached(
@@ -2849,6 +2981,44 @@ def _placed(instance: Any, path: Sequence[Any], value: Any) -> Any:
             return None
         cursor[last] = value
     return out
+
+
+def _conjoined(host: Any, sub: Any) -> Any:
+    """``sub`` as a statement about an instance ``host`` ALSO constrains, or ``sub`` alone.
+
+    **A same-instance hop says "this as well", never "this instead"**, which is what
+    :func:`_steps`' third answer is for: ``#/properties/age/allOf/1`` is a statement about
+    the value under ``age``, and that value has to satisfy everything the document says
+    about ``age`` -- that conjunct AND its siblings.  So a value class derived from the
+    conjunct is drawn, and graded, under the conjunction of the two; drawn from the
+    conjunct alone it is a value the document refuses, which
+    :func:`check_widening` then reports as a payload the document refuses rather than as
+    anything about the class.
+
+    ``host`` is ``None`` where the pointer ends AT its instance segment and no hop was
+    taken, and then there is nothing to conjoin and the subject is unchanged -- which is
+    every declaration this check proved before the host existed.
+    """
+    return {"allOf": [host, sub]} if isinstance(host, Mapping) else sub
+
+
+def _value_at(instance: Any, path: Sequence[Any]) -> list[Any]:
+    """``[the value at ``path``]``, or ``[]`` where the instance does not carry it.
+
+    :func:`_placed`'s inverse, and a LIST rather than a value for :class:`_Draws`' own
+    reason: a document can admit ``null``, so a sentinel value could not tell "the value
+    there is null" from "there is nothing there".  An empty path reads the whole instance,
+    which is what a declaration at a pointer of same-instance hops describes.
+    """
+    cursor = instance
+    for segment in path:
+        if isinstance(segment, int):
+            if not isinstance(cursor, list) or len(cursor) <= segment:
+                return []
+        elif not isinstance(cursor, dict) or segment not in cursor:
+            return []
+        cursor = cursor[segment]
+    return [cursor]
 
 
 def _demanding(path: Sequence[Any]) -> dict:
@@ -2974,6 +3144,11 @@ class WideningResult:
     #: come from and its docstring carries what the draws cost.
     drawn: int = 0
     replayed: int = 0
+    #: How many answers came from a draw ANOTHER check of this pair already paid for;
+    #: :meth:`_Draws.one`'s ``borrowed`` carries what that is and why it is not a weaker
+    #: value.  Reported for ``drawn``/``replayed``'s reason: a reader of a green pair is
+    #: entitled to know which draw paid for its evidence.
+    borrowed: int = 0
 
     @property
     def outcome(self) -> str:
@@ -3097,6 +3272,11 @@ def check_widening(
             )
             continue
         path = tuple(segment for segment, _ in walked[0])
+        # The node at this declaration's instance LOCATION, which every value class below
+        # is drawn and graded UNDER where the pointer took a same-instance hop to reach
+        # the fact: :func:`_conjoined` carries that sentence and :func:`_steps` carries
+        # what the node is.  ``None`` where no hop was taken, and then nothing changes.
+        host = walked[2]
         classes = value_classes(one.keyword, node)
         if not classes:
             res.unproved.append(
@@ -3107,6 +3287,16 @@ def check_widening(
         # One slot per DECLARATION for :func:`_bases`'s demanded draw, because the demand
         # is a function of the pointer and every value class of one declaration shares it.
         demanded: list[Any] = []
+        #: **The value at this location in every payload the accepts check already drew**,
+        #: offered to each class before anything is drawn (:meth:`_Draws.one`).  A
+        #: declaration's location is a free choice of base and that is already how the
+        #: BASE is chosen; this is the same sentence about the VALUE, and
+        #: :meth:`_Draws.one` carries the measurement that forced it -- a same-instance
+        #: class at a root-located pointer is a whole-document draw the accepts check has
+        #: already paid for and committed.
+        at_the_location = [
+            found for base in instances for found in _value_at(base, path)
+        ]
         for label, restriction in classes:
             # Held like the other two, and for the same reading: a value class is a
             # RESTRICTION of the pair's node, so for the nodes that cost anything it is a
@@ -3116,14 +3306,24 @@ def check_widening(
             # (:func:`value_classes`), which is the position.  A draw failure is unproved
             # and never a pass, and the REASON travels with the held answer so a replayed
             # run reports what a drawn one reports.
-            held = draws.one(restriction, ("class", one.pointer, one.keyword, label), cf)
+            drawn_class = _conjoined(host, restriction)
+            held = draws.one(
+                drawn_class,
+                ("class", one.pointer, one.keyword, label),
+                cf,
+                borrowed=at_the_location,
+            )
             if len(held) > 1:  # by LENGTH, never by the value: a document can admit null
                 res.unproved.append(
                     f"{one.pointer}/{one.keyword}: {label} could not be drawn: {held[1]}"
                 )
                 continue
             value = held[0]
-            if conforms(node, value, validator_cls=validator_for(node)) is False:
+            graded_against = _conjoined(host, node)
+            if (
+                conforms(graded_against, value, validator_cls=validator_for(graded_against))
+                is False
+            ):
                 res.unproved.append(
                     f"{one.pointer}/{one.keyword}: {label} drew {_dump(value)}, which the "
                     "document's own node refuses -- the restriction is not one"
@@ -3171,7 +3371,7 @@ def check_widening(
                 )
                 continue
             res.accepted += 1
-    res.drawn, res.replayed = draws.drawn, draws.replayed
+    res.drawn, res.replayed, res.borrowed = draws.drawn, draws.replayed, draws.borrowed
     return res
 
 
