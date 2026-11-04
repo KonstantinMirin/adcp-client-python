@@ -282,6 +282,36 @@ pythonpath = [".", "src"]
 # and to nothing in this file.
 addopts = "-n auto --maxprocesses=10 --dist=loadgroup"
 
+# **EVERY TEST IS BOUNDED, AND THE BOUND IS THE SUITE'S RATHER THAN AN ARGUMENT A
+# CALLER HAS TO REMEMBER.**  Measured: the pair grade applied no budget at all --
+# ``harness.within`` has exactly one caller, ``codegen/__main__.py`` -- so a pair
+# whose draw does not terminate hung the whole run, and
+# ``tests/test_emit.py::test_every_class_passes_all_three_checks`` could neither
+# finish nor report a cut.  100 pairs took over 25 minutes unbounded and
+# **32.6 seconds** with a bound; the file now completes in one invocation.
+#
+# ``signal`` and never ``thread``.  The thread method hard-kills the worker and
+# ``xdist`` reports ``[gw0] node down: Not properly terminated``, which LOSES the
+# pair instead of reporting it; ``signal`` raises inside the worker, so the pair
+# fails BY NAME and lands in the junit XML -- which is what makes a bound a verdict
+# table rather than a crash.  ``harness.within`` made the same choice for the same
+# reason: "SIGALRM and not a thread, because the harness is pure Python on this
+# thread and a timer that cannot interrupt it is not a bound."
+#
+# **900 s AND NOT A PAIR BUDGET, and the difference is the point.**  This is a
+# BACKSTOP against a check that does not terminate, not a per-pair cost ceiling:
+# ``tests/test_cells.py`` legitimately runs for minutes and reddens under a 25 s
+# bound, so a global pair budget would redden a check that is working.  The pair
+# grade's own budget belongs on the pair grade, as a marker on that test, and that
+# is a row -- not a figure here that every other check then has to live under.
+#
+# **AND A BOUND IS NOT A FIX.**  It does not reach a phase inside a C call: SIGALRM
+# is delivered at a bytecode boundary, and ``harness.resolve`` has held a worker
+# for thirteen minutes against a 25 s bound.  That is a defect with its own row,
+# and this declaration must not be read as having answered it.
+timeout = 900
+timeout_method = "signal"
+
 # --------------------------------------------------------------------------- #
 # the type checker, which section 14 step 6 makes the TEST for the decision layer
 # --------------------------------------------------------------------------- #
