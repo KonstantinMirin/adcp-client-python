@@ -1065,6 +1065,17 @@ for what distinguishes it and not for its position.
 why that distinction matters: a target root that dispatches AND declares properties of its own is
 the ordinary case and the two-base rule is right for it.
 
+**THE PRODUCTS ARE NAMED FROM §4's BRANCH CANDIDATES WITH THE BRANCH AS PARENT**, and the first
+candidate falls past the symbol the product's own base import already holds — so a product whose
+target branch is titled is named by the **`const` it pins**, which is what distinguishes it both
+from its sibling product and from the class it subclasses. No new naming rule and no index.
+
+**AND THE DISTRIBUTION IS RESOLVED AFTER THE DISPATCH DERIVATION AND BEFORE THE NAMES.** §4's
+derivation and §8's third equality range over the branches **the document writes**, so a union that
+distributes keeps whatever separability declaration its own branch list earned. Distributing first
+would re-derive dispatch over classes the document does not state and move a declaration no
+document changed.
+
 Four mechanics make it work, each because one of the others does not reach a path:
 
 - **`__get_pydantic_core_schema__` on the mixin returns the branches' union**, which covers every
@@ -1789,6 +1800,13 @@ asks only whether a fact has a source. The question is always *which node states
 instance*, and a document whose other branches reference ROOTS while one references a FRAGMENT is
 where the two readings diverge: the rule that is right three times is wrong the fourth.
 
+**RELAXING THE SURPLUS REQUIREDNESS IS AVAILABLE AT THE REFERRING CLASS; CARRYING THE TARGET'S TYPE
+FOR IT IS NOT.** A surplus field's type can name a symbol two hops from the target's module — an
+envelope's `status` names an enumeration a third document declares — and `Target.imports` can place
+no module for it, which D1 forbids a lowering to go looking for. Measured: the typed form reads
+`emitted 1052 / refused 2`. So the field states **what the fragment states about the key, which is
+nothing** — §5's required-with-no-declaration answer at a second position.
+
 **This is not `narrowings.py`'s door.** That registry is keyed by a §5 table cell and holds
 keywords this compiler cannot express; the keyword here is expressible and is simply applied at a
 node that does not state it.
@@ -2158,6 +2176,19 @@ generate test cases from empty strategy`.
 **At a co-describing position the reference is TRANSPARENT: the walk reads through it and keeps
 looking below**, which is the reading `architecture.md` already applies to the record's storage.
 The fixtures then land inside the conjunct, at positions that do not meet each other.
+
+**A BARE `oneOf`/`anyOf` DECLARES THE CONTAINER ITS BRANCHES AGREE ON.** Draft-07 admits an
+instance only through a branch, so **a union every branch of which declares an object has declared
+an object** as surely as `type: object` does — the same entailment the keyword reading already makes
+for `contains` implying an array. This is what lets "two object declarations compose as an `allOf`"
+reach a DISPATCH ROOT, whose every property sits on its branches and whose own node therefore
+states no type word at all. Without it the composition rule is written, correct, and never reached:
+the conjunct is dropped and the class carries the keys as `Any`.
+
+**AND AN `Any` WHERE A TYPE IS DERIVABLE IS A WIDENING NOBODY DECLARED.** It PASSES both checks — a
+model wider than its document is permitted by §2 — so no verdict moves when it is wrong, and the
+only thing that reports it is a reading over the annotation itself. A dropped conjunct is therefore
+invisible to the draw at exactly the positions where it costs the most.
 
 **AND THE RESIDUAL EMPTINESS IS REPORTED, NEVER SWALLOWED.** Two fixtures can still meet on one
 instance through `uniqueItems` or a tuple-valued `items`. That is a non-pass with a name — a
