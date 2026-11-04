@@ -1474,6 +1474,143 @@ def _declare_products(
     return None
 
 
+def _states_required(raw: Any, mod: compiler.Module) -> frozenset[str] | None:
+    """Every name a NODE requires AT ITS OWN POINTER: its own ``required`` and its
+    ``allOf`` conjuncts', and nothing an enclosing node adds.  ``None`` where a conjunct
+    cannot be READ, because then the answer is unknown rather than empty.
+
+    draft-07 applies every conjunct of an ``allOf`` to the same instance, so a conjunct's
+    ``required`` is a requirement at the node that holds the list.  A conjunct that is a
+    bare ``$ref`` is resolved through :meth:`compiler.Module.resolve_node` -- the one
+    reading of a reference this layer has -- and one it cannot resolve answers ``None``:
+    an unread conjunct could require anything, and treating it as requiring nothing would
+    OVERSTATE the surplus and unrequire a name the fragment does state.  That is the one
+    direction this function must not be wrong in, so it is the direction it refuses to
+    guess in.
+
+    What is deliberately NOT followed is anything ABOVE the node: a ``oneOf`` sibling and
+    an ``allOf`` sibling of it are statements about the node that holds BOTH, and this
+    function is asked about the node a pointer names.
+    """
+    if not isinstance(raw, Mapping):
+        return frozenset()
+    out = frozenset(r for r in raw.get("required", []) if isinstance(r, str))
+    conjuncts = raw.get("allOf")
+    if not isinstance(conjuncts, list):
+        return out
+    for conjunct in conjuncts:
+        read: Any = conjunct
+        if isinstance(conjunct, Mapping) and set(intersect.constraining(conjunct)) == {
+            "$ref"
+        }:
+            read = mod.resolve_node(conjunct["$ref"])
+            if read is None:
+                return None
+        nested = _states_required(read, mod)
+        if nested is None:
+            return None
+        out |= nested
+    return out
+
+
+def _unrequired(
+    plan: Branch, own: list[ir.Field], mod: compiler.Module
+) -> tuple[frozenset[str], list[ir.Field]] | Refusal:
+    """The names a FRAGMENT reference's target class requires and the fragment does not,
+    with one OPTIONAL field per name added to what the branch declares.
+
+    **A fragment reference states what the node at that pointer states, never what its
+    document's root adds to the root** (``adcp-client-python-4wp``).  A ``$ref`` to
+    ``other.json#/oneOf/0`` resolves to that subschema alone; where the target document's
+    root composes -- ``{"oneOf": [...], "allOf": [{"$ref": "...envelope.json"}]}`` -- the
+    envelope applies to an instance validated against the ROOT and not to one validated
+    against the fragment.  The target's CLASS carries it anyway, because a branch class of
+    that document subclasses its union base, and inheriting it makes the referring class
+    strictly NARROWER than its own node -- which §2 forbids outright, where a model wider
+    than its document is permitted.
+
+    **THE REQUIREMENT IS READ FROM THE FRAGMENT'S OWN NODE**
+    (:func:`_states_required` over ``Module.resolve_node``'s reading of the reference),
+    which is the pointer the reference names.  The defect this corrects is a requirement
+    read from the WRONG NODE and not one invented: every keyword involved is stated
+    somewhere in the bundle, and the question is always which node states it about which
+    instance.
+
+    What the surplus does NOT do is drop the target's surplus FIELDS.  Those are a model
+    wider than its document, which §2 permits in as many words, and the field is what
+    carries the type a caller reaching the class through its other base already sees.
+    What it removes is the one direction §2 forbids.
+
+    **Population 1 over the 1,054 portable documents**, measured by reading every bare
+    ``$ref`` branch of a root union: ``compliance/task-completion-data.json#/anyOf/2``,
+    whose ``$ref`` is ``media-buy/create-media-buy-response.json#/oneOf/0`` -- the only
+    one of that document's four branches not naming a document ROOT, so the document's own
+    pattern breaks at exactly the branch that reddened.  Its surplus is one name,
+    ``status``, which ``core/protocol-envelope.json`` requires through the target's root
+    ``allOf``.  Every other fragment branch in the bundle is a LOCAL ``#/definitions/...``
+    entry, which ``Module.resolve_node`` answers ``None`` for by its own scope rule and
+    which an enclosing root composes nothing onto -- so the surplus is empty there and no
+    other module moves.
+
+    A key already in ``own`` is left alone: ``intersect.intersected_at_a_branch`` has
+    already decided it from §2's intersection of two declarations, which is a statement
+    about the key's VALUE, and this is a statement about its PRESENCE -- re-declaring it
+    here would overwrite that decision with the target's declaration alone.
+    """
+    if plan.inherits is None:
+        return frozenset(), own
+    uri = getattr(plan.parsed, "uri", "")
+    # **A FRAGMENT and nothing else.**  A reference to a document ROOT names the class
+    # whose own node it is, so the target's requiredness IS the reference's and there is
+    # no surplus to read -- §4's ``$ref``-branch rule assumes exactly that target and is
+    # right for it.  The reading is ``bundle.split_ref``'s, which is the one reading of
+    # the ``#`` in this compiler: two readings of that delimiter is how a binder and a
+    # resolver come to disagree about which node a reference names (§3's one dispatch
+    # seam).
+    head, fragment = bundle.split_ref(uri) if uri else ("", "")
+    resolved = mod.resolve_node(uri) if head and fragment else None
+    if resolved is None:
+        return frozenset(), own
+    states = _states_required(resolved, mod)
+    if states is None:
+        return frozenset(), own
+    surplus = plan.inherits.shape.required - states
+    out = list(own)
+    for key in sorted(surplus):
+        fname = names.field_name(key, mod.reserved)
+        # **THE FIELD STATES NOTHING ABOUT THE VALUE, which is what the fragment states
+        # about this key.**  The surplus name reaches the target's class from the target
+        # document's ROOT, and the fragment declares no property for it at all -- so a
+        # field carrying the ROOT's type would state at this pointer a fact the referring
+        # node does not, which is the same wrong-node reading one axis over.  ``Any``
+        # beside ``required=False`` is "the document says nothing here", and §5's
+        # ``required``-with-no-declaration row already spells exactly that for exactly
+        # that reason: "a key the document requires and declares nothing about admits any
+        # value, and ``Any`` is what §5's ``type`` row already gives an absent type word.
+        # Nothing is widened, nothing is dropped and no declaration is owed."
+        #
+        # **It also needs no import, and that is not a convenience -- it is what makes
+        # the fix available at this seam at all.**  Re-using the target's DECIDED field
+        # (``lower.inherited._reused``, §2's requiredness overlay's own route) was
+        # written first and refuses here: ``status``'s type names ``TaskStatus``, which
+        # ``media-buy/create-media-buy-response.json``'s module does not declare and does
+        # not import -- ``core/protocol-envelope.json`` does, two hops away -- so there
+        # is no module ``Target.imports`` can name it from and D1 forbids a lowering to
+        # go looking.  Measured: ``./check`` read ``emitted 1052 / refused 2`` with that
+        # form, refusing the referring document at ``/anyOf/2/properties/status``.  That
+        # is ``lower.composition._placeable``'s measured wall, met from the other side.
+        #
+        # The DX cost is one field of one class reading ``Any | None`` where it read the
+        # envelope's enum, and it buys the direction §2 forbids being wrong in.
+        if fname in {field.name for field in own}:
+            surplus -= {key}
+            continue
+        out.append(
+            ir.Field(name=fname, wire=key, type=ir.TypeRef("typing.Any"), required=False)
+        )
+    return surplus, out
+
+
 def lower_union(
     node: nodes.Union,
     mod: compiler.Module,
@@ -1906,6 +2043,19 @@ def lower_union(
             )
             if isinstance(own, Refusal):
                 return own
+            # **A FRAGMENT reference states what the node at that pointer states, never
+            # what its document's ROOT adds to the root** (``adcp-client-python-4wp``,
+            # and ``docs/plan/rebuild-plan.md``'s section of that name).  The target
+            # class of a fragment that is a BRANCH of its own document's union root is
+            # the fragment COMPOSED WITH that root -- correct at its own pointer, and
+            # strictly narrower than the reference, because an ``allOf`` sibling of a
+            # ``oneOf`` is a statement about the node holding both and a pointer into one
+            # of them reaches past it.  :func:`_root_only_required` is the surplus and
+            # these are the fields that unrequire it.
+            relaxed = _unrequired(plan, own, mod)
+            if isinstance(relaxed, Refusal):
+                return relaxed
+            surplus, own = relaxed
             declared = objects.declare_object(
                 plan.parsed,
                 plan.pointer,
@@ -1920,7 +2070,12 @@ def lower_union(
                 # makes the root's the one the branch composes WITH.
                 compiler.Shape(
                     {**base_shape.properties, **plan.inherits.shape.properties},
-                    base_shape.required | plan.inherits.shape.required,
+                    # MINUS the surplus, so a later reuser of this branch reads the
+                    # requiredness the REFERENCE states and not the one the target's own
+                    # root adds: the Shape is the record every base decision reads, and a
+                    # requirement relaxed on the class and kept here would be the two
+                    # records disagreeing about one class.
+                    (base_shape.required | plan.inherits.shape.required) - surplus,
                     decided={**base_shape.decided, **plan.inherits.shape.decided},
                     # **§4's TWO BASES are exactly where pydantic's ``model_config``
                     # merge decides what the document should** (§5's
