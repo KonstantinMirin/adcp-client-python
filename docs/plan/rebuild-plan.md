@@ -1012,6 +1012,32 @@ branch**, and the base's name is what every referrer imports. A branch whose sch
 a class with **two bases**: the target, which supplies the fields, and the union's base, which
 supplies the dispatch.
 
+**AND WHERE THE TARGET IS ITSELF A UNION ROOT, THE BRANCH DISTRIBUTES — THE SAME RULE §5's `$ref`
+ROW ALREADY DERIVES AT CONJ, APPLIED AT BRANCH.** "The target supplies the fields" is true exactly
+while the target declares fields of its own. A dispatch root declares none: every property sits on
+its branches, so a two-base class over it inherits an empty field set, dispatches nothing — the
+union is carried by the class that *declares* `_branch_models` and the derived class does not — and
+`extra: ignore` then drops the whole payload. A class that admits a value and dumps `{}` is the
+observable form of it.
+
+Conjunction distributes over disjunction, so this branch is not one class but **one per branch of
+the target**: `(A | B | C) and D` is `(A and D) | (B and D) | (C and D)`, each product a class
+whose bases are one of the target's branches and the enclosing union's base. Every product
+declares fields, every one dispatches, and `isinstance` holds against both bases — which the
+alternative of binding `_branch_models` onto the derived class does not, and which is why that
+one-line form is refused.
+
+**This is not a new rule and it owes no approximation.** §5's `$ref` row states the distribution
+for a union root beside a node that declares fields, including that a product whose intersection is
+empty is DROPPED and that the node refuses only where every product is. BRANCH differs from CONJ in
+one respect only: the other side contributes the dispatch rather than a field set. The names come
+from §4's branch candidates with the enclosing conjunction as the parent, so each product is named
+for what distinguishes it and not for its position.
+
+**The condition is the target's own field set, not whether it dispatches**, and the measurement says
+why that distinction matters: a target root that dispatches AND declares properties of its own is
+the ordinary case and the two-base rule is right for it.
+
 Four mechanics make it work, each because one of the others does not reach a path:
 
 - **`__get_pydantic_core_schema__` on the mixin returns the branches' union**, which covers every
@@ -1677,6 +1703,29 @@ MRO in the 1,006-module tree.
 `Enclosing` keeps its other job. It carries the enclosing base and that base's `Case` so a
 property both declare takes §2's restatement rule, which no base list states and which the
 dispatch route genuinely does not have.
+
+### A FRAGMENT REFERENCE STATES WHAT THE NODE STATES, NEVER WHAT ITS DOCUMENT'S ROOT ADDS
+
+A `$ref` to `other.json#/oneOf/0` resolves to **that subschema and nothing else**. Where the target
+document's root composes — `{"oneOf": […], "allOf": [{"$ref": "…envelope.json"}]}` — the envelope
+applies to an instance validated against the ROOT and not to one validated against the fragment.
+Carrying it into the fragment states a requirement the referring document does not, which is a
+**NARROWING**, and §2 forbids a model tighter than its document outright.
+
+**So the rule is positional and it is the draft's own: an `allOf` sibling of a `oneOf` is a
+statement about the node that holds both, and a pointer into one of them reaches past it.** A
+reader asking what a fragment admits reads the subschema at the pointer; the root's siblings are a
+fact about the root.
+
+**The defect this corrects is a requirement read from the wrong node, not one invented.** Every
+keyword involved is stated somewhere in the bundle — which is what makes it survive a check that
+asks only whether a fact has a source. The question is always *which node states it about which
+instance*, and a document whose other branches reference ROOTS while one references a FRAGMENT is
+where the two readings diverge: the rule that is right three times is wrong the fourth.
+
+**This is not `narrowings.py`'s door.** That registry is keyed by a §5 table cell and holds
+keywords this compiler cannot express; the keyword here is expressible and is simply applied at a
+node that does not state it.
 
 ### An `enum` conjunct beside a `$ref` to an enum
 
