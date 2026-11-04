@@ -8,7 +8,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule, UniqueItems
-from adcp.types.constraints import IntMin1, StrMatching32F5291C, StrMinLen1
+from adcp.types.constraints import AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, IntMin1, StrMinLen1
 
 from ..enums.audio_distribution_type import AudioDistributionType
 from ..enums.dooh_motion_type import DOOHMotionType
@@ -89,7 +89,7 @@ class CanonicalProductPlacement(BranchDispatchMixin, AdCPBaseModel):
     )
     kind: Kind
     placement_id: StrMinLen1
-    publisher_domain: Annotated[StrMatching32F5291C | None, Field(description='For publisher_ref, the adagents.json publisher namespace. For seller_inline, optional inventory-publisher attribution only.')] = None
+    publisher_domain: Annotated[AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain | None, Field(description='For publisher_ref, the adagents.json publisher namespace. For seller_inline, optional inventory-publisher attribution only.')] = None
     seller_agent: Annotated[SellerAgentReference | None, Field(description='Defining sales agent for seller_inline identity. Recommended for new declarations; optional only to preserve legacy product-context placements.')] = None
     name: StrMinLen1 | None = None
     description: str | None = None
@@ -113,7 +113,7 @@ class CanonicalProductPlacementPublisherRef(CanonicalProductPlacement):
         ForbiddenGroups((('seller_agent',),)),
     )
     kind: Literal[Kind.PUBLISHER_REF]
-    publisher_domain: Annotated[StrMatching32F5291C, Field(description='For publisher_ref, the adagents.json publisher namespace. For seller_inline, optional inventory-publisher attribution only.')]
+    publisher_domain: Annotated[AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, Field(description='For publisher_ref, the adagents.json publisher namespace. For seller_inline, optional inventory-publisher attribution only.')]
 
 
 class CanonicalProductPlacementSellerInline(CanonicalProductPlacement):

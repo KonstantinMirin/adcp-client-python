@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNega
 
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
-from adcp.types.constraints import FloatMin0Max1, IntMin1, StrMatching43E30B32, StrMatching5E987613, StrMatchingDD5BDFFC, StrMaxLen50, StrMinLen1, StrMinLen1Matching130C1C9D, StrMinLen1MaxLen255
+from adcp.types.constraints import DemographicReportingCapabilityAgeIntervalsItemDemographic, FloatMin0Max1, GetAccountFinancialsResponseSuccessCurrency, GetCreativeDeliveryRequestEndDate, IntMin1, ReportingAdjustmentReceiptObservedAdjustmentSha256, StrMaxLen50, StrMinLen1, StrMinLen1MaxLen255
 
 from ..core.attribution_window import AttributionWindow
 from ..core.canonical_format_kind import CanonicalFormatKind
@@ -83,7 +83,7 @@ class ReportingRevisionBinding(AdCPBaseModel):
     reporting_revision_id: StrMinLen1MaxLen255
     row_count: NonNegativeInt
     control_totals: list[ReportingControlTotal]
-    content_sha256: Annotated[StrMatching5E987613, Field(description='SHA-256 of RFC 8785 JCS of {reporting_revision_id,row_count,control_totals,reporting_rows}, where reporting_rows is the complete ordered sequence concatenated across every cursor page; identical to reporting_revision.revision_content_sha256.')]
+    content_sha256: Annotated[ReportingAdjustmentReceiptObservedAdjustmentSha256, Field(description='SHA-256 of RFC 8785 JCS of {reporting_revision_id,row_count,control_totals,reporting_rows}, where reporting_rows is the complete ordered sequence concatenated across every cursor page; identical to reporting_revision.revision_content_sha256.')]
 
 
 class AggregatedTotals(AdCPBaseModel):
@@ -206,7 +206,7 @@ class ByDemographicItem(DeliveryMetrics):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buy-delivery-response.json', pointer='#/properties/media_buy_deliveries/items/properties/by_package/items/allOf/1/properties/by_demographic/items')
-    demographic: Annotated[StrMinLen1Matching130C1C9D, Field(description="Demographic code in the declared system's notation (for example, P25-54 for Nielsen).")]
+    demographic: Annotated[DemographicReportingCapabilityAgeIntervalsItemDemographic, Field(description="Demographic code in the declared system's notation (for example, P25-54 for Nielsen).")]
     demographic_system: Annotated[DemographicSystem, Field(description='Measurement system that defines the demographic code.')]
     age: Annotated[DemographicAgeRange | None, Field(description="Canonical age interval represented by this row. Required by protocol semantics for age ranges requested through reporting_dimensions.demographic.age_ranges and for intervals declared in the product's demographic reporting capability.")] = None
     impressions: Annotated[NonNegativeFloat, Field(description='Impressions delivered')]
@@ -234,7 +234,7 @@ class ByPackageItemDailyBreakdownItem(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buy-delivery-response.json', pointer='#/properties/media_buy_deliveries/items/properties/by_package/items/allOf/1/properties/daily_breakdown/items')
-    date: Annotated[StrMatchingDD5BDFFC, Field(description="Calendar date (YYYY-MM-DD) in the reporting timezone: reporting_period.timezone when present, otherwise this package's product reporting_capabilities.timezone. The row covers that local day, which can be 23 or 25 hours long across a DST change.")]
+    date: Annotated[GetCreativeDeliveryRequestEndDate, Field(description="Calendar date (YYYY-MM-DD) in the reporting timezone: reporting_period.timezone when present, otherwise this package's product reporting_capabilities.timezone. The row covers that local day, which can be 23 or 25 hours long across a DST change.")]
     impressions: Annotated[NonNegativeFloat, Field(description='Daily impressions for this package')]
     spend: Annotated[NonNegativeFloat, Field(description='Daily spend for this package')]
     conversions: Annotated[NonNegativeFloat | None, Field(description='Daily conversions for this package')] = None
@@ -256,7 +256,7 @@ class MediaBuyDeliveriesItemByPackageItem(DeliveryMetrics):
     pacing_index: Annotated[NonNegativeFloat | None, Field(description='Package delivery pace relative to its package-level pacing plan (1.0 = on track, <1.0 = behind, >1.0 = ahead). In seller-optimized mode this is a subordinate diagnostic and may be absent when no package pacing preference exists.')] = None
     pricing_model: Annotated[PricingModel, Field(description='The pricing model used for this package (e.g., cpm, cpcv, cpp). Indicates how the package is billed and which metrics are most relevant for optimization.')]
     rate: Annotated[NonNegativeFloat, Field(description='The pricing rate for this package. For fixed-rate pricing, this is the agreed currency-denominated unit rate (e.g., CPM rate of 12.50 means $12.50 per 1,000 impressions). For auction-based pricing, this is the effective rate based on actual delivery. For revenue_share, this is the decimal commission rate (e.g., 0.04 means 4%) and is not itself currency-denominated.')]
-    currency: Annotated[StrMatching43E30B32, Field(description="ISO 4217 currency code for this package's spend and currency-denominated pricing rate. The rate for revenue_share is a dimensionless commission fraction, but attributed monetary values still use this currency. When the enclosing media_buy_deliveries[].currency is present, this value MUST equal it. For AdCP-authored buys both values MUST equal the media-buy currency. A different package currency is permitted only for a legacy or externally created mixed-currency buy whose row currency, daily_breakdown, and row/window monetary totals are omitted. AdCP does not perform currency conversion.")]
+    currency: Annotated[GetAccountFinancialsResponseSuccessCurrency, Field(description="ISO 4217 currency code for this package's spend and currency-denominated pricing rate. The rate for revenue_share is a dimensionless commission fraction, but attributed monetary values still use this currency. When the enclosing media_buy_deliveries[].currency is present, this value MUST equal it. For AdCP-authored buys both values MUST equal the media-buy currency. A different package currency is permitted only for a legacy or externally created mixed-currency buy whose row currency, daily_breakdown, and row/window monetary totals are omitted. AdCP does not perform currency conversion.")]
     delivery_status: Annotated[DeliveryStatus | None, Field(description="System-reported operational state of this package. Reflects actual delivery state independent of buyer pause control. 'not_delivering' means zero impressions were recorded for the entire reporting_period while the package was in-flight. Sellers SHOULD only report 'not_delivering' once the package's data is_final for the period — a provisional (is_final: false) zero may still be measurement catching up, not genuine non-delivery.")] = None
     paused: Annotated[bool | None, Field(description='Whether this package is currently paused by the buyer')] = None
     is_final: Annotated[bool | None, Field(description="Whether this delivery data is final for the reporting period. When false, the data may be updated as measurement matures (e.g., broadcast C7 window accumulating DVR playback) or as processing completes (e.g., IVT filtering, deduplication). When true, the seller considers this data closed — no further updates for this period — and is willing to invoice on it subject to the buy's `measurement_terms.billing_measurement`. Absent means the seller does not distinguish provisional from final data.")] = None
@@ -363,7 +363,7 @@ class WindowsItemByPackageItem(DeliveryMetrics):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buy-delivery-response.json', pointer='#/properties/media_buy_deliveries/items/properties/windows/items/properties/by_package/items')
     package_id: Annotated[str, Field(description="Seller's package identifier")]
-    currency: Annotated[StrMatching43E30B32 | None, Field(description="ISO 4217 denomination for this package window's monetary values. Required by the runtime currency-coherence rule when neither the parent media-buy row nor deprecated response-wide field supplies a currency and this package window contains monetary values; otherwise it MUST match the row or response currency when present.")] = None
+    currency: Annotated[GetAccountFinancialsResponseSuccessCurrency | None, Field(description="ISO 4217 denomination for this package window's monetary values. Required by the runtime currency-coherence rule when neither the parent media-buy row nor deprecated response-wide field supplies a currency and this package window contains monetary values; otherwise it MUST match the row or response currency when present.")] = None
 
 
 class WindowsItem(AdCPBaseModel):
@@ -381,7 +381,7 @@ class MediaBuyDeliveriesItemDailyBreakdownItem(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buy-delivery-response.json', pointer='#/properties/media_buy_deliveries/items/properties/daily_breakdown/items')
-    date: Annotated[StrMatchingDD5BDFFC, Field(description="Calendar date (YYYY-MM-DD) in the reporting timezone: reporting_period.timezone when present, otherwise this media buy's product reporting_capabilities.timezone. The row covers that local day, which can be 23 or 25 hours long across a DST change.")]
+    date: Annotated[GetCreativeDeliveryRequestEndDate, Field(description="Calendar date (YYYY-MM-DD) in the reporting timezone: reporting_period.timezone when present, otherwise this media buy's product reporting_capabilities.timezone. The row covers that local day, which can be 23 or 25 hours long across a DST change.")]
     impressions: Annotated[NonNegativeFloat, Field(description='Daily impressions')]
     spend: Annotated[NonNegativeFloat, Field(description='Daily spend')]
     conversions: Annotated[NonNegativeFloat | None, Field(description='Daily conversions')] = None
@@ -397,7 +397,7 @@ class MediaBuyDeliveriesItem(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buy-delivery-response.json', pointer='#/properties/media_buy_deliveries/items')
     media_buy_id: Annotated[str, Field(description="Seller's media buy identifier")]
-    currency: Annotated[StrMatching43E30B32 | None, Field(description="ISO 4217 denomination for monetary values in this media-buy delivery row, including totals, package spend, and currency-denominated package rates. Sellers SHOULD populate this field whenever all monetary values in the row share one currency. For AdCP-authored buys it MUST equal the media-buy currency, and every by_package[].currency MUST equal it. For a legacy or externally created mixed-currency buy, omit this field, daily_breakdown, and all monetary or money-derived values from row and window totals; report those values only at package grain with each package's own currency. AdCP does not perform currency conversion.")] = None
+    currency: Annotated[GetAccountFinancialsResponseSuccessCurrency | None, Field(description="ISO 4217 denomination for monetary values in this media-buy delivery row, including totals, package spend, and currency-denominated package rates. Sellers SHOULD populate this field whenever all monetary values in the row share one currency. For AdCP-authored buys it MUST equal the media-buy currency, and every by_package[].currency MUST equal it. For a legacy or externally created mixed-currency buy, omit this field, daily_breakdown, and all monetary or money-derived values from row and window totals; report those values only at package grain with each package's own currency. AdCP does not perform currency conversion.")] = None
     status: Annotated[Status, Field(description='Current media buy status. Lifecycle states use the same taxonomy as media-buy-status (`pending_creatives`, `pending_start`, `active`, `paused`, `completed`, `rejected`, `canceled`). In webhook context, reporting_delayed indicates data temporarily unavailable. `pending` is accepted as a legacy alias for pending_start.')]
     expected_availability: Annotated[AwareDatetime | None, Field(description='When delayed data is expected to be available (only present when status is reporting_delayed)')] = None
     is_adjusted: Annotated[bool | None, Field(description='Indicates this delivery contains updated data for a previously reported period. Buyer should replace previous period data with these totals.')] = None
@@ -435,7 +435,7 @@ class GetMediaBuyDeliveryResponse(AdCPVersionEnvelope, ProtocolEnvelope):
     reporting_revision: Annotated[ReportingRevision | None, Field(description='Full immutable revision metadata, identical to the get_reporting_status revision record.')] = None
     reporting_rows: Annotated[list[dict[str, Any]] | None, Field(description="One page of authoritative logical rows for an exact reporting_revision_id read. Validate every row against the revision's digest-pinned schema; concatenate pages in cursor order before verifying the binding digest.")] = None
     pagination: Annotated[PaginationResponse | None, Field(description='Exact revision pages are frozen for the cursor walk. total_count is mandatory for reporting_revision_id and equals reporting_revision.row_count and reporting_revision_binding.row_count; it counts the complete ordered row sequence, not this page.')] = None
-    currency: Annotated[StrMatching43E30B32 | None, Field(description='Deprecated in AdCP 3.2 and removed in AdCP 4.0. Optional legacy response-wide ISO 4217 currency code. It may be used only when every monetary value in the response has that denomination. A delivery response can contain media buys with different currencies, so buyers MUST NOT interpret this field as an aggregation currency or evidence of currency conversion. Prefer media_buy_deliveries[].currency when present and package-level currency otherwise.')] = None
+    currency: Annotated[GetAccountFinancialsResponseSuccessCurrency | None, Field(description='Deprecated in AdCP 3.2 and removed in AdCP 4.0. Optional legacy response-wide ISO 4217 currency code. It may be used only when every monetary value in the response has that denomination. A delivery response can contain media buys with different currencies, so buyers MUST NOT interpret this field as an aggregation currency or evidence of currency conversion. Prefer media_buy_deliveries[].currency when present and package-level currency otherwise.')] = None
     attribution_window: Annotated[AttributionWindow | None, Field(description='Attribution methodology and lookback windows used for conversion metrics in this response. All media buys from a single seller share the same attribution methodology. Enables cross-platform comparison (e.g., Amazon 14-day click vs. Criteo 30-day click).')] = None
     aggregated_totals: Annotated[AggregatedTotals | None, Field(description='Deprecated in AdCP 3.2 and removed in AdCP 4.0. Legacy combined metrics across all returned media buys. When this field is present, the deprecated response-wide currency is required and denominates its spend. Cross-buy totals are unsafe when currencies, metric qualifiers, measurement windows, finality, or deduplication semantics differ. Sellers SHOULD omit this field; buyers SHOULD aggregate media_buy_deliveries[] only when the relevant row semantics are compatible.')] = None
     media_buy_deliveries: Annotated[list[MediaBuyDeliveriesItem], Field(description='Array of delivery data for media buys. When used in webhook notifications, may contain multiple media buys aggregated by publisher. When used in get_media_buy_delivery API responses, typically contains requested media buys.')]

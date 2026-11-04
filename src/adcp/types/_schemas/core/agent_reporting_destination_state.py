@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
-from adcp.types.constraints import HttpUrl, StrMinLen1MaxLen255, StrMinLen1MaxLen64MatchingD373B860
+from adcp.types.constraints import AccountChangeRecordedWebhookSubscriberId, HttpUrl, StrMinLen1MaxLen255
 
 from ..enums.reporting_destination_setup_state import ReportingDestinationSetupState
 from .agent_reporting_destination import AgentReportingDestination
@@ -47,7 +47,7 @@ class AgentReportingDestinationState(AdCPBaseModel):
         UniqueItems('prior_destination_refs'),
         ConditionalRequired((Match('state', True, ('action_required',)),), require=('setup',), forbid=()),
     )
-    destination_id: Annotated[StrMinLen1MaxLen64MatchingD373B860, Field(description='Caller-selected key echoed from the desired configuration.')]
+    destination_id: Annotated[AccountChangeRecordedWebhookSubscriberId, Field(description='Caller-selected key echoed from the desired configuration.')]
     destination_ref: Annotated[StrMinLen1MaxLen255, Field(description='Seller-issued opaque immutable destination-generation reference bound to the stable authenticated principal and destination_id. Exact replays preserve it; a proof-bound coordinate or delivery-contract change creates a new reference. Possession does not authorize account access, and sellers MUST NOT resolve it across callers.')]
     prior_destination_refs: Annotated[list[StrMinLen1MaxLen255] | None, Field(description='Retained superseded generation references for this destination_id, newest first, still resolvable for existing authorized account bindings and retained reporting history. Enumerable only by the owning principal. Suspension and revocation of the destination apply to these generations too.', json_schema_extra={'uniqueItems': True}, max_length=32)] = None
     state: Annotated[ReportingDestinationSetupState, Field(description='Validation and setup state; see the enum for the per-pattern ready definition.')]

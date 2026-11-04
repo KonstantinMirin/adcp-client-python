@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule, UniqueItems
-from adcp.types.constraints import NonEmptyList, StrMatchingE02C3DE8, StrMinLen1MaxLen255
+from adcp.types.constraints import BrandDiscoveryAgentId, NonEmptyList, StrMinLen1MaxLen255
 
 from .creative_localization_readback import UnmatchedLocaleAction
 from .locale_tag import LanguageTag
@@ -36,7 +36,7 @@ class TargetVariantsItem(AdCPBaseModel):
     )
     locale_variant_id: Annotated[StrMinLen1MaxLen255, Field(description='Buyer-assigned stable identity for this target locale variant. The same value round-trips through sync_creatives, list_creatives, and localized delivery reporting.')]
     locale: LanguageTag
-    assets: Annotated[dict[StrMatchingE02C3DE8, LocalizedCreativeAsset | NonEmptyList[LocalizedCreativeAsset]], Field(description='Materialized locale-specific asset overrides keyed by the same slot IDs as the source creative. Missing slots inherit source assets.', min_length=1)]
+    assets: Annotated[dict[BrandDiscoveryAgentId, LocalizedCreativeAsset | NonEmptyList[LocalizedCreativeAsset]], Field(description='Materialized locale-specific asset overrides keyed by the same slot IDs as the source creative. Missing slots inherit source assets.', min_length=1)]
 
 
 class LocaleFallbacksItem(AdCPBaseModel):

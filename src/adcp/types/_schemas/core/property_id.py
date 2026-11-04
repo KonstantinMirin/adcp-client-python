@@ -6,12 +6,12 @@ from typing import Annotated
 from pydantic import Field
 
 from adcp.types._base import SchemaRef, strict_alias
-from adcp.types.constraints import StrMatchingE02C3DE8
+from adcp.types.constraints import BrandDiscoveryAgentId
 
 
 __adcp_schema__ = SchemaRef(document='core/property-id.json', pointer='#')
 
-PropertyID = Annotated[StrMatchingE02C3DE8, Field(description='Identifier for a publisher property. Must be lowercase alphanumeric with underscores only.')]
+PropertyID = Annotated[BrandDiscoveryAgentId, Field(description='Identifier for a publisher property. Must be lowercase alphanumeric with underscores only.')]
 
 
 strict_validate = strict_alias(__adcp_schema__, "PropertyID", PropertyID)

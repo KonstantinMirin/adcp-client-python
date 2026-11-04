@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
-from adcp.types.constraints import StrMinLen1MaxLen64MatchingBC7F3822
+from adcp.types.constraints import ContextMatchResponseRouterPublisherSignalsByProvider
 
 from ..core.protocol_envelope import ProtocolEnvelope
 from ..core.version_envelope import AdCPVersionEnvelope
@@ -60,7 +60,7 @@ class ContextMatchResponseRouterPublisher(AdCPVersionEnvelope, ProtocolEnvelope)
     request_id: Annotated[str, Field(description='Echoed request identifier from the context match request.')]
     offers: Annotated[list[Offer], Field(description='Offers collected across the provider fan-out, one per activated package. An empty array means no packages matched. For simple activation, each offer has just package_id. For richer responses, offers include brand, price, summary, and creative manifest.')]
     signals: Annotated[Signals | None, Field(description='Merged non-keyed response-level signals. Provider-local targeting pairs do not pass through this object; the router emits them only in signals_by_provider.')] = None
-    signals_by_provider: Annotated[dict[StrMinLen1MaxLen64MatchingBC7F3822, SignalsByProviderValue] | None, Field(description="Router-authored map of provider targeting pairs, keyed by the publisher-assigned provider_id from provider registration. For every provider response containing a non-empty signals.targeting_kvs list, the router copies the complete list unchanged into that provider's bucket. The router derives the map key from its registration and MUST ignore or reject provider-supplied signals_by_provider data. A provider with no targeting pairs is omitted. Publishers resolve each (provider_id, key) tuple to a local ad-server destination and drop tuples that have no local mapping.", min_length=1)] = None
+    signals_by_provider: Annotated[dict[ContextMatchResponseRouterPublisherSignalsByProvider, SignalsByProviderValue] | None, Field(description="Router-authored map of provider targeting pairs, keyed by the publisher-assigned provider_id from provider registration. For every provider response containing a non-empty signals.targeting_kvs list, the router copies the complete list unchanged into that provider's bucket. The router derives the map key from its registration and MUST ignore or reject provider-supplied signals_by_provider data. A provider with no targeting pairs is omitted. Publishers resolve each (provider_id, key) tuple to a local ad-server destination and drop tuples that have no local mapping.", min_length=1)] = None
 
 
 __all__ = ["ContextMatchResponseRouterPublisher", "ContextMatchResponseRouterPublisherTargetingKvs"]

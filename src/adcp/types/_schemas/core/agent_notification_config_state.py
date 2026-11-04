@@ -7,7 +7,7 @@ from pydantic import AfterValidator, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import NotValue, Rule, UniqueItems
-from adcp.types.constraints import HttpUrl, StrMinLen1MaxLen64MatchingD373B860
+from adcp.types.constraints import AccountChangeRecordedWebhookSubscriberId, HttpUrl
 
 from ..enums.auth_scheme import AuthenticationScheme
 from ..enums.notification_type import NotificationType
@@ -33,7 +33,7 @@ class AgentNotificationConfigState(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('event_types'),
     )
-    subscriber_id: StrMinLen1MaxLen64MatchingD373B860
+    subscriber_id: AccountChangeRecordedWebhookSubscriberId
     url: HttpUrl
     event_types: Annotated[list[Annotated[NotificationType, AfterValidator(NotValue(('scheduled', 'final', 'delayed', 'adjusted', 'window_update', 'impairment')))]], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
     all_authorized_accounts: Annotated[bool | None, Field(description='Echoed scope acknowledgment for account-anchored event types.')] = None

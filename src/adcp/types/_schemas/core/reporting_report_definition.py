@@ -8,7 +8,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule, UniqueItems
-from adcp.types.constraints import StrMatching32F5291C, StrMatching3524D29B, StrMinLen1MaxLen128, StrMinLen1MaxLen2048, StrMinLen1MaxLen255, StrMinLen1MaxLen255Matching67860854, StrMinLen1MaxLen512, StrMinLen1MaxLen64
+from adcp.types.constraints import AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, ComplyTestControllerRequestParamsReceivedReportingRevisionId, ReportingReportDefinitionFinalityPoliciesItemDurationAfterPeriodEnd, StrMinLen1MaxLen128, StrMinLen1MaxLen2048, StrMinLen1MaxLen255, StrMinLen1MaxLen512, StrMinLen1MaxLen64
 
 from ..enums.daast_version import DAASTVersion
 
@@ -18,7 +18,7 @@ class Provider(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-report-definition.json', pointer='#/properties/source/properties/provider')
-    domain: StrMatching32F5291C
+    domain: AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain
 
 
 class Source(AdCPBaseModel):
@@ -82,7 +82,7 @@ class RestatementPolicy(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-report-definition.json', pointer='#/properties/restatement_policy')
-    source_requery_duration: StrMatching3524D29B
+    source_requery_duration: ReportingReportDefinitionFinalityPoliciesItemDurationAfterPeriodEnd
     emit_only_on_content_change: Literal[True]
     official_correction_mode: Annotated[Literal['adjustments_only'] | None, Field(description='Once an official revision is published it is immutable and cannot be superseded. Later source corrections are separate reporting-adjustment records applied to a later accounting period.')] = None
 
@@ -92,7 +92,7 @@ class FinalityPoliciesItemSourceFinal(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-report-definition.json', pointer='#/properties/finality_policies/items/oneOf/0')
-    finality_policy_id: StrMinLen1MaxLen255Matching67860854
+    finality_policy_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId
     basis: Literal['source_final']
     source_signal: StrMinLen1MaxLen512
 
@@ -102,9 +102,9 @@ class FinalityPoliciesItemContractualCutoff(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-report-definition.json', pointer='#/properties/finality_policies/items/oneOf/1')
-    finality_policy_id: StrMinLen1MaxLen255Matching67860854
+    finality_policy_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId
     basis: Literal['contractual_cutoff']
-    duration_after_period_end: StrMatching3524D29B
+    duration_after_period_end: ReportingReportDefinitionFinalityPoliciesItemDurationAfterPeriodEnd
 
 
 class FinalityPoliciesItemStabilized(AdCPBaseModel):
@@ -112,10 +112,10 @@ class FinalityPoliciesItemStabilized(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-report-definition.json', pointer='#/properties/finality_policies/items/oneOf/2')
-    finality_policy_id: StrMinLen1MaxLen255Matching67860854
+    finality_policy_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId
     basis: Literal['stabilized']
-    minimum_age: StrMatching3524D29B
-    unchanged_for: StrMatching3524D29B
+    minimum_age: ReportingReportDefinitionFinalityPoliciesItemDurationAfterPeriodEnd
+    unchanged_for: ReportingReportDefinitionFinalityPoliciesItemDurationAfterPeriodEnd
 
 
 class ReportingReportDefinition(AdCPBaseModel):
@@ -131,7 +131,7 @@ class ReportingReportDefinition(AdCPBaseModel):
     )
     contract_version: Annotated[DAASTVersion, Field(description='1.1 adds immutable official closes with adjustments_only correction semantics for Reliable Reporting 1.0. Version 1.0 remains accepted for compatibility with the preceding experimental managed-reporting contract.')]
     media_type: Literal['application/vnd.adcp.reporting-definition+json']
-    report_definition_id: StrMinLen1MaxLen255Matching67860854
+    report_definition_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId
     reporting_profile: StrMinLen1MaxLen128
     grain: StrMinLen1MaxLen128
     source: Source

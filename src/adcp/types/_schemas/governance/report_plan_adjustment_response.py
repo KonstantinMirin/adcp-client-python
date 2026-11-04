@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import FloatGt0, StrMatching43E30B32
+from adcp.types.constraints import FloatGt0, GetAccountFinancialsResponseSuccessCurrency
 
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
@@ -20,7 +20,7 @@ class Amount(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/report-plan-adjustment-response.json', pointer='#/properties/amount')
     amount: FloatGt0
-    currency: StrMatching43E30B32
+    currency: GetAccountFinancialsResponseSuccessCurrency
 
 
 class PlanSummary(AdCPBaseModel):

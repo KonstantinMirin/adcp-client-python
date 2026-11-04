@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import IntMin1, StrMatching1FB30C8A, StrMatching6566D789, StrMinLen1
+from adcp.types.constraints import ContainersItem, IntMin1, MimeTypesItem, StrMinLen1
 
 from ..enums.vast_media_delivery_method import VASTMediaDeliveryMethod
 
@@ -27,8 +27,8 @@ class VASTMediaFileRequirements(AdCPBaseModel):
         UniqueItems('codecs'),
     )
     delivery_methods: Annotated[list[VASTMediaDeliveryMethod] | None, Field(description='Accepted values of the required `MediaFile@delivery` attribute. `progressive` identifies a directly downloadable media file; `streaming` identifies a streaming media resource.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    mime_types: Annotated[list[StrMatching1FB30C8A] | None, Field(description='Accepted MIME types from `MediaFile@type`, compared case-insensitively after trimming optional whitespace. Parameters are not accepted in this field. Examples: `video/mp4`, `video/webm`, `audio/mpeg`, `audio/aac`.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    containers: Annotated[list[StrMatching6566D789] | None, Field(description='Accepted normalized container identifiers, such as `mp4`, `webm`, or `mpeg_ts`. A receiver MUST determine the container from authoritative metadata or safe byte inspection and MUST NOT guess it only from the media URI suffix.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    mime_types: Annotated[list[MimeTypesItem] | None, Field(description='Accepted MIME types from `MediaFile@type`, compared case-insensitively after trimming optional whitespace. Parameters are not accepted in this field. Examples: `video/mp4`, `video/webm`, `audio/mpeg`, `audio/aac`.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    containers: Annotated[list[ContainersItem] | None, Field(description='Accepted normalized container identifiers, such as `mp4`, `webm`, or `mpeg_ts`. A receiver MUST determine the container from authoritative metadata or safe byte inspection and MUST NOT guess it only from the media URI suffix.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     codecs: Annotated[list[StrMinLen1] | None, Field(description='Accepted codec identifiers for `MediaFile@codec`, using the codec syntax referenced by the applicable VAST version. A missing codec attribute does not satisfy a declared codec constraint unless safe inspection establishes the codec.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     min_width: Annotated[IntMin1 | None, Field(description='Minimum accepted `MediaFile@width` in pixels.')] = None
     max_width: Annotated[IntMin1 | None, Field(description='Maximum accepted `MediaFile@width` in pixels.')] = None

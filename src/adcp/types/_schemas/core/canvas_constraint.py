@@ -8,7 +8,7 @@ from pydantic import ConfigDict, Field, NonNegativeFloat, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Dependencies, Rule
-from adcp.types.constraints import FloatGt0, StrMatching4D6E1599
+from adcp.types.constraints import AccountAuthorizationAllowedTasksItem, FloatGt0
 
 
 class Constraint(StrEnum):
@@ -47,8 +47,8 @@ class CanvasConstraint(AdCPBaseModel):
         Dependencies('breakpoint_id', ('state_id',)),
     )
     constraint: Constraint
-    state_id: StrMatching4D6E1599 | None = None
-    breakpoint_id: StrMatching4D6E1599 | None = None
+    state_id: AccountAuthorizationAllowedTasksItem | None = None
+    breakpoint_id: AccountAuthorizationAllowedTasksItem | None = None
     region: Region
 
 

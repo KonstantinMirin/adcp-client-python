@@ -7,7 +7,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import AdCPUrl, FloatMin0Max1, IntMin1, StrMatching3CBDBB74, StrMinLen1
+from adcp.types.constraints import AdCPUrl, FloatMin0Max1, IntMin1, StrMinLen1, ZipAssetDigest
 
 from ..enums.audience_evidence_methodology import AudienceEvidenceMethodology
 from ..enums.audience_resolution_method import AudienceResolutionMethod
@@ -45,7 +45,7 @@ class CanonicalAudienceEvidence(AdCPBaseModel):
     evidence_id: StrMinLen1
     snapshot_id: StrMinLen1
     version: StrMinLen1
-    content_digest: StrMatching3CBDBB74
+    content_digest: ZipAssetDigest
     audience: AudienceCharacteristic
     relationship: Relationship
     value: NonNegativeFloat
@@ -61,7 +61,7 @@ class CanonicalAudienceEvidence(AdCPBaseModel):
     confidence: FloatMin0Max1 | None = None
     last_updated: AwareDatetime
     methodology_url: AdCPUrl | None = None
-    attestation_digests: Annotated[list[StrMatching3CBDBB74] | None, Field(description='Portable-attestation reference digests available through the evidence provider; credential bodies are not inlined into product discovery.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    attestation_digests: Annotated[list[ZipAssetDigest] | None, Field(description='Portable-attestation reference digests available through the evidence provider; credential bodies are not inlined into product discovery.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     ext: ExtensionObject | None = None
 
 

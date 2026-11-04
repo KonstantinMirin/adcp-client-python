@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
-from adcp.types.constraints import StrMatching4BFFD9A4, StrMatching4D6E1599, StrMatching71E52EB8, StrMatchingEFC12812, StrMinLen1, StrMinLen1MaxLen1000
+from adcp.types.constraints import AcceptancePolicyProfileRegionAliases, AccountAuthorizationAllowedTasksItem, AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, StrMediaBuyChangeTermID, StrMinLen1, StrMinLen1MaxLen1000
 
 from ..core.ext import ExtensionObject
 from .acceptance_policy_requirement import AcceptancePolicyRequirement
@@ -47,12 +47,12 @@ class AcceptancePolicyRule(AdCPBaseModel):
         UniqueItems('policy_ids'),
         ConditionalRequired((Match('disposition', True, ('conditional',)),), require=('requirements',), forbid=()),
     )
-    rule_id: StrMatching71E52EB8
-    subject_category: Annotated[StrMatching4D6E1599, Field(description='Registry policy-category-definition category_id. Named subject_category to avoid collision with PolicyEntry.category, whose values are regulation and standard.')]
-    subject_facets: Annotated[list[StrMatching4D6E1599] | None, Field(description='Facet IDs defined by the selected policy category. Omission means the rule applies to every facet in the category.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    advertiser_roles: Annotated[list[StrMatching4D6E1599] | None, Field(description='Registry-extensible roles such as political_actor, election_authority, government_entity, news_publisher, or commercial_advertiser.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    jurisdictions: Annotated[list[StrMatchingEFC12812] | None, Field(description='Delivery jurisdictions where this rule applies. Omission means every jurisdiction served by the seller.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    jurisdiction_groups: Annotated[list[StrMatching4BFFD9A4] | None, Field(description="Named country groups declared by the containing profile's region_aliases. Unknown group IDs invalidate the profile; they never match permissively.", json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    rule_id: StrMediaBuyChangeTermID
+    subject_category: Annotated[AccountAuthorizationAllowedTasksItem, Field(description='Registry policy-category-definition category_id. Named subject_category to avoid collision with PolicyEntry.category, whose values are regulation and standard.')]
+    subject_facets: Annotated[list[AccountAuthorizationAllowedTasksItem] | None, Field(description='Facet IDs defined by the selected policy category. Omission means the rule applies to every facet in the category.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    advertiser_roles: Annotated[list[AccountAuthorizationAllowedTasksItem] | None, Field(description='Registry-extensible roles such as political_actor, election_authority, government_entity, news_publisher, or commercial_advertiser.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    jurisdictions: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem] | None, Field(description='Delivery jurisdictions where this rule applies. Omission means every jurisdiction served by the seller.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    jurisdiction_groups: Annotated[list[AcceptancePolicyProfileRegionAliases] | None, Field(description="Named country groups declared by the containing profile's region_aliases. Unknown group IDs invalidate the profile; they never match permissively.", json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     applies_to: Annotated[list[AppliesToItem], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
     disposition: Disposition
     requirements: Annotated[list[AcceptancePolicyRequirement] | None, Field(min_length=1)] = None

@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, RequiredGroups, Rule
-from adcp.types.constraints import IntMin1, StrMatching43E30B32, StrMinLen1, StrMinLen16MaxLen255Matching1E5CF9EB, StrMinLen1MaxLen255Matching130C1C9D, StrMinLen1MaxLen4096, StrMinLen1MaxLen500
+from adcp.types.constraints import GetAccountFinancialsResponseSuccessCurrency, IntMin1, MediaBuyName, StrMinLen1, StrMinLen1MaxLen4096, StrMinLen1MaxLen500, SyncAccountsRequestIdempotencyKey
 
 from ..core.bidding_policy import BiddingPolicy
 from ..core.canonical_account_ref import CanonicalAccountReference
@@ -28,7 +28,7 @@ class TotalBudget(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/control-media-buy-request.json', pointer='#/properties/total_budget')
     amount: NonNegativeFloat
-    currency: StrMatching43E30B32
+    currency: GetAccountFinancialsResponseSuccessCurrency
 
 
 class ControlMediaBuyRequest(AdCPVersionEnvelope):
@@ -47,11 +47,11 @@ class ControlMediaBuyRequest(AdCPVersionEnvelope):
     )
     adcp_version: AdcpVersion | None = None
     adcp_major_version: AdcpMajorVersion | None = None
-    idempotency_key: StrMinLen16MaxLen255Matching1E5CF9EB
+    idempotency_key: SyncAccountsRequestIdempotencyKey
     account: CanonicalAccountReference
     media_buy_id: StrMinLen1
     revision: Annotated[IntMin1, Field(description='Required optimistic-concurrency revision from the latest MediaBuy snapshot.')]
-    name: Annotated[StrMinLen1MaxLen255Matching130C1C9D | None, Field(description='Replace the human-readable MediaBuy name as revision-checked operational metadata. This display label is not an identifier, financial reference, or change to the accepted commercial terms.')] = None
+    name: Annotated[MediaBuyName | None, Field(description='Replace the human-readable MediaBuy name as revision-checked operational metadata. This display label is not an identifier, financial reference, or change to the accepted commercial terms.')] = None
     paused: bool | None = None
     canceled: Annotated[Literal[True] | None, Field(description='Exercise an already-accepted unilateral cancellation right. A cancellation requiring seller agreement is requested by refining the accepted proposal.')] = None
     cancellation_reason: StrMinLen1MaxLen500 | None = None

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import StrMinLen1MaxLen200, StrMinLen1MaxLen255Matching385710C6
+from adcp.types.constraints import Id, StrMinLen1MaxLen200
 
 
 class OperatorUnit(AdCPBaseModel):
@@ -17,7 +17,7 @@ class OperatorUnit(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/operator-unit.json', pointer='#')
-    id: Annotated[StrMinLen1MaxLen255Matching385710C6, Field(description='Stable identifier assigned by the operator. Numeric platform IDs and durable slugs are both valid. Scoped by the enclosing operator domain.')]
+    id: Annotated[Id, Field(description='Stable identifier assigned by the operator. Numeric platform IDs and durable slugs are both valid. Scoped by the enclosing operator domain.')]
     name: Annotated[StrMinLen1MaxLen200 | None, Field(description='Human-readable seat or business-unit name, such as Nova EMEA. This label may change and is not part of the natural account key.')] = None
 
 

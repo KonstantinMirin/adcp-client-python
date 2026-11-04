@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
-from adcp.types.constraints import HttpUrl, IntMin1, StrMatching3CBDBB74, StrMatchingEFC12812, StrMinLen1
+from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, HttpUrl, IntMin1, StrMinLen1, ZipAssetDigest
 
 from ..enums.right_type import RightType
 from ..enums.right_use import RightUse
@@ -112,8 +112,8 @@ class RightsConstraint(AdCPBaseModel):
     valid_from: Annotated[AwareDatetime | None, Field(description='Start of the rights validity period')] = None
     valid_until: Annotated[AwareDatetime | None, Field(description='End of the rights validity period. Creative should not be served after this time.')] = None
     uses: Annotated[list[RightUse], Field(description='Rights uses covered by this constraint', min_length=1)]
-    countries: Annotated[list[StrMatchingEFC12812] | None, Field(description='Countries where this creative may be served under these rights (ISO 3166-1 alpha-2). If omitted, no country restriction. When both countries and excluded_countries are present, the effective set is countries minus excluded_countries.')] = None
-    excluded_countries: Annotated[list[StrMatchingEFC12812] | None, Field(description='Countries excluded from rights availability (ISO 3166-1 alpha-2). Use when the grant is worldwide except specific markets.')] = None
+    countries: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem] | None, Field(description='Countries where this creative may be served under these rights (ISO 3166-1 alpha-2). If omitted, no country restriction. When both countries and excluded_countries are present, the effective set is countries minus excluded_countries.')] = None
+    excluded_countries: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem] | None, Field(description='Countries excluded from rights availability (ISO 3166-1 alpha-2). Use when the grant is worldwide except specific markets.')] = None
     impression_cap: Annotated[IntMin1 | None, Field(description='Maximum total impressions allowed for the full validity period (valid_from to valid_until). This is the absolute cap across all creatives using this rights grant, not a per-creative or per-period limit.')] = None
     right_type: Annotated[RightType | None, Field(description='Type of rights (talent, music, etc.). Helps identify constraints when a creative combines multiple rights types.')] = None
     approval_status: Annotated[ApprovalStatus | None, Field(description='Approval status from the rights holder at manifest creation time (snapshot, not a live value)')] = None
@@ -122,7 +122,7 @@ class RightsConstraint(AdCPBaseModel):
     disclosure: Annotated[Disclosure | None, Field(description='Disclosure obligation issued with the grant and bound by content_digest.')] = None
     creative_approval_required: Annotated[bool | None, Field(description='Whether each creative produced under this grant requires holder approval before distribution. This enforceable term is bound by content_digest.')] = None
     verification_url: Annotated[HttpUrl | None, Field(description='DEPRECATED legacy informational locator. It is not proof of grant status, a revocation source, a credential locator, or permission to make a network request. Receivers MUST NOT fetch it during rights evaluation, and HTTP status codes have no AdCP authorization meaning. Rights authorization uses attestation_refs and a verifier-of-record evaluation under evaluator-owned policy.')] = None
-    content_digest: Annotated[StrMatching3CBDBB74 | None, Field(description='SHA-256 of UTF8(JCS(rights_constraint minus content_digest, attestation_refs, and verification_url)), formatted as sha256:<lowercase hex>. This binds all serving-relevant grant fields, including future extension fields, while deliberately excluding the legacy non-authoritative URL.')] = None
+    content_digest: Annotated[ZipAssetDigest | None, Field(description='SHA-256 of UTF8(JCS(rights_constraint minus content_digest, attestation_refs, and verification_url)), formatted as sha256:<lowercase hex>. This binds all serving-relevant grant fields, including future extension fields, while deliberately excluding the legacy non-authoritative URL.')] = None
     attestation_refs: Annotated[list[AttestationRefsItem] | None, Field(description='Alternative portable presentations of a holder-issued rights-grant credential signed by its authorized rights agent. The buyer carries references only; the serving party remains verifier-of-record. At least one reference must evaluate to verified and match rights_holder, rights_id, rights_agent, content_digest, validity, revocation state, and local policy before this constraint can contribute to serving eligibility.', json_schema_extra={'uniqueItems': True}, max_length=4, min_length=1)] = None
     ext: ExtensionObject | None = None
 

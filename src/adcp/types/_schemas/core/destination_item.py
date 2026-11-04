@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import FloatMin1Max5, FloatMinNeg180Max180, FloatMinNeg90Max90, HttpUrl, StrMatchingEFC12812
+from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, FloatMin1Max5, FloatMinNeg180Max180, FloatMinNeg90Max90, HttpUrl
 
 from .ext import ExtensionObject
 from .offering_asset_group import OfferingAssetGroup
@@ -52,7 +52,7 @@ class DestinationItem(AdCPBaseModel):
     description: Annotated[str | None, Field(description='Destination description highlighting attractions and appeal.')] = None
     city: Annotated[str | None, Field(description='City name, if applicable.')] = None
     region: Annotated[str | None, Field(description='State, province, or region name.')] = None
-    country: Annotated[StrMatchingEFC12812 | None, Field(description='ISO 3166-1 alpha-2 country code.')] = None
+    country: Annotated[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem | None, Field(description='ISO 3166-1 alpha-2 country code.')] = None
     location: Annotated[Location | None, Field(description='Geographic coordinates of the destination.')] = None
     destination_type: Annotated[DestinationType | None, Field(description='Destination category.')] = None
     price: Annotated[Price | None, Field(description='Starting price for a trip to this destination.')] = None

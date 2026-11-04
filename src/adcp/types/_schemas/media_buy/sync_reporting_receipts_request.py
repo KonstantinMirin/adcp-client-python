@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
 from adcp.types._runtime import ForbiddenGroups, RequiredGroups, Rule
-from adcp.types.constraints import StrMinLen16MaxLen255Matching1E5CF9EB
+from adcp.types.constraints import SyncAccountsRequestIdempotencyKey
 
 from ..core.canonical_account_ref import CanonicalAccountReference
 from ..core.context import ContextObject
@@ -57,7 +57,7 @@ class SyncReportingReceiptsRequest(AdCPVersionEnvelope):
     adcp_version: AdcpVersion | None = None
     adcp_major_version: AdcpMajorVersion | None = None
     account: CanonicalAccountReference
-    idempotency_key: Annotated[StrMinLen16MaxLen255Matching1E5CF9EB, Field(description='Client-generated batch key. Exact retries reuse the key and body.')]
+    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Client-generated batch key. Exact retries reuse the key and body.')]
     receipts: Annotated[list[ReceiptsItem] | None, Field(max_length=100, min_length=1)] = None
     adjustment_receipts: Annotated[list[AdjustmentReceiptsItem] | None, Field(description='Consumer acceptance or rejection of exact post-official adjustments.', max_length=100, min_length=1)] = None
     context: ContextObject | None = None

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import IntMin1Max10000
+from adcp.types.constraints import PaginationMaxResults
 
 from ..core.account_ref import AccountReference
 from ..core.context import ContextObject
@@ -22,7 +22,7 @@ class Pagination(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='collection/get-collection-list-request.json', pointer='#/properties/pagination')
-    max_results: Annotated[IntMin1Max10000 | None, Field(description='Maximum number of collections to return per page')] = 1000
+    max_results: Annotated[PaginationMaxResults | None, Field(description='Maximum number of collections to return per page')] = 1000
     cursor: Annotated[str | None, Field(description='Opaque cursor from a previous response to fetch the next page')] = None
 
 

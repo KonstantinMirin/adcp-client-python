@@ -8,7 +8,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule, UniqueItems
-from adcp.types.constraints import StrMinLen1, StrMinLen16MaxLen255Matching1E5CF9EB
+from adcp.types.constraints import StrMinLen1, SyncAccountsRequestIdempotencyKey
 
 from ..core.account_ref import AccountReference
 from ..core.audience_member import AudienceMember
@@ -61,7 +61,7 @@ class SyncAudiencesRequest(AdCPVersionEnvelope):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ConditionalRequired((Match('delete_missing', True, (True,)),), require=('audiences',), forbid=()),
     )
-    idempotency_key: Annotated[StrMinLen16MaxLen255Matching1E5CF9EB, Field(description='Client-generated unique key for at-most-once execution. `audience_id` gives resource-level dedup per audience, but the sync envelope emits audit events and may trigger downstream refreshes — this key prevents those side effects from firing twice on retry. Also serves as a request ID on discovery-only calls (when `audiences` is omitted). MUST be unique per (seller, request) pair. Use a fresh UUID v4 for each request.')]
+    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Client-generated unique key for at-most-once execution. `audience_id` gives resource-level dedup per audience, but the sync envelope emits audit events and may trigger downstream refreshes — this key prevents those side effects from firing twice on retry. Also serves as a request ID on discovery-only calls (when `audiences` is omitted). MUST be unique per (seller, request) pair. Use a fresh UUID v4 for each request.')]
     account: Annotated[AccountReference, Field(description='Account to manage audiences for.')]
     audiences: Annotated[list[AudiencesItem] | None, Field(description='Audiences to sync (create or update). When omitted, the call is discovery-only and returns all existing audiences on the account without modification.', min_length=1)] = None
     delete_missing: Annotated[bool | None, Field(description='When true, buyer-managed audiences on the account not included in this sync will be removed. Does not affect seller-managed audiences. Do not combine with an omitted audiences array or all buyer-managed audiences will be deleted.')] = False

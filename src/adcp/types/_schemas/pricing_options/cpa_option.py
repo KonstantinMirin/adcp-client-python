@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import FloatGt0, StrMatching43E30B32
+from adcp.types.constraints import FloatGt0, GetAccountFinancialsResponseSuccessCurrency
 
 from ..enums.adjustment_kind import PriceAdjustmentKind
 from ..enums.event_type import EventType
@@ -30,7 +30,7 @@ class CPAPricingOption(AdCPBaseModel):
     event_type: Annotated[EventType, Field(description='The conversion event type that triggers billing (e.g., purchase, lead, app_install)')]
     custom_event_name: Annotated[str | None, Field(description="Name of the custom event when event_type is 'custom'. Required when event_type is 'custom', ignored otherwise.")] = None
     event_source_id: Annotated[str | None, Field(description='When present, only events from this specific event source count toward billing. Allows different CPA rates for different sources (e.g., online vs in-store purchases). Must match an event source configured via sync_event_sources.')] = None
-    currency: Annotated[StrMatching43E30B32, Field(description='ISO 4217 currency code')]
+    currency: Annotated[GetAccountFinancialsResponseSuccessCurrency, Field(description='ISO 4217 currency code')]
     fixed_price: Annotated[FloatGt0, Field(description='Fixed price per acquisition in the specified currency')]
     min_spend_per_package: Annotated[NonNegativeFloat | None, Field(description='Minimum spend requirement per package using this pricing option, in the specified currency')] = None
     price_breakdown: Annotated[PriceBreakdown | None, Field(description='Breakdown of how fixed_price was derived from the list (rate card) price. Only meaningful when fixed_price is present.')] = None

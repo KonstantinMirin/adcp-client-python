@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
-from adcp.types.constraints import StrMatching32F5291C, StrMatching43E30B32, StrMinLen1
+from adcp.types.constraints import AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, GetAccountFinancialsResponseSuccessCurrency, StrMinLen1
 
 from .brand_ref import BrandReference
 from .operator_unit import OperatorUnit
@@ -39,9 +39,9 @@ class AccountReferenceBrandOperator(AccountReference):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/account-ref.json', pointer='#/oneOf/1')
     brand: Annotated[BrandReference, Field(description='Brand reference identifying the advertiser')]
-    operator: Annotated[StrMatching32F5291C, Field(description="Domain of the entity operating on the brand's behalf. When the brand operates directly, this is the brand's domain.")]
+    operator: Annotated[AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, Field(description="Domain of the entity operating on the brand's behalf. When the brand operates directly, this is the brand's domain.")]
     operator_unit: Annotated[OperatorUnit | None, Field(description='Optional operator-owned business unit, agency seat, or platform account. Only id participates in the natural account key; name is mutable display metadata.')] = None
-    currency: Annotated[StrMatching43E30B32 | None, Field(description="Immutable ISO 4217 transaction currency when the seller's advertiser object is currency-bound. When present, this is part of the natural account key and media buys on the account MUST use it. Omit when currency is selected independently per media buy.")] = None
+    currency: Annotated[GetAccountFinancialsResponseSuccessCurrency | None, Field(description="Immutable ISO 4217 transaction currency when the seller's advertiser object is currency-bound. When present, this is part of the natural account key and media buys on the account MUST use it. Omit when currency is selected independently per media buy.")] = None
     timezone: Annotated[StrMinLen1 | None, Field(description='Immutable account timezone. Include it in the natural key when get_adcp_capabilities.account.timezone declares account_fixed with buyer_selected; omit it for seller_fixed or seller_assigned accounts.')] = None
     sandbox: Annotated[bool | None, Field(description='When true, references the sandbox account for this brand/operator pair. Defaults to false (production account).')] = False
 

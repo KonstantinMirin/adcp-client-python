@@ -7,7 +7,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
-from adcp.types.constraints import StrMatching43E30B32, StrMaxLen100, StrMinLen1, StrMinLen16MaxLen255Matching1E5CF9EB, StrMinLen1MaxLen255, StrMinLen1MaxLen255Matching130C1C9D, StrMinLen1MaxLen4096
+from adcp.types.constraints import GetAccountFinancialsResponseSuccessCurrency, MediaBuyName, StrMaxLen100, StrMinLen1, StrMinLen1MaxLen255, StrMinLen1MaxLen4096, SyncAccountsRequestIdempotencyKey
 
 from ..core.bidding_policy import BiddingPolicy
 from ..core.brand_key import BrandKey
@@ -33,7 +33,7 @@ class TotalBudget(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/buy-products-request.json', pointer='#/properties/total_budget')
     amount: NonNegativeFloat
-    currency: StrMatching43E30B32
+    currency: GetAccountFinancialsResponseSuccessCurrency
 
 
 class Opportunity(OpportunityContext):
@@ -69,8 +69,8 @@ class BuyProductsRequest(BranchDispatchMixin, AdCPVersionEnvelope):
     )
     adcp_version: AdcpVersion | None = None
     adcp_major_version: AdcpMajorVersion | None = None
-    idempotency_key: StrMinLen16MaxLen255Matching1E5CF9EB
-    name: Annotated[StrMinLen1MaxLen255Matching130C1C9D | None, Field(description='Human-readable name for this media buy, shared by buyer and seller for trafficking UI display and operational communication. When supplied, the seller MUST persist it and echo it unchanged on the commitment success response and subsequent get_media_buys reads. The name is operational metadata outside accepted_proposal and is not covered by terms_digest. This display label is not an identifier or financial reference.')] = None
+    idempotency_key: SyncAccountsRequestIdempotencyKey
+    name: Annotated[MediaBuyName | None, Field(description='Human-readable name for this media buy, shared by buyer and seller for trafficking UI display and operational communication. When supplied, the seller MUST persist it and echo it unchanged on the commitment success response and subsequent get_media_buys reads. The name is operational metadata outside accepted_proposal and is not covered by terms_digest. This display label is not an identifier or financial reference.')] = None
     account: Annotated[CanonicalAccountReference, Field(description='Execution account. A natural-key account is the single brand source and MUST NOT be combined with top-level brand.')]
     brand: Annotated[BrandKey | None, Field(description='Brand source required when account is ID-only. Omit when account already contains brand and operator.')] = None
     advertiser_industry: Annotated[AdvertiserIndustry | None, Field(description='Industry classification for this campaign. Sellers may infer it from the resolved brand manifest when omitted.')] = None

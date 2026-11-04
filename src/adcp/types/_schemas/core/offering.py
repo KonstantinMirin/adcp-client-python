@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import HttpUrl, StrMatchingCE72C7C2, StrMatchingEFC12812
+from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, GeoForecastDimensionCode, HttpUrl
 
 from ..enums.metro_system import MetroAreaSystem
 from .ext import ExtensionObject
@@ -31,8 +31,8 @@ class GeoTargets(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/offering.json', pointer='#/properties/geo_targets')
-    countries: Annotated[list[StrMatchingEFC12812] | None, Field(description="Countries where this offering is relevant. ISO 3166-1 alpha-2 codes (e.g., 'US', 'NL', 'DE').", min_length=1)] = None
-    regions: Annotated[list[StrMatchingCE72C7C2] | None, Field(description="Regions or states where this offering is relevant. ISO 3166-2 subdivision codes (e.g., 'NL-NH', 'US-CA').", min_length=1)] = None
+    countries: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem] | None, Field(description="Countries where this offering is relevant. ISO 3166-1 alpha-2 codes (e.g., 'US', 'NL', 'DE').", min_length=1)] = None
+    regions: Annotated[list[GeoForecastDimensionCode] | None, Field(description="Regions or states where this offering is relevant. ISO 3166-2 subdivision codes (e.g., 'NL-NH', 'US-CA').", min_length=1)] = None
     metros: Annotated[list[MetrosItem] | None, Field(description='Metro areas where this offering is relevant. Each entry specifies the classification system and target values.', min_length=1)] = None
     postal_areas: Annotated[list[PostalArea] | None, Field(description='Postal areas where this offering is relevant. Prefer the native country + postal system form. Deprecated legacy country-fused postal-system tokens remain accepted for compatibility.', min_length=1)] = None
 

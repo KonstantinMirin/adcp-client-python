@@ -8,7 +8,7 @@ from pydantic import AfterValidator, ConfigDict, Field, NonNegativeInt, TypeAdap
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule, UniqueItems
-from adcp.types.constraints import FloatGt0, HttpUrl, IntMin1, StrMatchingA1D8FDA8
+from adcp.types.constraints import FloatGt0, FormatRendersItemDimensionsAspectRatio, HttpUrl, IntMin1
 
 from ..enums.available_metric import AvailableMetric
 from ..enums.dimension_unit import DimensionUnit
@@ -59,7 +59,7 @@ class Dimensions(AdCPBaseModel):
     max_height: Annotated[FloatGt0 | None, Field(description='Maximum height for responsive renders')] = None
     unit: Annotated[DimensionUnit | None, Field(description="Unit of measurement for width/height values. Defaults to 'px' when absent. Print formats use 'inches' or 'cm'.")] = None
     responsive: Annotated[Responsive | None, Field(description='Indicates which dimensions are responsive/fluid')] = None
-    aspect_ratio: Annotated[StrMatchingA1D8FDA8 | None, Field(description="Fixed aspect ratio constraint (e.g., '16:9', '4:3', '1:1', '1.91:1')")] = None
+    aspect_ratio: Annotated[FormatRendersItemDimensionsAspectRatio | None, Field(description="Fixed aspect ratio constraint (e.g., '16:9', '4:3', '1:1', '1.91:1')")] = None
 
 
 class RendersItem(BranchDispatchMixin, AdCPBaseModel):

@@ -6,7 +6,7 @@ from typing import ClassVar
 from pydantic import ConfigDict
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import StrMatching3CBDBB74, StrMinLen1
+from adcp.types.constraints import StrMinLen1, ZipAssetDigest
 
 from .ext import ExtensionObject
 
@@ -22,7 +22,7 @@ class AudienceEvidencePin(AdCPBaseModel):
     evidence_id: StrMinLen1
     snapshot_id: StrMinLen1
     version: StrMinLen1
-    content_digest: StrMatching3CBDBB74
+    content_digest: ZipAssetDigest
     ext: ExtensionObject | None = None
 
 

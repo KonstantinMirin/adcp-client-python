@@ -8,7 +8,7 @@ from pydantic import AfterValidator, Field, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Distinct, Match, NegatedConditional, Rule
-from adcp.types.constraints import StrMatching38E7F7CC
+from adcp.types.constraints import DAASTTrackerAssetOffset
 
 from ..enums.daast_version import DAASTVersion
 from .assets.daast_tracker_asset import DaastTarget
@@ -34,7 +34,7 @@ class DaastEvent(StrEnum):
 DAASTTrackerConstraintsDaastTarget = DaastTarget
 
 
-DaastOffset = StrMatching38E7F7CC
+DaastOffset = DAASTTrackerAssetOffset
 
 
 DaastVersions = Annotated[Annotated[list[DAASTVersion], Field(json_schema_extra={'uniqueItems': True}), AfterValidator(Distinct())], Field(min_length=1)]

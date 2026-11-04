@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
-from adcp.types.constraints import HttpUrl, StrMatchingA828669D
+from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, HttpUrl
 
 from ..core.account_ref import AccountReference
 from ..core.brand_ref import BrandReference
@@ -44,7 +44,7 @@ class ThirdPartyFormatTarget(TargetsItem):
 class CreativeCapabilityTarget(TargetsItem):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/validate-input-request.json', pointer='#/properties/targets/items/oneOf/3')
     kind: Literal['capability']
-    id: Annotated[StrMatchingA828669D, Field(description='Agent-local capability_id from get_adcp_capabilities creative.supported_formats. The selected entry MUST include validate in operations; unknown IDs or entries without validate are rejected with FORMAT_NOT_SUPPORTED.')]
+    id: Annotated[AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, Field(description='Agent-local capability_id from get_adcp_capabilities creative.supported_formats. The selected entry MUST include validate in operations; unknown IDs or entries without validate are rejected with FORMAT_NOT_SUPPORTED.')]
 
 
 TargetsItem._branch_models = (CanonicalFormatTarget, ProductTarget, ThirdPartyFormatTarget, CreativeCapabilityTarget,)

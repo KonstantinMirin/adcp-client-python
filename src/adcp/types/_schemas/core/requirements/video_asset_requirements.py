@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import FloatMin1, IntMin1, StrMatchingD342F02C
+from adcp.types.constraints import BrandDiscoveryPhotographyStylePreferredAspectRatiosItem, FloatMin1, IntMin1
 
 from ...enums.audio_channel_layout import AudioChannelLayout
 from ...enums.frame_rate_type import FrameRateType
@@ -56,7 +56,7 @@ class VideoAssetRequirements(AdCPBaseModel):
     max_width: Annotated[IntMin1 | None, Field(description='Maximum width in pixels')] = None
     min_height: Annotated[IntMin1 | None, Field(description='Minimum height in pixels')] = None
     max_height: Annotated[IntMin1 | None, Field(description='Maximum height in pixels')] = None
-    aspect_ratio: Annotated[StrMatchingD342F02C | None, Field(description="Required aspect ratio (e.g., '16:9', '9:16')")] = None
+    aspect_ratio: Annotated[BrandDiscoveryPhotographyStylePreferredAspectRatiosItem | None, Field(description="Required aspect ratio (e.g., '16:9', '9:16')")] = None
     min_duration_ms: Annotated[IntMin1 | None, Field(description='Minimum duration in milliseconds')] = None
     max_duration_ms: Annotated[IntMin1 | None, Field(description='Maximum duration in milliseconds')] = None
     containers: Annotated[list[ContainersItem] | None, Field(description='Accepted video container formats')] = None

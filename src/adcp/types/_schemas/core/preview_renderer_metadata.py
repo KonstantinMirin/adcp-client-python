@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import StrMatching2879A8E3, StrMinLen1
+from adcp.types.constraints import StrMinLen1, Version
 
 
 class RenderingOrigin(StrEnum):
@@ -27,7 +27,7 @@ class PreviewRendererMetadata(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/preview-renderer-metadata.json', pointer='#')
     renderer_id: Annotated[StrMinLen1, Field(description='Stable implementation identifier.')]
-    version: Annotated[StrMatching2879A8E3, Field(description='Exact semantic version of the renderer implementation.')]
+    version: Annotated[Version, Field(description='Exact semantic version of the renderer implementation.')]
     export: Annotated[StrMinLen1, Field(description='Renderer export or entry-point name used for this render.')]
     rendering_origin: Annotated[RenderingOrigin, Field(description='Informational implementation origin copied from the selected route. It does not grant authority.')]
     tracking_suppressed: Annotated[bool, Field(description='True only when the produced output cannot initiate impression, click, billing, conversion, viewability, or asset-fetch side effects. Renderers that retain any remote asset URL or navigation MUST emit false.')]

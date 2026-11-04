@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
-from adcp.types.constraints import HttpUrl, StrMatching43E30B32, StrMinLen1
+from adcp.types.constraints import GetAccountFinancialsResponseSuccessCurrency, HttpUrl, StrMinLen1
 
 from ..core.context import ContextObject
 from ..core.creative_consumption import CreativeConsumption
@@ -33,7 +33,7 @@ class GetCreativeFeaturesSuccess(AdCPBaseModel):
     audit_observations: Annotated[list[CreativeAuditObservation] | None, Field(description='Non-blocking audit observations from the governance agent. Observations surface audit-worthy claims that are not verifier refutations and are not rejection grounds by themselves.')] = None
     pricing_option_id: Annotated[str | None, Field(description='Which rate card pricing option was applied for this evaluation. Present when the governance agent charges for evaluations and account was provided in the request.')] = None
     vendor_cost: Annotated[NonNegativeFloat | None, Field(description='Cost incurred for this evaluation, denominated in currency.')] = None
-    currency: Annotated[StrMatching43E30B32 | None, Field(description='ISO 4217 currency code for vendor_cost.')] = None
+    currency: Annotated[GetAccountFinancialsResponseSuccessCurrency | None, Field(description='ISO 4217 currency code for vendor_cost.')] = None
     consumption: Annotated[CreativeConsumption | None, Field(description='Structured consumption details for this evaluation. Informational — lets the buyer verify that vendor_cost is consistent with the rate card. vendor_cost is the billing source of truth.')] = None
     context: ContextObject | None = None
     ext: ExtensionObject | None = None

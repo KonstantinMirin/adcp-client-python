@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import AdCPUrl, StrMinLen16MaxLen255Matching1E5CF9EB, StrMinLen32
+from adcp.types.constraints import AdCPUrl, StrMinLen32, SyncAccountsRequestIdempotencyKey
 
 from ..core.account_ref import AccountReference
 from ..core.context import ContextObject
@@ -56,7 +56,7 @@ class SyncGovernanceRequest(AdCPVersionEnvelope):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='account/sync-governance-request.json', pointer='#')
-    idempotency_key: Annotated[StrMinLen16MaxLen255Matching1E5CF9EB, Field(description='Client-generated unique key for at-most-once execution. `account` gives resource-level dedup, but governance changes emit audit events and can trigger reapproval flows — this key prevents those side effects from firing twice on retry. MUST be unique per (seller, request) pair. Use a fresh UUID v4 for each request.')]
+    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Client-generated unique key for at-most-once execution. `account` gives resource-level dedup, but governance changes emit audit events and can trigger reapproval flows — this key prevents those side effects from firing twice on retry. MUST be unique per (seller, request) pair. Use a fresh UUID v4 for each request.')]
     accounts: Annotated[list[AccountsItem], Field(description='Per-account governance agent configuration. Each entry pairs an account reference with the governance agents for that account.', max_length=100, min_length=1)]
     context: ContextObject | None = None
     ext: ExtensionObject | None = None

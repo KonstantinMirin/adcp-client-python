@@ -8,7 +8,7 @@ from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field, NonNegati
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import Distinct, RequiredGroups, Rule, UniqueItems
-from adcp.types.constraints import HttpUrl, StrFormatUuid, StrMatching32F5291C, StrMatchingEFC12812
+from adcp.types.constraints import AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, HttpUrl, StrFormatUuid
 
 from ..adagents import DelegationType
 from ..enums.adcp_protocol import AdCPProtocol
@@ -97,7 +97,7 @@ class PropertySource(StrEnum):
     CONTRIBUTED = 'contributed'
 
 
-Domain = StrMatching32F5291C
+Domain = AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain
 
 
 ChangedFields = Annotated[Annotated[list[str], Field(json_schema_extra={'uniqueItems': True}), AfterValidator(Distinct())], Field(description='Advisory list of changed top-level field names from the source document. Example values for publisher.adagents_changed include "formats", "placements", and "authorized_agents"; for agent.profile_updated these are profile field names such as "channels" or "format_kinds". Producers SHOULD enumerate every changed semantic field, explicitly including formats and placements for catalog-only revisions (additive from 3.2). Consumers MAY use this for targeted index refresh but MUST re-resolve every depended-on field when reading an older retained event that lacks this list.', min_length=1)]
@@ -379,7 +379,7 @@ class AgentProfilePayload(AdCPBaseModel):
     type: AgentProfilePayloadType | None = None
     channels: StringArray | None = None
     property_types: StringArray | None = None
-    markets: Annotated[list[StrMatchingEFC12812] | None, Field(json_schema_extra={'uniqueItems': True})] = None
+    markets: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem] | None, Field(json_schema_extra={'uniqueItems': True})] = None
     categories: StringArray | None = None
     category_taxonomy: str | None = None
     format_ids: Annotated[list[FormatReferenceStructuredObject] | None, Field(description='Deprecated in AdCP 3.2; removed in AdCP 4.0. Named-format profile projection. Use canonical `format_kinds` and `format_option_refs`.')] = None
@@ -646,7 +646,7 @@ class AuthorizationType(StrEnum):
     SIGNAL_TAGS = 'signal_tags'
 
 
-Countries = Annotated[Annotated[list[StrMatchingEFC12812], Field(json_schema_extra={'uniqueItems': True}), AfterValidator(Distinct())], Field(min_length=1)]
+Countries = Annotated[Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem], Field(json_schema_extra={'uniqueItems': True}), AfterValidator(Distinct())], Field(min_length=1)]
 
 
 class Evidence(StrEnum):

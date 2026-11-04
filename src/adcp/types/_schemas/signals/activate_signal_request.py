@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field, TypeAdapter
 
 from adcp.types._base import SchemaRef
-from adcp.types.constraints import StrMinLen16MaxLen255Matching1E5CF9EB, StrMinLen1MaxLen4096MatchingB34ADF3C
+from adcp.types.constraints import GovernanceContext, SyncAccountsRequestIdempotencyKey
 
 from ..core.account_ref import AccountReference
 from ..core.context import ContextObject
@@ -36,9 +36,9 @@ class ActivateSignalRequest(AdCPVersionEnvelope):
     signal_agent_segment_id: Annotated[str, Field(description='Opaque activation handle returned in the signal_agent_segment_id field of each get_signals response entry. Pass this string verbatim — do not pass the signal_id object.')]
     destinations: Annotated[list[Destination], Field(description='Target destination(s) for activation. If the authenticated caller matches one of these destinations, activation keys will be included in the response.', min_length=1)]
     pricing_option_id: Annotated[str | None, Field(description="The pricing option selected from the signal's pricing_options in the get_signals response. Required when the signal has pricing options. Records the buyer's pricing commitment at activation time; pass this same value in report_usage for billing verification.")] = None
-    governance_context: Annotated[StrMinLen1MaxLen4096MatchingB34ADF3C | None, Field(description='Opaque authorization context returned by an approved check_governance decision for this signal activation. Required when the account has a registered governance agent; signal agents MUST reject governed activations that omit a valid context. Conditions and denied decisions never produce this value.')] = None
+    governance_context: Annotated[GovernanceContext | None, Field(description='Opaque authorization context returned by an approved check_governance decision for this signal activation. Required when the account has a registered governance agent; signal agents MUST reject governed activations that omit a valid context. Conditions and denied decisions never produce this value.')] = None
     account: Annotated[AccountReference | None, Field(description='Account for this activation. Associates with a commercial relationship established via sync_accounts.')] = None
-    idempotency_key: Annotated[StrMinLen16MaxLen255Matching1E5CF9EB, Field(description='Client-generated unique key for this request. Prevents duplicate activations on retries. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.')]
+    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Client-generated unique key for this request. Prevents duplicate activations on retries. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.')]
     context: ContextObject | None = None
     ext: ExtensionObject | None = None
 

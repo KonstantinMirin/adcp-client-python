@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule, UniqueItems
-from adcp.types.constraints import IntMin1Max2592000, StrMaxLen255, StrMinLen1MaxLen100Matching85112285, StrMinLen1MaxLen4096
+from adcp.types.constraints import ListAccountChangesRequestResourceTypesItem, SourceCoverageItemStaleAfterSeconds, StrMaxLen255, StrMinLen1MaxLen4096
 
 from ..core.account_change import AccountChange
 from ..core.context import ContextObject
@@ -48,8 +48,8 @@ class SourceCoverageItem(AdCPBaseModel):
     coverage_start: Annotated[AwareDatetime | None, Field(description='Earliest upstream time covered by this source after connection or retention limits.')] = None
     observed_through: Annotated[AwareDatetime | None, Field(description='Latest upstream point the seller has successfully observed.')] = None
     last_successful_sync_at: AwareDatetime | None = None
-    stale_after_seconds: Annotated[IntMin1Max2592000 | None, Field(description='Maximum age of last_successful_sync_at at generated_at for this connected source to self-classify as current. Required by the protocol contract whenever a connected source reports current.')] = None
-    resource_types: Annotated[list[StrMinLen1MaxLen100Matching85112285], Field(json_schema_extra={'uniqueItems': True}, max_length=50)]
+    stale_after_seconds: Annotated[SourceCoverageItemStaleAfterSeconds | None, Field(description='Maximum age of last_successful_sync_at at generated_at for this connected source to self-classify as current. Required by the protocol contract whenever a connected source reports current.')] = None
+    resource_types: Annotated[list[ListAccountChangesRequestResourceTypesItem], Field(json_schema_extra={'uniqueItems': True}, max_length=50)]
 
 
 class ListAccountChangesResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope):

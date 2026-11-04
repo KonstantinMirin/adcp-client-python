@@ -8,7 +8,7 @@ from pydantic import AfterValidator, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Distinct, Rule, UniqueItems
-from adcp.types.constraints import NonEmptyList, StrMatchingEFC12812
+from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, NonEmptyList
 
 from ..enums.legacy_postal_system import CountryFusedPostalCodeSystem
 from ._vocabularies import _VALUES_POSTAL_CODE_CUSTOM
@@ -42,7 +42,7 @@ class PostalAreaSupport(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/postal-area-support.json', pointer='#')
-    __pydantic_extra__: dict[StrMatchingEFC12812 | CountryFusedPostalCodeSystem, Annotated[NonEmptyList[PostalAreaSupportValueItem], Field(json_schema_extra={'uniqueItems': True}), AfterValidator(Distinct())]]
+    __pydantic_extra__: dict[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem | CountryFusedPostalCodeSystem, Annotated[NonEmptyList[PostalAreaSupportValueItem], Field(json_schema_extra={'uniqueItems': True}), AfterValidator(Distinct())]]
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('US'),
         UniqueItems('GB'),

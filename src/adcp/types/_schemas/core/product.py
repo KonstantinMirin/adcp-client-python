@@ -8,7 +8,7 @@ from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field, NonNegati
 
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, PropertyCount, RequiredGroups, Rule, UniqueItems
-from adcp.types.constraints import AdCPUrl, FloatGt0, HttpUrl, IntMin1, StrMatchingEE2029C8, StrMatchingEFC12812, StrMaxLen200, StrMaxLen2000, StrMaxLen25, StrMaxLen30, StrMaxLen60
+from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, AdCPUrl, CanonicalProductCatalogMatchMatchedGtinsItem, FloatGt0, HttpUrl, IntMin1, ProductCardCtaLabel, StrMaxLen200, StrMaxLen2000, StrMaxLen30, StrMaxLen60
 
 from ..common._vocabularies import _VALUES_COST_PER_THRESHOLD_RATE
 from ..enums.action_source import ActionSource
@@ -120,7 +120,7 @@ class CatalogMatch(AdCPBaseModel):
     When the buyer provides a catalog on get_products, indicates which catalog items are eligible for this product. Only present for products where catalog matching is relevant (e.g., sponsored product listings, job boards, hotel ads).
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product.json', pointer='#/properties/catalog_match')
-    matched_gtins: Annotated[list[StrMatchingEE2029C8] | None, Field(description="GTINs from the buyer's catalog that are eligible on this product's inventory. Standard GTIN formats (GTIN-8 through GTIN-14). Only present for product-type catalogs with GTIN matching.")] = None
+    matched_gtins: Annotated[list[CanonicalProductCatalogMatchMatchedGtinsItem] | None, Field(description="GTINs from the buyer's catalog that are eligible on this product's inventory. Standard GTIN formats (GTIN-8 through GTIN-14). Only present for product-type catalogs with GTIN matching.")] = None
     matched_ids: Annotated[list[str] | None, Field(description="Item IDs from the buyer's catalog that matched this product's inventory. The ID type depends on the catalog type and content_id_type (e.g., SKUs for product catalogs, job_ids for job catalogs, offering_ids for offering catalogs).")] = None
     matched_count: Annotated[NonNegativeInt | None, Field(description="Number of catalog items that matched this product's inventory.")] = None
     submitted_count: Annotated[NonNegativeInt, Field(description="Total catalog items evaluated from the buyer's catalog.")]
@@ -138,7 +138,7 @@ class ProductCard(AdCPBaseModel):
     title: Annotated[StrMaxLen60 | None, Field(description='Card title (typically the product name).')] = None
     description: Annotated[StrMaxLen200 | None, Field(description='Short descriptive blurb shown below the title.')] = None
     price_label: Annotated[StrMaxLen30 | None, Field(description="Formatted price or pricing summary (e.g., 'From $5 CPM', 'Auction floor $0.50 CPC'). Free-text — receivers render verbatim.")] = None
-    cta_label: Annotated[StrMaxLen25 | None, Field(description="Call-to-action button label (e.g., 'View details', 'Get proposal').")] = None
+    cta_label: Annotated[ProductCardCtaLabel | None, Field(description="Call-to-action button label (e.g., 'View details', 'Get proposal').")] = None
 
 
 class SpecificationsItem(AdCPBaseModel):
@@ -190,7 +190,7 @@ class ProvidersItem(AdCPBaseModel):
     agent_url: Annotated[HttpUrl, Field(description="Provider's agent URL from the registry. Canonical identifier for this TMP provider.")]
     context_match: Annotated[bool | None, Field(description='Whether this provider handles context match for this product.')] = False
     identity_match: Annotated[bool | None, Field(description='Whether this provider handles identity match for this product.')] = False
-    countries: Annotated[list[StrMatchingEFC12812] | None, Field(description="ISO 3166-1 alpha-2 country codes this provider serves for identity match. The router uses this to select the correct regional provider based on the request's country field. Required when identity_match is true.", min_length=1)] = None
+    countries: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem] | None, Field(description="ISO 3166-1 alpha-2 country codes this provider serves for identity match. The router uses this to select the correct regional provider based on the request's country field. Required when identity_match is true.", min_length=1)] = None
     uid_types: Annotated[list[UIDType] | None, Field(description="Identity types this regional provider can resolve. The router filters providers whose uid_types includes the request's uid_type. Required when identity_match is true.", min_length=1)] = None
 
 

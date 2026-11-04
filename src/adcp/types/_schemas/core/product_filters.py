@@ -9,7 +9,7 @@ from pydantic import ConfigDict, Field, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Presence, PresenceGroups, RequiredGroups, Rule, UniqueItems
-from adcp.types.constraints import FloatGt0, FloatMin1, FloatMinNeg180Max180, FloatMinNeg90Max90, HttpUrl, IntMin1, StrMatching157DF383, StrMatching43E30B32, StrMatchingEFC12812, StrMinLen1
+from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, FloatGt0, FloatMin1, FloatMinNeg180Max180, FloatMinNeg90Max90, GetAccountFinancialsResponseSuccessCurrency, HttpUrl, IntMin1, RegionsItem, StrMinLen1
 
 from ..enums.audio_distribution_type import AudioDistributionType
 from ..enums.available_metric import AvailableMetric
@@ -45,7 +45,7 @@ from .signal_targeting import SignalTargeting, SignalTargetingBinary, SignalTarg
 from .vendor_metric_id import VendorMetricID
 
 
-PricingCurrenciesItem = Annotated[StrMatching43E30B32, Field(description="ISO 4217 currency code (e.g., 'USD', 'EUR', 'GBP')")]
+PricingCurrenciesItem = Annotated[GetAccountFinancialsResponseSuccessCurrency, Field(description="ISO 4217 currency code (e.g., 'USD', 'EUR', 'GBP')")]
 
 
 class MetrosItem(AdCPBaseModel):
@@ -165,7 +165,7 @@ class RequiredGeoTargetingItem(AdCPBaseModel):
         ConditionalRequired((Match('level', True, ('metro',)),), require=(), forbid=('country',)),
     )
     level: Annotated[GeographicTargetingLevel, Field(description='Geographic targeting level (country, region, metro, postal_area)')]
-    country: Annotated[StrMatchingEFC12812 | None, Field(description='ISO 3166-1 alpha-2 country code. Required for native postal_area system filters; not applicable to country, region, or metro filters.')] = None
+    country: Annotated[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem | None, Field(description='ISO 3166-1 alpha-2 country code. Required for native postal_area system filters; not applicable to country, region, or metro filters.')] = None
     system: Annotated[str | None, Field(description="Optional classification system within the level. Use for a specific metro system (e.g., 'nielsen_dma'), native postal_area system (e.g., 'zip' with country 'US'), or deprecated legacy postal alias (e.g., 'us_zip'). Not applicable for country/region which use ISO standards.")] = None
 
 
@@ -329,8 +329,8 @@ class ProductFilters(AdCPBaseModel):
     start_date: Annotated[date | None, Field(description='Campaign start date (ISO 8601 date format: YYYY-MM-DD) for availability checks')] = None
     end_date: Annotated[date | None, Field(description='Campaign end date (ISO 8601 date format: YYYY-MM-DD) for availability checks')] = None
     budget_range: Annotated[BudgetRange | None, Field(description='Budget range to filter appropriate products')] = None
-    countries: Annotated[list[StrMatchingEFC12812] | None, Field(description='DEPRECATED legacy coverage filter. On compact discovery tasks use criteria.offer_filters.countries. Return products whose inventory covers at least one requested area; this does not impose delivery targeting or require selectable targeting support. Retained get_products handlers MUST preserve the original coverage predicate.', min_length=1)] = None
-    regions: Annotated[list[StrMatching157DF383] | None, Field(description='DEPRECATED legacy coverage filter. On compact discovery tasks use criteria.offer_filters.regions. Return products whose inventory covers at least one requested area; this does not impose delivery targeting or require selectable targeting support. Retained get_products handlers MUST preserve the original coverage predicate.', min_length=1)] = None
+    countries: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem] | None, Field(description='DEPRECATED legacy coverage filter. On compact discovery tasks use criteria.offer_filters.countries. Return products whose inventory covers at least one requested area; this does not impose delivery targeting or require selectable targeting support. Retained get_products handlers MUST preserve the original coverage predicate.', min_length=1)] = None
+    regions: Annotated[list[RegionsItem] | None, Field(description='DEPRECATED legacy coverage filter. On compact discovery tasks use criteria.offer_filters.regions. Return products whose inventory covers at least one requested area; this does not impose delivery targeting or require selectable targeting support. Retained get_products handlers MUST preserve the original coverage predicate.', min_length=1)] = None
     metros: Annotated[list[MetrosItem] | None, Field(description='DEPRECATED legacy coverage filter. On compact discovery tasks use criteria.offer_filters.metros. Return products whose inventory covers at least one requested area; this does not impose delivery targeting or require selectable targeting support. Retained get_products handlers MUST preserve the original coverage predicate.', min_length=1)] = None
     channels: Annotated[list[MediaChannel] | None, Field(description="Filter by advertising channels (e.g., ['display', 'ctv', 'dooh'])", min_length=1)] = None
     video_placement_types: Annotated[list[VideoPlacementType] | None, Field(description='Filter product metadata by declared video placement types, using IAB Tech Lab/OpenRTB 2.6 video.plcmt definitions with AdCP-native names. A product matches when its declared array intersects the requested array. This is discovery classification only and does not promise delivery exclusively on a requested type; buyers needing exact placement inventory use targeting_overlay.placement_selection against targetable placements. This filter has set semantics for wholesale feed canonicalization.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None

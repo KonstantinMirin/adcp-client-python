@@ -7,7 +7,7 @@ from pydantic import AfterValidator, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import Distinct, ForbiddenGroups, PropertyCount, RequiredGroups, Rule, UniqueItems
-from adcp.types.constraints import IntMin1, NonEmptyList, StrMatchingEFC12812, StrMinLen1
+from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, IntMin1, NonEmptyList, StrMinLen1
 
 from ..enums.browser_family import BrowserFamily
 from ..enums.daypart_timezone_mode import DaypartTimezoneMode
@@ -69,7 +69,7 @@ class PlaceCatalogSupport(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('system_versions'),
     )
-    countries: Annotated[dict[StrMatchingEFC12812, Annotated[NonEmptyList[GeographicPlaceType], Field(json_schema_extra={'uniqueItems': True}), AfterValidator(Distinct())]], Field(min_length=1)]
+    countries: Annotated[dict[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, Annotated[NonEmptyList[GeographicPlaceType], Field(json_schema_extra={'uniqueItems': True}), AfterValidator(Distinct())]], Field(min_length=1)]
     current_version: Annotated[StrMinLen1, Field(description='Version applied when a later package overlay omits system_version. Must be present in system_versions.')]
     system_versions: Annotated[list[StrMinLen1], Field(description='Exact catalog versions selectable on later package overlays.', json_schema_extra={'uniqueItems': True}, min_length=1)]
     ext: ExtensionObject | None = None

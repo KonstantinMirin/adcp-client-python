@@ -6,7 +6,7 @@ from typing import ClassVar, Literal
 from pydantic import ConfigDict, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import StrMatching43E30B32, StrMinLen1
+from adcp.types.constraints import GetAccountFinancialsResponseSuccessCurrency, StrMinLen1
 
 from ..core.creative_consumption import CreativeConsumption
 from ..creative.creative_feature_result import CreativeFeatureResult
@@ -25,7 +25,7 @@ class GetCreativeFeaturesComplianceCompletion(AdCPBaseModel):
     results: list[CreativeFeatureResult]
     pricing_option_id: str | None = None
     vendor_cost: NonNegativeFloat | None = None
-    currency: StrMatching43E30B32 | None = None
+    currency: GetAccountFinancialsResponseSuccessCurrency | None = None
     consumption: CreativeConsumption | None = None
 
 

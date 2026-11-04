@@ -7,7 +7,7 @@ from pydantic import AfterValidator, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Distinct, Rule, UniqueItems
-from adcp.types.constraints import NonEmptyList, StrMatchingEFC12812, StrMinLen1
+from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, NonEmptyList, StrMinLen1
 
 from .geo_place_system import GeographicPlaceIdentifierSystem
 from .geo_place_type import GeographicPlaceType
@@ -24,7 +24,7 @@ class CatalogRequirement(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('system_versions'),
     )
-    countries: Annotated[dict[StrMatchingEFC12812, Annotated[NonEmptyList[GeographicPlaceType], Field(json_schema_extra={'uniqueItems': True}), AfterValidator(Distinct())]], Field(min_length=1)]
+    countries: Annotated[dict[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, Annotated[NonEmptyList[GeographicPlaceType], Field(json_schema_extra={'uniqueItems': True}), AfterValidator(Distinct())]], Field(min_length=1)]
     system_versions: Annotated[list[StrMinLen1] | None, Field(description='Optional exact catalog versions that must remain selectable. Versions are opaque strings, not ordered ranges.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
 
 

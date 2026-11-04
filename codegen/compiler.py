@@ -953,6 +953,20 @@ class Module:
     #: Empty by default, for :attr:`vocabularies`' own reason: §9 forbids a reading of the
     #: run, and a walk with no table minted no reference to invent.
     objects: Mapping[str, Target] = field(default_factory=dict)
+    #: **§3a's catalogue layer L1, as a table**: ``shape -> the symbol
+    #: ``adcp.types.constraints`` declares for that constraint``
+    #: (``catalogue.Scalars.table``).
+    #:
+    #: The key is the CONSTRAINT SET -- the layer's own identity -- and the value is the
+    #: name §4's three ordered steps derive: the bundle's own name for the subject where
+    #: every stating position agrees on one, else the constraint in words, else the
+    #: declaring position.  **It is the table that replaced the content digest**
+    #: ``codegen/constraints.py`` used to mint for a ``pattern``, which §4 rules a defect.
+    #:
+    #: Empty by default, for :attr:`vocabularies`' reason and with a weaker consequence: a
+    #: document lowered outside a run resolves what ``constraints.symbol`` can spell in
+    #: words and leaves the rest inline, exactly as it did before this layer existed.
+    constrained: Mapping[object, str] = field(default_factory=dict)
     #: **The reference sites this document's walk ASKED about**, written by
     #: :meth:`target` and read by the run.  It is what decides which documents the run
     #: WRITES, and §10's own sentence is the reason: "a module cannot import from a

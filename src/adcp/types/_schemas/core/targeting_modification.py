@@ -8,7 +8,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule, UniqueItems
-from adcp.types.constraints import StrMatching4F8C0DBC, StrMatchingEFC12812, StrMinLen1
+from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, ReplaceTargetingValuePath, StrMinLen1
 
 from .ext import ExtensionObject
 
@@ -32,7 +32,7 @@ class ReplaceTargetingValue(TargetingModification):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/targeting-modification.json', pointer='#/oneOf/0')
     operation: Literal['replace']
-    path: Annotated[StrMatching4F8C0DBC, Field(description='RFC 6901 JSON Pointer to one complete targeting value relative to targeting_overlay, for example /demographics/age. Array indexes are forbidden by protocol semantics even if syntactically valid JSON Pointer; target a stable whole dimension instead.')]
+    path: Annotated[ReplaceTargetingValuePath, Field(description='RFC 6901 JSON Pointer to one complete targeting value relative to targeting_overlay, for example /demographics/age. Array indexes are forbidden by protocol semantics even if syntactically valid JSON Pointer; target a stable whole dimension instead.')]
     applied: Annotated[Any, Field(description='Complete replacement value. It MUST validate against targeting.json at path; the seller then validates the complete effective overlay. This operation may narrow or broaden only as an explicit buyer-visible proposal.')]
     reason: StrMinLen1
     ext: ExtensionObject | None = None
@@ -67,7 +67,7 @@ class Selector(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/targeting-modification.json', pointer='#/oneOf/1/properties/selector')
-    country: StrMatchingEFC12812
+    country: AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem
     system: StrMinLen1
 
 

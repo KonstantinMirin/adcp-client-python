@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, RequiredGroups, Rule, UniqueItems
-from adcp.types.constraints import IntMin1, StrMatching32F5291C
+from adcp.types.constraints import AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, IntMin1
 
 from ..enums.audio_distribution_type import AudioDistributionType
 from ..enums.dooh_motion_type import DOOHMotionType
@@ -78,7 +78,7 @@ class Placement(AdCPBaseModel):
     )
     kind: Annotated[Kind, Field(description='Placement authority discriminator. `publisher_ref` is publisher-catalog identity; `seller_inline` is sales-agent-authored identity.')]
     placement_id: Annotated[str, Field(description='Placement identifier. For publisher_ref it is scoped by publisher_domain and resolves in adagents.json. For seller_inline it is scoped by seller_agent, or by the enclosing seller and product for legacy rows.')]
-    publisher_domain: Annotated[StrMatching32F5291C | None, Field(description="For publisher_ref, the domain whose adagents.json declares the placement and part of canonical identity. For seller_inline, optional inventory-publisher attribution only; it does not grant the seller authority to mint IDs in that publisher's catalog namespace.")] = None
+    publisher_domain: Annotated[AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain | None, Field(description="For publisher_ref, the domain whose adagents.json declares the placement and part of canonical identity. For seller_inline, optional inventory-publisher attribution only; it does not grant the seller authority to mint IDs in that publisher's catalog namespace.")] = None
     seller_agent: Annotated[SellerAgentReference | None, Field(description='Sales agent that defines a seller_inline placement. Together with placement_id this is its self-contained identity. New 3.2 sellers SHOULD populate it; legacy product-context inline placements may omit it. Not used for publisher_ref.')] = None
     name: Annotated[str | None, Field(description='Human-readable name for the placement (e.g., \'Homepage Banner\', \'Article Sidebar\'). Required for `kind: "seller_inline"`. May be omitted for publisher-referenced placements because buyers resolve the name from the publisher declaration identified by `{publisher_domain, placement_id}`.')] = None
     description: Annotated[str | None, Field(description='Detailed description of where and how the placement appears')] = None

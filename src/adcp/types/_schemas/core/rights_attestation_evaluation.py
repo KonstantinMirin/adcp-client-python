@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule
-from adcp.types.constraints import StrMatching3CBDBB74, StrMinLen1, StrMinLen1MaxLen1024
+from adcp.types.constraints import StrMinLen1, StrMinLen1MaxLen1024, ZipAssetDigest
 
 from .attestation_evaluation import AttestationEvaluation
 from .attestation_reference import AttestationReference
@@ -62,7 +62,7 @@ class ActionBinding(AdCPBaseModel):
     )
     action_type: Annotated[Literal['https://adcontextprotocol.org/actions/rights-grant-evaluation'], Field(description='Absolute URI naming the action vocabulary, such as an AdCP governance-check or audience-evidence snapshot type.')]
     action_id: Annotated[StrMinLen1MaxLen1024, Field(description="Stable identifier of the consuming action within the domain consumer's namespace.")]
-    action_digest: Annotated[StrMatching3CBDBB74, Field(description='SHA-256 digest of the domain-defined canonical action preimage.')]
+    action_digest: Annotated[ZipAssetDigest, Field(description='SHA-256 digest of the domain-defined canonical action preimage.')]
 
 
 class Evaluation(AttestationEvaluation):
@@ -88,7 +88,7 @@ class RightsAttestationEvaluation(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/rights-attestation-evaluation.json', pointer='#')
     rights_id: Annotated[StrMinLen1, Field(description='Rights grant identifier. MUST equal reference.subject.id and evaluation.action_binding.action_id.')]
-    content_digest: Annotated[StrMatching3CBDBB74, Field(description='Digest of the exact rights constraint evaluated. MUST equal reference.subject.content_digest and evaluation.action_binding.action_digest.')]
+    content_digest: Annotated[ZipAssetDigest, Field(description='Digest of the exact rights constraint evaluated. MUST equal reference.subject.content_digest and evaluation.action_binding.action_digest.')]
     reference: Reference
     evaluation: Evaluation
     ext: ExtensionObject | None = None

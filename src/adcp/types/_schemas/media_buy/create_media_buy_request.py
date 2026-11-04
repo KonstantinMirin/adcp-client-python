@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Dependencies, ForbiddenGroups, Match, Rule
-from adcp.types.constraints import FloatMin0Max1, HttpUrl, StrMatching43E30B32, StrMaxLen100, StrMinLen1, StrMinLen16, StrMinLen16MaxLen255Matching1E5CF9EB, StrMinLen1MaxLen250, StrMinLen1MaxLen255Matching130C1C9D, StrMinLen1MaxLen4096MatchingB34ADF3C, StrMinLen32
+from adcp.types.constraints import FloatMin0Max1, GetAccountFinancialsResponseSuccessCurrency, GovernanceContext, HttpUrl, IoAcceptanceSignatory, MediaBuyName, StrMaxLen100, StrMinLen1, StrMinLen16, StrMinLen32, SyncAccountsRequestIdempotencyKey
 
 from ..core.account_ref import AccountReference
 from ..core.bidding_policy import BiddingPolicy
@@ -49,7 +49,7 @@ class TotalBudget(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/create-media-buy-request.json', pointer='#/properties/total_budget')
     amount: Annotated[NonNegativeFloat, Field(description='Total budget amount')]
-    currency: Annotated[StrMatching43E30B32, Field(description='ISO 4217 currency code')]
+    currency: Annotated[GetAccountFinancialsResponseSuccessCurrency, Field(description='ISO 4217 currency code')]
 
 
 class IoAcceptance(AdCPBaseModel):
@@ -62,7 +62,7 @@ class IoAcceptance(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/create-media-buy-request.json', pointer='#/properties/io_acceptance')
     io_id: Annotated[str, Field(description="The io_id from the proposal's insertion_order being accepted")]
     accepted_at: Annotated[AwareDatetime, Field(description='ISO 8601 timestamp when the IO was accepted')]
-    signatory: Annotated[StrMinLen1MaxLen250, Field(description='Who accepted the IO — agent identifier or human name')]
+    signatory: Annotated[IoAcceptanceSignatory, Field(description='Who accepted the IO — agent identifier or human name')]
     signature_id: Annotated[str | None, Field(description='Reference to the electronic signature from the signing service, when signing_url was used')] = None
 
 
@@ -141,8 +141,8 @@ class CreateMediaBuyRequest(BranchDispatchMixin, AdCPVersionEnvelope):
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='media-buy/create-media-buy-request.json', pointer='#/anyOf', keyword='anyOf', kind='UNDERDETERMINED', rung='JOIN', fact=({'title': 'Explicit packages with fixed allocation', 'properties': {'budget_allocation': {'properties': {'mode': {'const': 'fixed'}}, 'required': ['mode']}, 'packages': {'items': {'allOf': [{'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/media-buy/package-request.json'}, {'required': ['budget']}, {'not': {'required': ['min_spend_target']}}]}}}, 'required': ['packages'], 'not': {'required': ['proposal_id']}}, {'title': 'Explicit packages with seller-optimized allocation', 'properties': {'budget_allocation': {'properties': {'mode': {'const': 'seller_optimized'}}, 'required': ['mode']}}, 'required': ['packages', 'total_budget', 'budget_allocation'], 'not': {'required': ['proposal_id']}}, {'title': 'Committed proposal execution', 'required': ['proposal_id', 'total_budget'], 'not': {'anyOf': [{'required': ['packages']}, {'required': ['budget_allocation']}, {'required': ['frequency_cap']}]}}), attribution='docs/plan/rebuild-plan.md §5 combinators/anyOf'),
     )
-    governance_context: Annotated[StrMinLen1MaxLen4096MatchingB34ADF3C | None, Field(description='Opaque intent authorization for this media-buy commitment. Required when governance applies to the resolved account.')] = None
-    idempotency_key: Annotated[StrMinLen16MaxLen255Matching1E5CF9EB, Field(description='Client-generated unique key for this request. If a request with the same idempotency_key and account has already been processed, the seller returns the existing media buy rather than creating a duplicate. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.')]
+    governance_context: Annotated[GovernanceContext | None, Field(description='Opaque intent authorization for this media-buy commitment. Required when governance applies to the resolved account.')] = None
+    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Client-generated unique key for this request. If a request with the same idempotency_key and account has already been processed, the seller returns the existing media buy rather than creating a duplicate. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.')]
     plan_id: Annotated[str | None, Field(description='DEPRECATED on seller-facing requests. New buyers send the approved governance_context on the protocol envelope; the seller forwards that opaque context and does not need the plan identifier. If both are present, the governance agent MUST reject a mismatch. Removed in 4.0.')] = None
     account: Annotated[AccountReference, Field(description='Account to bill for this media buy. Pass a natural key (brand, operator, optional sandbox) or a seller-assigned account_id from list_accounts.')]
     proposal_id: Annotated[str | None, Field(description="ID of the exact committed proposal snapshot to execute. With total_budget, the publisher creates packages using the proposal's fixed percentages or seller-optimized constraints. Mutually exclusive: provide packages or proposal_id, not both. AdCP 3.2 request_proposals and ordinary refine_proposals revisions issue drafts; refine_proposals action finalize creates the executable committed hold. Sellers reject draft, declined, or previously executed snapshots, while exact retries with the original idempotency key replay historical success. Changed commercial terms are issued under a new proposal_id, so no separate proposal version is required.")] = None
@@ -158,7 +158,7 @@ class CreateMediaBuyRequest(BranchDispatchMixin, AdCPVersionEnvelope):
     invoice_recipient: Annotated[BusinessEntity | None, Field(description="Override the account's default billing entity for this specific buy. When provided, the seller invoices this entity instead. The seller MUST validate the invoice recipient is authorized for this account. When governance_agents are configured, the seller MUST include invoice_recipient in the check_governance request.")] = None
     io_acceptance: Annotated[IoAcceptance | None, Field(description="Acceptance of an insertion order from a committed proposal. Required when the proposal's insertion_order has requires_signature: true. References the io_id from the proposal's insertion_order.")] = None
     po_number: Annotated[str | None, Field(description='Purchase order number for tracking')] = None
-    name: Annotated[StrMinLen1MaxLen255Matching130C1C9D | None, Field(description='Human-readable name for this media buy, shared by buyer and seller for trafficking UI display and operational communication. When supplied, the seller MUST persist it and echo it unchanged on the create success response and subsequent get_media_buys reads. This display label is not an identifier or financial reference.')] = None
+    name: Annotated[MediaBuyName | None, Field(description='Human-readable name for this media buy, shared by buyer and seller for trafficking UI display and operational communication. When supplied, the seller MUST persist it and echo it unchanged on the create success response and subsequent get_media_buys reads. This display label is not an identifier or financial reference.')] = None
     agency_estimate_number: Annotated[StrMaxLen100 | None, Field(description="Agency estimate or authorization number. Primary financial reference for broadcast buys — links the order to the agency's media plan and billing system. Travels with the order and creative traffic identifiers through the transaction lifecycle.")] = None
     start_time: StartTiming
     end_time: Annotated[AwareDatetime, Field(description='Campaign end date/time in ISO 8601 format')]

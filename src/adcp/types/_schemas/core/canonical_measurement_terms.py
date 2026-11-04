@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import FloatMin0Lt100, StrMinLen1
+from adcp.types.constraints import BillingMeasurementMaxVariancePercent, StrMinLen1
 
 from ..enums.makegood_remedy import MakegoodRemedy
 from .brand_key import BrandKey
@@ -19,7 +19,7 @@ class BillingMeasurement(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/canonical-measurement-terms.json', pointer='#/properties/billing_measurement')
     vendor: BrandKey
-    max_variance_percent: FloatMin0Lt100 | None = None
+    max_variance_percent: BillingMeasurementMaxVariancePercent | None = None
     measurement_window: StrMinLen1 | None = None
     finalization_deadline_hours: NonNegativeInt | None = None
 

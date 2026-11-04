@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
-from adcp.types.constraints import StrMinLen1, StrMinLen1MatchingA828669D
+from adcp.types.constraints import CreativeRepresentationRepresentationId, StrMinLen1
 
 from .canonical_format_kind import CanonicalFormatKind
 from .creative_manifest import CreativeManifest
@@ -34,7 +34,7 @@ class CreativeRepresentation(CreativeManifest):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('format_id',), ('format_option_ref',), ('representation_selection',))),
     )
-    representation_id: Annotated[StrMinLen1MatchingA828669D, Field(description='Stable representation identifier, unique within the enclosing CreativeRepresentationSet revision.')]
+    representation_id: Annotated[CreativeRepresentationRepresentationId, Field(description='Stable representation identifier, unique within the enclosing CreativeRepresentationSet revision.')]
     source: Source
     format_kind: Annotated[CanonicalFormatKind, Field(description="Canonical 3.2 path. The canonical format name this manifest targets (e.g., `image`, `video_hosted`, `audio_vast`, `seller_rendered_stateful_display`, `coordinated_placements`). Selects the contract against which the seller validates the manifest's assets. Mutually exclusive with deprecated `format_id`.")]
 

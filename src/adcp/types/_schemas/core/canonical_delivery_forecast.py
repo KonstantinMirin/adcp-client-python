@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import StrMatching43E30B32, StrMaxLen64MatchingE02C3DE8
+from adcp.types.constraints import GetAccountFinancialsResponseSuccessCurrency, MeasurementSource
 
 from ..enums.demographic_system import DemographicSystem
 from ..enums.forecast_method import ForecastMethod
@@ -27,10 +27,10 @@ class CanonicalDeliveryForecast(AdCPBaseModel):
     points: Annotated[list[CanonicalForecastPoint], Field(min_length=1)]
     forecast_range_unit: ForecastRangeUnit | None = None
     method: ForecastMethod
-    currency: StrMatching43E30B32
+    currency: GetAccountFinancialsResponseSuccessCurrency
     demographic_system: DemographicSystem | None = None
     demographic: str | None = None
-    measurement_source: StrMaxLen64MatchingE02C3DE8 | None = None
+    measurement_source: MeasurementSource | None = None
     reach_unit: ReachUnit | None = None
     generated_at: AwareDatetime | None = None
     valid_until: AwareDatetime | None = None

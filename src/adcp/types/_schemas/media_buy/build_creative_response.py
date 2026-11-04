@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNega
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Dependencies, ForbiddenGroups, Match, RequiredGroups, Rule
-from adcp.types.constraints import HttpUrl, IntMin1, StrMatching43E30B32, StrMatchingA828669D, StrMaxLen2000
+from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, GetAccountFinancialsResponseSuccessCurrency, HttpUrl, IntMin1, StrMaxLen2000
 from adcp.types.envelopes import FailedResponse
 
 from ..core.context import ContextObject
@@ -92,7 +92,7 @@ class BuildCreativeSuccess(BuildCreativeResponse):
     preview_error: Annotated[Error | None, Field(description="When include_preview was true in the request but preview generation failed. Uses the standard error structure with code, message, and recovery classification. Distinguishes 'agent does not support inline preview' (preview and preview_error both absent) from 'preview generation failed' (preview absent, preview_error present). Omitted when preview succeeded or was not requested.")] = None
     pricing_option_id: Annotated[str | None, Field(description='Which rate card pricing option was applied for this build. Present when the creative agent charges for its services. Pass this in report_usage to identify which pricing option was applied.')] = None
     vendor_cost: Annotated[NonNegativeFloat | None, Field(description='Cost incurred for this build, denominated in currency. May be 0 for CPM-priced creatives where cost accrues at serve time rather than build time.')] = None
-    currency: Annotated[StrMatching43E30B32 | None, Field(description='ISO 4217 currency code for vendor_cost.')] = None
+    currency: Annotated[GetAccountFinancialsResponseSuccessCurrency | None, Field(description='ISO 4217 currency code for vendor_cost.')] = None
     consumption: Annotated[CreativeConsumption | None, Field(description='Structured consumption details for this build. Informational — lets the buyer verify that vendor_cost is consistent with the rate card. vendor_cost is the billing source of truth.')] = None
     context: ContextObject | None = None
     ext: ExtensionObject | None = None
@@ -118,7 +118,7 @@ class BuildCreativeMultiSuccessPreviewPreviewsItem(AdCPBaseModel):
     )
     preview_id: Annotated[str, Field(description='Unique identifier for this preview')]
     format_id: Annotated[FormatReferenceStructuredObject | None, Field(description='Deprecated named-format correlation for a legacy target_format_ids request.')] = None
-    capability_id: Annotated[StrMatchingA828669D | None, Field(description='Canonical creative capability this preview was generated through. Matches one requested target_capability_ids entry.')] = None
+    capability_id: Annotated[AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem | None, Field(description='Canonical creative capability this preview was generated through. Matches one requested target_capability_ids entry.')] = None
     renders: Annotated[list[PreviewRender], Field(description="Array of rendered pieces for this format's preview. Most formats render as a single piece. Companion ad formats render as multiple pieces.", min_length=1)]
     input: Annotated[BuildCreativeMultiSuccessPreviewPreviewsItemInput, Field(description='The input parameters that generated this preview. For multi-format responses, this is always a default input.')]
 
@@ -148,7 +148,7 @@ class BuildCreativeMultiSuccess(BuildCreativeResponse):
     preview_error: Annotated[Error | None, Field(description='When include_preview was true in the request but preview generation failed. Uses the standard error structure with code, message, and recovery classification. Omitted when preview succeeded or was not requested.')] = None
     pricing_option_id: Annotated[str | None, Field(description='Which rate card pricing option was applied for this build. Represents the total cost of the entire multi-format build call. Present when the creative agent charges for its services.')] = None
     vendor_cost: Annotated[NonNegativeFloat | None, Field(description='Total cost incurred for this multi-format build, denominated in currency. May be 0 for CPM-priced creatives where cost accrues at serve time.')] = None
-    currency: Annotated[StrMatching43E30B32 | None, Field(description='ISO 4217 currency code for vendor_cost.')] = None
+    currency: Annotated[GetAccountFinancialsResponseSuccessCurrency | None, Field(description='ISO 4217 currency code for vendor_cost.')] = None
     consumption: Annotated[CreativeConsumption | None, Field(description='Structured consumption details for this build. Informational — lets the buyer verify that vendor_cost is consistent with the rate card.')] = None
     context: ContextObject | None = None
     ext: ExtensionObject | None = None
@@ -201,7 +201,7 @@ class VariantsItem(AdCPBaseModel):
     eval: Annotated[Eval | None, Field(description="Optional per-leaf evaluation block populated when the request supplied an `evaluator` and the agent advertises creative.supports_evaluator. Experimental (x-status: experimental) — part of the evaluator surface; sellers populating it MUST list `creative.evaluator` in experimental_features. The rank-side of the get_creative_features feature oracle: it carries the creative-feature values this leaf was scored on, which is what the gate-then-rank pipeline (evaluator.feature_requirement[] gate → evaluator.rank_by ordering) and `recommended`/`rank` are computed over. `eval.features[]` is `creative/creative-feature-result.json[]` — the same shape get_creative_features.results[] returns; the wrapper is open (additionalProperties:true) while each feature item is closed. A leaf's eval is a feature measurement, not a pass/fail verdict (a verdict is a categorical string feature value gated via feature_requirement.allowed_values). Leaves the agent dropped via the gate are not present; this block appears only on returned (recommended/billed) leaves. Advisory; does not change what is produced or billed.")] = None
     pricing_option_id: Annotated[str | None, Field(description='Which rate-card pricing option was applied for THIS variant leaf. Pass in report_usage after promotion.')] = None
     vendor_cost: Annotated[NonNegativeFloat | None, Field(description='Cost incurred for this variant leaf, denominated in currency. REQUIRED on every produced leaf whenever the build reports cost (the top-level aggregate `vendor_cost` is present) — leaves are the billing source of truth, and an untrafficked leaf is reconciled from this field alone (it never earns a `creative_id` / `report_usage` entry). A CPM-deferred leaf reports 0 here (a value, not an omission).')] = None
-    currency: Annotated[StrMatching43E30B32 | None, Field(description='ISO 4217 currency code for vendor_cost. Co-required with vendor_cost.')] = None
+    currency: Annotated[GetAccountFinancialsResponseSuccessCurrency | None, Field(description='ISO 4217 currency code for vendor_cost. Co-required with vendor_cost.')] = None
     consumption: Annotated[CreativeConsumption | None, Field(description='Structured consumption for this variant leaf. Informational; vendor_cost is the billing source of truth.')] = None
 
 
@@ -245,7 +245,7 @@ class BuildCreativeVariantSuccess(BuildCreativeResponse):
     leaves_total: Annotated[NonNegativeInt | None, Field(description='Total leaves the request would have produced (≈ items_to_produce × variants_per_item, × conditions_total when signal_conditions was sent). Present when a max_spend cap may have stopped production short. Counts LEAVES, not catalog items — so it expresses a shortfall even for a variant-only fan-out with no catalog.')] = None
     leaves_returned: Annotated[NonNegativeInt | None, Field(description="Number of leaves actually produced and billed across creatives[].variants[]. When budget_status is 'capped', leaves_returned < leaves_total is the leaf-granular shortfall signal (items_returned/items_total are catalog-item counts and do not capture a mid-item or variant-only cap).")] = None
     vendor_cost: Annotated[NonNegativeFloat | None, Field(description='Aggregate cost across all variant leaves, denominated in currency. MUST equal the sum of the per-leaf vendor_cost values (leaves are the source of truth). When present, every produced leaf MUST carry its own vendor_cost + currency (enforced) so the sum invariant is checkable; omit this aggregate only for a genuinely free build.')] = None
-    currency: Annotated[StrMatching43E30B32 | None, Field(description='ISO 4217 currency code for the aggregate vendor_cost.')] = None
+    currency: Annotated[GetAccountFinancialsResponseSuccessCurrency | None, Field(description='ISO 4217 currency code for the aggregate vendor_cost.')] = None
     keep_mode_applied: Annotated[KeepMode | None, Field(description="Echoes the `keep_mode` the agent applied (mirrors the request hint). Present when the request set `keep_mode`. `keep_mode` is advisory — it does not change what is produced or billed (you pay for every leaf in `variants[]`) — so this echo is the buyer's confirmation that the hint was received, the audit paper trail for a 'I asked for keep_one but was billed for N' dispute. Whether the agent acted on it shows in the `recommended`/`rank` it set on the leaves.")] = None
     selection_strategy_applied: Annotated[CreativeSelectionStrategy | None, Field(description='Echoes the selection_strategy the agent applied when max_creatives sampling occurred (mirrors keep_mode_applied). Present when the request set selection_strategy. The ranking itself shows in the rank/recommended on creatives[].variants[].')] = None
     budget_status: Annotated[BudgetStatus | None, Field(default_factory=lambda: TypeAdapter(BudgetStatus).validate_python('complete'), description='`complete` (default; absent == complete for back-compat) means the agent produced everything requested. `capped` means a `max_spend` ceiling stopped production early: every returned leaf is real/billed, and an advisory `BUDGET_CAP_REACHED` entry in `errors[]` is the authoritative cap signal. The leaf-granular shortfall is `leaves_returned` < `leaves_total` (do NOT rely on items_returned < items_total — that is also the normal max_creatives-sampling signal and does not capture a mid-item or variant-only cap). This is a successful partial build, not a failure.', json_schema_extra={'default': 'complete'})]
@@ -291,7 +291,7 @@ class Estimate(AdCPBaseModel):
     conditions_total: Annotated[IntMin1 | None, Field(description='Signal-fan-out conditions axis count (len(signal_conditions)). Present when signal_conditions was sent so leaves_total = items_to_produce × conditions_total × variants_per_item is legible before spend.')] = None
     variants_per_item: Annotated[IntMin1 | None, Field(description='Alternatives per creative (max_variants).')] = None
     leaves_total: Annotated[NonNegativeInt | None, Field(description='Total billable leaves = items_to_produce × variants_per_item (× conditions_total when signal_conditions was sent — see conditions_total).')] = None
-    currency: Annotated[StrMatching43E30B32, Field(description='ISO 4217 currency for the cost band.')]
+    currency: Annotated[GetAccountFinancialsResponseSuccessCurrency, Field(description='ISO 4217 currency for the cost band.')]
     cost_low: Annotated[NonNegativeFloat, Field(description='Low end of the projected aggregate vendor_cost.')]
     cost_high: Annotated[NonNegativeFloat, Field(description='High end. For basis "fixed" this equals cost_low (exact).')]
     cost_expected: Annotated[NonNegativeFloat | None, Field(description='Optional point estimate within the band.')] = None

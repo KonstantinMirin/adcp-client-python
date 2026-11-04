@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
-from adcp.types.constraints import StrMatching3524D29B, StrMatching5E9BB4AD, StrMinLen1MaxLen255
+from adcp.types.constraints import PeriodDuration, ReportingReportDefinitionFinalityPoliciesItemDurationAfterPeriodEnd, StrMinLen1MaxLen255
 
 
 class ReportingScheduleAlignment(StrEnum):
@@ -35,11 +35,11 @@ class ReportingSchedule(AdCPBaseModel):
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='core/reporting-schedule.json', pointer='#/allOf/0', keyword='else', kind='WIDENED', rung='KEYWORD', fact={'if': {'properties': {'alignment': {'const': 'source_timezone'}}, 'required': ['alignment']}, 'then': {'required': ['period_timezone'], 'not': {'required': ['period_anchor']}}, 'else': {'not': {'anyOf': [{'required': ['period_anchor']}, {'required': ['period_timezone']}]}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/else'),
     )
-    period_duration: Annotated[StrMatching5E9BB4AD, Field(description='Strictly positive ISO 8601 duration of each reporting period, such as PT15M, P1D, or P1M.')]
+    period_duration: Annotated[PeriodDuration, Field(description='Strictly positive ISO 8601 duration of each reporting period, such as PT15M, P1D, or P1M.')]
     alignment: ReportingScheduleAlignment
     period_anchor: Annotated[AwareDatetime | None, Field(description='Required for billing_cycle alignment. This immutable instant anchors the recurring half-open billing periods so producer and consumer derive the same month, quarter, or other contractual cycle.')] = None
     period_timezone: Annotated[StrMinLen1MaxLen255 | None, Field(description='Required IANA timezone for source_timezone and billing_cycle calendar arithmetic. A numeric UTC offset is not sufficient because it does not define DST transitions.')] = None
-    delivery_sla: Annotated[StrMatching3524D29B, Field(description='Non-negative maximum time after period end before the required revision is due. PT0S means due at period close; expected_at equals the resolved period end plus this duration.')]
+    delivery_sla: Annotated[ReportingReportDefinitionFinalityPoliciesItemDurationAfterPeriodEnd, Field(description='Non-negative maximum time after period end before the required revision is due. PT0S means due at period close; expected_at equals the resolved period end plus this duration.')]
 
 
 __all__ = ["ReportingSchedule", "ReportingScheduleAlignment"]

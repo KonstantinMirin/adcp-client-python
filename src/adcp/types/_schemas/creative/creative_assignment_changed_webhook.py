@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import StrMinLen16MaxLen255Matching1E5CF9EB, StrMinLen1MaxLen255Matching67860854, StrMinLen1MaxLen64MatchingD373B860
+from adcp.types.constraints import AccountChangeRecordedWebhookSubscriberId, ComplyTestControllerRequestParamsReceivedReportingRevisionId, SyncAccountsRequestIdempotencyKey
 
 from ..core.ext import ExtensionObject
 
@@ -26,11 +26,11 @@ class CreativeAssignmentChangedWebhook(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/creative-assignment-changed-webhook.json', pointer='#')
-    idempotency_key: StrMinLen16MaxLen255Matching1E5CF9EB
-    notification_id: Annotated[StrMinLen1MaxLen255Matching67860854, Field(description='Stable identity for this logical assignment change across re-emissions.')]
+    idempotency_key: SyncAccountsRequestIdempotencyKey
+    notification_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId, Field(description='Stable identity for this logical assignment change across re-emissions.')]
     notification_type: Literal['creative.assignment_changed']
     fired_at: AwareDatetime
-    subscriber_id: StrMinLen1MaxLen64MatchingD373B860
+    subscriber_id: AccountChangeRecordedWebhookSubscriberId
     account_id: str
     media_buy_id: str
     package_id: str

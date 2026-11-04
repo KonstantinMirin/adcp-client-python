@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
-from adcp.types.constraints import StrMatchingE02C3DE8, StrMaxLen100, StrMaxLen50, StrMinLen1MaxLen200, StrMinLen2MaxLen2
+from adcp.types.constraints import BrandDiscoveryAgentId, StrMaxLen100, StrMaxLen50, StrMinLen1MaxLen200, StrMinLen2MaxLen2
 
 from ..core.version_envelope import AdCPVersionEnvelope
 from ..enums.property_type import PropertyType
@@ -32,7 +32,7 @@ class VerifySubsidiaryClaimClaim(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/verify-brand-claim-request.json', pointer='#/oneOf/0/properties/claim')
     subsidiary_domain: Annotated[str, Field(description='Domain of the leaf brand whose `house_domain` claim is being verified.', json_schema_extra={'format': 'hostname'})]
-    subsidiary_brand_id: Annotated[StrMatchingE02C3DE8 | None, Field(description='Stable brand identifier the leaf uses for itself. Optional but recommended.')] = None
+    subsidiary_brand_id: Annotated[BrandDiscoveryAgentId | None, Field(description='Stable brand identifier the leaf uses for itself. Optional but recommended.')] = None
     observed_at: Annotated[AwareDatetime | None, Field(description="When the caller observed the leaf's claim.")] = None
 
 

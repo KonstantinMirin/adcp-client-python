@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import HttpUrl, IntMin1Max99, StrMatching611F08F3, StrMatchingEFC12812, StrMaxLen128, StrMaxLen8192
+from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, AdCPVersionEnvelopeAdcpVersion, HttpUrl, IntMin1Max99, SealedCredentialsItemPayload, StrMaxLen128
 
 from ..core.brand_ref import BrandReference
 from ..enums.attestation_claim import AttestationClaim
@@ -76,7 +76,7 @@ class SealedCredentialsItem(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='trusted-match/identity-match-request.json', pointer='#/properties/sealed_credentials/items')
     audience_kid: Annotated[StrMaxLen128, Field(description='Key id identifying the recipient (network / relying party) whose HPKE private key opens `payload`.')]
-    payload: Annotated[StrMaxLen8192, Field(description='HPKE-sealed attestation in the TMPX envelope format: `kid.base64url_nopad(ciphertext)` — unpadded base64url per RFC 4648 §5. Opaque pass-through for the publisher.')]
+    payload: Annotated[SealedCredentialsItemPayload, Field(description='HPKE-sealed attestation in the TMPX envelope format: `kid.base64url_nopad(ciphertext)` — unpadded base64url per RFC 4648 §5. Opaque pass-through for the publisher.')]
 
 
 class IdentityMatchRequest(AdCPBaseModel):
@@ -88,7 +88,7 @@ class IdentityMatchRequest(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='trusted-match/identity-match-request.json', pointer='#')
     schema_: Annotated[HttpUrl | None, Field(alias='$schema', description='Optional schema URI for validation. Ignored at runtime.')] = None
-    adcp_version: Annotated[StrMatching611F08F3 | None, Field(description='Release-precision AdCP version (VERSION.RELEASE, e.g. "3.0", "3.1", "3.1-beta"). On a request: the buyer\'s release pin. Inlined here (rather than via core/version-envelope.json allOf) so this schema can keep `additionalProperties: false` — the privacy boundary on this endpoint is contract-bearing.')] = None
+    adcp_version: Annotated[AdCPVersionEnvelopeAdcpVersion | None, Field(description='Release-precision AdCP version (VERSION.RELEASE, e.g. "3.0", "3.1", "3.1-beta"). On a request: the buyer\'s release pin. Inlined here (rather than via core/version-envelope.json allOf) so this schema can keep `additionalProperties: false` — the privacy boundary on this endpoint is contract-bearing.')] = None
     adcp_major_version: Annotated[IntMin1Max99 | None, Field(description='DEPRECATED in favor of adcp_version. Removed in 4.0. Inlined alongside adcp_version to preserve strict-mode on this endpoint.')] = None
     type: Annotated[Literal['identity_match_request'], Field(description='Message type discriminator for deserialization.')]
     protocol_version: Annotated[str | None, Field(description='TMP protocol version. Allows receivers to handle semantic differences across versions.')] = '1.0'
@@ -97,7 +97,7 @@ class IdentityMatchRequest(AdCPBaseModel):
     identities: Annotated[list[IdentitiesItem], Field(description='Identity tokens for the user, each tagged with its type. Publishers SHOULD include every token they have available — the buyer resolves on whichever graph matches. Entry order is not semantically significant; buyers use their own preference order when multiple entries resolve. Duplicate `(uid_type, user_token)` pairs MUST NOT appear; routers MAY reject or dedupe. `maxItems: 3` matches the TMPX plaintext budget (~120 bytes after HPKE overhead fits three 32-byte tokens); exceeding it forces buyer-side truncation.', max_length=3, min_length=1)]
     consent: Annotated[Consent | None, Field(description='Privacy consent signals. Buyers in regulated jurisdictions MUST NOT process the user token without consent information.')] = None
     package_ids: Annotated[list[str] | None, Field(description="Optional. When omitted, the buyer evaluates eligibility against the full set of active packages it has registered for `seller_agent_url`. When provided, the composition of `package_ids` MUST be statistically independent of the current placement — sending only the page-specific subset would let the buyer correlate Identity Match with Context Match by comparing package sets. Two acceptable modes: (a) **all-active** — include every active package this buyer has at this publisher; (b) **fuzzed** — include a random sample of active packages, optionally padded with synthetic non-existent IDs, drawn from a distribution that does not depend on the current placement. The buyer's silent-drop behavior on unknown IDs (specified below) is what makes synthetic-ID padding safe — they do not affect the response shape and cannot leak registry membership. When both `seller_agent_url` and `package_ids` are present, the buyer evaluates against the intersection of its registered active set and `package_ids`; IDs in `package_ids` that the buyer has not registered for this seller MUST be silently ignored (not surfaced as errors) to avoid leaking registry membership back to the publisher.", min_length=1)] = None
-    country: Annotated[StrMatchingEFC12812 | None, Field(description='ISO 3166-1 alpha-2 country code. Routing directive for the TMP Router — used to select the correct regional provider. The router MUST strip this field before forwarding the request to the buyer agent. Not an identity signal.')] = None
+    country: Annotated[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem | None, Field(description='ISO 3166-1 alpha-2 country code. Routing directive for the TMP Router — used to select the correct regional provider. The router MUST strip this field before forwarding the request to the buyer agent. Not an identity signal.')] = None
     sealed_credentials: Annotated[list[SealedCredentialsItem] | None, Field(description='Optional HPKE-sealed credentials addressed to specific audiences — the network-as-RP ("issuer-as-RP"/Mechanism B) carrier. Each payload is opaque to the publisher, who relays it untouched; the inner plaintext is an `attestation` (see identities[].attestation) scoped to the audience\'s relying party. Reuses the TMPX envelope format. Router handling (normative — see docs/trusted-match/specification.mdx): the router forwards each entry only to the provider that owns its `audience_kid` (not broadcast), folds `sealed_credentials` into the per-provider re-signature canonical bytes so an injected/swapped blob breaks the signature, and includes a `sealed_credentials_hash` in the dedup cache key. Receivers decrypt only entries whose `audience_kid` they hold a key for and ignore the rest. Receivers MUST bound count and size to prevent DoS amplification.', max_length=8)] = None
 
 

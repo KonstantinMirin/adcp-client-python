@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import StrMaxLen100Matching85112285, StrMaxLen255, StrMaxLen500, StrMaxLen500Matching94B96057, StrMinLen1MaxLen100Matching85112285, StrMinLen1MaxLen255, StrMinLen1MaxLen255Matching67860854
+from adcp.types.constraints import AccountChangeChangedPathsItem, ComplyTestControllerRequestParamsReceivedReportingRevisionId, ListAccountChangesRequestResourceTypesItem, Reason, StrMaxLen255, StrMaxLen500, StrMinLen1MaxLen255
 
 from .ext import ExtensionObject
 
@@ -21,7 +21,7 @@ class Resource(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/account-change.json', pointer='#/properties/resource')
-    type: Annotated[StrMinLen1MaxLen100Matching85112285, Field(description='Open resource-type name such as account, media_buy, package, creative, creative_assignment, delivery_report, audience, event_source, catalog, or account_financials.')]
+    type: Annotated[ListAccountChangesRequestResourceTypesItem, Field(description='Open resource-type name such as account, media_buy, package, creative, creative_assignment, delivery_report, audience, event_source, catalog, or account_financials.')]
     account_id: Annotated[StrMinLen1MaxLen255, Field(description='Seller-assigned account containing the resource.')]
     resource_id: Annotated[StrMinLen1MaxLen255, Field(description='Canonical identifier for the resource within its type. For an account change this equals account_id.')]
     parent_ids: Annotated[dict[str, StrMaxLen255] | None, Field(description='Additional canonical parent identifiers needed to repair a nested resource, for example media_buy_id and package_id for a creative assignment. Keys and values MUST NOT contain sensitive payload data.', max_length=12)] = None
@@ -118,18 +118,18 @@ class AccountChange(AdCPBaseModel):
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='core/account-change.json', pointer='#/properties/ext', keyword='maxProperties', kind='WIDENED', rung='KEYWORD', fact=20, attribution='docs/plan/rebuild-plan.md §5 objects/maxProperties'),
     )
-    change_id: Annotated[StrMinLen1MaxLen255Matching67860854, Field(description='Stable seller-generated identifier for this logical change. Retries and notification re-emissions reuse this identifier.')]
+    change_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId, Field(description='Stable seller-generated identifier for this logical change. Retries and notification re-emissions reuse this identifier.')]
     recorded_at: Annotated[AwareDatetime, Field(description='Time the seller committed or durably observed the change. Feed order is defined by the cursor, not by this timestamp.')]
     occurred_at: Annotated[AwareDatetime | None, Field(description='Upstream business time when the change occurred, only when the seller can establish it reliably.')] = None
-    batch_id: Annotated[StrMinLen1MaxLen255Matching67860854 | None, Field(description='Optional stable identifier grouping records produced by one committed operation or one external-source ingestion batch. Each independently repairable authoritative identity still receives its own record; batch_id does not change cursor ordering or notification identity.')] = None
+    batch_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId | None, Field(description='Optional stable identifier grouping records produced by one committed operation or one external-source ingestion batch. Each independently repairable authoritative identity still receives its own record; batch_id does not change cursor ordering or notification identity.')] = None
     resource: Annotated[Resource, Field(description='Stable identity of the changed resource. Resource types are open for forward compatibility. account_id is always present; resource_id identifies the changed entity and parent_ids supplies any IDs needed to disambiguate nested resources.')]
-    action: Annotated[StrMinLen1MaxLen100Matching85112285, Field(description='Material change action. Standard values are created, discovered, updated, status_changed, linked, unlinked, deleted, and purged. Future standard or vendor-namespaced values are allowed; receivers MUST treat unknown values as generic invalidations.')]
+    action: Annotated[ListAccountChangesRequestResourceTypesItem, Field(description='Material change action. Standard values are created, discovered, updated, status_changed, linked, unlinked, deleted, and purged. Future standard or vendor-namespaced values are allowed; receivers MUST treat unknown values as generic invalidations.')]
     origin: Annotated[Origin, Field(description='Server-derived origin classification. The seller MUST NOT trust caller-supplied origin or actor claims.')]
     resource_revision: Annotated[int | str | None, Field(description='Post-change revision exposed by the repair read, when that resource family defines one.')] = None
-    changed_paths: Annotated[list[StrMaxLen500Matching94B96057] | None, Field(description='Bounded set of RFC 6901 JSON Pointers naming material fields that changed. Values are intentionally omitted.', json_schema_extra={'uniqueItems': True}, max_length=64)] = None
+    changed_paths: Annotated[list[AccountChangeChangedPathsItem] | None, Field(description='Bounded set of RFC 6901 JSON Pointers naming material fields that changed. Values are intentionally omitted.', json_schema_extra={'uniqueItems': True}, max_length=64)] = None
     repair: Annotated[Repair, Field(description='Authoritative AdCP read the receiver uses to reconcile current state. The buyer constructs safe request arguments from the structured resource identity. A deleted or legally purged resource may instead declare unavailable with a categorical reason.')]
     actor: Annotated[Actor | None, Field(description='Optional privacy-safe actor classification. Sellers MUST omit direct personal identifiers unless the authenticated caller is authorized for them.')] = None
-    reason: Annotated[StrMaxLen100Matching85112285 | None, Field(description='Short machine-readable reason code, when available.')] = None
+    reason: Annotated[Reason | None, Field(description='Short machine-readable reason code, when available.')] = None
     summary: Annotated[StrMaxLen500 | None, Field(description='Optional brief, untrusted human-readable summary. MUST NOT contain secrets or sensitive payload data.')] = None
     ext: Annotated[ExtensionObject | None, Field(description='Bounded vendor extensions. The entire encoded change record, including extensions, MUST NOT exceed 64 KiB and remains subject to the same secret/PII prohibitions.')] = None
 

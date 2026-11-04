@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import StrMatchingEFC12812, StrMinLen1
+from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, StrMinLen1
 
 from .ext import ExtensionObject
 from .geo_place_system import GeographicPlaceIdentifierSystem
@@ -25,7 +25,7 @@ class GeographicPlaceArea(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('values'),
     )
-    country: Annotated[StrMatchingEFC12812, Field(description='ISO 3166-1 alpha-2 country code containing the place.')]
+    country: Annotated[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, Field(description='ISO 3166-1 alpha-2 country code containing the place.')]
     system: GeographicPlaceIdentifierSystem
     system_version: Annotated[StrMinLen1 | None, Field(description="Optional exact catalog version from the seller's declared supported_versions. When omitted, the seller applies catalog.current_version and MUST echo that version on persisted package state.")] = None
     place_type: GeographicPlaceType

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import IntMin1, StrMatching43E30B32, StrMaxLen500, StrMinLen1, StrMinLen16MaxLen255Matching1E5CF9EB, StrMinLen1MaxLen255Matching130C1C9D, StrMinLen1MaxLen4096MatchingB34ADF3C
+from adcp.types.constraints import GetAccountFinancialsResponseSuccessCurrency, GovernanceContext, IntMin1, MediaBuyName, StrMaxLen500, StrMinLen1, SyncAccountsRequestIdempotencyKey
 
 from ..core.account_ref import AccountReference
 from ..core.bidding_policy import BiddingPolicy
@@ -33,7 +33,7 @@ class TotalBudget(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/update-media-buy-request.json', pointer='#/properties/total_budget')
     amount: NonNegativeFloat
-    currency: StrMatching43E30B32
+    currency: GetAccountFinancialsResponseSuccessCurrency
 
 
 class UpdateMediaBuyRequest(AdCPVersionEnvelope):
@@ -44,10 +44,10 @@ class UpdateMediaBuyRequest(AdCPVersionEnvelope):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/update-media-buy-request.json', pointer='#')
-    governance_context: Annotated[StrMinLen1MaxLen4096MatchingB34ADF3C | None, Field(description='Opaque intent authorization for a commitment-increasing media-buy update.')] = None
+    governance_context: Annotated[GovernanceContext | None, Field(description='Opaque intent authorization for a commitment-increasing media-buy update.')] = None
     account: Annotated[AccountReference, Field(description='Account that owns this media buy. Pass a natural key (brand, operator, optional sandbox) or a seller-assigned account_id from list_accounts. Required for governance checks and account resolution.')]
     media_buy_id: Annotated[str, Field(description="Seller's ID of the media buy to update")]
-    name: Annotated[StrMinLen1MaxLen255Matching130C1C9D | None, Field(description='Replacement human-readable name for this media buy, used for trafficking UI display and operational communication. Sellers that cannot update name mid-flight SHOULD echo the prior unchanged value in the success response rather than silently dropping the field. This display label is not an identifier or financial reference.')] = None
+    name: Annotated[MediaBuyName | None, Field(description='Replacement human-readable name for this media buy, used for trafficking UI display and operational communication. Sellers that cannot update name mid-flight SHOULD echo the prior unchanged value in the success response rather than silently dropping the field. This display label is not an identifier or financial reference.')] = None
     revision: Annotated[IntMin1 | None, Field(description="Expected current revision for optimistic concurrency. Optional for backward compatibility. When provided, sellers MUST reject the update with CONFLICT if the media buy's current revision does not match, and MUST enforce that comparison atomically with the write. Obtain from get_media_buys or the most recent create/update response.")] = None
     paused: Annotated[bool | None, Field(description='Pause/resume the entire media buy (true = paused, false = active)')] = None
     canceled: Annotated[Literal[True] | None, Field(description='Cancel the entire media buy. Cancellation is irreversible — canceled media buys cannot be reactivated. Sellers MAY reject with NOT_CANCELLABLE if the media buy cannot be canceled in its current state.')] = None
@@ -66,7 +66,7 @@ class UpdateMediaBuyRequest(AdCPVersionEnvelope):
     new_packages: Annotated[list[PackageRequest] | None, Field(description='New packages to add to this media buy. Uses the same schema as create_media_buy packages. When budget_allocation is omitted or fixed, every new package MUST carry budget and MUST NOT carry min_spend_target. To add a package without a hard cap to an existing seller-optimized buy, include its resulting seller_optimized budget_allocation block in the update so the allocation context is schema-visible. Repeating an unchanged allocation block does not itself switch modes. Sellers that support mid-flight package additions advertise `add_packages` in both `valid_actions[]` (deprecated) and as an entry in `available_actions[]` (authoritative). Sellers that do not support this MUST reject with ACTION_NOT_ALLOWED (preferred) or UNSUPPORTED_FEATURE (legacy). If the buy has a root frequency_cap, every added product must support that exact aggregate cap; otherwise the seller rejects atomically with UNSUPPORTED_FEATURE, leaving the whole update unapplied and preserving the buy and its counter history.', min_length=1)] = None
     reporting_webhook: Annotated[ReportingWebhook | None, Field(description='Optional webhook configuration for automated reporting delivery. Updates the reporting configuration for this media buy.')] = None
     push_notification_config: Annotated[PushNotificationConfig | None, Field(description='Optional webhook configuration for async update notifications. Publisher will send webhook when update completes if operation takes longer than immediate response time. This is separate from reporting_webhook which configures ongoing campaign reporting.')] = None
-    idempotency_key: Annotated[StrMinLen16MaxLen255Matching1E5CF9EB, Field(description='Client-generated idempotency key for safe retries. If an update fails without a response, resending with the same idempotency_key guarantees the update is applied at most once. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.')]
+    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Client-generated idempotency key for safe retries. If an update fails without a response, resending with the same idempotency_key guarantees the update is applied at most once. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.')]
     context: ContextObject | None = None
     ext: ExtensionObject | None = None
 

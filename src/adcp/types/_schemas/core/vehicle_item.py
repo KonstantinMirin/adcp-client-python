@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import FloatMinNeg180Max180, FloatMinNeg90Max90, HttpUrl, IntMin1900
+from adcp.types.constraints import FloatMinNeg180Max180, FloatMinNeg90Max90, HttpUrl, Year
 
 from .ext import ExtensionObject
 from .offering_asset_group import OfferingAssetGroup
@@ -101,7 +101,7 @@ class VehicleItem(AdCPBaseModel):
     title: Annotated[str, Field(description="Listing title (e.g., '2024 Honda Civic EX Sedan').")]
     make: Annotated[str, Field(description="Vehicle manufacturer (e.g., 'Honda', 'Ford', 'BMW').")]
     model: Annotated[str, Field(description="Vehicle model (e.g., 'Civic', 'F-150', 'X5').")]
-    year: Annotated[IntMin1900, Field(description='Model year.')]
+    year: Annotated[Year, Field(description='Model year.')]
     price: Annotated[Price | None, Field(description='Vehicle price.')] = None
     condition: Annotated[Condition | None, Field(description='Vehicle condition.')] = None
     vin: Annotated[str | None, Field(description='Vehicle Identification Number (17-character VIN).')] = None

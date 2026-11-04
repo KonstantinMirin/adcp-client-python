@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule, UniqueItems
-from adcp.types.constraints import AdCPUrl, HttpUrl, IntMin1, IntMin1Max90, StrMatching59861E88, StrMatchingA828669D, StrMatchingEFC12812, StrMaxLen2000, StrMaxLen253, StrMaxLen500, StrMinLen1, StrMinLen1MaxLen255
+from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, AdCPAgentsAuthorizationAuthorizedAgentsItemSignalTagsItem, AdCPUrl, DataSubjectRightsResponseSlaDays, DataSubjectRightsUpstreamSourceDomain, HttpUrl, IntMin1, StrMaxLen2000, StrMaxLen500, StrMinLen1, StrMinLen1MaxLen255
 
 from ..enums.audience_resolution_method import AudienceResolutionMethod
 from ..enums.audience_subject_type import AudienceSubjectType
@@ -150,7 +150,7 @@ class Modeling(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-definition.json', pointer='#/properties/modeling')
     method: Method
     seed_source: SeedSource
-    training_data_jurisdictions: Annotated[list[StrMatchingEFC12812], Field(description="ISO 3166-1 alpha-2 country codes where the model's training data was collected.", min_length=1)]
+    training_data_jurisdictions: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem], Field(description="ISO 3166-1 alpha-2 country codes where the model's training data was collected.", min_length=1)]
     ai_act_risk_class: Annotated[AiActRiskClass, Field(description='EU AI Act risk classification self-declared by the provider. Prohibited-risk modeled signals must not be published as AdCP signal definitions.')]
     disclosure: Annotated[SignalModelingDisclosure | None, Field(description='Signal/modeling-specific disclosure requirements and jurisdictional notes. This is not creative provenance render guidance.')] = None
 
@@ -168,7 +168,7 @@ class ChannelsItem(AdCPBaseModel):
     url: Annotated[AdCPUrl | None, Field(description='HTTPS URL for submitting the rights request.')] = None
     email: Annotated[str | None, Field(description='Email address for submitting the rights request.', json_schema_extra={'format': 'email'})] = None
     languages: Annotated[list[str] | None, Field(description='BCP 47 language tags supported by this channel.')] = None
-    countries: Annotated[list[StrMatchingEFC12812] | None, Field(description='ISO 3166-1 alpha-2 countries this channel serves, when the provider routes rights by country.')] = None
+    countries: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem] | None, Field(description='ISO 3166-1 alpha-2 countries this channel serves, when the provider routes rights by country.')] = None
 
 
 class DataSubjectRights(AdCPBaseModel):
@@ -179,9 +179,9 @@ class DataSubjectRights(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-definition.json', pointer='#/properties/data_subject_rights')
-    upstream_source_domain: Annotated[StrMaxLen253 | None, Field(description='Domain of the upstream data source whose rights process these channels reach, when different from the publishing domain.', json_schema_extra={'format': 'hostname'})] = None
+    upstream_source_domain: Annotated[DataSubjectRightsUpstreamSourceDomain | None, Field(description='Domain of the upstream data source whose rights process these channels reach, when different from the publishing domain.', json_schema_extra={'format': 'hostname'})] = None
     channels: Annotated[list[ChannelsItem], Field(description='Rights request channels and the rights each channel supports. At least one declared channel MUST support one or more of access, erasure, or objection; schema validators enforce this with draft-07 contains, and consumers whose SDK drops contains need an equivalent runtime check.', min_length=1)]
-    response_sla_days: Annotated[IntMin1Max90 | None, Field(description="Maximum response time in days for rights requests handled through the declared rights channels. For provider-published signals, providers SHOULD avoid duplicating this field across every signal unless the value varies by signal or upstream source; consumers MAY also consult the provider's public privacy policy or registry disclosures when present.")] = None
+    response_sla_days: Annotated[DataSubjectRightsResponseSlaDays | None, Field(description="Maximum response time in days for rights requests handled through the declared rights channels. For provider-published signals, providers SHOULD avoid duplicating this field across every signal unless the value varies by signal or upstream source; consumers MAY also consult the provider's public privacy policy or registry disclosures when present.")] = None
     ccpa_opt_out_url: Annotated[AdCPUrl | None, Field(description="US-specific 'Do Not Sell or Share' opt-out URL where required.")] = None
 
 
@@ -202,11 +202,11 @@ class SignalDefinition(AdCPBaseModel):
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='core/signal-definition.json', pointer='#/allOf/4', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'data_sources': {'type': 'array', 'contains': {'enum': ['offline_survey', 'public_record_census', 'public_record_voter_file', 'public_record_other', 'offline_transaction']}}}, 'required': ['data_sources']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
-    id: Annotated[StrMatchingA828669D, Field(description="Signal identifier within the publishing domain's adagents.json signals[]")]
+    id: Annotated[AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, Field(description="Signal identifier within the publishing domain's adagents.json signals[]")]
     name: Annotated[StrMinLen1MaxLen255, Field(description='Human-readable signal name')]
     description: Annotated[StrMaxLen2000 | None, Field(description="Detailed description of what this signal represents and how it's derived")] = None
     value_type: Annotated[SignalValueType, Field(description="The data type of this signal's values")]
-    tags: Annotated[list[StrMatching59861E88] | None, Field(description="Tags for grouping and filtering this domain's published signal definitions")] = None
+    tags: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemSignalTagsItem] | None, Field(description="Tags for grouping and filtering this domain's published signal definitions")] = None
     allowed_values: Annotated[list[str] | None, Field(description='For categorical signals, the valid values users can be assigned', min_length=1)] = None
     restricted_attributes: Annotated[list[RestrictedAttribute] | None, Field(description="Restricted attribute categories this signal touches. Data providers SHOULD declare these so governance agents can structurally match signals against a plan's restricted_attributes without relying on semantic inference from the signal name or description.", min_length=1)] = None
     demographic_predicate: Annotated[DemographicPredicate | None, Field(description='Authoritative machine-readable demographic meaning for this signal. Signal names and taxonomy labels alone never establish exact demographic equivalence. Signals carrying this field MUST also declare restricted_attributes including age.')] = None
@@ -227,7 +227,7 @@ class SignalDefinition(AdCPBaseModel):
     id_types: Annotated[list[IdTypesItem] | None, Field(description='Identifier currencies analyzed to determine audience membership or attributes.', min_length=1)] = None
     audience_scope: Annotated[AudienceScope | None, Field(description="Context within which the audience attribute was determined. 'single_domain' requires originating_domain.")] = None
     originating_domain: Annotated[str | None, Field(description="Domain of the digital property where the audience originates. Required when audience_scope is 'single_domain'.", json_schema_extra={'format': 'hostname'})] = None
-    countries: Annotated[list[StrMatchingEFC12812] | None, Field(description="ISO 3166-1 alpha-2 country codes where the signal is applicable. Sellers must not expose a signal for media buys in countries outside this list. Federating agents that surface a peer's signal MUST treat the peer-published list as an upper bound, re-check it against the buyer's intended deployment countries, and may apply only narrower local policy.", min_length=1)] = None
+    countries: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem] | None, Field(description="ISO 3166-1 alpha-2 country codes where the signal is applicable. Sellers must not expose a signal for media buys in countries outside this list. Federating agents that surface a peer's signal MUST treat the peer-published list as an upper bound, re-check it against the buyer's intended deployment countries, and may apply only narrower local policy.", min_length=1)] = None
     consent_basis: Annotated[list[ConsentBasis] | None, Field(description="Declared GDPR Article 6 lawful basis or consent basis under which this signal's data is processed. For non-GDPR regimes, use countries, policy_categories, and disclosure fields to describe jurisdiction-specific obligations unless a future enum value applies.", min_length=1)] = None
     art9_basis: Annotated[Art9Basis | None, Field(description='GDPR Article 9 basis when restricted_attributes is non-empty and the signal is used in jurisdictions where Article 9 applies. Required by policy for applicable use cases rather than universally required at schema level because sensitivity and lawful basis are jurisdiction-relative.')] = None
     modeling: Annotated[Modeling | None, Field(description="Modeling disclosure for modeled data signals. Required when methodology is 'modeled' or audience_expansion is true. This describes data modeling and intentionally does not reuse creative provenance, which is content/render oriented.")] = None

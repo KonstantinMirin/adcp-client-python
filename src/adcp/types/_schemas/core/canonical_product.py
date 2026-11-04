@@ -7,7 +7,7 @@ from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field, NonNegati
 
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import Dependencies, ForbiddenGroups, Rule, UniqueItems
-from adcp.types.constraints import StrMatchingEE2029C8, StrMinLen1
+from adcp.types.constraints import CanonicalProductCatalogMatchMatchedGtinsItem, StrMinLen1
 
 from ..enums.audio_distribution_type import AudioDistributionType
 from ..enums.catalog_type import CatalogType
@@ -57,7 +57,7 @@ class CatalogMatch(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/canonical-product.json', pointer='#/properties/catalog_match')
-    matched_gtins: list[StrMatchingEE2029C8] | None = None
+    matched_gtins: list[CanonicalProductCatalogMatchMatchedGtinsItem] | None = None
     matched_ids: list[str] | None = None
     matched_count: NonNegativeInt | None = None
     submitted_count: NonNegativeInt

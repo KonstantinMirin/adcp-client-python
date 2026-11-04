@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import StrMatching43E30B32, StrMinLen16MaxLen255Matching1E5CF9EB
+from adcp.types.constraints import GetAccountFinancialsResponseSuccessCurrency, SyncAccountsRequestIdempotencyKey
 
 from ..core.account_ref import AccountReference
 from ..core.context import ContextObject
@@ -29,7 +29,7 @@ class EventSourcesItem(AdCPBaseModel):
     event_source_id: Annotated[str, Field(description='Unique identifier for this event source')]
     name: Annotated[str | None, Field(description='Human-readable name for this event source')] = None
     event_types: Annotated[list[EventType] | None, Field(description='Event types this source handles (e.g. purchase, lead). If omitted, accepts all event types.', min_length=1)] = None
-    value_currencies: Annotated[list[StrMatching43E30B32] | None, Field(description='ISO 4217 currencies this source accepts for monetary custom_data values. Required for a source used by canonical ROAS. Once declared, log_event monetary records for this source MUST include a currency from this list. Sources omitting the field retain legacy event compatibility but are ineligible for canonical ROAS. One source may list multiple currencies; each media buy consumes only records matching its own currency and no conversion occurs.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    value_currencies: Annotated[list[GetAccountFinancialsResponseSuccessCurrency] | None, Field(description='ISO 4217 currencies this source accepts for monetary custom_data values. Required for a source used by canonical ROAS. Once declared, log_event monetary records for this source MUST include a currency from this list. Sources omitting the field retain legacy event compatibility but are ineligible for canonical ROAS. One source may list multiple currencies; each media buy consumes only records matching its own currency and no conversion occurs.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     action_source: Annotated[ActionSource | None, Field(description='Flat action-source category for this event source, such as website, app, in_store, system_generated, or other. Producers SHOULD also populate `surface` when the flat value is too coarse, and SHOULD keep this field aligned with `surface.category` when the category is also an ActionSource value.')] = None
     allowed_domains: Annotated[list[str] | None, Field(description='Domains authorized to send events for this event source', min_length=1)] = None
     surface: Annotated[EventSurface | None, Field(description='Optional structured surface this source represents, such as an owned channel, profile, feed, podcast, newsletter list, website, app, or store. Complements the flat `action_source` returned by sellers and avoids putting optimization-relevant surface meaning only in `ext`.')] = None
@@ -43,7 +43,7 @@ class SyncEventSourcesRequest(AdCPVersionEnvelope):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/sync-event-sources-request.json', pointer='#')
-    idempotency_key: Annotated[StrMinLen16MaxLen255Matching1E5CF9EB, Field(description='Client-generated unique key for at-most-once execution. `event_source_id` gives resource-level dedup per source, but the sync envelope emits audit events and can trigger downstream pixel provisioning — this key prevents those side effects from firing twice on retry. Also serves as a request ID on discovery-only calls (when `event_sources` is omitted). MUST be unique per (seller, request) pair. Use a fresh UUID v4 for each request.')]
+    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Client-generated unique key for at-most-once execution. `event_source_id` gives resource-level dedup per source, but the sync envelope emits audit events and can trigger downstream pixel provisioning — this key prevents those side effects from firing twice on retry. Also serves as a request ID on discovery-only calls (when `event_sources` is omitted). MUST be unique per (seller, request) pair. Use a fresh UUID v4 for each request.')]
     account: Annotated[AccountReference, Field(description='Account to configure event sources for.')]
     event_sources: Annotated[list[EventSourcesItem] | None, Field(description='Event sources to sync (create or update). When omitted, the call is discovery-only and returns all existing event sources on the account without modification.', min_length=1)] = None
     delete_missing: Annotated[bool | None, Field(description='When true, event sources not included in this sync will be removed')] = False

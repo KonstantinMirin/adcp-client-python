@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import AdCPUrl, IntMin0Max8192, IntMin1Max8192, IntMin6Max256, StrMatching3CBDBB74, StrMatchingF01B4765, StrMaxLen4096
+from adcp.types.constraints import AdCPUrl, BrandDiscoveryColorValue, IntMin0Max8192, IntMin1Max8192, TextDecorationFontSize, TextDecorationText, ZipAssetDigest
 
 
 class Canvas(AdCPBaseModel):
@@ -17,7 +17,7 @@ class Canvas(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/placement-presentation.json', pointer='#/properties/canvas')
     width: IntMin1Max8192
     height: IntMin1Max8192
-    background_color: StrMatchingF01B4765 | None = '#ffffff'
+    background_color: BrandDiscoveryColorValue | None = '#ffffff'
 
 
 _VALUES_CONTAIN_COVER_STRETCH: tuple[str, ...] = (
@@ -68,7 +68,7 @@ class Rectangle(AdCPBaseModel):
     height: IntMin1Max8192
 
 
-Color = StrMatchingF01B4765
+Color = BrandDiscoveryColorValue
 
 
 class BoxDecoration(AdCPBaseModel):
@@ -90,9 +90,9 @@ class TextDecoration(AdCPBaseModel):
     kind: Literal['text']
     layer: Layer
     bounds: Rectangle
-    text: StrMaxLen4096
+    text: TextDecorationText
     text_color: Color
-    font_size: IntMin6Max256
+    font_size: TextDecorationFontSize
 
 
 class ImageRef(AdCPBaseModel):
@@ -101,7 +101,7 @@ class ImageRef(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/placement-presentation.json', pointer='#/definitions/image_decoration/properties/image_ref')
     uri: Annotated[AdCPUrl, Field(description='Untrusted image asset. Fetch with public-address-only SSRF protection, no redirects, DNS pinning, and body/time limits; do not attach ambient credentials.')]
-    digest: Annotated[StrMatching3CBDBB74, Field(description='SHA-256 digest of the exact image bytes. Consumers MUST fail closed on mismatch.')]
+    digest: Annotated[ZipAssetDigest, Field(description='SHA-256 digest of the exact image bytes. Consumers MUST fail closed on mismatch.')]
 
 
 class ImageDecorationFit(StrEnum):

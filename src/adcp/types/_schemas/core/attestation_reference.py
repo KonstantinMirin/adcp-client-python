@@ -7,7 +7,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, PropertyCount, RequiredGroups, Rule
-from adcp.types.constraints import HttpUrl, StrMatching3CBDBB74, StrMinLen1, StrMinLen1MaxLen1024, StrMinLen1MaxLen255, StrMinLen1MaxLen255MatchingEAB1CA79
+from adcp.types.constraints import AttestationCapabilitiesAcceptedIssuersItemResolversItemResolverId, HttpUrl, StrMinLen1, StrMinLen1MaxLen1024, StrMinLen1MaxLen255, ZipAssetDigest
 
 from .attestation_issuer import AttestationIssuer
 from .attestation_subject import AttestationSubject
@@ -31,7 +31,7 @@ class AttestationIssuerCredentialIdLocator(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/attestation-reference.json', pointer='#/properties/locator/oneOf/1')
     type: Literal['issuer_credential_id']
     credential_id: Annotated[StrMinLen1MaxLen1024, Field(description="Stable credential identifier in the issuer's namespace. It is meaningful only together with issuer and resolver_id.")]
-    resolver_id: Annotated[StrMinLen1MaxLen255MatchingEAB1CA79, Field(description='Identifier of a resolver already published in the matched accepted_issuers[].resolvers[] capability. A presenter cannot supply or override its URL.')]
+    resolver_id: Annotated[AttestationCapabilitiesAcceptedIssuersItemResolversItemResolverId, Field(description='Identifier of a resolver already published in the matched accepted_issuers[].resolvers[] capability. A presenter cannot supply or override its URL.')]
     ext: ExtensionObject | None = None
 
 
@@ -91,7 +91,7 @@ class AttestationReference(AdCPBaseModel):
     subject: AttestationSubject
     locator: Annotated[AttestationCredentialUriLocator | AttestationIssuerCredentialIdLocator | None, Field(description='Stable locator for resolving the credential. Credential URLs are permitted only when their canonical origin is allowlisted for the matched issuer. Issuer-scoped IDs name a resolver_id already published by the evaluator; the presentation cannot introduce a resolver URL.')] = None
     embedded_credential: Annotated[EmbeddedCredential | None, Field(description='Optional inline credential for private, authenticated, or offline delivery. It may accompany locator or be the only delivery path. Its format must be supported by the evaluator, and the evaluator MUST verify the credential exactly as it would a resolved credential.')] = None
-    content_digest: Annotated[StrMatching3CBDBB74 | None, Field(description='Optional SHA-256 digest pin for the exact credential bytes, formatted as sha256:<lowercase hex>. The credential format defines its canonical byte representation. A mismatch is invalid and MUST NOT fall back to the unpinned credential. REQUIRED when both locator and embedded_credential are present; both byte representations MUST match this digest.')] = None
+    content_digest: Annotated[ZipAssetDigest | None, Field(description='Optional SHA-256 digest pin for the exact credential bytes, formatted as sha256:<lowercase hex>. The credential format defines its canonical byte representation. A mismatch is invalid and MUST NOT fall back to the unpinned credential. REQUIRED when both locator and embedded_credential are present; both byte representations MUST match this digest.')] = None
     credential_version: Annotated[StrMinLen1MaxLen255 | None, Field(description='Optional issuer-defined credential version hint. It is advisory; the resolved credential is authoritative.')] = None
     validity_hint: Annotated[ValidityHint | None, Field(description="Optional planning-time validity hint copied from issuer metadata. Evaluators MUST use the resolved or embedded credential's signed validity and revocation state as authoritative.")] = None
     verify_agent: Annotated[VerifyAgent | None, Field(description='Optional presenter nomination of a verifier already published by the evaluator. This is a representation, not routing authority: agent_url MUST match an accepted_verifiers[] entry after canonicalization, and the evaluator may choose another accepted verifier or verify locally.')] = None

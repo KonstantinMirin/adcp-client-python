@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import Field
 
 from adcp.types._base import SchemaRef
-from adcp.types.constraints import StrMinLen16MaxLen255Matching1E5CF9EB
+from adcp.types.constraints import SyncAccountsRequestIdempotencyKey
 
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
@@ -21,7 +21,7 @@ class CalibrateContentRequest(AdCPVersionEnvelope):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/calibrate-content-request.json', pointer='#')
     standards_id: Annotated[str, Field(description='Standards configuration to calibrate against')]
     artifact: Annotated[Artifact, Field(description='Artifact to evaluate')]
-    idempotency_key: Annotated[StrMinLen16MaxLen255Matching1E5CF9EB, Field(description='Client-generated unique key for at-most-once execution. If a request with the same key has already been processed, the server returns the original response without re-processing. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.')]
+    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Client-generated unique key for at-most-once execution. If a request with the same key has already been processed, the server returns the original response without re-processing. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.')]
     context: ContextObject | None = None
     ext: ExtensionObject | None = None
 

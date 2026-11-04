@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
-from adcp.types.constraints import StrMatchingEFC12812
+from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem
 
 from ..enums.geo_level import GeographicTargetingLevel
 from .delivery_metrics import DeliveryMetrics
@@ -28,7 +28,7 @@ class GeoDeliveryMetrics(DeliveryMetrics):
     )
     geo_level: Annotated[GeographicTargetingLevel, Field(description='Geographic level of this entry (country, region, metro, postal_area)')]
     system: Annotated[str | None, Field(description='Classification system for metro or postal_area levels. Metro rows use metro-system values. Native postal rows use country-local postal-system values with country; deprecated legacy postal rows may use legacy-postal-system values.')] = None
-    country: Annotated[StrMatchingEFC12812 | None, Field(description='ISO 3166-1 alpha-2 country code for native postal_area rows.')] = None
+    country: Annotated[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem | None, Field(description='ISO 3166-1 alpha-2 country code for native postal_area rows.')] = None
     geo_code: Annotated[str, Field(description="Geographic code within the level and system. Country: ISO 3166-1 alpha-2 ('US'). Region: ISO 3166-2 with country prefix ('US-CA'). Metro/postal: system-specific code ('501', '10001').")]
     geo_name: Annotated[str | None, Field(description="Human-readable geographic name (e.g., 'United States', 'California', 'New York DMA')")] = None
     impressions: Annotated[NonNegativeFloat, Field(description='Impressions delivered')]

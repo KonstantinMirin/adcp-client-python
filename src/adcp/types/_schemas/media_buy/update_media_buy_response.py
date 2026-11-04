@@ -7,7 +7,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule, UniqueItems
-from adcp.types.constraints import IntMin1, StrMatching43E30B32, StrMaxLen2000, StrMinLen1MaxLen255Matching130C1C9D
+from adcp.types.constraints import GetAccountFinancialsResponseSuccessCurrency, IntMin1, MediaBuyName, StrMaxLen2000
 from adcp.types.envelopes import FailedResponse
 
 from ..core.bidding_policy import BiddingPolicy
@@ -67,10 +67,10 @@ class UpdateMediaBuySuccess(UpdateMediaBuyResponse):
         UniqueItems('warnings'),
     )
     media_buy_id: Annotated[str, Field(description="Seller's identifier for the media buy")]
-    name: Annotated[StrMinLen1MaxLen255Matching130C1C9D | None, Field(description='Persisted human-readable name after the update. When update_media_buy supplied name, the seller MUST return the stored value here; a seller that could not apply the replacement SHOULD return the prior unchanged value rather than silently dropping the field. This display label is not an identifier or financial reference.')] = None
+    name: Annotated[MediaBuyName | None, Field(description='Persisted human-readable name after the update. When update_media_buy supplied name, the seller MUST return the stored value here; a seller that could not apply the replacement SHOULD return the prior unchanged value rather than silently dropping the field. This display label is not an identifier or financial reference.')] = None
     media_buy_status: Annotated[MediaBuyStatus | None, Field(description="Media buy status after the update. Present when the update changes the media buy's status (e.g., cancellation transitions to 'canceled', pause transitions to 'paused'). This field carries the media buy lifecycle state; top-level `status` is reserved for the protocol-envelope TaskStatus.")] = None
     revision: Annotated[IntMin1, Field(description='Revision number after this update. Use this value in subsequent update_media_buy requests intended to change state for optimistic concurrency. Exact idempotency replays return the prior revision and do not increment revision.')]
-    currency: Annotated[StrMatching43E30B32 | None, Field(description='ISO 4217 currency code for monetary values at this media buy level. Echoed when the update affects budget or currency. Matches the currency field in subsequent get_media_buys responses.')] = None
+    currency: Annotated[GetAccountFinancialsResponseSuccessCurrency | None, Field(description='ISO 4217 currency code for monetary values at this media buy level. Echoed when the update affects budget or currency. Matches the currency field in subsequent get_media_buys responses.')] = None
     total_budget: Annotated[NonNegativeFloat | None, Field(description='Updated hard aggregate lifetime budget, denominated in currency. Echoed when the update affects the shared total or package budgets so buyers can verify the new aggregate without a round-trip to get_media_buys.')] = None
     daily_budget_cap: Annotated[NonNegativeFloat | None, Field(description='Post-update hard aggregate daily spend ceiling. Echoed when the update sets or changes the aggregate daily cap; omitted after the cap is removed.')] = None
     frequency_cap: Annotated[MediaBuyFrequencyCap | None, Field(description='Post-update shared MediaBuy frequency cap. Echoed when the update sets or changes it; omitted after removal.')] = None

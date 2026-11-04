@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import FloatMin0Max5, HttpUrl, StrMatchingB0B1C6A4
+from adcp.types.constraints import AppItemAppleId, FloatMin0Max5, HttpUrl
 
 from .ext import ExtensionObject
 from .offering_asset_group import OfferingAssetGroup
@@ -34,7 +34,7 @@ class AppItem(AdCPBaseModel):
     name: Annotated[str, Field(description="App display name as shown in the store (e.g., 'Puzzle Quest: Match 3', 'Acme Banking').")]
     platform: Annotated[Platform, Field(description='Target platform. iOS and Android are separate items because they have distinct store identifiers and attribution mechanisms.')]
     bundle_id: Annotated[str | None, Field(description="Reverse-domain bundle identifier (e.g., 'com.acmegames.puzzlequest'). The universal store identifier: required for Android (Google Play), also used for iOS MMP attribution, SKAN matching, and app-ads.txt verification. Distinct from app_id, which is a buyer-assigned catalog key.")] = None
-    apple_id: Annotated[StrMatchingB0B1C6A4 | None, Field(description="Numeric Apple App Store ID (e.g., '389801252'). Required for Apple Search Ads and iOS platforms that use the numeric ID rather than bundle_id.")] = None
+    apple_id: Annotated[AppItemAppleId | None, Field(description="Numeric Apple App Store ID (e.g., '389801252'). Required for Apple Search Ads and iOS platforms that use the numeric ID rather than bundle_id.")] = None
     description: Annotated[str | None, Field(description='App description. Platforms typically pull this from the store listing automatically; supply here to override or for platforms that require it in the request.')] = None
     category: Annotated[str | None, Field(description="Primary store category (e.g., 'games', 'productivity', 'finance', 'health_fitness', 'social_networking').")] = None
     genre: Annotated[str | None, Field(description="Sub-genre within the category. Particularly relevant for games (e.g., 'puzzle', 'strategy', 'rpg', 'casual', 'simulation', 'action').")] = None

@@ -6,7 +6,7 @@ from typing import ClassVar
 from pydantic import ConfigDict
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import StrMatching3CBDBB74, StrMatching71E52EB8, StrMinLen1
+from adcp.types.constraints import StrMediaBuyChangeTermID, StrMinLen1, ZipAssetDigest
 
 
 class RegistryAcceptancePolicyProfileReference(AdCPBaseModel):
@@ -19,10 +19,10 @@ class RegistryAcceptancePolicyProfileReference(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/acceptance-policy-profile-ref.json', pointer='#')
     policy_id: StrMinLen1
     policy_version: StrMinLen1
-    policy_digest: StrMatching3CBDBB74
-    profile_id: StrMatching71E52EB8
+    policy_digest: ZipAssetDigest
+    profile_id: StrMediaBuyChangeTermID
     profile_version: StrMinLen1
-    profile_digest: StrMatching3CBDBB74
+    profile_digest: ZipAssetDigest
 
 
 __all__ = ["RegistryAcceptancePolicyProfileReference"]

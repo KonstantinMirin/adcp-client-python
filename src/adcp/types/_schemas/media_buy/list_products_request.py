@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
 from adcp.types._runtime import Dependencies, Rule
-from adcp.types.constraints import IntMin1Max100, StrMinLen1, StrMinLen16MaxLen255Matching1E5CF9EB, StrMinLen1MaxLen4096
+from adcp.types.constraints import IntMin1Max100, StrMinLen1, StrMinLen1MaxLen4096, SyncAccountsRequestIdempotencyKey
 
 from ..core.brand_key import BrandKey
 from ..core.canonical_account_ref import CanonicalAccountReference
@@ -38,7 +38,7 @@ class ListProductsRequest(AdCPVersionEnvelope):
     )
     adcp_version: AdcpVersion | None = None
     adcp_major_version: AdcpMajorVersion | None = None
-    idempotency_key: Annotated[StrMinLen16MaxLen255Matching1E5CF9EB | None, Field(description='Optional replay key accepted uniformly on read calls.')] = None
+    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey | None, Field(description='Optional replay key accepted uniformly on read calls.')] = None
     context_id: Annotated[StrMinLen1 | None, Field(description='MCP compatibility field: servers ignore this value; A2A uses transport-native Message/Task contextId.')] = None
     context: ContextObject | None = None
     governance_context: StrMinLen1MaxLen4096 | None = None

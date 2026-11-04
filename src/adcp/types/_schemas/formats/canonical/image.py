@@ -8,7 +8,7 @@ from pydantic import ConfigDict, Field, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Presence, PresenceGroups, Rule, UniqueItems
-from adcp.types.constraints import FloatGt0, IntMin1, StrMatchingF601B9EB
+from adcp.types.constraints import CanonicalFormatImageAspectRatio, FloatGt0, IntMin1
 
 from ...common._vocabularies import _VALUES_ACCEPTED_REJECTED
 from ...core.canonical_projection_ref import AssetSource
@@ -73,7 +73,7 @@ class CanonicalFormatImage(CanonicalFormatBase):
     max_width: Annotated[IntMin1 | None, Field(description='Maximum accepted width in pixels for responsive slots. Pair with `min_width`. See `min_width` for size-mode mutual exclusion.')] = None
     min_height: Annotated[IntMin1 | None, Field(description='Minimum accepted height in pixels for responsive slots. Pair with `max_height`.')] = None
     max_height: Annotated[IntMin1 | None, Field(description='Maximum accepted height in pixels for responsive slots. Pair with `min_height`.')] = None
-    aspect_ratio: Annotated[StrMatchingF601B9EB | None, Field(description="Optional aspect ratio constraint (e.g., '1.91:1', '1:1'). When provided alongside `width`/`height`, must agree. When used with `sizes[]` or responsive ranges, narrows accepted entries to those matching the aspect ratio.")] = None
+    aspect_ratio: Annotated[CanonicalFormatImageAspectRatio | None, Field(description="Optional aspect ratio constraint (e.g., '1.91:1', '1:1'). When provided alongside `width`/`height`, must agree. When used with `sizes[]` or responsive ranges, narrows accepted entries to those matching the aspect ratio.")] = None
     max_file_size_kb: Annotated[IntMin1 | None, Field(description='Maximum file size in kilobytes.')] = None
     image_formats: Annotated[list[ImageFormatsItem] | None, Field(description='Permitted image file formats.')] = None
     ssl_required: Annotated[bool | None, Field(description='Whether the image and its trackers must be served over HTTPS.')] = None

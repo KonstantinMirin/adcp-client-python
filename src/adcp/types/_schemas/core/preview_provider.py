@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import AdCPUrl, StrMatchingA828669D, StrMinLen1
+from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, AdCPUrl, StrMinLen1
 
 
 class RoutesItem(AdCPBaseModel):
@@ -15,7 +15,7 @@ class RoutesItem(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/preview-provider.json', pointer='#/properties/routes/items')
     format_option_id: Annotated[StrMinLen1, Field(description='Format option in this adagents.json placement for which the delegation applies. It MUST resolve through the same-file top-level formats[] catalog or an inline placement format declaration.')]
-    capability_id: Annotated[StrMatchingA828669D, Field(description="Agent-local preview capability advertised by the delegated provider. The provider's canonical format declaration MUST satisfy the resolved placement format option.")]
+    capability_id: Annotated[AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, Field(description="Agent-local preview capability advertised by the delegated provider. The provider's canonical format declaration MUST satisfy the resolved placement format option.")]
     covers_placement_presentation: Annotated[bool | None, Field(description="True only when the publisher delegates both creative rendering and the complete placement-specific frame to this route. When false or omitted, consumers compose any presentation_ref around the provider's creative render.")] = False
 
 

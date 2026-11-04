@@ -24,16 +24,32 @@ The long version, with ten themes and a tag for whose problem each is, is
 83 sites share one regex; it cannot know the regex means "ISO 4217 currency code", so it names the
 type after a hash of the pattern.
 
-**What it costs a consumer today.** On our emitted tree, **85 of 160** constraint aliases are
-named by a hex digest, and a currency field reads:
+**What it costs a consumer today.** **The hex digest is gone and the ask is not.** Until
+2026-11-04 a currency field read `Annotated[StrMatching43E30B32, ...]`, and
+`rebuild-plan.md` §4 now rules a digest a defect: a name must say what the type constrains.
+§3a's layer L1 collects the constrained scalars over the bundle and §4's three ordered steps
+name each one, so what a consumer imports today is a name — and **63 of the layer's 236
+constraints take it from the POSITION THAT DECLARES THEM, because the bundle names their
+subject nowhere or names it differently at different sites**:
 
 ```python
-currency: Annotated[StrMatching43E30B32, Field(description='ISO 4217 currency code')]
+currency: Annotated[
+    GetAccountFinancialsResponseSuccessCurrency,       # 86 positions, 62 documents
+    Field(description='ISO 4217 currency code'),
+]
 ```
 
-in **20 modules**. The description knows what it is; the type cannot say so. Separately, **38
-fields are `dict[str, Any]`**, because an object with no declared `properties` can only become a
-mapping, and every name inside it is lost.
+That is a name a reader can follow to a position, and it is still not the name the field
+wants. **This ask is what closes the gap**: a titled `core/currency-code.json` moves the
+entry from §4's step 3 to its step 1 and the symbol becomes `CurrencyCode` — derived from
+the bundle, at every one of the 86 sites, with nothing minted here. The 63 are the
+population, over **752 positions in 322 documents**.
+
+The figure this paragraph used to carry — 85 of 160 aliases digest-named — was a reading of
+an older tree; at `f3b369d7` it was 114 of 228, and it is now 0 of 228.
+
+Separately, **38 fields are `dict[str, Any]`**, because an object with no declared
+`properties` can only become a mapping, and every name inside it is lost.
 
 **The change.** Extract each repeated subschema into its own titled document and `$ref` it. We
 have prepared the first five, covering **307 sites over 200 documents** — `patches/8525/` in this

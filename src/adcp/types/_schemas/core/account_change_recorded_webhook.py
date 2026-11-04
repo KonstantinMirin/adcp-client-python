@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
-from adcp.types.constraints import StrMaxLen255, StrMinLen16MaxLen255Matching1E5CF9EB, StrMinLen1MaxLen100, StrMinLen1MaxLen100Matching85112285, StrMinLen1MaxLen255, StrMinLen1MaxLen255Matching67860854, StrMinLen1MaxLen4096, StrMinLen1MaxLen64MatchingD373B860
+from adcp.types.constraints import AccountChangeRecordedWebhookSubscriberId, ComplyTestControllerRequestParamsReceivedReportingRevisionId, ListAccountChangesRequestResourceTypesItem, StrMaxLen255, StrMinLen1MaxLen100, StrMinLen1MaxLen255, StrMinLen1MaxLen4096, SyncAccountsRequestIdempotencyKey
 
 from .ext import ExtensionObject
 
@@ -19,7 +19,7 @@ class Resource(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/account-change-recorded-webhook.json', pointer='#/properties/resource')
-    type: StrMinLen1MaxLen100Matching85112285
+    type: ListAccountChangesRequestResourceTypesItem
     resource_id: StrMinLen1MaxLen255
     parent_ids: Annotated[dict[str, StrMaxLen255] | None, Field(max_length=12)] = None
 
@@ -35,13 +35,13 @@ class AccountChangeRecordedWebhook(AdCPBaseModel):
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='core/account-change-recorded-webhook.json', pointer='#/properties/ext', keyword='maxProperties', kind='WIDENED', rung='KEYWORD', fact=20, attribution='docs/plan/rebuild-plan.md §5 objects/maxProperties'),
     )
-    idempotency_key: Annotated[StrMinLen16MaxLen255Matching1E5CF9EB, Field(description='Sender-generated delivery key stable across retries of one fire. Deliberate re-emission uses a new key.')]
-    notification_id: Annotated[StrMinLen1MaxLen255Matching67860854, Field(description='Logical notification identifier. Always equals change_id; retries and deliberate re-emissions of the same change retain it.')]
+    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Sender-generated delivery key stable across retries of one fire. Deliberate re-emission uses a new key.')]
+    notification_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId, Field(description='Logical notification identifier. Always equals change_id; retries and deliberate re-emissions of the same change retain it.')]
     notification_type: Literal['account.change_recorded']
     fired_at: AwareDatetime
-    subscriber_id: StrMinLen1MaxLen64MatchingD373B860
+    subscriber_id: AccountChangeRecordedWebhookSubscriberId
     account_id: StrMinLen1MaxLen255
-    change_id: StrMinLen1MaxLen255Matching67860854
+    change_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId
     recorded_at: AwareDatetime
     resource: Annotated[Resource, Field(description='Resource identity copied from the corresponding account change record.')]
     action: StrMinLen1MaxLen100

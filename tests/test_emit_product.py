@@ -44,7 +44,7 @@ from compiled import compiled
 from conftest import refusal_from
 
 from adcp.types import _base, constraints
-from codegen import bundle, compiler, emit, intersect, ir, keywords, refusal, render, store
+from codegen import bundle, catalogue, compiler, emit, intersect, ir, keywords, refusal, render, store
 from codegen import constraints as constraints_module
 from codegen.harness import Pair, check_pair, violated_keywords
 from codegen.lower import composition, names
@@ -742,18 +742,33 @@ def install_run_aliases(out: emit.Emitted, monkeypatch) -> list[str]:
     Returns the symbols it added, so a caller can assert the probe reached the row
     at all rather than trusting that it did.
 
-    Nothing is overwritten and nothing can be: an alias's NAME is a function of its
-    constraint (``codegen.constraints.symbol``, with ``check_injective`` failing the
-    build if two shapes ever derive one name), so a symbol present in both the
-    bundle's module and a probe run's module is the same annotated type in both.
-    Only the names the installed module lacks are added, and ``monkeypatch``
-    removes them when the test ends.
+    **THE RUN'S OWN MODULE WINS, INCLUDING OVER A NAME THE INSTALLED ONE ALREADY HAS**,
+    and that changed on 2026-11-04 with §3a's layer L1.  This function used to add only
+    the missing names, on the ground that "an alias's NAME is a function of its
+    constraint, so a symbol present in both the bundle's module and a probe run's module
+    is the same annotated type in both".  That premise is now false: ``rebuild-plan.md``
+    §4 names an alias after the subject the BUNDLE gives it or after its DECLARING
+    POSITION, so the name is a function of the constraint **and of the bundle it was
+    collected over** -- which §9 permits, because a bundle is an input to every run alike,
+    and which makes two bundles' alias modules unmergeable by name.
+
+    Measured when it was still skipping: the probe bundle copies
+    ``core/version-envelope.json`` byte for byte but holds three documents, so its L1
+    layer homes ``adcp_version``'s pattern at a different position and derives a name the
+    installed module already binds to the real bundle's shape.  The probe's tree was then
+    annotated with the real bundle's pattern and the accepts check read
+    ``model_refused_valid`` -- a wrong answer rather than an ``ImportError``, which is why
+    this is an overwrite and not a second lookup.
+
+    The tree under test is the probe RUN's, so the run's alias module is its authority.
+    ``monkeypatch`` restores every binding when the test ends, which is what makes the
+    overwrite safe and is the same mechanism the skip relied on.
     """
     namespace: dict[str, Any] = {}
     exec(out.beside["constraints.py"], namespace)  # the emitter's own output
     added = []
     for symbol, value in namespace.items():
-        if symbol.startswith("_") or not symbol[:1].isupper() or hasattr(constraints, symbol):
+        if symbol.startswith("_") or not symbol[:1].isupper():
             continue
         monkeypatch.setattr(constraints, symbol, value, raising=False)
         added.append(symbol)
@@ -1223,9 +1238,17 @@ def test_a_narrowing_restatement_is_declared_by_the_subclass(tmp_path, monkeypat
     ``min_length=2, max_length=8`` in this class at all -- it names a type that
     carries both. Asserting the old text would pass only while the rendering
     stood still, and asserting the alias's name alone would grade a string; so
-    the name is asked of ``codegen.constraints`` rather than written here (a
+    the name is asked of the thing that DERIVES it rather than written here (a
     literal would pin whatever the namer currently does), and the bounds
     themselves are read off the field, which is what the widening would move.
+
+    **The namer is §3a's layer L1 and no longer ``constraints.symbol`` alone**
+    (2026-11-04).  ``symbol`` is §4's step 2 -- the constraint in words -- and
+    ``catalogue.collect_scalars`` is the whole derivation, so asking ``symbol`` here
+    asked a question whose answer the walk no longer uses: over this probe the bundle
+    names the subject (``kind`` at every stating position), which is §4's step 1 and
+    beats step 2.  The layer is collected over the PROBE's bundle, which is the one the
+    tree under test was emitted from.
     """
     cls, text, _ = _emit_probe(
         tmp_path,
@@ -1236,8 +1259,13 @@ def test_a_narrowing_restatement_is_declared_by_the_subclass(tmp_path, monkeypat
             "label": {"type": "string", "minLength": 2},
         },
     )
-    named = constraints_module.symbol("string", {"minLength": 2, "maxLength": 8})
-    assert f"kind: Annotated[{named}" in text, text
+    layer = catalogue.collect_scalars(
+        tmp_path / "s4narrow",  # ``_probe``'s own derivation of the bundle it wrote
+        frozenset(keyword for keyword, _ in constraints_module.SPELLING),
+        constraints_module.symbol,
+    )
+    named = layer.table()[("string", (("maxLength", 8), ("minLength", 2)), None)]
+    assert f"kind: Annotated[{named}" in text, (named, text)
     live = cls.model_fields["kind"].metadata
     bounds = {
         attr: getattr(m, attr) for m in live for attr in ("min_length", "max_length") if hasattr(m, attr)

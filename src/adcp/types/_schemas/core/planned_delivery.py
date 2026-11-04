@@ -7,7 +7,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
-from adcp.types.constraints import StrMatching325DEB97, StrMatching43E30B32, StrMinLen1, StrMinLen1MaxLen255
+from adcp.types.constraints import CanonicalProposalTermsDigest, GetAccountFinancialsResponseSuccessCurrency, StrMinLen1, StrMinLen1MaxLen255
 
 from ..enums.channels import MediaChannel
 from ..enums.pacing import Pacing
@@ -54,7 +54,7 @@ class PlannedDelivery(AdCPBaseModel):
     )
     media_buy_id: Annotated[StrMinLen1 | None, Field(description='Seller-assigned media buy identifier. Optional on a purchase-phase prepare/check because the service may not assign the identifier until commit; required on modification and delivery lifecycle checks.')] = None
     proposal_id: Annotated[StrMinLen1MaxLen255 | None, Field(description='Proposal snapshot being executed or currently governing the MediaBuy.')] = None
-    proposal_terms_digest: Annotated[StrMatching325DEB97 | None, Field(description='Digest of the proposal commercial_terms. The governance agent compares it to the digest bound during the intent check.')] = None
+    proposal_terms_digest: Annotated[CanonicalProposalTermsDigest | None, Field(description='Digest of the proposal commercial_terms. The governance agent compares it to the digest bound during the intent check.')] = None
     geo: Annotated[Geo | None, Field(description='Geographic targeting the seller will apply.')] = None
     channels: Annotated[list[MediaChannel] | None, Field(description='Channels the seller will deliver on.')] = None
     start_time: Annotated[AwareDatetime | None, Field(description='Actual flight start the seller will use.')] = None
@@ -65,7 +65,7 @@ class PlannedDelivery(AdCPBaseModel):
     total_budget: Annotated[NonNegativeFloat | None, Field(description='Total budget the seller will deliver against.')] = None
     daily_budget_cap: Annotated[NonNegativeFloat | None, Field(description='Hard aggregate daily spend ceiling the seller will enforce. Governance checks compare it with the authorized execution controls; it does not allocate spend to packages.')] = None
     budget_cap_timezone: Annotated[str | None, Field(description='IANA timezone defining the calendar-day boundary for every daily cap on the planned media buy.')] = None
-    currency: Annotated[StrMatching43E30B32 | None, Field(description='ISO 4217 currency code for the budget. Governance execution checks require it whenever total_budget is present and require it to match the intent-authorized currency.')] = None
+    currency: Annotated[GetAccountFinancialsResponseSuccessCurrency | None, Field(description='ISO 4217 currency code for the budget. Governance execution checks require it whenever total_budget is present and require it to match the intent-authorized currency.')] = None
     budget_allocation: Annotated[BudgetAllocation | None, Field(description='Seller-accepted cross-package allocation authority and goals. Presence with seller_optimized mode means automatic within-buy reallocations are part of the committed delivery, not separate modification actions.')] = None
     pacing: Annotated[Pacing | None, Field(description='Aggregate pacing strategy the seller will apply to total_budget.')] = None
     bidding: Annotated[Bidding | None, Field(description='Seller-interpreted media-buy bidding policy used for governance and delivery transparency. Goal-bound controls follow budget-allocation scope semantics and monetary fields use the planned delivery currency. Package-authored overrides, including explicit automatic overrides, remain on packages rather than being copied into this aggregate field.')] = None

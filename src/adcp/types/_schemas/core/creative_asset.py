@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, NegatedConditional, Presence, PresenceGroups, Rule, UniqueItems
-from adcp.types.constraints import FloatMin0Max100, StrMatching4D6E1599
+from adcp.types.constraints import AccountAuthorizationAllowedTasksItem, FloatMin0Max100
 
 from ..enums.creative_status import CreativeStatus
 from .canonical_format_kind import CanonicalFormatKind
@@ -56,7 +56,7 @@ class CreativeAsset(AdCPBaseModel):
     format_option_ref: Annotated[FormatOptionReference | None, Field(description='3.1+ format-option path, optional. Structured format option reference matching one of the target product\'s `format_options[]` declarations. Publisher-catalog-backed options match by `{ scope: "publisher", publisher_domain, format_option_id }`; product-local options match by `{ scope: "product", format_option_id }`. Required when the target product has multiple `format_options` entries sharing the same `format_kind`; optional when `format_kind` alone routes the creative to a single declaration. Product-scoped refs require an enclosing target product/package context.')] = None
     representation_selection: Annotated[RepresentationSelection | None, Field(description='Readback lineage to the complete CreativeRepresentationSet revision and representation selected before this seller-bound creative was synced.')] = None
     assets: Annotated[dict[str, Any], Field(description='Assets required by the format, keyed by asset_id or canonical asset_group_id. Each slot value is either a single asset object or an array of asset objects (for slots with `min`/`max > 1` like carousel `cards` or responsive_creative `headlines`). Each asset value carries an `asset_type` discriminator that selects the matching asset schema, including reference assets such as `published_post` when a product accepts already-published post references.')]
-    component_assets: Annotated[dict[StrMatching4D6E1599, CreativeAssets] | None, Field(description='Component-addressed canonical asset maps for `coordinated_placements`. Keys match coordinated component IDs. This field is preserved by creative-library sync and list readback; it MUST be absent for every other format kind.')] = None
+    component_assets: Annotated[dict[AccountAuthorizationAllowedTasksItem, CreativeAssets] | None, Field(description='Component-addressed canonical asset maps for `coordinated_placements`. Keys match coordinated component IDs. This field is preserved by creative-library sync and list readback; it MUST be absent for every other format kind.')] = None
     inputs: Annotated[list[InputsItem] | None, Field(description='Preview contexts for generative formats - defines what scenarios to generate previews for')] = None
     tags: Annotated[list[str] | None, Field(description='User-defined tags for organization and searchability')] = None
     status: Annotated[CreativeStatus | None, Field(description="For generative creatives: set to 'approved' to finalize, 'rejected' to request regeneration with updated assets/message. Omit for non-generative creatives (system will set based on processing state).")] = None

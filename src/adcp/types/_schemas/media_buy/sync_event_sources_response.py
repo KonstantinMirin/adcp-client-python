@@ -8,7 +8,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule, UniqueItems
-from adcp.types.constraints import StrMatching43E30B32
+from adcp.types.constraints import GetAccountFinancialsResponseSuccessCurrency
 from adcp.types.envelopes import FailedResponse
 
 from ..core.context import ContextObject
@@ -75,7 +75,7 @@ class EventSourcesItem(AdCPBaseModel):
     name: Annotated[str | None, Field(description='Name of the event source')] = None
     seller_id: Annotated[str | None, Field(description="Seller-assigned identifier for this event source (the ID in the seller's ad platform)")] = None
     event_types: Annotated[list[EventType] | None, Field(description='Event types this source handles')] = None
-    value_currencies: Annotated[list[StrMatching43E30B32] | None, Field(description='ISO 4217 currencies accepted for monetary event values from this source. Canonical ROAS buys require their media-buy currency in this list.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    value_currencies: Annotated[list[GetAccountFinancialsResponseSuccessCurrency] | None, Field(description='ISO 4217 currencies accepted for monetary event values from this source. Canonical ROAS buys require their media-buy currency in this list.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     action_source: Annotated[ActionSource | None, Field(description='Type of event source (website pixel, app SDK, in-store, etc.)')] = None
     surface: Annotated[EventSurface | None, Field(description='Optional structured surface this source represents, such as an owned channel, profile, feed, podcast, newsletter list, website, app, or store. Complements `action_source`; use it when optimization-relevant source meaning would otherwise live only in platform-specific `ext` metadata.')] = None
     managed_by: Annotated[CanceledBy | None, Field(description="Who manages this event source. 'buyer' = configured via this sync. 'seller' = always-on, managed by the seller (e.g. Amazon sales attribution for Amazon advertisers).")] = None

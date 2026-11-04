@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import Dependencies, Rule
-from adcp.types.constraints import StrMatching32F5291C, StrMinLen1MaxLen128, StrMinLen1MaxLen255, StrMinLen1MaxLen512, StrMinLen1MaxLen64Matching5CDAE669
+from adcp.types.constraints import AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, AgentReportingDestinationFileTransferDestinationTransport, StrMinLen1MaxLen128, StrMinLen1MaxLen255, StrMinLen1MaxLen512
 
 from ..enums.delivery_recipient_cloud import DeliveryRecipientCloud
 
@@ -42,7 +42,7 @@ class Provider(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-dataset-share-destination.json', pointer='#/oneOf/1/properties/provider')
-    domain: StrMatching32F5291C
+    domain: AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain
 
 
 ReportingCloud = DeliveryRecipientCloud
@@ -72,7 +72,7 @@ class ProvisionRecipient(ReportingDatasetShareDestination):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-dataset-share-destination.json', pointer='#/oneOf/1')
     mode: Literal['provision']
     provider: Annotated[Provider, Field(description='Data-sharing platform, such as databricks.com or snowflake.com.')]
-    access_mode: Annotated[StrMinLen1MaxLen64Matching5CDAE669, Field(description='Provider access family, such as databricks_to_databricks, open_sharing, or secure_data_sharing.')]
+    access_mode: Annotated[AgentReportingDestinationFileTransferDestinationTransport, Field(description='Provider access family, such as databricks_to_databricks, open_sharing, or secure_data_sharing.')]
     recipient: Annotated[Recipient, Field(description='Intended buyer principal. The identity is interpreted by the provider and access mode; for example, a Databricks sharing identifier, Snowflake organization/account pair, or Open Sharing recipient email. It is an identifier, never a credential.')]
 
 

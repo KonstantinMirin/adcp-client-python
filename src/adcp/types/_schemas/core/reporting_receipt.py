@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
-from adcp.types.constraints import StrMatching5E987613, StrMinLen16MaxLen255Matching1E5CF9EB, StrMinLen1MaxLen128MatchingE43B025C, StrMinLen1MaxLen255Matching67860854, StrMinLen1MaxLen512
+from adcp.types.constraints import ComplyTestControllerRequestParamsReceivedReportingRevisionId, ReportingAdjustmentReceiptObservedAdjustmentSha256, ReportingAdjustmentReceiptRejectionCode, StrMinLen1MaxLen512, SyncAccountsRequestIdempotencyKey
 
 from ..common._vocabularies import _VALUES_ACCEPTED_REJECTED
 from .reporting_canonical_content_digest import ReportingCanonicalContentDigest
@@ -38,20 +38,20 @@ class ReportingReceipt(AdCPBaseModel):
         ConditionalRequired((Match('verification_profile', True, ('manifest_checksums',)),Match('status', True, ('accepted',)),), require=('observed_manifest_sha256',), forbid=()),
         ConditionalRequired((Match('verification_profile', True, ('native_commit',)),Match('status', True, ('accepted',)),), require=('observed_native_version_ref',), forbid=()),
     )
-    reporting_receipt_id: StrMinLen16MaxLen255Matching1E5CF9EB
-    reporting_obligation_id: StrMinLen1MaxLen255Matching67860854
-    reporting_revision_id: StrMinLen1MaxLen255Matching67860854
-    reporting_materialization_id: StrMinLen1MaxLen255Matching67860854
-    supersedes_reporting_receipt_id: Annotated[StrMinLen16MaxLen255Matching1E5CF9EB | None, Field(description="Optional immutable rejected receipt replaced by this new receipt. It MUST name the caller's current rejected receipt for this obligation and revision; accepted current receipts are terminal.")] = None
+    reporting_receipt_id: SyncAccountsRequestIdempotencyKey
+    reporting_obligation_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId
+    reporting_revision_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId
+    reporting_materialization_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId
+    supersedes_reporting_receipt_id: Annotated[SyncAccountsRequestIdempotencyKey | None, Field(description="Optional immutable rejected receipt replaced by this new receipt. It MUST name the caller's current rejected receipt for this obligation and revision; accepted current receipts are terminal.")] = None
     status: Status
     verification_profile: ReportingVerificationProfile
     observed_row_count: NonNegativeInt
     observed_control_totals: Annotated[list[ReportingControlTotal], Field(json_schema_extra={'uniqueItems': True})]
     observed_canonical_content_digest: ReportingCanonicalContentDigest | None = None
-    observed_manifest_sha256: StrMatching5E987613 | None = None
+    observed_manifest_sha256: ReportingAdjustmentReceiptObservedAdjustmentSha256 | None = None
     observed_native_version_ref: ReportingNativeVersionReference | None = None
     consumer_commit_ref: Annotated[StrMinLen1MaxLen512 | None, Field(description='Optional non-secret consumer checkpoint, transaction, or load identifier. It is evidence for operations, not authorization or a credential.')] = None
-    rejection_codes: Annotated[list[StrMinLen1MaxLen128MatchingE43B025C] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    rejection_codes: Annotated[list[ReportingAdjustmentReceiptRejectionCode] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     observed_at: AwareDatetime
     received_at: AwareDatetime | None = None
 

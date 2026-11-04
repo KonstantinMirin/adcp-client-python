@@ -8,7 +8,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import HttpUrl, StrMatching43E30B32
+from adcp.types.constraints import GetAccountFinancialsResponseSuccessCurrency, HttpUrl
 
 from .ext import ExtensionObject
 from .offering_asset_group import OfferingAssetGroup
@@ -56,7 +56,7 @@ class Salary(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/job-item.json', pointer='#/properties/salary')
     min: Annotated[NonNegativeFloat | None, Field(description='Minimum salary.')] = None
     max: Annotated[NonNegativeFloat | None, Field(description='Maximum salary.')] = None
-    currency: Annotated[StrMatching43E30B32, Field(description='ISO 4217 currency code.')]
+    currency: Annotated[GetAccountFinancialsResponseSuccessCurrency, Field(description='ISO 4217 currency code.')]
     period: Annotated[Period, Field(description='Pay period.')]
 
 

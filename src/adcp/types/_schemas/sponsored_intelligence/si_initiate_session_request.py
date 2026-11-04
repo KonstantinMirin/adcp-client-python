@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
-from adcp.types.constraints import StrMinLen16MaxLen255Matching1E5CF9EB
+from adcp.types.constraints import SyncAccountsRequestIdempotencyKey
 
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
@@ -33,7 +33,7 @@ class SIInitiateSessionRequest(AdCPVersionEnvelope):
     supported_capabilities: Annotated[SICapabilities | None, Field(description='What capabilities the host supports')] = None
     offering_token: Annotated[str | None, Field(description="Token from si_get_offering response for session continuity. Brand uses this to recall what products were shown to the user, enabling natural references like 'the second one' or 'that blue shoe'.")] = None
     sponsored_context_receipt: Annotated[SISponsoredContextReceipt | None, Field(description='Host receipt for sponsored context accepted from a prior si_get_offering response or other pre-session context package. This records the accepted context_use, disclosure commitment, paying_principal, and host receipt for audit.')] = None
-    idempotency_key: Annotated[StrMinLen16MaxLen255Matching1E5CF9EB, Field(description='Client-generated unique key for this request. Prevents duplicate session creation on retries. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.')]
+    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Client-generated unique key for this request. Prevents duplicate session creation on retries. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.')]
     ext: ExtensionObject | None = None
 
 

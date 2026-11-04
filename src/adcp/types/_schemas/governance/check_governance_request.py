@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNega
 
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Presence, PresenceGroups, Rule
-from adcp.types.constraints import FloatMin0Max100, HttpUrl, IntMin1, StrMatching3CBDBB74, StrMatching43E30B32, StrMatching75B417CF, StrMaxLen1000, StrMinLen1MaxLen255, StrMinLen1MaxLen255Matching71E52EB8, StrMinLen1MaxLen4096MatchingB34ADF3C
+from adcp.types.constraints import CheckGovernanceRequestDeliveryMetricsAudienceDistributionCumulativeIndices, ConsultationContext, FloatMin0Max100, GetAccountFinancialsResponseSuccessCurrency, GovernanceContext, HttpUrl, IntMin1, StrMaxLen1000, StrMinLen1MaxLen255, ZipAssetDigest
 
 from ..core.attestation_reference import AttestationReference
 from ..core.business_entity import BusinessEntity
@@ -30,7 +30,7 @@ class ProposedCommitment(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/check-governance-request.json', pointer='#/properties/proposed_commitment')
     amount: NonNegativeFloat
-    currency: StrMatching43E30B32
+    currency: GetAccountFinancialsResponseSuccessCurrency
 
 
 class ExecutionCommitment(AdCPBaseModel):
@@ -42,7 +42,7 @@ class ExecutionCommitment(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/check-governance-request.json', pointer='#/properties/execution_commitment')
     amount: NonNegativeFloat
-    currency: StrMatching43E30B32
+    currency: GetAccountFinancialsResponseSuccessCurrency
 
 
 class ReportingPeriod(AdCPBaseModel):
@@ -85,8 +85,8 @@ class AudienceDistribution(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/check-governance-request.json', pointer='#/properties/delivery_metrics/properties/audience_distribution')
     baseline: Annotated[Baseline, Field(description="Population baseline used for index calculation. 'census': national census or equivalent population data. 'platform': the seller's active user base. 'custom': a custom baseline defined by the seller (describe in baseline_description).")]
     baseline_description: Annotated[str | None, Field(description="Description of the baseline when baseline is 'custom' (e.g., 'US adults 18+ with broadband access').")] = None
-    indices: Annotated[dict[StrMatching75B417CF, NonNegativeFloat], Field(description="Audience index values for the current reporting period. Keys are seller-defined dimension:value strings (e.g., 'age:25-34', 'gender:female', 'income:high'). The protocol does not mandate a taxonomy — dimensions and value labels vary by seller. Values are index relative to the declared baseline (1.0 = at parity, >1.0 = over-indexed, <1.0 = under-indexed).")]
-    cumulative_indices: Annotated[dict[StrMatching75B417CF, NonNegativeFloat] | None, Field(description='Cumulative audience index values since the governed action started. Same key format as indices (dimension:value). Use for detecting sustained bias drift that may not appear in a single reporting period.')] = None
+    indices: Annotated[dict[CheckGovernanceRequestDeliveryMetricsAudienceDistributionCumulativeIndices, NonNegativeFloat], Field(description="Audience index values for the current reporting period. Keys are seller-defined dimension:value strings (e.g., 'age:25-34', 'gender:female', 'income:high'). The protocol does not mandate a taxonomy — dimensions and value labels vary by seller. Values are index relative to the declared baseline (1.0 = at parity, >1.0 = over-indexed, <1.0 = under-indexed).")]
+    cumulative_indices: Annotated[dict[CheckGovernanceRequestDeliveryMetricsAudienceDistributionCumulativeIndices, NonNegativeFloat] | None, Field(description='Cumulative audience index values since the governed action started. Same key format as indices (dimension:value). Use for detecting sustained bias drift that may not appear in a single reporting period.')] = None
 
 
 class DeliveryMetrics(AdCPBaseModel):
@@ -98,13 +98,13 @@ class DeliveryMetrics(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/check-governance-request.json', pointer='#/properties/delivery_metrics')
     statement_id: Annotated[StrMinLen1MaxLen255 | None, Field(description='Stable seller-issued identifier for this immutable delivery statement.')] = None
-    statement_digest: Annotated[StrMatching3CBDBB74 | None, Field(description='SHA-256 digest of RFC 8785 JCS over {seller_reference, delivery_metrics}, excluding statement_digest itself. The authenticated submission binds the seller to this digest.')] = None
+    statement_digest: Annotated[ZipAssetDigest | None, Field(description='SHA-256 digest of RFC 8785 JCS over {seller_reference, delivery_metrics}, excluding statement_digest itself. The authenticated submission binds the seller to this digest.')] = None
     sequence: Annotated[IntMin1 | None, Field(description='Monotonically increasing sequence for this governed action. A statement ID or sequence cannot be reused with different content.')] = None
     issued_at: Annotated[AwareDatetime | None, Field(description='When the seller issued the canonical statement.')] = None
     reporting_period: Annotated[ReportingPeriod, Field(description='Start and end timestamps for the reporting window.')]
     spend: Annotated[NonNegativeFloat | None, Field(description='Total spend during the reporting period.')] = None
     cumulative_spend: Annotated[NonNegativeFloat | None, Field(description='Total spend since the governed action started.')] = None
-    currency: Annotated[StrMatching43E30B32 | None, Field(description='Currency of spend fields; must match the plan and planned delivery.')] = None
+    currency: Annotated[GetAccountFinancialsResponseSuccessCurrency | None, Field(description='Currency of spend fields; must match the plan and planned delivery.')] = None
     impressions: Annotated[NonNegativeInt | None, Field(description='Impressions delivered during the reporting period.')] = None
     cumulative_impressions: Annotated[NonNegativeInt | None, Field(description='Total impressions since the governed action started.')] = None
     geo_distribution: Annotated[dict[str, FloatMin0Max100] | None, Field(description='Actual geographic distribution. Keys are ISO 3166-1 alpha-2 codes, values are percentages.')] = None
@@ -168,8 +168,8 @@ class CheckGovernanceRequest(AdCPVersionEnvelope):
     tool: Annotated[str | None, Field(description="The AdCP tool being checked (e.g., 'create_media_buy', 'acquire_rights', 'activate_signal'). Present on intent checks (orchestrator). The governance agent uses the presence of tool+payload to identify an intent check.")] = None
     payload: Annotated[dict[str, Any] | None, Field(description='The full downstream tool arguments exactly as they will be sent to target_agent. Present on intent checks. Governance routing metadata is carried by target_agent, never injected into this object. The governance agent can inspect any field to validate against the plan.')] = None
     proposal: Annotated[CanonicalProposal | None, Field(description='Exact committed proposal being authorized for accept_proposal. The governance agent verifies proposal.terms_digest against commercial_terms and binds that digest into its decision state; the downstream payload carries the same digest without repeating the terms.')] = None
-    governance_context: Annotated[StrMinLen1MaxLen4096MatchingB34ADF3C | None, Field(description='Opaque authorization context from a prior approved check_governance response. Services pass it verbatim on execution and lifecycle checks; the issuing governance agent derives the plan and prior decision from the token. Intermediaries MUST NOT parse it for business logic. Governance agents MUST emit a compact JWS per the AdCP JWS profile.')] = None
-    consultation_context: Annotated[StrMinLen1MaxLen255Matching71E52EB8 | None, Field(description='Opaque, non-authorizing handle returned with an intent conditions verdict. Pass it only when re-checking the adjusted intent so the governance agent can correlate negotiation attempts. The governance agent MUST resolve it under the authenticated principal and reject the re-check unless principal, caller, plan_id, tool, purchase_type, and target audience match the original conditions check. Services MUST NOT receive or accept this value as authorization.')] = None
+    governance_context: Annotated[GovernanceContext | None, Field(description='Opaque authorization context from a prior approved check_governance response. Services pass it verbatim on execution and lifecycle checks; the issuing governance agent derives the plan and prior decision from the token. Intermediaries MUST NOT parse it for business logic. Governance agents MUST emit a compact JWS per the AdCP JWS profile.')] = None
+    consultation_context: Annotated[ConsultationContext | None, Field(description='Opaque, non-authorizing handle returned with an intent conditions verdict. Pass it only when re-checking the adjusted intent so the governance agent can correlate negotiation attempts. The governance agent MUST resolve it under the authenticated principal and reject the re-check unless principal, caller, plan_id, tool, purchase_type, and target audience match the original conditions check. Services MUST NOT receive or accept this value as authorization.')] = None
     phase: Annotated[GovernancePhase | None, Field(default_factory=lambda: TypeAdapter(GovernancePhase).validate_python('purchase'), description="The phase of an execution-shaped governed action. Ignored for intent-shaped tool+payload requests. 'purchase': initial commitment; 'modification': update to an existing commitment; 'delivery': periodic delivery reporting. Defaults to purchase if omitted. planned_delivery.media_buy_id is optional for purchase and required for modification/delivery.", json_schema_extra={'default': 'purchase'})]
     planned_delivery: Annotated[PlannedDelivery | None, Field(description='What the seller will actually deliver. Present on execution checks.')] = None
     delivery_metrics: Annotated[DeliveryMetrics | None, Field(description="Seller-attributed canonical delivery statement. MUST be present for 'delivery' phase. The authenticated seller binds one immutable statement_id and digest to a monotonically increasing sequence; the buyer can later submit the copy it received or an independent observation through report_plan_outcome.")] = None

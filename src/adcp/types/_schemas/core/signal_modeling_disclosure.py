@@ -8,7 +8,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
-from adcp.types.constraints import HttpUrl, StrMatchingEFC12812, StrMaxLen2000
+from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, HttpUrl, StrMaxLen2000
 
 
 class Audience(StrEnum):
@@ -26,7 +26,7 @@ class JurisdictionsItem(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-modeling-disclosure.json', pointer='#/properties/jurisdictions/items')
-    country: Annotated[StrMatchingEFC12812, Field(description='ISO 3166-1 alpha-2 country code.')]
+    country: Annotated[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, Field(description='ISO 3166-1 alpha-2 country code.')]
     region: Annotated[str | None, Field(description='Provider-defined sub-national region code or name when the obligation is regional. No global canonical format is implied.')] = None
     regulation: Annotated[str, Field(description='Provider-supplied regulation identifier for the disclosure obligation.')]
     disclosure_text: Annotated[str | None, Field(description='Human-readable disclosure text or summary the provider expects buyers or reviewers to see.')] = None

@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import HttpUrl, IntMin1Max99, IntMin64Max2048, StrMatching611F08F3, StrMatchingCE72C7C2, StrMatchingD790C8AB, StrMatchingEFC12812, StrMaxLen100, StrMaxLen500
+from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, AdCPVersionEnvelopeAdcpVersion, ContextSignalsEmbeddingDims, ContextSignalsLanguage, GeoForecastDimensionCode, HttpUrl, IntMin1Max99, StrMaxLen100, StrMaxLen500
 
 from ..content_standards.artifact import Artifact
 from ..core.property_id import PropertyID
@@ -59,8 +59,8 @@ class Geo(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='trusted-match/context-match-request.json', pointer='#/properties/geo')
-    country: Annotated[StrMatchingEFC12812 | None, Field(description="ISO 3166-1 alpha-2 country code (e.g., 'US', 'GB', 'DE').")] = None
-    region: Annotated[StrMatchingCE72C7C2 | None, Field(description="ISO 3166-2 subdivision code (e.g., 'US-CA', 'GB-SCT').")] = None
+    country: Annotated[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem | None, Field(description="ISO 3166-1 alpha-2 country code (e.g., 'US', 'GB', 'DE').")] = None
+    region: Annotated[GeoForecastDimensionCode | None, Field(description="ISO 3166-2 subdivision code (e.g., 'US-CA', 'GB-SCT').")] = None
     metro: Annotated[Metro | None, Field(description='Metro area, using the same classification systems as AdCP targeting.')] = None
 
 
@@ -87,12 +87,12 @@ class ContextSignals(AdCPBaseModel):
     taxonomy_id: Annotated[int | None, Field(description='Taxonomy version within the source. For IAB, follows the AdCOM cattax enum: 7 = Content Taxonomy 3.0. Default: 7.')] = 7
     sentiment: Annotated[Sentiment | None, Field(description='Content sentiment classification.')] = None
     keywords: Annotated[list[StrMaxLen100] | None, Field(description="Content keywords produced by the publisher's classifier. For non-public content attributable to a single user or session, keywords MUST be policy-filtered, MUST NOT reproduce distinctive verbatim phrasing, and MUST NOT include PII or uniquely identifying details. Publishers SHOULD prefer bounded category labels.", max_length=50)] = None
-    language: Annotated[StrMatchingD790C8AB | None, Field(description="Content language in ISO 639-1 format (e.g., 'en', 'ja', 'de').")] = None
+    language: Annotated[ContextSignalsLanguage | None, Field(description="Content language in ISO 639-1 format (e.g., 'en', 'ja', 'de').")] = None
     content_policies: Annotated[list[str] | None, Field(description="Policy IDs from the AdCP policy registry that this content satisfies (e.g., 'csbs' for Common Sense Brand Standards). Buyers filter on policies they require. An empty array means no policies have been evaluated.", max_length=20)] = None
     summary: Annotated[StrMaxLen500 | None, Field(description="Publisher-generated natural language summary of the content for relevance judgment (e.g., 'Shopping context categorized as home cookware'). For non-public content attributable to a single user or session, the summary MUST be policy-filtered, MUST NOT reproduce raw user-authored text, and MUST NOT include PII or uniquely identifying details. Useful for LLM-native buyers that evaluate relevance semantically. Buyers MUST treat this as untrusted publisher-generated content.")] = None
     embedding: Annotated[str | None, Field(description="Content embedding as base64-encoded int8 vector. Captures semantic content beyond what topics and keywords express. MUST NOT be computed directly or indirectly from non-public content authored by or attributable to a single user or session, including conversation turns, prompts, and individual search queries. MAY represent public content or a shared content environment that is not attributable to one user's activity. Publishers declare the model used. For standardized matching, use the protocol-recommended model (nomic-embed-text-v1.5, 256 dims, int8 quantized = 256 bytes).")] = None
     embedding_model: Annotated[str | None, Field(description="Embedding model identifier (e.g., 'nomic-embed-text-v1.5'). Required when embedding is present.")] = None
-    embedding_dims: Annotated[IntMin64Max2048 | None, Field(description='Number of dimensions in the embedding vector. Required when embedding is present.')] = None
+    embedding_dims: Annotated[ContextSignalsEmbeddingDims | None, Field(description='Number of dimensions in the embedding vector. Required when embedding is present.')] = None
 
 
 class ContextMatchRequest(AdCPBaseModel):
@@ -104,7 +104,7 @@ class ContextMatchRequest(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='trusted-match/context-match-request.json', pointer='#')
     schema_: Annotated[HttpUrl | None, Field(alias='$schema', description='Optional schema URI for validation. Ignored at runtime.')] = None
-    adcp_version: Annotated[StrMatching611F08F3 | None, Field(description='Release-precision AdCP version (VERSION.RELEASE, e.g. "3.0", "3.1", "3.1-beta"). On a request: the buyer\'s release pin. Inlined here (rather than via core/version-envelope.json allOf) so this schema can keep `additionalProperties: false` — the privacy boundary on this endpoint is contract-bearing.')] = None
+    adcp_version: Annotated[AdCPVersionEnvelopeAdcpVersion | None, Field(description='Release-precision AdCP version (VERSION.RELEASE, e.g. "3.0", "3.1", "3.1-beta"). On a request: the buyer\'s release pin. Inlined here (rather than via core/version-envelope.json allOf) so this schema can keep `additionalProperties: false` — the privacy boundary on this endpoint is contract-bearing.')] = None
     adcp_major_version: Annotated[IntMin1Max99 | None, Field(description='DEPRECATED in favor of adcp_version. Removed in 4.0. Inlined alongside adcp_version to preserve strict-mode on this endpoint.')] = None
     type: Annotated[Literal['context_match_request'], Field(description='Message type discriminator for deserialization.')]
     protocol_version: Annotated[str | None, Field(description='TMP protocol version. Allows receivers to handle semantic differences across versions.')] = '1.0'

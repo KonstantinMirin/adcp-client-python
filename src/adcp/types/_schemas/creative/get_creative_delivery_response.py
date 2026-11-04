@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import IntMin1, StrMatching43E30B32
+from adcp.types.constraints import GetAccountFinancialsResponseSuccessCurrency, IntMin1
 
 from ..core.canonical_format_kind import CanonicalFormatKind
 from ..core.context import ContextObject
@@ -73,7 +73,7 @@ class GetCreativeDeliveryResponse(AdCPVersionEnvelope, ProtocolEnvelope):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/get-creative-delivery-response.json', pointer='#')
     account_id: Annotated[str | None, Field(description='Account identifier. Present when the response spans or is scoped to a specific account.')] = None
     media_buy_id: Annotated[str | None, Field(description="Publisher's media buy identifier. Present when the request was scoped to a single media buy.")] = None
-    currency: Annotated[StrMatching43E30B32, Field(description="ISO 4217 currency code for monetary values in this response (e.g., 'USD', 'EUR')")]
+    currency: Annotated[GetAccountFinancialsResponseSuccessCurrency, Field(description="ISO 4217 currency code for monetary values in this response (e.g., 'USD', 'EUR')")]
     reporting_period: Annotated[ReportingPeriod, Field(description='Date range for the report.')]
     creatives: Annotated[list[CreativesItem], Field(description='Creative delivery data with variant breakdowns')]
     pagination: Annotated[Pagination | None, Field(description='Pagination information. Present when the request included pagination parameters. **Note:** `get_creative_delivery` uses page-based pagination (`limit`/`offset`) for historical reasons, distinct from the cursor-based [`PaginationResponse`](/schemas/v3/core/pagination-response.json) used by `list_*` tools. Field naming aligned with `PaginationResponse.total_count` in 3.1; the legacy `total` field is retained as a deprecated alias until 4.0. Sellers MUST populate both fields identically; buyers SHOULD prefer `total_count` (the canonical name) and ignore `total` if both are present.')] = None

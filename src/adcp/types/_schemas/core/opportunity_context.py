@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule
-from adcp.types.constraints import StrMinLen1MaxLen255Matching67860854, StrMinLen1MaxLen500
+from adcp.types.constraints import ComplyTestControllerRequestParamsReceivedReportingRevisionId, StrMinLen1MaxLen500
 
 from ..common._vocabularies import _VALUES_OPEN_CLOSED
 from .date_range import DateRange
@@ -67,7 +67,7 @@ class OpportunityContext(AdCPBaseModel):
         NegatedConditional((Match('status', True, ('closed',)),), require=(), forbid=('close_reason', 'close_detail')),
         ConditionalRequired((Match('close_reason', True, ('other',)),), require=('close_detail',), forbid=()),
     )
-    opportunity_id: Annotated[StrMinLen1MaxLen255Matching67860854, Field(description='Opaque buyer-assigned identifier for this planning cycle, scoped to the seller and account.')]
+    opportunity_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId, Field(description='Opaque buyer-assigned identifier for this planning cycle, scoped to the seller and account.')]
     phase: Annotated[Phase | None, Field(description='Current stage of buyer planning.')] = None
     intent: Annotated[Intent | None, Field(description='How seriously the buyer is evaluating supply in this cycle.')] = None
     planning_horizon: Annotated[DateRange | None, Field(description='Inclusive calendar range in which the buyer expects the campaign to run.')] = None

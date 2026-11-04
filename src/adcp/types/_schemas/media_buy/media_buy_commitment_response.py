@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule, UniqueItems
-from adcp.types.constraints import IntMin1, StrMaxLen2000, StrMinLen1, StrMinLen1MaxLen255Matching130C1C9D
+from adcp.types.constraints import IntMin1, MediaBuyName, StrMaxLen2000, StrMinLen1
 
 from ..core.canonical_media_buy_action import CanonicalMediaBuyAction
 from ..core.canonical_proposal import CanonicalProposal
@@ -86,7 +86,7 @@ class CommittedMediaBuy(MediaBuyCommitmentResponse):
     )
     status: Literal['completed']
     media_buy_id: StrMinLen1
-    name: Annotated[StrMinLen1MaxLen255Matching130C1C9D | None, Field(description='Persisted human-readable MediaBuy name for trafficking UI display and operational communication. The seller MUST echo a buyer-supplied request name unchanged; when the seller seeded a new MediaBuy name from an already-valid proposal.name, it MUST return that value unchanged here. Existing named MediaBuys return the stored value on amendment or cancellation commitments. This operational metadata is outside accepted_proposal and is not covered by terms_digest. This display label is not an identifier or financial reference.')] = None
+    name: Annotated[MediaBuyName | None, Field(description='Persisted human-readable MediaBuy name for trafficking UI display and operational communication. The seller MUST echo a buyer-supplied request name unchanged; when the seller seeded a new MediaBuy name from an already-valid proposal.name, it MUST return that value unchanged here. Existing named MediaBuys return the stored value on amendment or cancellation commitments. This operational metadata is outside accepted_proposal and is not covered by terms_digest. This display label is not an identifier or financial reference.')] = None
     revision: IntMin1
     media_buy_status: MediaBuyStatus | None = None
     confirmed_at: AwareDatetime | None = None

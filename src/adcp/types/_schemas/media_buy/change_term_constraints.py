@@ -7,7 +7,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNega
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import RequiredGroups, Rule
-from adcp.types.constraints import StrMatching43E30B32
+from adcp.types.constraints import GetAccountFinancialsResponseSuccessCurrency
 
 from ..core.duration import Duration
 
@@ -31,7 +31,7 @@ class Money(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/change-term-constraints.json', pointer='#/definitions/money')
     amount: NonNegativeFloat
-    currency: StrMatching43E30B32
+    currency: GetAccountFinancialsResponseSuccessCurrency
 
 
 class BudgetChangeConstraints(MediaBuyChangeTermConstraints):

@@ -7,7 +7,7 @@ from pydantic import ConfigDict, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import RequiredGroups, Rule
-from adcp.types.constraints import StrMatching43E30B32
+from adcp.types.constraints import GetAccountFinancialsResponseSuccessCurrency
 
 
 class ProposalBudgetConstraint(AdCPBaseModel):
@@ -23,7 +23,7 @@ class ProposalBudgetConstraint(AdCPBaseModel):
     )
     min: NonNegativeFloat | None = None
     max: NonNegativeFloat | None = None
-    currency: StrMatching43E30B32
+    currency: GetAccountFinancialsResponseSuccessCurrency
 
 
 __all__ = ["ProposalBudgetConstraint"]

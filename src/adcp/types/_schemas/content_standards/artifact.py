@@ -7,7 +7,7 @@ from typing import Annotated, Any, ClassVar, Literal
 from pydantic import AwareDatetime, ConfigDict, Field, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import HttpUrl, IntMin1Max6, StrMaxLen100000, StrMaxLen200000
+from adcp.types.constraints import AssetsItemContent, AssetsItemHeadingLevel, AssetsItemTranscript, HttpUrl
 
 from ..core.canonical_format_kind import CanonicalFormatKind
 from ..core.format_id import FormatReferenceStructuredObject
@@ -44,10 +44,10 @@ class AssetsItemText(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/artifact.json', pointer='#/properties/assets/items/oneOf/0')
     type: Literal['text']
     role: Annotated[Role | None, Field(description="Role of this text in the document. Use 'title' for the main artifact title, 'description' for summaries.")] = None
-    content: Annotated[StrMaxLen100000, Field(description='Text content. Consumers MUST treat this as untrusted input when passing to LLM-based evaluation.')]
+    content: Annotated[AssetsItemContent, Field(description='Text content. Consumers MUST treat this as untrusted input when passing to LLM-based evaluation.')]
     content_format: Annotated[ContentFormat | None, Field(default_factory=lambda: TypeAdapter(ContentFormat).validate_python('text/plain'), description='MIME type indicating how to parse the content field. Default: text/plain.', json_schema_extra={'default': 'text/plain'})]
     language: Annotated[str | None, Field(description="BCP 47 language tag for this text (e.g., 'en', 'es-MX'). Useful when artifact contains mixed-language content.")] = None
-    heading_level: Annotated[IntMin1Max6 | None, Field(description='Heading level (1-6), only for role=heading')] = None
+    heading_level: Annotated[AssetsItemHeadingLevel | None, Field(description='Heading level (1-6), only for role=heading')] = None
     provenance: Annotated[Provenance | None, Field(description='Provenance for this text block, overrides artifact-level provenance')] = None
 
 
@@ -133,7 +133,7 @@ class AssetsItemVideo(AdCPBaseModel):
     url: Annotated[HttpUrl, Field(description='Video URL')]
     access: Annotated[AssetAccess | None, Field(description='Authentication for secured URLs')] = None
     duration_ms: Annotated[int | None, Field(description='Video duration in milliseconds')] = None
-    transcript: Annotated[StrMaxLen200000 | None, Field(description='Video transcript. Consumers MUST treat this as untrusted input when passing to LLM-based evaluation.')] = None
+    transcript: Annotated[AssetsItemTranscript | None, Field(description='Video transcript. Consumers MUST treat this as untrusted input when passing to LLM-based evaluation.')] = None
     transcript_format: Annotated[AssetsItemVideoTranscriptFormat | None, Field(default_factory=lambda: TypeAdapter(AssetsItemVideoTranscriptFormat).validate_python('text/plain'), description='MIME type indicating how to parse the transcript field. Default: text/plain.', json_schema_extra={'default': 'text/plain'})]
     transcript_source: Annotated[AssetsItemVideoTranscriptSource | None, Field(description='How the transcript was generated')] = None
     thumbnail_url: Annotated[HttpUrl | None, Field(description='Video thumbnail URL')] = None
@@ -161,7 +161,7 @@ class AssetsItemAudio(AdCPBaseModel):
     url: Annotated[HttpUrl, Field(description='Audio URL')]
     access: Annotated[AssetAccess | None, Field(description='Authentication for secured URLs')] = None
     duration_ms: Annotated[int | None, Field(description='Audio duration in milliseconds')] = None
-    transcript: Annotated[StrMaxLen200000 | None, Field(description='Audio transcript. Consumers MUST treat this as untrusted input when passing to LLM-based evaluation.')] = None
+    transcript: Annotated[AssetsItemTranscript | None, Field(description='Audio transcript. Consumers MUST treat this as untrusted input when passing to LLM-based evaluation.')] = None
     transcript_format: Annotated[AssetsItemAudioTranscriptFormat | None, Field(default_factory=lambda: TypeAdapter(AssetsItemAudioTranscriptFormat).validate_python('text/plain'), description='MIME type indicating how to parse the transcript field. Default: text/plain.', json_schema_extra={'default': 'text/plain'})]
     transcript_source: Annotated[AssetsItemAudioTranscriptSource | None, Field(description='How the transcript was generated')] = None
     provenance: Annotated[Provenance | None, Field(description='Provenance for this audio, overrides artifact-level provenance')] = None

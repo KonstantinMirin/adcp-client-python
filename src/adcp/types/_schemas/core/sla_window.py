@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import StrMatching586BED7E
+from adcp.types.constraints import SLAWindowCompletionMax
 
 
 class SLAWindow(AdCPBaseModel):
@@ -17,8 +17,8 @@ class SLAWindow(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/sla-window.json', pointer='#')
-    response_max: Annotated[StrMatching586BED7E | None, Field(description='Maximum elapsed time from when the buyer issues the action to when the seller acknowledges receipt (mode-appropriate: synchronous response for self_serve, tolerance decision for conditional_self_serve, or queue acknowledgement for seller_managed and legacy requires_approval). Sellers include weekends and non-working periods in the maximum. ISO 8601 duration.')] = None
-    completion_max: Annotated[StrMatching586BED7E | None, Field(description='Maximum elapsed time from buyer issuing the action to the seller completing it (mutation applied, proposal finalized, or seller-managed decision resolved). Sellers include weekends and non-working periods in the maximum. ISO 8601 duration.')] = None
+    response_max: Annotated[SLAWindowCompletionMax | None, Field(description='Maximum elapsed time from when the buyer issues the action to when the seller acknowledges receipt (mode-appropriate: synchronous response for self_serve, tolerance decision for conditional_self_serve, or queue acknowledgement for seller_managed and legacy requires_approval). Sellers include weekends and non-working periods in the maximum. ISO 8601 duration.')] = None
+    completion_max: Annotated[SLAWindowCompletionMax | None, Field(description='Maximum elapsed time from buyer issuing the action to the seller completing it (mutation applied, proposal finalized, or seller-managed decision resolved). Sellers include weekends and non-working periods in the maximum. ISO 8601 duration.')] = None
 
 
 __all__ = ["SLAWindow"]

@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, PropertyCount, RequiredGroups, Rule, UniqueItems
-from adcp.types.constraints import AdCPUrl, FloatGt0, HttpUrl, IntMin100Max900, IntMin1Max45, NonEmptyList, StrMatching068A244C, StrMatching32F5291C, StrMatching36CCA380, StrMatching83577F62, StrMatchingC2978503, StrMatchingD342F02C, StrMatchingE02C3DE8, StrMatchingEFC12812, StrMatchingF01B4765, StrMaxLen100, StrMaxLen100MatchingE02C3DE8, StrMaxLen255, StrMaxLen500, StrMinLen1, StrMinLen1MaxLen255, StrMinLen2MaxLen2
+from adcp.types.constraints import AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, AdCPUrl, AuthorizedOperatorBrandsItem, BrandAgentEntryId, BrandDiscoveryAgentId, BrandDiscoveryColorValue, BrandDiscoveryFontRoleOpentypeFeaturesItem, BrandDiscoveryLogoId, BrandDiscoveryPhotographyStylePreferredAspectRatiosItem, FloatGt0, HttpUrl, IntMin100Max900, NonEmptyList, PropertyRegion, StrMaxLen100, StrMaxLen255, StrMaxLen500, StrMinLen1, StrMinLen1MaxLen255, StrMinLen2MaxLen2, TrademarkNiceClassesItem
 
 from ..core.brand_ref import BrandReference
 from ..core.locale_tag import LanguageTag
@@ -68,7 +68,7 @@ class AuthoritativeLocationRedirect(BrandDiscovery):
     last_updated: AwareDatetime | None = None
 
 
-Domain = Annotated[StrMatching32F5291C, Field(description='A valid domain name')]
+Domain = Annotated[AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, Field(description='A valid domain name')]
 
 
 HouseRedirectRedirectReason = AuthoritativeLocationRedirectRedirectReason
@@ -84,7 +84,7 @@ class HouseRedirect(BrandDiscovery):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/oneOf/1')
     schema_: Annotated[str | None, Field(alias='$schema')] = None
     house: Annotated[Domain, Field(description='House domain to fetch brand portfolio from')]
-    region: Annotated[StrMatchingEFC12812 | None, Field(description='ISO 3166-1 alpha-2 country code if this is a regional domain')] = None
+    region: Annotated[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem | None, Field(description='ISO 3166-1 alpha-2 country code if this is a regional domain')] = None
     redirect_reason: Annotated[HouseRedirectRedirectReason | None, Field(description="Optional structured signal indicating why this redirect was put in place. Consumers SHOULD use this to inform cache TTL decisions: 'acquisition' / 'divestiture' / 'rebrand' / 'consolidation' suggest the resolved target is in transition and consumers SHOULD shorten cache TTL until stable. 'regional' / 'legacy' suggest a stable redirect with no special cache handling needed. Free-text rationale belongs in 'note'.")] = None
     redirect_effective_at: Annotated[AwareDatetime | None, Field(description='Optional timestamp when this redirect became effective. Caches MUST treat any entry cached before this timestamp as stale and re-fetch through the redirect.')] = None
     note: Annotated[str | None, Field(description='Optional human-readable rationale for the redirect.')] = None
@@ -101,12 +101,12 @@ class BrandAgentEntry(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/brand_agent_entry')
     type: Annotated[BrandAgentType, Field(description='Functional role of this agent')]
     url: Annotated[AdCPUrl, Field(description="Agent endpoint URL (MCP or A2A). Callers comparing a brand's declared agent URL against another value (e.g., resolving 'is this the agent that signed this artifact?' or matching against a discovery cache) MUST canonicalize both sides per the AdCP URL canonicalization rules, not byte-equality. After the publication chain and an authorized request-signing key verify, this exact entry's canonical URL is the stable Agent identity input for principal mapping; the domain, JWKS URI, kid, and key material are credential or trust facts beneath it, not the Agent identity. See docs/reference/url-canonicalization.")]
-    id: Annotated[StrMaxLen100MatchingE02C3DE8, Field(description='Agent identifier (useful for logging, multi-tenant platforms)')]
+    id: Annotated[BrandAgentEntryId, Field(description='Agent identifier (useful for logging, multi-tenant platforms)')]
     description: Annotated[StrMaxLen500 | None, Field(description="Human-readable description of this agent's capabilities or scope")] = None
     jwks_uri: Annotated[AdCPUrl | None, Field(description="HTTPS URL of the agent's JWKS (RFC 7517) containing public keys used to verify artifacts this agent signs or requests it sends. Verified artifacts include signed governance_context tokens (for governance agents) and RFC 9421 HTTP Signatures on outgoing requests (for any agent). When absent, verifiers MUST default to /.well-known/jwks.json on the origin of `url`. Keys are identified by `kid` in the JWS header or RFC 9421 `keyid` parameter; JWKS MAY contain multiple keys to support rotation and per-purpose separation via `key_ops` and `use`.")] = None
     available_uses: Annotated[list[RightUse] | None, Field(description='For rights agents: rights uses available for licensing', min_length=1)] = None
     right_types: Annotated[list[RightType] | None, Field(description='For rights agents: types of rights available', min_length=1)] = None
-    countries: Annotated[list[StrMatchingEFC12812] | None, Field(description='ISO 3166-1 alpha-2 country codes where this agent operates. Omit for global scope.')] = None
+    countries: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem] | None, Field(description='ISO 3166-1 alpha-2 country codes where this agent operates. Omit for global scope.')] = None
 
 
 Agents = Annotated[list[BrandAgentEntry], Field(description='Agents declared by this brand or house. Multiple entries with the same type are permitted when they have distinct url values, such as one endpoint URL per tenant or property scope. Agent url values MUST be unique within this array; duplicate urls are invalid because signature verifiers resolve a signing key by matching one agent url to one agents[] entry and reject ambiguous matches.')]
@@ -121,7 +121,7 @@ class BrandDiscoveryBrandAgent(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/brand_agent')
     url: Annotated[AdCPUrl, Field(description="Brand agent MCP endpoint URL. Callers comparing this URL against another value (e.g., resolving 'is this the brand's declared agent?' against a discovery cache) MUST canonicalize both sides per the AdCP URL canonicalization rules, not byte-equality. See docs/reference/url-canonicalization.")]
-    id: Annotated[StrMatchingE02C3DE8, Field(description='Agent identifier (useful for logging, multi-tenant DAMs)')]
+    id: Annotated[BrandDiscoveryAgentId, Field(description='Agent identifier (useful for logging, multi-tenant DAMs)')]
 
 
 class BrandDiscoveryContact(AdCPBaseModel):
@@ -224,7 +224,7 @@ class House(AdCPBaseModel):
     identity_relying_parties: Annotated[list[IdentityRelyingParty] | None, Field(description="Verified-identity relying parties this house/entity operates, so a buyer can verify that a forwarded TMP identity attestation's relying_party_id genuinely belongs to this entity (provenance) rather than being replayed under another owner. For network-as-RP, the network publishes its own relying_party_id here. See specs/tmp-verified-identity-attestation.md.")] = None
 
 
-BrandId = Annotated[StrMatchingE02C3DE8, Field(description='Brand identifier within the house portfolio. Lowercase alphanumeric with underscores. House chooses this ID.')]
+BrandId = Annotated[BrandDiscoveryAgentId, Field(description='Brand identifier within the house portfolio. Lowercase alphanumeric with underscores. House chooses this ID.')]
 
 
 class KellerType(StrEnum):
@@ -237,7 +237,7 @@ class KellerType(StrEnum):
     INDEPENDENT = 'independent'
 
 
-LogoId = Annotated[StrMatching068A244C, Field(description='Stable identifier for a logo entry within this brand.json document. Use lowercase words separated by underscores or hyphens; do not key integrations on mutable asset URLs.')]
+LogoId = Annotated[BrandDiscoveryLogoId, Field(description='Stable identifier for a logo entry within this brand.json document. Use lowercase words separated by underscores or hyphens; do not key integrations on mutable asset URLs.')]
 
 
 class LogoOrientation(StrEnum):
@@ -293,7 +293,7 @@ class Logo(AdCPBaseModel):
     height: Annotated[int | None, Field(description='Height in pixels')] = None
 
 
-ColorValue = StrMatchingF01B4765 | NonEmptyList[StrMatchingF01B4765]
+ColorValue = BrandDiscoveryColorValue | NonEmptyList[BrandDiscoveryColorValue]
 
 
 class Colors(AdCPBaseModel):
@@ -352,7 +352,7 @@ class BrandDiscoveryFontRoleFamily(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/font_role/oneOf/1')
     family: Annotated[str, Field(description="CSS font-family name (e.g., 'Brand Sans')")]
     files: Annotated[list[FontFile] | None, Field(description='Font files for different weights and styles', max_length=36)] = None
-    opentype_features: Annotated[list[StrMatching83577F62] | None, Field(description="OpenType feature tags to enable (e.g., ['ss01', 'tnum', 'cv01']). These are four-character tags per the OpenType spec.", max_length=20)] = None
+    opentype_features: Annotated[list[BrandDiscoveryFontRoleOpentypeFeaturesItem] | None, Field(description="OpenType feature tags to enable (e.g., ['ss01', 'tnum', 'cv01']). These are four-character tags per the OpenType spec.", max_length=20)] = None
     fallbacks: Annotated[list[StrMaxLen100] | None, Field(description="Ordered fallback font-family names for when the primary font is unavailable or does not support the required script (e.g., ['Noto Sans Arabic', 'Noto Sans SC', 'sans-serif'])", max_length=10)] = None
 
 
@@ -451,7 +451,7 @@ class Property(AdCPBaseModel):
     type: Annotated[PropertyType, Field(description='Property type')]
     identifier: Annotated[StrMinLen1, Field(description='Property identifier - domain for websites, bundle ID for apps')]
     store: Annotated[Store | None, Field(description='App store for mobile/CTV apps')] = None
-    region: Annotated[StrMatchingC2978503 | None, Field(description="ISO 3166-1 alpha-2 country code or 'global'")] = None
+    region: Annotated[PropertyRegion | None, Field(description="ISO 3166-1 alpha-2 country code or 'global'")] = None
     primary: Annotated[bool | None, Field(description='Whether this is the primary property for the brand')] = False
     relationship: Annotated[Relationship | None, Field(default_factory=lambda: TypeAdapter(Relationship).validate_python('owned'), description="How this brand relates to the property. 'owned': the brand owns and operates this property (default) and has no adagents.json delegation_type counterpart. 'direct': the brand is the direct sales path for this property, even if a third party operates the software (e.g., a publisher's in-house ad team using a vendor's tech). 'delegated': the brand manages monetization for this property — they are in charge of ad sales (e.g., Mediavine managing a food blog). 'ad_network': the brand sells this property's inventory as part of a network or exchange — they are a path to the inventory, not the path (e.g., PubMatic as an SSP). For non-owned properties, the publisher confirms the relationship by setting the matching delegation_type on the agent's authorization in their adagents.json.", json_schema_extra={'default': 'owned'})]
 
@@ -524,7 +524,7 @@ class Trademark(AdCPBaseModel):
     license_type: Annotated[LicenseType | None, Field(description="Whether the publisher owns the mark, licenses it from another entity, or licenses it to others. 'owned' is the default if omitted.")] = None
     licensor_domain: Annotated[Domain | None, Field(description='Domain of the entity that licenses this mark to the publisher. Meaningful when license_type=licensed_in; omit otherwise.')] = None
     countries: Annotated[list[StrMinLen2MaxLen2] | None, Field(description="ISO 3166-1 alpha-2 country codes where this registration applies. Omit for global or where the registry's jurisdiction is implicit.")] = None
-    nice_classes: Annotated[list[IntMin1Max45] | None, Field(description='Nice Classification class numbers (1-45) covered by this registration. Disambiguates marks across industries (e.g., Delta-airline vs Delta-faucet). Omit if scope is implicit from registry.')] = None
+    nice_classes: Annotated[list[TrademarkNiceClassesItem] | None, Field(description='Nice Classification class numbers (1-45) covered by this registration. Disambiguates marks across industries (e.g., Delta-airline vs Delta-faucet). Omit if scope is implicit from registry.')] = None
 
 
 class VoiceSynthesis(AdCPBaseModel):
@@ -661,7 +661,7 @@ class PhotographyStyle(AdCPBaseModel):
     depth_of_field: Annotated[DepthOfField | None, Field(description='Depth of field preference. shallow: blurred background with subject isolation, deep: everything in focus')] = None
     subject: Annotated[Subject | None, Field(description='Subject matter guidelines')] = None
     framing: Annotated[Framing | None, Field(description='Camera framing rules')] = None
-    preferred_aspect_ratios: Annotated[list[StrMatchingD342F02C] | None, Field(description="Preferred aspect ratios for brand photography (e.g., '16:9', '4:5', '1:1')")] = None
+    preferred_aspect_ratios: Annotated[list[BrandDiscoveryPhotographyStylePreferredAspectRatiosItem] | None, Field(description="Preferred aspect ratios for brand photography (e.g., '16:9', '4:5', '1:1')")] = None
     tags: Annotated[list[str] | None, Field(description='Additional style descriptors')] = None
 
 
@@ -949,7 +949,7 @@ class Orientation(StrEnum):
     ANY = 'any'
 
 
-HexColor = Annotated[StrMatchingF01B4765, Field(description='A single hex color value')]
+HexColor = Annotated[BrandDiscoveryColorValue, Field(description='A single hex color value')]
 
 
 class GraphicElement(AdCPBaseModel):
@@ -1443,10 +1443,10 @@ class RightsAgent(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/rights_agent')
     url: Annotated[AdCPUrl, Field(description="Rights agent MCP endpoint URL. Callers comparing this URL against another value (e.g., matching against a brand's declared rights endpoint) MUST canonicalize both sides per the AdCP URL canonicalization rules, not byte-equality. See docs/reference/url-canonicalization.")]
-    id: Annotated[StrMatchingE02C3DE8, Field(description='Agent identifier')]
+    id: Annotated[BrandDiscoveryAgentId, Field(description='Agent identifier')]
     available_uses: Annotated[list[RightUse], Field(description='Rights uses available for licensing through this agent', min_length=1)]
     right_types: Annotated[list[RightType] | None, Field(description='Types of rights available', min_length=1)] = None
-    countries: Annotated[list[StrMatchingEFC12812] | None, Field(description='Countries where rights are available (ISO 3166-1 alpha-2)')] = None
+    countries: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem] | None, Field(description='Countries where rights are available (ISO 3166-1 alpha-2)')] = None
 
 
 class BrandContact(AdCPBaseModel):
@@ -1544,8 +1544,8 @@ class AuthorizedOperator(AdCPBaseModel):
         UniqueItems('scopes'),
     )
     domain: Annotated[Domain, Field(description="Domain of the authorized operator (e.g., 'groupm.com')")]
-    brands: Annotated[list[StrMatching36CCA380], Field(description="Brand IDs this operator is authorized for. Use ['*'] for all brands in the portfolio.", min_length=1)]
-    countries: Annotated[list[StrMatchingEFC12812] | None, Field(description='ISO 3166-1 alpha-2 country codes where this authorization applies. Omit for global authorization.')] = None
+    brands: Annotated[list[AuthorizedOperatorBrandsItem], Field(description="Brand IDs this operator is authorized for. Use ['*'] for all brands in the portfolio.", min_length=1)]
+    countries: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem] | None, Field(description='ISO 3166-1 alpha-2 country codes where this authorization applies. Omit for global authorization.')] = None
     scopes: Annotated[list[ScopesItem] | None, Field(description="Activities this operator is authorized to perform for the listed brands and countries. Omit for backwards-compatible broad authorization. Use ['all'] only when every listed scope is delegated.", json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     valid_from: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp when this operator authorization starts. Omit when authorization is already active or the start date is not tracked.')] = None
     valid_until: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp when this operator authorization expires. Consumers MUST treat entries at or after this timestamp as inactive for authorization decisions.')] = None

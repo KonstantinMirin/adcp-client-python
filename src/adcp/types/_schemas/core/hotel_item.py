@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import FloatMinNeg180Max180, FloatMinNeg90Max90, HttpUrl, IntMin1Max5, StrMatching98571AF3, StrMatchingEFC12812
+from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, FloatMinNeg180Max180, FloatMinNeg90Max90, HotelItemCheckInTime, HttpUrl, StarRating
 
 from .ext import ExtensionObject
 from .offering_asset_group import OfferingAssetGroup
@@ -38,7 +38,7 @@ class Address(AdCPBaseModel):
     city: Annotated[str | None, Field(description='City name.')] = None
     region: Annotated[str | None, Field(description='State, province, or region.')] = None
     postal_code: Annotated[str | None, Field(description='Postal or ZIP code.')] = None
-    country: Annotated[StrMatchingEFC12812 | None, Field(description='ISO 3166-1 alpha-2 country code.')] = None
+    country: Annotated[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem | None, Field(description='ISO 3166-1 alpha-2 country code.')] = None
 
 
 class HotelItem(AdCPBaseModel):
@@ -54,14 +54,14 @@ class HotelItem(AdCPBaseModel):
     description: Annotated[str | None, Field(description='Property description highlighting features and location.')] = None
     location: Annotated[Location, Field(description='Geographic coordinates of the property.')]
     address: Annotated[Address | None, Field(description='Structured address for display and geocoding.')] = None
-    star_rating: Annotated[IntMin1Max5 | None, Field(description='Official star rating (1–5).')] = None
+    star_rating: Annotated[StarRating | None, Field(description='Official star rating (1–5).')] = None
     price: Annotated[Price | None, Field(description="Nightly rate or starting price. Use period 'night' for nightly rates.")] = None
     image_url: Annotated[HttpUrl | None, Field(description='Primary property image URL.')] = None
     url: Annotated[HttpUrl | None, Field(description='Property landing page or booking URL.')] = None
     phone: Annotated[str | None, Field(description='Property phone number in E.164 format.')] = None
     amenities: Annotated[list[str] | None, Field(description="Property amenities (e.g., 'pool', 'wifi', 'spa', 'parking', 'restaurant').", min_length=1)] = None
-    check_in_time: Annotated[StrMatching98571AF3 | None, Field(description="Standard check-in time in HH:MM format (e.g., '15:00').")] = None
-    check_out_time: Annotated[StrMatching98571AF3 | None, Field(description="Standard check-out time in HH:MM format (e.g., '11:00').")] = None
+    check_in_time: Annotated[HotelItemCheckInTime | None, Field(description="Standard check-in time in HH:MM format (e.g., '15:00').")] = None
+    check_out_time: Annotated[HotelItemCheckInTime | None, Field(description="Standard check-out time in HH:MM format (e.g., '11:00').")] = None
     tags: Annotated[list[str] | None, Field(description="Tags for filtering and targeting (e.g., 'boutique', 'family', 'business', 'luxury').", min_length=1)] = None
     valid_from: Annotated[date | None, Field(description="Date from which this item is available or this rate applies (ISO 8601, e.g., '2025-03-01'). Used for seasonal availability windows in feed imports.")] = None
     valid_to: Annotated[date | None, Field(description="Date until which this item is available or this rate applies (ISO 8601, e.g., '2025-09-30'). Used for seasonal availability windows in feed imports.")] = None

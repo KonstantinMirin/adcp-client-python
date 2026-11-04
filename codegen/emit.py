@@ -678,6 +678,7 @@ def lower_document(
     restatements: Mapping[tuple[object, ...], Target | str] | None = None,
     value_lists: Mapping[tuple[object, ...], ValuesImport | str] | None = None,
     objects: Mapping[str, Target] | None = None,
+    constrained: Mapping[object, str] | None = None,
 ) -> tuple[Module, str] | Refusal:
     """One document's module and root symbol, or the refusal the walk returned.
 
@@ -715,6 +716,13 @@ def lower_document(
         # the three tables above are -- §9 forbids a reading of the run, and a walk with
         # no table mints no reference.
         objects=objects if objects is not None else {},
+        # **§3a's catalogue layer L1** (:attr:`Module.constrained`): shape -> the symbol
+        # ``adcp.types.constraints`` declares for that constraint.  Empty for a document
+        # lowered outside a run, where the walk resolves what ``constraints.symbol`` can
+        # spell in words and leaves the rest inline -- the weaker default the three tables
+        # above do not have, because a constraint with no name is still a constraint and
+        # rides on the field.
+        constrained=constrained if constrained is not None else {},
         referenced=referenced if referenced is not None else {},
         reserved=reserved,
         # The run's own record of which sites this walk asked about, handed IN so that
@@ -1267,6 +1275,7 @@ def decidable(
     value_lists: Mapping[tuple[object, ...], ValuesImport | str] = {},
     judged: Mapping[str, str] = {},
     objects: Mapping[str, Target] = {},
+    constrained: Mapping[object, str] = {},
     abroad: frozenset[str] = frozenset(),
     *,
     known: Collection[str],
@@ -1304,6 +1313,7 @@ def decidable(
         restatements,
         value_lists,
         objects,
+        constrained,
     )
     if isinstance(outcome, Refusal):
         return outcome
@@ -1564,6 +1574,25 @@ def emit(
     #: at L3 is satisfied exactly when the layers beneath hold.  ``tests/test_catalogue.py``
     #: is where that decomposition is the check rather than a sentence.
     l2 = catalogue.collect_shapes(catalogue.Admitted(bundle_dir), "L2")
+    #: **§3a's CATALOGUE, layer L1: the CONSTRAINED SCALARS**, read off the same bundle,
+    #: keyed on the CONSTRAINT SET -- which is that layer's own identity, and is the fourth
+    #: of reading 4's four to be collected.  It is this layer that replaced the content
+    #: DIGEST ``codegen/constraints.py`` minted for a ``pattern``: §4 rules a digest a
+    #: defect, and steps 1 and 3 of its derivation -- the bundle's own name for the
+    #: subject, and the declaring position -- are readings of the BUNDLE that no
+    #: single-node call could make.
+    #:
+    #: ``constraints.SPELLING``'s keyword set and ``constraints.symbol`` are handed IN
+    #: rather than imported there, because §11's arrows run ``catalogue <- constraints``.
+    l1 = catalogue.collect_scalars(
+        bundle_dir,
+        frozenset(kw for kw, _ in constraints_module.SPELLING),
+        constraints_module.symbol,
+    )
+    #: shape -> the symbol, which is the whole of what the walk consults
+    #: (``compiler.Module.constrained``).  One table for every document of the run,
+    #: because the layer is a reading of the bundle and not of the run.
+    constrained = l1.table()
     #: document -> pointer -> the L2 entry that position RESTATES
     #: (``compiler.Module.objects``).  36 positions over 17 documents for this bundle's 17
     #: named object types.
@@ -2293,6 +2322,7 @@ def emit(
             value_lists(document),
             judged(document),
             objects_of,
+            constrained,
             # Narrowed to the symbols the declaring module EXPORTS, which is what makes a
             # binding to one a second path on §1's surface rather than a private import.
             frozenset(

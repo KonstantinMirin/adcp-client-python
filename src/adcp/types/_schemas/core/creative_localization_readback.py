@@ -8,7 +8,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule, UniqueItems
-from adcp.types.constraints import NonEmptyList, StrMatchingE02C3DE8, StrMinLen1MaxLen255
+from adcp.types.constraints import BrandDiscoveryAgentId, NonEmptyList, StrMinLen1MaxLen255
 
 from .locale_tag import LanguageTag
 from .localized_creative_asset import LocalizedCreativeAsset
@@ -31,7 +31,7 @@ class LocaleFallbacksItem(AdCPBaseModel):
     locale_variant_id: StrMinLen1MaxLen255
 
 
-ResolvedAssets = Annotated[dict[StrMatchingE02C3DE8, LocalizedCreativeAsset | NonEmptyList[LocalizedCreativeAsset]], Field(description='Complete resolved assets for this locale, keyed by creative slot.', min_length=1)]
+ResolvedAssets = Annotated[dict[BrandDiscoveryAgentId, LocalizedCreativeAsset | NonEmptyList[LocalizedCreativeAsset]], Field(description='Complete resolved assets for this locale, keyed by creative slot.', min_length=1)]
 
 
 class SourceLocalizationReadback(AdCPBaseModel):

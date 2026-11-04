@@ -7,7 +7,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
-from adcp.types.constraints import IntMin1, StrMinLen1, StrMinLen16MaxLen255Matching1E5CF9EB, StrMinLen1MaxLen255Matching67860854, StrMinLen1MaxLen64MatchingD373B860
+from adcp.types.constraints import AccountChangeRecordedWebhookSubscriberId, ComplyTestControllerRequestParamsReceivedReportingRevisionId, IntMin1, StrMinLen1, SyncAccountsRequestIdempotencyKey
 
 from ..enums.reporting_health import ReportingHealth
 from .ext import ExtensionObject
@@ -26,19 +26,19 @@ class ReportingStatusChangedWebhook(AdCPBaseModel):
         UniqueItems('issue_ids'),
         ConditionalRequired((Match('health', True, ('delayed', 'action_required')),), require=('issue_ids',), forbid=()),
     )
-    idempotency_key: Annotated[StrMinLen16MaxLen255Matching1E5CF9EB, Field(description='Sender-generated key stable across retries of the same fire. Sellers MUST generate a cryptographically random value (UUID v4 recommended) per distinct fire and reuse it on every retry. Receivers MUST dedupe by this key, scoped to the authenticated sender identity.')]
-    notification_id: Annotated[StrMinLen1MaxLen255Matching67860854, Field(description='Stable per logical health transition; re-emissions reuse it, and a later distinct transition receives a new id.')]
+    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Sender-generated key stable across retries of the same fire. Sellers MUST generate a cryptographically random value (UUID v4 recommended) per distinct fire and reuse it on every retry. Receivers MUST dedupe by this key, scoped to the authenticated sender identity.')]
+    notification_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId, Field(description='Stable per logical health transition; re-emissions reuse it, and a later distinct transition receives a new id.')]
     notification_type: Literal['reporting.status_changed']
     fired_at: AwareDatetime
-    subscriber_id: Annotated[StrMinLen1MaxLen64MatchingD373B860, Field(description='Identifies which account-level notification_configs[] entry is receiving this fire.')]
+    subscriber_id: Annotated[AccountChangeRecordedWebhookSubscriberId, Field(description='Identifies which account-level notification_configs[] entry is receiving this fire.')]
     account_id: StrMinLen1
-    delivery_config_id: StrMinLen1MaxLen64MatchingD373B860
+    delivery_config_id: AccountChangeRecordedWebhookSubscriberId
     delivery_config_version: IntMin1
     feed_purpose: ReportingFeedPurpose
-    reporting_obligation_id: Annotated[StrMinLen1MaxLen255Matching67860854 | None, Field(description='Present when the transition is obligation-scoped; absent for configuration-level transitions.')] = None
+    reporting_obligation_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId | None, Field(description='Present when the transition is obligation-scoped; absent for configuration-level transitions.')] = None
     health: Annotated[ReportingHealth, Field(description='The health state after this transition.')]
     previous_health: ReportingHealth | None = None
-    issue_ids: Annotated[list[StrMinLen1MaxLen255Matching67860854] | None, Field(description='Stable identifiers of the open issues that caused or survived this transition, matching issues[].issue_id on get_reporting_status, so consumers can project AdCP reporting issues into durable work items. Empty or absent on recovery transitions.', json_schema_extra={'uniqueItems': True}, max_length=16)] = None
+    issue_ids: Annotated[list[ComplyTestControllerRequestParamsReceivedReportingRevisionId] | None, Field(description='Stable identifiers of the open issues that caused or survived this transition, matching issues[].issue_id on get_reporting_status, so consumers can project AdCP reporting issues into durable work items. Empty or absent on recovery transitions.', json_schema_extra={'uniqueItems': True}, max_length=16)] = None
     ext: ExtensionObject | None = None
 
 

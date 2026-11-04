@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import FloatMinNeg180Max180, FloatMinNeg90Max90, HttpUrl, StrMatchingEFC12812
+from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, FloatMinNeg180Max180, FloatMinNeg90Max90, HttpUrl
 
 from .catchment import Catchment
 from .ext import ExtensionObject
@@ -36,7 +36,7 @@ class Address(AdCPBaseModel):
     city: Annotated[str | None, Field(description='City name.')] = None
     region: Annotated[str | None, Field(description="State, province, or region. ISO 3166-2 subdivision code preferred (e.g., 'NL-NH', 'US-CA').")] = None
     postal_code: Annotated[str | None, Field(description='Postal or ZIP code.')] = None
-    country: Annotated[StrMatchingEFC12812 | None, Field(description='ISO 3166-1 alpha-2 country code.')] = None
+    country: Annotated[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem | None, Field(description='ISO 3166-1 alpha-2 country code.')] = None
 
 
 HoursValue = Annotated[str, Field(description="Time range in HH:MM-HH:MM format (e.g., '09:00-21:00'). Use 'closed' for days the store is not open.")]

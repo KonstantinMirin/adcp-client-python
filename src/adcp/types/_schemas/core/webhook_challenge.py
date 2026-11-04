@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
-from adcp.types.constraints import HttpUrl, StrMatchingEF42E836, StrMinLen1MaxLen64MatchingD373B860, StrMinLen32MaxLen255Matching3AEA6666
+from adcp.types.constraints import AccountChangeRecordedWebhookSubscriberId, AgentWebhookChallengeChallenge, ComplyTestControllerRequestParamsIdentifierValueDigestsItem, HttpUrl
 
 from ..enums.notification_type import NotificationType
 from .agent_webhook_challenge import Mode
@@ -26,7 +26,7 @@ class DeliveryAuth(AdCPBaseModel):
         ConditionalRequired((Match('mode', True, ('Bearer', 'HMAC-SHA256')),), require=('credential_fingerprint',), forbid=()),
     )
     mode: Annotated[Mode, Field(description='Future webhook delivery authentication mode. `rfc9421` is used when notification_configs[].authentication is absent; Bearer and HMAC-SHA256 are the deprecated legacy modes selected by notification_configs[].authentication.')]
-    credential_fingerprint: Annotated[StrMatchingEF42E836 | None, Field(description='SHA-256 hex fingerprint of the exact legacy credential string supplied in notification_configs[].authentication.credentials. Required when mode is Bearer or HMAC-SHA256; absent for rfc9421.')] = None
+    credential_fingerprint: Annotated[ComplyTestControllerRequestParamsIdentifierValueDigestsItem | None, Field(description='SHA-256 hex fingerprint of the exact legacy credential string supplied in notification_configs[].authentication.credentials. Required when mode is Bearer or HMAC-SHA256; absent for rfc9421.')] = None
 
 
 class WebhookChallenge(AdCPBaseModel):
@@ -41,9 +41,9 @@ class WebhookChallenge(AdCPBaseModel):
         UniqueItems('event_types'),
     )
     type: Annotated[Literal['webhook.challenge'], Field(description='Discriminator for endpoint proof-of-control challenges.')]
-    challenge: Annotated[StrMinLen32MaxLen255Matching3AEA6666, Field(description='Opaque, cryptographically random value that the receiver must echo in the response body. Recommended encoding: base64url without padding.')]
+    challenge: Annotated[AgentWebhookChallengeChallenge, Field(description='Opaque, cryptographically random value that the receiver must echo in the response body. Recommended encoding: base64url without padding.')]
     account_id: Annotated[str, Field(description='Seller account identifier for the account whose notification_configs[] entry is being challenged.')]
-    subscriber_id: Annotated[StrMinLen1MaxLen64MatchingD373B860, Field(description='Buyer-supplied subscriber identifier from the notification_configs[] entry being challenged.')]
+    subscriber_id: Annotated[AccountChangeRecordedWebhookSubscriberId, Field(description='Buyer-supplied subscriber identifier from the notification_configs[] entry being challenged.')]
     seller_agent_url: Annotated[HttpUrl, Field(description='Exact seller agent URL whose RFC 9421 webhook profile key signs this challenge and that will send subsequent webhooks.')]
     delivery_auth: Annotated[DeliveryAuth, Field(description='Authentication/signing mode the seller will use for subsequent webhooks delivered to this notification config.')]
     event_types: Annotated[list[NotificationType], Field(description='Normalized notification types requested by the subscriber at the time of the challenge. Part of the endpoint proof scope; changing event_types[] requires a fresh challenge before the new set can become active.', json_schema_extra={'uniqueItems': True}, min_length=1)]

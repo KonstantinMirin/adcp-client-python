@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Dependencies, ForbiddenGroups, Match, NegatedConditional, Rule
-from adcp.types.constraints import HttpUrl, IntMin1, StrMatching43E30B32, StrMinLen1
+from adcp.types.constraints import GetAccountFinancialsResponseSuccessCurrency, HttpUrl, IntMin1, StrMinLen1
 from adcp.types.envelopes import FailedResponse
 
 from ..core.account_authorization import AccountAuthorization
@@ -73,7 +73,7 @@ class Setup(AdCPBaseModel):
 class CreditLimit(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='account/sync-accounts-response.json', pointer='#/oneOf/0/properties/accounts/items/properties/credit_limit')
     amount: NonNegativeFloat
-    currency: StrMatching43E30B32
+    currency: GetAccountFinancialsResponseSuccessCurrency
 
 
 class AccountsItem(AdCPBaseModel):
@@ -98,7 +98,7 @@ class AccountsItem(AdCPBaseModel):
     revision: Annotated[IntMin1 | None, Field(description='Current account revision after this operation. Incremented by each persisted settings change, identity-change request, or identity-change disposition; not incremented by dry runs, validation failures, or exact idempotency replays. Pass this value in the next settings-update entry to prevent lost updates.')] = None
     identity_change: Annotated[AccountIdentityChange | None, Field(description='Pending or rejected desired operator identity. The top-level operator and operator_unit remain canonical until an approved change is applied.')] = None
     identity_change_preview: Annotated[AccountIdentityChangePreview | None, Field(description='Dry-run-only preview of whether the requested identity would apply, require approval, or be blocked, plus evaluated resource impacts. This value is not persisted; canonical fields and revision remain current.')] = None
-    currency: Annotated[StrMatching43E30B32 | None, Field(description='Immutable account currency, echoed when the advertiser object is currency-bound.')] = None
+    currency: Annotated[GetAccountFinancialsResponseSuccessCurrency | None, Field(description='Immutable account currency, echoed when the advertiser object is currency-bound.')] = None
     timezone: Annotated[StrMinLen1 | None, Field(description='Immutable operational timezone for this account. AdCP 3.2 sellers echo it on created, updated, and unchanged results. For buyer-selected account_fixed provisioning it participates in the natural key.')] = None
     name: Annotated[str | None, Field(description='Human-readable account name assigned by the seller')] = None
     action: Annotated[Action, Field(description='Action taken for this account. created: new account provisioned. updated: existing account modified. unchanged: no changes needed. failed: could not process (see errors).')]

@@ -32,13 +32,23 @@ module holds them all, it is PUBLIC (a consumer annotating application code
 imports from it), and it is named for what it holds rather than for
 ``Annotated``, which is only the mechanism.
 
-**An alias names a constraint, never a concept.**  :func:`symbol` derives the
-name from the constraint and from nothing else -- never from a property key,
-never from a domain word -- because two fields sharing a bound are not thereby
-the same idea.  A ``pattern`` is the one keyword with no readable spelling, so it
-contributes a DIGEST of itself: mechanical, stable, a function of the constraint
-alone, and manifestly not a concept.  :func:`record` makes a digest collision a
-build failure rather than two constraints quietly sharing a symbol.
+**AN ALIAS'S NAME IS THE BUNDLE'S WHERE THE BUNDLE NAMES IT, THE CONSTRAINT IN
+WORDS WHERE IT HAS WORDS, AND ITS DECLARING POSITION OTHERWISE** -- §4's three
+ordered steps, and there is no fourth.  ``catalogue.collect_scalars`` is the
+derivation, because steps 1 and 3 are readings of the BUNDLE and this module is
+handed one node at a time; :func:`symbol` is step 2 alone and :func:`resolve`
+asks the layer first.
+
+**This replaces a content DIGEST, which §4 rules a defect**: "a minted name says
+what the type constrains.  A digest fails that and is a defect, and
+insertion-stability is not the test."  The argument the digest rested on is
+intact -- a regular expression has no readable name that is not a concept, and
+``^[A-Z]{3}$`` is stated at 86 positions for ``currency`` and for
+``airport_code`` alike, so naming it ``CurrencyCode`` would be a lie at most of
+them.  What was wrong was the conclusion: a constraint the bundle does not name
+is **pending a name**, and the position that declares it is what §1 names it by
+until upstream does.  :func:`record` still makes two constraints deriving one
+symbol a build failure rather than a shared alias.
 
 **EVERY constrained scalar is named, not only a repeating one, and that is a
 decision with a measured reason.**  Naming only the shapes that repeat needs a
@@ -75,7 +85,6 @@ section 5 spells itself.
 
 from __future__ import annotations
 
-import hashlib
 from collections.abc import Mapping
 from dataclasses import replace
 from typing import Any
@@ -263,18 +272,26 @@ def _number(value: Any) -> str:
     return text
 
 
-def _digest(pattern: str) -> str:
-    """The word a ``pattern`` contributes: eight hex digits of its SHA-256.
-
-    A regular expression has no readable name that is not a concept -- calling
-    ``^[A-Z]{3}$`` ``CurrencyCode`` names the idea three of its sites happen to
-    share and would be a lie at the fourth.  A digest is derived from the
-    constraint, is stable across runs and bundles, and cannot be mistaken for a
-    domain word.  Eight hex digits over the bundle's distinct patterns is ample;
-    :func:`record` turns a collision into a build failure rather than two
-    constraints sharing a symbol.
-    """
-    return hashlib.sha256(pattern.encode()).hexdigest()[:8].upper()
+#: The constraint keyword that has NO SPELLING IN WORDS, so §4's step 2 cannot answer for
+#: a shape carrying one and :func:`symbol` returns ``None`` there.
+#:
+#: **This used to contribute eight hex digits of the pattern's SHA-256, and
+#: ``docs/plan/rebuild-plan.md`` §4 rules that a defect** (2026-11-04): "A MINTED NAME SAYS
+#: WHAT THE TYPE CONSTRAINS.  A DIGEST FAILS THAT AND IS A DEFECT, and insertion-stability
+#: is not the test. ``StrMatching02AE7B1E`` is stable -- derived from the constraint set,
+#: so adding a scalar renames nothing -- and it is still not a name: a consumer imports it
+#: and annotates with it, and it tells that consumer nothing about what it admits."
+#:
+#: The argument the digest rested on is intact and is the reason it is not replaced by a
+#: concept HERE: a regular expression has no readable name that is not a concept, and
+#: calling ``^[A-Z]{3}$`` ``CurrencyCode`` "names the idea three of its sites happen to
+#: share and would be a lie at the fourth" -- measured, that pattern is stated at 86
+#: positions in 62 documents for ``currency`` AND ``airport_code``.  What was wrong was the
+#: conclusion: the name a constraint with no words takes is the BUNDLE's, where the bundle
+#: names its subject, and its DECLARING POSITION's otherwise -- §4's steps 1 and 3, which
+#: ``catalogue.collect_scalars`` derives over the bundle and :func:`resolve` reads.  "A
+#: digest is what the compiler writes INSTEAD of filing that ask."
+UNSPELLABLE = frozenset({"pattern"})
 
 
 def _container_symbol(kind: str, constraints: Mapping[str, Any]) -> str | None:
@@ -302,13 +319,15 @@ def symbol(
     *,
     format: str | None = None,  # the JSON Schema keyword's own name
 ) -> str | None:
-    """D5's rung 3: the alias name for this shape, derived from the constraint.
+    """**§4's STEP 2: the constraint, in words** -- ``StrMaxLen100``, ``NonEmptyList``.
 
     ``None`` where the shape has no spelling here -- an unknown ``type``, no
-    constraint at all, or a keyword :data:`SPELLING` does not name -- and the
-    caller then leaves the site inline, which is what it did before this module
-    existed.  Returning a name for a keyword this module cannot spell would be
-    the one failure mode that matters: an alias whose annotation drops a fact.
+    constraint at all, a keyword :data:`SPELLING` does not name, or a keyword with no
+    spelling in words at all (:data:`UNSPELLABLE`) -- and §4's step 3 then answers
+    from the DECLARING POSITION (``catalogue.collect_scalars``).  Returning a name for
+    a keyword this module cannot spell would be the one failure mode that matters: an
+    alias whose annotation drops a fact, which is exactly what a name spelling only the
+    ``maxLength`` of a shape that also carries a ``pattern`` would be.
 
     ``format`` contributes a word of its own, and it is spelled FIRST so the common
     case reads as what it is: ``StrFormatHostname``.  **It is here because a format
@@ -325,13 +344,9 @@ def symbol(
     base = BASE.get(kind)
     if base is None or not (constraints or format):
         return None
-    if set(constraints) - {kw for kw, _ in SPELLING}:
+    if set(constraints) - {kw for kw, _ in SPELLING} or set(constraints) & UNSPELLABLE:
         return None
-    parts = [
-        word + (_digest(constraints[kw]) if kw == "pattern" else _number(constraints[kw]))
-        for kw, word in SPELLING
-        if kw in constraints
-    ]
+    parts = [word + _number(constraints[kw]) for kw, word in SPELLING if kw in constraints]
     if format is not None:
         parts.insert(0, "Format" + compiler.class_name(format))
     name = base + "".join(parts)
@@ -343,6 +358,7 @@ def resolve(
     constraints: Mapping[str, Any],
     *,
     format: str | None = None,  # the JSON Schema keyword's own name
+    named: Mapping[object, str] = {},
 ) -> str | None:
     """The dotted path this shape's named type is reachable at, or ``None``.
 
@@ -356,6 +372,15 @@ def resolve(
     states the document's own facts, and no pydantic type states ``format: hostname``
     beside ``minimum: 0``.  ``standard`` would be asked about a shape it does not see
     and would answer for the constraints alone, which is an alias dropping a fact.
+
+    ``named`` is **§3a's layer L1, as a table** (``catalogue.Scalars.table``): shape ->
+    the symbol §4's three steps derive over the BUNDLE.  It is asked BEFORE
+    :func:`symbol` because it already holds :func:`symbol`'s own answer at step 2 and
+    holds the two answers :func:`symbol` cannot give -- the bundle's own name for the
+    subject, and the declaring position.  It is read the way
+    ``compiler.Module.value_lists`` is: a plain mapping handed in by the run, empty for
+    a document lowered outside one, and §9-safe because the layer is collected over the
+    bundle and never over the run's document set.
     """
     if not constraints and format is None:
         return None
@@ -363,7 +388,19 @@ def resolve(
         found = standard(kind, constraints)
         if found is not None:
             return found
-    name = symbol(kind, constraints, format=format)
+    # The three keys ``catalogue.Scalars.table`` answers at, in its own order: the exact
+    # shape, the shape with the ``format`` dropped (a ``uri`` that SELECTS a URL type
+    # leaves the bound behind without it), and the constraint set alone (an ``allOf``
+    # intersection composes a set no single node of the bundle writes).  Only the first
+    # is unconditional; the other two are in the table only where ONE entry wants them,
+    # so a relaxed hit can never be another constraint's name.
+    spelled = tuple(sorted(constraints.items()))
+    name = None
+    for key in ((kind, spelled, format), (kind, spelled, None), spelled):
+        name = named.get(key)
+        if name is not None:
+            break
+    name = name or symbol(kind, constraints, format=format)
     return None if name is None else f"{MODULE}.{name}"
 
 

@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule, UniqueItems
-from adcp.types.constraints import StrMatching32F5291C, StrMatching3CBDBB74, StrMinLen1
+from adcp.types.constraints import AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, StrMinLen1, ZipAssetDigest
 
 from ..enums.daast_version import DAASTVersion
 from ..enums.vast_version import VASTVersion
@@ -23,7 +23,7 @@ class PlacementRefsItem(PlacementReference):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/package-format-snapshot.json', pointer='#/properties/placement_refs/items')
-    publisher_domain: Annotated[StrMatching32F5291C, Field(description='Domain where the adagents.json declaring a publisher-catalog placement is hosted, or the inventory publisher associated with an inline placement. Omitted only for legacy single-publisher product-context references.')]
+    publisher_domain: Annotated[AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, Field(description='Domain where the adagents.json declaring a publisher-catalog placement is hosted, or the inventory publisher associated with an inline placement. Omitted only for legacy single-publisher product-context references.')]
 
 
 class PackageFormatSnapshot(BranchDispatchMixin, AdCPBaseModel):
@@ -50,8 +50,8 @@ class PackageFormatSnapshot(BranchDispatchMixin, AdCPBaseModel):
     placement_refs: Annotated[list[PlacementRefsItem] | None, Field(description='Nonempty, duplicate-free effective placement set, sorted by publisher_domain then placement_id using ascending UTF-8 bytes without Unicode normalization. Omission binds the product-wide common effective contract; it never means an inferred list of all current placements.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     execution_vast_version: Annotated[VASTVersion | None, Field(description='Exact VAST execution version selected for first-class VAST tracker matching when no sibling delivery document supplies one. The value is immutable for the package.')] = None
     execution_daast_version: Annotated[DAASTVersion | None, Field(description='Exact DAAST execution version selected for first-class DAAST tracker matching when no sibling delivery document supplies one. The value is immutable for the package.')] = None
-    tracker_execution_contract_digest: Annotated[StrMatching3CBDBB74 | None, Field(description='SHA-256 of RFC 8785 canonical JSON for tracker_execution_contract alone. Required if and only if the snapshot contains that contract.')] = None
-    product_snapshot_digest: Annotated[StrMatching3CBDBB74 | None, Field(description="Immutable SHA-256 digest of the package format snapshot's closed product-binding preimage. Required for every contract-bearing snapshot and paired with product_id whenever present.")] = None
+    tracker_execution_contract_digest: Annotated[ZipAssetDigest | None, Field(description='SHA-256 of RFC 8785 canonical JSON for tracker_execution_contract alone. Required if and only if the snapshot contains that contract.')] = None
+    product_snapshot_digest: Annotated[ZipAssetDigest | None, Field(description="Immutable SHA-256 digest of the package format snapshot's closed product-binding preimage. Required for every contract-bearing snapshot and paired with product_id whenever present.")] = None
 
 
 class PackageFormatSnapshotImage(PackageFormatSnapshot, ImageFormatDeclaration):
