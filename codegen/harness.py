@@ -74,12 +74,15 @@ dict section 6 deleted.
 from __future__ import annotations
 
 import copy
+import ctypes
+import ctypes.util
 import functools
 import hashlib
 import importlib
 import json
 import pkgutil
 import traceback
+import zlib
 from collections import Counter
 from collections.abc import Callable, Collection, Iterator, Mapping, Sequence
 from contextlib import contextmanager
@@ -698,8 +701,10 @@ def corpus_key(
     ``test_the_accepts_key_does_not_move_when_a_position_is_available`` reads that back.
 
     The serialisation is ``json.dumps(..., sort_keys=True)``, the same canonical spelling
-    ``canonicalisation_shared_within_one_call`` keys its within-call memo with, so two
-    callers cannot disagree about when two identities are one identity.
+    ``canonicalisation_shared_within_one_call`` keys its within-call memo with -- and
+    since ``adcp-client-python-82m.25.1`` that memo digests it too, for the reason this
+    function always did: a key decides whether two things are one thing, and holding the
+    text to decide it holds the text.
     """
     material: dict[str, Any] = {
         "identity": identity,
@@ -781,8 +786,47 @@ def corpus_defect(
     return ""
 
 
+@functools.cache
+def _malloc_trim() -> Any:
+    """``malloc_trim`` off the C library, or ``None`` where there is no such symbol.
+
+    ``functools.cache`` because the answer is a property of the LIBRARY this interpreter
+    is linked against and cannot change under a running process -- the one shape of cache
+    whose key is not a subject of ``adcp-client-python-82m.25.1`` at all.
+
+    ``None`` on anything other than glibc, and the caller then does nothing: the trim is a
+    RETURN of pages the process has already freed, so an allocator that has no such call
+    is an allocator with nothing to return and never a failure.
+    """
+    try:
+        name = ctypes.util.find_library("c") or "libc.so.6"
+        return ctypes.CDLL(name).malloc_trim
+    except (OSError, AttributeError):
+        return None
+
+
+def _release_freed_pages() -> None:
+    """Give the kernel back what Python has already freed.
+
+    **Measured, and it is why "then drop them" needs a second sentence on this
+    allocator** (``adcp-client-python-82m.25.1``).  One cold draw --
+    ``adagents.json#/oneOf/1/allOf/0/anyOf/1``, cut at 90 s -- takes RSS from 0.45 GB to
+    0.70 GB and leaves it there once the memo is dropped, while ``tracemalloc``'s traced
+    total comes back to the baseline: Python retains nothing and glibc retains the
+    arenas.  This call reads 0.50 GB.
+
+    It bounds nothing.  No entry is evicted, no draw is cut and no pair is skipped; the
+    only thing that changes is which process holds pages nobody has a reference to.  That
+    distinction is the whole of why a trim is admissible where a worker cap is not: a cap
+    changes what is graded and this changes what is resident.
+    """
+    trim = _malloc_trim()
+    if trim is not None:
+        trim(0)
+
+
 @contextmanager
-def canonicalisation_shared_within_one_call() -> Iterator[dict[str, Any]]:
+def canonicalisation_shared_within_one_call() -> Iterator[dict[bytes, Any]]:
     """Share ``canonicalish`` results for the duration of ONE check, then drop them.
 
     **THIS IS A DIVERGENCE FROM SECTION 6's LETTER AND IT IS MEASURED.**  Section 6
@@ -850,29 +894,76 @@ def canonicalisation_shared_within_one_call() -> Iterator[dict[str, Any]]:
 
     The MISS hands back the result itself and holds only the text, so a miss now copies
     once where it copied twice.
+
+    **AN ENTRY COUNT IS NOT A SIZE, AND THE PARAGRAPHS ABOVE SIZED THIS MEMO BY COUNTING
+    ENTRIES** (``adcp-client-python-82m.25.1``).  "504 at the measured worst" is a COUNT,
+    taken on an 18,301-byte document, and the two halves of an entry are each a whole
+    subtree's TEXT -- the key is ``json.dumps`` of the subschema and the value is
+    ``json.dumps`` of its canonical form.  ``canonicalish`` recurses, so a parent's entry
+    holds every descendant's text again and the memo's BYTES grow as the text times the
+    depth where its entry count grows as the distinct subschemas.  Measured on
+    ``adagents.json#/oneOf/1/allOf/0/anyOf/1``, one pair, cut at 60 s with the draw still
+    running: **2,793 entries holding 437 MiB of keys and 544 MiB of values**, from a
+    36,283-byte document -- 981 MiB, which is 28,370x the document it is a memo of and
+    the whole of that pair's 2.15 GB peak.  The count was in range; the size was four
+    orders of magnitude outside it.
+
+    So the two halves are held as what the memo needs them for rather than as text, and
+    neither change can move an answer:
+
+    * **THE KEY IS A DIGEST OF THE TEXT AND NOT THE TEXT.**  The key decides one
+      question -- whether this subschema is the one an entry was made for -- and a digest
+      of the canonical text answers exactly it, with the same equivalence classes.  2,793
+      keys are 89 KB where the text was 437 MiB.
+    * **THE VALUE IS THE TEXT COMPRESSED.**  The value is handed back through
+      ``json.loads``, so what it has to be is the bytes that parse to the result; schema
+      text is repetitive and ``zlib`` at level 1 is the cheap end of the trade.  The
+      round trip is still CHECKED on the uncompressed text before the entry is kept, so
+      :func:`_round_trips`' guarantee is untouched and the object fallback is still the
+      object.
+
+    **AND THE PAGES THE MEMO OCCUPIED ARE RETURNED WHEN IT IS DROPPED**, which is the
+    other half of what "then drop them" has to mean on this allocator.  Measured on the
+    same pair: Python's own traced total comes back to the baseline when the memo goes --
+    nothing is retained, which is what the name promises -- and RSS does not, because
+    glibc holds the freed arenas. 0.45 GB baseline, 0.70 GB after the pair, **0.50 GB
+    after ``malloc_trim``**.  Over the 77 pairs of this bundle that DRAW rather than
+    replay, that un-returned remainder is what makes a worker's peak RSS look like a
+    function of how many documents it has graded when it is a function of how many cold
+    draws it has been given: four workers reached 28.8 / 28.3 / 17.6 / 9.9 GB on one
+    domain.  It is not a cap and it is not a budget -- nothing is bounded, evicted or
+    skipped; the process returns memory it has already freed.
     """
-    memo: dict[str, tuple[str | None, Any]] = {}
+    memo: dict[bytes, tuple[bytes | None, Any]] = {}
     uncached = _hjs_canon.canonicalish
 
     def shared(schema: Any) -> Any:
         try:
-            key = json.dumps(schema, sort_keys=True, default=repr)
+            text = json.dumps(schema, sort_keys=True, default=repr)
         except (TypeError, ValueError):
             return uncached(schema)
+        key = hashlib.blake2b(text.encode(), digest_size=32).digest()
         entry = memo.get(key)
         if entry is None:
             result = uncached(schema)
             blob = _round_trips(result)
-            memo[key] = (blob, None if blob is not None else result)
+            memo[key] = (
+                None if blob is None else zlib.compress(blob.encode(), 1),
+                None if blob is not None else result,
+            )
             return result
-        blob, held = entry
-        return copy.deepcopy(held) if blob is None else json.loads(blob)
+        packed, held = entry
+        if packed is None:
+            return copy.deepcopy(held)
+        return json.loads(zlib.decompress(packed))
 
     _hjs_canon.canonicalish = shared
     try:
         yield memo
     finally:
         _hjs_canon.canonicalish = uncached
+        memo.clear()
+        _release_freed_pages()
 
 
 def _round_trips(value: Any) -> str | None:
