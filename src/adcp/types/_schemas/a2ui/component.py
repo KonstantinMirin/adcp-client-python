@@ -7,7 +7,6 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 
-
 ComponentValue = Annotated[dict[str, Any], Field(description='Component properties')]
 
 

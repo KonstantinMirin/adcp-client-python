@@ -7,7 +7,12 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, RequiredGroups, Rule
-from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, GeoForecastDimensionCode, IntMin1Max100, StrMinLen1
+from adcp.types.constraints import (
+    AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem,
+    GeoForecastDimensionCode,
+    IntMin1Max100,
+    StrMinLen1,
+)
 
 from .geo_place_type import GeographicPlaceType
 from .locale_tag import LanguageTag

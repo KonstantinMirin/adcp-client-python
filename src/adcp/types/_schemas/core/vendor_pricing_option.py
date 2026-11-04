@@ -10,7 +10,7 @@ from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem
 
 from .format_id import FormatReferenceStructuredObject
-from .signal_pricing import CpmPricing, CustomPricing, FlatFeePricing, PerUnitPricing, PercentOfMediaPricing, VendorPricing
+from .signal_pricing import CpmPricing, CustomPricing, FlatFeePricing, PercentOfMediaPricing, PerUnitPricing
 
 
 class VendorPricingOption(BranchDispatchMixin, AdCPBaseModel):

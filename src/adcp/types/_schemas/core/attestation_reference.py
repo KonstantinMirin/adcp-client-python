@@ -7,7 +7,14 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, PropertyCount, RequiredGroups, Rule
-from adcp.types.constraints import AttestationCapabilitiesAcceptedIssuersItemResolversItemResolverId, HttpUrl, StrMinLen1, StrMinLen1MaxLen1024, StrMinLen1MaxLen255, ZipAssetDigest
+from adcp.types.constraints import (
+    AttestationCapabilitiesAcceptedIssuersItemResolversItemResolverId,
+    HttpUrl,
+    StrMinLen1,
+    StrMinLen1MaxLen255,
+    StrMinLen1MaxLen1024,
+    ZipAssetDigest,
+)
 
 from .attestation_issuer import AttestationIssuer
 from .attestation_subject import AttestationSubject

@@ -8,7 +8,12 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, GeoForecastDimensionCode, IntMin1, StrMinLen1
+from adcp.types.constraints import (
+    AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem,
+    GeoForecastDimensionCode,
+    IntMin1,
+    StrMinLen1,
+)
 
 from .ext import ExtensionObject
 

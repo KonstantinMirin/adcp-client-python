@@ -9,7 +9,6 @@ from adcp.types._base import SchemaRef, strict_alias
 
 from .assets.asset_union import AssetVariant
 
-
 __adcp_schema__ = SchemaRef(document='core/localized-creative-asset.json', pointer='#')
 
 LocalizedCreativeAsset = Annotated[AssetVariant, Field(description='An asset inside a materialized creative locale variant. Text and markdown assets may omit language when they make no language claim. When language is present, it MUST use the shared AdCP BCP 47 wire profile; conformance additionally requires exact equality with the enclosing variant locale.')]

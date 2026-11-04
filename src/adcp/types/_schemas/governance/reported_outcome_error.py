@@ -8,10 +8,16 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import PropertyCount, Rule
-from adcp.types.constraints import DictMaxProperties32, ListMaxItems32, StrMaxLen1000, StrMaxLen128, StrMaxLen4000, StrMinLen1MaxLen64
+from adcp.types.constraints import (
+    DictMaxProperties32,
+    ListMaxItems32,
+    StrMaxLen128,
+    StrMaxLen1000,
+    StrMaxLen4000,
+    StrMinLen1MaxLen64,
+)
 
 from ..core.error import Recovery
-
 
 BoundedScalar = bool | float | StrMaxLen4000 | None
 
@@ -58,4 +64,4 @@ class ReportedOutcomeError(AdCPBaseModel):
     ext: Annotated[BoundedObject | None, Field(description='Bounded extension envelope for forward-compatible seller fields.')] = None
 
 
-__all__ = ["ReportedOutcomeError", "BoundedObject", "BoundedScalar", "BoundedValue", "BoundedValueLevel2", "BoundedValueLevel3"]
+__all__ = ["BoundedObject", "BoundedScalar", "BoundedValue", "BoundedValueLevel2", "BoundedValueLevel3", "ReportedOutcomeError"]

@@ -13,7 +13,7 @@ from ..core.canonical_account_ref import CanonicalAccountReference
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
 from ..core.reporting_consumer_status import ReportingConsumerStatus
-from ..core.version_envelope import AdCPVersionEnvelope, AdcpMajorVersion, AdcpVersion
+from ..core.version_envelope import AdcpMajorVersion, AdcpVersion, AdCPVersionEnvelope
 
 
 class StatusesItem(ReportingConsumerStatus):

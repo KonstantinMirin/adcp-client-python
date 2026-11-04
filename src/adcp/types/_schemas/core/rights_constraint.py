@@ -8,13 +8,19 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
-from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, HttpUrl, IntMin1, StrMinLen1, ZipAssetDigest
+from adcp.types.constraints import (
+    AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem,
+    HttpUrl,
+    IntMin1,
+    StrMinLen1,
+    ZipAssetDigest,
+)
 
 from ..enums.right_type import RightType
 from ..enums.right_use import RightUse
-from .attestation_issuer import AttestationBrandIssuer, AttestationIssuer
+from .attestation_issuer import AttestationBrandIssuer
 from .attestation_reference import AttestationReference
-from .attestation_subject import AttestationResourceSubject, AttestationSubject
+from .attestation_subject import AttestationResourceSubject
 from .brand_ref import BrandReference
 from .ext import ExtensionObject
 

@@ -16,7 +16,6 @@ from ..enums.feed_format import FeedFormat
 from ..enums.update_frequency import UpdateFrequency
 from .catalog_field_mapping import CatalogFieldMapping
 
-
 Ids = Annotated[list[str], Field(description='Filter catalog to exact canonical item keys. The key field is offering_id for offering, store_id for store, hotel_id for hotel, flight_id for flight, job_id for job, vehicle_id for vehicle, listing_id for real_estate, program_id for education, destination_id for destination, and app_id for app. Product, inventory, and promotion catalogs use the stable normalized source identifier retained during ingestion (for example a retailer SKU). The same canonical key is used by catalog availability item_id.', min_length=1)]
 
 

@@ -9,7 +9,6 @@ from adcp.types._base import SchemaRef, strict_alias
 from adcp.types._runtime import NotValue
 from adcp.types.constraints import StrIANATimezoneIdentifier
 
-
 __adcp_schema__ = SchemaRef(document='core/iana-timezone.json', pointer='#')
 
 IANATimezoneIdentifier = Annotated[Annotated[StrIANATimezoneIdentifier, AfterValidator(NotValue(('inventory_local',)))], Field(description="Concrete timezone identifier in the implementation's supported IANA Time Zone Database, such as America/New_York, CET, or UTC.")]

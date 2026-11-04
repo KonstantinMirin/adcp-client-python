@@ -12,7 +12,7 @@ from adcp.types.constraints import StrMinLen1, StrMinLen1MaxLen4096, SyncAccount
 from ..core.context import ContextObject
 from ..core.opportunity_context import OpportunityContext
 from ..core.push_notification_config import PushNotificationConfig
-from ..core.version_envelope import AdCPVersionEnvelope, AdcpMajorVersion, AdcpVersion
+from ..core.version_envelope import AdcpMajorVersion, AdcpVersion, AdCPVersionEnvelope
 from .proposal_decline import ProposalDecline
 
 

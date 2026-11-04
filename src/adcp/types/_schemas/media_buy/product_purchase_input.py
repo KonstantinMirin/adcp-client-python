@@ -16,7 +16,21 @@ from ..core.ext import ExtensionObject
 from ..core.product_audience_evidence_requirements import ProductAudienceEvidenceRequirements
 from ..core.targeting_input import TargetingOverlayInput
 from ..enums.pacing import Pacing
-from .product_purchase import AgencyEstimateNumber, AudienceEvidencePins, Budget, CatalogIds, DailyBudgetCap, EndTime, FormatOptionRefs, MinSpendTarget, OptimizationGoals, PerformanceStandards, PricingOptionId, ProductId, StartTime
+from .product_purchase import (
+    AgencyEstimateNumber,
+    AudienceEvidencePins,
+    Budget,
+    CatalogIds,
+    DailyBudgetCap,
+    EndTime,
+    FormatOptionRefs,
+    MinSpendTarget,
+    OptimizationGoals,
+    PerformanceStandards,
+    PricingOptionId,
+    ProductId,
+    StartTime,
+)
 
 
 class ProductPurchaseInput(AdCPBaseModel):

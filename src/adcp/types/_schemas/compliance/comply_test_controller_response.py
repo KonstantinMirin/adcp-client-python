@@ -8,7 +8,15 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
-from adcp.types.constraints import ComplyTestControllerRequestParamsIdentifierValueDigestsItem, HttpUrl, StrMaxLen128, StrMinLen1MaxLen1000, StrMinLen1MaxLen2000, StrMinLen1MaxLen255, UpstreamTrafficSuccessRecordedCallsItemStatusCode
+from adcp.types.constraints import (
+    ComplyTestControllerRequestParamsIdentifierValueDigestsItem,
+    HttpUrl,
+    StrMaxLen128,
+    StrMinLen1MaxLen255,
+    StrMinLen1MaxLen1000,
+    StrMinLen1MaxLen2000,
+    UpstreamTrafficSuccessRecordedCallsItemStatusCode,
+)
 
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject

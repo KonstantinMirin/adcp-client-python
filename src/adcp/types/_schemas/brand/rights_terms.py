@@ -7,7 +7,11 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, GetAccountFinancialsResponseSuccessCurrency, IntMin1
+from adcp.types.constraints import (
+    AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem,
+    GetAccountFinancialsResponseSuccessCurrency,
+    IntMin1,
+)
 
 from ..enums.right_use import RightUse
 from ..enums.rights_billing_period import RightsBillingPeriod

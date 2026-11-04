@@ -6,8 +6,11 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import ContextMatchResponseRouterPublisherSignalsByProvider, StrMinLen1MaxLen128, TMPProviderRegistrationTmpxSlotsItem
-
+from adcp.types.constraints import (
+    ContextMatchResponseRouterPublisherSignalsByProvider,
+    StrMinLen1MaxLen128,
+    TMPProviderRegistrationTmpxSlotsItem,
+)
 
 TmpxMacroMappingValue = Annotated[dict[TMPProviderRegistrationTmpxSlotsItem, StrMinLen1MaxLen128], Field(description="Map from the provider's registered `slot_id` to the ad-server destination string for that slot on this surface. Opaque to the protocol — the exact form is publisher-local.", max_length=2, min_length=1)]
 

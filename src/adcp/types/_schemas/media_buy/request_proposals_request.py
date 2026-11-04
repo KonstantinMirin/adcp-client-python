@@ -9,11 +9,15 @@ from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, 
 from adcp.types.constraints import StrMinLen1, StrMinLen1MaxLen4096, SyncAccountsRequestIdempotencyKey
 
 from ..core.brand_key import BrandKey
-from ..core.canonical_account_ref import CanonicalAccountReference, CanonicalAccountReferenceAccountId, CanonicalAccountReferenceBrandOperator
+from ..core.canonical_account_ref import (
+    CanonicalAccountReference,
+    CanonicalAccountReferenceAccountId,
+    CanonicalAccountReferenceBrandOperator,
+)
 from ..core.context import ContextObject
 from ..core.opportunity_context import OpportunityContext
 from ..core.push_notification_config import PushNotificationConfig
-from ..core.version_envelope import AdCPVersionEnvelope, AdcpMajorVersion, AdcpVersion
+from ..core.version_envelope import AdcpMajorVersion, AdcpVersion, AdCPVersionEnvelope
 from .product_discovery_criteria import ProductDiscoveryCriteria
 
 

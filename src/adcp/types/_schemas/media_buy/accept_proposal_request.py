@@ -7,7 +7,16 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
-from adcp.types.constraints import CanonicalProposalTermsDigest, GetAccountFinancialsResponseSuccessCurrency, IoAcceptanceSignatory, MediaBuyName, StrMinLen1, StrMinLen1MaxLen255, StrMinLen1MaxLen4096, SyncAccountsRequestIdempotencyKey
+from adcp.types.constraints import (
+    CanonicalProposalTermsDigest,
+    GetAccountFinancialsResponseSuccessCurrency,
+    IoAcceptanceSignatory,
+    MediaBuyName,
+    StrMinLen1,
+    StrMinLen1MaxLen255,
+    StrMinLen1MaxLen4096,
+    SyncAccountsRequestIdempotencyKey,
+)
 
 from ..core.canonical_account_ref import CanonicalAccountReference
 from ..core.context import ContextObject
@@ -15,7 +24,7 @@ from ..core.ext import ExtensionObject
 from ..core.opportunity_context import OpportunityContext
 from ..core.push_notification_config import PushNotificationConfig
 from ..core.reporting_webhook import ReportingWebhook
-from ..core.version_envelope import AdCPVersionEnvelope, AdcpMajorVersion, AdcpVersion
+from ..core.version_envelope import AdcpMajorVersion, AdcpVersion, AdCPVersionEnvelope
 
 
 class TotalBudget(AdCPBaseModel):

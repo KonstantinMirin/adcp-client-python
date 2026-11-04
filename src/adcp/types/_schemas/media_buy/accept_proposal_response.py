@@ -9,7 +9,6 @@ from adcp.types._base import SchemaRef, strict_alias
 
 from .media_buy_commitment_response import MediaBuyCommitmentResponse
 
-
 __adcp_schema__ = SchemaRef(document='media-buy/accept-proposal-response.json', pointer='#')
 
 AcceptProposalResponse = Annotated[MediaBuyCommitmentResponse, Field(description='Compact proposal-acceptance result containing the resulting MediaBuy identity and accepted immutable proposal snapshot.')]

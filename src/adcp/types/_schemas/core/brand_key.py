@@ -7,7 +7,10 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem
+from adcp.types.constraints import (
+    AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain,
+    AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem,
+)
 
 from .brand_id import BrandID
 

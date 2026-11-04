@@ -13,27 +13,17 @@ document added upstream appears here with nothing edited.
 
 from __future__ import annotations
 
-from ._schemas.a2ui.bound_value import (
-    A2UIBoundValue as A2UIBoundValue,
-    A2UIBoundValueLiteralBoolean as A2UIBoundValueLiteralBoolean,
-    A2UIBoundValueLiteralNumber as A2UIBoundValueLiteralNumber,
-    A2UIBoundValueLiteralString as A2UIBoundValueLiteralString,
-    A2UIBoundValueLiteralStringPath as A2UIBoundValueLiteralStringPath,
-    A2UIBoundValuePath as A2UIBoundValuePath,
-)
-from ._schemas.a2ui.component import (
-    A2UIComponent as A2UIComponent,
-    ComponentValue as ComponentValue,
-)
-from ._schemas.a2ui.si_catalog import (
-    SIComponentCatalog as SIComponentCatalog,
-)
-from ._schemas.a2ui.surface import (
-    A2UISurface as A2UISurface,
-)
-from ._schemas.a2ui.user_action import (
-    A2UIUserAction as A2UIUserAction,
-)
+from ._schemas.a2ui.bound_value import A2UIBoundValue as A2UIBoundValue
+from ._schemas.a2ui.bound_value import A2UIBoundValueLiteralBoolean as A2UIBoundValueLiteralBoolean
+from ._schemas.a2ui.bound_value import A2UIBoundValueLiteralNumber as A2UIBoundValueLiteralNumber
+from ._schemas.a2ui.bound_value import A2UIBoundValueLiteralString as A2UIBoundValueLiteralString
+from ._schemas.a2ui.bound_value import A2UIBoundValueLiteralStringPath as A2UIBoundValueLiteralStringPath
+from ._schemas.a2ui.bound_value import A2UIBoundValuePath as A2UIBoundValuePath
+from ._schemas.a2ui.component import A2UIComponent as A2UIComponent
+from ._schemas.a2ui.component import ComponentValue as ComponentValue
+from ._schemas.a2ui.si_catalog import SIComponentCatalog as SIComponentCatalog
+from ._schemas.a2ui.surface import A2UISurface as A2UISurface
+from ._schemas.a2ui.user_action import A2UIUserAction as A2UIUserAction
 
 __all__ = [
     'A2UIBoundValue',

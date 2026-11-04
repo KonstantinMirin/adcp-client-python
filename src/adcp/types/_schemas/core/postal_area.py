@@ -14,7 +14,19 @@ from ..enums.legacy_postal_system import CountryFusedPostalCodeSystem
 from ..enums.postal_system import PostalCodeSystem
 from ._vocabularies import _VALUES_POSTAL_CODE_CUSTOM
 from .postal_area_support import CaPostalCodeSystem, GBPostalCodeSystem, USPostalCodeSystem
-from .postal_country_system import Country, PostalCountrySystem, PostalCountrySystemAUPostcode, PostalCountrySystemBRCep, PostalCountrySystemBranch9, PostalCountrySystemCA, PostalCountrySystemFRCodePostal, PostalCountrySystemGB, PostalCountrySystemINPin, PostalCountrySystemPlz, PostalCountrySystemUS, PostalCountrySystemZAPostalCode
+from .postal_country_system import (
+    Country,
+    PostalCountrySystemAUPostcode,
+    PostalCountrySystemBranch9,
+    PostalCountrySystemBRCep,
+    PostalCountrySystemCA,
+    PostalCountrySystemFRCodePostal,
+    PostalCountrySystemGB,
+    PostalCountrySystemINPin,
+    PostalCountrySystemPlz,
+    PostalCountrySystemUS,
+    PostalCountrySystemZAPostalCode,
+)
 
 
 class PostalArea(BranchDispatchMixin, AdCPBaseModel):

@@ -8,7 +8,11 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import AttestationCapabilitiesAcceptedIssuersItemResolversItemResolverId, HttpUrl, MaxEmbeddedCredentialBytes
+from adcp.types.constraints import (
+    AttestationCapabilitiesAcceptedIssuersItemResolversItemResolverId,
+    HttpUrl,
+    MaxEmbeddedCredentialBytes,
+)
 
 from .attestation_issuer import AttestationIssuer
 from .ext import ExtensionObject

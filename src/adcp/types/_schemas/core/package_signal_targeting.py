@@ -8,7 +8,11 @@ from pydantic import ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 
 from .activation_key import ActivationKey
-from .signal_targeting_expression import SignalTargetingExpression, SignalTargetingExpressionBinary, SignalTargetingExpressionCategorical, SignalTargetingExpressionNumeric
+from .signal_targeting_expression import (
+    SignalTargetingExpressionBinary,
+    SignalTargetingExpressionCategorical,
+    SignalTargetingExpressionNumeric,
+)
 
 
 class PackageSignalTargeting(BranchDispatchMixin, AdCPBaseModel):

@@ -8,7 +8,11 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
-from adcp.types.constraints import PeriodDuration, ReportingReportDefinitionFinalityPoliciesItemDurationAfterPeriodEnd, StrMinLen1MaxLen255
+from adcp.types.constraints import (
+    PeriodDuration,
+    ReportingReportDefinitionFinalityPoliciesItemDurationAfterPeriodEnd,
+    StrMinLen1MaxLen255,
+)
 
 
 class ReportingScheduleAlignment(StrEnum):

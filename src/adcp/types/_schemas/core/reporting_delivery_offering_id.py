@@ -8,7 +8,6 @@ from pydantic import Field
 from adcp.types._base import SchemaRef, strict_alias
 from adcp.types.constraints import ReportingCanonicalizationContractGoldenVectorsAdditionalItemName
 
-
 __adcp_schema__ = SchemaRef(document='core/reporting-delivery-offering-id.json', pointer='#')
 
 ReportingDeliveryOfferingID = Annotated[ReportingCanonicalizationContractGoldenVectorsAdditionalItemName, Field(description='Identifier of one seller-advertised managed reporting-delivery offering, matching get_adcp_capabilities.media_buy.reporting_delivery.offerings[].offering_id. Shared by the legacy and canonical product reporting capabilities.')]

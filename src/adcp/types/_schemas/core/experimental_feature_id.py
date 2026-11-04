@@ -8,7 +8,6 @@ from pydantic import Field
 from adcp.types._base import SchemaRef, strict_alias
 from adcp.types.constraints import StrExperimentalFeatureID
 
-
 __adcp_schema__ = SchemaRef(document='core/experimental-feature-id.json', pointer='#')
 
 ExperimentalFeatureID = Annotated[StrExperimentalFeatureID, Field(description='Dot-separated lowercase identifier for an experimental AdCP surface, such as protocol.principal or media_buy.reporting_delivery.')]

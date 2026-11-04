@@ -22,7 +22,6 @@ both names are right and merging types one subject with the other's name."
 
 from __future__ import annotations
 
-
 _VALUES_CREATED_UPDATED_UNCHANGED_FAILED_DELETED: tuple[str, ...] = (
     'created',
     'updated',

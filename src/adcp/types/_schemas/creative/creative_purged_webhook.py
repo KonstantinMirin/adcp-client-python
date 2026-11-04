@@ -7,7 +7,12 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import AccountChangeRecordedWebhookSubscriberId, ComplyTestControllerRequestParamsReceivedReportingRevisionId, StrMaxLen500, SyncAccountsRequestIdempotencyKey
+from adcp.types.constraints import (
+    AccountChangeRecordedWebhookSubscriberId,
+    ComplyTestControllerRequestParamsReceivedReportingRevisionId,
+    StrMaxLen500,
+    SyncAccountsRequestIdempotencyKey,
+)
 
 from ..compliance.comply_test_controller_request import PurgeKind
 from ..core.ext import ExtensionObject

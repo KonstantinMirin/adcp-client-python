@@ -6,7 +6,15 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import AdCPAgentsAuthorizationFormatsItemFormatRevision, HttpUrl, Integrity, Package, ProvenanceWorkflowPath, StrMinLen1, Version
+from adcp.types.constraints import (
+    AdCPAgentsAuthorizationFormatsItemFormatRevision,
+    HttpUrl,
+    Integrity,
+    Package,
+    ProvenanceWorkflowPath,
+    StrMinLen1,
+    Version,
+)
 
 
 class Provenance(AdCPBaseModel):

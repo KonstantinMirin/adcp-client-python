@@ -8,7 +8,15 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNega
 
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Dependencies, ForbiddenGroups, Match, Rule, UniqueItems
-from adcp.types.constraints import CanonicalProposalTermsDigest, GetAccountFinancialsResponseSuccessCurrency, IntMin1, MediaBuyName, StrMaxLen500, StrMinLen1, StrMinLen1MaxLen255
+from adcp.types.constraints import (
+    CanonicalProposalTermsDigest,
+    GetAccountFinancialsResponseSuccessCurrency,
+    IntMin1,
+    MediaBuyName,
+    StrMaxLen500,
+    StrMinLen1,
+    StrMinLen1MaxLen255,
+)
 
 from ..core.account import Account
 from ..core.bidding_policy import BiddingPolicy

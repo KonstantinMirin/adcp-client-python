@@ -14,7 +14,7 @@ from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
 from ..core.reporting_adjustment_receipt import ReportingAdjustmentReceipt
 from ..core.reporting_receipt import ReportingReceipt
-from ..core.version_envelope import AdCPVersionEnvelope, AdcpMajorVersion, AdcpVersion
+from ..core.version_envelope import AdcpMajorVersion, AdcpVersion, AdCPVersionEnvelope
 
 
 class ReceiptsItem(ReportingReceipt):

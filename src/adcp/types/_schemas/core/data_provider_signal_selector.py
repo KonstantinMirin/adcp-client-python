@@ -6,7 +6,11 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
-from adcp.types.constraints import AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, AdCPAgentsAuthorizationAuthorizedAgentsItemSignalTagsItem
+from adcp.types.constraints import (
+    AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain,
+    AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem,
+    AdCPAgentsAuthorizationAuthorizedAgentsItemSignalTagsItem,
+)
 
 
 class DataProviderSignalSelector(BranchDispatchMixin, AdCPBaseModel):

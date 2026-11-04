@@ -12,8 +12,13 @@ from adcp.types.constraints import StrMinLen1
 from ..enums.pixel_tracking_event import PixelTrackingEvent
 from ..enums.tracker_execution_actor import TrackerExecutionActor
 from ..enums.tracker_firing_path import TrackerFiringPath
-from .daast_tracker_constraints import DAASTTrackerConstraints, DAASTTrackerConstraintsDaastTarget, DaastEvent, DaastVersions
-from .vast_tracker_constraints import VASTTrackerConstraints, VastEvent, VastTarget, VastVersions
+from .daast_tracker_constraints import (
+    DaastEvent,
+    DAASTTrackerConstraints,
+    DAASTTrackerConstraintsDaastTarget,
+    DaastVersions,
+)
+from .vast_tracker_constraints import VastEvent, VastTarget, VASTTrackerConstraints, VastVersions
 
 
 class TrackerExecutionSelector(BranchDispatchMixin, AdCPBaseModel):

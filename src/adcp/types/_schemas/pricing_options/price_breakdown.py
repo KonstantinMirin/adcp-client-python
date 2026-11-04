@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import RequiredGroups, Rule
-from adcp.types.constraints import FloatGt0, FloatGt0Lt1, StrMaxLen256, StrMaxLen64
+from adcp.types.constraints import FloatGt0, FloatGt0Lt1, StrMaxLen64, StrMaxLen256
 
 from ..enums.adjustment_kind import PriceAdjustmentKind
 

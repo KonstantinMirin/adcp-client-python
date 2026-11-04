@@ -8,7 +8,14 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule, UniqueItems
-from adcp.types.constraints import ComplyTestControllerRequestParamsReceivedReportingRevisionId, HttpUrl, ReportingAdjustmentReceiptObservedAdjustmentSha256, StrMinLen1, StrMinLen1MaxLen128, StrMinLen1MaxLen64
+from adcp.types.constraints import (
+    ComplyTestControllerRequestParamsReceivedReportingRevisionId,
+    HttpUrl,
+    ReportingAdjustmentReceiptObservedAdjustmentSha256,
+    StrMinLen1,
+    StrMinLen1MaxLen64,
+    StrMinLen1MaxLen128,
+)
 
 from ..enums.reporting_finality import ReportingFinality
 from .reporting_canonical_content_digest import ReportingCanonicalContentDigest

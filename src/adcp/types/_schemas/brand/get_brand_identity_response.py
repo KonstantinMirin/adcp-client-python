@@ -7,7 +7,19 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, PropertyCount, Rule
-from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, AdCPUrl, BrandDiscoveryColorValue, BrandDiscoveryFontRoleOpentypeFeaturesItem, DictMinProperties1, DictMinProperties1MaxProperties1, HttpUrl, IntMin100Max900, NonEmptyList, StrMaxLen100, StrMinLen1
+from adcp.types.constraints import (
+    AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem,
+    AdCPUrl,
+    BrandDiscoveryColorValue,
+    BrandDiscoveryFontRoleOpentypeFeaturesItem,
+    DictMinProperties1,
+    DictMinProperties1MaxProperties1,
+    HttpUrl,
+    IntMin100Max900,
+    NonEmptyList,
+    StrMaxLen100,
+    StrMinLen1,
+)
 from adcp.types.envelopes import FailedResponse
 
 from ..brand import Background, FontFileStyle, KellerType, LogoOrientation, LogoVariant

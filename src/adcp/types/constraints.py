@@ -50,8 +50,8 @@ from __future__ import annotations
 
 from typing import Annotated, TypeVar
 
-from pydantic import AnyUrl, Field, HttpUrl, UrlConstraints
-
+from pydantic import AnyUrl, Field, UrlConstraints
+from pydantic import HttpUrl as HttpUrl
 
 K = TypeVar("K")
 T = TypeVar("T")

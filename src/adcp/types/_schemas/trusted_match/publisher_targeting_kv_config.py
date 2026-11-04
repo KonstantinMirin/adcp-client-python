@@ -8,7 +8,6 @@ from pydantic import ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types.constraints import ContextMatchResponseRouterPublisherSignalsByProvider, StrMinLen1MaxLen128
 
-
 TargetingKvMappingValue = Annotated[dict[str, StrMinLen1MaxLen128], Field(description='Map from an exact provider-local targeting key to the publisher-local destination used on this surface.', min_length=1)]
 
 

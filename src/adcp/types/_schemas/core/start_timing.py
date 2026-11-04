@@ -7,7 +7,6 @@ from pydantic import AwareDatetime, Field
 
 from adcp.types._base import SchemaRef, strict_alias
 
-
 __adcp_schema__ = SchemaRef(document='core/start-timing.json', pointer='#')
 
 StartTiming = Annotated[Literal['asap'] | AwareDatetime, Field(description="Campaign start timing: 'asap' or ISO 8601 date-time")]

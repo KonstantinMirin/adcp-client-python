@@ -8,7 +8,11 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import ComplyTestControllerRequestParamsReceivedReportingRevisionId, ReportingAdjustmentReceiptObservedAdjustmentSha256, StrMinLen1MaxLen1024
+from adcp.types.constraints import (
+    ComplyTestControllerRequestParamsReceivedReportingRevisionId,
+    ReportingAdjustmentReceiptObservedAdjustmentSha256,
+    StrMinLen1MaxLen1024,
+)
 
 from .reporting_control_total import ReportingControlTotal
 

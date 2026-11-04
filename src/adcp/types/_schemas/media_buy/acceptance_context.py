@@ -7,7 +7,10 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import PropertyCount, Rule, UniqueItems
-from adcp.types.constraints import AccountAuthorizationAllowedTasksItem, AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem
+from adcp.types.constraints import (
+    AccountAuthorizationAllowedTasksItem,
+    AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem,
+)
 
 from ..core.ext import ExtensionObject
 from ..enums.advertiser_industry import AdvertiserIndustry

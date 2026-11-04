@@ -8,7 +8,11 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule, UniqueItems
-from adcp.types.constraints import AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, IntMin1, StrMinLen1
+from adcp.types.constraints import (
+    AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain,
+    IntMin1,
+    StrMinLen1,
+)
 
 from ..enums.audio_distribution_type import AudioDistributionType
 from ..enums.dooh_motion_type import DOOHMotionType
@@ -129,4 +133,4 @@ CanonicalProductPlacement._branch_models = (CanonicalProductPlacementPublisherRe
 CanonicalProductPlacement.model_rebuild(force=True)
 
 
-__all__ = ["CanonicalProductPlacement", "CanonicalDoohPlacementAttributes", "CanonicalDoohScreenResolution"]
+__all__ = ["CanonicalDoohPlacementAttributes", "CanonicalDoohScreenResolution", "CanonicalProductPlacement"]

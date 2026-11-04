@@ -8,7 +8,12 @@ from pydantic import AwareDatetime, ConfigDict, Field, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, PropertyCount, Rule, UniqueItems
-from adcp.types.constraints import AccountChangeRecordedWebhookSubscriberId, ComplyTestControllerRequestParamsReceivedReportingRevisionId, IntMin1, ReportingCanonicalizationContractGoldenVectorsAdditionalItemName
+from adcp.types.constraints import (
+    AccountChangeRecordedWebhookSubscriberId,
+    ComplyTestControllerRequestParamsReceivedReportingRevisionId,
+    IntMin1,
+    ReportingCanonicalizationContractGoldenVectorsAdditionalItemName,
+)
 
 from ..enums.reporting_finality import ReportingFinality
 from .reporting_coverage import ReportingMediaBuyId

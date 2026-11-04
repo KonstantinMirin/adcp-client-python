@@ -7,7 +7,13 @@ from typing import Annotated, ClassVar
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import ComplyTestControllerRequestParamsReceivedReportingRevisionId, HttpUrl, IntMin1, StrMaxLen500, UpstreamTrafficSuccessRecordedCallsItemStatusCode
+from adcp.types.constraints import (
+    ComplyTestControllerRequestParamsReceivedReportingRevisionId,
+    HttpUrl,
+    IntMin1,
+    StrMaxLen500,
+    UpstreamTrafficSuccessRecordedCallsItemStatusCode,
+)
 
 from ..enums.notification_type import NotificationType
 from .ext import ExtensionObject

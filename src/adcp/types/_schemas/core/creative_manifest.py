@@ -6,7 +6,16 @@ from typing import Annotated, Any, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
-from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, NegatedConditional, Presence, PresenceGroups, Rule, UniqueItems
+from adcp.types._runtime import (
+    ConditionalRequired,
+    ForbiddenGroups,
+    Match,
+    NegatedConditional,
+    Presence,
+    PresenceGroups,
+    Rule,
+    UniqueItems,
+)
 from adcp.types.constraints import AccountAuthorizationAllowedTasksItem
 
 from .brand_ref import BrandReference

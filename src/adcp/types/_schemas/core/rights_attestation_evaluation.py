@@ -10,9 +10,9 @@ from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule
 from adcp.types.constraints import StrMinLen1, StrMinLen1MaxLen1024, ZipAssetDigest
 
 from .attestation_evaluation import AttestationEvaluation
-from .attestation_issuer import AttestationBrandIssuer, AttestationIssuer
+from .attestation_issuer import AttestationBrandIssuer
 from .attestation_reference import AttestationReference
-from .attestation_subject import AttestationResourceSubject, AttestationSubject
+from .attestation_subject import AttestationResourceSubject
 from .ext import ExtensionObject
 
 

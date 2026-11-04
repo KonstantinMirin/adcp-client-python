@@ -7,7 +7,10 @@ from pydantic import Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, NegatedConditional, Rule, UniqueItems
-from adcp.types.constraints import AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, AdCPUrl
+from adcp.types.constraints import (
+    AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain,
+    AdCPUrl,
+)
 
 from ..enums.channels import MediaChannel
 from .canonical_format_kind import CanonicalFormatKind

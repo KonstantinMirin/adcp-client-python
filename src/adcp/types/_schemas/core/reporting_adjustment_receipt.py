@@ -8,7 +8,12 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule, UniqueItems
-from adcp.types.constraints import ComplyTestControllerRequestParamsReceivedReportingRevisionId, ReportingAdjustmentReceiptObservedAdjustmentSha256, ReportingAdjustmentReceiptRejectionCode, SyncAccountsRequestIdempotencyKey
+from adcp.types.constraints import (
+    ComplyTestControllerRequestParamsReceivedReportingRevisionId,
+    ReportingAdjustmentReceiptObservedAdjustmentSha256,
+    ReportingAdjustmentReceiptRejectionCode,
+    SyncAccountsRequestIdempotencyKey,
+)
 
 from ..common._vocabularies import _VALUES_ACCEPTED_REJECTED
 

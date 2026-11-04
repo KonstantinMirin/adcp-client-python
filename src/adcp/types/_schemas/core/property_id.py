@@ -8,7 +8,6 @@ from pydantic import Field
 from adcp.types._base import SchemaRef, strict_alias
 from adcp.types.constraints import BrandDiscoveryAgentId
 
-
 __adcp_schema__ = SchemaRef(document='core/property-id.json', pointer='#')
 
 PropertyID = Annotated[BrandDiscoveryAgentId, Field(description='Identifier for a publisher property. Must be lowercase alphanumeric with underscores only.')]

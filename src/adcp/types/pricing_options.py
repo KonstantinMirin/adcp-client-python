@@ -13,43 +13,19 @@ document added upstream appears here with nothing edited.
 
 from __future__ import annotations
 
-from ._schemas.pricing_options.cpa_option import (
-    CPAPricingOption as CPAPricingOption,
-)
-from ._schemas.pricing_options.cpc_option import (
-    CPCPricingOption as CPCPricingOption,
-)
-from ._schemas.pricing_options.cpcv_option import (
-    CPCVPricingOption as CPCVPricingOption,
-)
-from ._schemas.pricing_options.cpm_option import (
-    CPMPricingOption as CPMPricingOption,
-)
-from ._schemas.pricing_options.cpp_option import (
-    CPPPricingOption as CPPPricingOption,
-)
-from ._schemas.pricing_options.cpv_option import (
-    CPVPricingOption as CPVPricingOption,
-    ViewThresholdDurationSeconds as ViewThresholdDurationSeconds,
-)
-from ._schemas.pricing_options.flat_rate_option import (
-    FlatRatePricingOption as FlatRatePricingOption,
-)
-from ._schemas.pricing_options.price_breakdown import (
-    PriceBreakdown as PriceBreakdown,
-)
-from ._schemas.pricing_options.price_guidance import (
-    PriceGuidance as PriceGuidance,
-)
-from ._schemas.pricing_options.revenue_share_option import (
-    RevenueSharePricingOption as RevenueSharePricingOption,
-)
-from ._schemas.pricing_options.time_option import (
-    TimeBasedPricingOption as TimeBasedPricingOption,
-)
-from ._schemas.pricing_options.vcpm_option import (
-    VCPMPricingOption as VCPMPricingOption,
-)
+from ._schemas.pricing_options.cpa_option import CPAPricingOption as CPAPricingOption
+from ._schemas.pricing_options.cpc_option import CPCPricingOption as CPCPricingOption
+from ._schemas.pricing_options.cpcv_option import CPCVPricingOption as CPCVPricingOption
+from ._schemas.pricing_options.cpm_option import CPMPricingOption as CPMPricingOption
+from ._schemas.pricing_options.cpp_option import CPPPricingOption as CPPPricingOption
+from ._schemas.pricing_options.cpv_option import CPVPricingOption as CPVPricingOption
+from ._schemas.pricing_options.cpv_option import ViewThresholdDurationSeconds as ViewThresholdDurationSeconds
+from ._schemas.pricing_options.flat_rate_option import FlatRatePricingOption as FlatRatePricingOption
+from ._schemas.pricing_options.price_breakdown import PriceBreakdown as PriceBreakdown
+from ._schemas.pricing_options.price_guidance import PriceGuidance as PriceGuidance
+from ._schemas.pricing_options.revenue_share_option import RevenueSharePricingOption as RevenueSharePricingOption
+from ._schemas.pricing_options.time_option import TimeBasedPricingOption as TimeBasedPricingOption
+from ._schemas.pricing_options.vcpm_option import VCPMPricingOption as VCPMPricingOption
 
 __all__ = [
     'CPAPricingOption',

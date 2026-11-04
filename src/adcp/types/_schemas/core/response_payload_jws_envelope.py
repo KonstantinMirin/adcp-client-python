@@ -7,7 +7,12 @@ from typing import Annotated, Any, ClassVar, Literal
 from pydantic import ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, CanonicalProposalTermsDigest, HttpUrl, ResponsePayloadJWSEnvelopeProtected
+from adcp.types.constraints import (
+    AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain,
+    CanonicalProposalTermsDigest,
+    HttpUrl,
+    ResponsePayloadJWSEnvelopeProtected,
+)
 
 
 class Task(StrEnum):
@@ -46,4 +51,4 @@ class ResponsePayloadJWSEnvelope(AdCPBaseModel):
     signature: Annotated[ResponsePayloadJWSEnvelopeProtected, Field(description='Base64url-encoded JWS signature over the protected header and canonicalized payload.')]
 
 
-__all__ = ["ResponsePayloadJWSEnvelope", "ResponsePayload"]
+__all__ = ["ResponsePayload", "ResponsePayloadJWSEnvelope"]

@@ -7,7 +7,6 @@ from pydantic import Field
 
 from adcp.types._base import SchemaRef, strict_alias
 
-
 __adcp_schema__ = SchemaRef(document='core/ext.json', pointer='#')
 
 ExtensionObject = Annotated[dict[str, Any], Field(description='Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.')]

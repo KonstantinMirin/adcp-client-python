@@ -7,7 +7,13 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import Dependencies, ForbiddenGroups, Rule
-from adcp.types.constraints import AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, GetAccountFinancialsResponseSuccessCurrency, IntMin1, StrMinLen1, SyncAccountsRequestIdempotencyKey
+from adcp.types.constraints import (
+    AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain,
+    GetAccountFinancialsResponseSuccessCurrency,
+    IntMin1,
+    StrMinLen1,
+    SyncAccountsRequestIdempotencyKey,
+)
 
 from ..core.account_ref import AccountReference
 from ..core.brand_ref import BrandReference

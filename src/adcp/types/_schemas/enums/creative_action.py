@@ -7,7 +7,6 @@ from adcp.types._base import SchemaRef, strict_alias
 
 from ._vocabularies import _VALUES_CREATED_UPDATED_UNCHANGED_FAILED_DELETED
 
-
 __adcp_schema__ = SchemaRef(document='enums/creative-action.json', pointer='#')
 
 class CreativeAction(StrEnum):

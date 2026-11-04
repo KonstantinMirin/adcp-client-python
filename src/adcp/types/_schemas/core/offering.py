@@ -6,7 +6,11 @@ from typing import Annotated, ClassVar
 from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, GeoForecastDimensionCode, HttpUrl
+from adcp.types.constraints import (
+    AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem,
+    GeoForecastDimensionCode,
+    HttpUrl,
+)
 
 from ..enums.metro_system import MetroAreaSystem
 from .ext import ExtensionObject

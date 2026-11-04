@@ -8,7 +8,30 @@ from pydantic import AwareDatetime, ConfigDict, Field, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, PropertyCount, RequiredGroups, Rule, UniqueItems
-from adcp.types.constraints import AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, AdCPUrl, AuthorizedOperatorBrandsItem, BrandAgentEntryId, BrandDiscoveryAgentId, BrandDiscoveryColorValue, BrandDiscoveryFontRoleOpentypeFeaturesItem, BrandDiscoveryLogoId, BrandDiscoveryPhotographyStylePreferredAspectRatiosItem, FloatGt0, HttpUrl, IntMin100Max900, NonEmptyList, PropertyRegion, StrMaxLen100, StrMaxLen255, StrMaxLen500, StrMinLen1, StrMinLen1MaxLen255, StrMinLen2MaxLen2, TrademarkNiceClassesItem
+from adcp.types.constraints import (
+    AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain,
+    AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem,
+    AdCPUrl,
+    AuthorizedOperatorBrandsItem,
+    BrandAgentEntryId,
+    BrandDiscoveryAgentId,
+    BrandDiscoveryColorValue,
+    BrandDiscoveryFontRoleOpentypeFeaturesItem,
+    BrandDiscoveryLogoId,
+    BrandDiscoveryPhotographyStylePreferredAspectRatiosItem,
+    FloatGt0,
+    HttpUrl,
+    IntMin100Max900,
+    NonEmptyList,
+    PropertyRegion,
+    StrMaxLen100,
+    StrMaxLen255,
+    StrMaxLen500,
+    StrMinLen1,
+    StrMinLen1MaxLen255,
+    StrMinLen2MaxLen2,
+    TrademarkNiceClassesItem,
+)
 
 from ..core.brand_ref import BrandReference
 from ..core.locale_tag import LanguageTag
@@ -1596,4 +1619,4 @@ BrandDiscovery._branch_models = (AuthoritativeLocationRedirect, HouseRedirect, B
 BrandDiscovery.model_rebuild(force=True)
 
 
-__all__ = ["BrandDiscovery", "Agents", "Asset", "AssetLibrary", "AuthorizedOperator", "BorderRadius", "Brand", "BrandAgentEntry", "BrandDiscoveryBrandAgent", "BrandDiscoveryContact", "BrandDiscoveryFontRole", "BrandId", "BrandShapes", "ColorConstraint", "ColorRef", "ColorValue", "Colors", "Colorway", "CompositionRules", "DataSubjectContestation", "Domain", "Elevation", "FontFile", "Fonts", "GraphicElement", "GraphicStyle", "GuidelineSeverity", "HexColor", "House", "Iconography", "IdentityRelyingParty", "KellerType", "LocalizedName", "LocalizedScalar", "LocalizedStringList", "LocalizedStringListEntry", "Logo", "LogoId", "LogoPlacement", "LogoUsageRule", "MarkLockup", "MotionGuidelines", "PhotographyStyle", "PortfolioEntry", "ProductCatalog", "Property", "RightsAgent", "Spacing", "Trademark", "TypeScaleEntry", "VisualGuidelines"]
+__all__ = ["Agents", "Asset", "AssetLibrary", "AuthorizedOperator", "BorderRadius", "Brand", "BrandAgentEntry", "BrandDiscovery", "BrandDiscoveryBrandAgent", "BrandDiscoveryContact", "BrandDiscoveryFontRole", "BrandId", "BrandShapes", "ColorConstraint", "ColorRef", "ColorValue", "Colors", "Colorway", "CompositionRules", "DataSubjectContestation", "Domain", "Elevation", "FontFile", "Fonts", "GraphicElement", "GraphicStyle", "GuidelineSeverity", "HexColor", "House", "Iconography", "IdentityRelyingParty", "KellerType", "LocalizedName", "LocalizedScalar", "LocalizedStringList", "LocalizedStringListEntry", "Logo", "LogoId", "LogoPlacement", "LogoUsageRule", "MarkLockup", "MotionGuidelines", "PhotographyStyle", "PortfolioEntry", "ProductCatalog", "Property", "RightsAgent", "Spacing", "Trademark", "TypeScaleEntry", "VisualGuidelines"]

@@ -6,7 +6,12 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, FloatMinNeg180Max180, FloatMinNeg90Max90, HttpUrl
+from adcp.types.constraints import (
+    AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem,
+    FloatMinNeg90Max90,
+    FloatMinNeg180Max180,
+    HttpUrl,
+)
 
 from .catchment import Catchment
 from .ext import ExtensionObject

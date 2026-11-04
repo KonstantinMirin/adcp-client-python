@@ -6,7 +6,11 @@ from typing import Annotated, ClassVar
 from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import ComplyTestControllerRequestParamsReceivedReportingRevisionId, SyncAccountsRequestIdempotencyKey, Token
+from adcp.types.constraints import (
+    ComplyTestControllerRequestParamsReceivedReportingRevisionId,
+    SyncAccountsRequestIdempotencyKey,
+    Token,
+)
 
 from ..enums.adcp_protocol import AdCPProtocol
 from ..enums.task_status import TaskStatus

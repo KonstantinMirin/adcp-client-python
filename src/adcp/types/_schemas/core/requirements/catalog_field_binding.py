@@ -90,4 +90,4 @@ CatalogFieldBinding._branch_models = (CatalogFieldBindingScalar, CatalogFieldBin
 CatalogFieldBinding.model_rebuild(force=True)
 
 
-__all__ = ["CatalogFieldBinding", "AssetPoolBinding", "ScalarBinding"]
+__all__ = ["AssetPoolBinding", "CatalogFieldBinding", "ScalarBinding"]

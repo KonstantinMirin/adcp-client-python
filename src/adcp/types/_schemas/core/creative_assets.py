@@ -7,7 +7,6 @@ from pydantic import Field
 
 from adcp.types._base import Approximation, SchemaRef, strict_alias
 
-
 __adcp_schema__ = SchemaRef(document='core/creative-assets.json', pointer='#')
 
 __adcp_approximations__ = (

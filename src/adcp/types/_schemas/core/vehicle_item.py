@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import FloatMinNeg180Max180, FloatMinNeg90Max90, HttpUrl, Year
+from adcp.types.constraints import FloatMinNeg90Max90, FloatMinNeg180Max180, HttpUrl, Year
 
 from .ext import ExtensionObject
 from .offering_asset_group import OfferingAssetGroup

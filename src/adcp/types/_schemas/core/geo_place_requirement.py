@@ -39,4 +39,4 @@ class GeographicPlaceRequirement(AdCPBaseModel):
     systems: Annotated[dict[GeographicPlaceIdentifierSystem, CatalogRequirement], Field(min_length=1)]
 
 
-__all__ = ["GeographicPlaceRequirement", "CatalogRequirement"]
+__all__ = ["CatalogRequirement", "GeographicPlaceRequirement"]

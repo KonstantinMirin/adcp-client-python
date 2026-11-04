@@ -13,7 +13,7 @@ from adcp.types.constraints import IntMin1Max100, ListAccountChangesRequestResou
 from ..core.account_ref import AccountReference
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
-from ..core.version_envelope import AdCPVersionEnvelope, AdcpMajorVersion, AdcpVersion
+from ..core.version_envelope import AdcpMajorVersion, AdcpVersion, AdCPVersionEnvelope
 
 
 class StartingPosition(StrEnum):

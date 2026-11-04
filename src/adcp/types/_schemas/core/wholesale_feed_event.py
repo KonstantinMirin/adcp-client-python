@@ -398,4 +398,4 @@ WholesaleFeedEvent._branch_models = (WholesaleFeedEventProductCreatedProduct, Wh
 WholesaleFeedEvent.model_rebuild(force=True)
 
 
-__all__ = ["WholesaleFeedEvent", "AppliesTo", "RemovalReason", "Signal"]
+__all__ = ["AppliesTo", "RemovalReason", "Signal", "WholesaleFeedEvent"]
