@@ -891,8 +891,17 @@ def grades_to_an_entry(name: str, into: Path) -> tuple[bool, str]:
 
     g = next(x for x in test_emit.graded() if f"{x.ref.document}{x.ref.pointer}" == name)
     probe = corpus_module.Store(into)
+    #: **§8's FIXTURES, because the gate must ask about the draw the SUITE makes.**  The
+    #: suite grades every pair with them (``test_emit.graded_reports`` and the per-pair
+    #: test), so a probe without them asks whether a draw nobody performs would have
+    #: produced an entry -- and answers by paying the full uncapped draw this rule exists
+    #: to remove, per pair, in ascending size, for as long as no pair produces one.
+    #: Measured here: >600 s for the gate against 3.6 s when the first miss answered.
     rep = check_pair(
-        test_emit.pair_of(g), custom_formats=test_emit.FORMAT_STRATEGIES, corpus=probe
+        test_emit.pair_of(g),
+        custom_formats=test_emit.FORMAT_STRATEGIES,
+        corpus=probe,
+        fixtures=test_emit.fixtures(),
     )
     return bool(probe.keys()), (
         f"{rep.outcome} / accepts {rep.accepts.outcome} at {rep.accepts.examples} of "

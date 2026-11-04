@@ -1239,6 +1239,7 @@ def graded_reports() -> list[tuple[Graded, PairReport]]:
                 custom_formats=FORMAT_STRATEGIES,
                 corpus=corpus.STORE,
                 widening_corpus=corpus.WIDENING_STORE,
+                fixtures=fixtures(),
             ),
         )
         for g in graded()
@@ -1365,6 +1366,7 @@ def test_every_class_passes_all_three_checks(row: Graded) -> None:
         custom_formats=FORMAT_STRATEGIES,
         corpus=corpus.STORE,
         widening_corpus=corpus.WIDENING_STORE,
+        fixtures=fixtures(),
     )
     assert rep.missing_formats == []
     if rep.accepts.outcome != "strategy_error":
