@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Annotated, Any, ClassVar, Literal
+from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
@@ -12,7 +12,9 @@ from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemCo
 
 from ..enums.right_type import RightType
 from ..enums.right_use import RightUse
+from .attestation_issuer import AttestationBrandIssuer, AttestationIssuer
 from .attestation_reference import AttestationReference
+from .attestation_subject import AttestationResourceSubject, AttestationSubject
 from .brand_ref import BrandReference
 from .ext import ExtensionObject
 
@@ -59,25 +61,21 @@ class Disclosure(AdCPBaseModel):
     text: StrMinLen1 | None = None
 
 
-class Issuer(AdCPBaseModel):
-    """
-    Canonical identity of the party that issued an attestation credential. The discriminator selects an existing AdCP identity when one exists and falls back to an HTTPS origin for other attestors. This identity is a claim carried by the presentation; evaluators MUST match it against their configured trust policy and verify it from the resolved or embedded credential before relying on it.
-    """
+class Issuer(AttestationBrandIssuer):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/rights-constraint.json', pointer='#/properties/attestation_refs/items/allOf/1/properties/issuer')
-    type: Literal['brand']
-    brand: BrandReference
+    type: Annotated[Literal['brand'], Field(description='The issuer is identified by an AdCP BrandRef.')]
 
 
-class Subject(AdCPBaseModel):
-    """
-    Typed identity of the entity or object an attestation credential is about. Brand and agent subjects reuse canonical AdCP identities. Other resources use an open, URI-namespaced resource_type plus an identifier whose namespace is explicit. Evaluators MUST compare the resolved credential subject to this complete typed identity, not to id alone.
-    """
+class Subject(AttestationResourceSubject):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/rights-constraint.json', pointer='#/properties/attestation_refs/items/allOf/1/properties/subject')
-    type: Literal['resource']
-    resource_type: Literal['https://adcontextprotocol.org/claims/subjects/rights-grant']
-    namespace: Any
-    id: Any
-    content_digest: Any
+    resource_type: Annotated[Literal['https://adcontextprotocol.org/claims/subjects/rights-grant'], Field(description='Open, absolute URI naming the subject vocabulary, such as https://adcontextprotocol.org/claims/subjects/signal. AdCP does not maintain an exhaustive enum.')]
+    content_digest: Annotated[ZipAssetDigest, Field(description='Optional SHA-256 pin for the exact content or immutable snapshot identified by this resource subject. This is part of the complete typed subject identity and is distinct from AttestationReference.content_digest, which pins credential bytes.')]
 
 
 class AttestationRefsItem(AttestationReference):
@@ -88,9 +86,9 @@ class AttestationRefsItem(AttestationReference):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/rights-constraint.json', pointer='#/properties/attestation_refs/items')
-    issuer: Annotated[Issuer, Field(description='Canonical identity of the party that issued an attestation credential. The discriminator selects an existing AdCP identity when one exists and falls back to an HTTPS origin for other attestors. This identity is a claim carried by the presentation; evaluators MUST match it against their configured trust policy and verify it from the resolved or embedded credential before relying on it.')]
+    issuer: Issuer
     claim_type: Annotated[Literal['https://adcontextprotocol.org/claims/rights/grant'], Field(description='Open, absolute URI identifying the claim vocabulary. The URI is an identifier and need not be dereferenceable. AdCP does not maintain an enum of approved claims.')]
-    subject: Annotated[Subject, Field(description='Typed identity of the entity or object an attestation credential is about. Brand and agent subjects reuse canonical AdCP identities. Other resources use an open, URI-namespaced resource_type plus an identifier whose namespace is explicit. Evaluators MUST compare the resolved credential subject to this complete typed identity, not to id alone.')]
+    subject: Subject
 
 
 class RightsConstraint(AdCPBaseModel):

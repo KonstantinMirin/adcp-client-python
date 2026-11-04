@@ -11,6 +11,7 @@ from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Pre
 from adcp.types.constraints import CheckGovernanceRequestDeliveryMetricsAudienceDistributionCumulativeIndices, ConsultationContext, FloatMin0Max100, GetAccountFinancialsResponseSuccessCurrency, GovernanceContext, HttpUrl, IntMin1, StrMaxLen1000, StrMinLen1MaxLen255, ZipAssetDigest
 
 from ..core.attestation_reference import AttestationReference
+from ..core.attestation_subject import AttestationResourceSubject, AttestationSubject
 from ..core.business_entity import BusinessEntity
 from ..core.canonical_proposal import CanonicalProposal
 from ..core.context import ContextObject
@@ -113,13 +114,12 @@ class DeliveryMetrics(AdCPBaseModel):
     audience_distribution: Annotated[AudienceDistribution | None, Field(description='Actual audience composition during the reporting period. Enables mid-flight drift detection when actual delivery skews from planned audience targeting.')] = None
 
 
-class Subject(AdCPBaseModel):
-    """
-    Typed identity of the entity or object an attestation credential is about. Brand and agent subjects reuse canonical AdCP identities. Other resources use an open, URI-namespaced resource_type plus an identifier whose namespace is explicit. Evaluators MUST compare the resolved credential subject to this complete typed identity, not to id alone.
-    """
+class Subject(AttestationResourceSubject):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/check-governance-request.json', pointer='#/properties/runtime_attestations/items/allOf/1/properties/subject')
-    type: Literal['resource']
-    resource_type: Literal['https://adcontextprotocol.org/claims/subjects/signal']
+    resource_type: Annotated[Literal['https://adcontextprotocol.org/claims/subjects/signal'], Field(description='Open, absolute URI naming the subject vocabulary, such as https://adcontextprotocol.org/claims/subjects/signal. AdCP does not maintain an exhaustive enum.')]
 
 
 class RuntimeAttestationsItem(AttestationReference):
@@ -130,7 +130,7 @@ class RuntimeAttestationsItem(AttestationReference):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/check-governance-request.json', pointer='#/properties/runtime_attestations/items')
-    subject: Annotated[Subject, Field(description='Typed identity of the entity or object an attestation credential is about. Brand and agent subjects reuse canonical AdCP identities. Other resources use an open, URI-namespaced resource_type plus an identifier whose namespace is explicit. Evaluators MUST compare the resolved credential subject to this complete typed identity, not to id alone.')]
+    subject: Subject
 
 
 class CheckGovernanceRequest(AdCPVersionEnvelope):
