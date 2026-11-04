@@ -99,7 +99,7 @@ from hypothesis.internal.conjecture.engine import BUFFER_SIZE as _HYPOTHESIS_BUF
 from hypothesis_jsonschema import _canonicalise as _hjs_canon
 from hypothesis_jsonschema import from_schema
 from hypothesis_jsonschema._canonicalise import HypothesisRefResolutionError
-from hypothesis_jsonschema._resolve import LocalResolver, resolve_all_refs
+from hypothesis_jsonschema._resolve import LocalResolver
 from pydantic import TypeAdapter, ValidationError
 
 from adcp.types._base import (
@@ -215,10 +215,131 @@ def missing_formats(schema: Any, custom_formats: Mapping[str, Any]) -> set[str]:
 # --------------------------------------------------------------------------- #
 # resolution
 # --------------------------------------------------------------------------- #
+def _inlined(doc: Any, resolver: LocalResolver) -> Any:
+    """``doc`` with every ``$ref`` under it inlined ONCE, and the same object placed at
+    every occurrence.
+
+    **THIS IS** ``bundle.recorded``'s **OWN RULE, APPLIED TO THE LOCAL REFERENCE THAT
+    INLINER LEAVES**, and the reason it is written here rather than delegated is the
+    reason stated at :func:`bundle.recorded`: "an inliner that changes nothing needs no
+    fold."  The library's ``resolve_all_refs`` was what stood here, and it does two
+    things beside inlining that this does not:
+
+    * it CANONICALISES at every reference.  ``merged([siblings, target])`` calls
+      ``canonicalish``, whose first statement is
+      ``json.loads(encode_canonical_json(schema))`` -- a round trip of the WHOLE subtree
+      through text, at every one of its own recursive calls, so one node's resolution
+      writes and re-reads its text once per ancestor above every subschema of it.  This
+      is the same disease ``codegen.bundle``'s memo had and the same cure: nothing here
+      is keyed on, or rebuilt from, the text of a subtree.
+    * it holds NO MEMO, so a document whose text is a DAG is walked as the tree that
+      DAG unfolds to.  ``bundle.stored``'s whole point is that the record's text is a
+      DAG -- ``core/mcp-webhook-payload.json``'s 957,187 nodes are 6,442 distinct ones,
+      one of them placed 1,957 times -- and ``bundle.expanded`` below hands that sharing
+      straight through.  Keyed on ``id``, the walk costs the DAG and not its unfolding.
+
+    MEASURED on ``core/creative-localization-readback.json``, whose
+    ``#/definitions/resolvedAssets`` is 2,213,256 bytes of TEXT inside a document whose
+    distinct content is 140,208 bytes: resolving
+    ``#/properties/variants/items/oneOf/0`` -- a node of 2,290 bytes holding two
+    references to that one entry -- did not finish in 341.5 s under the library's
+    resolver, with ``tracemalloc`` reporting 19.7 MiB flat at ``json/decoder.py`` for
+    the whole of it.  The cost was never retention; it was the text round trip.
+
+    **The POSITION is carried because the sibling rule reads it** and for no other
+    reason: :func:`bundle._beside` is called here, so "which side wins where the
+    referring node and its target both state a key" is answered in ONE place for both
+    inliners.  Measured over the 3.2 bundle's records: 394 distinct ``$ref``-bearing
+    nodes, 57 of which carry a sibling, and every one of those 57 siblings is
+    ``description`` or ``deprecated`` -- an annotation, so the referring value wins and
+    nothing constraining is at stake today.
+
+    **A ``definitions`` / ``$defs`` ENTRY is not descended, and that is the one place
+    this is narrower than** :func:`bundle.recorded`.  ``bundle.reaches`` is the reading:
+    validation and the lowering "start at a declared pointer and descend by assertion
+    keywords, which never cross a section boundary", and this copy has exactly two
+    readers -- ``jsonschema`` and ``from_schema`` -- which both descend that way.  So an
+    entry inlined here would add text no reader of the copy consults, and the text is
+    not free: ``hypothesis_jsonschema``'s own validator cache keys on
+    ``json.dumps(schema, sort_keys=True)``.  The reference in the entry is left as the
+    record writes it, which is what the library's resolver did too (it descends neither
+    keyword), so no position loses an inlining it had.
+
+    A reference that resolves THROUGH ITSELF raises rather than recursing, which is the
+    answer the library gave by ``RecursionError``: :func:`check_pair` catches either and
+    grades the unresolved node, so the outcome is the same and the diagnosis is better.
+    """
+    #: The inlined answer per key, and the key's first component is ``id``, so every node
+    #: this is handed has to stay alive for the call -- ``kept`` is what keeps it.  The
+    #: nodes are ``bundle.expanded``'s, built by the caller and dropped with it.
+    held: dict[tuple[int, str, Position], Any] = {}
+    kept: list[Any] = []
+    #: The references open on THIS path, which is the cycle guard.  A path and not a
+    #: visited set, for ``bundle._Where``'s reason: a diamond is not a cycle.
+    chasing: set[str] = set()
+
+    def walk(node: Any, position: Position) -> Any:
+        if not isinstance(node, dict):
+            return node
+        key = (id(node), resolver.resolution_scope, position)
+        if key in held:
+            return held[key]
+        uri = node.get("$ref")
+        if isinstance(uri, str):
+            url, target = resolver.resolve(uri)
+            if url in chasing:
+                raise HypothesisRefResolutionError(
+                    f"$ref:{uri!r} resolves through itself at {url!r}"
+                )
+            chasing.add(url)
+            resolver.push_scope(url)
+            try:
+                placed = walk(target, position)
+            finally:
+                resolver.pop_scope()
+                chasing.discard(url)
+            #: Only where a sibling exists, because ``_beside`` builds a fresh mapping
+            #: and a bare ``{"$ref": ...}`` -- 337 of the 394 -- has nothing to put in
+            #: one.  Placing the shared object itself is what makes the occurrences free.
+            #: ``_beside`` and not a second spelling of §4's sibling rule, which is what
+            #: the private name buys: ``tests/test_accepts_corpus.py`` patches that very
+            #: object as the seam a perturbation replaces, so one rule has one site and
+            #: one perturbation reaches both inliners.
+            out = placed if len(node) == 1 else bundle._beside(placed, node, position)  # noqa: SLF001
+        else:
+            done = {
+                suffix: walk(sub, holds)
+                for _, suffix, sub, holds in bundle.subschemas(node)
+                if isinstance(sub, dict) and holds is not Position.DEF
+            }
+            out = {
+                k: bundle.rebuilt(k, v, done, missing=_itself) if k in bundle.DESCENDS else v
+                for k, v in node.items()
+            }
+        held[key] = out
+        kept.append(node)
+        return out
+
+    return walk(doc, Position.ROOT)
+
+
+def _itself(one: object) -> object:
+    """What a value :func:`bundle.subschemas` did not reach becomes: itself.
+
+    ``bundle.rebuilt`` defaults to a DEEP COPY, for the reason stated there -- "a record
+    that aliased the bundle's own object would let one reader's edit reach another's".
+    Nothing it could alias here is the bundle's: :func:`resolve` hands this
+    ``bundle.expanded``'s output, which rebuilds every mapping and every list it walks,
+    so the whole of what :func:`_inlined` reads is already a copy of the record made for
+    this one call.  ``bundle.stored`` passes the identity for the same kind of reason.
+    """
+    return one
+
+
 def resolve(
     schema: dict, *, store: Mapping[str, Any], base_uri: str = "", referrer: Any = None
 ) -> dict:
-    """Inline every ``$ref`` using hypothesis_jsonschema's own resolver.
+    """Inline every ``$ref`` the node holds, against the document it is a node of.
 
     **CONFINED TO DRAWING, and that is the whole of what it is for now.**
     ``docs/plan/architecture.md`` §4 keeps the payload generator's resolver inside the
@@ -229,36 +350,47 @@ def resolve(
     and rewrites nothing -- so the six folds that undid this resolver's rewritings are
     deleted (§9) and none of them can come back by this door.
 
+    **AND THE COPY IS NO LONGER CANONICALISED EITHER**, which is the licence §4 grants
+    being declined rather than withdrawn: :func:`_inlined` says what the delegation cost
+    and why nothing downstream wanted it.  ``from_schema`` canonicalises what it is
+    handed, so a draw pays that once, inside the draw, over the schema it is actually
+    going to generate from -- which is the pair's own cost and not resolution's.
+
     ``store`` maps an absolute URI to the document at it.  A ``$ref`` that is not
-    in the store raises, by the library's design: it never fetches remotely.
+    in the store raises, by the resolver's design: it never fetches remotely.
 
     ``referrer`` is what a LOCAL pointer (``#/definitions/x``) resolves against, and
     it defaults to ``schema`` -- which is right for a whole document and wrong for a
     NODE of one.  ``bundle.record`` inlines a cross-document reference and leaves a
     local one, so a nested node's own ``$ref`` is a pointer into the DOCUMENT ROOT:
-    given the node as its own referrer, the library raises
+    given the node as its own referrer, the resolver raises
     ``_RefResolutionError: Unresolvable JSON pointer``.  Pass the document and the
     same call inlines it (``salesagent-j3k2l.28``).
     """
-    #: **THE RECORD'S OWN STORAGE IS PUT BACK HERE AND NOT LEFT TO THE LIBRARY**, which
+    #: **THE RECORD'S OWN STORAGE IS PUT BACK HERE AND NOT LEFT TO THE RESOLVER**, which
     #: is ``bundle.expanded``'s whole reason.  ``bundle.stored`` writes a repeated subtree
-    #: once and references it at each occurrence; ``resolve_all_refs`` merges the
-    #: referring node with a FRESH resolution at every ``$ref`` and holds no memo, so
-    #: delegating the storage to it reintroduces exactly the duplication the storage
-    #: removed -- measured at 0.02 s per pair with the expansion here against 3.4 s
-    #: without it over ``adagents.json``'s 25 pairs.  Expanded here the generator is
-    #: handed the same content and the same sharing it was handed before the storage
-    #: existed, and ``copy.deepcopy`` below preserves that sharing because it memoises on
-    #: identity.
+    #: once and references it at each occurrence, and a resolver that holds no memo merges
+    #: a FRESH resolution at every ``$ref``, so delegating the storage to one reintroduces
+    #: exactly the duplication the storage removed -- measured at 0.02 s per pair with the
+    #: expansion here against 3.4 s without it over ``adagents.json``'s 25 pairs.
+    #: Expanded here the generator is handed the same content and the same sharing it was
+    #: handed before the storage existed.
     #:
     #: The SCOPE is expanded too, and against itself: it is what a local pointer resolves
     #: against, so a storage reference left in it would resolve to a node holding another
-    #: reference the library would then have to chase per occurrence.
+    #: reference that would then have to be chased per occurrence.
+    #:
+    #: **AND THE ``copy.deepcopy`` THAT STOOD HERE IS GONE WITH THE LIBRARY CALL IT
+    #: PROTECTED.**  ``resolve_all_refs`` mutates the mapping it is handed, so a copy was
+    #: the only thing between it and the record; :func:`_inlined` writes nothing it did
+    #: not build.  What it reads is already a copy -- ``bundle.expanded`` rebuilds every
+    #: mapping and every list it walks -- so the deep copy was a second one, of the
+    #: document AND of the node, per pair.
     scope = referrer if referrer is not None else schema
-    doc = copy.deepcopy(bundle.expanded(schema, scope))
-    scope = copy.deepcopy(bundle.expanded(scope, scope))
+    doc = bundle.expanded(schema, scope)
+    scope = bundle.expanded(scope, scope)
     resolver = LocalResolver(base_uri=base_uri, referrer=scope, store=dict(store))
-    return resolve_all_refs(doc, resolver=resolver)
+    return _inlined(doc, resolver)
 
 
 def strategy(schema: dict, custom_formats: Mapping[str, Any]) -> st.SearchStrategy:
