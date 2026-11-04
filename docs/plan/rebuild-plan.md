@@ -1230,7 +1230,27 @@ and `EvaluatorSpec.model_validate` returns `EvaluatorSpecEvaluatorId`. The class
 `strict_validate` and `model_validate` does not route through it, so the type is wider than the
 document for every caller who uses pydantic's own entry point.
 
-So the dropped exclusivity is a WIDENED fact and is declared as one. **It is ONE declaration and
+**AND THE DECLARATION IS NOT THE ANSWER: `oneOf` MEANS EXACTLY ONE AND THE CLASS SAYS SO (the
+owner's decision).** A declared widening is honest, and honest is not correct. `oneOf` states a
+constraint and the model layer can carry it, so carrying it is what §2's direction requires — a
+fact is DROPPED only where the annotation cannot hold it, and here a rule can.
+
+**THE COST IS BOUNDED BY DISJOINTNESS, WHICH IS WHY THIS IS CHEAP.** Where the branches are
+provably disjoint, `A | B` is ALREADY exactly-one — at most one branch can match an instance, so
+the union is exact and there is nothing to add and nothing to declare. Every union that dispatches
+on a determining key is in that set. **What is left is the residue where disjointness could not be
+proved**, and that residue is the set that carries this declaration today: **20 declarations in 13
+modules.**
+
+So the rule is: **a non-separable `oneOf` carries a rule that counts the branches an instance
+satisfies and refuses unless exactly one does.** It costs one validation per branch at those sites
+and nothing anywhere else — never a general cost, because the separable case is untouched.
+
+**AND THE DECLARATION RETIRES WITH IT**, which is the test of whether this landed: reading 2's set
+shrinks by exactly these, and a `oneOf` exclusivity declaration surviving the change is a site the
+rule failed to reach.
+
+So, until that lands, the dropped exclusivity is a WIDENED fact and is declared as one. **It is ONE declaration and
 not two, which REVERSES the "owes TWO declarations" half of the 2026-10-29 decision on
 2026-10-30.** The reversed reasoning was that "the two losses are different: which branch an
 overlapping payload lands in, and that it is admitted at all". Both losses are real, and they are
