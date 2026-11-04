@@ -71,6 +71,7 @@ reported on the row rather than absorbed.
 
 from __future__ import annotations
 
+import ast
 import dataclasses
 import datetime
 import enum as stdlib_enum  # ``enum`` is this module's own renderer for an enum
@@ -1252,20 +1253,213 @@ def _import_rank(module: str) -> int:
     return 1 if module == "pydantic" else 0
 
 
-def _import_block(imports: Collection[tuple[str, str]]) -> list[str]:
-    """The import statements, grouped by :func:`_import_rank` and sorted within a rank."""
+#: The width an import statement is written to before it is WRAPPED, which is
+#: ``[tool.ruff] line-length`` and is the one figure this module shares with the linter.
+#:
+#: It is restated here rather than read, because the output is ``f(bundle, document set,
+#: this package)`` (P7) and a configuration file is none of those -- and it needs no
+#: pin of its own, because the enforcement already exists in both directions: lower the
+#: linter's width and it reports the statements this one leaves long, raise it and it
+#: reports the ones this one wrapped.  Either way ``I001`` names the file.
+LINE_LENGTH = 120
+
+#: The indent of a wrapped import's names, which is ``isort``'s vertical-hanging-indent.
+IMPORT_INDENT = "    "
+
+#: A run of digits, which both sort keys below split a name on.
+_DIGITS = re.compile(r"(\d+)")
+
+
+def _natural(text: str) -> tuple[tuple[int, int, str], ...]:
+    """``natord``'s ordering, which is the one both ruff rules sort names by: a run of
+    DIGITS compares as a number and not as characters.
+
+    ``StrMaxLen64`` before ``StrMaxLen100`` and ``Branch9`` before ``Branch10``, where a
+    plain string sort gives both the other way round.  A digit chunk ranks before a text
+    chunk, which is what ``natord`` does by character code as well: every character a
+    Python identifier can carry outside a digit (``A``-``Z``, ``a``-``z``, ``_``) is
+    above ``9``.
+    """
+    return tuple(
+        (0, int(part), "") if part.isdigit() else (1, 0, part)
+        for part in _DIGITS.split(text)
+        if part
+    )
+
+
+def _is_constant(name: str) -> bool:
+    """``isort``'s CONSTANT: longer than one character and cased all upper.
+
+    The length clause is the rule's own and is load-bearing here -- ``T`` is a one-letter
+    class and not a constant -- and the cased clause is what keeps ``___`` out.
+    """
+    return len(name) > 1 and name.upper() == name and name.lower() != name
+
+
+def _member_key(name: str) -> tuple[int, tuple[tuple[int, int, str], ...]]:
+    """``isort``'s member order within one ``from`` statement: ``order-by-type`` puts
+    CONSTANTs first, then CLASSes, then everything else, and ``case-sensitive = false``
+    compares the rest case-blind.
+
+    So ``APPROXIMATIONS, Approximation, SchemaRef`` and ``AdcpMajorVersion, AdcpVersion,
+    AdCPVersionEnvelope`` -- the second of which a plain sort gives in the other order,
+    because ``C`` sorts before ``c``.
+    """
+    return (0 if _is_constant(name) else 1 if name[:1].isupper() else 2, _natural(name.lower()))
+
+
+def _export_key(name: str) -> tuple[int, tuple[tuple[int, int, str], ...]]:
+    """``RUF022``'s ``__all__`` order, which is NOT :func:`_member_key`: two groups
+    rather than three and case-SENSITIVE within them.
+
+    Measured against the rule rather than assumed from the family: given one list of
+    twenty-one names the two rules disagree about four positions, because ``RUF022``
+    compares ``_VALUES_X`` after ``MISSING`` where ``isort`` compares it before
+    ``A2UI_X``.  One key for both would leave one of the two rules reporting.
+    """
+    return (0 if _is_constant(name) else 1, _natural(name))
+
+
+def _import_statement(module: str, names: Sequence[str]) -> list[str]:
+    """One ``from`` statement, on one line or wrapped at :data:`LINE_LENGTH`.
+
+    The wrapped form is ``isort``'s vertical hanging indent WITH the trailing comma, and
+    the comma is not decoration: ``split-on-trailing-comma`` reads it as the instruction
+    to keep the statement split, so the form without it is one the sorter would rejoin.
+    A statement whose single name does not fit either is still wrapped, which is what the
+    sorter does -- there is nothing shorter to write.
+    """
+    one = f"from {module} import {', '.join(names)}"
+    if len(one) <= LINE_LENGTH:
+        return [one]
+    return [f"from {module} import (", *(f"{IMPORT_INDENT}{name}," for name in names), ")"]
+
+
+def _module_statements(module: str, names: Collection[str], reexported: Collection[str]) -> list[str]:
+    """One module's statements: the plain names in ONE statement, then each re-export in
+    its own.
+
+    ``combine-as-imports`` is false -- the default, and this project does not set it --
+    so ``X as X`` cannot share a statement with anything: ``from m import A, B as B``
+    is rewritten to two statements by the sorter, and the plain one comes first.  That is
+    the whole reason this is not one join.
+    """
+    plain = sorted(set(names) - set(reexported), key=_member_key)
+    out = _import_statement(module, plain) if plain else []
+    for name in sorted(reexported, key=_member_key):
+        out += _import_statement(module, [f"{name} as {name}"])
+    return out
+
+
+def _import_block(
+    imports: Collection[tuple[str, str]], reexports: Collection[tuple[str, str]] = ()
+) -> list[str]:
+    """The import statements, grouped by :func:`_import_rank` and sorted within a rank.
+
+    Sorted the way the SORTER sorts -- :func:`_natural` over the module name, case-blind,
+    and :func:`_member_key` over the names within a statement -- rather than by
+    ``sorted()``, which agrees with it on most of this tree and not on all of it.
+    """
     groups: list[list[str]] = [[], [], [], []]
     by_module: dict[str, set[str]] = {}
+    held: dict[str, set[str]] = {}
     for module, name in imports:
         by_module.setdefault(module, set()).add(name)
-    for module in sorted(by_module):
-        names = ", ".join(sorted(by_module[module]))
-        groups[_import_rank(module)].append(f"from {module} import {names}")
+    for module, name in reexports:
+        by_module.setdefault(module, set()).add(name)
+        held.setdefault(module, set()).add(name)
+    for module in sorted(by_module, key=lambda m: _natural(m.lower())):
+        groups[_import_rank(module)] += _module_statements(
+            module, by_module[module], held.get(module, ())
+        )
     out: list[str] = []
     for group in groups:
         if group:
             out += [*group, ""]
     return out
+
+
+def _code_names(body: str) -> set[str]:
+    """Every name the body's CODE names, which is what decides whether an import the
+    walk reported is one the text uses.
+
+    **Read off the parse and not off the characters.**  A word search over the text
+    keeps four imports this tree does not use, because a schema ``description`` carried
+    verbatim mentions the class by name in prose (``Each item is a
+    ProductFormatDeclaration ...``, three documents) and a declared ``Approximation``'s
+    ``fact`` is the document's own subtree, which carries every ``title`` in it
+    (``core/async-response-data.json``, two).  Both are STRING literals and neither is a
+    use, so ``F401`` still reported all four after a word filter had passed them.
+
+    **Two kinds of string ARE a use and both are read**, which is what keeps the filter
+    on the admitting side of the two errors -- an unused import is a finding where a
+    missing one is a ``NameError``:
+
+    * an entry of ``__all__``, which is a RE-EXPORT.  That is ``F401``'s own reading of
+      a name in ``__all__``, so taking it here is agreeing with the rule rather than
+      guessing at it.
+    * an identifier inside an ANNOTATION, which is a forward reference.  Today's tree
+      holds none (``UP037`` reads 0 over it, because every module has ``from __future__
+      import annotations`` and nothing quotes a hint) -- it is read because an annotation
+      is the one position where a string is a NAME, and a filter that dropped one would
+      produce a module that does not import.
+
+    An identifier-valued string anywhere ELSE is DATA and is not read, which is the
+    distinction the two ``Approximation`` facts above turn on: theirs carries ``{'title':
+    'ControlMediaBuyResponse', ...}`` -- the class name, in a dict, as a value.
+    """
+    tree = ast.parse(body)
+    names = {node.id for node in ast.walk(tree) if isinstance(node, ast.Name)}
+    for node in ast.walk(tree):
+        annotation = getattr(node, "annotation", None)
+        if annotation is not None:
+            names |= _identifier_strings(annotation)
+        if isinstance(node, ast.Assign) and any(
+            isinstance(target, ast.Name) and target.id == "__all__" for target in node.targets
+        ):
+            names |= _identifier_strings(node.value)
+    return names
+
+
+def _identifier_strings(node: ast.AST) -> set[str]:
+    """Every string under ``node`` that is a Python identifier on its own."""
+    return {
+        child.value
+        for child in ast.walk(node)
+        if isinstance(child, ast.Constant)
+        and isinstance(child.value, str)
+        and child.value.isidentifier()
+    }
+
+
+def _import_section(
+    imports: Collection[tuple[str, str]],
+    body: str,
+    reexports: Collection[tuple[str, str]] = (),
+) -> list[str]:
+    """``from __future__ import annotations``, the import block, and the blank lines
+    ``isort`` puts between that block and what follows.
+
+    **An import the body does not NAME is dropped here**, which is the one place that
+    reading can be taken: the walk reports the import for a type it decided and the
+    renderer may write a narrower spelling of it, and a reported name that merely
+    appears as a SUBSTRING of a class the module does declare was being kept by the
+    emitter's own union -- ``PostalCountrySystem`` kept by ``PostalCountrySystemUS``,
+    nineteen times over the tree.  :func:`_code_names` is the test and the one place the
+    reading is taken; this is the ``ConfigDict`` filter one line up generalised, in the
+    direction that filter already has.
+
+    ``reexports`` are exempt and are written ``X as X``: they are named by a CONSUMER and
+    not by this module, so a usage test would delete exactly the names the package
+    promises -- ``constraints.HttpUrl``, which 133 emitted modules import, and every
+    name on a domain surface.  ``X as X`` is also what makes the promise readable to a
+    type checker (PEP 484), which is why ``PLC0414`` is declined in the configuration.
+    """
+    used = _code_names(body)
+    named = [(module, name) for module, name in imports if name in used]
+    block = _import_block(named, reexports)
+    after = ["", ""] if body.lstrip("\n").startswith(("class ", "def ", "@")) else [""]
+    return ["from __future__ import annotations", *(["", *block[:-1]] if block else []), *after]
 
 
 def blocks(
@@ -1287,23 +1481,26 @@ def module(mod: ir.Module, exports: Sequence[str]) -> str:
     It took a ``Written`` Protocol over three attributes while ``Module`` lived in the
     decision layer, which §11's arrows (``ir <- render <- emit``) forbid this module to
     know; §7 puts ``Module`` in ``codegen.ir`` and §14 step 7 is what got it there, so
-    the type is named directly.  The export list is the walk's
-    (``emit.exported``), because which names another module may ask for is a decision
-    about the bundle and not about text.
+    the type is named directly.  The export SET is the walk's (``emit.exported``),
+    because which names another module may ask for is a decision about the bundle and
+    not about text -- and its ORDER is this module's, because an order is layout (D8).
+    :func:`_export_key` is the one a sorter would write, which is what keeps every
+    module of the tree from reporting ``RUF022``.
     """
     rendered = blocks(mod.declarations, mod.approximations)
     imports = set(mod.imports)
     for one in rendered:
         imports |= one.imports
-    out = [
-        f"# Generated by codegen.emit from {mod.document}. Do not edit.",
-        "from __future__ import annotations",
-        "",
-        *_import_block(imports),
-    ]
     classes = "\n\n\n".join(one.text for one in rendered)
-    names = ", ".join(f'"{n}"' for n in exports)
-    return "\n".join([*out, "", classes, "", "", f"__all__ = [{names}]", ""])
+    names = ", ".join(f'"{n}"' for n in sorted(exports, key=_export_key))
+    body = "\n".join([classes, "", "", f"__all__ = [{names}]", ""])
+    return "\n".join(
+        [
+            f"# Generated by codegen.emit from {mod.document}. Do not edit.",
+            *_import_section(imports, body),
+            body,
+        ]
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -1357,17 +1554,14 @@ def vocabularies_module(declarations: Sequence[ir.ValuesDecl]) -> str:
     imports: set[tuple[str, str]] = set()
     for one in rendered:
         imports |= one.imports
+    body = "\n".join(["\n\n\n".join(one.text for one in rendered), ""])
     return "\n".join(
         [
             BESIDE_HEADER,
             VOCABULARIES_DOCSTRING,
             "",
-            "from __future__ import annotations",
-            "",
-            *_import_block(imports),
-            "",
-            "\n\n\n".join(one.text for one in rendered),
-            "",
+            *_import_section(imports, body),
+            body,
         ]
     )
 
@@ -1414,22 +1608,17 @@ def envelopes_module(
     named = set(imports)
     for one in rendered:
         named |= one.imports
-    exports = ", ".join(f'"{decl.name}"' for decl in declarations)
-    body = ["\n\n\n".join(one.text for one in rendered), "", ""] if rendered else [""]
-    return "\n".join(
+    exports = ", ".join(
+        f'"{name}"' for name in sorted((decl.name for decl in declarations), key=_export_key)
+    )
+    body = "\n".join(
         [
-            BESIDE_HEADER,
-            ENVELOPES_DOCSTRING,
-            "",
-            "from __future__ import annotations",
-            "",
-            *_import_block(named),
-            "",
-            *body,
+            *(["\n\n\n".join(one.text for one in rendered), "", ""] if rendered else [""]),
             f"__all__ = [{exports}]",
             "",
         ]
     )
+    return "\n".join([BESIDE_HEADER, ENVELOPES_DOCSTRING, "", *_import_section(named, body), body])
 
 
 # --------------------------------------------------------------------------- #
@@ -1444,18 +1633,27 @@ URL_LINE = (
     f'{constraint_names.URL} = Annotated[AnyUrl, UrlConstraints(allowed_schemes=["https"])]'
 )
 
-#: What :data:`URL_LINE` names, plus ``HttpUrl``: pydantic's own, RE-EXPORTED by the
-#: constraints module rather than imported from ``pydantic`` at each site.  The import IS
-#: the declaration -- no assignment, so nothing in this package restates what pydantic
-#: defines -- and it is there and not left to ``pydantic`` because the SDK's ``uri``
-#: decision is a SPLIT: a consumer reading a module that declared only ``AdCPUrl`` would
-#: read the https-only arm as the whole rule.  One place names both arms.
+#: What :data:`URL_LINE` names.
 URL_IMPORTS = {
     ("typing", "Annotated"),
     ("pydantic", "AnyUrl"),
     ("pydantic", "UrlConstraints"),
-    ("pydantic", constraint_names.HTTP_URL),
 }
+
+#: ``HttpUrl``: pydantic's own, RE-EXPORTED by the constraints module rather than
+#: imported from ``pydantic`` at each site.  The import IS the declaration -- no
+#: assignment, so nothing in this package restates what pydantic defines -- and it is
+#: there and not left to ``pydantic`` because the SDK's ``uri`` decision is a SPLIT: a
+#: consumer reading a module that declared only ``AdCPUrl`` would read the https-only arm
+#: as the whole rule.  One place names both arms.
+#:
+#: **Declared as a re-export and not as an import, which is what it always was.**  No
+#: line of the module NAMES it -- 133 emitted modules do -- so ``F401`` reported it
+#: unused, and ``--fix`` would have deleted the name those modules import.  ``X as X``
+#: is PEP 484's explicit re-export: ``F401`` reads it as the declaration the docstring
+#: above already calls it, and a consumer's type checker reads it as part of this
+#: module's interface, which is what ``py.typed`` promises.
+URL_REEXPORTS = {("pydantic", constraint_names.HTTP_URL)}
 
 CONSTRAINTS_DOCSTRING = '''"""Constrained types, each named for the constraint it carries.
 
@@ -1523,6 +1721,13 @@ def domain_module(domain: str, held: Mapping[str, Sequence[str]]) -> str:
     **RELATIVE, for ``emit.relative_module``'s reason**: ``_schemas`` is private (P8) and a
     relative import is the one spelling that cannot name it.  One level, because every
     domain module sits directly in ``adcp/types/``.
+
+    **One statement per name, which is the sorter's form and not a choice of layout.**
+    ``combine-as-imports`` is false by default and this project does not set it, so a
+    ``X as X`` cannot share a statement with a sibling: the grouped form this function
+    used to write is one the sorter rewrites, and ``I001`` named all 19 surface modules
+    for it.  Setting the option instead would have been the measuring instrument moved to
+    fit the output.
     """
     lines = [
         f'"""The public types of the ``{domain}`` domain.',
@@ -1538,19 +1743,13 @@ def domain_module(domain: str, held: Mapping[str, Sequence[str]]) -> str:
         "document added upstream appears here with nothing edited.",
         '"""',
         "",
-        "from __future__ import annotations",
-        "",
     ]
-    names: list[str] = []
-    for module in sorted(held):
-        lines.append(f"from ._schemas.{module} import (")
-        lines += [f"    {symbol} as {symbol}," for symbol in sorted(held[module])]
-        lines.append(")")
-        names += held[module]
-    lines += ["", "__all__ = ["]
-    lines += [f"    {symbol!r}," for symbol in sorted(names)]
-    lines += ["]", ""]
-    return "\n".join(lines)
+    names = [symbol for module in held for symbol in held[module]]
+    body = "\n".join(
+        ["__all__ = [", *(f"    {symbol!r}," for symbol in sorted(names, key=_export_key)), "]", ""]
+    )
+    reexports = [(f"._schemas.{module}", symbol) for module in held for symbol in held[module]]
+    return "\n".join([*lines, *_import_section((), body, reexports), body])
 
 
 def constraints_module(shapes: Mapping[str, constraint_names.Shape]) -> str:
@@ -1576,11 +1775,11 @@ def constraints_module(shapes: Mapping[str, constraint_names.Shape]) -> str:
     needs; these aliases carry no schema reference -- an alias has no document -- so that
     one import is dropped here by name.
 
-    The LAYOUT is the emitted modules' own (:func:`module`): stdlib, then the library,
-    one blank line between the groups.  Spelled here rather than shared, because
-    :func:`module` writes a module of CLASSES with an ``__all__`` and a document header,
-    and two of :func:`_import_rank`'s four ranks cannot occur here at all -- an alias
-    imports nothing but the annotation machinery.
+    The LAYOUT is :func:`_import_section`'s, which is every other module's: stdlib, then
+    the library, one blank line between the groups.  It used to be spelled here, on the
+    argument that two of :func:`_import_rank`'s four ranks cannot occur in this module --
+    true, and it is the RANK FUNCTION that says so rather than a second copy of the
+    grouping.  The copy had drifted by one blank line, which is one ``I001``.
     """
     declared, variables = constraint_names.declarations(shapes)
     imports: set[tuple[str, str]] = set(URL_IMPORTS)
@@ -1592,31 +1791,13 @@ def constraints_module(shapes: Mapping[str, constraint_names.Shape]) -> str:
     if variables:
         imports.add(("typing", "TypeVar"))
         lines = [f'{p} = TypeVar("{p}")' for p in variables] + ["", *lines]
-    by_module: dict[str, set[str]] = {}
-    for module_, item in imports:
-        by_module.setdefault(module_, set()).add(item)
-    groups = [
-        [
-            f"from {m} import {', '.join(sorted(by_module[m]))}"
-            for m in sorted(by_module)
-            if keep(m)
-        ]
-        for keep in (lambda m: m != "pydantic", lambda m: m == "pydantic")
-    ]
-    head: list[str] = []
-    for group in groups:
-        if group:
-            head += ["", *group]
+    body = "\n".join([*lines, ""])
     return "\n".join(
         [
             BESIDE_HEADER,
             CONSTRAINTS_DOCSTRING,
             "",
-            "from __future__ import annotations",
-            *head,
-            "",
-            "",
-            *lines,
-            "",
+            *_import_section(imports, body, URL_REEXPORTS),
+            body,
         ]
     )

@@ -13,39 +13,23 @@ document added upstream appears here with nothing edited.
 
 from __future__ import annotations
 
-from ._schemas.sponsored_intelligence.si_capabilities import (
-    Avatar as Avatar,
-    SICapabilities as SICapabilities,
-    Video as Video,
-    Voice as Voice,
-)
-from ._schemas.sponsored_intelligence.si_context_use import (
-    SIContextUse as SIContextUse,
-)
-from ._schemas.sponsored_intelligence.si_get_offering_request import (
-    SIGetOfferingRequest as SIGetOfferingRequest,
-)
-from ._schemas.sponsored_intelligence.si_get_offering_response import (
-    SIGetOfferingResponse as SIGetOfferingResponse,
-)
-from ._schemas.sponsored_intelligence.si_identity import (
-    SIIdentity as SIIdentity,
-)
+from ._schemas.sponsored_intelligence.si_capabilities import Avatar as Avatar
+from ._schemas.sponsored_intelligence.si_capabilities import SICapabilities as SICapabilities
+from ._schemas.sponsored_intelligence.si_capabilities import Video as Video
+from ._schemas.sponsored_intelligence.si_capabilities import Voice as Voice
+from ._schemas.sponsored_intelligence.si_context_use import SIContextUse as SIContextUse
+from ._schemas.sponsored_intelligence.si_get_offering_request import SIGetOfferingRequest as SIGetOfferingRequest
+from ._schemas.sponsored_intelligence.si_get_offering_response import SIGetOfferingResponse as SIGetOfferingResponse
+from ._schemas.sponsored_intelligence.si_identity import SIIdentity as SIIdentity
 from ._schemas.sponsored_intelligence.si_initiate_session_request import (
     SIInitiateSessionRequest as SIInitiateSessionRequest,
 )
 from ._schemas.sponsored_intelligence.si_initiate_session_response import (
     SIInitiateSessionResponse as SIInitiateSessionResponse,
 )
-from ._schemas.sponsored_intelligence.si_send_message_request import (
-    SISendMessageRequest as SISendMessageRequest,
-)
-from ._schemas.sponsored_intelligence.si_send_message_response import (
-    SISendMessageResponse as SISendMessageResponse,
-)
-from ._schemas.sponsored_intelligence.si_sponsored_context import (
-    SISponsoredContext as SISponsoredContext,
-)
+from ._schemas.sponsored_intelligence.si_send_message_request import SISendMessageRequest as SISendMessageRequest
+from ._schemas.sponsored_intelligence.si_send_message_response import SISendMessageResponse as SISendMessageResponse
+from ._schemas.sponsored_intelligence.si_sponsored_context import SISponsoredContext as SISponsoredContext
 from ._schemas.sponsored_intelligence.si_sponsored_context_receipt import (
     SISponsoredContextReceipt as SISponsoredContextReceipt,
 )
@@ -55,9 +39,7 @@ from ._schemas.sponsored_intelligence.si_terminate_session_request import (
 from ._schemas.sponsored_intelligence.si_terminate_session_response import (
     SITerminateSessionResponse as SITerminateSessionResponse,
 )
-from ._schemas.sponsored_intelligence.si_ui_element import (
-    SIUIElement as SIUIElement,
-)
+from ._schemas.sponsored_intelligence.si_ui_element import SIUIElement as SIUIElement
 
 __all__ = [
     'Avatar',

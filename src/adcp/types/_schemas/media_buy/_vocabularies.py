@@ -22,7 +22,6 @@ both names are right and merging types one subject with the other's name."
 
 from __future__ import annotations
 
-
 _VALUES_INCLUDE_OMIT_FINALIZE: tuple[str, ...] = (
     'include',
     'omit',

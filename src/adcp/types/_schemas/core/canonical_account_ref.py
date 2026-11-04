@@ -6,7 +6,11 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
-from adcp.types.constraints import AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, GetAccountFinancialsResponseSuccessCurrency, StrMinLen1
+from adcp.types.constraints import (
+    AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain,
+    GetAccountFinancialsResponseSuccessCurrency,
+    StrMinLen1,
+)
 
 from .brand_key import BrandKey
 from .operator_unit import OperatorUnit

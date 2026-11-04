@@ -20,9 +20,31 @@ from .package_signal_targeting_groups import PackageSignalTargetingGroups
 from .placement_selection import PlacementSelection
 from .property_list_ref import PropertyListReference
 from .signal_targeting import SignalTargeting
-from .targeting import AgeRestriction, AudienceExclude, AudienceInclude, AxeExcludeSegment, AxeIncludeSegment, Browser, BrowserExclude, DaypartTargets, DevicePlatformExclude, DeviceTypeExclude, GeoCountries, GeoCountriesExclude, GeoMetrosExclude, GeoPlaces, GeoPlacesExclude, GeoPostalAreas, GeoPostalAreasExclude, GeoRegions, GeoRegionsExclude, StoreCatchments, TargetingOverlayDevicePlatform, TargetingOverlayDeviceType, TargetingOverlayGeoProximity
-from .targeting_unknown_age_eligibility_constraint import TargetingUnknownAgeEligibilityConstraint
-from .targeting_verified_age_basis_constraint import TargetingVerifiedAgeBasisConstraint
+from .targeting import (
+    AgeRestriction,
+    AudienceExclude,
+    AudienceInclude,
+    AxeExcludeSegment,
+    AxeIncludeSegment,
+    Browser,
+    BrowserExclude,
+    DaypartTargets,
+    DevicePlatformExclude,
+    DeviceTypeExclude,
+    GeoCountries,
+    GeoCountriesExclude,
+    GeoMetrosExclude,
+    GeoPlaces,
+    GeoPlacesExclude,
+    GeoPostalAreas,
+    GeoPostalAreasExclude,
+    GeoRegions,
+    GeoRegionsExclude,
+    StoreCatchments,
+    TargetingOverlayDevicePlatform,
+    TargetingOverlayDeviceType,
+    TargetingOverlayGeoProximity,
+)
 
 
 class TargetingOverlayInput(AdCPBaseModel):

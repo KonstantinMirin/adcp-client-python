@@ -7,7 +7,15 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Presence, PresenceGroups, Rule, UniqueItems
-from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, AgeRestrictionMin, FloatGt0, FloatMin1, FloatMinNeg180Max180, FloatMinNeg90Max90, GeoForecastDimensionCode
+from adcp.types.constraints import (
+    AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem,
+    AgeRestrictionMin,
+    FloatGt0,
+    FloatMin1,
+    FloatMinNeg90Max90,
+    FloatMinNeg180Max180,
+    GeoForecastDimensionCode,
+)
 
 from ..enums.age_verification_method import AgeVerificationMethod
 from ..enums.browser_family import BrowserFamily
@@ -33,9 +41,6 @@ from .placement_selection import PlacementSelection
 from .postal_area import PostalArea
 from .property_list_ref import PropertyListReference
 from .signal_targeting import SignalTargeting
-from .targeting_unknown_age_eligibility_constraint import TargetingUnknownAgeEligibilityConstraint
-from .targeting_verified_age_basis_constraint import TargetingVerifiedAgeBasisConstraint
-
 
 GeoCountries = Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem], Field(description="Restrict delivery to specific countries. ISO 3166-1 alpha-2 codes (e.g., 'US', 'GB', 'DE').", min_length=1)]
 
@@ -231,4 +236,4 @@ class TargetingOverlay(AdCPBaseModel):
     negative_keywords: Annotated[list[NegativeKeyword] | None, Field(description='Keywords to exclude from delivery. Queries matching these keywords will not trigger the ad. Each negative keyword is identified by the tuple (keyword, match_type). Seller must declare support in get_adcp_capabilities.', min_length=1)] = None
 
 
-__all__ = ["TargetingOverlay", "AgeRestriction", "AudienceExclude", "AudienceInclude", "AxeExcludeSegment", "AxeIncludeSegment", "Browser", "BrowserExclude", "DaypartTargets", "DevicePlatformExclude", "DeviceTypeExclude", "GeoCountries", "GeoCountriesExclude", "GeoMetrosExclude", "GeoPlaces", "GeoPlacesExclude", "GeoPostalAreas", "GeoPostalAreasExclude", "GeoRegions", "GeoRegionsExclude", "StoreCatchments", "TargetingOverlayDevicePlatform", "TargetingOverlayDeviceType", "TargetingOverlayGeoProximity"]
+__all__ = ["AgeRestriction", "AudienceExclude", "AudienceInclude", "AxeExcludeSegment", "AxeIncludeSegment", "Browser", "BrowserExclude", "DaypartTargets", "DevicePlatformExclude", "DeviceTypeExclude", "GeoCountries", "GeoCountriesExclude", "GeoMetrosExclude", "GeoPlaces", "GeoPlacesExclude", "GeoPostalAreas", "GeoPostalAreasExclude", "GeoRegions", "GeoRegionsExclude", "StoreCatchments", "TargetingOverlay", "TargetingOverlayDevicePlatform", "TargetingOverlayDeviceType", "TargetingOverlayGeoProximity"]

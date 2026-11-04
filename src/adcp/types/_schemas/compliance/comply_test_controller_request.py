@@ -9,7 +9,17 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNega
 
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
-from adcp.types.constraints import ComplyTestControllerRequestParamsReceivedReportingRevisionId, FloatMin0Max100, GetAccountFinancialsResponseSuccessCurrency, StrMaxLen128, StrMaxLen2000, StrMinLen1, StrMinLen1MaxLen1000, StrMinLen1MaxLen2000, StrMinLen1MaxLen255
+from adcp.types.constraints import (
+    ComplyTestControllerRequestParamsReceivedReportingRevisionId,
+    FloatMin0Max100,
+    GetAccountFinancialsResponseSuccessCurrency,
+    StrMaxLen128,
+    StrMaxLen2000,
+    StrMinLen1,
+    StrMinLen1MaxLen255,
+    StrMinLen1MaxLen1000,
+    StrMinLen1MaxLen2000,
+)
 
 from ..core.brand_ref import BrandReference
 from ..core.committed_metric import Qualifier

@@ -8,7 +8,6 @@ from pydantic import Field
 from adcp.types._base import SchemaRef, strict_alias
 from adcp.types.constraints import StrMinLen1MaxLen1024
 
-
 __adcp_schema__ = SchemaRef(document='core/reporting-native-version-ref.json', pointer='#')
 
 ReportingNativeVersionReference = Annotated[StrMinLen1MaxLen1024, Field(description='Credential-free, decoded provider-native immutable version reference, such as an S3 VersionId, GCS generation, table version, transaction, snapshot, manifest generation, job, or run. This is not URI-encoded or concatenated into an object_ref; URI-encode it only when constructing a provider request. The 1024-character limit accommodates a provider value of up to 1024 UTF-8 bytes because every Unicode character occupies at least one UTF-8 byte; JSON Schema maxLength counts characters rather than bytes.')]

@@ -8,7 +8,13 @@ from pydantic import ConfigDict, Field, NonNegativeFloat, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Presence, PresenceGroups, Rule, UniqueItems
-from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, GetAccountFinancialsResponseSuccessCurrency, GovernanceContext, IntMin1, SyncAccountsRequestIdempotencyKey
+from adcp.types.constraints import (
+    AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem,
+    GetAccountFinancialsResponseSuccessCurrency,
+    GovernanceContext,
+    IntMin1,
+    SyncAccountsRequestIdempotencyKey,
+)
 
 from ..common._vocabularies import _VALUES_VOICE_THEME_BEST_OF_N_TRANSFORMER_CONFIG_CUSTOM
 from ..core.account_ref import AccountReference
@@ -21,7 +27,7 @@ from ..core.ext import ExtensionObject
 from ..core.format_id import FormatReferenceStructuredObject
 from ..core.push_notification_config import PushNotificationConfig
 from ..core.representation_destination import RepresentationDestination
-from ..core.signal_targeting import SignalTargeting, SignalTargetingBinary, SignalTargetingCategorical, SignalTargetingNumeric
+from ..core.signal_targeting import SignalTargetingBinary, SignalTargetingCategorical, SignalTargetingNumeric
 from ..core.version_envelope import AdCPVersionEnvelope
 from ..enums.creative_quality import CreativeQuality
 from ..enums.creative_selection_strategy import CreativeSelectionStrategy

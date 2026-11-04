@@ -7,7 +7,12 @@ from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule, UniqueItems
-from adcp.types.constraints import CommissionRate, GetAccountFinancialsResponseSuccessCurrency, StrMinLen1, StrMinLen1MaxLen1000
+from adcp.types.constraints import (
+    CommissionRate,
+    GetAccountFinancialsResponseSuccessCurrency,
+    StrMinLen1,
+    StrMinLen1MaxLen1000,
+)
 
 from ..enums.adjustment_kind import PriceAdjustmentKind
 from ..enums.event_type import EventType

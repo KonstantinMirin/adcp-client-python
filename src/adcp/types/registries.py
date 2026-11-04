@@ -13,9 +13,9 @@ document added upstream appears here with nothing edited.
 
 from __future__ import annotations
 
+from ._schemas.registries.v1_canonical_mapping import V1PatternFormatIdGlob as V1PatternFormatIdGlob
+from ._schemas.registries.v1_canonical_mapping import V1PatternStructural as V1PatternStructural
 from ._schemas.registries.v1_canonical_mapping import (
-    V1PatternFormatIdGlob as V1PatternFormatIdGlob,
-    V1PatternStructural as V1PatternStructural,
     V1V2CanonicalFormatMappingRegistry as V1V2CanonicalFormatMappingRegistry,
 )
 

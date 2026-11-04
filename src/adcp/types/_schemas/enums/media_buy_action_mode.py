@@ -7,7 +7,6 @@ from adcp.types._base import SchemaRef, strict_alias
 
 from ._vocabularies import _VALUES_SELF_SERVE_CONDITIONAL_SELF_SERVE_SELLER_MANAGED_REQUIRES_APPROVAL
 
-
 __adcp_schema__ = SchemaRef(document='enums/media-buy-action-mode.json', pointer='#')
 
 class MediaBuyActionMode(StrEnum):

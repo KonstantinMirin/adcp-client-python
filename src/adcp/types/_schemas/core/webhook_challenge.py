@@ -7,7 +7,12 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
-from adcp.types.constraints import AccountChangeRecordedWebhookSubscriberId, AgentWebhookChallengeChallenge, ComplyTestControllerRequestParamsIdentifierValueDigestsItem, HttpUrl
+from adcp.types.constraints import (
+    AccountChangeRecordedWebhookSubscriberId,
+    AgentWebhookChallengeChallenge,
+    ComplyTestControllerRequestParamsIdentifierValueDigestsItem,
+    HttpUrl,
+)
 
 from ..enums.notification_type import NotificationType
 from .agent_webhook_challenge import Mode

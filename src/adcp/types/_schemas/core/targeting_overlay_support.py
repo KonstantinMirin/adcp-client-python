@@ -7,7 +7,12 @@ from pydantic import AfterValidator, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import Distinct, ForbiddenGroups, PropertyCount, RequiredGroups, Rule, UniqueItems
-from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, IntMin1, NonEmptyList, StrMinLen1
+from adcp.types.constraints import (
+    AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem,
+    IntMin1,
+    NonEmptyList,
+    StrMinLen1,
+)
 
 from ..enums.browser_family import BrowserFamily
 from ..enums.daypart_timezone_mode import DaypartTimezoneMode
@@ -21,7 +26,6 @@ from .geo_place_type import GeographicPlaceType
 from .geo_region_support import GeographicRegionSupport
 from .iana_timezone import IANATimezoneIdentifier
 from .positive_postal_area_support import PositivePostalAreaSupport
-
 
 Supported = Literal[True]
 
@@ -248,4 +252,4 @@ class TargetingOverlaySupport(AdCPBaseModel):
     ext: ExtensionObject | None = None
 
 
-__all__ = ["TargetingOverlaySupport", "BrowserSupport", "CountrySupport", "DaypartSupport", "KeywordSupport", "MetroSupport", "PlaceCatalogSupport", "PlaceSupport", "Supported"]
+__all__ = ["BrowserSupport", "CountrySupport", "DaypartSupport", "KeywordSupport", "MetroSupport", "PlaceCatalogSupport", "PlaceSupport", "Supported", "TargetingOverlaySupport"]

@@ -7,7 +7,17 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, AdCPVersionEnvelopeAdcpVersion, ContextSignalsEmbeddingDims, ContextSignalsLanguage, GeoForecastDimensionCode, HttpUrl, IntMin1Max99, StrMaxLen100, StrMaxLen500
+from adcp.types.constraints import (
+    AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem,
+    AdCPVersionEnvelopeAdcpVersion,
+    ContextSignalsEmbeddingDims,
+    ContextSignalsLanguage,
+    GeoForecastDimensionCode,
+    HttpUrl,
+    IntMin1Max99,
+    StrMaxLen100,
+    StrMaxLen500,
+)
 
 from ..content_standards.artifact import Artifact
 from ..core.property_id import PropertyID

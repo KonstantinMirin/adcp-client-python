@@ -5,7 +5,6 @@ from enum import StrEnum
 
 from adcp.types._base import SchemaRef, strict_alias
 
-
 __adcp_schema__ = SchemaRef(document='enums/forecastable-metric.json', pointer='#')
 
 class ForecastableMetric(StrEnum):

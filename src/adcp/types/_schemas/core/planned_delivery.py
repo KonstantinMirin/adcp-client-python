@@ -7,7 +7,12 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
-from adcp.types.constraints import CanonicalProposalTermsDigest, GetAccountFinancialsResponseSuccessCurrency, StrMinLen1, StrMinLen1MaxLen255
+from adcp.types.constraints import (
+    CanonicalProposalTermsDigest,
+    GetAccountFinancialsResponseSuccessCurrency,
+    StrMinLen1,
+    StrMinLen1MaxLen255,
+)
 
 from ..enums.channels import MediaChannel
 from ..enums.pacing import Pacing

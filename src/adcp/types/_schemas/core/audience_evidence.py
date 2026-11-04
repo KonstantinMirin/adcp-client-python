@@ -13,7 +13,7 @@ from ..enums.audience_evidence_methodology import AudienceEvidenceMethodology
 from ..enums.audience_resolution_method import AudienceResolutionMethod
 from ..enums.audience_subject_type import AudienceSubjectType
 from .attestation_reference import AttestationReference
-from .attestation_subject import AttestationResourceSubject, AttestationSubject
+from .attestation_subject import AttestationResourceSubject
 from .audience_characteristic import AudienceCharacteristic
 from .audience_evidence_requirements import EvidenceType
 from .brand_ref import BrandReference

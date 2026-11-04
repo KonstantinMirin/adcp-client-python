@@ -7,7 +7,13 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Dependencies, Rule
-from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, FloatGt0, FloatMin1, HttpUrl, IntMin1
+from adcp.types.constraints import (
+    AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem,
+    FloatGt0,
+    FloatMin1,
+    HttpUrl,
+    IntMin1,
+)
 
 
 class FormatReferenceStructuredObject(AdCPBaseModel):

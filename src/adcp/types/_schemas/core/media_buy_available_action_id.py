@@ -9,7 +9,6 @@ from adcp.types._base import SchemaRef, strict_alias
 
 from ..enums.media_buy_valid_action import MediaBuyValidAction
 
-
 __adcp_schema__ = SchemaRef(document='core/media-buy-available-action-id.json', pointer='#')
 
 MediaBuyAvailableActionID = Annotated[MediaBuyValidAction | Literal['update_media_buy_frequency_cap'], Field(description='An action identifier for the structured available_actions surface. It contains every legacy valid_actions value plus structured-only actions introduced after that deprecated flat surface.')]

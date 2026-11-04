@@ -6,7 +6,12 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
-from adcp.types.constraints import AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, AgentReportingDestinationFileTransferDestinationTransport, StrMinLen1MaxLen2048, StrMinLen1MaxLen255
+from adcp.types.constraints import (
+    AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain,
+    AgentReportingDestinationFileTransferDestinationTransport,
+    StrMinLen1MaxLen255,
+    StrMinLen1MaxLen2048,
+)
 
 
 class ReportingWriteDestination(BranchDispatchMixin, AdCPBaseModel):

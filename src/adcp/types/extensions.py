@@ -13,12 +13,8 @@ document added upstream appears here with nothing edited.
 
 from __future__ import annotations
 
-from ._schemas.extensions.extension_meta import (
-    AdCPExtensionFileSchema as AdCPExtensionFileSchema,
-)
-from ._schemas.extensions.index import (
-    AdCPExtensionRegistry as AdCPExtensionRegistry,
-)
+from ._schemas.extensions.extension_meta import AdCPExtensionFileSchema as AdCPExtensionFileSchema
+from ._schemas.extensions.index import AdCPExtensionRegistry as AdCPExtensionRegistry
 
 __all__ = [
     'AdCPExtensionFileSchema',

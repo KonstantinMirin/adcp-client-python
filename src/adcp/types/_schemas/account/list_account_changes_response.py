@@ -8,7 +8,12 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule, UniqueItems
-from adcp.types.constraints import ListAccountChangesRequestResourceTypesItem, SourceCoverageItemStaleAfterSeconds, StrMaxLen255, StrMinLen1MaxLen4096
+from adcp.types.constraints import (
+    ListAccountChangesRequestResourceTypesItem,
+    SourceCoverageItemStaleAfterSeconds,
+    StrMaxLen255,
+    StrMinLen1MaxLen4096,
+)
 
 from ..core.account_change import AccountChange
 from ..core.context import ContextObject

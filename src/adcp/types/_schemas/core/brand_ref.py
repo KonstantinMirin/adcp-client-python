@@ -7,7 +7,12 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import RequiredGroups, Rule, UniqueItems
-from adcp.types.constraints import AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, AdCPUrl, BrandReferenceKitOverrideColorsAccent
+from adcp.types.constraints import (
+    AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain,
+    AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem,
+    AdCPUrl,
+    BrandReferenceKitOverrideColorsAccent,
+)
 
 from .assets.image_asset import ImageAsset
 from .brand_id import BrandID

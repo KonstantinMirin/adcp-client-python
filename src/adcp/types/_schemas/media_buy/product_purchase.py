@@ -22,7 +22,6 @@ from ..core.product_audience_evidence_requirements import ProductAudienceEvidenc
 from ..core.targeting import TargetingOverlay
 from ..enums.pacing import Pacing
 
-
 ProductId = StrMinLen1
 
 
@@ -98,4 +97,4 @@ class ProductPurchase(AdCPBaseModel):
     performance_standards: Annotated[PerformanceStandards | None, Field(description='Published or negotiated metric thresholds and measurement vendors. Direct buyers may omit this to inherit the product defaults; accepted proposal snapshots preserve every applicable standard.')] = None
 
 
-__all__ = ["ProductPurchase", "AgencyEstimateNumber", "AudienceEvidencePins", "Budget", "CatalogIds", "DailyBudgetCap", "EndTime", "FormatOptionRefs", "MinSpendTarget", "OptimizationGoals", "PerformanceStandards", "PricingOptionId", "ProductId", "StartTime"]
+__all__ = ["AgencyEstimateNumber", "AudienceEvidencePins", "Budget", "CatalogIds", "DailyBudgetCap", "EndTime", "FormatOptionRefs", "MinSpendTarget", "OptimizationGoals", "PerformanceStandards", "PricingOptionId", "ProductId", "ProductPurchase", "StartTime"]

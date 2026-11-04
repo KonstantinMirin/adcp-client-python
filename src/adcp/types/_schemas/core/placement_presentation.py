@@ -7,7 +7,15 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import AdCPUrl, BrandDiscoveryColorValue, IntMin0Max8192, IntMin1Max8192, TextDecorationFontSize, TextDecorationText, ZipAssetDigest
+from adcp.types.constraints import (
+    AdCPUrl,
+    BrandDiscoveryColorValue,
+    IntMin0Max8192,
+    IntMin1Max8192,
+    TextDecorationFontSize,
+    TextDecorationText,
+    ZipAssetDigest,
+)
 
 
 class Canvas(AdCPBaseModel):
@@ -136,4 +144,4 @@ class PlacementPresentationDocument(AdCPBaseModel):
     decorations: Annotated[list[BoxDecoration | TextDecoration | ImageDecoration] | None, Field(max_length=100)] = None
 
 
-__all__ = ["PlacementPresentationDocument", "BoxDecoration", "Color", "ImageDecoration", "Layer", "Rectangle", "TextDecoration"]
+__all__ = ["BoxDecoration", "Color", "ImageDecoration", "Layer", "PlacementPresentationDocument", "Rectangle", "TextDecoration"]

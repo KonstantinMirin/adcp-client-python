@@ -8,7 +8,16 @@ from pydantic import ConfigDict, Field, NonNegativeInt, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Presence, PresenceGroups, Rule, UniqueItems
-from adcp.types.constraints import AccountAuthorizationAllowedTasksItem, BrandDiscoveryAgentId, CanonicalFormatBaseMigrationTargetVersion, CanonicalFormatImageAspectRatio, FloatGt0, FloatMin0Max100, IntMin1, StatesItemBreakpointsItemViewportHeightPercent
+from adcp.types.constraints import (
+    AccountAuthorizationAllowedTasksItem,
+    BrandDiscoveryAgentId,
+    CanonicalFormatBaseMigrationTargetVersion,
+    CanonicalFormatImageAspectRatio,
+    FloatGt0,
+    FloatMin0Max100,
+    IntMin1,
+    StatesItemBreakpointsItemViewportHeightPercent,
+)
 
 from ...core.canvas_constraint import CanvasConstraint
 from ...enums.co_branding_requirement import CoBrandingRequirement

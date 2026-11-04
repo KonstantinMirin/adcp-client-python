@@ -8,7 +8,6 @@ from pydantic import Field
 from adcp.types._base import SchemaRef, strict_alias
 from adcp.types.constraints import StrMediaBuyChangeTermID
 
-
 __adcp_schema__ = SchemaRef(document='core/media-buy-change-term-id.json', pointer='#')
 
 MediaBuyChangeTermID = Annotated[StrMediaBuyChangeTermID, Field(description='The accepted proposal change_terms[].term_id from which this current-state action projection was derived.')]

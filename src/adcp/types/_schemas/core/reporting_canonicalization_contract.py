@@ -7,8 +7,12 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import ReportingAdjustmentReceiptObservedAdjustmentSha256, ReportingCanonicalizationContractGoldenVectorsAdditionalItemName, StrMinLen1, StrMinLen1MaxLen128
-
+from adcp.types.constraints import (
+    ReportingAdjustmentReceiptObservedAdjustmentSha256,
+    ReportingCanonicalizationContractGoldenVectorsAdditionalItemName,
+    StrMinLen1,
+    StrMinLen1MaxLen128,
+)
 
 ReportingPrimaryKey = StrMinLen1MaxLen128
 

@@ -8,7 +8,20 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule, UniqueItems
-from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, AdCPAgentsAuthorizationAuthorizedAgentsItemSignalTagsItem, AdCPUrl, DataSubjectRightsResponseSlaDays, DataSubjectRightsUpstreamSourceDomain, HttpUrl, IntMin1, StrMaxLen2000, StrMaxLen500, StrMinLen1, StrMinLen1MaxLen255
+from adcp.types.constraints import (
+    AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem,
+    AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem,
+    AdCPAgentsAuthorizationAuthorizedAgentsItemSignalTagsItem,
+    AdCPUrl,
+    DataSubjectRightsResponseSlaDays,
+    DataSubjectRightsUpstreamSourceDomain,
+    HttpUrl,
+    IntMin1,
+    StrMaxLen500,
+    StrMaxLen2000,
+    StrMinLen1,
+    StrMinLen1MaxLen255,
+)
 
 from ..enums.audience_resolution_method import AudienceResolutionMethod
 from ..enums.audience_subject_type import AudienceSubjectType
@@ -17,7 +30,18 @@ from ..enums.restricted_attribute import RestrictedAttribute
 from ..enums.signal_value_type import SignalValueType
 from ._vocabularies import _VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY
 from .demographic_predicate import DemographicPredicate
-from .signal_definition_enrichment import AiActRiskClass, Art9Basis, DataSourcesItem, MatchKeysItem, Method, Methodology, ParentMatchBehavior, PreOnboardingPrecisionLevel, RightsItem, SeedSourceType
+from .signal_definition_enrichment import (
+    AiActRiskClass,
+    Art9Basis,
+    DataSourcesItem,
+    MatchKeysItem,
+    Method,
+    Methodology,
+    ParentMatchBehavior,
+    PreOnboardingPrecisionLevel,
+    RightsItem,
+    SeedSourceType,
+)
 from .signal_modeling_disclosure import SignalModelingDisclosure
 
 

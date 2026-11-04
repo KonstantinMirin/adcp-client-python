@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
-from adcp.types.constraints import StrMinLen1MaxLen1000, StrMinLen1MaxLen255
+from adcp.types.constraints import StrMinLen1MaxLen255, StrMinLen1MaxLen1000
 
 from .catalog_item_availability_update_result import Action
 from .ext import ExtensionObject

@@ -7,7 +7,6 @@ from pydantic import Field
 
 from adcp.types._base import SchemaRef, strict_alias
 
-
 __adcp_schema__ = SchemaRef(document='core/context.json', pointer='#')
 
 ContextObject = Annotated[dict[str, Any], Field(description="Opaque correlation data that is echoed unchanged in responses. Used for internal tracking, UI session IDs, trace IDs, and other caller-specific identifiers that don't affect protocol behavior. Context data is never parsed by AdCP agents - it's simply preserved and returned.")]

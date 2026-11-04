@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import StrMaxLen2000, StrMaxLen255, StrMaxLen500
+from adcp.types.constraints import StrMaxLen255, StrMaxLen500, StrMaxLen2000
 
 from ..enums.pacing import Pacing
 from ..enums.proposal_status import ProposalStatus

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import FloatMinNeg180Max180, FloatMinNeg90Max90, HttpUrl
+from adcp.types.constraints import FloatMinNeg90Max90, FloatMinNeg180Max180, HttpUrl
 
 
 class PlacementEvidence(AdCPBaseModel):

@@ -8,7 +8,11 @@ from pydantic import ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, GovernanceContext, SyncAccountsRequestIdempotencyKey
+from adcp.types.constraints import (
+    AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem,
+    GovernanceContext,
+    SyncAccountsRequestIdempotencyKey,
+)
 
 from ..core.account_ref import AccountReference
 from ..core.brand_ref import BrandReference

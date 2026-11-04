@@ -80,4 +80,4 @@ class PostalAreaSupport(AdCPBaseModel):
     at_plz: bool | None = None
 
 
-__all__ = ["PostalAreaSupport", "CaPostalCodeSystem", "GBPostalCodeSystem", "USPostalCodeSystem"]
+__all__ = ["CaPostalCodeSystem", "GBPostalCodeSystem", "PostalAreaSupport", "USPostalCodeSystem"]

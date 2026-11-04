@@ -20,7 +20,6 @@ from .geo_region_requirement import GeographicRegionRequirement
 from .iana_timezone import IANATimezoneIdentifier
 from .positive_postal_area_support import PositivePostalAreaSupport
 
-
 TargetingOverlayRequirementsRequired = Literal[True]
 
 
@@ -160,4 +159,4 @@ class TargetingOverlayRequirements(AdCPBaseModel):
     ext: ExtensionObject | None = None
 
 
-__all__ = ["TargetingOverlayRequirements", "BrowserRequirement", "DaypartRequirement", "KeywordRequirement", "MetroRequirement", "TargetingOverlayRequirementsRequired"]
+__all__ = ["BrowserRequirement", "DaypartRequirement", "KeywordRequirement", "MetroRequirement", "TargetingOverlayRequirements", "TargetingOverlayRequirementsRequired"]

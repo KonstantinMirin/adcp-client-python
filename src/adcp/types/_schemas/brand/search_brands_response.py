@@ -138,4 +138,4 @@ SearchBrandsResponse._branch_models = (SearchBrandsSuccess, SearchBrandsError,)
 SearchBrandsResponse.model_rebuild(force=True)
 
 
-__all__ = ["SearchBrandsResponse", "SearchBrandResult"]
+__all__ = ["SearchBrandResult", "SearchBrandsResponse"]

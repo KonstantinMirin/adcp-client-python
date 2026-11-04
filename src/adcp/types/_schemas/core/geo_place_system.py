@@ -8,7 +8,6 @@ from pydantic import Field
 from adcp.types._base import SchemaRef, strict_alias
 from adcp.types.constraints import AdCPUrl
 
-
 __adcp_schema__ = SchemaRef(document='core/geo-place-system.json', pointer='#')
 
 GeographicPlaceIdentifierSystem = Annotated[Literal['geonames', 'google_ads', 'microsoft_ads'] | AdCPUrl, Field(description='Collision-safe identifier namespace for geographic places. Registered tokens have protocol-defined semantics. Unregistered systems MUST use an absolute HTTPS URI controlled by the catalog owner; consumers compare URI systems as exact opaque strings.')]

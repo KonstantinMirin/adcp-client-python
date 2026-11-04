@@ -13,7 +13,7 @@ from ..core.brand_key import BrandKey
 from ..core.canonical_account_ref import CanonicalAccountReference
 from ..core.context import ContextObject
 from ..core.push_notification_config import PushNotificationConfig
-from ..core.version_envelope import AdCPVersionEnvelope, AdcpMajorVersion, AdcpVersion
+from ..core.version_envelope import AdcpMajorVersion, AdcpVersion, AdCPVersionEnvelope
 from .product_discovery_criteria import ProductDiscoveryCriteria
 from .product_fields import ProductResponseFields
 

@@ -8,7 +8,6 @@ from pydantic import Field
 from adcp.types._base import SchemaRef, strict_alias
 from adcp.types.constraints import AdCPUrl
 
-
 __adcp_schema__ = SchemaRef(document='core/geo-place-type.json', pointer='#')
 
 GeographicPlaceType = Annotated[Literal['airport', 'borough', 'city', 'city_region', 'commune', 'county', 'district', 'municipality', 'neighborhood', 'post_town', 'prefecture', 'province', 'quarter', 'state', 'territory', 'ward'] | AdCPUrl, Field(description='Canonical place classification. Registered tokens have protocol-defined meanings. Catalog-specific classifications without a registered mapping MUST use an absolute HTTPS URI controlled by the vocabulary owner; consumers compare URI types as exact opaque strings.')]

@@ -7,7 +7,13 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import AccountChangeRecordedWebhookSubscriberId, ComplyTestControllerRequestParamsReceivedReportingRevisionId, IntMin1, StrMinLen1, SyncAccountsRequestIdempotencyKey
+from adcp.types.constraints import (
+    AccountChangeRecordedWebhookSubscriberId,
+    ComplyTestControllerRequestParamsReceivedReportingRevisionId,
+    IntMin1,
+    StrMinLen1,
+    SyncAccountsRequestIdempotencyKey,
+)
 
 from ..enums.reporting_finality import ReportingFinality
 from .reporting_delivery_offering import ReportingFeedPurpose

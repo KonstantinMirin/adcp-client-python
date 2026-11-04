@@ -9,7 +9,6 @@ from adcp.types._base import SchemaRef, strict_alias
 
 from .vendor_pricing_option import VendorPricingOption
 
-
 __adcp_schema__ = SchemaRef(document='core/signal-pricing-option.json', pointer='#')
 
 SignalPricingOption = Annotated[VendorPricingOption, Field(description='Deprecated — use vendor-pricing-option.json for new implementations. This alias is retained for backward compatibility.')]

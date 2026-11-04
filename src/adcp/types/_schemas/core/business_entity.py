@@ -7,7 +7,18 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, AddressPostalCode, BankBic, BankIban, StrFormatEmailMaxLen254, StrMaxLen100, StrMaxLen200, StrMaxLen30, StrMaxLen50, VatId
+from adcp.types.constraints import (
+    AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem,
+    AddressPostalCode,
+    BankBic,
+    BankIban,
+    StrFormatEmailMaxLen254,
+    StrMaxLen30,
+    StrMaxLen50,
+    StrMaxLen100,
+    StrMaxLen200,
+    VatId,
+)
 
 from .ext import ExtensionObject
 

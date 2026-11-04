@@ -6,7 +6,13 @@ from typing import Annotated, ClassVar
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import GetAccountFinancialsResponseSuccessCurrency, StrMaxLen100, StrMinLen1, StrMinLen1MaxLen255, StrMinLen1MaxLen500
+from adcp.types.constraints import (
+    GetAccountFinancialsResponseSuccessCurrency,
+    StrMaxLen100,
+    StrMinLen1,
+    StrMinLen1MaxLen255,
+    StrMinLen1MaxLen500,
+)
 
 from ..core.bidding_policy import BiddingPolicy
 from ..core.brand_key import BrandKey

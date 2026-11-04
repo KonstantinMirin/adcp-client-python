@@ -6,7 +6,16 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
-from adcp.types.constraints import AccountChangeRecordedWebhookSubscriberId, ComplyTestControllerRequestParamsReceivedReportingRevisionId, ListAccountChangesRequestResourceTypesItem, StrMaxLen255, StrMinLen1MaxLen100, StrMinLen1MaxLen255, StrMinLen1MaxLen4096, SyncAccountsRequestIdempotencyKey
+from adcp.types.constraints import (
+    AccountChangeRecordedWebhookSubscriberId,
+    ComplyTestControllerRequestParamsReceivedReportingRevisionId,
+    ListAccountChangesRequestResourceTypesItem,
+    StrMaxLen255,
+    StrMinLen1MaxLen100,
+    StrMinLen1MaxLen255,
+    StrMinLen1MaxLen4096,
+    SyncAccountsRequestIdempotencyKey,
+)
 
 from .ext import ExtensionObject
 

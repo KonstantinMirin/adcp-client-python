@@ -8,7 +8,12 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
-from adcp.types.constraints import ComplyTestControllerRequestParamsReceivedReportingRevisionId, ReportingAdjustmentReceiptObservedAdjustmentSha256, StrMinLen1MaxLen128, StrMinLen1MaxLen2048
+from adcp.types.constraints import (
+    ComplyTestControllerRequestParamsReceivedReportingRevisionId,
+    ReportingAdjustmentReceiptObservedAdjustmentSha256,
+    StrMinLen1MaxLen128,
+    StrMinLen1MaxLen2048,
+)
 
 from .reporting_native_version_ref import ReportingNativeVersionReference
 
@@ -57,4 +62,4 @@ class ReportingResource(AdCPBaseModel):
     reader_compatibility: Annotated[list[ReportingReaderCompatibilityItem] | None, Field(description='Reader features or format constraints required to consume this resource. Readiness verification MUST use a representative supported reader.', json_schema_extra={'uniqueItems': True})] = None
 
 
-__all__ = ["ReportingResource", "ReportingReaderCompatibilityItem"]
+__all__ = ["ReportingReaderCompatibilityItem", "ReportingResource"]

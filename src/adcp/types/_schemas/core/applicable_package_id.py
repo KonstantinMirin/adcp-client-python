@@ -8,7 +8,6 @@ from pydantic import Field
 from adcp.types._base import SchemaRef, strict_alias
 from adcp.types.constraints import StrMinLen1
 
-
 __adcp_schema__ = SchemaRef(document='core/applicable-package-id.json', pointer='#')
 
 ApplicablePackageID = Annotated[StrMinLen1, Field(description='A package identifier to which a package-scoped media-buy action currently applies.')]

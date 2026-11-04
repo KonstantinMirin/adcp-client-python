@@ -13,54 +13,44 @@ document added upstream appears here with nothing edited.
 
 from __future__ import annotations
 
-from ._schemas.trusted_match.available_package import (
-    AvailablePackage as AvailablePackage,
-)
-from ._schemas.trusted_match.context_match_request import (
-    ContextMatchRequest as ContextMatchRequest,
-)
+from ._schemas.trusted_match.available_package import AvailablePackage as AvailablePackage
+from ._schemas.trusted_match.context_match_request import ContextMatchRequest as ContextMatchRequest
 from ._schemas.trusted_match.context_match_response import (
     ContextMatchResponseRouterPublisher as ContextMatchResponseRouterPublisher,
+)
+from ._schemas.trusted_match.context_match_response import (
     ContextMatchResponseRouterPublisherTargetingKvs as ContextMatchResponseRouterPublisherTargetingKvs,
 )
-from ._schemas.trusted_match.error import (
-    TMPError as TMPError,
-)
-from ._schemas.trusted_match.identity_match_request import (
-    IdentityMatchRequest as IdentityMatchRequest,
-)
+from ._schemas.trusted_match.error import TMPError as TMPError
+from ._schemas.trusted_match.identity_match_request import IdentityMatchRequest as IdentityMatchRequest
 from ._schemas.trusted_match.identity_match_response import (
     IdentityMatchResponseRouterPublisher as IdentityMatchResponseRouterPublisher,
 )
-from ._schemas.trusted_match.offer import (
-    Offer as Offer,
-)
-from ._schemas.trusted_match.offer_price import (
-    OfferPrice as OfferPrice,
-)
+from ._schemas.trusted_match.offer import Offer as Offer
+from ._schemas.trusted_match.offer_price import OfferPrice as OfferPrice
 from ._schemas.trusted_match.provider_context_match_response import (
     ContextMatchResponseProviderRouter as ContextMatchResponseProviderRouter,
+)
+from ._schemas.trusted_match.provider_context_match_response import (
     ContextMatchResponseProviderRouterTargetingKvs as ContextMatchResponseProviderRouterTargetingKvs,
 )
 from ._schemas.trusted_match.provider_identity_match_response import (
     IdentityMatchResponseProviderRouter as IdentityMatchResponseProviderRouter,
 )
+from ._schemas.trusted_match.provider_registration import TMPProviderRegistration as TMPProviderRegistration
 from ._schemas.trusted_match.provider_registration import (
-    TMPProviderRegistration as TMPProviderRegistration,
     TMPProviderRegistrationContextMatch as TMPProviderRegistrationContextMatch,
+)
+from ._schemas.trusted_match.provider_registration import (
     TMPProviderRegistrationIdentityMatch as TMPProviderRegistrationIdentityMatch,
 )
 from ._schemas.trusted_match.publisher_targeting_kv_config import (
     PublisherTargetingKVMapping as PublisherTargetingKVMapping,
-    TargetingKvMappingValue as TargetingKvMappingValue,
 )
-from ._schemas.trusted_match.publisher_tmpx_config import (
-    PublisherTMPXMacroMapping as PublisherTMPXMacroMapping,
-    TmpxMacroMappingValue as TmpxMacroMappingValue,
-)
-from ._schemas.trusted_match.tmpx_chunk import (
-    TMPXChunk as TMPXChunk,
-)
+from ._schemas.trusted_match.publisher_targeting_kv_config import TargetingKvMappingValue as TargetingKvMappingValue
+from ._schemas.trusted_match.publisher_tmpx_config import PublisherTMPXMacroMapping as PublisherTMPXMacroMapping
+from ._schemas.trusted_match.publisher_tmpx_config import TmpxMacroMappingValue as TmpxMacroMappingValue
+from ._schemas.trusted_match.tmpx_chunk import TMPXChunk as TMPXChunk
 
 __all__ = [
     'AvailablePackage',

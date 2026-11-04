@@ -8,7 +8,16 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule
-from adcp.types.constraints import CanonicalProposalTermsDigest, ComplyTestControllerRequestParamsReceivedReportingRevisionId, GetAccountFinancialsResponseSuccessCurrency, IntMin1, StrMaxLen2000, StrMinLen1, StrMinLen1MaxLen255, StrMinLen1MaxLen500
+from adcp.types.constraints import (
+    CanonicalProposalTermsDigest,
+    ComplyTestControllerRequestParamsReceivedReportingRevisionId,
+    GetAccountFinancialsResponseSuccessCurrency,
+    IntMin1,
+    StrMaxLen2000,
+    StrMinLen1,
+    StrMinLen1MaxLen255,
+    StrMinLen1MaxLen500,
+)
 
 from ..enums.proposal_status import ProposalStatus
 from ..media_buy.commercial_terms import CommercialTerms

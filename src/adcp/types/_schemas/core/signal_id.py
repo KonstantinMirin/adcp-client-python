@@ -6,7 +6,11 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
-from adcp.types.constraints import AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, HttpUrl
+from adcp.types.constraints import (
+    AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain,
+    AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem,
+    HttpUrl,
+)
 
 
 class SignalID(BranchDispatchMixin, AdCPBaseModel):

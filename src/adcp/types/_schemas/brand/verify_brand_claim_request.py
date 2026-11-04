@@ -7,7 +7,13 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
-from adcp.types.constraints import BrandDiscoveryAgentId, StrMaxLen100, StrMaxLen50, StrMinLen1MaxLen200, StrMinLen2MaxLen2
+from adcp.types.constraints import (
+    BrandDiscoveryAgentId,
+    StrMaxLen50,
+    StrMaxLen100,
+    StrMinLen1MaxLen200,
+    StrMinLen2MaxLen2,
+)
 
 from ..core.version_envelope import AdCPVersionEnvelope
 from ..enums.property_type import PropertyType

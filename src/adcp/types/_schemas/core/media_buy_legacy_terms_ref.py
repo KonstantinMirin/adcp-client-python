@@ -7,7 +7,6 @@ from pydantic import Field
 
 from adcp.types._base import SchemaRef, strict_alias
 
-
 __adcp_schema__ = SchemaRef(document='core/media-buy-legacy-terms-ref.json', pointer='#')
 
 MediaBuyTermsReference = Annotated[str, Field(description='Deprecated 3.1 opaque commercial-terms pointer. A 3.2 compatibility projection MAY echo change_term_id here for older buyers, but new buyers MUST prefer change_term_id and MUST NOT assume an arbitrary 3.1 value identifies an accepted change term.')]

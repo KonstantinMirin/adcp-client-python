@@ -13,26 +13,14 @@ document added upstream appears here with nothing edited.
 
 from __future__ import annotations
 
-from ._schemas.signals.activate_signal_request import (
-    ActivateSignalRequest as ActivateSignalRequest,
-)
-from ._schemas.signals.activate_signal_response import (
-    ActivateSignalError as ActivateSignalError,
-    ActivateSignalResponse as ActivateSignalResponse,
-    ActivateSignalSuccess as ActivateSignalSuccess,
-)
-from ._schemas.signals.get_signals_async_response_submitted import (
-    GetSignalsSubmitted as GetSignalsSubmitted,
-)
-from ._schemas.signals.get_signals_async_response_working import (
-    GetSignalsWorking as GetSignalsWorking,
-)
-from ._schemas.signals.get_signals_request import (
-    GetSignalsRequest as GetSignalsRequest,
-)
-from ._schemas.signals.get_signals_response import (
-    GetSignalsResponse as GetSignalsResponse,
-)
+from ._schemas.signals.activate_signal_request import ActivateSignalRequest as ActivateSignalRequest
+from ._schemas.signals.activate_signal_response import ActivateSignalError as ActivateSignalError
+from ._schemas.signals.activate_signal_response import ActivateSignalResponse as ActivateSignalResponse
+from ._schemas.signals.activate_signal_response import ActivateSignalSuccess as ActivateSignalSuccess
+from ._schemas.signals.get_signals_async_response_submitted import GetSignalsSubmitted as GetSignalsSubmitted
+from ._schemas.signals.get_signals_async_response_working import GetSignalsWorking as GetSignalsWorking
+from ._schemas.signals.get_signals_request import GetSignalsRequest as GetSignalsRequest
+from ._schemas.signals.get_signals_response import GetSignalsResponse as GetSignalsResponse
 
 __all__ = [
     'ActivateSignalError',

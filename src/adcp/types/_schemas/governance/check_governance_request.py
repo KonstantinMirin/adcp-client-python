@@ -8,10 +8,21 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNega
 
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Presence, PresenceGroups, Rule
-from adcp.types.constraints import CheckGovernanceRequestDeliveryMetricsAudienceDistributionCumulativeIndices, ConsultationContext, FloatMin0Max100, GetAccountFinancialsResponseSuccessCurrency, GovernanceContext, HttpUrl, IntMin1, StrMaxLen1000, StrMinLen1MaxLen255, ZipAssetDigest
+from adcp.types.constraints import (
+    CheckGovernanceRequestDeliveryMetricsAudienceDistributionCumulativeIndices,
+    ConsultationContext,
+    FloatMin0Max100,
+    GetAccountFinancialsResponseSuccessCurrency,
+    GovernanceContext,
+    HttpUrl,
+    IntMin1,
+    StrMaxLen1000,
+    StrMinLen1MaxLen255,
+    ZipAssetDigest,
+)
 
 from ..core.attestation_reference import AttestationReference
-from ..core.attestation_subject import AttestationResourceSubject, AttestationSubject
+from ..core.attestation_subject import AttestationResourceSubject
 from ..core.business_entity import BusinessEntity
 from ..core.canonical_proposal import CanonicalProposal
 from ..core.context import ContextObject

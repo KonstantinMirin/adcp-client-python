@@ -7,7 +7,14 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, FloatMinNeg180Max180, FloatMinNeg90Max90, HotelItemCheckInTime, HttpUrl, StarRating
+from adcp.types.constraints import (
+    AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem,
+    FloatMinNeg90Max90,
+    FloatMinNeg180Max180,
+    HotelItemCheckInTime,
+    HttpUrl,
+    StarRating,
+)
 
 from .ext import ExtensionObject
 from .offering_asset_group import OfferingAssetGroup

@@ -13,41 +13,67 @@ document added upstream appears here with nothing edited.
 
 from __future__ import annotations
 
+from ._schemas.adagents import AdCPAgentsAuthorization as AdCPAgentsAuthorization
 from ._schemas.adagents import (
-    AdCPAgentsAuthorization as AdCPAgentsAuthorization,
     AdCPAgentsAuthorizationAuthoritativeLocation as AdCPAgentsAuthorizationAuthoritativeLocation,
-    AdCPAgentsAuthorizationCommunityFormatRegistry as AdCPAgentsAuthorizationCommunityFormatRegistry,
-    AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemInlineProperties as AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemInlineProperties,
-    AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPropertyIds as AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPropertyIds,
-    AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPropertyTags as AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPropertyTags,
-    AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPublisherProperties as AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPublisherProperties,
-    AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemSignalIds as AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemSignalIds,
-    AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemSignalTags as AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemSignalTags,
-    AdCPAgentsAuthorizationCommunityFormatRegistryBranch0 as AdCPAgentsAuthorizationCommunityFormatRegistryBranch0,
-    AdCPAgentsAuthorizationCommunityFormatRegistryCollections as AdCPAgentsAuthorizationCommunityFormatRegistryCollections,
-    AdCPAgentsAuthorizationCommunityFormatRegistryFormats as AdCPAgentsAuthorizationCommunityFormatRegistryFormats,
-    AdCPAgentsAuthorizationCommunityFormatRegistryPlacements as AdCPAgentsAuthorizationCommunityFormatRegistryPlacements,
-    AdCPAgentsAuthorizationCommunityFormatRegistryProperties as AdCPAgentsAuthorizationCommunityFormatRegistryProperties,
-    AdCPAgentsAuthorizationCommunityFormatRegistrySignals as AdCPAgentsAuthorizationCommunityFormatRegistrySignals,
-    DelegationType as DelegationType,
-    FormatsItemAgentPlacement as FormatsItemAgentPlacement,
-    FormatsItemAudioDaast as FormatsItemAudioDaast,
-    FormatsItemAudioHosted as FormatsItemAudioHosted,
-    FormatsItemAudioVast as FormatsItemAudioVast,
-    FormatsItemCoordinatedPlacements as FormatsItemCoordinatedPlacements,
-    FormatsItemCustom as FormatsItemCustom,
-    FormatsItemDisplayTag as FormatsItemDisplayTag,
-    FormatsItemHtml5 as FormatsItemHtml5,
-    FormatsItemImage as FormatsItemImage,
-    FormatsItemImageCarousel as FormatsItemImageCarousel,
-    FormatsItemNativeInFeed as FormatsItemNativeInFeed,
-    FormatsItemResponsiveCreative as FormatsItemResponsiveCreative,
-    FormatsItemSellerRenderedStatefulDisplay as FormatsItemSellerRenderedStatefulDisplay,
-    FormatsItemSponsoredPlacement as FormatsItemSponsoredPlacement,
-    FormatsItemVideoHosted as FormatsItemVideoHosted,
-    FormatsItemVideoVast as FormatsItemVideoVast,
-    SignalTagsValue as SignalTagsValue,
 )
+from ._schemas.adagents import (
+    AdCPAgentsAuthorizationCommunityFormatRegistry as AdCPAgentsAuthorizationCommunityFormatRegistry,
+)
+from ._schemas.adagents import (
+    AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemInlineProperties as AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemInlineProperties,
+)
+from ._schemas.adagents import (
+    AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPropertyIds as AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPropertyIds,
+)
+from ._schemas.adagents import (
+    AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPropertyTags as AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPropertyTags,
+)
+from ._schemas.adagents import (
+    AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPublisherProperties as AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPublisherProperties,
+)
+from ._schemas.adagents import (
+    AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemSignalIds as AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemSignalIds,
+)
+from ._schemas.adagents import (
+    AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemSignalTags as AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemSignalTags,
+)
+from ._schemas.adagents import (
+    AdCPAgentsAuthorizationCommunityFormatRegistryBranch0 as AdCPAgentsAuthorizationCommunityFormatRegistryBranch0,
+)
+from ._schemas.adagents import (
+    AdCPAgentsAuthorizationCommunityFormatRegistryCollections as AdCPAgentsAuthorizationCommunityFormatRegistryCollections,
+)
+from ._schemas.adagents import (
+    AdCPAgentsAuthorizationCommunityFormatRegistryFormats as AdCPAgentsAuthorizationCommunityFormatRegistryFormats,
+)
+from ._schemas.adagents import (
+    AdCPAgentsAuthorizationCommunityFormatRegistryPlacements as AdCPAgentsAuthorizationCommunityFormatRegistryPlacements,
+)
+from ._schemas.adagents import (
+    AdCPAgentsAuthorizationCommunityFormatRegistryProperties as AdCPAgentsAuthorizationCommunityFormatRegistryProperties,
+)
+from ._schemas.adagents import (
+    AdCPAgentsAuthorizationCommunityFormatRegistrySignals as AdCPAgentsAuthorizationCommunityFormatRegistrySignals,
+)
+from ._schemas.adagents import DelegationType as DelegationType
+from ._schemas.adagents import FormatsItemAgentPlacement as FormatsItemAgentPlacement
+from ._schemas.adagents import FormatsItemAudioDaast as FormatsItemAudioDaast
+from ._schemas.adagents import FormatsItemAudioHosted as FormatsItemAudioHosted
+from ._schemas.adagents import FormatsItemAudioVast as FormatsItemAudioVast
+from ._schemas.adagents import FormatsItemCoordinatedPlacements as FormatsItemCoordinatedPlacements
+from ._schemas.adagents import FormatsItemCustom as FormatsItemCustom
+from ._schemas.adagents import FormatsItemDisplayTag as FormatsItemDisplayTag
+from ._schemas.adagents import FormatsItemHtml5 as FormatsItemHtml5
+from ._schemas.adagents import FormatsItemImage as FormatsItemImage
+from ._schemas.adagents import FormatsItemImageCarousel as FormatsItemImageCarousel
+from ._schemas.adagents import FormatsItemNativeInFeed as FormatsItemNativeInFeed
+from ._schemas.adagents import FormatsItemResponsiveCreative as FormatsItemResponsiveCreative
+from ._schemas.adagents import FormatsItemSellerRenderedStatefulDisplay as FormatsItemSellerRenderedStatefulDisplay
+from ._schemas.adagents import FormatsItemSponsoredPlacement as FormatsItemSponsoredPlacement
+from ._schemas.adagents import FormatsItemVideoHosted as FormatsItemVideoHosted
+from ._schemas.adagents import FormatsItemVideoVast as FormatsItemVideoVast
+from ._schemas.adagents import SignalTagsValue as SignalTagsValue
 
 __all__ = [
     'AdCPAgentsAuthorization',

@@ -6,7 +6,12 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import ComplyTestControllerRequestParamsReceivedReportingRevisionId, HttpUrl, StrMinLen32, Token
+from adcp.types.constraints import (
+    ComplyTestControllerRequestParamsReceivedReportingRevisionId,
+    HttpUrl,
+    StrMinLen32,
+    Token,
+)
 
 from ..enums.auth_scheme import AuthenticationScheme
 

@@ -8,7 +8,16 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule
-from adcp.types.constraints import AccountChangeRecordedWebhookSubscriberId, ComplyTestControllerRequestParamsReceivedReportingRevisionId, ConsumerCommitRef, IntMin1, ReportingAdjustmentReceiptObservedAdjustmentSha256, StrMinLen1, StrMinLen1MaxLen255, SyncAccountsRequestIdempotencyKey
+from adcp.types.constraints import (
+    AccountChangeRecordedWebhookSubscriberId,
+    ComplyTestControllerRequestParamsReceivedReportingRevisionId,
+    ConsumerCommitRef,
+    IntMin1,
+    ReportingAdjustmentReceiptObservedAdjustmentSha256,
+    StrMinLen1,
+    StrMinLen1MaxLen255,
+    SyncAccountsRequestIdempotencyKey,
+)
 
 
 class Period(AdCPBaseModel):

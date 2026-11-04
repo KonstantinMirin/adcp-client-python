@@ -8,7 +8,12 @@ from pydantic import AfterValidator, ConfigDict, Field, NonNegativeInt, TypeAdap
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import AtLeastOne, ForbiddenGroups, Rule, UniqueItems
-from adcp.types.constraints import AccountAuthorizationAllowedTasksItem, BrandDiscoveryAgentId, CanonicalFormatBaseMigrationTargetVersion, IntMin1
+from adcp.types.constraints import (
+    AccountAuthorizationAllowedTasksItem,
+    BrandDiscoveryAgentId,
+    CanonicalFormatBaseMigrationTargetVersion,
+    IntMin1,
+)
 
 from ...core.canvas_constraint import CanvasConstraint
 from ...core.format_option_ref import FormatOptionReference

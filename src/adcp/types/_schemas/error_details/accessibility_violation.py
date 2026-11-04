@@ -7,7 +7,14 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import ViolationsItemCriterion, ViolationsItemCriterionSource, ViolationsItemFailureKind, ViolationsItemPointer, ViolationsItemRemediation, ViolationsItemRequiredLevel
+from adcp.types.constraints import (
+    ViolationsItemCriterion,
+    ViolationsItemCriterionSource,
+    ViolationsItemFailureKind,
+    ViolationsItemPointer,
+    ViolationsItemRemediation,
+    ViolationsItemRequiredLevel,
+)
 
 
 class FailureKind(StrEnum):

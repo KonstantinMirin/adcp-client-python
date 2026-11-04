@@ -9,7 +9,18 @@ from pydantic import ConfigDict, Field, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Presence, PresenceGroups, RequiredGroups, Rule, UniqueItems
-from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, FloatGt0, FloatMin1, FloatMinNeg180Max180, FloatMinNeg90Max90, GetAccountFinancialsResponseSuccessCurrency, HttpUrl, IntMin1, RegionsItem, StrMinLen1
+from adcp.types.constraints import (
+    AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem,
+    FloatGt0,
+    FloatMin1,
+    FloatMinNeg90Max90,
+    FloatMinNeg180Max180,
+    GetAccountFinancialsResponseSuccessCurrency,
+    HttpUrl,
+    IntMin1,
+    RegionsItem,
+    StrMinLen1,
+)
 
 from ..enums.audio_distribution_type import AudioDistributionType
 from ..enums.available_metric import AvailableMetric
@@ -41,9 +52,8 @@ from .format_option_ref import FormatOptionReference
 from .media_buy_features import MediaBuyFeatures
 from .performance_standard import PerformanceStandard
 from .postal_area import PostalArea
-from .signal_targeting import SignalTargeting, SignalTargetingBinary, SignalTargetingCategorical, SignalTargetingNumeric
+from .signal_targeting import SignalTargetingBinary, SignalTargetingCategorical, SignalTargetingNumeric
 from .vendor_metric_id import VendorMetricID
-
 
 PricingCurrenciesItem = Annotated[GetAccountFinancialsResponseSuccessCurrency, Field(description="ISO 4217 currency code (e.g., 'USD', 'EUR', 'GBP')")]
 
