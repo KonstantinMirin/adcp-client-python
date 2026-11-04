@@ -177,6 +177,18 @@ def test_every_base_the_obligation_draws_is_paid_once_and_replayed_after() -> No
     first held -- and reaches the same verdict, which is the clause that makes the store a
     relocation rather than a change of subject.
 
+    **"PAID" IS ``drawn`` PLUS ``borrowed``, and the second term is new**
+    (``harness._Draws.one``'s ``borrowed``).  A value class can now be answered by a value
+    a draw of the same pair already produced -- the value AT the declaration's location in
+    a borrowed instance, offered to the class's own schema -- and such an answer is HELD
+    under the class's key like a drawn one, so it is an answer this run produced and the
+    next run replays.  It is not a replay and not a draw, so the census below is over the
+    sum: counting draws alone would read the first state as reaching no site, while it in
+    fact reaches the value class, answers it from the accepts draw and holds it.  The
+    ORDER is asserted too -- ``warm.borrowed == 0`` -- because the store must answer before
+    the borrow, or which witness a warm run grades would depend on which instances the
+    caller happened to pass.
+
     **The counters and not a call count**, because what is being claimed is a property of
     the CHECK and not of this test's ability to patch ``one_instance``: ``drawn`` and
     ``replayed`` are on :class:`harness.WideningResult` for exactly
@@ -200,9 +212,13 @@ def test_every_base_the_obligation_draws_is_paid_once_and_replayed_after() -> No
     for state, instances in states.items():
         cold = check_widening(NESTED, _accept, one, instances=instances, corpus=store, identity=DOC)
         warm = check_widening(NESTED, _accept, one, instances=instances, corpus=store, identity=DOC)
-        paid[state] = cold.drawn
+        paid[state] = cold.drawn + cold.borrowed
         assert warm.drawn == 0, (
             f"{state}: the second run paid {warm.drawn} draws the first had already held"
+        )
+        assert warm.borrowed == 0, (
+            f"{state}: the second run borrowed {warm.borrowed} answers the store already "
+            "held, so the store does not answer first"
         )
         assert warm.replayed >= 1, f"{state}: nothing was replayed, so nothing was held"
         assert (cold.outcome, cold.accepted, cold.unproved, cold.narrowings) == (
@@ -213,10 +229,12 @@ def test_every_base_the_obligation_draws_is_paid_once_and_replayed_after() -> No
         ), f"{state}: the replayed run reached a different verdict\n{cold}\n{warm}"
         assert cold.outcome == "pass", (state, cold.unproved, cold.narrowings)
 
-    # **Each state drew something the one before it had not**, which is what says all
+    # **Each state answered something the one before it had not**, which is what says all
     # three sites are reached and held rather than one of them three times.  The first
-    # state pays the value class; the second adds the intermediate node; the third runs
-    # with a store already holding the value class and pays the demanded base alone.
+    # state pays the value class -- by BORROWING it, since the instance that hosts the
+    # location carries a value the class admits; the second adds the intermediate node;
+    # the third runs with a store already holding the value class and pays the demanded
+    # base alone.
     assert paid["a borrowed instance that hosts the location"] >= 1, paid
     assert paid["a borrowed instance that does not"] >= 1, paid
     assert paid["no borrowed instance at all"] >= 1, paid
