@@ -98,6 +98,7 @@ from hypothesis import strategies as st
 from hypothesis.errors import HypothesisException
 from hypothesis.internal.conjecture.engine import BUFFER_SIZE as _HYPOTHESIS_BUFFER_SIZE
 from hypothesis_jsonschema import _canonicalise as _hjs_canon
+from hypothesis_jsonschema import _from_schema as _hjs_from
 from hypothesis_jsonschema import from_schema
 from hypothesis_jsonschema._canonicalise import HypothesisRefResolutionError
 from hypothesis_jsonschema._resolve import LocalResolver
@@ -1648,6 +1649,141 @@ def validator_classes_shared_within_one_call() -> Iterator[Any]:
         module[name] = bounded
 
 
+@contextmanager
+def a_combinator_is_covered_and_never_enumerated() -> Iterator[list[tuple[int, int, int]]]:
+    """Build a combinator's strategy over a COVER of its branches, never over their POWER SET.
+
+    **§8's own residue clause, made true of the library that does the drawing**: "a
+    combinator root is not graded by drawing the power set of its branches ... that is
+    2^n, not a product, and it is why no constant factor reaches it."  The rule was
+    written and the library does not honour it.
+
+    **WHERE IT SITS, BY STACK AND NOT BY INFERENCE.**  ``hypothesis_jsonschema``'s
+    ``merged_as_strategies`` is handed every statement that has to hold about ONE instance
+    -- for a node with an ``allOf`` that is the node's own keywords plus every conjunct --
+    and it looks for the largest subsets it can intersect by enumerating
+    ``itertools.combinations(inputs, n)`` for ``n`` from ``len(inputs)`` down to 1.  That
+    is the power set, and ``merged`` runs on each group.  The first group is the whole set,
+    and when it intersects the loop stops there -- ``combined`` then supersets every later
+    group -- so the cost is 2^n only when the WHOLE conjunction does not merge, which is
+    exactly the shape §8 names.
+
+    Measured on the two pairs this leaves cut, each with its §8 substitution already
+    applied, stack-sampled at 4 Hz under :func:`within`:
+
+    ====================================================  =======  =======  =============
+    node                                                   bytes    inputs  60 s sample
+    ====================================================  =======  =======  =============
+    ``protocol/get-adcp-capabilities-response.json#``       50,256       19  ``merged`` under ``merged_as_strategies``, 220/240
+    ``compliance/comply-test-controller-request.json#``     14,871       32  ``merged`` under ``merged_as_strategies``, 232/240
+    ====================================================  =======  =======  =============
+
+    2^19 and 2^32 groups.  ``canonicalish`` had already tried the one whole-conjunction
+    merge (``_canonicalise.py:593``) and it returned ``None``, which is why the ``allOf``
+    survived to here.  **Neither is a byte problem**: the first is 620,066 bytes reduced to
+    50,256 and the second 8,172,302 reduced to 14,871 -- three orders of magnitude -- and
+    both are still cut, which is the measurement that rules out every constant factor.
+
+    **WHAT THIS REPLACES THE ENUMERATION BY, and why it is the same answer.**  The
+    library's contract is not "the largest subsets"; it is a COVER: ``st.one_of`` over
+    groups whose union is every input, each group drawn from its own intersection and then
+    FILTERED by every input's validator.  A cover is what makes it sound -- an
+    intersection of SOME of the statements admits a superset of what all of them admit,
+    and the filter removes the difference -- and the power set is only how the library
+    searches for one.
+
+    So the search is replaced and the contract is not:
+
+    * **the whole set first, exactly as the library tries it.**  Where the conjunction
+      merges, this call returns the library's own answer and nothing has changed.  That is
+      the path almost every pair takes.
+    * **otherwise one greedy pass**: take the first input that is not yet covered as an
+      accumulator, intersect every other uncovered input into it that will intersect,
+      re-scanning while any did, and emit the accumulator as a group.  Repeat on what is
+      left.  Every input lands in exactly one group, so the union is the whole set and the
+      cover condition holds by construction.
+    * **the filter is the library's, kept verbatim** -- ``all(v(obj) for v in
+      validators)`` over a validator per INPUT.  This function does not weaken what a
+      drawn value has to satisfy; it only changes which intersections are offered to the
+      generator.  That is what makes this a statement about GENERATION and about nothing
+      else, which is the same clause :meth:`Fixtures.reduced` is held to.
+
+    The greedy pass is ``O(n^2)`` intersections against ``O(2^n)``: 158 for the first node
+    above and 526 for the second, 19 inputs covered by 15 groups and 32 by 30.  Both then
+    draw a value the UNSUBSTITUTED node admits, in 0.86 s and 0.32 s.
+
+    **A cover is not a partition of the admissible space and no value is lost by taking
+    one.**  Each group's strategy is filtered by every input, so each one draws from
+    exactly the conjunction's admissible set; what differs between two covers is the
+    DISTRIBUTION the generator sees, never the set.  A greedy cover can be finer than the
+    largest-first one -- more groups, each less constrained, so more of the work falls to
+    the filter -- and where that filters everything out the draw reports ``Unsatisfiable``
+    with ``hypothesis``'s own filtered-draw count, which :func:`_why` keeps and
+    :func:`check_accepts` reports as ``strategy_error``.  A non-pass with a name, never a
+    green.
+
+    **The lifetime is ONE CHECK, which is the lifetime its two siblings have and for the
+    same reason**: nothing is patched at import time, so a caller of this module that did
+    not ask for the rule gets the library exactly as it ships.  The yielded list records
+    ``(inputs, groups, intersections)`` per call for a caller that wants to measure it.
+    """
+    cover: list[tuple[int, int, int]] = []
+    enumerated = _hjs_from.merged_as_strategies
+    #: The library's own per-schema entry point, under the name the module spells.  Module
+    #: scope does not mangle, so this is the global its ``allOf``/``anyOf``/``oneOf`` arms
+    #: and its ``patternProperties`` draw already resolve at call time.
+    one = _hjs_from.__dict__["__from_schema"]
+
+    def covered(
+        schemas: list[Any], *, alphabet: Any, custom_formats: Any
+    ) -> st.SearchStrategy:
+        assert schemas, "internal error: must pass at least one schema to merge"
+        if len(schemas) == 1:
+            return one(schemas[0], alphabet=alphabet, custom_formats=custom_formats)
+        #: Keyed on the canonical encoding, which is the library's own de-duplication of
+        #: its inputs: two conjuncts spelling one statement are one input.
+        inputs = {_hjs_canon.encode_canonical_json(s): s for s in schemas}
+        intersections = 1
+        whole = _hjs_canon.merged(list(inputs.values()))
+        if whole is not None and whole != _hjs_canon.FALSEY:
+            groups = [whole]
+        else:
+            groups = []
+            left = list(inputs)
+            while left:
+                accumulated = inputs[left.pop(0)]
+                again = True
+                while again:
+                    again = False
+                    for key in list(left):
+                        intersections += 1
+                        narrower = _hjs_canon.merged([accumulated, inputs[key]])
+                        if narrower is not None and narrower != _hjs_canon.FALSEY:
+                            accumulated = narrower
+                            left.remove(key)
+                            again = True
+                groups.append(accumulated)
+        cover.append((len(inputs), len(groups), intersections))
+        #: One validator per INPUT and not per group: what a drawn value has to satisfy is
+        #: every statement, which is the library's filter unchanged.
+        validators = tuple(_hjs_canon.make_validator(s).is_valid for s in schemas)
+        return st.one_of(
+            [
+                one(s, alphabet=alphabet, custom_formats=custom_formats).filter(
+                    lambda obj, _v=validators: all(valid(obj) for valid in _v)
+                )
+                for s in groups
+                if s != _hjs_canon.FALSEY
+            ]
+        )
+
+    _hjs_from.merged_as_strategies = covered
+    try:
+        yield cover
+    finally:
+        _hjs_from.merged_as_strategies = enumerated
+
+
 def format_pattern_positions(schema: Any) -> list[tuple[str, dict]]:
     """Every position where a ``format`` and a ``pattern`` meet, node and pointer.
 
@@ -2801,6 +2937,13 @@ def check_accepts(
             with (
                 canonicalisation_shared_within_one_call(),
                 validator_classes_shared_within_one_call(),
+                #: **§8's residue clause, and it has to be live during the DRAW and not
+                #: only during the build**: the library reaches ``merged_as_strategies``
+                #: from inside an ``@st.composite`` object draw as well as from its
+                #: ``allOf`` arm, so a patch that ended with the strategy object would miss
+                #: the nested call.  :func:`a_combinator_is_covered_and_never_enumerated`
+                #: carries the rule, the stacks and the measurement.
+                a_combinator_is_covered_and_never_enumerated(),
             ):
                 #: **A CALLABLE IS CALLED HERE AND NOWHERE ELSE, which is what keeps
                 #: §8's substitution off the replayed path.**  The substitution derives
@@ -4284,6 +4427,16 @@ def one_instance(schema: Mapping[str, Any], custom_formats: Mapping[str, Any]) -
     with (
         canonicalisation_shared_within_one_call(),
         validator_classes_shared_within_one_call(),
+        #: **AND THE SAME RULE REACHES EVERY DERIVED DRAW, which is the measured half of
+        #: the row rather than a tidiness.**  Two of the four pairs §8's residue names --
+        #: ``creative/sync-creatives-response.json#`` and
+        #: ``media-buy/get-media-buys-response.json#`` -- draw in 0.13 s and 0.03 s in
+        #: ``check_accepts`` and were cut in ``check_widening``, one check further on,
+        #: inside the same library call.  Every derived draw in this module arrives here:
+        #: :meth:`_Draws._draw` for a widening's proving value, :meth:`Fixtures.value` for
+        #: a frontier pin and :meth:`Fixtures._derived` for a referenced document's
+        #: fixture.  One seam, so reading 2 cannot stay blocked where reading 1 is not.
+        a_combinator_is_covered_and_never_enumerated(),
     ):
         run = given(instance=strategy(dict(schema), dict(custom_formats)))(body)
         settings(max_examples=1, phases=[Phase.explicit, Phase.generate], **_SETTINGS)(run)()

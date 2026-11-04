@@ -533,6 +533,134 @@ def test_a_hit_hands_back_a_copy_because_the_library_mutates_what_it_is_given() 
 
 
 # --------------------------------------------------------------------------- #
+# §8's residue clause: a combinator is COVERED, never ENUMERATED
+# --------------------------------------------------------------------------- #
+#: **A CONJUNCTION THE LIBRARY CANNOT MERGE WHOLE**, which is the shape §8 prices at 2^n,
+#: written by hand so the property is a property of the rule and not of one bundle.
+#: ``hypothesis_jsonschema``'s ``merged`` declines a conjunct holding an ``anyOf`` -- "due
+#: to product-like explosion in worst case", its own comment -- and ``canonicalish``
+#: rewrites an ``if``/``then`` into exactly that, so a discriminated dispatch is the
+#: bundle's own spelling of this shape (``compliance/comply-test-controller-request.json#``
+#: is thirty of them).  The whole-conjunction merge therefore fails, the ``allOf``
+#: survives into ``__from_schema``, and ``merged_as_strategies`` walks
+#: ``itertools.combinations`` of 25 inputs.
+#:
+#: 4,968 bytes.  **Measured: the library cannot BUILD the strategy for it inside 120 s**;
+#: with the cover the build is 0.52 s and the draw 0.23 s.  So this document is a control
+#: for "no constant factor reaches it" as well as a fixture.
+A_DISPATCH_CONJUNCTION: dict[str, Any] = {
+    "type": "object",
+    "properties": {"kind": {"type": "string"}, "payload": {"type": "object"}},
+    "required": ["kind"],
+    "allOf": [
+        {
+            "if": {"properties": {"kind": {"const": f"k{i}"}}, "required": ["kind"]},
+            "then": {
+                "required": ["payload"],
+                "properties": {
+                    "payload": {
+                        "required": [f"f{i}"],
+                        "properties": {f"f{i}": {"type": "integer"}},
+                    }
+                },
+            },
+        }
+        for i in range(24)
+    ],
+}
+
+
+def test_a_conjunction_is_covered_in_quadratic_intersections_and_never_in_a_power_set() -> None:
+    """§8: "a combinator root is not graded by drawing the power set of its branches".
+
+    The claim is about the SEARCH and not about the answer, so what is asserted is the
+    number of intersections the build pays and the fact that every input is in the cover.
+    A timing assertion is deliberately absent -- ``adcp-client-python-82m.34`` records what
+    a test that drives a real ``SIGALRM`` costs under contention -- and it is not needed:
+    an intersection count below ``n * n`` on a node whose power set is ``2 ** n`` is the
+    whole of the rule, and it is deterministic.
+    """
+    with harness.a_combinator_is_covered_and_never_enumerated() as cover:
+        harness.strategy(dict(A_DISPATCH_CONJUNCTION), {})
+    assert cover, "the root's conjunction never reached merged_as_strategies"
+    inputs, groups, intersections = cover[0]
+    assert inputs > len(A_DISPATCH_CONJUNCTION["allOf"]), (
+        f"the node's own keywords are an input beside its conjuncts: {inputs}"
+    )
+    assert intersections <= inputs * inputs, (
+        f"{intersections} intersections for {inputs} inputs is not a quadratic search"
+    )
+    assert intersections < 2**inputs, (
+        f"{intersections} against a power set of {2**inputs}"
+    )
+    assert groups <= inputs, f"a cover cannot hold more groups than it has inputs: {groups}"
+
+
+def test_every_value_the_cover_draws_is_one_the_WHOLE_conjunction_admits() -> None:
+    """The soundness half, and it is the document that says so.
+
+    A cover is a set of groups whose union is every input, each drawn from its own
+    intersection -- a SUPERSET of what the conjunction admits -- and then filtered by every
+    input's own validator.  So the saving is a statement about which intersections the
+    generator is offered and about nothing else, which is the same clause
+    ``Fixtures.reduced`` is held to.  Graded by asking the unreduced document.
+    """
+    with harness.a_combinator_is_covered_and_never_enumerated():
+        value = harness.one_instance(A_DISPATCH_CONJUNCTION, {})
+    assert harness.conforms(A_DISPATCH_CONJUNCTION, value) is True, (
+        f"the cover drew {value!r}, which its own document refuses"
+    )
+
+
+def test_a_conjunction_that_MERGES_gets_the_library_s_own_answer_and_one_group() -> None:
+    """The path almost every pair takes is unchanged, which is why nothing else moved.
+
+    The library's first iteration is the whole input set, and where that intersects it
+    stops there -- ``combined`` then supersets every later group.  This rule tries the
+    same thing first, so a mergeable conjunction is answered by one group and the only
+    intersection paid is that one.
+    """
+    merges = {
+        "allOf": [
+            {"type": "object", "properties": {"a": {"type": "string"}}, "required": ["a"]},
+            {"required": ["b"], "properties": {"b": {"type": "integer"}}},
+        ]
+    }
+    with harness.a_combinator_is_covered_and_never_enumerated() as cover:
+        harness.strategy(dict(merges), {})
+    for inputs, groups, intersections in cover:
+        assert groups == 1, f"{inputs} mergeable inputs became {groups} groups"
+        assert intersections == 1, f"a whole-set merge is one intersection, not {intersections}"
+
+
+def test_the_cover_is_installed_for_one_call_and_restored_even_on_a_raise() -> None:
+    """The lifetime, which is the only thing separating this from patching the library.
+
+    ``canonicalisation_shared_within_one_call``'s own rule: nothing is patched at import
+    time, so a caller of this module that did not ask for the rule gets the library exactly
+    as it ships.  Both exits are asserted, and the nested case too -- ``one_instance``
+    enters this inside a caller that may already have.
+    """
+    import hypothesis_jsonschema._from_schema as library  # the patched name
+
+    before = library.merged_as_strategies
+    with harness.a_combinator_is_covered_and_never_enumerated():
+        assert library.merged_as_strategies is not before
+        inner = library.merged_as_strategies
+        with harness.a_combinator_is_covered_and_never_enumerated():
+            assert library.merged_as_strategies is not inner
+        assert library.merged_as_strategies is inner, "a nested exit restored the wrong one"
+    assert library.merged_as_strategies is before
+
+    with pytest.raises(RuntimeError):
+        with harness.a_combinator_is_covered_and_never_enumerated():
+            raise RuntimeError("the body raised")
+    assert library.merged_as_strategies is before, (
+        "a raise must not leave the library patched"
+    )
+
+
+# --------------------------------------------------------------------------- #
 # the DOCUMENT's own statement of a valid instance: `examples`
 # --------------------------------------------------------------------------- #
 def test_the_node_s_own_examples_answer_the_accepts_check_and_are_counted_apart() -> None:
