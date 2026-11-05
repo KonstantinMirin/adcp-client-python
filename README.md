@@ -132,11 +132,20 @@ for absent in ("adcp.server", "adcp.decisioning", "adcp.reporting", "adcp.signin
         raise AssertionError(f"{absent} imported; this README is out of date")
 ```
 
-**There is no migration guide yet, and this sentence is deliberately not a path.** The
-names above need one entry each saying what to use instead, or saying there is nothing and
-why. Writing a path here before the document exists is the defect
-`tests/test_prose_resolves.py` was written for, so the row that owes it is
-`adcp-client-python-3fw.1`, and when it lands this paragraph names it.
+**The migration guide is `docs/migration-from-upstream.md`, and it names every one of those
+names individually.** 418 of the 503 get an entry there — the 360 machinery names grouped by
+the module that defines them, the 23 that resolve nowhere on upstream's own wheel with the
+error each raises, and 35 more on the type surface that are not types, carry no schema
+subject, mean something other than what they appear to, or cannot yet be decided. An entry gives a real
+import path, or says there is no replacement and why, or says it is undecided and names what
+would settle it; it never invents a destination. **Its figures are re-derivable and the
+document is graded**: `survey/migration_notes.py` partitions the same 503 names and, handed
+the guide, exits non-zero on any name it owes an entry for and does not name — and refuses
+an empty corpus rather than passing it, which is a defect that gate had and the guide
+records. **It also
+records the one thing a reader must know before any of it applies: you cannot install this
+wheel beside upstream's**, because both own the `adcp` import root, and `pip check` calls
+the result healthy either way.
 
 A type spelling has a different answer, and it is not this one: the flat `adcp.types`
 namespace becomes an **alias layer** onto the generated classes, so an application keeps
