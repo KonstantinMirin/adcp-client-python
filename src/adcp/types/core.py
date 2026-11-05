@@ -192,123 +192,6 @@ from ._schemas.core.async_response_data import SyncCreativesAsyncWorking as Sync
 from ._schemas.core.async_response_data import UpdateMediaBuyAsyncInputRequired as UpdateMediaBuyAsyncInputRequired
 from ._schemas.core.async_response_data import UpdateMediaBuyAsyncSubmitted as UpdateMediaBuyAsyncSubmitted
 from ._schemas.core.async_response_data import UpdateMediaBuyAsyncWorking as UpdateMediaBuyAsyncWorking
-from ._schemas.core.async_response_refs.creative.get_creative_features_async_response_submitted import (
-    GetCreativeFeaturesSubmitted as GetCreativeFeaturesSubmitted,
-)
-from ._schemas.core.async_response_refs.creative.sync_creatives_async_response_input_required import (
-    SyncCreativesInputRequired as SyncCreativesInputRequired,
-)
-from ._schemas.core.async_response_refs.creative.sync_creatives_async_response_submitted import (
-    SyncCreativesSubmitted as SyncCreativesSubmitted,
-)
-from ._schemas.core.async_response_refs.creative.sync_creatives_async_response_working import (
-    SyncCreativesWorking as SyncCreativesWorking,
-)
-from ._schemas.core.async_response_refs.media_buy.accept_proposal_async_response_input_required import (
-    AcceptProposalInputRequired as AcceptProposalInputRequired,
-)
-from ._schemas.core.async_response_refs.media_buy.accept_proposal_async_response_submitted import (
-    AcceptProposalSubmitted as AcceptProposalSubmitted,
-)
-from ._schemas.core.async_response_refs.media_buy.accept_proposal_async_response_working import (
-    AcceptProposalWorking as AcceptProposalWorking,
-)
-from ._schemas.core.async_response_refs.media_buy.build_creative_async_response_input_required import (
-    BuildCreativeInputRequired as BuildCreativeInputRequired,
-)
-from ._schemas.core.async_response_refs.media_buy.build_creative_async_response_submitted import (
-    BuildCreativeSubmitted as BuildCreativeSubmitted,
-)
-from ._schemas.core.async_response_refs.media_buy.build_creative_async_response_working import (
-    BuildCreativeWorking as BuildCreativeWorking,
-)
-from ._schemas.core.async_response_refs.media_buy.buy_products_async_response_input_required import (
-    BuyProductsInputRequired as BuyProductsInputRequired,
-)
-from ._schemas.core.async_response_refs.media_buy.buy_products_async_response_submitted import (
-    BuyProductsSubmitted as BuyProductsSubmitted,
-)
-from ._schemas.core.async_response_refs.media_buy.buy_products_async_response_working import (
-    BuyProductsWorking as BuyProductsWorking,
-)
-from ._schemas.core.async_response_refs.media_buy.control_media_buy_async_response_input_required import (
-    ControlMediaBuyInputRequired as ControlMediaBuyInputRequired,
-)
-from ._schemas.core.async_response_refs.media_buy.control_media_buy_async_response_submitted import (
-    ControlMediaBuySubmitted as ControlMediaBuySubmitted,
-)
-from ._schemas.core.async_response_refs.media_buy.control_media_buy_async_response_working import (
-    ControlMediaBuyWorking as ControlMediaBuyWorking,
-)
-from ._schemas.core.async_response_refs.media_buy.create_media_buy_async_response_input_required import (
-    CreateMediaBuyInputRequired as CreateMediaBuyInputRequired,
-)
-from ._schemas.core.async_response_refs.media_buy.create_media_buy_async_response_submitted import (
-    CreateMediaBuySubmitted as CreateMediaBuySubmitted,
-)
-from ._schemas.core.async_response_refs.media_buy.create_media_buy_async_response_working import (
-    CreateMediaBuyWorking as CreateMediaBuyWorking,
-)
-from ._schemas.core.async_response_refs.media_buy.decline_proposals_async_response_input_required import (
-    DeclineProposalsInputRequired as DeclineProposalsInputRequired,
-)
-from ._schemas.core.async_response_refs.media_buy.decline_proposals_async_response_submitted import (
-    DeclineProposalsSubmitted as DeclineProposalsSubmitted,
-)
-from ._schemas.core.async_response_refs.media_buy.decline_proposals_async_response_working import (
-    DeclineProposalsWorking as DeclineProposalsWorking,
-)
-from ._schemas.core.async_response_refs.media_buy.get_products_async_response_input_required import (
-    GetProductsInputRequired as GetProductsInputRequired,
-)
-from ._schemas.core.async_response_refs.media_buy.get_products_async_response_submitted import (
-    GetProductsSubmitted as GetProductsSubmitted,
-)
-from ._schemas.core.async_response_refs.media_buy.get_products_async_response_working import (
-    GetProductsWorking as GetProductsWorking,
-)
-from ._schemas.core.async_response_refs.media_buy.refine_proposals_async_response_input_required import (
-    RefineProposalsInputRequired as RefineProposalsInputRequired,
-)
-from ._schemas.core.async_response_refs.media_buy.refine_proposals_async_response_submitted import (
-    RefineProposalsSubmitted as RefineProposalsSubmitted,
-)
-from ._schemas.core.async_response_refs.media_buy.refine_proposals_async_response_working import (
-    RefineProposalsWorking as RefineProposalsWorking,
-)
-from ._schemas.core.async_response_refs.media_buy.request_proposals_async_response_input_required import (
-    RequestProposalsInputRequired as RequestProposalsInputRequired,
-)
-from ._schemas.core.async_response_refs.media_buy.request_proposals_async_response_submitted import (
-    RequestProposalsSubmitted as RequestProposalsSubmitted,
-)
-from ._schemas.core.async_response_refs.media_buy.request_proposals_async_response_working import (
-    RequestProposalsWorking as RequestProposalsWorking,
-)
-from ._schemas.core.async_response_refs.media_buy.sync_catalogs_async_response_input_required import (
-    SyncCatalogsInputRequired as SyncCatalogsInputRequired,
-)
-from ._schemas.core.async_response_refs.media_buy.sync_catalogs_async_response_submitted import (
-    SyncCatalogsSubmitted as SyncCatalogsSubmitted,
-)
-from ._schemas.core.async_response_refs.media_buy.sync_catalogs_async_response_working import (
-    SyncCatalogsWorking as SyncCatalogsWorking,
-)
-from ._schemas.core.async_response_refs.media_buy.update_media_buy_async_response_input_required import (
-    UpdateMediaBuyInputRequired as UpdateMediaBuyInputRequired,
-)
-from ._schemas.core.async_response_refs.media_buy.update_media_buy_async_response_submitted import (
-    UpdateMediaBuySubmitted as UpdateMediaBuySubmitted,
-)
-from ._schemas.core.async_response_refs.media_buy.update_media_buy_async_response_working import (
-    UpdateMediaBuyWorking as UpdateMediaBuyWorking,
-)
-from ._schemas.core.async_response_refs.signals.get_signals_async_response_submitted import (
-    GetSignalsSubmitted as GetSignalsSubmitted,
-)
-from ._schemas.core.async_response_refs.signals.get_signals_async_response_working import (
-    GetSignalsWorking as GetSignalsWorking,
-)
 from ._schemas.core.attestation_capabilities import AttestationCapabilities as AttestationCapabilities
 from ._schemas.core.attestation_evaluation import AttestationEvaluation as AttestationEvaluation
 from ._schemas.core.attestation_issuer import AttestationAgentIssuer as AttestationAgentIssuer
@@ -1381,9 +1264,6 @@ from ._schemas.core.wholesale_feed_webhook import WholesaleFeedWebhook as Wholes
 from ._schemas.core.x_entity_types import XEntityTypes as XEntityTypes
 
 __all__ = [
-    'AcceptProposalInputRequired',
-    'AcceptProposalSubmitted',
-    'AcceptProposalWorking',
     'AcceptancePolicyProfileIDs',
     'AcceptedAttestationIssuersItemAgent',
     'AcceptedAttestationIssuersItemBrand',
@@ -1549,13 +1429,7 @@ __all__ = [
     'BuildCreativeAsyncInputRequired',
     'BuildCreativeAsyncSubmitted',
     'BuildCreativeAsyncWorking',
-    'BuildCreativeInputRequired',
-    'BuildCreativeSubmitted',
-    'BuildCreativeWorking',
     'BusinessEntity',
-    'BuyProductsInputRequired',
-    'BuyProductsSubmitted',
-    'BuyProductsWorking',
     'CSSAsset',
     'CSSAssetRequirements',
     'CancellationPolicy',
@@ -1641,12 +1515,9 @@ __all__ = [
     'CompactTaskWorking',
     'ContentRating',
     'ContextObject',
-    'ControlMediaBuyInputRequired',
     'ControlMediaBuyResponseCompleted',
     'ControlMediaBuyResponseFailed',
     'ControlMediaBuyResponseSubmitted',
-    'ControlMediaBuySubmitted',
-    'ControlMediaBuyWorking',
     'CoordinatedPlacementsFormatDeclaration',
     'Countries',
     'CountrySupport',
@@ -1655,9 +1526,6 @@ __all__ = [
     'CreateMediaBuyAsyncInputRequired',
     'CreateMediaBuyAsyncSubmitted',
     'CreateMediaBuyAsyncWorking',
-    'CreateMediaBuyInputRequired',
-    'CreateMediaBuySubmitted',
-    'CreateMediaBuyWorking',
     'CreativeAsset',
     'CreativeAssets',
     'CreativeAssignment',
@@ -1709,9 +1577,6 @@ __all__ = [
     'DaypartTargets',
     'DeadlinePolicy',
     'DecimalReportingControlTotal',
-    'DeclineProposalsInputRequired',
-    'DeclineProposalsSubmitted',
-    'DeclineProposalsWorking',
     'DeliveryBreakdownControls',
     'DeliveryForecast',
     'DeliveryMetricAggregate',
@@ -1807,19 +1672,13 @@ __all__ = [
     'GeographicRegionRequirement',
     'GeographicRegionSupport',
     'GetCreativeFeaturesAsyncSubmitted',
-    'GetCreativeFeaturesSubmitted',
     'GetGeographicPlaceResolutionRequest',
     'GetGeographicPlaceResolutionResponse',
     'GetProductsAsyncInputRequired',
     'GetProductsAsyncSubmitted',
     'GetProductsAsyncWorking',
-    'GetProductsInputRequired',
-    'GetProductsSubmitted',
-    'GetProductsWorking',
     'GetSignalsAsyncSubmitted',
     'GetSignalsAsyncWorking',
-    'GetSignalsSubmitted',
-    'GetSignalsWorking',
     'GroupAudioAsset',
     'GroupBriefAsset',
     'GroupCardAsset',
@@ -2104,9 +1963,6 @@ __all__ = [
     'ReferenceAsset',
     'ReferenceRenderer',
     'RefineProposalsAsyncSubmitted',
-    'RefineProposalsInputRequired',
-    'RefineProposalsSubmitted',
-    'RefineProposalsWorking',
     'RegistryEvent',
     'RegistryEventAgentComplianceChangedAgent',
     'RegistryEventAgentDiscoveredAgent',
@@ -2185,9 +2041,6 @@ __all__ = [
     'RepresentationRejection',
     'RepresentationSelection',
     'RequestProposalsAsyncSubmitted',
-    'RequestProposalsInputRequired',
-    'RequestProposalsSubmitted',
-    'RequestProposalsWorking',
     'ResolvedAssets',
     'ResponsePayloadJWSEnvelope',
     'ResponsiveCreativeFormatDeclaration',
@@ -2243,15 +2096,9 @@ __all__ = [
     'SyncCatalogsAsyncInputRequired',
     'SyncCatalogsAsyncSubmitted',
     'SyncCatalogsAsyncWorking',
-    'SyncCatalogsInputRequired',
-    'SyncCatalogsSubmitted',
-    'SyncCatalogsWorking',
     'SyncCreativesAsyncInputRequired',
     'SyncCreativesAsyncSubmitted',
     'SyncCreativesAsyncWorking',
-    'SyncCreativesInputRequired',
-    'SyncCreativesSubmitted',
-    'SyncCreativesWorking',
     'TMPIdentityMatch',
     'TagURL',
     'Tags',
@@ -2295,9 +2142,6 @@ __all__ = [
     'UpdateMediaBuyAsyncInputRequired',
     'UpdateMediaBuyAsyncSubmitted',
     'UpdateMediaBuyAsyncWorking',
-    'UpdateMediaBuyInputRequired',
-    'UpdateMediaBuySubmitted',
-    'UpdateMediaBuyWorking',
     'UserMatch',
     'VASTAsset',
     'VASTAssetInline',
