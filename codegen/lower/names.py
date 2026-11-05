@@ -1888,6 +1888,11 @@ def assign(
         # SYMBOLS, and a declaration names a POINTER, which naming does not move.  It is a
         # tuple here because the IR is immutable and the walk's accumulator is a list.
         approximations=tuple(mod.approximations),
+        # The SECTION census beside them, carried through unchanged for the same reason:
+        # this pass assigns SYMBOLS, and which pointers name a section entry is a fact
+        # about the document's own text that naming does not move
+        # (:attr:`codegen.ir.Module.sections`).
+        sections=frozenset(mod.sections),
         # §1's export set as SYMBOLS, which is what the surface re-exports and what §1
         # forbids two of.  A degenerate adoption is absent by construction: it binds no
         # name of its own, so no pointer of it reached ``exports``.

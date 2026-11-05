@@ -48,8 +48,14 @@ from codegen import attribution, bundle, compiler, emit, harness, ir, keywords, 
 from codegen.keywords import Effect, Position, Rung
 from codegen.lower.approximate import approximate, attribution_for, declare, rung_for
 from codegen.refusal import BuildFailure
+from tests import compared
+from tests.nodeset import claimed
 
 DOC = "core/probe.json"
+
+#: The pinned bundle the population below is read over, which is the one every other
+#: census in ``tests/`` is taken against.
+BUNDLE = pathlib.Path("schemas/cache/3.2")
 
 
 def _ref(pointer: str = "#") -> SchemaRef:
@@ -413,6 +419,138 @@ def test_a_declaration_is_carried_by_every_declaration_whose_node_contains_it() 
     assert render.declared_at((inner,), _ref("#/properties/xy")) == ()
     # And a declaration of another document is never this one's.
     assert render.declared_at((inner,), SchemaRef("core/other.json", "#")) == ()
+
+
+def test_containment_stops_at_a_section_boundary_because_the_obligation_does() -> None:
+    """``render.declared_at``'s ONE exception, and the direction that makes it one.
+
+    A ``definitions`` / ``$defs`` entry is CONTAINED by the root's pointer and describes
+    no instance location the root's own class can reach: an entry is reached only by a
+    ``$ref``, which is another class's node, and draft-07 gives a section no assertion
+    behaviour.  §8 reads the same boundary from the other side -- ``harness.locations``
+    takes no frontier item inside an entry because "it has no instance location, which is
+    §8's own reading of why such a declaration belongs to the entry's own pair" -- and the
+    obligation refuses the pointer outright with "the pointer describes no instance
+    location, so no drawn value can be placed at it".  Carried across it, one fact is
+    counted once as a pass at the entry's pair and once as ``unproved_widening`` at the
+    root's.
+
+    Both arms, because dropping one direction is how the fix becomes a hole: the entry's
+    OWN class keeps every declaration inside it (an entry AT ``ref`` is not between), and
+    an ``allOf``/``anyOf``/``properties`` hop is unaffected, which
+    :func:`test_a_declaration_is_carried_by_every_declaration_whose_node_contains_it`
+    above states over the same function.
+    """
+    inside = approximate(_ref("#/definitions/profile/allOf/0"), "uniqueItems", Position.DEF, True)
+    entries = frozenset({"/definitions/profile"})
+
+    # The root CONTAINS it and cannot reach it, so it is not carried there.
+    assert render.declared_at((inside,), _ref("#"), entries) == ()
+    # The entry's own class is where the obligation can put it, so it is carried there.
+    assert render.declared_at((inside,), _ref("#/definitions/profile"), entries) == (inside,)
+    assert render.declared_at((inside,), _ref("#/definitions/profile/allOf/0"), entries) == (
+        inside,
+    )
+    # With no census the function is the containment it always was, which is the
+    # fail-safe direction: a module built outside a run drops nothing.
+    assert render.declared_at((inside,), _ref("#")) == (inside,)
+    # A pointer that is not a section entry does not become one by being spelled below a
+    # declared node: the census is a reading of the DOCUMENT and not of the spelling.
+    plain = approximate(_ref("#/properties/x/allOf/0"), "uniqueItems", Position.PROP, True)
+    assert render.declared_at((plain,), _ref("#"), entries) == (plain,)
+
+
+def test_no_declaration_the_tree_carries_is_one_its_pair_cannot_put_to_a_draw() -> None:
+    """**The equality the rule above is stated as, over the emitted population.**
+
+    Two derivations of one set, neither a literal:
+
+    * what the OBLIGATION can do -- for every pair of the tree and every non-underdetermined
+      declaration it carries, whether ``harness._steps`` walks the declaration's pointer
+      from that pair's own node to an instance location.  A ``None`` there is the
+      ``unproved_widening`` the pair reports under its own name;
+    * what the SECTION BOUNDARY says -- ``bundle.reaches``, the predicate
+      ``bundle.undecidable_references`` already asks of a reference over the same boundary,
+      with the pair's own pointer as the reach.
+
+    The claim is that the first set is EMPTY and that the second is what empties it, so the
+    gate is not vacuous: the set of declarations the boundary excludes is named, asserted
+    non-empty, and asserted to be exactly the set the walk could not reach before the rule
+    landed.  At the row that wrote this the bundle states three of them --
+    ``core/bidding-policy-capability.json#`` carrying
+    ``#/definitions/policy_profile/allOf/{0,1}/if`` and
+    ``core/targeting-overlay-support.json#`` carrying
+    ``#/definitions/daypartSupport/anyOf/1/allOf/0/if`` -- and every one is also carried,
+    and proved, at the entry's own pair.
+
+    **Over the tree a fresh run emits**, which is what ``docs/plan/architecture.md`` makes
+    grading read, and through the same pairing every other reader of it uses
+    (``tests/compared.pairs``).
+    """
+    rows = [
+        (f"{ref.document}{ref.pointer}", ref, declared)
+        for ref, model, accept, module in compared.pairs()
+        for declared in (
+            harness.declarations_of(
+                model if isinstance(model, type) else importlib.import_module(module)
+            ),
+        )
+    ]
+    claimed("graded pairs", {name for name, _, _ in rows})
+    #: document -> every declaration SOME pair of that document carries, by site.  The
+    #: whole declared set of the tree, which is what the two derivations below range over.
+    stated: dict[str, dict[tuple[str, str, str], Any]] = {}
+    for _, ref, declared in rows:
+        for one in declared:
+            stated.setdefault(ref.document, {})[harness.site_of(one)] = one
+    claimed("documents the tree declares a fact for", set(stated))
+
+    #: (pair, site) the obligation's own walk cannot reach from that pair's node.  A
+    #: ``None`` from ``_steps`` is the ``unproved_widening`` the pair reports by name.
+    unreachable: set[tuple[str, tuple[str, str, str]]] = set()
+    #: (pair, site) CONTAINED by the pair's pointer and kept off it by the boundary.
+    excluded: set[tuple[str, tuple[str, str, str]]] = set()
+    #: site -> the pairs that do carry it, so the second half can ask where it is proved.
+    owners: dict[tuple[str, str, str], set[str]] = {}
+    for name, ref, declared in rows:
+        entries = bundle.section_entries(bundle.read(BUNDLE, ref.document))
+        node = schema_at(ref)
+        for one in declared:
+            owners.setdefault(harness.site_of(one), set()).add(name)
+            if one.kind == UNDERDETERMINED:
+                continue  # §2: no draw can see one, so the obligation claims none
+            if harness._steps(_relative(ref, one.pointer), node) is None:
+                unreachable.add((name, harness.site_of(one)))
+        for site, one in stated.get(ref.document, {}).items():
+            if render.declared_at((one,), ref) and not render.declared_at((one,), ref, entries):
+                excluded.add((name, site))
+
+    assert unreachable == set(), sorted(unreachable)
+    claimed("declarations the section boundary keeps off a pair", excluded)
+    # **The other half, which is what keeps the exclusion from being a way to hide an
+    # unprovable declaration**: every site kept off a pair is carried by a pair that CAN
+    # put it to a draw, so one fact is still proved once.
+    for name, site in sorted(excluded):
+        where = owners.get(site, set())
+        assert where, (name, site, "kept off every pair and carried by none")
+        for owner, ref, _ in rows:
+            if owner in where:
+                one = stated[ref.document][site]
+                if one.kind == UNDERDETERMINED:
+                    continue
+                assert harness._steps(_relative(ref, one.pointer), schema_at(ref)) is not None, (
+                    owner,
+                    site,
+                )
+
+
+def _relative(ref: SchemaRef, pointer: str) -> str:
+    """``pointer`` read from ``ref``'s own node, exactly as the obligation reads it.
+
+    ``harness.check_widening``'s own two lines, so this test asks the walk the question
+    the obligation asks it and not a second spelling of it.
+    """
+    return "" if pointer == ref.pointer else pointer[len(ref.pointer.rstrip("/")) :]
 
 
 def test_a_fact_is_declared_once_at_the_node_the_document_states_it() -> None:

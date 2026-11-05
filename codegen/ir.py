@@ -724,6 +724,22 @@ class Module:
     #: documents the run declares, and ``tests/test_the_declared_backlog.py`` holds the
     #: equality between what the run mints and what the tree declares.
     approximations: tuple[Approximation, ...] = ()
+    #: **The pointers of this document that name an ENTRY of a ``definitions`` / ``$defs``
+    #: section**, which is the one fact ``render.declared_at``'s distribution needs beyond
+    #: a pointer: a declaration inside such an entry is CONTAINED by the root's pointer and
+    #: describes no instance location the root's own class can reach, so §8 gives it to the
+    #: entry's own pair (``harness.locations``) and the obligation's walk refuses it at the
+    #: root (``harness.check_widening``: "the pointer describes no instance location").
+    #:
+    #: Carried as a set of POINTERS rather than as the document, because the renderer may
+    #: not know a node (§11) and because a segment reading ``definitions`` is a section only
+    #: at a KEYWORD position -- a reading of the document, made once, by
+    #: ``bundle.section_entries``.  ``compiler.Module.sections`` is where it is filled and
+    #: carries the whole of why.
+    #:
+    #: Empty by default, exactly as :attr:`approximations` is: a module built outside a run
+    #: has no census, and the fail-safe is the containment every declaration already had.
+    sections: frozenset[str] = frozenset()
     #: **§1's EXPORT SET for this module**: the symbol the domain surface re-exports ->
     #: which of §1's three kinds it is (``root``, ``branch`` or ``alias``).
     #:

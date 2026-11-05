@@ -99,8 +99,8 @@ from adcp.types import _base as adcp_base
 from adcp.types import _runtime as adcp_runtime
 from adcp.types._base import APPROXIMATIONS, Approximation, SchemaRef
 from adcp.types._runtime import Distinct, Match, Rule, UniqueItems
+from codegen import bundle, ir
 from codegen import constraints as constraint_names
-from codegen import ir
 from codegen.ir import MISSING
 
 #: The runtime base §8 of the architecture document gives a root model, named here and
@@ -1117,7 +1117,9 @@ def root_model(decl: ir.RootModelDecl, declared: Sequence[Approximation] = ()) -
 
 
 def declaration(
-    decl: ir.Declaration, approximations: Sequence[Approximation] = ()
+    decl: ir.Declaration,
+    approximations: Sequence[Approximation] = (),
+    sections: Collection[str] = (),
 ) -> Rendered:
     """One declaration's text and imports: the ONE dispatch over ``codegen.ir``.
 
@@ -1125,6 +1127,10 @@ def declaration(
     narrow it themselves, through :func:`declared_at` at their own ``ref``.  Narrowed here
     rather than by the caller, because which node a declaration's ``ref`` names is a fact
     about the declaration and this is the one dispatch that holds every kind of it.
+
+    ``sections`` rides with it because :func:`declared_at` needs both to answer: the
+    containment is a fact about two pointers and the SECTION BOUNDARY is a fact about the
+    document, and that function carries why.
 
     An ``EnumDecl``, an ``AliasDecl`` and a ``UnionInstall`` carry none and are handed
     none: a nested enumeration has no ``class_body_lines`` slot at all (``EnumDecl``'s own
@@ -1137,7 +1143,9 @@ def declaration(
         # declaration to be AT: :func:`declared_at` compares a document and a pointer and
         # has neither to compare.  Nothing is lost, because every approximation is about
         # a fact some document states and such a class states no document's facts.
-        return klass(decl, () if decl.ref is None else declared_at(approximations, decl.ref))
+        return klass(
+            decl, () if decl.ref is None else declared_at(approximations, decl.ref, sections)
+        )
     if isinstance(decl, ir.EnumDecl):
         return enum(decl)
     if isinstance(decl, ir.ValuesDecl):
@@ -1145,9 +1153,9 @@ def declaration(
     if isinstance(decl, ir.AliasDecl):
         return alias(decl)
     if isinstance(decl, ir.RootBinding):
-        return root_binding(decl, declared_at(approximations, decl.ref))
+        return root_binding(decl, declared_at(approximations, decl.ref, sections))
     if isinstance(decl, ir.RootModelDecl):
-        return root_model(decl, declared_at(approximations, decl.ref))
+        return root_model(decl, declared_at(approximations, decl.ref, sections))
     if isinstance(decl, ir.UnionInstall):
         return union_install(decl)
     raise TypeError(f"no rendering for {type(decl).__name__}")
@@ -1161,7 +1169,11 @@ def declaration(
 APPROXIMATIONS_HINT = f"ClassVar[tuple[{Approximation.__name__}, ...]]"
 
 
-def declared_at(approximations: Sequence[Approximation], ref: SchemaRef) -> tuple[Approximation, ...]:
+def declared_at(
+    approximations: Sequence[Approximation],
+    ref: SchemaRef,
+    sections: Collection[str] = (),
+) -> tuple[Approximation, ...]:
     """Every approximation at or INSIDE the node ``ref`` names, in document order.
 
     **Containment and not the nearest declaration**, and the reason is the pairing §9
@@ -1182,6 +1194,38 @@ def declared_at(approximations: Sequence[Approximation], ref: SchemaRef) -> tupl
     obligation's walk, so each reaches the same node -- and the repeated line buys a
     second proof of one fact rather than a claim about anything else.
 
+    **EXCEPT ACROSS A SECTION BOUNDARY, WHERE CONTAINMENT IS NOT REACHABILITY AND THE
+    OVER-COVERAGE IS A RED.**  A ``definitions`` / ``$defs`` entry is contained by the
+    root's pointer and describes NO instance location the root's own class can reach: an
+    entry is reached only by a ``$ref``, which is another class's node, and draft-07 gives
+    a section no assertion behaviour at all.  §8 already reads this from the other side --
+    ``harness.locations`` takes no frontier item inside an entry because "it has no
+    instance location, which is §8's own reading of why such a declaration belongs to the
+    entry's own pair" -- and the obligation's walk refuses the pointer outright, reporting
+    ``unproved_widening`` with "the pointer describes no instance location, so no drawn
+    value can be placed at it".  So the declaration was carried to a pair that cannot put
+    it to a draw, and the SAME declaration is carried to the entry's own pair, which
+    proves it: one fact, counted once as a pass and once as a failure.
+
+    Measured over the graded population at the row that wrote this: 91 declarations are put
+    to the obligation, 3 of them sit inside a section entry, and all 3 are the whole of what
+    the obligation's walk cannot reach -- ``core/bidding-policy-capability.json#`` carrying
+    ``#/definitions/policy_profile/allOf/{0,1}/if`` and
+    ``core/targeting-overlay-support.json#`` carrying
+    ``#/definitions/daypartSupport/anyOf/1/allOf/0/if``, every one of them also carried and
+    proved at the entry's own pair.
+
+    ``sections`` is :attr:`codegen.ir.Module.sections`, and the predicate is
+    ``bundle.reaches`` -- the same one ``bundle.undecidable_references`` asks of a
+    reference, over the same boundary, read here rather than restated: "validation and the
+    lowering both start at a declared pointer and descend by assertion keywords, WHICH
+    NEVER CROSS A SECTION BOUNDARY."  ``declared`` is this one pointer, because the
+    question here is about THIS pair and not about the innermost one; an entry AT ``ref``
+    is not between them, so a class declared at the entry keeps every declaration inside
+    it.  **Empty ``sections`` is the containment this function always had**, which is the
+    fail-safe direction: a module built outside a run carries a declaration wherever
+    containment reaches it rather than dropping one on a census it does not have.
+
     The prefix test is on ONE spelling of a pointer -- ``SchemaRef``'s, which
     ``compiler.schema_ref`` is the sole producer of -- and the separator is part of the
     prefix, so ``#/properties/x`` does not contain ``#/properties/xy``.
@@ -1190,7 +1234,11 @@ def declared_at(approximations: Sequence[Approximation], ref: SchemaRef) -> tupl
     return tuple(
         a
         for a in approximations
-        if a.document == ref.document and (a.pointer == ref.pointer or a.pointer.startswith(prefix))
+        if a.document == ref.document
+        and (a.pointer == ref.pointer or a.pointer.startswith(prefix))
+        and bundle.reaches(
+            a.pointer.lstrip("#"), entries=sections, declared={ref.pointer.lstrip("#")}
+        )
     )
 
 
@@ -1463,10 +1511,12 @@ def _import_section(
 
 
 def blocks(
-    declarations: Sequence[ir.Declaration], approximations: Sequence[Approximation] = ()
+    declarations: Sequence[ir.Declaration],
+    approximations: Sequence[Approximation] = (),
+    sections: Collection[str] = (),
 ) -> list[Rendered]:
     """Every declaration rendered, in declaration order."""
-    return [declaration(decl, approximations) for decl in declarations]
+    return [declaration(decl, approximations, sections) for decl in declarations]
 
 
 def module(mod: ir.Module, exports: Sequence[str]) -> str:
@@ -1487,7 +1537,7 @@ def module(mod: ir.Module, exports: Sequence[str]) -> str:
     :func:`_export_key` is the one a sorter would write, which is what keeps every
     module of the tree from reporting ``RUF022``.
     """
-    rendered = blocks(mod.declarations, mod.approximations)
+    rendered = blocks(mod.declarations, mod.approximations, mod.sections)
     imports = set(mod.imports)
     for one in rendered:
         imports |= one.imports

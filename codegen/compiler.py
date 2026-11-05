@@ -1097,6 +1097,30 @@ class Module:
     #: is unreadable and DECLARES -- the same refusing default :attr:`named` and
     #: :attr:`local` have, and for the same reason.
     record: Mapping[str, Any] = field(default_factory=dict)
+    #: **Every pointer of this document that names an ENTRY of a ``definitions`` / ``$defs``
+    #: section** (``bundle.section_entries``), for the one reader that needs the SECTION
+    #: BOUNDARY rather than a node: §7's approximation distribution
+    #: (``render.declared_at``).
+    #:
+    #: §8 already reads this boundary from the other side -- ``harness.locations`` says a
+    #: ``definitions`` entry is no frontier item because "it has no instance location,
+    #: which is §8's own reading of why such a declaration belongs to the entry's own
+    #: pair" -- and the obligation that proves a declaration descends by instance-bearing
+    #: and same-instance hops only, which is ``bundle.reaches``' own sentence:
+    #: "validation and the lowering both start at a declared pointer and descend by
+    #: assertion keywords, WHICH NEVER CROSS A SECTION BOUNDARY."  Carried as the
+    #: document's own pointers because that reading is a fact about the DOCUMENT and the
+    #: spelling of a pointer cannot stand in for it: a segment reading ``definitions`` is
+    #: a section only at a KEYWORD position (``bundle.section_entries``).
+    #:
+    #: Read off the same object :attr:`local`, :attr:`object_constrained` and
+    #: :attr:`record` are read off, so there is one record per module and nothing here
+    #: re-reads the document.
+    #:
+    #: Empty by default, which is the arm that carries a declaration wherever containment
+    #: reaches it: a document lowered outside a run has no section census, and the
+    #: fail-safe direction is the behaviour every declaration already had.
+    sections: frozenset[str] = frozenset()
     #: **What the MODEL LAYER carries**, so a property key spelling one of pydantic's
     #: own attributes is carried under an alias rather than shadowing it
     #: (``lower.names.field_name``).  DERIVED in ``codegen/render.py`` (``RESERVED``) and

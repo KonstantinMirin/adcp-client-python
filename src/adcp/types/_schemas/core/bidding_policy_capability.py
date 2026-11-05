@@ -96,10 +96,6 @@ class BiddingPolicyCapability(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         PropertyCount(minimum=1, maximum=None),
     )
-    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='core/bidding-policy-capability.json', pointer='#/definitions/policy_profile/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'modes': {'contains': {'const': 'cost_per'}}}, 'required': ['modes']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
-        Approximation(document='core/bidding-policy-capability.json', pointer='#/definitions/policy_profile/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'modes': {'contains': {'const': 'roas'}}}, 'required': ['modes']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
-    )
     media_buy: Annotated[ScopeCapability | None, Field(description='Policies accepted at media-buy scope and inherited by packages that omit a package override.')] = None
     package: Annotated[ScopeCapability | None, Field(description='Policies accepted as package-authored policies, including explicit automatic overrides.')] = None
 

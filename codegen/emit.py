@@ -795,6 +795,14 @@ def lower_document(
         # in rather than re-read, so there is one record per module and the walk sees the
         # text the package carries beside it (:attr:`compiler.Module.record`).
         record=doc,
+        # **§7's approximation distribution needs the SECTION BOUNDARY** and nothing
+        # else does: ``render.declared_at`` carries a declaration onto every class whose
+        # node CONTAINS it, and a ``definitions`` entry is contained by the root's
+        # pointer while describing no instance location the root's own class can reach
+        # (:attr:`compiler.Module.sections`).  Read off the same object ``local`` and
+        # ``object_constrained`` are read off, so the census is one pass over the record
+        # this module already holds.
+        sections=bundle.section_entries(doc),
     )
     # **§7's REPORTED DROPS, at every position the document states one at.**  "The drop is
     # reported at every position the keyword occupies, and not only where a conjunct
