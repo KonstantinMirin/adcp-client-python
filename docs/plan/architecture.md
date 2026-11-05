@@ -1119,6 +1119,45 @@ This places the catalogue before naming, which §9's census rule permits and §1
 collision rule already requires: both read the BUNDLE, which is pinned and is an input to every
 run alike, and neither reads the run's document set.
 
+**AND THIS SENTENCE IS NOT IMPLEMENTED. THE CATALOGUE IS CONSULTED AT ONE SEAM WHILE TWELVE
+HANDLERS DECIDE A TYPE LOCALLY, AND THAT INVERSION IS THE SINGLE CAUSE OF EVERY DUPLICATION DEFECT
+THIS PROJECT HAS FOUND (the owner's diagnosis).**
+
+The algorithm this document describes is four steps and no gate: **collect every type the bundle
+states, deduplicate, name each subject once, place it — and then emission is a PROJECTION of that
+catalogue.** What was built instead emits a type per position, consults the catalogue where a
+handler happens to ask, and relies on a census afterwards to find what leaked. Every one of these
+was that leak, found by a different instrument after the fact:
+
+- object structures stated at many positions, emitted at every one of them;
+- byte-identical documents each emitting their own class;
+- constrained scalars named by a digest because no position had a name to give;
+- **a titled entity's name minted again from another document's property key**, because a name is
+  derived per POSITION and a position only knows the role it plays in its parent.
+
+**A GATE THAT FINDS DUPLICATION IS EVIDENCE THE ORDER IS WRONG.** Deduplication is not a property
+to be checked; it is a consequence of deciding a type once. Where the decision is made once, a
+census over the output can only ever confirm it — which is what a regression guard is for, and is
+all these gates should be.
+
+**SO THE ORDER IS FIXED AND IT IS NOT NEGOTIABLE BY A HANDLER:**
+
+1. **The catalogue is built COMPLETE, over the whole bundle, before any lowering** — every layer,
+   including the repeated-document layer above L3.
+2. **Every node asks it. Not one seam, every node.** A node's type is a reference to an entry, or
+   a fresh type where the node is genuinely unique, and "genuinely unique" is the catalogue's
+   answer rather than a handler's assumption.
+3. **A name is minted per ENTRY and never per position.** This is what makes a role word claiming
+   a subject's name impossible by construction: a position has a role, an entry has a subject, and
+   only a subject gets a name.
+4. **Emission projects the catalogue.** Nothing rewrites emitted output — §2 already forbids that,
+   and post-hoc deduplication is the same thing wearing a census.
+
+**THE COST OF HAVING BUILT IT THE OTHER WAY IS THE ONE THIS PROJECT KEEPS PAYING**: each duplication
+is discovered separately, by an instrument written for it, after the tree is emitted — and the
+instruments then need their own gates, their own sets, and their own exemptions. That is the
+incidental complexity, and it is not inherent to compiling JSON Schema.
+
 ### The NAME comes from the bundle, so a catalogue entry is derived and not minted
 
 §4's standing rule. For L0 this is already decided and measured: 203 vocabularies carry exactly
