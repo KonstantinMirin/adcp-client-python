@@ -7,6 +7,8 @@
       "document": "core/currency-code.json",
       "pointer": "",
       "names": "ISO 4217 currency code",
+      "defect": "the bundle states the pattern '^[A-Z]{3}$' at 86 sites in 62 documents and titles it at none of them, so a consumer reading the schemas cannot tell a currency code from any other three uppercase letters -- two of those sites are an IATA airport code",
+      "ask": "adcontextprotocol/adcp#8525",
       "apart": [
         {
           "document": "core/flight-item.json",
@@ -24,24 +26,32 @@
       "document": "core/country-code.json",
       "pointer": "",
       "names": "ISO 3166-1 alpha-2 country code",
+      "defect": "the bundle states the pattern '^[A-Z]{2}$' at 71 sites in 51 documents and titles it at none of them, so every one of them is a fresh anonymous constraint to a reader and to a generator",
+      "ask": "adcontextprotocol/adcp#8525",
       "apart": []
     },
     {
       "document": "core/domain-name.json",
       "pointer": "",
       "names": "a DNS domain name",
+      "defect": "the bundle states the LDH-label pattern at 55 sites in 43 documents and titles it at none of them",
+      "ask": "adcontextprotocol/adcp#8525",
       "apart": []
     },
     {
       "document": "core/https-url.json",
       "pointer": "",
       "names": "an https URL",
+      "defect": "the bundle states 'format: uri' beside the pattern '^https://' at 47 sites in 31 documents and titles it at none of them; adcontextprotocol/adcp#8398 is the seven further uri patterns the same omission produced",
+      "ask": "adcontextprotocol/adcp#8525",
       "apart": []
     },
     {
       "document": "core/idempotency-key.json",
       "pointer": "",
       "names": "a client-generated at-most-once execution key",
+      "defect": "the bundle states the pattern '^[A-Za-z0-9_.:-]{16,255}$' at 69 sites in 66 documents and titles it at none of them, so a key whose at-most-once semantics a client must honour is indistinguishable from the ten receipt and status identities that share its characters",
+      "ask": "adcontextprotocol/adcp#8525",
       "apart": [
         {
           "document": "core/reporting-adjustment-receipt.json",

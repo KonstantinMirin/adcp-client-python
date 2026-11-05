@@ -38,6 +38,34 @@ patched document no longer asserts -- the record would still show it, because ``
 keeps it, and the check would pass over a patch that had quietly widened the protocol.
 Requiring the node to account for all of them closes that gap at the only place it can be
 closed, which is the match.
+
+**EVERY ENTRY NAMES THE DEFECT IT COMPENSATES FOR AND THE ASK FILED AGAINST IT**, and
+:func:`load` and :func:`additions` REFUSE one that does not.
+``docs/plan/architecture.md``, "THE JUDGMENT IS DATA, NEVER CODE": *"an entry with no named
+defect is not a judgment, it is a preference, and it does not belong in the table"*.  Two
+strings per entry rather than one, because they answer different questions -- the defect is
+what the bundle does, the ask is where we said so -- and a table whose rows carry only the
+second is a list of issue numbers nobody can check against the schema.
+
+**THE ADDITIVE KIND, and its failure clause is the part that is easy to drop.**  An
+:class:`Addition` is one published document, one pointer and one keyword: *"where extraction
+is wrong -- a structure stated once that merely wants naming -- the override adds the
+keyword in place"*.  It inherits every property of the extraction and replaces exactly one,
+because it has no document of its own for :func:`load`'s refusal to range over:
+
+* an extraction FAILS the day its ask lands because the published bundle comes to hold the
+  document the manifest names;
+* an addition fails the day its ask lands because **the node comes to carry the keyword
+  itself**, and :func:`additions` raises there rather than overwriting.  An additive
+  override that silently won over a published value is the one form of this mechanism that
+  could outlive its cause invisibly, and it would do so while looking like success.
+
+**AND AN ADDITION MAY ONLY ADD AN ANNOTATION**, by the same predicate the record check
+reads.  §1's admissibility line is byte-identity and an addition moves the record by exactly
+the annotation it adds, so what holds for it is the condition byte-identity was reached for
+(:func:`seen_by_a_validator`) -- and that condition is only available where the keyword
+decides no acceptance.  A manifest asking for a ``minItems`` would be a fork of the protocol
+wearing a patch's clothes, so it is refused at load rather than reported after apply.
 """
 
 from __future__ import annotations
@@ -86,6 +114,12 @@ class Extraction(NamedTuple):
     subschema: dict
     #: ``(document, pointer)`` of each shape-matching site that means something else.
     apart: frozenset[tuple[str, str]]
+    #: **What the BUNDLE does that this entry compensates for**, as a sentence about the
+    #: published documents.  The module docstring's rule, and :func:`load` refuses an entry
+    #: stating none.
+    defect: str = ""
+    #: **Where we said so**: the ask filed against the defect.
+    ask: str = ""
 
 
 def base_uri(bundle_dir: Path) -> str:
@@ -118,20 +152,39 @@ def base_uri(bundle_dir: Path) -> str:
     return found.pop()
 
 
+def _judged(entry: Mapping, at: str) -> tuple[str, str]:
+    """The ``defect`` and the ``ask`` of one manifest entry, or raise.
+
+    The module docstring's rule, enforced at the one door every entry comes through: an
+    entry with no named defect is a preference and not a judgment, and an entry with no ask
+    is a fork nobody upstream has been told about.  Blank counts as absent -- a key present
+    with an empty string is the same preference with a key over it.
+    """
+    defect = str(entry.get("defect") or "").strip()
+    ask = str(entry.get("ask") or "").strip()
+    if not defect:
+        raise ValueError(f"{at}: the entry names no upstream defect, so it is a preference")
+    if not ask:
+        raise ValueError(f"{at}: the entry names no ask filed against its defect")
+    return defect, ask
+
+
 def load(patch_set: Path, published: Path) -> tuple[Extraction, ...]:
     """The patch set's extractions, in manifest order, with each subschema read.
 
     Raises ``ValueError`` for a manifest entry naming a document the patch set does not
-    carry, a pointer naming no node of it, or a document path the published bundle already
+    carry, a pointer naming no node of it, a document path the published bundle already
     holds -- a patch REPLACING a published document is a different operation from this one
-    and the record check could not tell the two apart.
+    and the record check could not tell the two apart -- or an entry naming no upstream
+    defect and no ask (:func:`_judged`).
     """
     manifest = json.loads((patch_set / MANIFEST).read_text())
     prefix = base_uri(published)
     held = set(bundle.portable(published))
     out = []
-    for entry in manifest["extractions"]:
+    for entry in manifest.get("extractions", ()):
         document, pointer = entry["document"], entry["pointer"]
+        defect, ask = _judged(entry, f"{document}#{pointer}")
         if document in held:
             raise ValueError(f"{document}: the published bundle already holds it")
         path = patch_set / DOCUMENTS / document
@@ -147,8 +200,113 @@ def load(patch_set: Path, published: Path) -> tuple[Extraction, ...]:
         # and the fragment row binds a SYMBOL where the document row binds the target's
         # whole shape.  Spell it the way the bundle does, or the patch is not the diff.
         uri = f"{prefix}{document}" + (f"#{pointer}" if pointer else "")
-        out.append(Extraction(document, pointer, uri, node, apart))
+        out.append(Extraction(document, pointer, uri, node, apart, defect, ask))
     return tuple(out)
+
+
+class Addition(NamedTuple):
+    """One PUBLISHED node, one keyword it does not state, and the value to add there.
+
+    The second kind of override and the smaller one: where extraction is wrong -- a
+    structure stated once that merely wants naming -- there is no new document and no
+    rewrite, only a keyword the bundle omits at a node it already has a path and a pointer
+    for.  Extracting such a node would give the structure a SECOND name, which is the one
+    thing naming it was for.
+
+    **Its failure clause is :attr:`keyword` carried by the node itself**, which is
+    :func:`load`'s "the published bundle already holds it" read for a kind that adds no
+    document.  See :func:`additions`.
+    """
+
+    #: Bundle-relative path of the PUBLISHED document the keyword is added to.
+    document: str
+    #: JSON Pointer naming the node; ``""`` is the document's root.
+    pointer: str
+    #: The keyword added there.  An ANNOTATION, by ``bundle.is_an_annotation`` at that
+    #: node's position, and refused otherwise.
+    keyword: str
+    #: Its value.
+    value: object
+    #: **What the BUNDLE does that this entry compensates for.**
+    defect: str
+    #: **Where we said so**: the ask filed against the defect.
+    ask: str
+
+
+def additions(patch_set: Path, published: Path) -> tuple[Addition, ...]:
+    """The patch set's additions, in manifest order, each checked against the published node.
+
+    Raises ``ValueError``, and each refusal is one of the mechanism's declared properties
+    rather than input validation:
+
+    * **the node already carries the keyword.**  THE REMOVABILITY GUARANTEE, and the reason
+      this kind needs one of its own: an extraction fails the day the published bundle holds
+      the document it names, and an addition has no document, so what fails is the keyword
+      arriving at the node.  The instruction is then to DELETE the entry -- never to prefer
+      our value to the protocol's, which is the one way an override here could outlive its
+      cause while looking like success;
+    * **the keyword decides acceptance at that position.**  By
+      :func:`codegen.bundle.is_an_annotation`, the predicate ``record`` itself reads, so
+      there is no second list of which keyword matters.  An addition moves the record by
+      exactly what it adds, so the only admissibility line left to it is
+      :func:`seen_by_a_validator`, and that line is unreachable for a keyword a validator
+      acts on;
+    * **the document or the pointer names nothing**, which for this kind is the published
+      bundle's own document set and not the patch set's;
+    * **the entry names no defect or no ask** (:func:`_judged`).
+    """
+    manifest = json.loads((patch_set / MANIFEST).read_text())
+    held = set(bundle.portable(published))
+    out = []
+    for entry in manifest.get("additions", ()):
+        document, pointer = entry["document"], entry["pointer"]
+        keyword = entry["keyword"]
+        at = f"{document}#{pointer or '/'}"
+        defect, ask = _judged(entry, at)
+        if document not in held:
+            raise ValueError(f"{document}: the published bundle holds no such document")
+        node = bundle.node_at(bundle.read(published, document), pointer)
+        if not isinstance(node, dict):
+            raise ValueError(f"{at} names no schema node")
+        if keyword in node:
+            raise ValueError(
+                f"{at}: the published node already states {keyword!r}, so this entry's "
+                f"defect is gone -- delete it rather than overwrite {node[keyword]!r} "
+                f"({ask})"
+            )
+        position = _position_of(bundle.read(published, document), pointer)
+        if position is None or not bundle.is_an_annotation(keyword, position):
+            raise ValueError(
+                f"{at}: {keyword!r} decides acceptance at a {position} position, so adding "
+                "it forks the protocol rather than annotating it"
+            )
+        out.append(Addition(document, pointer, keyword, entry["value"], defect, ask))
+    return tuple(out)
+
+
+def added_at(node: dict, pointer: str, keyword: str, value: object) -> dict:
+    """``node`` with ``keyword`` added at ``pointer``, and nothing else moved.
+
+    Rebuilt rather than mutated, by the same pair of functions
+    (:func:`codegen.bundle.subschemas`, :func:`codegen.bundle.rebuilt`) that
+    :func:`rewritten` descends and that :func:`codegen.bundle.record` inlines along, so the
+    two kinds of override cannot disagree about which node a pointer names.
+
+    The keyword lands LAST in the node's key order, which is the one latitude RFC 8259
+    gives an object's members and the latitude :func:`differing` already takes over the
+    canonical serialisation.
+    """
+    if pointer == "":
+        return {**copy.deepcopy(node), keyword: copy.deepcopy(value)}
+    done: dict[str, object] = {}
+    for _, suffix, sub, _ in bundle.subschemas(node):
+        if isinstance(sub, dict) and (pointer == suffix or pointer.startswith(f"{suffix}/")):
+            done[suffix] = added_at(sub, pointer[len(suffix) :], keyword, value)
+    descended = {keyword_ for keyword_, _, _, _ in bundle.subschemas(node)}
+    return {
+        key: bundle.rebuilt(key, value_, done) if key in descended else copy.deepcopy(value_)
+        for key, value_ in node.items()
+    }
 
 
 def _matches(node: Mapping, position: keywords.Position, held: Extraction) -> bool:
@@ -298,13 +456,22 @@ def apply(published: Path, patch_set: Path, out: Path) -> tuple[Extraction, ...]
     here would state a second answer to a question the published bundle answers once --
     and nothing reads them (``bundle.portable`` excludes them, which is the population the
     record check ranges over).
+
+    **The ADDITIONS land after the rewrite**, on the node the rewrite left at that pointer.
+    Both orders are defensible and this one is checkable: a keyword added before the
+    rewrite would be a sibling the match reads as an annotation, so the entry that asked for
+    it would silently decide whether its own site still matched an extraction.
     """
     extractions = load(patch_set, published)
+    grown = additions(patch_set, published)
     if out.exists():
         shutil.rmtree(out)
     shutil.copytree(published, out)
     for document in bundle.portable(published):
         doc = rewritten(document, bundle.read(published, document), extractions)
+        for grows in grown:
+            if grows.document == document:
+                doc = added_at(doc, grows.pointer, grows.keyword, grows.value)
         (out / document).write_text(json.dumps(doc, indent=2) + "\n")
     for held in extractions:
         destination = out / held.document
