@@ -2512,6 +2512,32 @@ set gains its complement.** The condition above is then one clause: the key, pre
 value forbidden to be `v`. Absent satisfies it, present-and-different satisfies it,
 present-and-equal does not — which is the negation exactly.
 
+**THE THREE PRESENCE STATES AND THE VALUE SET'S COMPLEMENT ARE PROPERTIES OF THE PRIMITIVE, NOT OF
+THE DIRECTION THEY WERE DERIVED FROM.** They are stated above by way of a negated condition,
+because that is where the need for them was found — and a lowering read the illustration as the
+derivation, minting the immaterial state only inside the De Morgan step and refusing it elsewhere
+on the ground that *"a clause cannot say absent or one of these."* It can; the primitive was built
+to.
+
+Two conditions reduce to them **with no negation anywhere:**
+
+- **A `properties` entry for a key NO `required` LIST NAMES IS THE IMMATERIAL STATE READ
+  POSITIVELY.** Draft-07 reaches such an entry only where the key arrived, so the entry already
+  says *absent, or present and in this set* — which is exactly that state, stated forwards.
+- **A `not` over a `const` or an `enum` AT A PROPERTY DECLARATION is the complement read at a
+  CLAUSE** rather than at a whole condition: the key, presence as the declaration gives it, and
+  that value forbidden.
+
+**AND THE COMPLEMENT NEGATES WHICHEVER PRESENCE STATE THE INNER CLAUSE CARRIES — three negations,
+not one.** Reading the new inner state as the old one makes the condition hold at the ABSENT
+instance where the document's negation does not, which is a **narrowing** and is the one error
+worse than the widening being removed.
+
+**AN ILLUSTRATION IS NOT A SCOPE, AND THIS DOCUMENT CANNOT MARK THE DIFFERENCE FOR THE READER — SO
+THE RULE IS STATED OVER THE PRIMITIVE AND THE EXAMPLE IS MARKED AS ONE.** A capability introduced
+beside the case that motivated it will be read as belonging to that case; every sentence here that
+gives a mechanism must say what it ranges over, independently of where it was found.
+
 **And this is the lever sentence 2 was carrying alone.** The overwhelming majority of the
 conditions that make declaration unaffordable are this one form, and under the complement they
 **lower exactly and declare nothing**. Declaring them was never the answer; it was the price of a
