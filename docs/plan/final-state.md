@@ -30,7 +30,7 @@ code is new; there is no legacy to carry and nothing to grandfather. A red is a 
 owner or it is fixed — never a marker, because a marker converts a failing check into a passing
 suite and the suite is what anyone reads.
 
-Three forms of the same evasion, and each has been found here:
+Three forms of the same evasion:
 
 - **An expected-failure marker.** Legitimate only as a gate written before the work it gates, and
   then it must be strict, so that the moment the work lands the marker's own passing is an error
@@ -43,33 +43,28 @@ Three forms of the same evasion, and each has been found here:
   it is the artifact every reading is about.
 
 **AN INVARIANT OVER THE CODE IS NOT A STRUCTURAL ASSERTION, AND THE DIFFERENCE IS NOT A MATTER OF
-DEGREE.** The rule against asserting code structure is right about what it
-names — a count of lines, imports or call sites freezes the structure, blocks the refactor it was meant
-to encourage, and proves nothing, because there are unboundedly many wrong structures and
-enumerating a few is not a strategy. **It has been read as forbidding every check over the code,
-and that reading is what let incidental complexity accumulate unmeasured.**
+DEGREE.** The rule against asserting code structure is right about what it names — a count of
+lines, imports or call sites freezes the structure, blocks the refactor it was meant to encourage,
+and proves nothing, because there are unboundedly many wrong structures and enumerating a few is
+not a strategy. It does not forbid every check over the code.
 
 A COUNT says *there are N of these*. An INVARIANT says *this cannot happen*. The first goes stale
 the moment anyone moves a line; the second is a statement about behaviour that survives any
-refactor preserving it. **Invariants over the code are required, and these are the ones this
-project has paid for by not having:**
+refactor preserving it. **Invariants over the code are required, and these are the ones:**
 
 - **every producer reaches a consumer.** A set with several producers and one consumer, placed
-  where some producers do not reach it, loses facts silently — and did.
+  where some producers do not reach it, loses facts silently.
 - **a claimed funnel is the only path.** A comment asserting "the one funnel X passes through" is
   an invariant written as prose; where a second path exists it is a defect the comment hides.
 - **a derived reading has one owner.** A callee that re-derives what the caller already knows is
   both a cost and a divergence waiting to happen.
-- **a figure in a comment or a docstring is derived, never written.** Every stale census in this
-  code was a number someone typed, and each was believed for as long as it stood.
+- **a figure in a comment or a docstring is derived, never written.**
 - **a name a layer mints is a name**, not an index. A layer that hoists a repeated thing and calls
   it by its position is doing anonymously what the layer above it does with judgement.
 
 **And the ordinary tools count as invariants here.** A linter's unused-import, shadowed-name,
 mutable-default and dead-code rules are invariants over behaviour, not structural pins — so their
-absence is not neutrality, it is an unmeasured surface. A repository with none has no reading on
-its own incidental complexity, which is the condition under which that complexity is mistaken for
-the problem's own.
+absence is not neutrality, it is an unmeasured surface.
 
 **A ROW THAT MOVES NO READING IS NOT BRIEFED.**
 
@@ -115,13 +110,8 @@ constrained scalars, object types, array types, and the repeated DOCUMENT above 
 type is constructed from that one definition, and the entry lives in the narrowest namespace
 containing every position that references it.
 
-**This reading was written as "each distinct VOCABULARY is one type" and that was too narrow.** A
-vocabulary is a set of values, so the sentence asked for one layer while the design specifies
-several — and when the value-list gate went green the others were neither built nor asked for. A
-reading narrower than the rule it is named for does not merely miss work: it makes this file lie
-about what done means. **So this reading names no number of layers: it names the catalogue, and the
-catalogue's layers are the structure document's to add to.** A count here is a ceiling nobody
-intended, and it has already been one once.
+**This reading names no number of layers: it names the catalogue, and the catalogue's layers are
+the structure document's to add to.** A count here is a ceiling nobody intended.
 
 **Two positions stating the same thing are not automatically the same concept.** The three-way
 split is the rule at every layer, not only the first: one named type where the bundle names the
@@ -139,16 +129,14 @@ fix, the second is faithful emission and an ask stated over a set of the bundle.
 compiler **decides a type once** — the catalogue is built complete before anything is lowered,
 every node asks it, and **a name is minted per ENTRY and never per position.** Where that order
 holds, there is nothing for a census to find; where it is inverted, no census can do better than
-enumerate the leaks one instrument at a time, which is how every duplication this project has found
-was found. **A gate that FINDS duplication is therefore evidence the order is wrong, not evidence
-the gate is working.** The structure document fixes that order and a handler does not get to
-negotiate it.
+enumerate the leaks one instrument at a time. **A gate that FINDS duplication is therefore evidence
+the order is wrong, not evidence the gate is working.** The structure document fixes that order and
+a handler does not get to negotiate it.
 
 **Decided by** the catalogue being the thing that answers, at every node — and a regression guard
 per layer, keyed on that layer's own identity, confirming that nothing slipped. The guard's key is
 that layer's identity: the value list, the constraint set, the field set, the element type. **A
-guard keyed on a name, an export path or a constraint set cannot see a repeated object type**,
-which is how whole layers stayed invisible while their own measurements sat in the design. And
+guard keyed on a name, an export path or a constraint set cannot see a repeated object type.** And
 **not every layer has a set of classes to read over the tree**: an array type renders as `list[X]`
 inside an annotation and declares no class, so the array layer is read off the bundle's own stating
 positions while the object layer can be read off either. A guard that assumes every layer appears
@@ -170,12 +158,10 @@ branches and aliases alike — at exactly one such path, with the domain derived
 own path. No second way reaches the same class, and no name in one namespace means two classes.
 
 **AND ONE NAME MEANING TWO THINGS IN TWO NAMESPACES IS NOT A VIOLATION OF THIS READING, BUT IT IS
-NOT NOTHING EITHER.** `AudienceSource` is a class at `adcp.types.core` and an enumeration at
-`adcp.types.enums`: `core/audience-source.json` is an object with a `oneOf`, `enums/audience-source.json`
-is a string with six members, neither references the other, and **both are titled "Audience
-Source"**. Reading 4 is right to keep them apart — they admit different sets — and this reading is
-satisfied, because each is at exactly one path and no single namespace carries one name for two
-classes.
+NOT NOTHING EITHER.** Where the bundle titles two unrelated nodes alike — one an object with a
+`oneOf`, one an enumeration, neither referencing the other — reading 4 is right to keep them apart,
+because they admit different sets, and this reading is satisfied, because each is at exactly one
+path and no single namespace carries one name for two classes.
 
 **What it costs is a consumer importing from the wrong module and getting something that silently
 is not what they meant**, which no gate here can see because nothing is duplicated. So it is
@@ -202,7 +188,7 @@ the first two alone pass on a checker that sees nothing: a consumer module using
 correctly checks clean; a consumer module misusing a field, an enum member and a constructor
 reports one error per misuse; and removing the marker from the *installed* package makes every one
 of those errors vanish, leaving only the missing-marker notice. Checking our own source tree
-decides nothing here — it is readable with or without a marker, which is why the gap survived.
+decides nothing here — it is readable with or without a marker.
 
 ## 8. The wheel is the artifact
 
@@ -226,28 +212,21 @@ both directions.
 
 ## 10. Every spelling an application uses today resolves to our object
 
-**EVERY TYPE SPELLING AN APPLICATION USES RESOLVES TO OUR OBJECT.** Every name upstream exposes
-publicly **from its type surface** either **is** one of ours, or is an **alias** to one of ours, or
-carries a **verdict** saying why it should not exist.
+**EVERY TYPE SPELLING AN APPLICATION USES RESOLVES TO OUR OBJECT.** Every name upstream's wheel
+exposes publicly **from its type surface** either **is** one of ours, or is an **alias** to one of
+ours, or carries a **verdict** saying why it should not exist.
 
-**THIS READING IS STATED OVER THE TYPE SURFACE AND NOT OVER UPSTREAM'S WHOLE WHEEL, because the
-wider claim was measured and is not achievable by anything this project emits.** It said "installs
-in place of upstream `adcp` and keeps working without an edit". Measured: of the distinct names
-consumer code imports, **under a quarter are types** — the rest is machinery we do not emit and
-cannot derive from a schema. And the three mechanisms that would let our types shadow theirs while
-depending on them were tested with real installs and all three fail, **for one reason that is not a
-packaging reason**: upstream's own machinery imports its types from `adcp.types`, so a shadow of
-that module breaks the package that depends on it. Its non-type code imports **806 distinct
-(module, name) pairs from `adcp.types` across 1,628 sites, of which none resolves at the same
-module against ours and 421 exist nowhere in ours at all** — and those come from the very layers
-this reading's own verdicts say should not exist.
+**THIS READING IS STATED OVER THE TYPE SURFACE AND NOT OVER UPSTREAM'S WHOLE WHEEL.** Most of what
+consumer code imports from that wheel is machinery this project does not emit and cannot derive
+from a schema. **And no layer of ours shadows `adcp.types`**: upstream's wheel imports its own
+types from that module, so a shadow of it breaks the package that depends on it, and the names
+behind those imports come from the very layers this reading's own verdicts say should not exist.
 
-**AND THE FLAT `adcp.types` NAMESPACE IS AN ALIAS LAYER, WHICH IS WHAT IT WAS ALWAYS FOR (the
-owner's decision).** §1's design already separates the private generated tree from the public
-surface for exactly this reason: **so that a generated class can change without disturbing what an
-application imports.** Read that way the 806-pair problem is not a problem at all — every name
-upstream's flat namespace carries becomes **an alias into whatever we generate**, and
-`adcp.types.<domain>` is the new surface beside it rather than instead of it.
+**THE FLAT `adcp.types` NAMESPACE IS AN ALIAS LAYER.** §1's design separates the private generated
+tree from the public surface for exactly this reason: **so that a generated class can change
+without disturbing what an application imports.** Every name upstream's flat namespace carries
+becomes **an alias into whatever we generate**, and `adcp.types.<domain>` is the new surface beside
+it rather than instead of it.
 
 So the three layers are:
 
@@ -263,20 +242,15 @@ registry layer — an alias has nothing to point at, and **minting a nodeless cl
 import is the back door this ordering exists to close.** Those are named in a migration guide, with
 what to use instead.
 
-**AND THE SET IS WHAT CONSUMERS IMPORT, NOT WHAT UPSTREAM EXPORTS.** The export surface is tens of
-thousands of spellings and most of it is reachable only because a module forgot to declare what it
-exports. **The set that decides this reading is measured off real consumer code** — upstream's own
-example server and a production application — and it is the only denominator that means anything
-here. Measured, consumers touch well under half of the flat namespace's declared names, and **the
-flat module alone carries more import sites than every `adcp.types.<something>` combined**, which
-is why that module is where the compatibility surface lives.
+**AND THE SET IS WHAT CONSUMERS IMPORT, NOT WHAT UPSTREAM'S WHEEL EXPORTS.** Most of that export
+surface is reachable only because a module forgot to declare what it exports. **The set that decides
+this reading is measured off real consumer code** — upstream's own example server and a production
+application — and it is the only denominator that means anything here.
 
 **AN ALIAS IS KEYED ON A SCHEMA SUBJECT, NEVER ON A NAME.** A name resolves to a *different* class
 of ours depending on which upstream module the import came from, so one flat alias cannot serve
-both — and resolving by name alone put one upstream `Unit` onto a class from an entirely different
-document, two documents sharing one word. **The key is identity: the field set read by wire alias,
-or the enum's value list.** A name is the thing being aliased, not the thing that decides what it
-aliases to.
+both. **The key is identity: the field set read by wire alias, or the enum's value list.** A name
+is the thing being aliased, not the thing that decides what it aliases to.
 
 **AND A COLLAPSE MUST NOT DECIDE A SPLIT — §4's RULE, AT THIS LAYER.** An instrument that matches
 upstream's names onto ours by agreement is a collapse, and many upstream names landing on one class
@@ -312,12 +286,12 @@ exist**: a duplicate of theirs, a hand-written ergonomic layer, or a class from 
 that is not ours. **Name the schema node, or say there isn't one.** Neither verdict may be reached
 by reading two class definitions side by side.
 
-**And the comparison is one-directional.** Every name upstream exposes gets a verdict; the reverse
-is not asked. **A smaller count on our side is the expected outcome and not a deficit.**
+**And the comparison is one-directional.** Every name upstream's wheel exposes gets a verdict; the
+reverse is not asked. **A smaller count on our side is the expected outcome and not a deficit.**
 
-**THE TARGET IS A NAME AT A CANONICAL MODULE, NEVER A SPELLING.** Upstream exposes one name at up
-to nine modules, and most of its public modules declare no `__all__` at all — so the set of
-spellings is several times the set of names. **Reproducing spellings would put one object at nine
+**THE TARGET IS A NAME AT A CANONICAL MODULE, NEVER A SPELLING.** Upstream's wheel exposes one name
+at several modules, and most of its public modules declare no `__all__` at all — so the set of
+spellings is several times the set of names. **Reproducing spellings would put one object at several
 export paths and break reading 6 outright**, which is the back door this ordering exists to close:
 compatibility that reintroduces the duplication the rest of the project removed. So an alias layer
 targets the NAMES, at a declared set of modules, and a spelling upstream carries only because its

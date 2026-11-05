@@ -9,10 +9,7 @@ document governs the meaning of a keyword and this one governs where that meanin
 down and who reads it; §13 names the places where its wording forces a structure this
 document decides differently, and the owner of the semantics decides those.
 
-No site counts appear here. Evidence for the state of the code is in
-`docs/reviews/architecture-2026-10-25.html` and `docs/reviews/codegen-vs-design-2026-10-25.html`;
-§12 says which of their findings this structure answers and which of the present structure
-it keeps.
+No site counts appear here.
 
 ---
 
@@ -45,17 +42,17 @@ Beside the pipeline, three modules every layer reads and none of them writes:
   keyword, at every position, with what it compiles to, whether the model renders it as a
   fact, which structural keywords descend into which position, and **which widening in §2's chain
   the keyword widens to where the handler cannot render it**.
-- `codegen/attribution.py` — **new**: the one registry of site-level upstream
+- `codegen/attribution.py` — the one registry of site-level upstream
   issues, keyed by document, pointer and keyword. A second declaration module beside
   `keywords.py` and a leaf like it, read by `lower/` to attribute an approximation and by
   `verify/` to grade one. It is a declaration and not a verifier artifact, which is why it is
   here and not under `verify/`: a keyword-level decision lives in a cell, a site-level one lives
   here, and nothing else holds either.
-- `codegen/refusal.py` — the one refusal type, a value and not an exception, **now minted only
+- `codegen/refusal.py` — the one refusal type, a value and not an exception, **minted only
   by `bundle.record`**.
 
 And one package that reads the output and the record but never the walk:
-`codegen/verify/`, which is today's `harness.py` and `dump_exemptions.py`.
+`codegen/verify/`, which is `harness.py` and `dump_exemptions.py`.
 
 ---
 
@@ -82,31 +79,30 @@ Four rules follow, and each is held strictly:
 
 - **Immutable node representations.** `codegen/schema/nodes.py` declares the node kinds as
   frozen dataclasses. A handler reads fields; it never reads a dict and never rewrites a node.
-  The three places the walk rewrites a node today — the key schema given a `type` word, the
+  The three places a walk would rewrite a node — the key schema given a `type` word, the
   extras store rebuilt as a mapping, a multi-type node cut into one member per type — are
   readings the parser makes once, at the position that implies them (§4).
 - **Total functions from node to decision.** `decide(node, ctx)` returns `Lowering`, and
-  nothing else. *This was `Lowering | Refusal` and the semantics document's §2 collapsed it on
-  2026-10-26:* a keyword a handler cannot render widens the annotation and declares an
-  approximation, so no node is ever without a lowering and the union has one inhabitant left.
- **What that costs is a type-system guarantee, and it has to be replaced rather than mourned.**
-  The sum type used to make a caller that read a `Lowering` field without handling the other
-  branch a type error, which was the mechanical form of §9's "a crash is not an outcome". With
+  nothing else. The semantics document's §2 collapsed the seam: a keyword a handler cannot
+  render widens the annotation and declares an approximation, so no node is ever without a
+  lowering and the union has one inhabitant.
+ **The type-system guarantee that collapse gives up is replaced by a test, never merely
+  dropped.** A sum type makes a caller that reads a `Lowering` field without handling the other
+  branch a type error, which is the mechanical form of §9's "a crash is not an outcome". With
   one inhabitant there is no branch to force, so the obligation moves into each handler: a
   handler's match over the cases of its own node is total, its final case calls
-  `approximate(node, keyword)`, and **no handler raises**. The import-rule tests gain the third
-  boundary that holds it (§11), and §8 of the semantics document gains the two equalities that
-  catch a widening nobody declared. A guarantee the type checker held is now held by a test, and
-  saying so is better than pretending the trade did not happen.
+  `approximate(node, keyword)`, and **no handler raises**. The import-rule tests carry the third
+  boundary that holds it (§11), and §8 of the semantics document carries the two equalities that
+  catch a widening nobody declared.
 - **Composition by explicit combinators.** `Lowering` composes with `+`: a parent's declarations
   are its own followed by its children's, its imports the union, its approximations and its
-  reports the concatenation. **The algebra changed with the seam.** A refusal was an ABSORBING
-  element — anything composed with one was that one, which is how a child's refusal killed a
-  document — and an approximation is an ADDITIVE one: composition is total, the parent always
+  reports the concatenation. **The algebra is ADDITIVE, not absorbing.** A refusal was an
+  absorbing element — anything composed with one was that one, which is how a child's refusal
+  killed a document — and an approximation is additive: composition is total, the parent always
   gets a `Lowering`, and what travels upward is accumulated rather than propagated. So
-  `first_refusal(results)` loses every caller in `lower/` and keeps exactly one, in
-  `bundle.record`, where it still returns the earliest refusal in document order over the
-  references the inliner could not resolve. Its contract is unchanged; its subject is now the
+  `first_refusal(results)` has exactly one caller, in
+  `bundle.record`, where it returns the earliest refusal in document order over the
+  references the inliner could not resolve. Its contract is unchanged; its subject is the
   record and not the walk.
 - **Effects at the two ends.** `bundle.py` reads files. `emit.py` writes files and prints the
   report. Nothing between them touches a file, an environment variable, a clock or a global.
@@ -115,104 +111,87 @@ Four rules follow, and each is held strictly:
   calls back into the run.
 
 **What becomes of the exception-based refusal.** `Refusal` stays in `codegen/refusal.py` and
-stops subclassing `Exception`. The one `try` left in the compiler is around nothing: a defect in
+does not subclass `Exception`. The one `try` left in the compiler is around nothing: a defect in
 the compiler itself — two selectors claiming one node, two constraints deriving one alias name —
 stays an exception (`BuildFailure`) that no layer catches, because it is not an outcome of any
 document and the run must stop on it.
 
-**What becomes of the refusal itself, 2026-10-26.** The directive narrows `Refusal` to one
-producer and one meaning: `bundle.record` could not build a document of record, because a
-`$ref`'s target is not a bundle document or because two documents reference each other in a
-cycle. `emit` is its only reader. Three consequences, each mechanical:
+**`Refusal` has one producer and one meaning:** `bundle.record` could not build a document of
+record, because a `$ref`'s target is not a bundle document or because two documents reference
+each other in a cycle. `emit` is its only reader. Three consequences, each mechanical:
 
 - **`Kind.DEFERRED` retires.** It meant "the lowering for this position has not been written",
-  and under the directive unwritten code produces an approximation and not a refusal, so the
-  kind has no instance left to name. The semantics document's §9 rule that minted it is replaced
-  there, and `is_a_verdict` becomes a question with one answer.
+  and unwritten code produces an approximation and not a refusal, so the
+  kind has no instance left to name. The semantics document's §9 states the replacement rule,
+  and `is_a_verdict` becomes a question with one answer.
 - **`Kind.CHAINED` survives, and moves.** A document whose reference target has no record has no
   record either, so the inliner refuses CHAINED `through=` the target's refusal and
-  `Refusal.resolved` keeps its meaning. What changes is where it is minted: inside
+  `Refusal.resolved` keeps its meaning. It is minted inside
   `bundle.record`, not at the reference's lowering, because a reference the walk can see is one
   the record already inlined.
 - **`Kind.VERDICT` is the only resolved kind.** With DEFERRED gone and CHAINED delegating,
-  `RESOLVED_KINDS` has one member, and the figure the exit condition reads is just the count of
+  `RESOLVED_KINDS` has one member, and the figure the exit condition reads is the count of
   refused documents. The enum stays an enum rather than collapsing into a boolean: a bundle that
   grows a case neither kind covers needs somewhere to put it, and the cost of keeping the type
   is nothing.
 
 **The handler's own obligation.** `approximate(node, keyword)` is to an approximation what
 `Refusal`'s constructors were to a kind: the ONE place a widening is minted, reading the widening off
-the cell (§3). A handler never chooses a widening and never writes an attribution, for the reason the
-reviews recorded for refusal kinds — a decision made at the site that needs it is a decision
+the cell (§3). A handler never chooses a widening and never writes an attribution: a
+decision made at the site that needs it is a decision
 nobody can audit against the table that was supposed to hold it.
 
 ---
 
-### The seam collapse goes AFTER the declared-backlog equality, and the walk's per-node entry goes with the carriers
+### Where the walk's per-node entry lives
 
-**Order.** §2 collapsed this seam in writing and stated the trade: *"A guarantee the type checker
-held is now held by a test, and saying so is better than pretending the trade did not happen."* It
-named three replacements, and one of them is §8's *"two equalities that catch a widening nobody
-declared"*. **That equality is red today**, off by three `anyOf` sites in `media-buy/`.
-
-So the collapse waits on it, and the reason is not tidiness. Every one of the 93 sites sits at a
-position no portable document reaches — that is what `refused == 0` means — so each conversion is
-invisible to `./check`, invisible to the byte compare, **and invisible to the equality that would
-catch the first document to reach one.** Run first, the collapse moves 93 answers from an instrument
-that works to one that does not yet; run after, each lands against a green equality. A red test
-cannot fail more.
-
-**And the collapse cannot be sized up front.** Collapsing the dispatch alone yields 12 type errors,
-not 93: the handlers still answer the sum type, so the checker sees one ring at a time. The work is
-ring by ring and the figure after each ring is the only honest estimate of the next.
-
-**Where the walk's per-node entry lives.** §11's table does not say, and it is the question that
-kept `lower_node` in `compiler.py`. It cannot go in `lower/names.py`: that module is a leaf of the
+§11's table does not say, and it is the question that
+keeps `lower_node` in `compiler.py`. It cannot go in `lower/names.py`: that module is a leaf of the
 decision layer, and hosting the entry would make it the hub every handler recurses through and need
 a second deferred import to break a second cycle. It cannot go in `lower/decide.py` either —
 `decide.py` imports the handlers, so a handler recursing through it is a module cycle rather than a
 deferred edge.
 
 **It goes where the CARRIERS go.** Both the dispatch and the handlers need the entry and neither
-owns it, which is what `compiler.py` accidentally is today; what makes that accidental rather than
-designed is that `compiler.py` also holds `Module`, `Case`, `Target` and `Decided`. `Decided` is
-now `ir.py`'s. As the rest follow, the entry is a thin module importing `ir` and `decide`, with the
-handlers importing `ir` alone — and §11's table gains the row it is missing, naming that module and
-the one direction its arrow runs.
+owns it. What makes `compiler.py` the wrong home is that it also holds `Module`, `Case`, `Target`
+and `Decided`. `Decided` is `ir.py`'s. As the rest follow, the entry is a thin module importing
+`ir` and `decide`, with the handlers importing `ir` alone — and §11's table carries the row naming
+that module and the one direction its arrow runs.
+
+**And the seam collapse lands after §8's equalities are green.** A conversion at a position no
+portable document reaches is invisible to `./check`, invisible to the byte compare, and invisible
+to the equality that would catch the first document to reach one; run after, each lands against a
+green equality. **The collapse also cannot be sized up front:** collapsing the dispatch alone
+leaves the handlers answering the sum type, so the checker sees one ring at a time, and the figure
+after each ring is the only honest estimate of the next.
 
 ### The drawn corpus is COMMITTED
 
-**The payloads are kilobytes of content; drawing them costs minutes per pair.** They live in a
-gitignored directory, so a fresh checkout, a new worktree, a CI job and every key-space change
-redraw all of them — and a held entry is the exception rather than the rule.
+**The payloads are kilobytes of content; drawing them costs minutes per pair.** In a gitignored
+directory, a fresh checkout, a new worktree, a CI job and every key-space change redraw all of
+them, and a held entry is the exception rather than the rule.
 
-`tests/corpus.py` recorded the reason not to commit them, and the reason was sound when it was
-written:
+**The key is `bundle.source_identities`**: the document's own raw bytes, the raw bytes of its
+reference closure, the example count, the format strategies and the generator version. **A
+compiler edit moves nothing. Only a bundle bump does.** A key over `bundle.record` — our own
+inlining — would be invalidated by any compiler edit, leaving a committed corpus permanently stale
+behind a permanently red gate.
 
-> *"a committed corpus is a second derived artifact whose currency has no instrument … the gate for
-> it would have to redden on any in-flight record change, which is correct work."*
-
-**That clause is the load-bearing one and it is now false.** The key was `bundle.record` — our own
-inlining — so any compiler edit invalidated every entry and a committed corpus would have been
-permanently stale with a permanently red gate. The key is now `bundle.source_identities`: the
-document's own raw bytes, the raw bytes of its reference closure, the example count, the format
-strategies and the generator version. **A compiler edit moves nothing. Only a bundle bump does.**
-
-So the obligation the old argument said nothing could grade is now gradeable, and it is the gate
-that comes with the decision: **every graded pair has a committed entry under the current key.** It
+So the obligation is gradeable, and it is the gate that comes with the decision: **every graded
+pair has a committed entry under the current key.** It
 reddens exactly when a bundle bump or a generator bump lands without a redraw — which is a
 deliberate, reviewable event and not an in-flight change — and `harness.corpus_defect` still
 re-offers every held instance to the document on read, so a wrong entry cannot pass quietly.
 
 What this buys: a payload is drawn **once per (document, draw version) in the project's history**,
-not once per checkout per lane per key-space change. What it costs is 0.4 MB in the tree and a
-redraw step on a bundle bump, which is the same discipline the packaged records already carry.
+not once per checkout per lane per key-space change. What it costs is a redraw step on a bundle
+bump, which is the same discipline the packaged records already carry.
 
 ### The widening store's currency is the OBLIGATION, not a second gate
 
-§8's widening obligation draws too, at three sites, and those draws now have a store of their own
+§8's widening obligation draws too, and those draws have a store of their own
 in a separate key space and a separate directory. The accepts gate's case **does not transfer to
-it**, and the reason is worth stating because it looks like an omission: `live_keys()` reads every
+it**: `live_keys()` reads every
 graded pair's accepts key with no draw at all, where the widening space's live set depends on
 which borrowed base hosted each declaration's location — decided by placement attempts against the
 pair's own accepts instance. So the exact set is knowable only by RUNNING the obligation, and on a
@@ -228,63 +207,43 @@ as a narrowing.** Staleness here is self-reporting. The obligation is the curren
 
 So the floor is committed as it fills, graded on its STRUCTURE, and **no second derived artifact is
 minted to record which keys the set asks for.** That artifact would need its own equality,
-and that equality would need the same thing one level further out — the regress `tests/corpus.py`'s
-original argument was right to fear. Leaving the space cache-only is also refused: the saving is
-real, crosses checkouts, and changes no verdict — it buys back the draw and nothing else.
+and that equality would need the same thing one level further out. Leaving the space cache-only is
+also refused: the saving is real, crosses checkouts, and changes no verdict — it buys back the draw
+and nothing else.
 
-**AND "AS IT FILLS" IS NOT A DEFERRAL: UNTIL THE FLOOR EXISTS, READING 2's STORE HALF IS
-UNOBSERVABLE AT EXACTLY THE PLACE THE READING IS ABOUT.** The proving values live in a
+**AND "AS IT FILLS" IS NOT A DEFERRAL: A STORE THAT EVAPORATES ON CHECKOUT PROVES NOTHING.** The
+proving values live in a
 cross-worktree cache that a check requires to be *outside* the repository — correctly, because a
-run may not write inside the checkout. The consequence is that a fresh checkout and a CI job hold a
-proving value for **no declaration at all**, so the half of reading 2 that says *every declaration
-holds a value that demonstrates it* reads as unmet for every one of them, whatever the cache on one
-machine contains.
-
-**A store that evaporates on checkout proves nothing**, which is the same argument that makes the
-accepts floor committed, and it applies here without modification. So the directory is created and
-promoted the moment values exist for it, under two conditions reading 2 states itself: **no entry
-records a budget cut**, and **every entry is a draw's own output** — never written by hand, because
-a hand-written proof is an exemption the first time the document changes under it.
+run may not write inside the checkout — so a fresh checkout and a CI job hold a
+proving value for **no declaration at all**, and the half of reading 2 that says *every declaration
+holds a value that demonstrates it* reads as unmet for every one of them. That is the same argument
+that makes the accepts floor committed, and it applies here without modification. So the directory
+is created and promoted the moment values exist for it, under two conditions reading 2 states
+itself: **no entry records a budget cut**, and **every entry is a draw's own output** — never
+written by hand, because a hand-written proof is an exemption the first time the document changes
+under it.
 
 **A RUN MAY NOT WRITE INSIDE THE CHECKOUT; A PROMOTION MAY.** That distinction is what lets both
 rules hold at once, and it is already how the accepts floor works — the check forbidding a run to
 write there is not a check against the floor existing.
 
-A position whose draw never returns is held by nothing under any of these choices — two of them
-exceed 900 s on an 8,145,255-byte conjunction and one exceeds 600 s on a 6,832,209-byte node. That
-residue is not a currency question. It is the document-derived construction decision, and it is
-open.
+A position whose draw never returns is held by nothing under any of these choices. That residue is
+not a currency question. It is the document-derived construction decision.
 
 ### The wheel SHIPS `py.typed`, and the gate is the CONSUMER'S checker
 
-**Nothing this project built reaches a consumer's type checker today.** Measured against the
-INSTALLED package rather than the source tree: `Skipping analyzing "adcp.types.core": module is
-installed, but missing library stubs or py.typed marker`, then `Revealed type is "Any"` — and
-**two deliberate bugs in the consumer file pass silently.** So **0 of 14,570 fields, 0 of 991
-`Literal`s, 0 of 244 `StrEnum`s and 0 of 582 union cases** are visible to the tool a consumer
-actually runs. Every ergonomic property the surface work established is invisible at the wheel
+The goal is an ergonomic, schema-faithful, DX-friendly SDK, and a typed SDK whose types are `Any`
+to its consumer is none of the three. **So the marker ships.** Without it a consumer's checker
+reports `Skipping analyzing "adcp.types.core": module is installed, but missing library stubs or
+py.typed marker`, then `Revealed type is "Any"`, and a deliberate bug in the consumer's file passes
+silently — so every ergonomic property the surface work establishes is invisible at the wheel
 boundary.
 
-`pyproject.toml` names the absence and defers it: *"Adding one is a change to the WHEEL's public
-surface — it promises every annotation in `src/adcp` to every consumer's checker — so it is a
-decision for the row that owns the shipped package."* **No row owned it.** The goal is an
-ergonomic, schema-faithful, DX-friendly SDK, and a typed SDK whose types are `Any` to its
-consumer is none of the three. So the marker ships.
-
-**THE PRECONDITION THIS SECTION DECLARED IS WITHDRAWN, and the section's own last
-paragraph is why.** It said a marker asserts every annotation inside `src/adcp` is sound, that
-internal errors therefore make the marker a false promise, and that they must be resolved first.
-That is inconsistent with *"the gate is the consumer's checker, not ours"* three paragraphs down,
-and the inconsistency was never noticed because neither claim had been measured against an
-installed wheel.
-
-**It has been now, and the gate clause is the right one.** A checker running over a consumer's
+**No internal-soundness precondition stands in front of it.** A checker running over a consumer's
 code does not re-check the internals of an installed package; it reads the package's annotations
 and reports errors in the consumer's own file. So the marker promises *"my annotations are usable
 by your checker"*, which is exactly what the three-direction check decides, and it does not
-promise *"my internals type-check"*. Both were measured on one wheel: the consumer's correct file
-checks clean, the consumer's misuse reports one error per misuse, and removing the marker from the
-installed package makes every one of them vanish — with the internal errors present throughout.
+promise *"my internals type-check"*.
 
 **An internal error is therefore a defect we own and not a bar to shipping the marker.** Those
 that sit in the GENERATED tree are a rendering defect by construction, fixed in `render.py` and
@@ -294,29 +253,26 @@ than omitting the directory, and the gate's own set reads the exclusion, so dele
 pulls the whole tree in without anyone having to remember.
 
 **The gate is the consumer's checker, not ours.** A file outside the package that misuses a field
-and an enum member must FAIL a check against the installed wheel. The audit measured both of those
-passing silently, which is the red state; green is both reported, by error code. Checking our own
-tree proves nothing about this — the source tree is readable with or without a marker, which is
-exactly why the gap survived.
+and an enum member must FAIL a check against the installed wheel; green is both reported, by error
+code. Checking our own tree proves nothing about this — the source tree is readable with or without
+a marker.
 
 ### The suite's scratch goes on DISK, not in RAM
 
-`/tmp` on this machine is a **63 GB tmpfs — it is RAM.** The suite materialises a fresh package per
+Where `/tmp` is a memory-backed filesystem, it is RAM. The suite materialises a fresh package per
 `tmp_path`, and almost all of that tree is resolved JSON read through `importlib.resources`, so
-at ten workers it lands in memory. A full run has taken this box to the edge of its RAM, and two
-attempts at measuring it died of worker OOM rather than of anything in the code.
+at ten workers it lands in memory, and a full run can take the box to the edge of its RAM.
 
 **So `TMPDIR` and pytest's `--basetemp` point at disk.** The scratch is large, write-once and read
 back by a child process; none of that wants a memory-backed filesystem, and the one property RAM
 buys — speed — is irrelevant beside a run that cannot finish.
 
-Two readings go with it, and both were measured rather than assumed:
+Two readings go with it:
 
-* **A memory figure written into a comment goes stale and is then believed.** `pyproject.toml`
-  carried one that was an order of magnitude low, and it read as a budget. Every such figure
+* **A memory figure written into a comment goes stale and is then believed.** Every such figure
   belongs in the row that measured it.
 * **A finished lane's scratch is not free.** Orphaned directories from merged, torn-down lanes
-  have held gigabytes of tmpfs with zero open handles. Scratch under a memory-backed path is a resource the
+  hold tmpfs with zero open handles. Scratch under a memory-backed path is a resource the
   orchestrator owns, and the discipline that applies to a worktree applies to it: check that
   nothing holds it, then remove it.
 
@@ -327,23 +283,16 @@ against is a function of the bundle and the compiler alone. **Grading therefore 
 fresh run emits. The committed tree is an ARTIFACT, verified by one byte-compare, and is never the
 subject.**
 
-`tests/test_emit.py`'s `graded()` does `import adcp.types._schemas` and walks it, which puts a
-committed artifact in the grading path and causes three failures this project reported as
-unrelated:
-
-* the committed tree was **39 documents stale and 35 more differed byte for byte**, so every
-  census over it graded a mixture of two compilers — three import-path collisions and one stale
-  decision were invisible in `src/` and visible in a fresh run;
-* `test_emit.py` **cannot collect** when one committed module fails to import, because `graded()`
-  runs at parametrize time, so a single bad base list errors ~2,400 tests;
-* the import obligation is downstream of its own precondition, which is the clause above.
+A grading path that does `import adcp.types._schemas` and walks it puts a committed artifact in
+the grading path: a census over it grades a mixture of two compilers, and a parametrize-time
+import means a single unimportable module errors every test in the file.
 
 Regenerate, then grade. The order is the whole rule: a change to the compiler is followed by a
 regeneration and the grading reads that, so a stale tree cannot be graded and a tree that does not
 build fails one named test instead of disabling the file.
 
 The instruments exist. `tests/compiled.py` returns the fresh emit in under a second warm, keyed on
-the compiler's own source, and `tests/_imports_a_tree.py` already writes a fresh tree to a
+the compiler's own source, and `tests/_imports_a_tree.py` writes a fresh tree to a
 temporary directory and imports it in a child process — the child being forced rather than
 convenient, because an emitted module imports `adcp.types.constraints` by ABSOLUTE name and a
 fresh tree imported in the suite's own interpreter resolves its aliases through the committed
@@ -352,22 +301,14 @@ alias module.
 **`tests/fresh.py` is where a reader's BUNDLE-DERIVED constants live**, beside
 `BUNDLE` and `TREE` which are already there. A reader that needs to ask the emitter where a
 document's module sits needs `bundle.package_roots` — a function of the bundle and never of the
-run, which is what makes it a constant rather than an argument. The alternative, measured when it
-came up, is threading one more parameter through 21 call sites in four files to carry a value none
-of them varies. One place holds it and the readers import it.
+run, which is what makes it a constant rather than an argument. The alternative is threading one
+more parameter through every call site to carry a value none of them varies. One place holds it and
+the readers import it.
 
 ### A check may not be downstream of its own precondition
 
-`tests/test_emit.py`'s `test_every_module_of_the_tree_imports_and_every_class_of_it_is_defined`
-is the obligation that an emitted tree builds, and its docstring names the failure mode it
-missed. It could not run, for two independent reasons, and both are structural:
-
-* it lives in the file whose COLLECTION the defect disables — `graded()` imports the tree at
-  parametrize time, so an unimportable module errors the check that exists to report it;
-* its set is `emit.TREE`, the COMMITTED tree, so a document absent from `src/` is
-  invisible. That is how the second of the two sites hid entirely.
-
-**A check whose precondition is the thing it checks is not a check.** The import obligation ranges
+**A check whose precondition is the thing it checks is not a check.** The obligation that an
+emitted tree builds ranges
 over the tree a fresh run EMITS, not the one committed, and it lives outside the module whose
 collection it would gate. Both halves are required: fixing the set alone leaves it
 uncollectable, and moving the file alone leaves it blind to anything not yet committed.
@@ -379,19 +320,12 @@ pointer is louder and honest where a refusal is quiet and wrong. The chokepoint 
 `ir.ClassDecl`, because not every base list passes through `compiler.dispatching_bases`; a guard
 there would hold two of the call sites and miss the rest.
 
-**ANOTHER INSTANCE.** The rule above was written about a precondition; this is the
-same rule reached a different way — the check dies in its own setup, before the line holding its
-claim.
-
-* `test_the_emitted_tree_still_declares_every_module_it_imports` built its export table in a first
-  loop that raised at `brand.json`, so the second loop — the one holding the assertion — never
-  ran. Repaired, it reddens immediately on a real defect: nine modules understate their `__all__`
-  against what other modules import from them, 44 names, every one a union-branch module.
-
-A check that dies before its assertion is indistinguishable from a check that has nothing to
-report, and the suite's own failure summary spells them the same way. The two are told apart only
-by reading the traceback for which LINE raised, so a red check is not evidence that its subject
-is what failed.
+**A CHECK THAT DIES IN ITS OWN SETUP IS THE SAME RULE REACHED A DIFFERENT WAY** — the check dies
+before the line holding its claim. A check that dies before its assertion is indistinguishable
+from a check that has nothing to report, and the suite's own failure summary spells them the same
+way. The two are told apart only by reading the traceback for which LINE raised, so a red check is
+not evidence that its subject is what failed. A check therefore builds nothing in a first loop that
+can raise before the loop holding its assertion.
 
 ### An approximation's pointer is the SchemaRef spelling
 
@@ -401,18 +335,18 @@ fixes the rule: "the prefix test is on ONE spelling of a pointer — `SchemaRef`
 spelling of the same node therefore attaches to the wrong class, or to none.**
 
 The spellings differ across an `allOf` conjunct. A class's `SchemaRef` keeps the conjunct —
-`#/anyOf/0/allOf/0/anyOf` — and the walk writes the approximation at the node reached through
-it, `#/anyOf/0/anyOf`. **A majority of declared pointers do not resolve in their own document**,
-even following `$ref` and merging `allOf`: in `adagents.json` the `minItems` declarations land on
-the root and on an intermediate branch rather than on the class whose field actually drops the
-fact.
+`#/anyOf/0/allOf/0/anyOf` — and a walk that writes the approximation at the node reached through
+it writes `#/anyOf/0/anyOf`, which need not resolve in its own document even following `$ref` and
+merging `allOf`.
 
 **The approximation takes the `SchemaRef` spelling, because that is the one the reader of a
 declaration uses.** §2 asks a declaration to be a fact §8 can look for in the document and
 find; a pointer that resolves to nothing is not that. This is one producer and one spelling, as
 `attribution.py` already says of the attribution it writes beside it, and it is also both
-directions of the declared backlog's reading: of 118 declared-but-separable sites, 116 pair with
-a silent entry once the conjunct is elided — the same union counted twice under two spellings.
+directions of the declared backlog's reading: a declared-but-separable site pairs with a silent
+entry once the conjunct is elided — the same union counted twice under two spellings.
+
+---
 
 ## 3. The declarations: `codegen/keywords.py`, and `codegen/attribution.py` beside it
 
@@ -450,7 +384,7 @@ A row is written per keyword with a default cell and an override per position th
 because that is the case of the semantics document's own tables: most rows give one answer
 and name the positions that depart from it.
 
-**`Effect.REFUSE` leaves the enum and `widens_to` enters the cell.** Both follow
+**`Effect.REFUSE` is not in the enum and `widens_to` is in the cell.** Both follow
 from the semantics document's §2: no keyword's presence refuses a document, so there is no
 effect for refusing; and a keyword the handler cannot render has to drop to one widening rather than
 another, so something must say which.
@@ -498,11 +432,11 @@ them. A co-occurrence that is not a position (`pattern` beside `format: uri`, an
 and a co-occurrence is not one.
 
 §6's grid is a membership projection and needs no join: a row NOTHING or ANNOTATION at every
-position renders its `compiles` as §6's "what it does, or why nothing". **§7's projection is now
-the empty one**, because `Effect.REFUSE` is gone and no row can be in it; the generator still
+position renders its `compiles` as §6's "what it does, or why nothing". **§7's projection is the
+empty one**, because `Effect.REFUSE` is gone and no row can be in it; the generator still
 writes the region, and the region being empty is what makes "no keyword refuses" a fact the
 document holds rather than a claim its prose makes. `errorMessage` and the registry data keys
-move into §6's projection, where they always belonged: each is NOTHING at every position.
+are in §6's projection, where they belong: each is NOTHING at every position.
 
 The table also carries the `x-` namespace rule
 (§6 of the semantics document): a key with the prefix is admitted, and every such key the
@@ -513,7 +447,7 @@ bundle carries is also a row, so a prefixed key with no row is admitted and REPO
 | reader | module | what it derives |
 | --- | --- | --- |
 | admission | `schema/parse.py` | at every node, every key is looked up at the node's position: NOTHING is admitted and carried nowhere; a key with no row is admitted and marks the node for the TOP widening, naming a keyword the bundle did not use before; any other effect is a fact the node's kind consumes |
-| descent | `schema/parse.py`, `bundle.py`, `verify/record.py` | the structural keywords and the position each one's subschema occupies — the one descent table, where today there are three |
+| descent | `schema/parse.py`, `bundle.py`, `verify/record.py` | the structural keywords and the position each one's subschema occupies — the one descent table |
 | lowering | `lower/*` | a handler asks the table which of the keywords on its node are TYPE facts, which are RULE sources, which are annotations it carries, and — through `approximate` — which widening a keyword it cannot render drops to, so no handler holds a set of keyword names and none chooses a widening |
 | grading | `verify/compare.py` | the compared set is `{k for k in TABLE if cell(k, p).rendered}`; a keyword whose effect is RULE is graded against the class's rule tuple, as §8 of the semantics document says; a compared fact the model does not state is *approximated* where the class's declaration carries it and *missing* where it does not |
 
@@ -523,8 +457,8 @@ generates, so a change to a cell that is not written through to the document fai
 rather than a diff, because a diff can only compare what it can parse back out of a table: a
 cell deciding one thing where the sentence beside it says another passes a membership diff and
 cannot pass generation, which writes the cell. §6 is the table's rows that are NOTHING or
-ANNOTATION at every position, and §7 is the rows that refuse — the EMPTY projection since
-2026-10-26 — so each section is a projection and not a second list.
+ANNOTATION at every position, and §7 is the rows that refuse — the EMPTY projection — so each
+section is a projection and not a second list.
 
 The reasoning paragraphs in those sections are written by hand and are what generation cannot
 produce. A cell decides WHAT; the sentence beside it says WHY, and a reader still has to keep
@@ -562,11 +496,8 @@ between the markers. Editing a cell's MEANING — a grid line outside what the t
 or a reasoning paragraph — is a change to a decision, which §13's rule covers: the row reports
 it and stops.
 
-**Where the WIDENING of a dropped keyword comes from.** *This subsection said "where the kind of a refusal
-comes from" and the directive rewrote its subject on 2026-10-26.* The question the table answers
-is no longer which of two kinds a refusal is — §2 leaves one kind, and `bundle.record` is its
-only producer — but which widening a keyword the handler cannot render drops to. The mechanism is
-unchanged and so is its reason:
+**Where the WIDENING of a dropped keyword comes from.** The table answers which widening a
+keyword the handler cannot render drops to:
 
 - the widening is `cell(keyword, node.position).widens_to`, read by `approximate` and by nothing
   else;
@@ -579,54 +510,34 @@ unchanged and so is its reason:
   this document, pointer and keyword, in which case it is that entry's issue. One lookup, no
   precedence to get wrong: a site-level entry is more specific than a keyword-level one.
 
-*Why derived.* The reviews record the two refusal kinds assigned by hand at a raise site and the
-assignment coming out inverted in bulk: a cell the semantics document decides, written up as a
-verdict against the document. The widening is the same hazard one step further on — a handler that
-chose its own widening would choose the one that makes its own output look best, and nothing could
-audit it against the table that was supposed to hold the decision. A widening read off the table
-cannot say that, because the table is where the decision that the keyword compiles was made.
+*Why derived.* A handler that chose its own widening would choose the one that makes its own
+output look best, and nothing could audit it against the table that was supposed to hold the
+decision. A widening read off the table cannot say that, because the table is where the decision
+that the keyword compiles was made. A kind assigned by hand at a raise site comes out inverted in
+bulk, and the widening is the same hazard one step further on.
 
 **What is left of the refusal's kind.** `bundle.record` mints VERDICT where a reference's target
 is not a bundle document, and CHAINED `through=` the target's refusal where the target has no
 record of its own. `Kind.DEFERRED` retires with the outcome it named (§2). Nothing in `lower/`
-imports `codegen.refusal` any more, which is the import-graph half of the seam going total.
+imports `codegen.refusal`, which is the import-graph half of the seam being total.
 
 ---
 
 ## 3a. The CATALOGUE: one pass collects every type, and the walk emits against it
 
-**This layer was not omitted. It was PROHIBITED, in writing, with a reason — and that is why a
-dozen rows touched the code it would have changed and none of them built it.** The semantics
-document's §4 gained a collision rule at `8b38e963` which closed with:
-
-> *"The resolution is also confined to one module, never compared across modules, because a name's
-> module is its namespace and §9's rule is that a document's output may not depend on which other
-> documents the run includes."*
-
-So the one mechanism that did exist — §4's "two nodes of identical content are one class" — was
-fenced to a single module by explicit instruction, and a cross-document type catalogue was
-forbidden by the same sentence. Every lane obeyed it, correctly.
-
-**And the reason it said that was a misreading of §9 that stood for weeks.** §9 forbids a census
+**A CATALOGUE IS A READING OF THE BUNDLE, AND §9's CENSUS RULE PERMITS IT.** §9 forbids a census
 over the RUN — the argument list, which differs between a one-document command and a
-whole-bundle emission. A catalogue is a reading of the BUNDLE, which is pinned and is an input
-to every run alike, so it yields the same answer in both and is exactly what that rule protects.
-Those are different things. Nobody separated them until 2026-10-30, when §1's domain-scope
-collision rule hit the same wall and the distinction had to be ruled on — and **that ruling
-widened the clause by one case instead of recognising the general principle underneath it**, which
-is the second miss and the more expensive one.
-
-The cost of the prohibition is that the compiler reproduces the defect it was built to escape.
+whole-bundle emission. The bundle is pinned and is an input
+to every run alike, so a catalogue yields the same answer in both and is exactly what that rule
+protects. Those are different things, and a clause fencing cross-module identity to a single
+module on §9's authority has misread it. Without the catalogue the compiler reproduces the defect
+it was built to escape.
 
 ### §3a's ENTRY KEY IS THE VALUE LIST, AND AN UNTITLED ENTRY IS NAMED FROM ITS HOME
 
-**THREE CONSEQUENCES OF THAT TEST THAT THE SENTENCE DOES NOT SPELL, each from a lane
-applying it.**
-
 **A RULE POSITION MINTS NO TYPE, so a node inside an `if`, `then`, `else` or `not` is not a stating
-position of any layer.** A large minority of this bundle's property-bearing nodes sit there, and
-counting them is what made the layer figures in the table above unreachable. A conditional states a
-RULE on the nearest class; it does not state a type.
+position of any layer.** A conditional states a RULE on the nearest class; it does not state a
+type.
 
 **A `definitions` SECTION IS OUT OF THE KEY.** An entry no reference names admits nothing, so it is
 not a stating position at all; an entry that is named is already in the key at every referring
@@ -642,17 +553,13 @@ an enumeration, a composition, or a scalar with no type to write. **So the array
 is a check and not a collection**: it reddens if a repeated array type ever appears whose element
 belongs to none of those, which is exactly the case where it would need one.
 
-Its titled groups confirm the untitled rule rather than contradicting it: one array of non-empty
-strings is restated at two dozen positions for two dozen unrelated subjects. **What tells a shared
-subject from a coincidental overlap is that an object's key holds the property NAMES, while an
-array's key over a scalar element holds no name at all** — which is why the object layer can
-collapse on identity and the array layer must not.
+**What tells a shared subject from a coincidental overlap is that an object's key holds the property
+NAMES, while an array's key over a scalar element holds no name at all** — which is why the object
+layer can collapse on identity and the array layer must not.
 
-**A LAYER'S KEY CONTAINS EXACTLY WHAT CHANGES THE SET OF ADMITTED INSTANCES, AND NOTHING ELSE
-.** §3a settles the recursion and the order — an object's identity is the
-identity of its property types, collected L0 upward — but not what the key CONTAINS, and the gap is
-worth a third of the set: the letter of the sentence, types alone, and the strictest reading
-differ by tens of structures and hundreds of positions.
+**A LAYER'S KEY CONTAINS EXACTLY WHAT CHANGES THE SET OF ADMITTED INSTANCES, AND NOTHING ELSE.**
+§3a settles the recursion and the order — an object's identity is the
+identity of its property types, collected L0 upward — but not what the key CONTAINS.
 
 **The test is admission-equivalence, and it is the one L0 already used.** Two nodes are one entry
 exactly when no instance distinguishes them. So the key holds the property NAMES (a different name
@@ -661,7 +568,7 @@ changes what is admitted. It does not hold a `title`, a `description`, an `examp
 of the properties — none changes what is admitted, and order is the axis a census must be explicitly
 blind to or it reports a difference no payload can see.
 
-**And this reconciles the two precedents that look opposed.** L0 left `type: "string"` out of its
+**And this reconciles the two precedents that look opposed.** L0 leaves `type: "string"` out of its
 key beside an all-string enum because it *"admits not one value more"*. The narrowing keywords go
 IN because they admit strictly less. **Both are the same rule**: in the key if and only if some
 instance turns on it. Nothing here is a judgement about which keywords matter — the question is
@@ -675,11 +582,10 @@ references are resolved to what they name before keying — an unresolved key UN
 so at the array layer.
 
 **THE KEY IS THE VALUE LIST, not the structural identity §3a named.** The reading is *"each
-distinct vocabulary is one type"*, and a vocabulary is a set of admitted values. Measured over the
-bundle: of the value lists stated at more than one position, the overwhelming majority carry one
-structural identity, and in **every** case where two identities appeared over one value list the
-whole of the difference was a redundant `type: "string"` beside an all-string enum — a keyword that
-admits not one value more. Keying on structural identity therefore split entries that are one
+distinct vocabulary is one type"*, and a vocabulary is a set of admitted values. Where two
+structural identities appear over one value list, the whole of the difference is a redundant
+`type: "string"` beside an all-string enum — a keyword that
+admits not one value more. Keying on structural identity therefore splits entries that are one
 vocabulary, on a distinction no payload can see.
 
 **And the guard that makes this safe rather than loose is the converse:** a group whose members
@@ -688,17 +594,17 @@ lists that look alike and admit differently are two vocabularies, and the compil
 the thing that decides they are one.
 
 **AN UNTITLED ENTRY WITH NO NAMING POSITION LIVES IN A MODULE WITH NO DOCUMENT**, which the export
-record already permits now that it is keyed on the module. The module sits in the namespace §3a's
+record permits now that it is keyed on the module. The module sits in the namespace §3a's
 scope rule names — the domain's where every reference is within one domain, the shared one
 otherwise — and is re-exported from the matching consumer namespace like any other.
 
 **ITS HOME IS THE STATING POSITION THE OTHER STATING POSITIONS REACH THROUGH A REFERENCE.** Three
-orders over the stating positions are equally functions of the bundle; measured, first-in-bundle-order
-and last-in-bundle-order each close reference cycles, and this one closes none. §3a asks that a
-cycle be **unrepresentable rather than avoided by care**, and a home chosen this way is cycle-free
-by derivation. Where a future bundle breaks the property the failure is a refusal and a red report,
-never a wrong answer — which is the only acceptable failure mode for a rule that cannot be proved
-for all future inputs.
+orders over the stating positions are equally functions of the bundle, and this is the one that
+closes no reference cycle: first-in-bundle-order and last-in-bundle-order each close one. §3a asks
+that a cycle be **unrepresentable rather than avoided by care**, and a home chosen this way is
+cycle-free by derivation. Where a future bundle breaks the property the failure is a refusal and a
+red report, never a wrong answer — which is the only acceptable failure mode for a rule that cannot
+be proved for all future inputs.
 
 **AND ITS NAME LENGTHENS BY ITS HOME'S CHAIN, NEVER BY AN ARBITRARY STATING POSITION.** §4 lengthens
 a collision by the nearest ancestor segment, and an entry stated at six positions has six such
@@ -709,26 +615,24 @@ Because the home is unique and derived, lengthening by the home's chain is order
 where two entries share both a home and a derived name §4's own axes decide as they already do for
 every other position.
 
-### THREE CORRECTIONS TO §3a, EACH FROM A LANE THAT REFUSED TO DECIDE IT
+### A document root, a class statement, and the export record's key
 
 **A DOCUMENT ROOT BEATS A RESTATING TITLE, so a CONFLICT with a rooted vocabulary is not one.**
-§3a said of two titles over one member set that *"in neither case is there a third name to collapse
-to, and minting one is what §4 refuses"*. That is right about minting and wrong about the
-set it ranges over: where one of the titles belongs to a **document of its own**, §1 has
+Where one of two titles over one member set belongs to a **document of its own**, §1 has
 already given that vocabulary an exported symbol and §3a's own rule says a document root is
 already a home. There is nothing to mint, because the bundle named it. The other title is then a
-restating position that happens to carry a title of its own — a case §3a did not cover — and a
-local title does not create a second type over an identical member set, because no value
+restating position that happens to carry a title of its own, and a local title does not create a
+second type over an identical member set, because no value
 distinguishes them. **So the conflict rule applies only where NEITHER title is a document root.**
 Where one is, that root is the home and the rest reference it. A restated title that a consumer
 needs is an alias at its position, never a second class.
 
 **EVERY NAMED TYPE IS A CLASS STATEMENT. THE FUNCTIONAL FORM IS WITHDRAWN ENTIRELY,
-including for two types sharing one value list, which is the case it was kept for.**
+including for two types sharing one value list.**
 
 §3a's *"the value list is written once per distinct member set and the named type is constructed
-from it"* was read as mandating `StrEnum('<Name>', …)`. **It mandates no such thing: the functional
-call is one way to construct a type from a list and it is not the only one.** A class statement
+from it"* **mandates no `StrEnum('<Name>', …)` call: the functional call is one way to construct a
+type from a list and it is not the only one.** A class statement
 whose member VALUES are read out of the shared list satisfies the rule exactly — the strings appear
 in one place and only the member's own index is repeated, and the index is its position in the
 document's own order:
@@ -747,8 +651,7 @@ withdrawn rather than narrowed.** A functionally-built enum has no slot for the 
 pydantic renders as `description`; a name bound by assignment is invisible to a guard that reads
 class statements; and **a member access on it is an attribute error to a CONSUMER's type checker** —
 a checker cannot execute the call, so it never learns the member names. That third one is a
-regression in the reading that says the package's annotations reach a consumer's checker, and it
-reached the public surface before a derived gate caught it.
+regression in the reading that says the package's annotations reach a consumer's checker.
 
 **The class-statement form gives up none of the three and satisfies the rule, so there is no case
 left where the functional call is the right answer.** Where two types are judged distinct over one
@@ -758,7 +661,7 @@ value list, each is its own class statement reading the same list, and each keep
 A collision guard exists to answer what a consumer meets when importing the module, and a consumer
 meets the module's namespace, not its syntax. Reading the emitted module's own bindings is both
 stricter and not a structural assertion — it stops caring how a name came to be bound, which is the
-property that let the functional form slip past it.
+property that lets the functional form slip past it.
 
 **THE EXPORT RECORD IS KEYED ON THE MODULE, NOT ON THE DOCUMENT.** A
 vocabulary with no naming position needs a module of its own, and that module has no document
@@ -787,9 +690,7 @@ defect of the hoisting rather than a consequence of it.
 hoisting is a storage representation, so a reference to a storage entry is not a fact the document
 states — it is where the fact is kept. **Any reader whose question is semantic therefore
 dereferences**, and a reader that walks the stored text raw is answering a different question and
-must say so. This is the first corollary the hoisting forced: three checks that asked "what does
-this document require at this pointer" read the text raw and found a reference where they expected
-a `required` list. The class was correct; the reading was not.
+must say so.
 
 It follows that the dereference belongs at the seam every semantic reader already passes through,
 and that a check written against a record must go through that seam rather than re-deriving the
@@ -838,81 +739,38 @@ This is the same rule as §9's: **the RUN is not the BUNDLE**, and a reading of 
 precisely because it does not depend on which documents the run names. Threading it makes that
 visible in the signature instead of leaving it to a comment.
 
-Without it the compiler reproduces the defect it was built to escape. `datamodel-code-generator`
-emitted a type per position and the result was duplicate classes and unions nobody could name; a
-hand-written walk that also emits a type per position arrives at the same place with more effort.
+Without the catalogue the compiler reproduces the defect it was built to escape.
+`datamodel-code-generator` emitted a type per position and the result was duplicate classes and
+unions nobody could name; a hand-written walk that also emits a type per position arrives at the
+same place with more effort.
 **Faithfulness per node is not consistency across the bundle**, and only the second is what a
 consumer experiences.
 
-### What is there to collect, and WHICH READING is the open question
+### Which reading a layer's figures are over
 
-| layer | distinct identities | repeated | positions covered | widest |
-|---|---|---|---|---|
-| **L1** constrained scalars | 1,776 | 1,315 | 59,516 | 4,127 |
-| **L2** object types, 2+ properties | 13,453 | 1,368 | 13,151 | 450 |
-| **L3** array types | 6,712 | 1,808 | 11,746 | 1,242 |
+**L0 is counted over STATING POSITIONS**, and which reading a figure is over is stated with the
+figure: the raw reading and the record reading name different numbers of entries over the same
+bundle, because the record has inlined what the raw document references. A title is stated once and
+every `$ref` carries it along, so inlining multiplies the titled and untitled groups and leaves the
+conflicting titles untouched — which is the tell that a figure is a record reading presented as a
+bundle reading. §3a's readings over the TREE are unaffected, because a class exists or it does not.
 
-**L0 is counted over STATING POSITIONS.** Three readings of the bundle are
-reproducible and they disagree by more than an order of magnitude, so the row names which one
-governs:
-
-| reading | positions | identities | repeated | titled / untitled / conflicting | cross-domain |
-|---|---|---|---|---|---|
-| stating positions, raw | 1,069 | 822 | 165 | **15 / 124 / 3** | 61 |
-| the inlined record | 171,331 | 805 | 623 | 209 / 411 / 3 | 550 |
-| declaration + one `$ref` hop | 1,999 | 805 | 371 | 211 / 157 / 3 | 245 |
-
-My figure came from a record reading presented as a bundle reading. **The tell is that 3
-conflicting titles reproduce in every one of them**: a title is stated once and every `$ref`
-carries it along, so inlining multiplies the titled and untitled groups and leaves the conflicts
-untouched. The nameable set is therefore on the order of **15 entries, not 203** — a
-thirteenfold overstatement, and the kind this document exists to prevent rather than produce.
-
-**Which reading L0 collects over is not yet decided, and it is the first question of the row.** It
-is not a detail: the raw reading and the record reading name different numbers of entries over
-the same bundle, because the record has inlined what the raw document references. §3a's readings
-over the TREE are unaffected, because a class exists or it does not.
-
-### What the catalogue does NOT fix, measured before it was built
-
-The 457 mypy errors in the generated tree were presented as the catalogue's headline. They are
-not. The 362 `[assignment]` decompose as **145** an enum base against a `Literal` pin, **44**
-`dict[str, Any]`, **31** object, **23** container, **21** an enum against a different enum class;
-and of the 166 enum-base errors, **108 are stated at a single position** so a cross-document
-collection never reaches them, **41 are untitled cross-document** which this section expressly
-refuses to collapse, 5 are same-document restatements §4 already owns, and 2 are the conflicts.
-
-**So L0 reaches roughly 10 of the 264.** The 145 belong to Pass B — `const` against `enum` — and
-**89 of those are single-document**, needing no catalogue at all. Pass B is therefore both the
-larger win and the cheaper one, which reorders the work: the normalisation comes first and the
-cross-document collection second.
+Which reading L0 collects over is its own decision, and it is not a detail.
 
 ### The gate is worded PER TITLE, never per member-set
 
-"No two classes carry one member-set unless the bundle gives the field no title" cannot go green,
-and the reason is instructive. `{closed, open}` is stated at `enums/gop-type.json`'s root, titled
-**'GOP Type'** for video Group-of-Pictures, and at four untitled positions —
-`core/opportunity-context.json`'s `status` and three governance `delivery_period_state`. Under
-member-set identity that group IS titled, so satisfying the gate types a governance reporting
-field as `GOPType`: the coincidental overlap the untitled rule exists to refuse, arriving through
-the IDENTITY instead of through the name. Measured both ways: the member-set reading gives 17
-titled member-sets under 42 names and is unfixable at that entry; a per-title reading gives 12 of
-15 entries under more than one name, 29 classes for 15 entries, and is fixable.
+"No two classes carry one member-set unless the bundle gives the field no title" cannot go green.
+A value set titled at one document's root for one subject and stated untitled at unrelated
+positions IS a titled group under member-set identity, so satisfying the gate types the unrelated
+field by the first subject's name: the coincidental overlap the untitled rule exists to refuse,
+arriving through the IDENTITY instead of through the name. A member-set reading is unfixable at
+that entry; a per-title reading is fixable.
 
 ### A CONFLICTING TITLE NEVER COLLAPSES, and the reason is §4's
 
-All three conflicts in the bundle resolve the same way, and the descriptions settle them:
-
-- **`Catalog Action` / `Creative Action`**, both `['created','updated','unchanged','failed','deleted']`
-  — *"Action taken on a catalog during sync operation"* against *"Action taken on a creative during
-  sync operation"*. **Two concepts over one value set.** The values and the semantics coincide; the
-  SUBJECT does not.
-- **`Delivery Recipient Cloud` / `Reporting Cloud`**, both `['aws','azure','gcp']` — the cloud
-  hosting a delivery recipient's account against the cloud a reporting dataset is shared into.
- **Two concepts over one value set.**
-- **`Canonical Media Buy Action Mode` / `Media Buy Action Mode`**, identical members and nearly
-  identical descriptions. **One concept stated twice** — a canonicalisation left beside its
-  original.
+Two concepts over one value set keep both names: the values and the semantics coincide and the
+SUBJECT does not. One concept stated twice — a canonicalisation left beside its original — is the
+BUNDLE's duplication. The descriptions settle which of the two a conflict is.
 
 **Neither case collapses, and the rule is one sentence: a conflicting title is not a question
 about which name wins.** Where the bundle states two concepts, both names are right and merging
@@ -922,41 +780,40 @@ the evidence the report needs. In neither case is there a third name to collapse
 one is what §4 refuses.
 
 So the three-way naming split's third case is **decided, not deferred**: a conflict is reported and
-left alone, and the only judgement is whether to file it upstream.
+left alone, and the only judgement is whether to file it upstream. **Nothing about the conflicting
+titles motivates machinery**; the scale is entirely in the untitled sets.
 
 ### A DOCUMENT ROOT IS ALREADY A HOME
 
-13 of the 15 nameable entries are stated at a document ROOT. **§4 governs and the
+Most nameable entries are stated at a document ROOT. **§4 governs and the
 narrowest-namespace rule does not reach a root**: a root is not an entry looking for a home,
-because §1's "every portable document contributes a symbol" means `enums/gop-type.json` already
-exports `GOPType` from `adcp.types.enums`. There is nothing to relocate.
+because §1's "every portable document contributes a symbol" means a rooted vocabulary already
+exports its own name from its own domain. There is nothing to relocate.
 
-**So L0's job for those 13 is not to move them — it is to stop every other position minting a
+**So L0's job for those is not to move them — it is to stop every other position minting a
 copy.** The other positions reference the existing symbol, which is what §5's `$ref` row already
 does for a position that spells the reference; the defect is the positions that restate the
 vocabulary inline instead. That is a smaller and better-defined change than a relocation, and it
-explains the measurement that looked wrong: **`adcp.types.common` holds 1 entry for L0, not 653**,
-because 13 of 15 are already at home.
+is why the shared namespace holds almost nothing for L0.
 
 ### PASS B RUNS FIRST, and it needs no catalogue at all
 
-The order in this section is reversed on measurement, and the row carries the figures. Pass B — a
-`const` pin naming its enum's member — carries the largest share of the type errors, and at nearly
-every one of its sites the base's enum is either declared in the same module or imported into it.
-In both cases the class that types the base's field already exists and is already one object; the
-pin has only to name its member. `ir.TypeRef`
+Pass B — a `const` pin naming its enum's member — carries the largest share of the type errors,
+and at nearly every one of its sites the base's enum is either declared in the same module or
+imported into it. In both cases the class that types the base's field already exists and is already
+one object; the pin has only to name its member. `ir.TypeRef`
 already carries the members, and the compiler already renders `Literal[Symbol.MEMBER, …]` for the
 `$ref`-target case. Pydantic renders `Literal[E.A]` as `{"const": …, "type": "string"}`,
 **byte-identical** to `Literal['…']`, so no accepts verdict and no dump moves.
 
-L0's cross-document collapse reaches about **10**. So the normalisation is both the larger win and
-the one with no namespace question, no new ordering edge and no relocation — it goes first, and
+L0's cross-document collapse reaches far fewer sites. So the normalisation is both the larger win
+and the one with no namespace question, no new ordering edge and no relocation — it goes first, and
 the collection follows it.
 
 ### THE VALUE LIST IS WRITTEN ONCE; THE NAMED TYPE IS PER POSITION
 
-An identical value set is emitted repeatedly today: **one value set under several names, in
-several classes, restating member strings the bundle states once each.** That is the cost of
+An identical value set must not be emitted repeatedly: **one value set under several names, in
+several classes, restating member strings the bundle states once each** is the cost of
 compiling a position without asking what already exists.
 
 **But collapsing them into one type is the wrong repair**, and the reason is the untitled rule:
@@ -970,30 +827,15 @@ So the two halves separate:
 - **the NAMED TYPE is constructed from it at each position that needs one**, keeping the name §4
   derives and keeping the types distinct.
 
-`StrEnum('CatalogAction', …)` and `StrEnum('CreativeAction', …)` built from one list are two
+Two class statements reading one list are two
 types that are not assignable to each other and share one definition of the values. Nothing is
 restated, nothing is merged, and a reader sees the vocabulary in one place.
 
 **Where a title exists the stronger rule still applies**: one type, named for the title,
 referenced by every position. A title is a human string and the type is an identifier, so the
 title is rendered in the tree's own convention — `Account Status` names `AccountStatus` — and the
-convention is not a second decision per entry. The construction above is for the untitled sets, which are the
-set.
-
-### THE SAME VALUES UNDER TWO NAMES IS A SET OF THREE
-
-Measured across the whole bundle, one member set carrying more than one title happens exactly
-three times:
-
-| titles | members |
-|---|---|
-| `Delivery Recipient Cloud` / `Reporting Cloud` | `aws, azure, gcp` |
-| `Canonical Media Buy Action Mode` / `Media Buy Action Mode` | identical four |
-| `Catalog Action` / `Creative Action` | `created, deleted, failed, unchanged, updated` |
-
-Two are two concepts over one value set and keep both names. The third states one concept twice
-and is an upstream report. **None of them motivates machinery**: three cases and twelve member
-strings. The scale is entirely in the untitled 128.
+convention is not a second decision per entry. The construction above is for the untitled sets,
+which are the set.
 
 ### EVERY REPEATED VALUE SET IS AN UPSTREAM QUESTION
 
@@ -1015,22 +857,19 @@ That is the local decision and it is settled by whether the positions are about 
 | one subject | one named type | you define this twice; define it once and `$ref` it |
 | different subjects | one type per subject, one value list | these have identical values — do you mean different things? If yes, say so; if no, define it once |
 
-`Catalog Action` against `Creative Action` is the second row, not an outcome that closes. Identical
-five members, one about a catalog and one about a creative — which is a reasonable thing for the
-bundle to mean and an unreasonable thing for it to leave implicit. **The filing asks the question
-rather than asserting the answer**, because the specification's authors know which they meant and
-we are inferring it from two descriptions.
+Identical members over two subjects is the second row, not an outcome that closes. **The filing
+asks the question rather than asserting the answer**, because the specification's authors know
+which they meant and we are inferring it from two descriptions.
 
-**The filings are consolidated before they are sent.** 128 sets filed one at a time is noise that
-buries the finding; the same 128 analysed into the families they fall into is a case the
+**The filings are consolidated before they are sent.** A large set filed one at a time is noise
+that buries the finding; the same set analysed into the families it falls into is a case the
 specification can act on. So the analysis completes first, the filings are grouped by family, and
 nothing is sent per set.
 
 ### WHEN A NAME IS THE BUNDLE'S, AND WHEN IT IS MINTED
 
-§4 refuses to mint a public name no document states, and judging 63 sets produced four distinct
-ways of arriving at one. The line is per TOKEN: **a name is the bundle's when every token in it is
-stated at that vocabulary's own positions.**
+§4 refuses to mint a public name no document states. The line is per TOKEN: **a name is the
+bundle's when every token in it is stated at that vocabulary's own positions.**
 
 | how the name was reached | stated? | ruling |
 |---|---|---|
@@ -1047,10 +886,8 @@ from prose is not nameable, and the filing asks upstream to name it.**
 
 ### "DISTINCT" AND "UNNAMEABLE" ARE DIFFERENT, AND ONLY ONE IS TERMINAL
 
-Of thirteen sets left separate, four were left separate because no name could be found rather than
-because the subjects differ — the judgement recorded one of them as "arguably one notion" and
-unnameable. **That is not the same verdict**, and collapsing the two hides which of them upstream
-can fix.
+A set left separate because no name could be found is not the same verdict as a set left separate
+because the subjects differ, and collapsing the two hides which of them upstream can fix.
 
 So the local state is one of three:
 
@@ -1064,11 +901,11 @@ answer is a word the specification's authors already have.
 
 ### WHAT THE CATALOGUE DOES TO AN APPROXIMATION'S DENOMINATOR
 
-An approximation is counted today at the declaration SITE, because each position derives its own
+An approximation is counted at the declaration SITE where each position derives its own
 type and a dropped fact is dropped at that position. **Under a catalogue the denominator becomes
-the ENTRY**: a constrained scalar appearing 4,127 times and dropping one fact is one approximation,
-not 4,127. The 120 declared facts are a per-site reading and will not survive the change —
-whatever they become must be re-derived and reported as a changed denominator rather than as
+the ENTRY**: a constrained scalar appearing at thousands of positions and dropping one fact is one
+approximation, not thousands. A per-site reading of the declared facts does not survive the change
+— whatever they become must be re-derived and reported as a changed denominator rather than as
 progress.
 
 **And the near-duplicate constraint question is a different kind, not a smaller one.** A
@@ -1091,16 +928,14 @@ JSON.
 
 ### Two passes, and the second is where the schema's own inconsistency is absorbed
 
-**Pass A is DETERMINISTIC**: structural identity, as measured above. It is reproducible, needs no
-judgement, and is where the figures in the table come from.
+**Pass A is DETERMINISTIC**: structural identity. It is reproducible and needs no judgement.
 
 **Pass B is NORMALISING** — the same concept spelled two ways, which Pass A cannot see because
 the two spellings are genuinely different JSON. The known cases, each a separate decision with
 its own measurement:
 
-- **`const` against `enum`.** `core/registry-event.json` states `enum: [...]` at its root's
-  `event_type` and `const: "property.created"` at its branch's. One vocabulary, two keywords.
-  This is the case behind most of the generated tree's type errors.
+- **`const` against `enum`.** A document states `enum: [...]` at its root's property and
+  `const: "…"` at its branch's. One vocabulary, two keywords.
 - **a single-member `enum` against a `const`** — the same fact from the other side.
 - **`format` against `pattern`.** `{type: string, format: uri}` and
   `{type: string, pattern: "^https://..."}` constrain overlapping sets by different keywords.
@@ -1119,21 +954,12 @@ This places the catalogue before naming, which §9's census rule permits and §1
 collision rule already requires: both read the BUNDLE, which is pinned and is an input to every
 run alike, and neither reads the run's document set.
 
-**AND THIS SENTENCE IS NOT IMPLEMENTED. THE CATALOGUE IS CONSULTED AT ONE SEAM WHILE TWELVE
-HANDLERS DECIDE A TYPE LOCALLY, AND THAT INVERSION IS THE SINGLE CAUSE OF EVERY DUPLICATION DEFECT
-THIS PROJECT HAS FOUND (the owner's diagnosis).**
-
-The algorithm this document describes is four steps and no gate: **collect every type the bundle
-states, deduplicate, name each subject once, place it — and then emission is a PROJECTION of that
-catalogue.** What was built instead emits a type per position, consults the catalogue where a
-handler happens to ask, and relies on a census afterwards to find what leaked. Every one of these
-was that leak, found by a different instrument after the fact:
-
-- object structures stated at many positions, emitted at every one of them;
-- byte-identical documents each emitting their own class;
-- constrained scalars named by a digest because no position had a name to give;
-- **a titled entity's name minted again from another document's property key**, because a name is
-  derived per POSITION and a position only knows the role it plays in its parent.
+**THE CATALOGUE IS NOT CONSULTED AT ONE SEAM WHILE HANDLERS DECIDE A TYPE LOCALLY. THAT INVERSION
+IS THE SINGLE CAUSE OF DUPLICATION.** The algorithm is four steps and no gate: **collect every type
+the bundle states, deduplicate, name each subject once, place it — and then emission is a
+PROJECTION of that catalogue.** Emitting a type per position, consulting the catalogue where a
+handler happens to ask, and relying on a census afterwards to find what leaked is the inversion,
+and every duplication it produces is found by a different instrument after the fact.
 
 **A GATE THAT FINDS DUPLICATION IS EVIDENCE THE ORDER IS WRONG.** Deduplication is not a property
 to be checked; it is a consequence of deciding a type once. Where the decision is made once, a
@@ -1153,24 +979,19 @@ all these gates should be.
 4. **Emission projects the catalogue.** Nothing rewrites emitted output — §2 already forbids that,
    and post-hoc deduplication is the same thing wearing a census.
 
-**THE COST OF HAVING BUILT IT THE OTHER WAY IS THE ONE THIS PROJECT KEEPS PAYING**: each duplication
-is discovered separately, by an instrument written for it, after the tree is emitted — and the
-instruments then need their own gates, their own sets, and their own exemptions. That is the
-incidental complexity, and it is not inherent to compiling JSON Schema.
-
 ### The NAME comes from the bundle, so a catalogue entry is derived and not minted
 
-§4's standing rule. For L0 this is already decided and measured: 203 vocabularies carry exactly
-one `title` the bundle gives and that title is the name; 457 carry none and are **not** collapsed
-across documents, because nothing names the concept and without a title there is nothing to tell
-a coincidental member-set overlap from an identity; 3 carry conflicting titles and are a decision
-brought to the owner. **The same three-way split is the rule for L1, L2 and L3, and each layer's
-counts are to be measured rather than assumed from L0's.**
+§4's standing rule. A vocabulary carrying exactly one `title` the bundle gives takes that title as
+its name; one carrying none is **not** collapsed across documents, because nothing names the
+concept and without a title there is nothing to tell a coincidental member-set overlap from an
+identity; one carrying conflicting titles is a decision brought to the owner. **The same three-way
+split is the rule for L1, L2 and L3, and each layer's counts are to be measured rather than assumed
+from L0's.**
 
 ### THE JUDGMENT IS DATA, NEVER CODE — AND THE DATA IS A MEASURE OF UPSTREAM'S DEFECTS
 
 **COLLECTION IS DETERMINISTIC AND SO IS GENERATION. THE ONLY THING THAT IS NOT IS WHETHER TWO
-IDENTICAL-LOOKING TYPES ARE THE SAME SUBJECT (the owner's decision), and that question exists ONLY
+IDENTICAL-LOOKING TYPES ARE THE SAME SUBJECT, and that question exists ONLY
 because of schema composition, schema duplication and outright schema defects.** Two nodes can
 carry the same admitted-set key and be different concepts; two nodes can describe one concept and
 differ because one of them states a constraint the other forgot. Neither is decidable from the key,
@@ -1201,29 +1022,24 @@ adds more lines than it deletes has misread it.**
 
 ### AN OVERRIDE THE BUILD DOES NOT APPLY IS A LIE, AND THE GATE IS ON THE ARTIFACT
 
-**A PATCH SET THAT NO COMPILE PATH READS MUST FAIL.** `codegen/patch.py` was written on
-2026-10-27 to patch the bundle before generation, with a record check grading it over all 1,054
-documents, and **for nine days nothing called it.** Its test was green the whole time, because a
-test proves the function transforms a bundle in a temporary directory; it says nothing about
-whether the run does. The five documents the patch set extracts do not exist in the bundle the
-compiler reads, so no emitted class has ever moved.
+**A PATCH SET THAT NO COMPILE PATH READS MUST FAIL.** A test that proves the function transforms a
+bundle in a temporary directory says nothing about whether the run calls it, and a patch set whose
+documents do not exist in the bundle the compiler reads moves no emitted class.
 
-**THE INVARIANTS COULD NOT HAVE CAUGHT IT, AND THAT IS THE WHOLE LESSON.** `./check`'s three
-figures are *designed* to be unmoved by a correct change, so "unmoved" was read as proof of no harm
-when it was equally proof of no effect. **An invariant that holds whether or not the work happened
-cannot be the acceptance test for the work.** The acceptance test is a measurement that MOVES: here
-the count of field sets emitted more than once, read off the emitted tree.
+**AN INVARIANT THAT HOLDS WHETHER OR NOT THE WORK HAPPENED CANNOT BE THE ACCEPTANCE TEST FOR THE
+WORK.** `./check`'s three figures are *designed* to be unmoved by a correct change, so "unmoved" is
+as much proof of no effect as proof of no harm. The acceptance test is a measurement that MOVES:
+here the count of field sets emitted more than once, read off the emitted tree.
 
-So, as a rule rather than a lesson:
+So:
 
 - **THE ACCEPTANCE TEST FOR ANY OVERRIDE IS THE EMITTED ARTIFACT**, never the mechanism, never a
   table, never a filed ask. A judgment table nothing consumes is instrumentation, and §11's rule
   applies to it: an instrument is not product.
 - **A NON-EMPTY PATCH SET WITH NO EFFECT ON THE TREE IS RED.** Not a warning, not a scope note. If
   `patches/` states an entry and the emitted tree carries no trace of it, the run is wrong.
-- **AND THE SENTENCE "IT MOVES ONLY IN A BUNDLE NOTHING COMPILES YET" IS A DEFECT REPORT.** It was
-  written in a lane's own report, quoted into a merge commit, and read as a scope note by the owner.
-  Any phrase of that kind — *prepared*, *ready*, *applies cleanly*, *green in a fixture* — names the
+- **AND THE SENTENCE "IT MOVES ONLY IN A BUNDLE NOTHING COMPILES YET" IS A DEFECT REPORT.** Any
+  phrase of that kind — *prepared*, *ready*, *applies cleanly*, *green in a fixture* — names the
   gap between a mechanism and a deliverable, and is to be read as the gap rather than as progress.
 
 ### AN OVERRIDE DECLARES THE DEFECT IT COMPENSATES FOR, AND FAILS WHEN THE DEFECT IS GONE
@@ -1233,13 +1049,13 @@ has to remember: an override that is no longer needed must BREAK THE BUILD.** A 
 *ought* to shrink is a fork with good intentions, and the day the bundle is fixed properly the
 override would quietly keep preferring our answer to the protocol's.
 
-`codegen/patch.py` is the mechanism and it already states the rule in its own terms, so this
-subsection names the properties rather than inventing them:
+`codegen/patch.py` is the mechanism and states the rule in its own terms, so this
+subsection names the properties:
 
 - **AN OVERRIDE IS AN OVERLAY AND NEVER AN EDIT.** It does not rewrite a published document. It
   adds a new one holding the subschema and rewrites each matching site to `$ref` it. A patch
   *replacing* a published document is a different operation, and `load` refuses it, **because the
-  record check could not tell the two apart.**
+  record check cannot tell the two apart.**
 - **AN OVERRIDE FAILS THE DAY ITS ASK LANDS.** `load` raises where the published bundle already
   holds the document the manifest names. So the fix arriving upstream breaks the run and the
   instruction is to delete the entry — never to shadow a published answer with ours.
@@ -1261,20 +1077,12 @@ than overwriting it. An additive override that silently wins over a published va
 of this mechanism that could outlive its cause invisibly, and it would do so while looking like
 success.
 
-### What this does to the defects already open
-
-The `const` override dissolves rather than being patched: where a root's `enum` and a branch's
-`const` are one vocabulary, both reference the one entry, so the pin is `Literal[Entry.MEMBER]`
-because no other member exists to name. `82m.10`'s 44 names crossing as a BASE become a question
-about one catalogue entry rather than 44 export decisions. And the wheel can honestly ship
-`py.typed`, which today it cannot.
-
 ### WHERE A CATALOGUE ENTRY LIVES, which is what makes the fencing unnecessary
 
 The clause that forbade cross-module identity was guarding something real: shared types reached
 for across document modules create import cycles, and the bundle's own design invites them — one
-vocabulary is stated in up to **five different domains**. Measured over 807 vocabularies: **154
-are confined to one domain and 653 cross more than one.** Sharing is the main case, not an edge.
+vocabulary is stated in several different domains, and sharing is the main case rather than an
+edge.
 
 **But a cycle is only possible if the shared type lives INSIDE a document module.** Put the
 catalogue in its own layer beneath every document module and the dependency arrows point one way,
@@ -1289,8 +1097,8 @@ document modules       → any catalogue layer, and each other by §10's existin
 ```
 
 That is the whole of the answer to the fencing. We cannot fix the schema's habit of restating a
-concept in five places; we decide the layers we emit it into, and the layering removes the hazard
-the prohibition was written for.
+concept in several places; we decide the layers we emit it into, and the layering removes the
+hazard the prohibition was written for.
 
 **AND WHERE AN ENTRY'S HOME IS, THE RULE L0 STATES IS NOT STRONG ENOUGH — IT IS GROUP-RELATIVE,
 AND THAT IS THE DEFECT.** "The stating position the other stating positions reach through a
@@ -1309,23 +1117,20 @@ extension of it that the collection produces, and documents refuse.
 **THE TEST OF THIS RULE IS THAT IT NEEDS NO TEST.** Every other candidate order — the first stating
 position, the most-reached document, the smallest transitive reach — is acyclic only where the
 bundle happens to allow it, and each one refuses documents. A rule whose soundness has to be
-MEASURED for cycles is the wrong rule; the right one cannot produce them. The comparison that
-found this is a measurement and lives in the row.
+MEASURED for cycles is the wrong rule; the right one cannot produce them.
 
 **AND "A RULE POSITION MINTS NO TYPE" NAMES TWO MORE POSITIONS THAN IT SAYS.** A CONJ position
 mints none either — §5 is explicit that inline conjuncts are the fields and rules of *this* class —
 and neither does a position beneath a `contains`, whose own cell already decides that the model
-states **the predicate** and not a transcription of the subschema. Measured: of the CONJ stating
-positions of a collected structure, **none** carries a class, and eight structures took one as a
-home and were left homeless by it. **A layer that collects a position no class is emitted at has
-collected a home that cannot declare.**
+states **the predicate** and not a transcription of the subschema. **A layer that collects a
+position no class is emitted at has collected a home that cannot declare.**
 
 **An entry lives in the NARROWEST namespace that contains every position referencing it**, which
 keeps a consumer's import close to where they met the concept and is derived rather than chosen:
 
-- referenced from one document → that document's module, which is what happens today;
+- referenced from one document → that document's module;
 - from one domain → that domain;
-- from more than one domain → the shared namespace, which is the 653.
+- from more than one domain → the shared namespace.
 
 **The shared namespace is `adcp.types.common`, one place and not one per layer.** A consumer who
 does not know which domain a type belongs to has exactly one place to look, and does not have to
@@ -1334,18 +1139,16 @@ module structure beneath it — the same split the tree already makes, `_schemas
 domain modules public — so the acyclic order is a property of the emission and the public surface
 stays flat.
 
-**And this is the reuse the design was for.** 653 vocabularies stop being re-derived per domain;
-one scalar case that appears 4,127 times is declared once; and a type a consumer receives in a
-`media_buy` message is the same object as the one in a `governance` message, so it can be passed
-between them. That last property is the one nothing in the artifact provides today.
+**And this is the reuse the design is for.** A vocabulary stops being re-derived per domain;
+a scalar case that appears at thousands of positions is declared once; and a type a consumer
+receives in a `media_buy` message is the same object as the one in a `governance` message, so it
+can be passed between them.
 
 ### Upstream
 
 The bundle spelling one vocabulary as `enum` in one place and `const` in another is a defect in
 the SCHEMA, not only in our reading of it, and Pass B exists to absorb something upstream should
-not be emitting. It is worth filing against the specification — the owner reports that part of
-this normalisation has already landed in the 3.3 bundle, which is evidence the report would be
-accepted rather than argued.
+not be emitting. It is worth filing against the specification.
 
 ---
 
@@ -1370,18 +1173,16 @@ undefined for that document, and `record` returns a `Refusal` (VERDICT) rather t
 The payload generator's resolver (`hypothesis_jsonschema`) is confined to drawing payloads in
 `verify/accepts.py` and never writes a document anything else reads.
 
-**This is the one refusal the compiler mints (2026-10-26, §2 of the semantics document).** The
+**This is the one refusal the compiler mints (§2 of the semantics document).** The
 principle that unifies its structures is that **the document has no defined accepted set**: there is
 no schema half for `strict_validate` to run and nothing for §8 to grade against, which is the
 one place the partial-model objection still bites. Three cases reach it — a reference whose
 target is not a bundle document, a cross-document cycle, and a document that **fails its own
-declared draft's meta-schema** (the case failures `parse` validates for below, which were
-VERDICT refusals of their own and are this class rather than a second one, since a document that
-is not a schema under its own draft has no accepted set to be faithful to). Measured over bundle
-3.2's 1,054 portable documents, all three are **empty**: 0 undefined records, 0 meta-schema
-failures. That measurement is why "zero refusals" is reachable for this bundle rather than
-aspirational, and the class stays in the compiler so a bundle that grows one reports it instead
-of crashing on it.
+declared draft's meta-schema** (the case failures `parse` validates for below, which are
+this class rather than a second one, since a document that
+is not a schema under its own draft has no accepted set to be faithful to). Whether any of the
+three is non-empty is a property of one bundle version, and the class stays in the compiler so a
+bundle that grows one reports it instead of crashing on it.
 
 A **local** `$ref` cycle is not in this class: it is never inlined, and it renders as a forward
 reference under a string annotation with a `model_rebuild()` after the module's declarations
@@ -1389,8 +1190,8 @@ reference under a string annotation with a `model_rebuild()` after the module's 
 
 *Why our own.* The record is what `strict_validate` validates against and what the draw
 grades against. A resolver that canonicalises while it inlines writes a document the bundle
-does not state, and every reader downstream then needs a fold to undo each rewriting — the
-verifier carries folds of that kind today. An inliner that changes nothing needs none.
+does not state, and every reader downstream then needs a fold to undo each rewriting. An
+inliner that changes nothing needs none.
 
 **AN INLINER IS KEYED ON THE NODE'S IDENTITY, NEVER ON ITS TEXT.** A key or a copy made of a
 subtree's text costs **the text times the depth** at which it appears, because every ancestor
@@ -1399,22 +1200,19 @@ serialises its descendants again; a key made of the node's identity costs **the 
 be one too** — a reader that walks it as the tree the DAG unfolds to pays the unfolding, and the
 unfolding is what the storage was written to avoid.
 
-The figure to keep is not a total but a ratio taken *before* anything resolves: a single stored
-entry can be fifteen times its own document's distinct content when written out as text. Resolving
-two references to it then costs that again per occurrence, which is how a node of a few kilobytes
-reaches tens of gigabytes.
+**The figure to keep is not a total but a ratio taken *before* anything resolves**: a single stored
+entry can be many times its own document's distinct content when written out as text, and resolving
+two references to it costs that again per occurrence.
 
 **AND THIS RULE HAS A BOUNDARY, WHICH IS THAT THE WALK MUST PRESERVE ITS CHILDREN'S IDENTITY.** It
 holds for a walk over a structure whose repeated subtrees are held BY REFERENCE — that is what makes
 the text key quadratic and the identity key linear. **It inverts for a function that REBUILDS its
 argument**, because then every child it recurses on is a fresh object sharing identity with nothing,
-and an identity key cannot hit what no two call sites hold in common. Measured on the strategy
-builder, whose first statement rebuilds its argument through text: the existing **text** key hits
-**97.2% and 98.3%**, and an identity key would hit **20% and 16%**. So the discriminator is not
+and an identity key cannot hit what no two call sites hold in common. A strategy builder whose
+first statement rebuilds its argument through text is such a function, and there the text key is
+the effective one. So the discriminator is not
 which key is cheaper to compute — it is **whether the walk hands the same object twice**, and that
-is a property of the callee rather than of the data. Ask it before applying this rule anywhere; the
-rule read as unconditional turned a 97%-effective memo into a proposal to replace it with a
-16%-effective one.
+is a property of the callee rather than of the data. Ask it before applying this rule anywhere.
 
 **AND THE ACCEPTS RESOLVER INLINES AND DOES NOT CANONICALISE**, which is a statement about where a
 cost belongs rather than about correctness. The draw's own strategy builder canonicalises whatever
@@ -1422,13 +1220,11 @@ it is handed, so **a draw pays canonicalisation inside the draw, over the schema
 from, and resolution pays it never.** A resolver that canonicalises pays it once per inlined
 occurrence and then hands the draw something it will canonicalise again.
 
-This also says why a timeout was never the fix for it, and the mechanism is the one
-`harness.within` already documents rather than the one I first wrote. **A one-shot `signal.alarm`
-does not bound anything**: the signal can land where Python DISCARDS the exception it raises — a
+**A ONE-SHOT `signal.alarm` DOES NOT BOUND ANYTHING**, which is why a timeout is not the fix for
+it: the signal can land where Python DISCARDS the exception it raises — a
 garbage-collection callback or a `__del__`, and `hypothesis` installs one — so the alarm fires, is
-ignored, and nothing is left to fire again. Measured there: two such firings, then thirteen minutes
-against a 45-second budget. `within`'s timer repeats for exactly that reason, so a swallowed signal
-costs the interval and not the bound.
+ignored, and nothing is left to fire again. `harness.within`'s timer repeats for exactly that
+reason, so a swallowed signal costs the interval and not the bound.
 
 **A phase that cannot be preempted must be made to terminate, not bounded** — and a bound whose
 delivery is probabilistic must repeat, or it is reporting a guarantee it does not have.
@@ -1468,8 +1264,7 @@ def parse(raw: Mapping, *, document: str, pointer: str, position: Position,
           applied: str | None) -> Node
 ```
 
-**`parse` is total too.** It returned `Node | Refusal` and the refusals it minted
-were the case failures below. A document that fails its own meta-schema has no accepted set and
+**`parse` is total.** A document that fails its own meta-schema has no accepted set and
 is `bundle.record`'s refusal before `parse` is ever called, so by the time a mapping reaches
 `parse` its structure is a draft-07 schema's and a failure here is the compiler disagreeing with the
 meta-schema — a `BuildFailure`, not a document outcome. The checks stay; what changes is who they
@@ -1486,31 +1281,29 @@ here); a `type: object` beside `oneOf` is a union whose branches inherit the app
 descends by the table's descent column, assigning each child its position and the applied
 word for a same-instance hop. And it validates case: `required` is a list of names,
 `properties` is a mapping of schemas, and so on, each failure a `BuildFailure` by the paragraph
-above. **`items` is no longer among them**: a list-valued `items` is draft-07's tuple validation,
-and the semantics document's §5 now lowers it to `list[A | B | …]` at the JOIN widening rather than
+above. **`items` is not among them**: a list-valued `items` is draft-07's tuple validation,
+and the semantics document's §5 lowers it to `list[A | B | …]` at the JOIN widening rather than
 refusing it, so the parser builds an `Array` whose element is the join and records the
-approximation. Unexercised in bundle 3.2, which states no list-valued `items`.
+approximation. Unexercised in a bundle that states no list-valued `items`.
 
-*The screen and the classification INTERLEAVE, and this said "in this order".*
+*The screen and the classification INTERLEAVE.*
 They cannot be strictly sequenced, because the admission cases do not all answer from the cell
 alone. Two of them do — a key with no row and a NOTHING cell are decided by
 `cell(keyword, position)` and nothing else, so they run before anything is classified. The
 third does not: §3's reader ends "any other effect is a fact the node's kind consumes", and
 whether a lowering effect is CLAIMED or is WIDENED is a question about which kind owns the
-node. So that case runs after the classification it depends on. *(The REFUSE case was a third
-cell-only one and retired with `Effect.REFUSE` on 2026-10-26; the dependency this paragraph
-settles is unchanged, since it was never that case's.)*
+node. So that case runs after the classification it depends on.
 
-The four jobs and their contents stand; what is wrong is the claim that they are four sequential
-passes. A node is classified once and screened once, and the dependency runs one way: admission
-that reads only a cell, then classification, then admission that reads the kind. Nothing is
-screened twice and no mapping is traversed twice, which is what §4 is actually protecting.
+The four jobs are not four sequential passes. A node is classified once and screened once, and
+the dependency runs one way: admission that reads only a cell, then classification, then admission
+that reads the kind. Nothing is screened twice and no mapping is traversed twice, which is what §4
+is actually protecting.
 
 A node at RULE is parsed like any other, kept on the enclosing node as a rule source, and is
 never handed to `decide`: under a conditional a keyword describes what a rule tests, so no type
 is lowered from it, and `lower/rules.py` is its only reader.
 
-*Why the parser decides the kind.* The owner's model is that reading a node's keys and its
+*Why the parser decides the kind.* Reading a node's keys and its
 type selects the entity that knows how to represent that thing. Constructing the node of that
 kind IS that selection, and it happens once, before any lowering. Everything downstream is
 type-directed and cannot disagree with it.
@@ -1577,10 +1370,7 @@ reader who opens `lower/composition.py` to learn what an `allOf` lowers to must 
 there — not a call into a module that also holds the object row, the intersection rule, the
 field builder and the walk's context.
 
-This is not a new decomposition. §14 step 5 already states it — "each handler takes its node:
-`lower_object`, `lower_composition`, the containers, the union, the enum and const rows become
-`lower/<kind>.py`" — and the pattern is already chosen above, against two named alternatives. So
-the instruction is to FINISH the one that exists, and nothing is to be invented: no new
+Nothing is to be invented: no new
 abstraction, no new indirection, no pattern adopted to justify a move. **Where a façade module
 and a god module both exist, the code moves into the façade and the god module shrinks to what
 only it can hold.**
@@ -1618,7 +1408,8 @@ alias or an enumeration gets a `RootBinding` declaration from `lower_document`, 
 one function that knows a root is a root. The document-set predicates a step's result was
 stated over are the tests' business and live under `tests/`.
 
-**The committed tree's own set is not one of those predicates.** It is `bundle.portable` — every document of the bundle that can be emitted at all — because the
+**The committed tree's own set is not one of those predicates.** It is `bundle.portable` — every
+document of the bundle that can be emitted at all — because the
 tree is an ARTIFACT and not a phase. The steps' selectors grade their steps and are untouched by
 this; written from their union the tree omits documents that emit, and which ones it happens to
 carry depends on what a past run reached through `$ref` closure, which is not a derivation.
@@ -1645,15 +1436,11 @@ node it lowers — a property, an element, a value, a branch, a conjunct — and
 results.
 
 **Who carries the position.** The node does. The parser assigned it from the structural keyword
-it descended through, so a handler never derives position from a pointer string, and the one
-place that did is `enum.resolves_no_name`, reading `hops[-2]`.
+it descended through, so a handler never derives position from a pointer string.
 
-*What that one place becomes.* This said `node.position is BRANCH` and that
-is the wrong fact. `position is BRANCH` says "this node is a branch of some union", while the
+*What a predicate that did becomes.* `node.position is BRANCH` is the wrong fact:
+`position is BRANCH` says "this node is a branch of some union", while the
 predicate it replaces answers "this node is a branch of a ROOT union" — and the two differ.
-Taking the shorter sentence literally turns `error-details/accessibility-violation.json`'s
-`StrEnum` into a `Literal`, which changes a module where a document emitted before and so breaks
-§14 step 5's own check; the row measured it rather than reasoning about it.
 
 The fact belongs to the UNION, not to the enum. §5 of the semantics document writes the row as
 "an untitled BRANCH of a root union → a `Literal` of the members", and "of a root union" is a
@@ -1682,33 +1469,25 @@ own. An object handler, for instance, is `Lowering(type=Local(pointer),
 declarations=(ClassDecl(...), *children_declarations), ...)` — with no guard before it, because
 every child answered.
 
-**What an approximation does to the walk, 2026-10-26.** *This said "what a refusal does to the
-walk" and the directive replaces the whole mechanism.* It said: a handler that receives a
-`Refusal` from a child returns it unchanged and immediately, the refusal reaches
-`lower_document` naming the innermost pointer and keyword that produced it, and the document
-produces no declarations at all.
-
-An approximation does the opposite at every step. It is **local** — it belongs to the node that
+**What an approximation does to the walk.** It is **local** — it belongs to the node that
 could not render a keyword and says nothing about the node above it — so a parent composes it
 like any other part of a child's lowering and keeps building. The document emits. What reaches
 `lower_document` is therefore not one approximation but all of them, in document order, because
 `+` concatenates and the children were lowered in the order the document states them. The
 report is still a function of the document and not of the walk's iteration, by the same
-property that made `first_refusal`'s answer one: the parser built each node's children in
+property that makes `first_refusal`'s answer one: the parser built each node's children in
 document order, and concatenation preserves it.
 
-**The partial model is still unrepresentable, and for a better reason than before.** It used to
-be unrepresentable because a `Lowering` and a `Refusal` are different types; now it is
-unrepresentable because there is no partial model to represent — a document either has no
-accepted set at all (§4's one refusal, and then it has no module) or it emits a complete
-module for every node of itself, some of whose annotations say less than their document does and
-each of those declared.
+**The partial model is unrepresentable**, because there is no partial model to represent — a
+document either has no accepted set at all (§4's one refusal, and then it has no module) or it
+emits a complete module for every node of itself, some of whose annotations say less than their
+document does and each of those declared.
 
 **References.** A cross-document `Reference` lowers to an import: `ctx.targets[document]` holds
 the target's `Module`, whose symbol table answers the pointer half. **A pointer the target
 declared no symbol at widens**, to the target's own root symbol where the fragment is reachable
-under it and to TOP otherwise, and declares the approximation naming the fragment — it was a
-DEFERRAL. A target with no record of its own is not reached at all: the run never lowers a
+under it and to TOP otherwise, and declares the approximation naming the fragment. A target with
+no record of its own is not reached at all: the run never lowers a
 document whose record is undefined, and a document referencing one has no record either (§4).
 
 A local `Reference` (`#/definitions/x`) lowers to the declaration of that `definitions` entry:
@@ -1717,18 +1496,18 @@ entry's own lowering is the symbol. **A pointer already in `resolving` is a cycl
 is a forward reference, not a refusal.** The declaration takes the entry's symbol
 as a string annotation and the module calls `model_rebuild()` after its declarations — the
 mechanism §4 of the semantics document already uses for union branches, which do not exist while
-their base is built. So `ctx.resolving` stops being a refusal trigger and becomes what it always
+their base is built. So `ctx.resolving` is not a refusal trigger but what it always
 described: the pointers in flight, which is how the lowering knows to write a forward reference
-rather than recurse. Unexercised in bundle 3.2, which states no local cycle; the row is decided
-before one arrives rather than after.
+rather than recurse. Unexercised in a bundle that states no local cycle, so the rule is decided
+before one arrives.
 
 An entry nothing references is never decided, which is the §5 rule that a `definitions` section
 is nothing by itself.
 
 **Composition.** A `Composition` handler lowers each `$ref` conjunct to a base — the target's
 `ClassDecl` is read off `ctx.targets` for its field case — and merges inline conjuncts' fields
-and rule sources into its own by the intersection rule, which moves from `compiler.py` to
-`lower/composition.py` unchanged in substance: `restatement`, `intersection` and
+and rule sources into its own by the intersection rule, which lives in
+`lower/composition.py`: `restatement`, `intersection` and
 `at_least_as_tight` are pure functions over two nodes and stay so. A conjunct carrying its own
 `allOf` is a `Composition` node at CONJ and the handler recurses.
 
@@ -1738,7 +1517,7 @@ among its bases; the root's siblings compile onto the base as §5 of the semanti
 A `Union` at ROOT whose branches are all scalars lowers to an `AliasDecl` and a `RootBinding`.
 **A `Union` at ROOT mixing the two lowers to a `RootModelDecl`** over the union of the branches'
 types, with the class branches declared beside it and the dispatch facts on the root model —
-§4 of the semantics document's new row, which replaces a refusal and costs no approximation,
+§4 of the semantics document's row, which replaces a refusal and costs no approximation,
 because the union admits exactly what the document admits. A `Union` below the root lowers to a
 `TypeRef.union` of its branches' types, each branch's bound carried on the branch's own named
 type.
@@ -1748,7 +1527,7 @@ if they were separable. Where the combinator is `oneOf` it declares a WIDENED `A
 the union's own pointer, because the model then admits a payload the document refuses and the draw
 proves it. Where it is `anyOf` it declares **nothing**: the model admits exactly what the document
 admits, and the only loss — which branch an overlapping payload becomes — is observable by no draw
-and no dump. That is why UNDERDETERMINED and its set equality are retired.
+and no dump.
 
 ---
 
@@ -1780,7 +1559,7 @@ module for an alias — exactly the split §4 of the semantics document already 
 `strict_validate` — and `verify/` reads it as a consumer reads any other class attribute.
 
 *Why the artifact and not a side channel.* `__adcp_schema__` is already there for the same
-reason, and the review that put it there recorded it: a verifier handed its facts by the run
+reason: a verifier handed its facts by the run
 grades the run's account of the output instead of the output. A side channel also makes a
 one-document run and a whole-bundle run disagree about what the verifier can see, which the
 semantics document's §9 forbids for names and cases and which has no better claim here.
@@ -1798,25 +1577,19 @@ own `dataclasses.fields`**, so the names and the order are read off the declarat
 restated. One declaration of what a rule is, written once as §2 of the semantics document asks,
 and the walk composes values rather than formatting strings.
 
-*This sentence said `repr` and now does not.* `repr` is one way to spell a
-constructor expression and it was named here as the mechanism rather than the goal. It is
-keyword-form, while the committed tree's rule calls are positional, so taking it literally
-rewrites nearly every rule line in the tree. That step is marked *bytes* precisely because it is
-the largest relocation in the plan, and a cosmetic argument spelling that moves text across the
-tree would blind the one check able to
-prove the relocation decided nothing. Keyword and positional arguments to a frozen dataclass
-construct the same object, so the spelling carries no meaning to trade for that.
-
-What the structure requires is therefore the obligation and not the spelling: the call is
-derived from the dataclass's own fields, and the one rule for spelling it lives in `render.py`
-and nowhere else. Normalising that spelling later is legitimate as a DELIBERATE, stated text
+**The obligation is the derivation and not the spelling: the call is derived from the dataclass's
+own fields, and the one rule for spelling it lives in `render.py` and nowhere else.** `repr` is one
+way to spell a constructor expression and is not the goal — it is keyword-form while a positional
+rule call is equally correct, and keyword and positional arguments to a frozen dataclass construct
+the same object, so the spelling carries no meaning to trade for a text delta across the tree.
+Normalising that spelling is legitimate as a DELIBERATE, stated text
 delta with its own row; it is not something a relocation does on the way past.
 
-*Why a complete IR and not the present economy.* Today the decision layer produces class-body
-lines, rule tuples and module trailers as text, and a `Module` accumulates text blocks beside
-its decision memo. That is not an IR with render concerns beside it; it is two layers sharing
-a mutable object, and the review's symptom — one module holding the renderer, the keyword sets,
-the name rules, the field builder and the composition reader — is the cost. With the IR
+*Why a complete IR.* A decision layer that produces class-body
+lines, rule tuples and module trailers as text, with a `Module` accumulating text blocks beside
+its decision memo, is not an IR with render concerns beside it; it is two layers sharing
+a mutable object, and one module holding the renderer, the keyword sets,
+the name rules, the field builder and the composition reader is the cost. With the IR
 complete, the renderer is the only reader of the model layer it renders through, and a change
 of rendering (a dmcg upgrade, a different spelling of an optional) touches one module.
 
@@ -1828,16 +1601,12 @@ at PROP, `<Parent>Item` at ELEM, `<Parent>Value` at MAPV, `<Root><Key>` at DEF; 
 title, then by the `const` it pins on the dispatch property, then by its sorted `required`
 set. Content dedup is this pass: declarations whose nodes are equal are one class, declared
 under the first pointer in document order, and every later pointer binds its own derived name
-to it by identity. Two pointers deriving one name is a VERDICT refusal of the document, because
-the document states two things one symbol cannot carry.
+to it by identity.
 
-*A branch with no identity is NOT a refusal, corrected 2026-10-26.* This sentence said it was,
-and §13 item 7 — closed the same day — gives §4 the fourth rule that retires it: a branch with
-no title, no pinned `const` and no `required` set takes its index among the branches,
-`<Base>Branch<i>`, and a missing or non-identifier root title takes the document's own file stem.
-A name is not an acceptance fact, so a fallback name neither widens nor narrows. The two
-sentences could not both stand, and row `.7` found them disagreeing in the sentence it was
-implementing. `<Base>Branch<i>` is the answer; the set is 0 today.
+**A branch with no identity is not a refusal.** A branch with no title, no pinned `const` and no
+`required` set takes its index among the branches, `<Base>Branch<i>`, and a missing or
+non-identifier root title takes the document's own file stem. A name is not an acceptance fact, so
+a fallback name neither widens nor narrows.
 
 The walk computes no name, which is the semantics document's own
 rule that a name is an input to a lowering and is never computed inside one — read strictly,
@@ -1850,16 +1619,16 @@ it is not an input either: it is assigned after.
 `codegen/render.py` is the only module under `codegen/` outside `verify/` that imports
 `pydantic` or `datamodel_code_generator`. It takes a `Module` and returns the module's text; it
 takes the run's union of `ConstraintCase`s and returns `adcp/types/constraints.py`. It renders
-through the model layer of the pinned code generator and never its parser, for the reason the
-present code gives: the parser decides names and structure, which is this compiler's half.
+through the model layer of the pinned code generator and never its parser: the parser decides
+names and structure, which is this compiler's half.
 
-The boundary is one-way and a test enforces it (`tests/test_import_rule.py`, extended):
+The boundary is one-way and a test enforces it (`tests/test_import_rule.py`):
 nothing in `schema/`, `lower/`, `ir.py`, `keywords.py` or `bundle.py` imports `pydantic`,
 `pydantic_core` or `datamodel_code_generator`. A `TypeRef.Symbol("pydantic", "AwareDatetime")`
 is a Python symbol the semantics document names in its `format` row, and naming a symbol is
 not a Pydantic idiom; constructing a `Field`, a `ConfigDict`, an `Annotated` or a `DataType`
 is, and only `render.py` does it. `codegen/constraints.py` keeps its naming rule — a pure
-function from a constraint case to a `TypeRef` — and stops importing the renderer.
+function from a constraint case to a `TypeRef` — and does not import the renderer.
 
 The runtime package `src/adcp/types/_base.py` and `_runtime.py` is the other side of the
 boundary: `SchemaRef`, `applied_schema`, `strict_validate`, `strict_alias`,
@@ -1868,14 +1637,14 @@ them. Two extensions, and no replacement.
 
 **`applied_schema`** gains the same-instance keywords §13 item 3 names.
 
-**`AdCPRootModel`, new on 2026-10-26.** The semantics document's §4 now gives three cases to a
+**`AdCPRootModel`.** The semantics document's §4 gives three cases to a
 root model — an array, a union mixing a scalar branch with a class branch, and a document stating
 no schema keyword — and each must carry `__adcp_schema__`, `strict_validate` and a rule tuple
 exactly as a class does, or a root model and a class disagree about what their document accepts.
 So `class AdCPRootModel(RootModel, RuleBound)` joins `AdCPBaseModel`, and **`strict_validate` and
 `__adcp_schema__` factor out of `AdCPBaseModel` into a mixin both take** — one body, for the
 reason `strict_alias` exists: a second implementation of the schema half is a second answer to
-the one question. Measured on the committed runtime: that MRO resolves, the rule validator fires
+the one question. That MRO resolves, the rule validator fires
 on a root model, and `model_json_schema()` renders the root type's own schema, so a reader
 pairs a root model as it pairs a class.
 
@@ -1891,7 +1660,7 @@ set), `adcp.types` (the emitted package, reached as a consumer reaches it), `cod
 (to read a refusal the run recorded), and its libraries. Never `codegen.schema`,
 `codegen.lower`, `codegen.ir`, `codegen.render`, `codegen.emit`.
 
-**`codegen.attribution` joins the set and `codegen.ir` does not**, which is the whole of why the
+**`codegen.attribution` is in the set and `codegen.ir` is not**, which is the whole of why the
 approximation is written into the emitted module (§7). The verifier reads the DECLARATION off the
 class, as a consumer; it reads the registry to check the declaration's issue exists; it never
 reads the value the walk built. Sharing the registry is sharing DATA, which is the same division
@@ -1904,10 +1673,9 @@ intersection rule it carries stays a second spelling of the one in `lower/compos
 purpose. Sharing DATA is a different matter from sharing a READING: the keyword table is the
 declared semantics, and both halves must read the same declaration or the grade means nothing.
 
-Its three checks are the semantics document's §8 and keep today's case: `accepts.py` draws
+Its checks are the semantics document's §8: `accepts.py` draws
 from the record and constructs; `dump.py` serialises and validates against the record,
-striking the exemptions `exemptions.py` lists; `compare.py` compares `model_json_schema()`
-against the record over the table's rendered column, fact by fact and in both directions. Every
+striking the exemptions `exemptions.py` lists. Every
 fold that undoes a rewriting of the delegated resolver is deleted when the record is this
 package's own (§4): the finite-type restoration, the derived `maxItems`, the `{"not": {}}`
 closure, the dropped `additionalProperties: true`, the one-member `enum` respelling and the
@@ -1915,10 +1683,9 @@ same-title lift. What remains of normalisation is the readings this pipeline's o
 forces — a nested class hoisted to `$defs`, D4's `| None` for an optional property, a type list
 rendered as a union — and each is applied to both sides.
 
-**The approximation's grader.** There was one, not three: the draw. The two
-comparison outcomes and two set equalities that stood here are deleted with the comparison, and
-nothing replaced them, because a declaration either names a value the document admits and the class
-now accepts, or it does not belong in the declared set.
+**The approximation's grader is the draw**, and there is one rather than three: a declaration
+either names a value the document admits and the class now accepts, or it does not belong in the
+declared set.
 
 | what is checked | where | how it fails |
 | --- | --- | --- |
@@ -1955,21 +1722,20 @@ a function of the bundle and not of the run's document set, so one document's mo
 same text whether it is emitted alone or with the whole bundle.
 
 `write` writes the modules, the records beside them, the package `__init__` files and the
-constraints module, and prunes stale emitted files on a whole-bundle run, as today. `main` lives
+constraints module, and prunes stale emitted files on a whole-bundle run. `main` lives
 in `codegen/__main__.py`, so `python -m codegen` is the command and no module of the compiler is
 ever bound as `__main__`.
 
 **The layout, and a document whose path is also a directory's.** A
-document's module is its bundle path with hyphens as underscores — `emit.module_path`, whose
-one-line docstring was the only record of it until now. Where the bundle holds both a document
+document's module is its bundle path with hyphens as underscores — `emit.module_path`.
+Where the bundle holds both a document
 at path `P` and a directory at path `P`, **the two are one namespace and the document is its
 root**: the document emits `P/__init__.py` and the directory's documents are its submodules.
-`brand.json` beside `brand/` is the one such pair in bundle 3.2.
 
-The alternative that was measured and rejected is writing both — `brand.py` beside an empty
+The alternative that is rejected is writing both — `brand.py` beside an empty
 `brand/__init__.py`, where Python resolves the name to the package and the
-module is UNIMPORTABLE. A written module no import can reach is the artifact defect §14's tree
-set row exists to remove, and it is silent: the run reports the document as emitted.
+module is UNIMPORTABLE. A written module no import can reach is an artifact defect and it is
+silent: the run reports the document as emitted.
 
 A distinguishing suffix is not taken, because it mints a public name no document states, and §4
 derives every name from the document. Calling the bundle at fault is not taken either: the
@@ -1980,49 +1746,42 @@ This makes one `__init__.py` carry content where the others are markers. That is
 it is a smaller one than an unimportable module: `emit.relative_module`'s hop arithmetic has to
 agree with it, which is a check a test can hold.
 
-**What the report prints, 2026-10-26, with the pair's retirement REVERSED 2026-10-30.** It
-printed `emitted N / refused M (deferred …, verdict …)`, and the 2026-10-26 reading retired that
-pair on the ground that "`M` goes to zero over this bundle and the pair stops partitioning
-anything", and `M` did go to zero. **The pair is not a partition and was never doing that work —
-it is the KIND split, and the kind is what names who owns a refusal.** `emitted N / set N` moves
+**What the report prints.** The `emitted / refused` pair is not a partition — **it is the KIND
+split, and the kind is what names who owns a refusal.** `emitted N / set N` moves
 one number when a document stops emitting and says nothing about which kind moved, so a reader
-cannot tell a document the bundle broke from a row nobody has written — which is the confusion
-that let `emitted + refused == 1054` read green while documents sat waiting on unwritten rows. The
+cannot tell a document the bundle broke from a row nobody has written. The
 delivery report reads `emitted`, `refused` with its deferred/verdict split, `accounted`, and
-primary/chained off `Refusal.kind`, never off a sentence and never summed; the replacement drops
-the split, and dropping it narrows the report.
+primary/chained off `Refusal.kind`, never off a sentence and never summed.
 
 So the figures are these, each over its own denominator and never summed, by the semantics
 document's §2:
 
-- **`emitted N / refused M (deferred …, verdict …)`, with `accounted`** — kept, for the reason
-  above. `set` is not printed beside it: `emitted` and `refused` already carry it, and a
+- **`emitted N / refused M (deferred …, verdict …)`, with `accounted`**. `set` is not printed
+  beside it: `emitted` and `refused` already carry it, and a
   third number next to them invites exactly the sum the protocol forbids.
 - **the round-trip failures, per pair and by name** — a pair where the class refuses a value the
   document admits, or where the dump is a value the document refuses. Printed whether or not the
-  count is zero, so a reader sees the pin being met rather than inferring it from silence. **The
-  four text-diff defect counts that stood here are deleted with the comparison**,
-  along with the 1,086 facts over 155 pairs they were reporting: not one of them was a value any
-  payload had demonstrated, and they were read as the SDK's correctness for weeks. What replaces
-  them is not a count. It is **one row per graded pair, written to a FILE by the run** — document,
+  count is zero, so a reader sees the pin being met rather than inferring it from silence. What
+  the deleted text-diff counts are replaced by is not a count. It is **one row per graded pair,
+  written to a FILE by the run** — document,
   pointer, and each check's verdict — because a figure that exists only in a terminal cannot be
   reviewed, and because a check that computed nothing shows up there as a blank column instead of
   as a pass.
 - **`approximated K facts in D documents`**, split by attribution (ours / upstream), with the
-  upstream half listing its issues. There is one kind now, WIDENED. `K` and `D` are
+  upstream half listing its issues. There is one kind, WIDENED. `K` and `D` are
   different counts over different denominators and the report never adds them. Neither is
   pinned: both rise when a document starts emitting, and the semantics document's §9 forbids
   pinning a figure that moves with emission. The **ours** half is the one that ratchets down,
   and it is the figure a wave's exit condition reads (§14).
 
-The drops and carries-nothing lines stay as today. An approximation is NOT one of them: a
+The drops and carries-nothing lines stay. An approximation is NOT one of them: a
 carries-nothing line says a keyword constrained nothing, and an approximation says a keyword
 constrained something the annotation does not carry. Printing them in one list would sum two
 different things.
 
-*Why the entry-point module matters structurally.* The double binding under `runpy` is the one
-reason the present code carries `decide`, `bind` and `name_constraint` as callables on a
-dataclass, keeps the composition reader in the renderer's module, and enforces an import rule
+*Why the entry-point module matters structurally.* A double binding under `runpy` is the one
+reason a compiler would carry `decide`, `bind` and `name_constraint` as callables on a
+dataclass, keep the composition reader in the renderer's module, and enforce an import rule
 on the lowerings. With an entry point no lowering can name, a lowering imports `decide`
 directly, the context carries data and not functions, and the import rule shrinks to the two
 boundaries that are about design: no Pydantic in the walk, no walk in the verifier.
@@ -2049,31 +1808,30 @@ lower ← emit`, `ir ← render ← emit`, `ir ← constraints ← lower`,
 `{keywords, attribution, bundle} ← verify`. `attribution.py` is a leaf like `keywords.py`, which
 is what lets both the walk and the verifier read it without either reading the other.
 
-*It imports `codegen.refusal`, and "imports nothing of `codegen/`" was too strong
-(2026-10-26).* §3 requires an attribution entry with no upstream issue to be a `BuildFailure`,
-and that type lives in `refusal.py` — so this module cannot satisfy the ban, the `BuildFailure`
-rule and the `MAY_RAISE` ratchet at once. The row that built it wrote the alternative first, a
-local `MissingIssue`, and that reddened the ratchet, which is how the clash was found rather
-than argued. `refusal.py` imports nothing itself, so a leaf importing a leaf keeps the property
-the ban was protecting: one module reached, and no module of the walk. The rule is therefore
-*imports no module of the walk*, and `refusal` is named as the one thing it may reach.
+*`attribution.py` imports `codegen.refusal`, and no module of the walk.* §3 requires an
+attribution entry with no upstream issue to be a `BuildFailure`,
+and that type lives in `refusal.py` — so this module cannot satisfy a total ban, the
+`BuildFailure` rule and the `MAY_RAISE` ratchet at once, and a
+local `MissingIssue` reddens the ratchet. `refusal.py` imports nothing itself, so a leaf importing
+a leaf keeps the property the ban was protecting: one module reached, and no module of the walk.
+The rule is therefore *imports no module of the walk*, and `refusal` is named as the one thing it
+may reach.
 
-**`refusal` is imported by `bundle`, `emit` and `attribution`, and by nothing in `lower/`**
-once step 10 lands: the lowering seam is total then, so a handler has no refusal to name. Until
-it does, `lower/` still names `Refusal`, which step 8's own note explains.
+**`refusal` is imported by `bundle`, `emit` and `attribution`, and by nothing in `lower/`**:
+the lowering seam is total, so a handler has no refusal to name.
 
-Four AST tests hold the graph, where there were three: no
+Four AST tests hold the graph: no
 `pydantic`/`datamodel_code_generator` import outside `render.py` and `verify/`; no
 `codegen.{schema,lower,ir,render,emit}` import inside `verify/`; no
 `codegen.{render,emit,verify}` import inside `schema/` or `lower/`; and **no `raise` of anything
-but `BuildFailure` inside `schema/` or `lower/`**. The fourth is new and it is the test that
+but `BuildFailure` inside `schema/` or `lower/`**. The fourth is the test that
 replaces the type-system guarantee §2 gave up: with one inhabitant at the seam the type checker
 can no longer force a handler to answer for the other branch, so the thing it was preventing — a
 node reaching no outcome — is prevented by banning the only other way out.
 
-**Nothing repeats: where each of today's repetitions has one owner.**
+**Nothing repeats: where each repetition has one owner.**
 
-| repeated today | one owner |
+| repeated | one owner |
 | --- | --- |
 | three descent tables (`bundle.nodes`, `harness._nodes`, the walk's implicit descent) | the table's `descends` column, read by `parse`, `bundle.edges`, `verify/record.py` |
 | keyword screens with a hand-written set at every lowering | admission in `parse`, from the table |
@@ -2088,7 +1846,7 @@ node reaching no outcome — is prevented by banning the only other way out.
 | the resolver's canonicalisation and its inverse folds | `bundle.record`, with no inverse |
 | the widening a handler takes, chosen where it widens | the cell's `widens_to`, read by `approximate` |
 | the upstream issue for a widening, written as prose in a comment | `attribution.py`, keyed by document, pointer and keyword |
-| the exempted facts listed once per check that strikes them | still two lists, and deliberately: `attribution.py` holds why a MODEL says less than its document, `verify/exemptions.py` holds which DUMP facts a check strikes. One registry for both would sum two different things |
+| the exempted facts listed once per check that strikes them | two lists, deliberately: `attribution.py` holds why a MODEL says less than its document, `verify/exemptions.py` holds which DUMP facts a check strikes. One registry for both would sum two different things |
 
 What stays two by design: the intersection rule, once in `lower/composition.py` for the model
 and once in `verify/compare.py` for the document (§9 says why); the `applied_schema` rule,
@@ -2096,45 +1854,7 @@ once in the runtime and read by the parser rather than restated.
 
 ---
 
-## 12. What stands and what changes
-
-The reviews are the evidence for the present state; this section says what this structure
-keeps of it and what it replaces, so the two can be read as one judgement.
-
-**Kept, because it is correct.** The spine — a document read, a decision, a declaration,
-a rendering through the pinned model layer, no post-processing, every class carrying
-`__adcp_schema__` and the record written beside it. The runtime package in full. The constraint
-naming rule and the one public constraints module. The refusal that names document, pointer
-and keyword with a kind that is an argument and not a reading of English — kept, with the
-argument now derived. The verifier's three checks, its both-sides normalisation, and its
-refusal to share the walk's reading. The content dedup, the on-demand `definitions` entry, the
-cross-document import derived from two paths, the dependency-ordered transitive emission. The
-semantics of composition (intersection, the requiredness overlay, the reused inherited field),
-of union dispatch (derived from the branches, three sources), and of every keyword row the code
-already implements faithfully.
-
-**Replaced, because the evidence says the case is not right there.** The reviews' first
-finding — one declaration missing, with the admission, the lowering and the grading as three
-hand-written copies of it — is answered by `keywords.py` and its four readers (§3). The absence
-of a position type, with position recovered from pointer strings and nodes rewritten to reach
-the right screen, is answered by the parser assigning positions and building typed nodes (§4).
-The root dispatch table beside the node dispatch is removed: one path (§5). The decision and
-the rendering sharing one module and one mutable object is answered by a complete IR and one
-renderer (§7, §8). The import graph following the entry point's double binding is answered by
-`codegen/__main__.py` and a context that carries data (§10). The delegated resolver and its
-inverse folds are answered by `bundle.record` (§4, §9). The kind of a refusal chosen at the
-raise site is answered by deriving it from the cell (§3).
-
-**Replaced by the owner's directive of 2026-10-26, which is a change of PRODUCT and not of
-evidence.** The refusal as the outcome of a keyword nobody has compiled is replaced by the
-widening and the approximation declaration (§2, §3, §6, §7). The sum type at the lowering seam
-collapses to one inhabitant and the guarantee it carried moves to an import-rule test (§2, §11).
-`Effect.REFUSE` and `Kind.DEFERRED` retire (§3). The verifier gains
-two set equalities, and reads a declaration off the emitted class rather than off the walk (§7,
-§9). The report's `emitted / refused` pair becomes three figures over three denominators (§10).
-None of this is answering a review finding; it is answering a decision, and the reviews' own
-findings are unaffected by it — which is worth saying, because a restructure and a product change
-landing in one document is how each gets blamed for the other's cost.
+## 12. The restructure
 
 This is a restructure of `codegen/` rather than an adjustment of it: `compiler.py` and
 `emit.py` dissolve into `schema/`, `lower/`, `ir.py`, `render.py`, `emit.py` and
@@ -2161,10 +1881,10 @@ decides instead. The owner of the semantics document decides each.
    description wins".** The record has to say what an inlined node looks like when the
    referring node carries a `description`. This document keeps the referring node's annotation
    keys beside the copy, with the referring node's value winning; the alternative — dropping
-   them — drops a key, which §3 forbids. The owner confirms the reading.
+   them — drops a key, which §3 forbids.
 
-  **Settled 2026-10-25, and it extends only to ANNOTATION siblings.** A CONSTRAINING sibling
-   is a different case and the owner has decided it in §5's `$ref` row: draft-07 ignores every
+  **It extends only to ANNOTATION siblings.** A CONSTRAINING sibling
+   is a different case and §5's `$ref` row decides it: draft-07 ignores every
    sibling of `$ref`, so letting the referring node's value win would have the inliner decide
    an acceptance fact the bundle's own draft does not hold — which is the canonicalisation §3
    exists to forbid, and §9's "do not decide a position the bundle does not hold from a view of
@@ -2179,7 +1899,7 @@ decides instead. The owner of the semantics document decides each.
 3. **§8, "a branch class is paired with its branch node read under the root's siblings", and
    §9, "do not decide a position the bundle does not hold from a view of it".** The pairing
    needs `applied_schema` to conjoin the root's `properties`, `required`,
-   `additionalProperties` and `allOf` into a branch node, where today it conjoins `type`
+   `additionalProperties` and `allOf` into a branch node, where it conjoins `type`
    alone. This document extends `applied_schema` in `_base.py` to every same-instance keyword
    §5's union row compiles onto the base, and reads the result as draft-07's own semantics
    applied at a pointer the document holds rather than as a view. If the owner reads it as a
@@ -2187,44 +1907,26 @@ decides instead. The owner of the semantics document decides each.
    pairing and the row has to change instead.
 
 4. **§3, "`Refusal` lives in the package every lowering imports, so any step can raise one".**
-   The structure returns a refusal and never raises one (§2). The sentence's reason — one
-   module, one class, no import cycle — holds unchanged; "raise" becomes "return".
+   Closed: no lowering imports `Refusal` at all, the seam is total, and the only producer is
+   `bundle.record`.
 
-  **Settled and then superseded, 2026-10-26.** No lowering imports `Refusal` at all now: the
-   seam is total and the only producer is `bundle.record`. The semantics document's §3 says so
-   directly, so this item is closed — not by the owner conceding the wording, but by the
-   directive removing the thing the wording was about.
+5. **§2's refusal kinds, counted separately.** Closed: one resolved kind — VERDICT, for a
+   document with no accepted set — and CHAINED delegating to it from `bundle.record`. DEFERRED
+   retires with the outcome it named, and the semantics document's §9 states the replacement
+   rule. What the rule became is that the three APPROXIMATION figures are never summed (§10).
 
-5. **§2's refusal kinds, counted separately.** The semantics document names two kinds and
-   describes a third in §9 (a chained target). The structure derives the kind from the table's
-   cell rather than taking it as an argument, which the document does not forbid and does not
-   state. UNRESOLVED, which the code carries today, is not in the document and is retired by
-   the resolver in §4.
-
-  **Closed 2026-10-26.** The directive leaves one resolved kind — VERDICT, for a document with
-   no accepted set — and CHAINED delegating to it from `bundle.record`. DEFERRED retires with
-   the outcome it named, and the semantics document's §9 states the replacement rule ("code
-   nobody has written is an APPROXIMATION, never a refusal"). There are no longer two kinds to
-   count separately, so the item has nothing left to disagree about; what the rule became is
-   that the three APPROXIMATION figures are never summed (§10).
-
-6. **§8's diff test is replaced by generation, and §8 now says so.** Markdown is not a machine
+6. **§8's diff test is replaced by generation, and §8 says so.** Markdown is not a machine
    source for a cell's meaning, and a membership diff admits a cell that decides one thing beside
    a sentence saying another. The grids of §5, §6 and §7 are generated from the table instead, so
    the second copy of the what does not exist to drift. The reasoning paragraphs stay hand-written
    and are the part a reader must keep honest against the cells.
 
-7. **§4 "Names", a branch with no identity.** The present code refuses it as a VERDICT, and
-   this document keeps that, since §4 gives no fourth rule. The untitled `enum` branch of a root
-   union whose only other branch is a constrained string is the case that reaches it, and it
-   needs a naming rule in §4 or stays refused.
-
-  **Closed 2026-10-26: §4 now has the fourth rule.** A branch with no title, no pinned `const`
+7. **§4 "Names", a branch with no identity.** Closed: a branch with no title, no pinned `const`
    and no `required` set takes its index among the branches, `<Base>Branch<i>`. A name is not an
    acceptance fact, so the fallback neither widens nor narrows and costs no approximation, and
    the index is a function of document order, so it does not depend on which documents the run
    includes. The same reasoning gives a missing or non-identifier root title the document's own
-   file stem, which closes the other half of the refusal.
+   file stem.
 
 ---
 
@@ -2242,25 +1944,19 @@ implementation makes the emitted tree conform to a sentence it was violating, th
 and the step reports the change with the document, the pointer and the sentence that decides
 it — enumerated, never aggregated.
 
-The two cases are told apart by asking what is on the other side of the trade. Step 4 met a
-rendering whose spelling no sentence decides — keyword against positional arguments to a frozen
-dataclass, the same object either way — so *bytes* won and §7 gave up the word `repr`. Step 5
-meets `enum.decide` reading `enumDescriptions` alone while §6 of the semantics document says
-"two spellings of one keyword; both are read", so `enums/signal-value-type.json` emits with no
-member docstrings. That is a defect against a decided sentence, the fix changes one module where
-a document emitted before, and the fix wins. A gate that forbade it would be pinning the defect.
+The two cases are told apart by asking what is on the other side of the trade. A rendering whose
+spelling no sentence decides — keyword against positional arguments to a frozen
+dataclass, the same object either way — loses to *bytes*. A reading that contradicts a decided
+sentence, where the fix changes one module in which a document emitted before, wins over it: a
+gate that forbade it would be pinning the defect.
 
-**What the owner's directive does to this sequence.** It does not reorder steps 1
-to 7, which are relocations the directive does not touch, and step 7 stays next because every
-step after it needs the module pass and the dependency order. It **splits step 8 into three**,
-and the split is forced rather than tidy: *the instrument has to exist before the first cell
-widens.* A cell that widens while no draw yet reaches the values the keyword distinguishes
-produces a flood the pin cannot survive, and the project then either abandons the pin or stops
-believing the grader — which is the semantics document's §8 failure mode, reached on the first
-commit. So step 8 becomes the approximation end to end with **no cell widened**, step 9 is the
-rows the directive makes FAITHFUL (which need no approximation at all and are the larger half),
-and step 10 is the rows that genuinely widen. The waves then follow with a changed exit
-condition, below.
+**The order.** Steps 1 to 7 are relocations. Step 8 is the approximation end to end with **no
+cell widened**, step 9 is the rows the directive makes FAITHFUL, and step 10 is the rows that
+genuinely widen. The split is forced rather than tidy: *the instrument has to exist before the
+first cell widens.* A cell that widens while no draw yet reaches the values the keyword
+distinguishes produces a flood the pin cannot survive, and the project then either abandons the
+pin or stops believing the grader — which is the semantics document's §8 failure mode. The waves
+follow, with the exit condition below.
 
 1. **`codegen/__main__.py`.** Move `main` there; `python -m codegen` is the command. Delete the
    `__main__` re-entry in `emit.py`, the `decide`/`bind`/`name_constraint` callables on
@@ -2270,10 +1966,10 @@ condition, below.
 
 2. **`codegen/keywords.py` and its first two readers.** Declare `Position`, `Cell`, `Row`,
    `TABLE`. Make `check_keywords` read the table at a position its callers pass (the position
-   is known at every call site today, as a structural fact of the caller). Derive the
+   is known at every call site, as a structural fact of the caller). Derive the
    verifier's compared set from the rendered column. Derive the kind of every refusal minted by
    `check_keywords` from the cell. Add `tests/test_keywords.py` (§3). *Report changes:* the
-   keywords the semantics document renders and the verifier does not compare today start being
+   keywords the semantics document renders and the verifier does not compare start being
    compared, and refusals minted as verdicts for cells the document decides re-mint as
    deferrals. *Tree unchanged.* Unblocks every cell fix after it, because a cell is then
    written once.
@@ -2303,14 +1999,10 @@ condition, below.
    `additionalProperties` on a class stop refusing or crashing. *Tree unchanged where a
    document emitted before.* Unblocks §5 and §6 in full.
 
-  *How the conversion is STAGED, after two attempts measured the surface.*
+  *How the conversion is STAGED.*
    The end state above is not negotiable: `parse` is the only reader of a raw mapping, and a
-   handler reads node fields. But the conversion to it is not one commit's worth of work — the
-   surface is 11 screen sites, 7 descent sites, roughly 2,100 lines of handler code and 32 test
-   call sites, all under a byte-exact check over the emitted tree. Two attempts each read the
-   gate as making the whole conversion atomic, landed valuable adjacent work, and stopped.
-
-   It is not atomic, and the reason is that §4's rule is about the WALK and not about field
+   handler reads node fields. The conversion to it is not one commit's worth of work, and it is
+   not atomic: §4's rule is about the WALK and not about field
    access. "One parser is the one reading" forbids a second traversal of the raw document; it
    does not forbid a half-migrated handler being handed the mapping its own node was built
    from. So during this step a node may carry its originating mapping, `parse` performs the one
@@ -2320,13 +2012,12 @@ condition, below.
    finished step 5, and no later step may read it. Staging a refactor is not the same as
    softening its end state.
 
-  *The refusal ORDER is document order, and that settles what this step owes the old report.* The first attempt at this step stalled on trying to reproduce the sequence six
-   handlers happen to screen in — `lower_composition` checking `type` before its screen,
-   `union.ROOT_CLAIMS` claiming four keywords so its own refusal reports after them — and
-   concluded the parser could not be written without preserving all six. It does not owe them
-   that. §2 and §6 both state the rule: `first_refusal` returns the earliest refusal in DOCUMENT
+  *The refusal ORDER is document order, and that settles what this step owes the old report.*
+   It does not owe the sequence the handlers happen to screen in. §2 and §6 both state the rule:
+   `first_refusal` returns the earliest refusal in DOCUMENT
    order, "which keeps the report a function of the document and not of the walk's iteration".
-   The present sequence IS the walk's iteration, and it is what this step exists to remove.
+   A present screening sequence IS the walk's iteration, and it is what this step exists to
+   remove.
 
    So where a refusal moves because document order puts a different node first, that is this
    step's "report changes" and not a regression. What must NOT change is which documents refuse
@@ -2339,8 +2030,8 @@ condition, below.
    `lower_document` returns a value to the run. The type checker is the test. *No change in
    outcomes.* Unblocks §2's totality.
 
-  *Done, and step 8 takes the second half of it.* This step made the seam a sum
-   type, which is what made the next move possible: a seam that raises cannot be collapsed,
+  *Step 8 takes the second half of it.* This step makes the seam a sum
+   type, which is what makes the next move possible: a seam that raises cannot be collapsed,
    because there is no inhabitant to collapse to. Step 8 collapses the sum to `Lowering` alone.
    The intermediate state is not wasted work — the sum type is what turns every present
    deferral into a compile error the moment `Refusal` leaves the seam, which is how step 8
@@ -2352,26 +2043,24 @@ condition, below.
    for the modules; the report's refusal order may change and must stay sorted by document.
    Completes §6, §7 and §10.
 
-  *This said "delete … `resolving` on `Module`" and that does not follow, corrected 2026-10-26.*
+  *`resolving` on `Module` stays, as data.*
    The dependency order is over DOCUMENTS; `resolving` guards a LOCAL cycle inside one document,
-   so computing the order retires nothing about it. §6 — settled the same day — gives
-   `ctx.resolving` an explicit job as a forward-reference marker rather than a refusal trigger, so
-   the step as written would have deleted a field two other sections rely on. It stays, as data.
-   The step's real content is that no CALLABLE survives on the context, and that is what the row
-   delivered.
+   so computing the order retires nothing about it. §6 gives
+   `ctx.resolving` an explicit job as a forward-reference marker rather than a refusal trigger.
+   The step's real content is that no CALLABLE survives on the context.
 
-  *What the run WRITES is the set it owes, not the static closure .* §10's
+  *What the run WRITES is the set it owes, not the static closure.* §10's
    justification is that a module cannot import from a module no run wrote. The static closure of
-   every `$ref` satisfies that and overshoots it: measured over the 991-document set, it
-   writes 11 modules nothing imports and nobody named, and adds two aliases to the public
+   every `$ref` satisfies that and overshoots it: it
+   writes modules nothing imports and nobody named, and adds aliases to the public
    `constraints.py`. So the run writes the documents it was named plus what an attempted lowering
    actually referenced, as a fixed point over `Module.asked` — which satisfies §10's sentence
    exactly, because every import resolves and nothing else is written. The closure is still what
    the ORDER is computed over; it is not what the run emits.
 
   **AND "WHAT AN ATTEMPTED LOWERING REFERENCED" MEANS EVERY EDGE A MODULE IMPORTS ALONG, NOT THE
-   `$ref` EDGES ALONE.** The sentence above is right and its implementation reads one kind of
-   edge. §3a's catalogue gives a position a type by IMPORTING the symbol the naming position
+   `$ref` EDGES ALONE.** §3a's catalogue gives a position a type by IMPORTING the symbol the
+   naming position
    declares — a vocabulary collected across documents, a restating title, an object type whose
    home is elsewhere — and **none of those is a `$ref` in the source document.** So a run named
    over a subset writes a module importing from a module it did not write, and the package does
@@ -2381,7 +2070,7 @@ condition, below.
    module that any module it writes imports from.** The closure is the transitive closure of the
    IMPORT relation the lowering actually produces, and `$ref` is one contributor to it.
 
-   This is green today over the whole bundle and false over any subset, which is what a defect
+   This is green over the whole bundle and false over any subset, which is what a defect
    looks like when every instrument for it ranges only over the full set — **and the fix is to the
    closure, not to the gate's set**: a gate that only ever runs over everything proves nothing
    about the mechanism it is named for.
@@ -2398,15 +2087,11 @@ condition, below.
    which is a declared text delta and not a decision. **Nothing else in the directive may land
    before this step passes.**
 
-  *The seam collapse is NOT in this step, corrected 2026-10-26.* This step originally also said
-   "collapse the lowering seam to `Lowering` and retire `Kind.DEFERRED`, which is what makes every
-   present deferral a compile error until its handler calls `approximate`". That cannot hold
-   beside this step's own exit condition, and the row proved it by measurement rather than
-   argument: `approximate` reads the widening off the cell, a `None` widening is a `BuildFailure`, and of
-   the primary refusals **all but one sit on a cell that is not `Effect.REFUSE`** — so they have
-   no widening yet. A total seam today therefore either widens those cells, which moves the counts
-   this step forbids moving, or crashes the run on every document holding one. The two sentences
-   were written in one step and only one of them can be true at a time.
+  *The seam collapse is NOT in this step.* A total seam here cannot hold beside this step's own
+   exit condition: `approximate` reads the widening off the cell, a `None` widening is a
+   `BuildFailure`, and all but one primary refusal sits on a cell that is not `Effect.REFUSE`, so
+   they have no widening yet. A total seam therefore either widens those cells, which moves the
+   counts this step forbids moving, or crashes the run on every document holding one.
 
    So the seam stays a sum type until the last cell has a widening, which is **step 10**, and
    `Kind.DEFERRED` retires with it. The instrument is complete without the collapse: the widening
@@ -2435,35 +2120,31 @@ condition, below.
     predicate no `AtLeastOne` carries; a keyword with no row; a list-valued `items`; a root
     stating no schema keyword.
 
-   *One more case, because `refused == 0` had no answer for it.* **A `$ref`
+   *One more case, because `refused == 0` has no answer for it.* **A `$ref`
     conjunct whose target is NOT a class, beside a node that declares fields of its own.** §5's
     `$ref` row at CONJ says the target becomes this node's own TYPE where it is a scalar, an
     enum, a container or a union root — and that clause is scoped, in its own words, to "a node
     that declares no fields of its own". These nodes declare some, so the node is at once a class
-    (it has fields) and a type (the target), and §5 answers neither. Row `.20` found it by
-    landing the bare-`$ref` root and reported it rather than choosing. Every instance is a verdict
-    on `allOf`: `core/package-signal-targeting.json`, `core/product-filters.json`,
-    `core/vendor-pricing-option.json`.
+    (it has fields) and a type (the target), and §5 answers neither.
 
     It is a WIDENED row and not a faithful one. Carrying it faithfully means the instance must
     satisfy the node's fields AND one of the target union's branches, and "also satisfies this
     imported union" is not one of §2's rule families — adding one is a larger decision than this
-    case earns at three sites. So the conjunct's union membership is DROPPED, the class emits
+    case earns. So the conjunct's union membership is DROPPED, the class emits
     with its own fields, and the gap is declared. The widening is safe in the usual way:
     `strict_validate` still enforces the union from the document, so only the annotation loosens.
 
-   *The upstream issues do NOT block this step, corrected 2026-10-26.* This said they must be
-    filed first, because `attribution.py` admits no entry without a reference. That makes the
+   *The upstream issues do NOT block this step.* Requiring them first makes the
     compiler's own completion wait on a third party's issue tracker, and the thing being built
     is a compiler that represents every schema — it cannot have an external calendar in its exit
     condition.
 
-    So the gate moves off the step and onto the WORD "upstream". Every approximation is
+    So the gate is on the WORD "upstream". Every approximation is
     attributed, and an attribution is OURS until an issue exists: `Attribution.ours(reason)` needs
     no reference and says in one sentence what the schema would have to state for the gap to
     close. Only `Attribution.upstream(issue)` requires a live reference, and that constructor
     keeps its `BuildFailure` — so nothing is ever *claimed* as upstream without a filed issue,
-    which is the honesty property the original gate was protecting. Filing an issue later
+    which is the honesty property that gate protects. Filing an issue later
     reclassifies the attribution from ours to upstream and the *ours* backlog falls by that much;
     it does not change a type or an emission.
 
@@ -2471,40 +2152,30 @@ condition, below.
     — an unfiled gap IS ours. What it buys: `refused == 0` is reachable without waiting on
     anyone outside this repository.
 
-   **The seam collapse lands here, moved from step 8 on 2026-10-26.** Once this step has given
+   **The seam collapse lands here.** Once this step has given
     every reachable cell a widening, `decide` collapses to `Lowering`, `Refusal` narrows to its one
     producer in `bundle.record`, and `Kind.DEFERRED` retires — which is what turns any remaining
     deferral into a compile error rather than a report line. It belongs at the end rather than
     the beginning for the reason step 8 records: a total seam over cells with no widening is a
-    `BuildFailure` on every one of them, and all but one primary refusal site was in that state
-    when the instrument was built. The collapse is the *consequence* of the widenings being complete,
-    not the mechanism that completes them.
+    `BuildFailure` on every one of them. The collapse is the *consequence* of the widenings being
+    complete, not the mechanism that completes them.
 
    *Exit condition: `refused` is 0 over the portable set, `decide` returns `Lowering`,
     `Kind.DEFERRED` is gone, `APPROXIMATED` equals the declared set in both directions, and every
     upstream attribution names a live issue.*
 
-**Then the waves, with a changed exit condition and an unknown order.** A wave's exit condition
-was "these keywords stop refusing documents". After step 10 no keyword refuses anything, so the
-condition becomes **"these keywords' OURS approximations reach 0"** — the upstream half is not a
-wave's to close. And the wave ORDER has to be re-measured, not carried over: the waves were
-ordered by how many documents each keyword set *completes*, and after step 10 every document is
-complete, so the ordering quantity no longer exists. The new quantity is how many *approximated
+**Then the waves.** A wave's exit condition is **"these keywords' OURS approximations reach 0"**
+— the upstream half is not a wave's to close. And the wave ORDER is measured rather than carried
+over: ordering by how many documents each keyword set *completes* has no quantity after step 10,
+because every document is complete. The new quantity is how many *approximated
 facts* a wave's keywords close, which is a different number over a different denominator and
 will not produce the same order. The upstream half is not a wave at all; it is the issue list,
 and it closes when upstream closes.
 
 **NO STEP OF THIS SECTION OWNS THE CONSUMER SURFACE, and that is deliberate rather than an
-omission.** `src/adcp/types/__init__.py` used to say its public surface was
-"generated from the binding table in step 9". Step 9 has landed, it owns no binding table, and
-**nothing anywhere owns one** — `codegen/emit.py` says so in as many words. The question that
-docstring was answering is a real one and this section is the wrong place for it: §14 is the
+omission.** §14 is the
 COMPILER's migration path, and every step here is checked against the emitted tree or the report.
 What a domain module exports is not a property of the compiler's internals; it is the artifact a
 consumer imports, so it is graded by census against that artifact and not by a step's *bytes*
 mark. `docs/plan/surface-goal.md` owns that goal, `docs/plan/unimplemented.md` A-2 owns the gap,
 and the row is P4-09.
-
-That boundary is why the compiler reaching `refused 0` did not deliver a usable SDK, and saying it
-here is cheaper than rediscovering it: a reader who looks for the consumer surface among these
-steps will not find it, and the honest answer is that it was never one of them.
