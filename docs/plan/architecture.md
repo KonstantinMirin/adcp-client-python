@@ -1199,6 +1199,41 @@ a complete catalogue, the machinery that generated duplicates and the machinery 
 afterwards are both dead code — not refactored, removed. **A change implementing this order that
 adds more lines than it deletes has misread it.**
 
+### AN OVERRIDE DECLARES THE DEFECT IT COMPENSATES FOR, AND FAILS WHEN THE DEFECT IS GONE
+
+The entry above says the table must shrink. **This says the shrinking is not a discipline anyone
+has to remember: an override that is no longer needed must BREAK THE BUILD.** A table that merely
+*ought* to shrink is a fork with good intentions, and the day the bundle is fixed properly the
+override would quietly keep preferring our answer to the protocol's.
+
+`codegen/patch.py` is the mechanism and it already states the rule in its own terms, so this
+subsection names the properties rather than inventing them:
+
+- **AN OVERRIDE IS AN OVERLAY AND NEVER AN EDIT.** It does not rewrite a published document. It
+  adds a new one holding the subschema and rewrites each matching site to `$ref` it. A patch
+  *replacing* a published document is a different operation, and `load` refuses it, **because the
+  record check could not tell the two apart.**
+- **AN OVERRIDE FAILS THE DAY ITS ASK LANDS.** `load` raises where the published bundle already
+  holds the document the manifest names. So the fix arriving upstream breaks the run and the
+  instruction is to delete the entry — never to shadow a published answer with ours.
+- **AND AN EXCLUSION CANNOT ROT.** Where a site matches by structure and differs in MEANING, the
+  exclusion is written down with the reason, and `stale` fails if it stops matching anything —
+  because an exclusion that excludes nothing silently widens the patch the day its site moves, and
+  the next site to *gain* the structure there is rewritten with nobody having read what it means.
+
+**AND EXTRACTION IS WORTH MORE THAN A TITLE, WHICH IS WHY IT IS THE DEFAULT FORM.** Naming a node
+in place tells the catalogue what to call one entry. Extracting it gives the structure **a document
+path, which IS its name**, and turns every site into a reference — so the entries collapse **by the
+reference the bundle now states**, not by an identity we inferred. The judgment is made once, in
+data, and the compiler afterwards reads a fact rather than repeating a guess.
+
+**AN ADDITIVE OVERRIDE INHERITS ALL OF IT, AND THE FAILURE CLAUSE IS THE PART THAT IS EASY TO
+DROP.** Where extraction is wrong — a structure stated once that merely wants naming — the override
+adds the keyword in place. It must then **raise once the node carries that keyword itself**, rather
+than overwriting it. An additive override that silently wins over a published value is the one form
+of this mechanism that could outlive its cause invisibly, and it would do so while looking like
+success.
+
 ### What this does to the defects already open
 
 The `const` override dissolves rather than being patched: where a root's `enum` and a branch's
