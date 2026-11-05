@@ -98,7 +98,6 @@ from __future__ import annotations
 
 import importlib
 from collections.abc import Mapping
-from pathlib import Path
 
 import fresh
 import pytest
@@ -107,7 +106,19 @@ from nodeset import claimed
 
 from codegen import emit
 
-BUNDLE = Path(__file__).resolve().parents[1] / "schemas" / "cache" / "3.2"
+#: **The bundle a RUN reads, re-exported from ``tests/fresh.py``** -- the one seam that
+#: answers "which bundle is this run's".  Not a path of this module's own, and that is the
+#: whole of the fix it carries: :func:`surface` and
+#: :func:`test_the_export_paths_number_the_declarations_behind_them` read a COMPILE of
+#: this bundle over ``fresh.population()``, which is the document set of the bundle
+#: ``tests/fresh.py`` materialised the graded tree from.  Spelled separately, the two can
+#: name different bundles -- and the measurement is that they did: with the build's patch
+#: sets applied, ``fresh.population()`` carries ``core/country-code.json``, which exists
+#: only in the patched bundle, and ``compiled()`` opened it under this module's own
+#: published path and raised ``FileNotFoundError`` in the setup of three tests
+#: (``adcp-client-python-lzzj.9``).  One run must not range over two bundles, so there is
+#: one spelling of the bundle and the readers take it from there.
+BUNDLE = fresh.BUNDLE
 
 
 def surface() -> dict[tuple[str, str], list[tuple[str, str]]]:
