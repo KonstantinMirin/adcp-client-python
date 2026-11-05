@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import importlib
 import pkgutil
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -141,17 +142,49 @@ def _required_names(node: Any, root: Any) -> frozenset[str]:
     return names
 
 
-def _emitted_mixin_classes() -> dict[str, type[BaseModel]]:
-    """Every class of the committed tree that carries :class:`BranchDispatchMixin`.
+def _mixin_classes(package: Any) -> dict[str, type[BaseModel]]:
+    """Every class of a tree rooted at ``package`` that carries
+    :class:`BranchDispatchMixin`.
 
     Keyed by its qualified name, which is what a failure has to report: a base and the
     branches that inherit its ``_branch_adapter`` fail together, so the three names tell
     a reader which base the one defect is.
+
+    **A PACKAGE ROOT IS A DOCUMENT'S MODULE, so ``ispkg`` is NOT a screen here**
+    (``adcp-client-python-bxu``, the reading, and ``-5uz``, this site).
+    ``emit.module_file``'s layout rule writes a document whose own path is also a
+    DIRECTORY of the bundle to ``<path>/__init__.py``, so ``brand.json``'s module is
+    ``adcp.types._schemas.brand`` and ``pkgutil`` reports it as a package.  Screening
+    those out put 31 of the tree's 1,088 modules outside reading 3 -- 30 empty layout
+    markers and ``brand/__init__.py``, which carries 111 class statements, 68 pydantic
+    classes and 44 enums -- so a union base or branch declared by ``brand.json`` was
+    never asked to construct its dispatch.
+
+    **MEASURED HERE, which is what says the screen cost this file a reading and not only
+    a module count**: with it, 718 classes carry the mixin; without it, 728.  The ten are
+    ``brand``'s, and one of them -- ``ColorRef`` -- is a base CARRYING A DISPATCH KEY, so
+    1 of this file's 83 keyed bases was never compared against the key its document
+    guarantees (:func:`test_no_union_dispatches_on_a_key_its_document_lets_an_instance_omit`).
+    That second gate's OTHER half is sighted: ``_records`` ranges over
+    ``bundle.portable``, which holds ``brand.json``.  It is a LOOKUP and not a
+    denominator, though, so a sighted document side cannot notice a class side that is
+    short -- the enumeration here is the only thing either gate ranges over.
+
+    Recursion was never what the screen cost: ``walk_packages`` descends into a package
+    whether or not the caller keeps its ``ispkg`` entry, so what was lost is exactly the
+    package's OWN ``__init__.py`` body.  The tree's own root is outside this walk by
+    construction and nothing is lost there -- ``walk_packages`` enumerates a package's
+    CHILDREN, and a package's ``__init__`` IS the package -- and ``_schemas/__init__.py``
+    is the empty marker ``emit.write`` writes.
+
+    **The package is a PARAMETER** so that the reading can be run over a tree built to
+    carry a known defect, which is the only thing that says it reaches one:
+    :func:`test_the_dispatch_reading_reaches_a_union_base_a_package_root_declares` is
+    that A/B, and the real tree is green either way.
     """
     names = sorted(
         info.name
-        for info in pkgutil.walk_packages(schemas_pkg.__path__, schemas_pkg.__name__ + ".")
-        if not info.ispkg
+        for info in pkgutil.walk_packages(package.__path__, package.__name__ + ".")
     )
     out: dict[str, type[BaseModel]] = {}
     for name in names:
@@ -165,6 +198,29 @@ def _emitted_mixin_classes() -> dict[str, type[BaseModel]]:
             ):
                 out[f"{name}.{value.__name__}"] = value
     return out
+
+
+def _emitted_mixin_classes() -> dict[str, type[BaseModel]]:
+    """:func:`_mixin_classes` over the tree a fresh run emits, which is what §4 grades."""
+    return _mixin_classes(schemas_pkg)
+
+
+def _dispatch_failures(classes: dict[str, type[BaseModel]]) -> dict[str, str]:
+    """Every class whose dispatch does not CONSTRUCT, with pydantic's own reason.
+
+    **The failure is collected and not raised**, because the obligation is over every
+    class and the first raising one would otherwise hide the rest -- which is the defect
+    ``adcp-client-python-82m.23`` records from the other side: pydantic's message names
+    the first branch it INSPECTS rather than the branch at fault, so a reader following
+    one traceback goes to the wrong class.  The whole list is the finding.
+    """
+    raised: dict[str, str] = {}
+    for name in sorted(classes):
+        try:
+            classes[name]._branch_adapter()
+        except Exception as why:  # the failure IS the finding
+            raised[name] = f"{type(why).__name__}: {why}"
+    return raised
 
 
 def test_every_union_bases_dispatch_constructs() -> None:
@@ -181,16 +237,127 @@ def test_every_union_bases_dispatch_constructs() -> None:
     same reason: ``_branch_adapter`` is inherited, so a branch of a broken base raises
     too, and a population of bases would report the one defect as one line where the
     consumer meets three.
+
+    **THIS GATE HAS NO SECOND DERIVATION**, which is why the one below exists.  It is an
+    absence over one enumeration -- nothing else here says how many union bases the
+    bundle states -- so a walk that cannot see part of the tree reports green for free on
+    that part and no equality disagrees.  ``claimed`` refuses only an EMPTY population.
     """
     classes = _emitted_mixin_classes()
     population = claimed("classes carrying BranchDispatchMixin", classes)
-    raised = {}
-    for name in sorted(population):
-        try:
-            classes[name]._branch_adapter()
-        except Exception as why:  # the failure IS the finding
-            raised[name] = f"{type(why).__name__}: {why}"
+    raised = _dispatch_failures({name: classes[name] for name in population})
     assert raised == {}, raised
+
+
+#: A union root with a dispatch key, as a module declares one: a base naming the key, two
+#: branches pinning it, and ``_branch_models`` assigned after they exist.  ``branch_one``
+#: is the one thing that varies, because it is where ``adcp-client-python-82m.23``'s
+#: defect sits -- a branch whose dispatch key is ``Optional[Literal[...]]`` is refused by
+#: pydantic when the ADAPTER IS BUILT, so every class of that union raises.
+_A_UNION = """\
+from __future__ import annotations
+
+from typing import Literal, Optional
+
+from pydantic import BaseModel
+
+from adcp.types._base import BranchDispatchMixin
+
+
+class {stem}Base(BranchDispatchMixin, BaseModel):
+    _BRANCH_DISCRIMINATOR = "kind"
+
+
+class {stem}One({stem}Base):
+    kind: {branch_one}
+
+
+class {stem}Two({stem}Base):
+    kind: Literal["two"]
+
+
+{stem}Base._branch_models = ({stem}One, {stem}Two)
+"""
+
+
+def test_the_dispatch_reading_reaches_a_union_base_a_package_root_declares(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """``adcp-client-python-5uz``: the reading above over a tree whose PACKAGE ROOT is
+    where the defect is.
+
+    §9: a rule nothing can break is a finding about the rule.  The gate above is green
+    with the ``ispkg`` screen and green without it -- the previous lane A/B'd it and the
+    tree is clean behind the screen -- so **its own green says nothing about which modules
+    it reached**, and a later edit could restore the screen without reddening anything.
+    Here the package root carries a DEFECT, so the reading either names it or does not.
+
+    The population is a hand-built tree and not the bundle's, for
+    ``tests/test_the_tree_imports.py``'s reason: what is graded is the READING and not the
+    compiler, and four files answer the question in a second where the real tree is 1,088
+    modules and costs minutes.  Its shape is ``brand/``'s -- a document's module written to the package's own
+    ``__init__.py``, with the directory's documents as its submodules -- which is
+    ``adcp-client-python-bxu``'s fixture adapted to the defect THIS gate reports: an
+    ``Optional[Literal[...]]`` dispatch key, which is ``82m.23``.
+
+    ``rooted/under.py`` beside it is what says the loss was never recursion:
+    ``walk_packages`` descends into ``rooted`` whatever the caller does with its ``ispkg``
+    entry, and ``plain.py`` is the control for a module that is not under a package at all.
+    Both are clean, so a reading that reported either would be red here too.
+
+    **By behaviour and never by inspection**: nothing here reads :func:`_mixin_classes`'
+    source or asks how it walks.  The claim is that a known package module's classes are
+    REACHED, and what says so is a dispatch failure reported from inside one.
+    """
+    tree = tmp_path / "a_tree_with_a_package_root"
+    (tree / "rooted").mkdir(parents=True)
+    (tree / "__init__.py").write_text("")  # the tree's own root, as ``emit.write`` writes it
+    (tree / "rooted" / "__init__.py").write_text(
+        _A_UNION.format(stem="Rooted", branch_one='Optional[Literal["one"]] = None')
+    )
+    (tree / "rooted" / "under.py").write_text(
+        _A_UNION.format(stem="Under", branch_one='Literal["one"]')
+    )
+    (tree / "plain.py").write_text(_A_UNION.format(stem="Plain", branch_one='Literal["one"]'))
+
+    monkeypatch.syspath_prepend(str(tmp_path))
+    importlib.invalidate_caches()
+    try:
+        classes = _mixin_classes(importlib.import_module(tree.name))
+
+        # **THE DEFECT IN THE PACKAGE ROOT IS REPORTED.**  Every class of that union
+        # raises, because ``_branch_adapter`` is inherited -- the three names a consumer
+        # meets, which is what the gate above collects rather than raising.  The two clean
+        # modules are reached and report nothing, which is the control: ``rooted.under``
+        # says the screen never cost recursion.  With the ``ispkg`` screen restored this
+        # set is EMPTY and the gate above is still green.
+        raised = _dispatch_failures(classes)
+        assert set(raised) == {
+            f"{tree.name}.rooted.RootedBase",
+            f"{tree.name}.rooted.RootedOne",
+            f"{tree.name}.rooted.RootedTwo",
+        }, raised
+        assert all("needs field 'kind' to be of type `Literal`" in why for why in raised.values()), (
+            raised
+        )
+
+        # **AND THE WHOLE TREE WAS READ**, as an equality between two derivations and not
+        # a count (``tests/test_every_check_names_its_set.py``'s first rule): every
+        # qualified name the reading bound, against every ``class`` statement of the
+        # fixture's own text.  With the screen restored this is short by the three
+        # ``rooted/__init__.py`` declares -- which is ``brand/__init__.py``'s 111, in
+        # miniature.
+        declared = {
+            f"{tree.name}.{'.'.join(path.relative_to(tree).with_suffix('').parts).removesuffix('.__init__')}"
+            f".{line.removeprefix('class ').split('(')[0]}"
+            for path in sorted(tree.rglob("*.py"))
+            for line in path.read_text().splitlines()
+            if line.startswith("class ")
+        }
+        assert set(classes) == declared, (sorted(classes), sorted(declared))
+    finally:
+        for name in [n for n in sys.modules if n == tree.name or n.startswith(f"{tree.name}.")]:
+            del sys.modules[name]
 
 
 def test_no_union_dispatches_on_a_key_its_document_lets_an_instance_omit() -> None:
