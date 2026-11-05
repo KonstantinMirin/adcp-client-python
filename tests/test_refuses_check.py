@@ -423,10 +423,28 @@ def test_every_counting_root_refuses_the_count_its_document_refuses(document: st
 
 @cache
 def _root_of(document: str) -> Any:
-    """The ROOT symbol of a document's FRESH module, or ``None`` where it declares none.
+    """The ROOT symbol of a document's FRESH module, **resolved by its PROVENANCE POINTER**.
 
-    Read off the module's ``__all__``, which is the emitter's own export record, so no name
-    is derived here and a renamed class cannot make this skip silently.
+    ``Emitted.declared`` is "the run's own record of WHERE each symbol came from" --
+    pointer -> symbol -- so the root is the symbol the run declared at the document's root
+    pointer, and the name it happens to carry decides nothing.
+
+    **WHAT STOOD HERE WAS ``__all__[0]`` AND IT GRADED A DIFFERENT DOCUMENT'S NODE.**  The
+    export list is SORTED, so the first export is whichever declaration of the module sorts
+    first alphabetically -- which is the root only by luck.  Measured at ``781f873d1``, this
+    reading handed the gate below:
+
+    * ``core/targeting-overlay-support.json`` -> ``BrowserSupport``
+      (``Supported | BrowserSupportFamilies``), not ``TargetingOverlaySupport``;
+    * ``core/targeting-overlay-requirements.json`` -> ``BrowserRequirement``, not
+      ``TargetingOverlayRequirements``.
+
+    Both are ``Supported | ...`` unions whose first branch is ``Literal[True]``, so both
+    ADMITTED the witness ``true`` that the root's ``type: object`` refuses, and the gate
+    reported ``widened_undeclared`` on keyword ``type`` under ``not`` -- a widening of a
+    node the check was never asked about, attributed to the document.  The verdict was
+    right about the symbol it was handed and about nothing else, which is why the reason and
+    not only the verdict has to be read.
     """
     out = compiled(BUNDLE, sorted(bundle.portable(BUNDLE)))
     #: ``Emitted.emitted`` maps a document to the MODULE NAME the run wrote it to, which
@@ -434,9 +452,70 @@ def _root_of(document: str) -> Any:
     name = out.emitted.get(document)
     if name is None:
         return None
-    module = importlib.import_module(name)
-    exported = getattr(module, "__all__", ())
-    return getattr(module, exported[0], None) if exported else None
+    #: The ROOT POINTER's own declaration.  ``Module.declared`` spells a document's root as
+    #: the empty pointer, and a document whose root declares nothing is absent from the map
+    #: rather than carrying a name that is not its root's.
+    root = out.declared.get(document, {}).get("")
+    if root is None:
+        return None
+    return getattr(importlib.import_module(name), root, None)
+
+
+def test_every_graded_root_is_the_class_the_run_declared_at_the_documents_root() -> None:
+    """**The symbol under test answers for the document under test, by its own pointer.**
+
+    ``docs/plan/architecture.md``'s identity rule read as a grading rule, and the gate the
+    three reds at ``781f873d1`` earn: a class resolved by NAME can be a faithful class of
+    the WRONG NODE, and the verdict it produces is then right about something nobody asked.
+
+    **ASSERTED BY VALUE AND NOT BY PROVENANCE**, because a provenance reading is satisfied
+    by the defect: the three symbols the by-name reading handed over were a ``Supported |
+    ...`` union and an ``Annotated[dict[...]]`` alias, neither of which carries an
+    ``__adcp_schema__`` at all, so a gate asking the symbol for its pointer EXCLUDED exactly
+    the cells that were wrong and passed.  A/B'd, both readings, 2026-11-05.  What a wrongly
+    resolved class cannot do is ACCEPT the instance this document admits -- that is reading
+    1's own first half, it is a value, and it reddens on all three.
+
+    Two statements, both derived and neither a pin:
+
+    * the class the gate grades accepts the instance the gate offers it, over the whole
+      counting population and with the document's own verdict asserted first, so a witness
+      the document itself refuses cannot make this pass;
+    * the reading by NAME resolves a NON-EMPTY subset of the population to a different
+      declaration, which is what stops the first statement being a property of this
+      bundle's alphabet.  Measured at ``781f873d1``: 3 of the 15 counting roots, and all
+      three reported ``widened_undeclared`` under it.
+    """
+    out = compiled(BUNDLE, sorted(bundle.portable(BUNDLE)))
+    population = claimed("counting roots the gate grades", set(counting_roots()))
+    refused: dict[str, str] = {}
+    for document in sorted(population):
+        node = counting_roots()[document]
+        instance = an_instance_this_check_can_offer(document, node)
+        assert instance is not None, document
+        # The DOCUMENT's own verdict first: a witness it refuses would make the class's
+        # refusal correct, and this gate would then be reading reading 1 backwards.
+        assert harness.conforms(node, instance) is True, (document, instance)
+        try:
+            TypeAdapter(_root_of(document)).validate_python(instance)
+        except Exception as error:  # noqa: BLE001 -- any refusal is a refusal
+            refused[document] = f"{type(error).__name__}: {str(error)[:200]}"
+    assert refused == {}, refused
+    # The NON-VACUITY, off the same ``declared`` record the resolution reads: the documents
+    # whose alphabetically first declaration is not the root's.  Named, so a reader of a
+    # green run sees which they are, and asserted non-empty, so the statement above is
+    # about the pointer and not about this bundle's naming luck.
+    by_name = claimed(
+        "counting roots a reading by NAME resolves elsewhere",
+        {
+            document
+            for document in population
+            if (declared := out.declared.get(document, {}))
+            and min(declared.values()) != declared.get("")
+        },
+        inside=population,
+    )
+    assert by_name
 
 
 def test_the_counting_population_is_named_and_derived() -> None:

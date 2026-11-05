@@ -64,6 +64,7 @@ from __future__ import annotations
 import functools
 from typing import Any
 
+import cells
 from cells import (
     AT,
     NODES,
@@ -321,6 +322,72 @@ def test_every_live_cell_is_proved_or_refused_by_name() -> None:
         if not (verdicts.proved or verdicts.refused_on)
     }
     assert failing == {}, failing
+
+
+def test_a_cell_is_graded_against_the_class_at_the_root_pointer() -> None:
+    """**The witnesses go to the class the PROBE DOCUMENT'S ROOT lowered, by pointer.**
+
+    ``docs/plan/architecture.md``'s identity rule read as a grading rule: a class is
+    resolved by the provenance its run recorded for it, never by what it is called.  The
+    instrument read ``module.__all__[0]`` instead -- the module's alphabetically first
+    export -- and the two readings agree at eight of the nine positions, which is why the
+    defect was invisible until the DEF column existed.
+
+    **AT DEF THEY DISAGREE AND THE WRONG CLASS WAS GRADED 32 TIMES.**  A DEF probe's module
+    exports the ``definitions`` entry beside the root that references it, the export list is
+    sorted, and the entry sorts first.  So every DEF witness -- an instance of the shape
+    ``{"p": <value>}`` -- was offered to the class for the value INSIDE ``p``, which refuses
+    an object with a ``p`` key or admits one for reasons of its own.  Measured at
+    ``781f873d1``: 23 of the 33 DEF cells reported a NARROWING and 8 an undeclared WIDENING,
+    the whole of :func:`test_every_live_cell_is_proved_or_refused_by_name`'s failure and the
+    whole of ``tests/test_decision_set.py``'s, and not one of them a disagreement between a
+    class and its document.
+
+    **BOTH SIDES DERIVED, AND THE DIFFERENCE IS ASSERTED NON-EMPTY**, which is what makes
+    this a measurement rather than a tautology: a gate comparing two readings that agree
+    everywhere cannot say which one the run is using.  The cells where they differ are
+    stated as an equality against the emitted DEF column -- derived on both sides, so a
+    position that starts minting an earlier-sorting export reddens here with the cell named
+    instead of silently grading the wrong class somewhere else.
+    """
+    emitted = {cell for cell, v in graded().items() if v.outcome == "emitted"}
+    claimed("cells whose probe emitted a module", emitted, inside=live())
+    # **THE OBLIGATION, asked of the GRADED OBJECT and not of the lookup that found it.**
+    # A model answers for its own node through ``__adcp_schema__``, so a cell graded
+    # against the wrong class reports the wrong POINTER here -- at DEF, the entry's
+    # ``#/definitions/D`` where the probe document's root is ``#``.  The set is named
+    # non-empty first: an alias root carries no model and no pointer, and a reading over
+    # only those would be a pass over nothing.
+    answering = claimed(
+        "cells whose graded class carries its own provenance",
+        {cell for cell in emitted if graded()[cell].provenance is not None},
+        inside=live(),
+    )
+    assert answering
+    elsewhere = {
+        cell: graded()[cell].provenance
+        for cell in answering
+        if graded()[cell].provenance != f"{cells.PROBE}#"
+    }
+    assert elsewhere == {}, elsewhere
+    # **AND THE TWO READINGS DO DIFFER**, which is what stops the assertion above being
+    # satisfied by a tree where every module declares one symbol and the two readings
+    # cannot disagree.  The set is NAMED rather than counted, and the DEF column is
+    # asserted to meet it: that column is where a ``definitions`` entry is declared beside
+    # the root and sorts ahead of it, so it is the column a reading by name is wrong at by
+    # construction rather than by accident.
+    #
+    # NOT an equality against the DEF column, and the correction is the measurement: a
+    # PROP, KEY or BRANCH probe declares its inner object too, and those names sort ahead
+    # of ``Probe`` as readily as ``D`` does -- 32 DEF cells but 50 cells in all.  The DEF
+    # column is where the old reading changed the VERDICT, not where it was alone in being
+    # a different symbol.
+    differ = claimed(
+        "cells a reading by NAME resolves to another declaration",
+        {cell for cell in emitted if graded()[cell].bound != graded()[cell].by_name},
+        inside=live(),
+    )
+    assert differ & {c for c in emitted if c[1] is Position.DEF}, sorted(differ)
 
 
 def test_the_cells_the_bundle_states_are_the_induction_s_own_set() -> None:

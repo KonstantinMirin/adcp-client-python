@@ -518,6 +518,10 @@ BESIDE = {
     "core/vocab.json": VOCAB,
 }
 
+#: The one document every probe is written to, named once so :func:`compile_probe`, the two
+#: symbol readers and :func:`grade` cannot disagree about which module a cell is graded in.
+PROBE = "core/probe.json"
+
 _BOUND = [0]
 
 
@@ -533,14 +537,47 @@ def compile_probe(doc: dict) -> tuple[emit.Emitted, dict]:
         (root / "core").mkdir(parents=True, exist_ok=True)
         for name, text in BESIDE.items():
             (root / name).write_text(json.dumps(text, indent=1))
-        path = root / "core/probe.json"
+        path = root / PROBE
         path.write_text(json.dumps({"$schema": DRAFT, **doc}, indent=1))
-        population = ["core/probe.json", *BESIDE]
+        population = [PROBE, *BESIDE]
         return emit.emit(root, population), json.loads(path.read_text())
 
 
+def root_symbol(out: emit.Emitted, document: str = PROBE) -> str:
+    """**The symbol the run declared AT THE DOCUMENT'S ROOT POINTER**, and not a name.
+
+    ``Emitted.declared`` is "the run's own record of WHERE each symbol came from" --
+    pointer -> symbol -- so this is a PROVENANCE lookup: the class a cell has to be graded
+    against is the one lowered from the probe document's root node, whatever it is called
+    and whatever else the module exports.
+
+    **WHAT STOOD HERE WAS ``module.__all__[0]`` AND IT GRADED THE WRONG CLASS AT EVERY DEF
+    CELL.**  A DEF probe's module exports TWO symbols -- the ``definitions`` entry and the
+    root that references it -- and the export list is sorted, so the first export is the
+    ENTRY (``D``) rather than the root (``Probe``).  Every witness was therefore placed at
+    ``{"p": ...}`` and offered to the entry's own class, which is the class for the value
+    INSIDE ``p``: measured, 23 of the 33 DEF cells reported a narrowing and 8 reported an
+    undeclared widening, all of them the instrument's own mis-resolution and none of them a
+    disagreement between a class and its document.  A name sorts; a pointer does not.
+    """
+    return out.declared[document][""]
+
+
+def first_by_name(out: emit.Emitted, document: str = PROBE) -> str:
+    """The probe module's alphabetically first symbol -- the reading replaced above.
+
+    Kept because a gate whose two sides agree everywhere says nothing about which of them
+    is being read: ``tests/test_cells.py::test_a_cell_is_graded_against_the_class_at_the_root_pointer``
+    names the cells where this and :func:`root_symbol` DIFFER, and that set being non-empty
+    is what makes the equality a measurement rather than a tautology.  Read off the same
+    ``declared`` record as :func:`root_symbol`, so the two differ only in what they index
+    by -- a pointer against a name -- and not in which run they describe.
+    """
+    return min(out.declared[document].values())
+
+
 def bind(out: emit.Emitted) -> Any:
-    """The probe module's root symbol, EXECUTED rather than inspected.
+    """The probe document's ROOT symbol, EXECUTED rather than inspected.
 
     ``tests/test_required_with_no_declaration.py``'s reading and for its reason: "a test
     that inspects the rendered text passes on a rendering that does not run, and this
@@ -548,6 +585,9 @@ def bind(out: emit.Emitted) -> Any:
     under its own import name for the duration, because an alias this probe mints is one
     the committed module does not carry -- ``tests/fresh.py`` states the same rule for
     the tree.
+
+    Which symbol is the root is :func:`root_symbol`'s question and it is answered by the
+    run's own PROVENANCE record, not by the module's export order.
     """
     _BOUND[0] += 1
     constraints = types.ModuleType("adcp.types.constraints")
@@ -573,7 +613,7 @@ def bind(out: emit.Emitted) -> Any:
         try:
             module.__dict__.update(held)
             exec(
-                compile(_standalone(out.files["core/probe.py"]), "<probe>", "exec"),
+                compile(_standalone(out.files[PROBE.replace(".json", ".py")]), "<probe>", "exec"),
                 module.__dict__,
             )
         finally:
@@ -583,7 +623,7 @@ def bind(out: emit.Emitted) -> Any:
             del sys.modules["adcp.types.constraints"]
         else:
             sys.modules["adcp.types.constraints"] = saved
-    return module.__dict__[module.__all__[0]]
+    return module.__dict__[root_symbol(out)]
 
 
 def _standalone(text: str) -> str:
@@ -612,6 +652,19 @@ class Verdicts(NamedTuple):
     widened: tuple[tuple[str, Any, bool], ...]
     #: The keywords the run declared an approximation for on this probe.
     declared: tuple[str, ...]
+    #: **The PROVENANCE the object the witnesses were offered to carries**, as the
+    #: ``document#pointer`` its own ``__adcp_schema__`` states, or ``None`` where the root
+    #: lowered to an alias and there is no model to carry one.  This is the reading that
+    #: says WHICH NODE was graded, and it is read off the bound object rather than off the
+    #: name used to find it -- so a resolution that reached the wrong class is a wrong
+    #: POINTER here and not merely a surprising verdict.
+    provenance: str | None = None
+    #: The symbol the run declared at the root pointer, and the module's alphabetically
+    #: first declared symbol.  Carried on the grade rather than re-derived, because a
+    #: second derivation costs a second compile of all 289 probes, and carried as a PAIR
+    #: because the two being different somewhere is what makes the first one a choice.
+    bound: str | None = None
+    by_name: str | None = None
 
     @property
     def proved(self) -> bool:
@@ -634,7 +687,7 @@ def grade(keyword: str, position: Position) -> Verdicts:
     document, place = wrap(position, probe.node, probe.under)
     out, resolved = compile_probe(document)
     if out.refusals:
-        refusal = out.refusals.get("core/probe.json") or next(iter(out.refusals.values()))
+        refusal = out.refusals.get(PROBE) or next(iter(out.refusals.values()))
         return Verdicts(
             str(refusal["resolved"]).split(".")[-1], refusal["keyword"], (), (), (), ()
         )
@@ -661,8 +714,24 @@ def grade(keyword: str, position: Position) -> Verdicts:
         tuple(rows),
         tuple(r for r in rows if r[1] is True and not r[2]),
         tuple(r for r in rows if r[1] is False and r[2]),
-        tuple(a.keyword for a in out.approximations.get("core/probe.json", [])),
+        tuple(a.keyword for a in out.approximations.get(PROBE, [])),
+        provenance_of(symbol),
+        root_symbol(out),
+        first_by_name(out),
     )
+
+
+def provenance_of(symbol: Any) -> str | None:
+    """``document#pointer`` off the symbol's own ``__adcp_schema__``, where it is a model.
+
+    ``Emitted.emitted``'s own words: it "is NOT a binding table and nothing reads it at
+    runtime: a class finds its schema through its own ``__adcp_schema__``".  So this is the
+    graded object answering for itself which node it lowered -- the one reading that cannot
+    be satisfied by a class that merely happens to agree.  An alias root carries no model
+    and therefore no pointer, which is reported as ``None`` rather than guessed at.
+    """
+    ref = getattr(symbol, "__adcp_schema__", None)
+    return None if ref is None else f"{ref.document}{ref.pointer}"
 
 
 # --------------------------------------------------------------------------- #
