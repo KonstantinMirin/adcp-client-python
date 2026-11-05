@@ -80,31 +80,30 @@ Emission is not this: a document emits when the walk produces a class for it, wh
 about what the class states.
 
 **THIS IS A PROPERTY OF THE COMPILER AND NOT OF ONE BUNDLE.** It must hold for every document of
-every bundle the compiler is pointed at. An instrument that answers only for the bundle whose
-values someone stored answers the wrong question: it cannot say whether a NEW bundle emitted
-correctly, which is the only question anyone asks of a compiler.
+every bundle the compiler is pointed at, so nothing deciding it may be keyed to one bundle's state.
 
-**Decided by** the keyword table's CELLS, each verified once from its own statement. The table is
-the whole of the transformation — a keyword at a position, and what it emits there — so if every
-cell admits exactly what its keyword admits at that position, then every class the composition
-produces admits exactly what its document admits. **A cell is a statement about JSON Schema, so it
-carries no bundle, holds no stored value, and nothing about it expires when the bundle moves.**
+**Decided by two checks and there is no third:**
 
-**The per-document draw CORROBORATES and does not decide.** It samples the image of a function
-whose domain is the table, so it can find a cell whose statement is wrong, and it is worth running
-for that. It cannot establish the reading: no number of passing documents says anything about the
-document nobody sampled, and a stored value makes an improvement to the bundle cost exactly as much
-as a regression.
+1. **Draw a value from the document. The class must admit it.**
+2. **Instantiate the class, dump it. The document must admit the dump.**
 
-**NO VERIFICATION ARTIFACT IS KEYED ON A DOCUMENT'S BYTES.** A key is over what the document
-ADMITS. A compiler edit must move no key — and neither must an acceptance-preserving transformation
-of the bundle, because by definition it cannot invalidate a value. What belongs in a key is what
-changes which values are drawn.
+Plus the declared widenings of reading 2, each proved by a value.
 
-**AND A PAIR THAT CAN ONLY BE GRADED FROM A STORE IS NOT VERIFIED, IT IS REMEMBERED.** Where the
-store is load-bearing rather than a saving, the reading does not hold for that pair and the store
-is hiding it. A budget cut is reported as a cut, and no pair passes by leaving the check
-unexecuted.
+**BOTH CHECKS ARE A FUNCTION OF (class, document) AND OF NOTHING ELSE.** Point them at another
+bundle and they answer for that bundle, because there is nothing to carry over and nothing to
+expire. **A stored value, a key over a document's bytes, or any artifact that must be re-derived
+when the bundle moves makes an improvement to the schema cost exactly as much as a regression** —
+and it makes the instrument answer for the bundle it was built against instead of for the compiler.
+
+**A PAIR THAT CAN ONLY BE GRADED FROM A STORE IS NOT VERIFIED, IT IS REMEMBERED.** Where a store is
+load-bearing rather than a saving, the reading does not hold for that pair and the store is hiding
+it.
+
+**AND WHERE A VALUE CANNOT BE DRAWN, THE DOCUMENT'S OWN `examples` IS THE VALUE.** It is the
+schema's statement about itself, it needs no generator, and it survives any transformation that
+preserves what the document admits. A document that states no example and admits no value a
+generator can produce is an ask over a set of the bundle — not a budget, not an exemption, and not
+a pair that passes by leaving the check unexecuted. A budget cut is reported as a cut.
 
 ## 2. Every exception to reading 1 is a declared widening, proved by a value
 
