@@ -445,7 +445,17 @@ NONE: Any = object()
 
 #: **The two descending keywords a RESTRICTION does not travel through**, which is the one
 #: thing :func:`locations` has to know and the whole of why it is a keyword set rather
-#: than a position set.  ``not`` and ``if`` each hold their subschema at
+#: than a position set.
+#:
+#: **AND :func:`locations` DOES NOT READ IT TODAY**, which is a defect this set is kept to
+#: name rather than a reason to delete it (``adcp-client-python-d81a``'s prune pass): the
+#: walk descends through an ALLOW-LIST -- :data:`_CONJOINS`, :data:`_CONDITIONAL` and the
+#: child keywords it names inline -- so ``not`` and ``if`` are excluded by omission.  The
+#: two readings agree today and nothing holds them together, so adding ``if`` to
+#: :data:`_CONDITIONAL` would place a fixture under an inverting keyword and this set would
+#: not stop it.
+#:
+#: ``not`` and ``if`` each hold their subschema at
 #: ``Position.RULE``, and so do ``then``, ``else`` and ``dependencies`` -- so the position
 #: cannot tell them apart and the keyword is what decides.
 #:
@@ -523,11 +533,19 @@ _CONDITIONAL = frozenset({"then", "else"})
 #: answer itself -- ``items`` and ``contains`` agree on ``effect``, ``rendered`` and
 #: ``descends`` and only one of them owns, which is §3's own test that the column is a
 #: field.
+#:
+#: **AND THE MONOPOLY IS CLAIMED HERE AND NOT HELD: :func:`locations` RETYPES THE ANSWER**
+#: (measured by ``adcp-client-python-d81a``'s prune pass).  The walk below names
+#: ``properties``, ``items`` and ``additionalProperties`` as owners in its own source and
+#: reads neither this set nor :data:`_CO_STATES`, so there are two owners of one derived
+#: reading and the sentence above describes the intended one.  The two agree over this
+#: bundle; nothing makes them agree over the next.  Kept, and not deleted as unread,
+#: because deleting it is what would make the drift permanent.
 _OWNS = keywords.owns_a_location()
 
 #: The keywords :func:`locations` reads but never replaces: they state something about a
 #: location another keyword owns, so they are conjoined into that location's value and
-#: left exactly as they stand.
+#: left exactly as they stand.  **Retyped in that walk too, for :data:`_OWNS`' reason.**
 _CO_STATES = frozenset({"patternProperties", "contains"})
 
 
@@ -537,7 +555,8 @@ class Location(NamedTuple):
     ``pointers`` is in document order and relative to the node the walk started at, and
     they are the positions the pin REPLACES.  ``nodes`` is every statement the value has
     to satisfy, which is a superset: a keyword that co-states a location another keyword
-    owns is conjoined and left standing (:data:`_CO_STATES`).
+    owns is conjoined and left standing (the keywords :data:`_CO_STATES` names, which
+    :func:`locations` spells for itself -- see its docstring).
 
     ``kind`` says what the pin IS.
 
@@ -597,10 +616,15 @@ def locations(node: Any, *, depth: int = 32) -> tuple[Location, ...]:
       location of its own -- a value one branch admits can meet a conjunct that refuses
       it, which is what the comment in the walk below measures.
 
-    Nothing under ``not`` or ``if`` is a frontier item (:data:`_INVERTS`), and neither is a
-    ``definitions`` entry -- it has no instance location, which is §8's own reading of why
-    such a declaration belongs to the entry's own pair.  Everything else is left to the
-    draw: :data:`_OWNS` says which keywords are pinned and why the rest are not.
+    Nothing under ``not`` or ``if`` is a frontier item, and neither is a ``definitions``
+    entry -- it has no instance location, which is §8's own reading of why such a
+    declaration belongs to the entry's own pair.  Everything else is left to the draw.
+
+    **AND THE OWNERSHIP ANSWER IS WRITTEN IN THIS FUNCTION, not read from the table that
+    states it.**  :data:`_INVERTS`, :data:`_OWNS` and :data:`_CO_STATES` carry the REASONS
+    and this walk carries a second copy of the ANSWER -- the keyword names below.  Each of
+    those three says so at its own definition; none of them is read here, and the drift
+    that makes possible is a defect and not a convention.
     """
     #: location token -> (pointers, nodes).  A dict keyed on the token and not a list, so
     #: the several conjuncts deciding one key arrive as ONE item.
@@ -1014,15 +1038,6 @@ class Fixtures:
     #: ``(document, pointer) -> the instance, or None``.  Memoised for the run, which is
     #: what turns the product into a sum.
     held: dict[tuple[str, str], Any] = field(default_factory=dict)
-    #: How many fixtures came from each derivation, and how many could not be derived.
-    #: ``stated`` is the document's own ``examples`` keyword (:meth:`_stated`), which is a
-    #: THIRD source beside the held corpus and the derived draw and has to be counted
-    #: apart from both for §8's reason: "a store that answers and a borrow that answers
-    #: are different facts about coverage".
-    replayed: int = 0
-    stated: int = 0
-    derived: int = 0
-    unavailable: int = 0
     #: ``digest of a frontier item's statements -> the subschema it is replaced by, or
     #: NONE``.  The node-side rule's memo, keyed on CONTENT and not on a pointer for the
     #: reason :func:`locations` measures: a location inside a pair's node sits at pointers
@@ -1030,9 +1045,6 @@ class Fixtures:
     #: ``(document, pointer)`` to key on.  Content is the honest key and the stronger one
     #: -- two pairs holding one subtree at two pointers share one derivation.
     pins: dict[bytes, Any] = field(default_factory=dict)
-    #: How many frontier items were pinned, and how many could not be.
-    reduced_locations: int = 0
-    unreduced: int = 0
 
     def positions(self, document: str, pointer: str) -> tuple[Referring, ...]:
         return referring_positions(self.read, document, pointer, self.documents)
@@ -1084,9 +1096,9 @@ class Fixtures:
         the location's own pair would pay, recursively reduced the same way, so the cost of
         a node is the SUM over its locations and not the product.
 
-        An item no value survives for is left exactly as it stands and counted
-        (:attr:`unreduced`): the fail-safe direction is to lose the saving, never to place
-        a value the document does not admit.
+        An item no value survives for is left exactly as it stands: the fail-safe
+        direction is to lose the saving, never to place a value the document does not
+        admit.
 
         ``depth`` bounds how many times the reduction re-enters itself; it is a guard on an
         unreasonable answer and not the terminator, which is the content memo.
@@ -1095,9 +1107,7 @@ class Fixtures:
         for item in locations(schema):
             answer = self._pin(item, depth)
             if answer is NONE:
-                self.unreduced += 1
                 continue
-            self.reduced_locations += 1
             placements.extend((pointer, answer) for pointer in item.pointers)
         return replaced(schema, placements)
 
@@ -1206,8 +1216,6 @@ class Fixtures:
             answer = self._stated(key)
         if answer is NONE:
             answer = self._derived(key, seen)
-        if answer is NONE:
-            self.unavailable += 1
         self.held[key] = answer
         return answer
 
@@ -1235,7 +1243,6 @@ class Fixtures:
         found = stated_instances(node)
         if not found:
             return NONE
-        self.stated += 1
         return found[0]
 
     def _replayed(self, key: tuple[str, str]) -> Any:
@@ -1248,7 +1255,6 @@ class Fixtures:
         entry = self.corpus.get(corpus_key(identity, custom_formats=self.custom_formats))
         if not isinstance(entry, list) or not entry:
             return NONE
-        self.replayed += 1
         return entry[0]
 
     def _derived(self, key: tuple[str, str], seen: frozenset) -> Any:
@@ -1295,7 +1301,6 @@ class Fixtures:
         #: wrong at a position nobody has measured yet.
         if conforms(drawn_from, instance) is False:
             return NONE
-        self.derived += 1
         return instance
 
 
@@ -2255,7 +2260,6 @@ class LivenessResult:
     #: rather than assumed from the perturbation, because a perturbation can break
     #: more than it aimed at.
     violated: tuple[str, ...] = ()
-    payload: str = ""
     detail: str = ""
     #: pass | schema_half_not_connected | model_error | no_payload
     outcome: str = "unrun"
@@ -2794,7 +2798,6 @@ def check_liveness(
         return res
     payload, how = found
     res.how = how
-    res.payload = _dump(payload)
     res.violated = tuple(violated_keywords(schema, payload, validator_cls=cls))
     try:
         accept(payload)
@@ -3765,26 +3768,17 @@ def _down(node: Any, *keys: str) -> Any:
     return node
 
 
-def _settled(node: Any, root: Any) -> Any:
-    """``node`` read the way the DOCUMENT states it: a local ``$ref`` resolved against
-    ``root`` and a conjunction folded into the node it composes.
+def _written_and_settled(node: Any, root: Any) -> tuple[Any, Any]:
+    """``node`` read the way the DOCUMENT states it, and the node it was settled FROM:
+    one reading in two halves, because the two halves answer two different questions
+    about one pointer.
 
     :func:`_normalize` and :func:`_composed` are the two readings and this is the pair of
     them in the one order that is correct -- normalisation FIRST, "so a reference whose
     TARGET composes still has its conjuncts folded".  Anything that is not a mapping is
-    handed back unchanged, which is what a list of branches is.
-
-    ``root`` reaches BOTH readings, because both resolve a local pointer against it: the
-    node's own (:func:`_normalize`) and a bare conjunct's (:func:`_composed`).
-    """
-    if not isinstance(node, Mapping):
-        return node
-    return _written_and_settled(node, root)[1]
-
-
-def _written_and_settled(node: Any, root: Any) -> tuple[Any, Any]:
-    """:func:`_settled` and the node it was settled FROM, which is one reading in two
-    halves because the two halves answer two different questions about one pointer.
+    handed back unchanged, which is what a list of branches is.  ``root`` reaches BOTH
+    readings, because both resolve a local pointer against it: the node's own
+    (:func:`_normalize`) and a bare conjunct's (:func:`_composed`).
 
     **The composed half decides what the document STATES at a pointer; the written half
     decides what a pointer SPELLS.**  :func:`_composed` folds a conjunct's facts into the
@@ -4408,14 +4402,6 @@ def check_widening(
             res.accepted += 1
     res.drawn, res.replayed, res.borrowed = draws.drawn, draws.replayed, draws.borrowed
     return res
-
-
-def at_or_none(doc: Any, pointer: str) -> Any:
-    """:func:`at`, answering ``None`` for a pointer the document does not hold."""
-    try:
-        return at(doc, pointer)
-    except Exception:  # a pointer the document does not hold
-        return None
 
 
 #: **The length floor ``hypothesis`` refuses outright**, read off the library's own
