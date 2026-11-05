@@ -1162,21 +1162,22 @@ the prohibition was written for.
 **AND WHERE AN ENTRY'S HOME IS, THE RULE L0 STATES IS NOT STRONG ENOUGH — IT IS GROUP-RELATIVE,
 AND THAT IS THE DEFECT.** "The stating position the other stating positions reach through a
 reference" is read inside ONE entry, so two entries over one pair of documents answer in opposite
-directions and the arrows meet. Measured by documents refused on a reference cycle, over four
-candidate orders:
+directions and the import arrows meet.
 
-| the home is | documents refused |
-| --- | --- |
-| the first stating position in bundle order | **222** |
-| the document the most siblings reach — L0's own rule | **13** |
-| the stating document of the smallest transitive reach | **10** |
-| **the group's earliest document in the DEPENDENCY ORDER that already exists** | **0** |
+**THE HOME IS THE GROUP'S EARLIEST DOCUMENT IN THE DEPENDENCY ORDER THAT ALREADY EXISTS** — the
+graph the walk has, every reference it lowers plus every edge the collection adds. Each new edge
+then runs backwards along a topological order of all the others, so **a cycle is unrepresentable
+rather than avoided.**
 
-**The last is acyclic by construction and the others are acyclic by luck.** The dependency order is
-the graph the walk already has — every reference it lowers, plus every edge the collection adds —
-so each new edge runs backwards along a topological order of all the others, and a cycle is
-unrepresentable rather than avoided. **A rule that must be measured for cycles is the wrong rule;
-the right one cannot produce them.**
+**AND THE ORDER MUST BE OVER THE EDGES THE COLLECTION ADDS, NOT THE REFERENCES ALONE.** A
+catalogue edge is not a reference edge, so an order built from references only points against the
+extension of it that the collection produces, and documents refuse.
+
+**THE TEST OF THIS RULE IS THAT IT NEEDS NO TEST.** Every other candidate order — the first stating
+position, the most-reached document, the smallest transitive reach — is acyclic only where the
+bundle happens to allow it, and each one refuses documents. A rule whose soundness has to be
+MEASURED for cycles is the wrong rule; the right one cannot produce them. The comparison that
+found this is a measurement and lives in the row.
 
 **AND "A RULE POSITION MINTS NO TYPE" NAMES TWO MORE POSITIONS THAN IT SAYS.** A CONJ position
 mints none either — §5 is explicit that inline conjuncts are the fields and rules of *this* class —
