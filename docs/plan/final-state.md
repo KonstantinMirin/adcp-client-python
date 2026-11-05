@@ -215,9 +215,28 @@ both directions.
 
 ## 10. Every spelling an application uses today resolves to our object
 
-A downstream application installs this wheel in place of upstream `adcp` and keeps working
-without an edit. Every name upstream exposes publicly either **is** one of ours, or is an **alias**
-to one of ours, or carries a **verdict** saying why it should not exist.
+**EVERY TYPE SPELLING AN APPLICATION USES RESOLVES TO OUR OBJECT.** Every name upstream exposes
+publicly **from its type surface** either **is** one of ours, or is an **alias** to one of ours, or
+carries a **verdict** saying why it should not exist.
+
+**THIS READING IS STATED OVER THE TYPE SURFACE AND NOT OVER UPSTREAM'S WHOLE WHEEL, because the
+wider claim was measured and is not achievable by anything this project emits.** It said "installs
+in place of upstream `adcp` and keeps working without an edit". Measured: of the distinct names
+consumer code imports, **under a quarter are types** — the rest is machinery we do not emit and
+cannot derive from a schema. And the three mechanisms that would let our types shadow theirs while
+depending on them were tested with real installs and all three fail, **for one reason that is not a
+packaging reason**: upstream's own machinery imports its types from `adcp.types`, so a shadow of
+that module breaks the package that depends on it. Its non-type code imports **806 distinct
+(module, name) pairs from `adcp.types` across 1,628 sites, of which none resolves at the same
+module against ours and 421 exist nowhere in ours at all** — and those come from the very layers
+this reading's own verdicts say should not exist.
+
+**So "a wheel installed in place of upstream" is a decision about a PRODUCT and not a reading about
+an artifact**, and it is recorded as the owner's: either we own upstream's machinery too, at the
+cost of 421 names with no schema node behind them, or we are the type surface others depend on.
+**This reading holds under both** — which is why it is worded over the types, and why that wording
+is not a retreat: the type surface is what this compiler produces, what the schema decides, and
+the only part whose correctness a reading can state.
 
 **An alias is a NAME and never a second type.** Reading 6 still holds with the aliases counted:
 export paths equal distinct declarations, and `isinstance` holds across every spelling. An alias
