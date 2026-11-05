@@ -110,16 +110,18 @@ raises, plus: no union dispatches on a key its document lets an instance omit.
 ## 4. Each distinct TYPE is one type, at every layer the catalogue has
 
 **A type stated at more than one position is written once and referenced, never restated — and
-this reading ranges over ALL FOUR of the catalogue's layers**, not the first: enum vocabularies,
-constrained scalars, object types, and array types. The named type is constructed from that one
-definition, and the entry lives in the narrowest namespace containing every position that
-references it.
+this reading ranges over EVERY LAYER THE CATALOGUE HAS**, not the first: enum vocabularies,
+constrained scalars, object types, array types, and the repeated DOCUMENT above them all. The named
+type is constructed from that one definition, and the entry lives in the narrowest namespace
+containing every position that references it.
 
 **This reading was written as "each distinct VOCABULARY is one type" and that was too narrow.** A
-vocabulary is a set of values, so the sentence asked for one layer while the design specifies four
-— and when the value-list gate went green the other three were neither built nor asked for. A
+vocabulary is a set of values, so the sentence asked for one layer while the design specifies
+several — and when the value-list gate went green the others were neither built nor asked for. A
 reading narrower than the rule it is named for does not merely miss work: it makes this file lie
-about what done means.
+about what done means. **So this reading names no number of layers: it names the catalogue, and the
+catalogue's layers are the structure document's to add to.** A count here is a ceiling nobody
+intended, and it has already been one once.
 
 **Two positions stating the same thing are not automatically the same concept.** The three-way
 split is the rule at every layer, not only the first: one named type where the bundle names the
@@ -133,15 +135,24 @@ field set is a hypothesis. Whether the bundle REFERENCES one node from the other
 is the question that tells our defect from the schema's own duplication — the first is ours to
 fix, the second is faithful emission and an ask stated over a set of the bundle.
 
-**Decided by** one census per layer, each keyed on that layer's own
-identity — and **not every layer has a set of classes to census over the tree**: an array type
-renders as `list[X]` inside an annotation and declares no class, so the array layer is read off the
-bundle's own stating positions while the object layer can be read off either. A census that assumes
-every layer appears as a class silently skips one. The key is that layer's
-identity — the value list, the constraint set, the field set, the element type. The key is what
-makes a census a census: a gate keyed on a name, an export path or a constraint set cannot see a
-repeated object type, which is how three layers stayed invisible while their own measurements sat
-in the design.
+**AND A CENSUS CONFIRMS THIS READING; IT DOES NOT ESTABLISH IT.** This reading holds because the
+compiler **decides a type once** — the catalogue is built complete before anything is lowered,
+every node asks it, and **a name is minted per ENTRY and never per position.** Where that order
+holds, there is nothing for a census to find; where it is inverted, no census can do better than
+enumerate the leaks one instrument at a time, which is how every duplication this project has found
+was found. **A gate that FINDS duplication is therefore evidence the order is wrong, not evidence
+the gate is working.** The structure document fixes that order and a handler does not get to
+negotiate it.
+
+**Decided by** the catalogue being the thing that answers, at every node — and a regression guard
+per layer, keyed on that layer's own identity, confirming that nothing slipped. The guard's key is
+that layer's identity: the value list, the constraint set, the field set, the element type. **A
+guard keyed on a name, an export path or a constraint set cannot see a repeated object type**,
+which is how whole layers stayed invisible while their own measurements sat in the design. And
+**not every layer has a set of classes to read over the tree**: an array type renders as `list[X]`
+inside an annotation and declares no class, so the array layer is read off the bundle's own stating
+positions while the object layer can be read off either. A guard that assumes every layer appears
+as a class silently skips one.
 
 ## 5. The record states each distinct subtree once
 
