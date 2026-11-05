@@ -75,6 +75,7 @@ pair of lines is the measurement of what this file adds.
 
 from __future__ import annotations
 
+import atexit
 import functools
 import json
 import os
@@ -299,8 +300,13 @@ def _built() -> dict:
 
     **The venv is created under ``TMPDIR`` and not under the repository**, which is reading
     8's own clause "an environment that has never seen this repository".  ``tmp_path``
-    would do as well; a module-scoped build cannot take a function-scoped fixture, and the
-    directory is reported in the payload so a failure can be reproduced by hand.
+    would do as well; a module-scoped build cannot take a function-scoped fixture.
+
+    **AND IT IS REMOVED AT EXIT, because one per invocation is 102 MB.**  Measured on this
+    lane: 68 directories and 6.5 GB of them, on a box at 93% full -- a wheel plus a venv
+    holding the installed package, kept by every run and every xdist worker.  Nothing needs
+    them afterwards: every assertion below prints the NAMES it failed on, and the README's
+    three-command fence is how a reader rebuilds the artifact by hand.
 
     Returns the parsed :data:`PROBE` output plus the wheel path and the environment root.
     """
@@ -317,6 +323,7 @@ def _built() -> dict:
     # worker; the pid is what makes a second worker -- or a second lane on this box --
     # harmless rather than a race that reads as six defects.
     where = Path(tempfile.mkdtemp(prefix=f"reading8-{os.getpid()}-"))
+    atexit.register(shutil.rmtree, where, ignore_errors=True)
     # **THE BUILD DIRECTORY IS REMOVED FIRST, AND THAT IS NOT TIDINESS.**  ``setuptools``
     # stages the wheel's contents in ``build/lib`` and does not prune files it no longer
     # intends, so a second build over a CHANGED configuration packages the union of the
