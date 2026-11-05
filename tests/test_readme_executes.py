@@ -399,7 +399,15 @@ def test_each_clause_catches_the_prose_it_is_for(tmp_path) -> None:
         "docs/plan/no-such-file.md"
     ]
     # ... and both kinds of real token pass, so the clause is not always red.
-    assert _unresolved_tokens("see `docs/plan/architecture.md` on `sdk/readme`") == []
+    #
+    # **THE REF IN THIS CONTROL MUST OUTLIVE EVERY LANE.**  This read `sdk/readme` --
+    # the branch the clause was written on -- and went red the moment that branch was
+    # deleted at teardown, which is the same defect the clause exists to catch
+    # (`sdk/generator-rebuild`, named by the prose and gone) arriving in the control
+    # that proves the clause works.  A control citing a transient ref expires on a
+    # schedule nobody wrote down.  `main` is the repository's default branch and is the
+    # one ref a teardown cannot take.
+    assert _unresolved_tokens("see `docs/plan/architecture.md` on `main`") == []
 
     # Clause 3: the template, by the regex that harvests it.
     assert [p for p in ADCP_PATH.findall("`adcp.types.<domain>`") if "<" in p] == [
