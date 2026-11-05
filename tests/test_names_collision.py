@@ -304,21 +304,41 @@ def test_inserting_a_branch_after_an_indexed_one_moves_no_existing_name() -> Non
 # --------------------------------------------------------------------------- #
 # the two properties that are about the whole tree, read off its own text
 # --------------------------------------------------------------------------- #
-def _modules() -> dict[str, ast.Module]:
-    """Every module of the committed tree, parsed.  The TEXT and not the emitter, so
-    what is graded is what a consumer imports."""
+def _modules(root: Path = TREE) -> dict[str, ast.Module]:
+    """Every module of the tree, parsed.  The TEXT and not the emitter, so what is graded
+    is what a consumer imports.
+
+    **A PACKAGE ROOT IS A DOCUMENT'S MODULE, so ``__init__.py`` is NOT a name to filter
+    on** (``adcp-client-python-bxu``, the reading, and ``-5uz``, this site).
+    ``emit.module_file``'s layout rule writes a document whose own path is also a
+    DIRECTORY of the bundle to ``<path>/__init__.py``, so ``brand.json``'s module is
+    ``brand/__init__.py``.  The by-name filter was written when every ``__init__.py`` of
+    the tree was a 0-byte layout marker, and by bundle 3.2 it was the one filter that
+    discarded the DENSEST MODULE IN THE TREE from §1's one-import-path reading: measured
+    here, 1,057 modules and 2,992 class statements with it against 1,089 and 3,103
+    without -- the 111 ``brand/__init__.py`` declares, 68 pydantic classes and 44 enums,
+    read by no check below.
+
+    No filter at all and not a narrower one: ``rglob`` sees every file, including the
+    tree's own root -- ``_schemas/__init__.py``, the empty marker ``emit.write`` writes --
+    which has nothing to collide and nothing to shadow and is a module of the tree like
+    the other 30 markers.  (That is the one difference from the ``pkgutil`` walks of
+    ``tests/_imports_a_tree.py`` and ``tests/test_union_dispatch.py``, which cannot yield
+    the root because they enumerate a package's CHILDREN.)
+
+    **The root is a PARAMETER** so that the readings below can be run over a tree built to
+    carry a known defect, which is the only thing that says they reach one:
+    :func:`test_the_tree_readings_reach_a_module_that_is_a_package_root` is that A/B, and
+    the real tree is green either way.
+    """
     return {
-        str(path.relative_to(TREE)): ast.parse(path.read_text())
-        for path in sorted(TREE.rglob("*.py"))
-        if path.name != "__init__.py"
+        path.relative_to(root).as_posix(): ast.parse(path.read_text())
+        for path in sorted(root.rglob("*.py"))
     }
 
 
-def test_no_module_of_the_tree_declares_two_symbols_under_one_name() -> None:
-    """The acceptance criterion of the row, over the tree rather than over a hop table:
-    §1 gives a class ONE import path, so one name in one module names one thing."""
-    modules = _modules()
-    claimed("the committed tree's modules", modules)
+def _declared_more_than_once(modules: dict[str, ast.Module]) -> dict[str, list[str]]:
+    """Every module with a name it declares twice, and the names.  §1's reading."""
     twice = {}
     for module, tree in modules.items():
         counted = collections.Counter(
@@ -335,19 +355,11 @@ def test_no_module_of_the_tree_declares_two_symbols_under_one_name() -> None:
         repeated = [name for name, n in counted.items() if n > 1]
         if repeated:
             twice[module] = sorted(repeated)
-    assert twice == {}, twice
+    return twice
 
 
-def test_no_module_of_the_tree_declares_a_name_it_imports() -> None:
-    """A declaration that shadows an import retypes every field annotated with it.
-
-    The failure is silent in the type checker and loud at import -- a ``StrEnum`` named
-    ``Field`` is called as ``Field(description=…)`` -- and §4's short nested rule is what
-    makes it reachable: ``names.spell``'s ``occupied`` is the guard and this is the
-    measurement over the output.
-    """
-    modules = _modules()
-    claimed("the committed tree's modules", modules)
+def _declarations_shadowing_an_import(modules: dict[str, ast.Module]) -> dict[str, list[str]]:
+    """Every module declaring a name it also imports, and the names."""
     shadowed = {}
     for module, tree in modules.items():
         imported = {
@@ -365,7 +377,102 @@ def test_no_module_of_the_tree_declares_a_name_it_imports() -> None:
         }
         if imported & declared:
             shadowed[module] = sorted(imported & declared)
+    return shadowed
+
+
+def test_no_module_of_the_tree_declares_two_symbols_under_one_name() -> None:
+    """The acceptance criterion of the row, over the tree rather than over a hop table:
+    §1 gives a class ONE import path, so one name in one module names one thing.
+
+    **THIS GATE HAS NO SECOND DERIVATION**, which is why the A/B below exists.  It is an
+    absence over one enumeration of the tree's text, so a walk that cannot see part of the
+    tree reports green for free on that part and no equality disagrees.  ``claimed``
+    refuses only an EMPTY population.
+    """
+    modules = _modules()
+    claimed("every module of the tree a fresh run emits", modules)
+    twice = _declared_more_than_once(modules)
+    assert twice == {}, twice
+
+
+def test_no_module_of_the_tree_declares_a_name_it_imports() -> None:
+    """A declaration that shadows an import retypes every field annotated with it.
+
+    The failure is silent in the type checker and loud at import -- a ``StrEnum`` named
+    ``Field`` is called as ``Field(description=…)`` -- and §4's short nested rule is what
+    makes it reachable: ``names.spell``'s ``occupied`` is the guard and this is the
+    measurement over the output.
+    """
+    modules = _modules()
+    claimed("every module of the tree a fresh run emits", modules)
+    shadowed = _declarations_shadowing_an_import(modules)
     assert shadowed == {}, shadowed
+
+
+def test_the_tree_readings_reach_a_module_that_is_a_package_root(tmp_path: Path) -> None:
+    """``adcp-client-python-5uz``: the two readings above over a tree whose PACKAGE ROOT
+    is where the defects are.
+
+    §9: a rule nothing can break is a finding about the rule.  Both gates are green with
+    the ``!= "__init__.py"`` filter and green without it -- the previous lane A/B'd them
+    and the tree is clean behind the filter -- so **their own green says nothing about
+    which modules they read**, and a later edit could restore the filter without reddening
+    anything.  Here the package root carries a defect of each shape, so the readings
+    either name it or do not.
+
+    The population is a hand-built tree and not the bundle's, for
+    ``tests/test_the_tree_imports.py``'s reason: what is graded is the READING and not the
+    compiler, and four files answer the question instantly where the real tree is 1,089.
+    Its shape is ``brand/``'s -- a document's module written to the package's own
+    ``__init__.py``, with the directory's documents as its submodules -- which is
+    ``adcp-client-python-bxu``'s fixture adapted to the defects THESE gates report: a name
+    declared twice (§1's one import path) and a declaration shadowing an import.
+
+    ``rooted/under.py`` beside it is the near miss that makes "not reported" informative:
+    it declares ``Spin`` ONCE and imports ``Field`` WITHOUT declaring it, so a reading
+    that reached it and miscounted would be red here.  ``plain.py`` is the same control
+    for a module that is not under a package at all, and the tree's own root is the empty
+    marker.
+
+    **By behaviour and never by inspection**: nothing here reads :func:`_modules`' source
+    or asks how it walks.  The claim is that a known package module's declarations are
+    READ, and what says so is a collision reported from inside one.
+    """
+    tree = tmp_path / "a_tree_with_a_package_root"
+    (tree / "rooted").mkdir(parents=True)
+    (tree / "__init__.py").write_text("")  # the tree's own root, as ``emit.write`` writes it
+    clean = (
+        "from __future__ import annotations\n"
+        "from pydantic import Field\n"
+        "from adcp.types._base import AdCPBaseModel\n"
+        "class Spin(AdCPBaseModel):\n    a: str = Field(description='x')\n"
+    )
+    # ``brand/__init__.py``'s position, carrying one defect of each shape: ``Spin``
+    # declared twice, and ``Field`` declared over the name it imports.
+    (tree / "rooted" / "__init__.py").write_text(
+        clean + "class Spin(AdCPBaseModel):\n    b: str\n" + "class Field(AdCPBaseModel):\n    c: str\n"
+    )
+    (tree / "rooted" / "under.py").write_text(clean)
+    (tree / "plain.py").write_text(clean)
+
+    modules = _modules(tree)
+    # **BOTH DEFECTS IN THE PACKAGE ROOT ARE REPORTED**, by name and from that module
+    # alone: the two clean modules are reached and report nothing, which is what says the
+    # filter never cost recursion -- ``rooted/under.py`` is BELOW the package root and was
+    # always visible, so a reading short only of the root's own body is exactly the loss.
+    # With the by-name filter restored both of these are ``{}``.
+    assert _declared_more_than_once(modules) == {"rooted/__init__.py": ["Spin"]}
+    assert _declarations_shadowing_an_import(modules) == {"rooted/__init__.py": ["Field"]}
+
+    # **AND THE WHOLE TREE WAS READ**, as an equality between two derivations and not a
+    # count (``tests/test_every_check_names_its_set.py``'s first rule): the modules the
+    # reading keyed, against the ``.py`` files on disk read off the directory as POSIX
+    # paths so a package root is distinguishable from a plain module.  With the filter
+    # restored this is short by the root and by ``rooted/__init__.py`` -- which is
+    # ``brand/__init__.py``, in miniature.
+    assert set(modules) == {p.relative_to(tree).as_posix() for p in tree.rglob("*.py")}, sorted(
+        modules
+    )
 
 
 def test_the_long_name_is_the_exception_and_not_the_rule() -> None:
@@ -380,9 +487,17 @@ def test_the_long_name_is_the_exception_and_not_the_rule() -> None:
     names and not the share: ``adcp-client-python-10l.41`` emitted 5 documents more and
     the tree is 2,165 classes, median 17, mean 18.39, max 76 and 223 / 64 / 13 / 7 -- the
     count over 30 moved by 2 and the share over 40 did not move at all.
+
+    **THE RATCHET'S OWN BLINDNESS, and it is the shape ``adcp-client-python-bxu`` is
+    really about.**  Numerator and denominator both come out of :func:`_modules`, so while
+    that walk filtered ``__init__.py`` by name this was a SHARE over a tree it could not
+    see all of: 132 of 2,992 names, reported as 4%, where the tree's own figure is 133 of
+    3,103 -- also 4%.  Two blind halves agreeing is indistinguishable from two sighted
+    halves agreeing, and that is precisely why the direction held through it.  The reading
+    is now over every module (median 18, max 85, 133 over 40), and the ceiling is unmoved.
     """
     classes = claimed(
-        "every class statement of the committed tree",
+        "every class statement of the tree a fresh run emits",
         [
             (module, node.name)
             for module, tree in _modules().items()
