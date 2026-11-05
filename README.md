@@ -203,7 +203,11 @@ equal to the bundle's own size and every refusal named by document, pointer and 
 
 Over `tests/test_emit.py`'s `tree_population()` — which is `bundle.portable(BUNDLE)`, all
 1,054 documents — the current run **emits 1,054 and refuses 0**. The grading is a separate
-reading and is not all green: the committed `src/adcp/types/verdicts.tsv` opens with its own
+reading and is not all green. A run writes a per-pair verdict table named `verdicts.tsv`
+beside the tree it wrote, and **that file is deliberately untracked** — a file every
+invocation regenerates would dirty the tree on every run, which is the property the
+committed tree rests on, so a fresh checkout does not have it and this README does not
+pretend it does. Produce it with the run itself, then read it. It opens with its own
 count, **2,593 graded pairs, 2,582 pass, 11 not pass**, and a second header line breaking
 that out per check as pass, fail and absent counts — on which `widening` is absent for 2,539
 of the pairs and `refuses` for 13. **An `absent` cell is not a pass** — it is a check that was never put to
