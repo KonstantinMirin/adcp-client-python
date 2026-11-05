@@ -758,3 +758,96 @@ def test_a_stated_instance_is_not_copied_into_the_store() -> None:
     )
     assert res.outcome == "pass" and res.stated == 1
     assert store.written == {}, f"a stated instance was held: {store.written}"
+
+
+# --------------------------------------------------------------------------- #
+# §8's substitution: a node that admits NOTHING is abandoned, and said so
+# --------------------------------------------------------------------------- #
+#: **A CROSS-FIELD CONDITIONAL: the shape a pin per instance location cannot answer for.**
+#:
+#: ``core/postal-country-system.json``'s own shape, reduced to two branches: an ``anyOf``
+#: pairing each admissible ``country`` with the postal ``system`` values that country
+#: admits.  Neither key has an admissible value of its own -- what is admissible is the
+#: PAIR -- so ``Fixtures.substitute`` and ``Fixtures.reduced``, which pin each location
+#: from that location's own statements and independently of every other, have no value to
+#: place here.  §8 names the consequence: "two pins on one location do not narrow the node
+#: -- they empty it."
+_CROSS_FIELD: dict[str, Any] = {
+    "type": "object",
+    "required": ["country", "system"],
+    "properties": {"country": {"type": "string"}, "system": {"type": "string"}},
+    "anyOf": [
+        {"properties": {"country": {"const": "BR"}, "system": {"const": "cep"}}},
+        {"properties": {"country": {"const": "US"}, "system": {"const": "zip"}}},
+    ],
+    "additionalProperties": False,
+}
+
+#: The same node with each location pinned INDEPENDENTLY, which is what the substitution
+#: produces once ``country`` is a ``$ref`` the fixture rule can answer for: a country one
+#: derivation offered and a system another did, and no branch of the ``anyOf`` admitting
+#: the pair.  A restriction of the node by construction, and empty.
+_PINNED_APART: dict[str, Any] = {
+    **_CROSS_FIELD,
+    "properties": {"country": {"const": "AA"}, "system": {"const": "cep"}},
+}
+
+
+def test_a_substitution_that_admits_nothing_is_abandoned_and_the_abandonment_is_REPORTED(
+) -> None:
+    """§8: "A reduction reports emptiness as a failure, loudly."
+
+    **The defect this grades is a WRONG VERDICT and not a slow draw**, which is why the
+    assertion is on ``outcome`` and on ``abandoned`` together.  The substituted node admits
+    nothing the graded node admits, so the screen in ``check_accepts`` rejects every draw
+    and ``hypothesis`` raises -- and that used to be reported as ``strategy_error``, a red
+    pair manufactured by the instrument over a node whose own draw passes in milliseconds.
+    Measured on the patched bundle: five such pairs, and 33 more the committed floor was
+    masking.
+
+    So the draw is abandoned back to the pair's own node, and the abandonment is LOUD: a
+    silent fallback would pay the unreduced draw the rule exists to avoid while reading as
+    a pair that is inherently large, which is exactly what §8 forbids.
+    """
+    assert harness.conforms(_CROSS_FIELD, {"country": "BR", "system": "cep"}) is True
+    assert harness.conforms(_CROSS_FIELD, {"country": "AA", "system": "cep"}) is False, (
+        "the planted substitution is not empty, so this test grades nothing"
+    )
+
+    taken: list[Any] = []
+
+    def entry_point(payload: Any) -> Any:
+        taken.append(payload)
+        return payload
+
+    res = harness.check_accepts(
+        _CROSS_FIELD, entry_point, examples=1, draw_from=lambda: _PINNED_APART
+    )
+    assert res.outcome == "pass", (res.outcome, res.detail)
+    assert res.abandoned, (
+        "the empty substitution was used silently: a reduction that yields an empty node "
+        "is a defect and §8 requires it reported, not absorbed into the verdict"
+    )
+    assert res.examples == 1 and len(taken) == 1, (taken, res.examples)
+    assert harness.conforms(_CROSS_FIELD, taken[0]) is True, taken
+
+
+def test_a_substitution_the_node_ADMITS_is_used_and_nothing_is_reported() -> None:
+    """The control, and it is what makes the clause above a screen rather than a disabling.
+
+    A substitution that answers is still the draw: every instance comes from the pinned
+    node, the node's own screen passes it, and ``abandoned`` stays empty -- so a reader
+    cannot confuse "the saving was taken" with "the saving was lost".
+    """
+    pinned: dict[str, Any] = {
+        **_CROSS_FIELD,
+        "properties": {"country": {"const": "US"}, "system": {"const": "zip"}},
+    }
+    taken: list[Any] = []
+
+    res = harness.check_accepts(
+        _CROSS_FIELD, lambda v: taken.append(v) or v, examples=1, draw_from=lambda: pinned
+    )
+    assert res.outcome == "pass", (res.outcome, res.detail)
+    assert res.abandoned == "", res.abandoned
+    assert taken == [{"country": "US", "system": "zip"}], taken
