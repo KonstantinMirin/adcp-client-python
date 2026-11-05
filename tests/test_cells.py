@@ -10,8 +10,8 @@ gates.  The section's surviving obligation is quoted there in full and is one se
     a restatement merges -- and faithfulness over any document follows **by structural
     induction on the document**.
 
-**THE DENOMINATOR IS DERIVED HERE AND NOWHERE ELSE.**  §5 is 98 keyword rows over §3's 9
-positions, which is 882 ``(keyword, position)`` pairs, and most of them say nothing: a
+**THE DENOMINATOR IS DERIVED HERE AND NOWHERE ELSE.**  The table is 105 keyword rows over
+§3's 9 positions, which is 945 ``(keyword, position)`` pairs, and most of them say nothing: a
 cell is LIVE when it selects a type, renders a constraint or states a rule, which is
 ``keywords.COMPILES``' own reading.  :func:`test_the_live_cell_count_is_derived_from_the_table`
 is the derivation and the number it reports is the reading's denominator.
@@ -111,10 +111,17 @@ from codegen.keywords import Position
 #:   check's own docstring says "the two figures are different obligations and the report
 #:   never sums them" -- so they are stated as a measurement below and not as a gate.
 #:
-#: MEASURED 2026-11-04 over ``schemas/cache/3.2``, for a reader comparing deliveries:
-#: 98 rows x 9 positions = 882 cells, 289 live, 180 of those stated by some portable
-#: document and 109 not; by position ROOT 33, PROP 34, ELEM 33, MAPV 33, KEY 33,
-#: BRANCH 33, CONJ 33, RULE 24, DEF 33.  A delivery reports these; nothing asserts them.
+#: MEASURED 2026-11-05, for a reader comparing deliveries: **105 rows** x 9 positions =
+#: 945 cells, **289 live**, 180 of those stated by some portable document of
+#: ``schemas/cache/3.2`` and 109 not; by position ROOT 33, PROP 34, ELEM 33, MAPV 33,
+#: KEY 33, BRANCH 33, CONJ 33, RULE 24, DEF 33.  A delivery reports these; nothing
+#: asserts them.
+#:
+#: **THE ROW COUNT MOVED AND THE LIVE COUNT DID NOT**, which is the shape of a bundle
+#: adding only annotations: bundle 3.3 adds seven keywords -- ``$id``, ``docs_url``,
+#: ``valid_from``, ``x-adcp-owned`` and the three ``x-max-*-4.0`` -- and every one of
+#: them is NOTHING at every position, so the cross product grows by 63 and ``live()``
+#: by none.  98 rows x 9 = 882 was the reading before them.
 #:
 #: **AND THE GATE DOES NOT WEAKEN, because the counts were never the gate.**  §8's
 #: obligation is coverage of a derived set, not its size, and
@@ -128,7 +135,7 @@ from codegen.keywords import Position
 # the denominator
 # --------------------------------------------------------------------------- #
 def test_the_live_cell_count_is_derived_from_the_table() -> None:
-    """98 rows x 9 positions, and which of the 882 cells are LIVE.
+    """105 rows x 9 positions, and which of the 945 cells are LIVE.
 
     Derived from ``keywords.TABLE`` and ``keywords.COMPILES``, so a row or a cell added
     to the declaration moves this number and nothing else has to be told.  The split by
