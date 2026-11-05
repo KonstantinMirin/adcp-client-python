@@ -2210,6 +2210,26 @@ where a fixture per conjunct is the empty intersection this section already meas
 - `patternProperties` and `contains` are conjoined and never replaced — read as a conflict with
   `items`, `contains` left a 494,960-byte frontier empty.
 
+**AND A PIN IS KEYED ON THE INSTANCE LOCATION AND NEVER ON THE POINTER THAT STATES IT.** The three
+rules above name three *kinds* of statement, and reading them as three *scopes* is the defect:
+a consequent, a union branch and the conjuncts beside them can all decide **one** location, so they
+are one group and get one value. Grouping by the pointer instead hands the same location two
+independent pins, and two pins on one location do not narrow the node — **they empty it.**
+
+**AND WHERE THERE IS NO ONE VALUE, THE UNCONDITIONAL POSITION IS LEFT EXACTLY AS THE DOCUMENT STATES
+IT.** Not restricted, not reordered, not drawn against a narrowing of itself: left standing. A
+statement left standing cannot contradict a value drawn from a conjunction that contains it, and
+**no restriction of that position and no ordering of two independent draws preserves satisfiability**
+— both directions were tried at the site and both fail symmetrically.
+
+**AND A REDUCTION THAT YIELDS AN EMPTY NODE IS A DEFECT, NEVER A LOST SAVING.** The fail-safe then
+pays the unreduced draw the reduction exists to avoid, so the cost does not merely return — it
+returns *disguised as the absence of an optimisation*. Reading it as "lose the saving" hides the
+defect instead of containing it, and the hiding is what makes it expensive: an empty reduction is
+indistinguishable from a reduction that found nothing to do, and the budget it then overruns gets
+read as the work being inherently large. **A reduction reports emptiness as a failure, loudly, and
+a pair whose reduction came back empty is a defect report and not a slow pair.**
+
 **AND THE SUBSTITUTION IS A STATEMENT ABOUT GENERATION ONLY.** Every instance a substitution
 produced is screened against the pair's own node before the class sees it, so no pair is graded on
 a value its document does not admit, and no pair stops being graded on a value it is graded on
