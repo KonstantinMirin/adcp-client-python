@@ -16,7 +16,7 @@ from .offering_asset_group import OfferingAssetGroup
 from .price import Price
 
 
-class PropertyType(StrEnum):
+class RealEstateItemPropertyType(StrEnum):
     """
     Type of property.
     """
@@ -68,7 +68,7 @@ class RealEstateItem(AdCPBaseModel):
     title: Annotated[str, Field(description="Listing title (e.g., 'Spacious 3BR Apartment in Jordaan').")]
     address: Annotated[Address, Field(description='Property address.')]
     price: Annotated[Price | None, Field(description="Property price or rental rate. Use period 'month' for rentals.")] = None
-    property_type: Annotated[PropertyType | None, Field(description='Type of property.')] = None
+    property_type: Annotated[RealEstateItemPropertyType | None, Field(description='Type of property.')] = None
     listing_type: Annotated[ListingType | None, Field(description='Whether the property is for sale or rent.')] = None
     bedrooms: Annotated[NonNegativeInt | None, Field(description='Number of bedrooms.')] = None
     bathrooms: Annotated[NonNegativeFloat | None, Field(description='Number of bathrooms (e.g., 2.5 for two full and one half bath).')] = None

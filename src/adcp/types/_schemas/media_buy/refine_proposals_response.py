@@ -96,7 +96,7 @@ class ResultsItemPartial(ResultsItem):
     reason_code: Annotated[ProposalRefinementReason, Field(description='Single most-significant code for this result. constraint_unsatisfiable takes precedence over every other code; an alternatives shortfall alongside an unsatisfied constraint remains visible through proposals.length.')]
 
 
-class Proposal(CanonicalProposal):
+class ResultsItemFinalizedProposal(CanonicalProposal):
     """
     Compact immutable proposal for the AdCP 3.2 lifecycle. commercial_terms is the sole authoritative commercial envelope; narrative fields do not duplicate legacy allocation or creative graphs.
     """
@@ -118,7 +118,7 @@ class ResultsItemFinalized(ResultsItem):
         ForbiddenGroups((('proposals',), ('reason_code',), ('reason',), ('unsatisfied_constraints',), ('unsatisfied_product_changes',))),
     )
     outcome: Literal[Outcome.FINALIZED]
-    proposal: Proposal
+    proposal: ResultsItemFinalizedProposal
 
 
 class RefineProposalsResponseResultsItemUnable(ResultsItem):

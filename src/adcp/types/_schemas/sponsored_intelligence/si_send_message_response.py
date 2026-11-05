@@ -40,7 +40,7 @@ class HandoffType(StrEnum):
     COMPLETE = 'complete'
 
 
-class Price(AdCPBaseModel):
+class IntentPrice(AdCPBaseModel):
     """
     Price information
     """
@@ -59,7 +59,7 @@ class Intent(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-send-message-response.json', pointer='#/properties/handoff/properties/intent')
     action: Annotated[str | None, Field(description="The commerce action (e.g., 'purchase')")] = None
     product: Annotated[dict[str, Any] | None, Field(description='Product details for checkout')] = None
-    price: Annotated[Price | None, Field(description='Price information')] = None
+    price: Annotated[IntentPrice | None, Field(description='Price information')] = None
 
 
 class ContextForCheckout(AdCPBaseModel):

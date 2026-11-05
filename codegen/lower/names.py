@@ -159,6 +159,43 @@ COLLISION_SCOPE = (
     "the same name (section 9's ruling, the run is not the bundle)"
 )
 
+#: **§3a STEP 3's SCOPE: a SUBJECT the bundle named is that subject's, over the whole
+#: BUNDLE, against every position that would DECLARE a second type under its name.**
+#: QUOTED by the checks that grade it, for :data:`COLLISION_SCOPE`'s reason.
+#:
+#: §3a: "A name is minted per ENTRY and never per position.  This is what makes a role
+#: word claiming a subject's name impossible by construction: a position has a role, an
+#: entry has a subject, and only a subject gets a name."  A property KEY is the role a
+#: subobject plays in its parent, so a name derived per position can only ever know the
+#: role -- which is why an untitled capabilities block keyed ``media_buy`` took the name
+#: of the entity ``core/media-buy.json`` titles "Media Buy".  The subjects are read off
+#: the bundle before any name is derived, so the claim is not available to be made rather
+#: than being found afterwards by a census.
+#:
+#: **WIDER THAN THE DOMAIN, because the defect crosses one.**  §1's rule is about an
+#: export PATH and holds per domain: ``adcp.types.core.MediaBuy`` and
+#: ``adcp.types.protocol.MediaBuy`` are two paths naming two objects and §1 is right to
+#: allow them.  This rule is about a NAME, and the two names cannot both be the subject's.
+#:
+#: **NARROWER than the domain rule on the other axis**, which is what keeps it from
+#: banning the word: it reaches only the positions that DECLARE.  §3a's own answer where a
+#: consumer needs the protocol's word at a restating position is "an alias at its
+#: position, never a second class", and an alias binds the subject's own class.
+#:
+#: **§9 is satisfied for :data:`COLLISION_SCOPE`'s reason and no new one.**  The subjects
+#: are ``emit.rooted_subjects``, a parse of ``bundle.portable`` -- pinned, an input to
+#: every run alike -- so what crosses into this pass is a set of NAMES and nothing here
+#: can ask which documents the run was given.
+SUBJECT_SCOPE = (
+    "the whole BUNDLE for a position that DECLARES: a name the bundle gives a document "
+    "root is that subject's, and a position deriving it from its own ROLE -- a property "
+    "key, an item, a branch index -- lengthens by section 4's own axes rather than "
+    "claiming it (section 3a step 3, a name is minted per entry and never per position). "
+    "A position that BINDS the subject's own class is an alias and is untouched, and the "
+    "subjects are read off the BUNDLE and never off the run's document set (section 9's "
+    "ruling, the run is not the bundle)"
+)
+
 
 # --------------------------------------------------------------------------- #
 # §4's name rules
@@ -970,6 +1007,8 @@ def spell(
     occupied: frozenset[str] = frozenset(),
     surface: frozenset[str] = frozenset(),
     exports: frozenset[str] = frozenset(),
+    subjects: frozenset[str] = frozenset(),
+    declaring: frozenset[str] = frozenset(),
 ) -> dict[str, str] | Refusal:
     """§4's collision rule over the names of ONE module: pointer -> the name it is
     declared under, or the refusal of a module two of whose positions cannot be told
@@ -1040,8 +1079,18 @@ def spell(
     with their whole paths, neither with an ancestor left to prepend, and spelled alike.
     That is exactly the population the fold refused before the rule was written -- the
     full path was the name then -- so the rule moves no document into the refused set.
+
+    ``subjects`` is §3a step 3's half (:data:`SUBJECT_SCOPE`), and it is a name taken for
+    ``surface``'s reason one scope wider: a name the BUNDLE gives a document root is that
+    subject's, so a position that would DECLARE a second type under it lengthens.  The two
+    narrowings are the difference between the rules and not a refinement of one: §1 asks
+    whether the position is EXPORTED, because its subject is an export path, and §3a asks
+    whether the position DECLARES, because its subject is a name.  That is why the
+    paragraph above counts ten names §1 leaves alone and §3a moves -- ``core.Destination``
+    in ``core/flight_item.py`` is one of them, and the entity ``core/destination.json``
+    titles "Destination" is the subject it was claiming.
     """
-    spelled, shared = _lengthened(chains, occupied, surface, exports)
+    spelled, shared = _lengthened(chains, occupied, surface, exports, subjects, declaring)
     # **A group of ONE is a position alone on a name an IMPORT holds**, which the
     # paragraph above is about: it is kept, so it is not what this refusal is for.  The
     # filter is here rather than in :func:`_lengthened` because the lone group is exactly
@@ -1085,20 +1134,35 @@ def _lengthened(
     occupied: frozenset[str],
     surface: frozenset[str] = frozenset(),
     exports: frozenset[str] = frozenset(),
+    subjects: frozenset[str] = frozenset(),
+    declaring: frozenset[str] = frozenset(),
 ) -> tuple[dict[str, str], dict[str, list[str]]]:
     """§4's collision rule run to a fixed point: the names, and the groups still COLLIDING.
 
     A group is the positions on one name, and the name collides when two positions share
     it, OR an import holds it -- ``occupied``, which is the namespace half §4's rule never
     stated -- OR another module of the DOMAIN exports it and one of these positions is
-    exported too (``surface`` narrowed by ``exports``, which is :data:`COLLISION_SCOPE`).
-    A group of one is therefore a real answer here and not an empty set: the one
-    position is colliding with something that cannot move.
+    exported too (``surface`` narrowed by ``exports``, which is :data:`COLLISION_SCOPE`)
+    -- OR the name is a SUBJECT the bundle named and one of these positions would DECLARE
+    a second type under it (``subjects`` narrowed by ``declaring``, which is
+    :data:`SUBJECT_SCOPE`).  A group of one is therefore a real answer here and not an
+    empty set: the one position is colliding with something that cannot move.
 
     **The domain arm is asked per GROUP and not per name**, which is what keeps it from
     reaching a position §1 says nothing about: a lone group whose position is not exported
     is not colliding however the domain spells that name, and a group of two already
     collides on the module scope alone.
+
+    **THE SUBJECT ARM IS NARROWED TO THE POSITIONS THAT DECLARE, and that narrowing is the
+    whole difference between §3a's rule and a ban on the word** (§3a step 3;
+    :data:`SUBJECT_SCOPE`).  §3a's answer where two positions are one type is an ALIAS --
+    "a restated title that a consumer needs is an alias at its position, never a second
+    class" -- so a position BINDING the subject's own class may spell the subject's name
+    and a position declaring a second type under it may not.  Measured over this bundle,
+    the two sides are disjoint and the defect is entirely on one of them: of the 31 sites
+    where a titled root's symbol was bound in another module, **0 shared that root's
+    admitted key and 31 did not**, so every one of them was a second subject wearing the
+    first's name and none was an honest second spelling.
 
     ONE reading with two readers, which is why it is split out: :func:`spell` turns a
     surviving group into the refusal, and :func:`spell_the_rungs` turns it into the set of
@@ -1118,6 +1182,7 @@ def _lengthened(
             if len(ps) > 1
             or name in occupied
             or (name in surface and any(p in exports for p in ps))
+            or (name in subjects and any(p in declaring for p in ps))
         }
         lengthened = False
         for group in colliding.values():
@@ -1153,6 +1218,8 @@ def spell_the_rungs(
     occupied: frozenset[str] = frozenset(),
     surface: frozenset[str] = frozenset(),
     exports: frozenset[str] = frozenset(),
+    subjects: frozenset[str] = frozenset(),
+    declaring: frozenset[str] = frozenset(),
 ) -> dict[str, str] | Refusal:
     """§4's two naming axes together: LENGTHEN first, and FALL where lengthening is spent.
 
@@ -1200,14 +1267,27 @@ def spell_the_rungs(
     cheaper fix is available -- measured, that keeps every one of this bundle's existing
     branch names except the three §4 names.
 
+    **A SUBJECT THE BUNDLE NAMED is a fourth thing a position can collide with, and it
+    reaches both axes for the same reason the other three do** (§3a step 3;
+    :data:`SUBJECT_SCOPE`).  It cannot move -- the name is another document's, and §4's
+    root clause already says "this module has no standing to move it" -- so only this
+    module's declaring positions do, and they do it by §4's own two axes with no new rung:
+    ``protocol/get-adcp-capabilities-response.json#/properties/media_buy`` spends its one
+    ancestor segment and becomes ``GetAdcpCapabilitiesResponseMediaBuy``, which is what
+    the position always had to spell to be honest about what it is.
+
     It TERMINATES because each fall strictly advances at least one position's rung index
     and :func:`branch_rungs` is finite and duplicate-free; when no member of a sharing
     group has a rung left, the refusal is :func:`spell`'s and says what it always said.
+    **The subject arm does not change that, because ``subjects`` is a function of the
+    BUNDLE and is constant across every round of both axes** -- unlike the domain census,
+    which ``emit.domain_exports`` has to accumulate to keep monotone.  A set that does not
+    move cannot make a fixed point oscillate.
     """
     rung = dict.fromkeys(ladders, 0)
     while True:
         chains = {p: ladders[p][rung[p]] for p in ladders}
-        spelled, shared = _lengthened(chains, occupied, surface, exports)
+        spelled, shared = _lengthened(chains, occupied, surface, exports, subjects, declaring)
         if not shared:
             return spelled
         fell = False
@@ -1217,7 +1297,7 @@ def spell_the_rungs(
                     rung[pointer] += 1
                     fell = True
         if not fell:
-            return spell(chains, occupied, surface, exports)
+            return spell(chains, occupied, surface, exports, subjects, declaring)
 
 
 def resolved(decided: ir.TypeRef, symbols: Mapping[str, str]) -> ir.TypeRef:
@@ -1602,6 +1682,7 @@ def assign(
     surface: frozenset[str] = frozenset(),
     declared: Mapping[str, str] = {},
     abroad: frozenset[str] = frozenset(),
+    subjects: frozenset[str] = frozenset(),
 ) -> ir.Module | Refusal:
     """The pass: every declaration of one module given the name §4 derives for it.
 
@@ -1653,6 +1734,17 @@ def assign(
     ``surface`` is a set of NAMES.  Nothing here can ask which documents the run was given,
     so §9's prohibition is structural rather than observed: ``emit`` reads the domain's
     exported names off the BUNDLE, and §9's own ruling is that the run is not the bundle.
+
+    ``subjects`` is §3a STEP 3 (:data:`SUBJECT_SCOPE`): the names the BUNDLE gives its
+    document roots, MINUS this document's own, so a position that would declare a second
+    type under a subject's name lengthens by §4's axes instead.  It is a set of NAMES for
+    ``surface``'s reason and under the same ruling, and the exemption is subtracted by the
+    CALLER because only the run knows which subject this module is the home of.
+
+    **It is a reservation and not an override, which is what makes step 3 constructive
+    rather than a gate.**  Nothing here looks at an emitted name to see whether it claimed
+    a subject; the claim is simply not among the names the collision rule leaves available.
+    §3a: "a census over the output can only ever confirm a decision made once."
     """
     #: The declarations §4's dedup leaves unwritten: an adopting position that derives NO
     #: name of its own, and one whose derived name IS the declaring class's.  The first
@@ -1752,6 +1844,15 @@ def assign(
         # one that missed an added one would publish two.  So the relocation above runs
         # BEFORE the names are spelled rather than on the way out.
         frozenset(exports),
+        subjects,
+        # **§3a step 3's narrowing: the positions that DECLARE, which is ``ladders``
+        # MINUS the ones that bind.**  ``binds`` is §1's own reading -- "a position that
+        # references a class does not name it" (:func:`names_a_declaration`) -- so the
+        # two sides are one derivation and a position cannot be read as declaring here
+        # and as binding three lines up.  §3a's answer at a restating position is "an
+        # alias at its position, never a second class", and an alias is exactly what is
+        # on the other side of this subtraction.
+        frozenset(ladders) - frozenset(binds),
     )
     if isinstance(spelled, Refusal):
         return spelled

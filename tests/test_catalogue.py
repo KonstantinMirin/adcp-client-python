@@ -884,3 +884,54 @@ def test_no_symbol_this_compiler_mints_carries_a_digest_or_an_index(
         inside=declared,
     )
     assert patterned <= minted, sorted(patterned - minted)
+
+
+def test_no_declared_name_claims_a_subject_the_bundle_gave_another_document() -> None:
+    """**§3a STEP 3's REGRESSION GUARD**: a name the bundle gave a document ROOT is that
+    subject's, and no other position declares a type under it.
+
+    §3a: "A name is minted per ENTRY and never per position.  This is what makes a role
+    word claiming a subject's name impossible by construction: a position has a role, an
+    entry has a subject, and only a subject gets a name."
+
+    **IT CONFIRMS AND CANNOT ESTABLISH, which is the only thing a census over the output
+    is for** (§3a: "a gate that finds duplication is evidence the order is wrong ...  where
+    the decision is made once, a census over the output can only ever confirm it -- which
+    is what a regression guard is for, and is all these gates should be").  The decision is
+    ``emit.rooted_subjects`` read before any name is derived and spent as one axis of §4's
+    collision rule (``lower/names.SUBJECT_SCOPE``); the claim is not among the names left
+    available, so this check has nothing to find unless that axis stops being asked.
+
+    **An ALIAS is not what this is about and must not be swept in.**  §3a's answer at a
+    restating position a consumer needs the protocol's word at is "an alias at its
+    position, never a second class", so the question is asked of the pointers a type is
+    DECLARED at -- ``Emitted.declared`` -- and a binding is on the other side of the
+    subtraction ``lower/names.assign`` already makes.
+
+    **The measurement this replaced** (``adcp-client-python-53b``, and the row said "no
+    gate catches it"): 31 sites, 26 distinct symbols, every one of them a nested object
+    named ``pascal_case(property)`` where the property KEY is the role the subobject plays
+    in its parent -- an untitled capabilities block keyed ``media_buy`` publishing
+    ``MediaBuy`` for a thing that is media-buy CAPABILITIES, beside the entity
+    ``core/media-buy.json`` titles "Media Buy".  Reading 6 could not see it because it
+    counts objects per name per NAMESPACE and these land in different domains, which §1
+    permits and is right to.
+
+    ``AudienceSource`` is why the exemption is read per SYMBOL: two home documents
+    (``core/audience-source.json`` and ``enums/audience-source.json``) root that one
+    symbol, §1 permits the two paths, and neither may be pushed off a name the bundle gave
+    it.  So a position is exempt exactly where the symbol is its OWN document's root.
+    """
+    from compiled import compiled
+
+    out = compiled(BUNDLE, sorted(bundle.portable(BUNDLE)))
+    subjects = emit.rooted_subjects(BUNDLE)
+    claimed("subjects the bundle names at a document root", subjects)
+
+    claiming = {
+        f"{symbol} @ {document}{pointer}": sorted(subjects[symbol])
+        for document, rows in out.declared.items()
+        for pointer, symbol in rows.items()
+        if symbol in subjects and document not in subjects[symbol]
+    }
+    assert not claiming, json.dumps(claiming, indent=2)

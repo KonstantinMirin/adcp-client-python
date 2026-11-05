@@ -58,7 +58,7 @@ from ..enums.sort_direction import SortDirection
 from ..enums.sort_metric import SortMetric
 
 
-class NotificationType(StrEnum):
+class GetMediaBuyDeliveryResponseNotificationType(StrEnum):
     """
     Type of webhook notification (only present in webhook deliveries): scheduled = regular periodic update, final = campaign completed, delayed = data not yet available, adjusted = resending period with corrected data (same window), window_update = resending period with a wider measurement window (e.g., C3 superseding live, C7 superseding C3)
     """
@@ -435,7 +435,7 @@ class GetMediaBuyDeliveryResponse(AdCPVersionEnvelope, ProtocolEnvelope):
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='media-buy/get-media-buy-delivery-response.json', pointer='#/allOf/3', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'anyOf': [{'required': ['reporting_revision']}, {'required': ['reporting_revision_binding']}, {'required': ['reporting_rows']}]}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
-    notification_type: Annotated[NotificationType | None, Field(description='Type of webhook notification (only present in webhook deliveries): scheduled = regular periodic update, final = campaign completed, delayed = data not yet available, adjusted = resending period with corrected data (same window), window_update = resending period with a wider measurement window (e.g., C3 superseding live, C7 superseding C3)')] = None
+    notification_type: Annotated[GetMediaBuyDeliveryResponseNotificationType | None, Field(description='Type of webhook notification (only present in webhook deliveries): scheduled = regular periodic update, final = campaign completed, delayed = data not yet available, adjusted = resending period with corrected data (same window), window_update = resending period with a wider measurement window (e.g., C3 superseding live, C7 superseding C3)')] = None
     partial_data: Annotated[bool | None, Field(description='Indicates if any media buys in this webhook have missing/delayed data (only present in webhook deliveries)')] = None
     unavailable_count: Annotated[NonNegativeInt | None, Field(description='Number of media buys with reporting_delayed or failed status (only present in webhook deliveries when partial_data is true)')] = None
     sequence_number: Annotated[IntMin1 | None, Field(description='Sequential notification number (only present in webhook deliveries, starts at 1)')] = None

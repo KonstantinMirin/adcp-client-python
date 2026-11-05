@@ -16,7 +16,7 @@ from ..core.ext import ExtensionObject
 from ..core.package_delivery_metric_value import PackageDeliveryMetricValue
 from ..enums.delivery_status import DeliveryStatus
 from ..enums.pricing_model import PricingModel
-from .get_media_buy_delivery_response import NotificationType, ObjStartEndTimezone, Status
+from .get_media_buy_delivery_response import GetMediaBuyDeliveryResponseNotificationType, ObjStartEndTimezone, Status
 
 
 class Totals(DeliveryMetrics):
@@ -79,7 +79,7 @@ class MediaBuyDeliveryWebhookResult(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/media-buy-delivery-webhook-result.json', pointer='#')
-    notification_type: Annotated[NotificationType, Field(description='Type of delivery-report notification: scheduled = regular periodic update, final = campaign completed, delayed = data not yet available, adjusted = corrected data for the same window, window_update = a wider measurement window supersedes a prior window.')]
+    notification_type: Annotated[GetMediaBuyDeliveryResponseNotificationType, Field(description='Type of delivery-report notification: scheduled = regular periodic update, final = campaign completed, delayed = data not yet available, adjusted = corrected data for the same window, window_update = a wider measurement window supersedes a prior window.')]
     partial_data: Annotated[bool | None, Field(description='Indicates if any media buys in this webhook have missing or delayed data.')] = None
     unavailable_count: Annotated[NonNegativeInt | None, Field(description='Number of media buys with reporting_delayed or failed status when partial_data is true.')] = None
     sequence_number: Annotated[IntMin1 | None, Field(description='Sequential notification number for this reporting webhook stream.')] = None

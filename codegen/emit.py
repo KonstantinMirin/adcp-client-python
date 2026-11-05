@@ -270,6 +270,57 @@ def module_domain(module: str) -> str:
 
 
 @functools.cache
+def rooted_subjects(bundle_dir: Path) -> dict[str, frozenset[str]]:
+    """**§3a's SUBJECTS, as one reading of the bundle**: the symbol a document's ROOT
+    binds -> the documents that bind it.
+
+    **A document root is already a home** (§3a), so a titled root is a catalogue ENTRY
+    whose name the BUNDLE gave: "the NAME comes from the bundle, so a catalogue entry is
+    derived and not minted".  This is the set of those names, and §3a's step 3 is what
+    reads it -- "a name is minted per ENTRY and never per position.  This is what makes a
+    role word claiming a subject's name impossible by construction: a position has a role,
+    an entry has a subject, and only a subject gets a name."
+
+    **One derivation with two readers, which is why it is split out of**
+    :func:`domain_roots`.  §1's domain-scope rule wants the roots grouped BY DOMAIN and
+    §3a's subject rule wants them keyed by SYMBOL over the whole bundle; both are the same
+    parse of the same 1,054 raw documents, and two folds over it would be two readings of
+    "the symbol the bundle gives this root" for the collision rule and the subject rule to
+    disagree through.
+
+    **Keyed by SYMBOL and valued by the DOCUMENTS, which is the one thing the subject rule
+    needs and a flat set of names could not give it.**  A symbol two home documents both
+    root is not a subject either of them may be pushed off -- §1 permits the two paths
+    across domains -- so the exemption is read per document rather than per run.  Measured
+    over this bundle: 1,054 titled roots, 1,014 distinct symbols, and exactly ONE symbol
+    wanted by two home documents (``AudienceSource``, at ``core/audience-source.json`` and
+    ``enums/audience-source.json``).  The other 39 collisions are the byte-identical
+    repeated DOCUMENTS, whose non-home member re-exports the home's symbol rather than
+    declaring a second class (:func:`bundle.repeated`), so they are one subject at two
+    paths and not two subjects.
+
+    A function of the BUNDLE and never of the run, for :func:`domain_roots`' reason and
+    under §9's own ruling -- the RUN is not the BUNDLE -- so a one-document command and a
+    whole-population emission reserve the same subjects and derive the same name.
+    """
+    out: dict[str, set[str]] = {}
+    for document in bundle.portable(bundle_dir):
+        node = schema.parse(
+            bundle.read(bundle_dir, document),
+            pointer="",
+            position=Position.ROOT,
+            source=schema.Source(document=document),
+        )
+        title = node.title
+        if title is None:
+            continue
+        symbol = lower_names.class_name(title)
+        if symbol.isidentifier():
+            out.setdefault(symbol, set()).add(document)
+    return {symbol: frozenset(documents) for symbol, documents in out.items()}
+
+
+@functools.cache
 def domain_roots(bundle_dir: Path) -> dict[str, frozenset[str]]:
     """Per §1 DOMAIN, the ROOT symbol of every portable document in it.
 
@@ -302,20 +353,15 @@ def domain_roots(bundle_dir: Path) -> dict[str, frozenset[str]]:
 
     A document whose record carries no title, or whose title derives no identifier,
     REFUSES in :func:`lower_document` and exports no symbol, so it contributes none here.
+
+    **The PARSE is :func:`rooted_subjects`' and this is a regrouping of it**, so §1's
+    domain rule and §3a's subject rule cannot come to disagree about the symbol the bundle
+    gives one root -- which is the same sentence :func:`decidable`'s own agreement check
+    makes between this answer and the walk's ``mod.root``.
     """
     out: dict[str, set[str]] = {}
-    for document in bundle.portable(bundle_dir):
-        node = schema.parse(
-            bundle.read(bundle_dir, document),
-            pointer="",
-            position=Position.ROOT,
-            source=schema.Source(document=document),
-        )
-        title = node.title
-        if title is None:
-            continue
-        symbol = lower_names.class_name(title)
-        if symbol.isidentifier():
+    for symbol, documents in rooted_subjects(bundle_dir).items():
+        for document in documents:
             out.setdefault(domain(document), set()).add(symbol)
     return {known: frozenset(symbols) for known, symbols in out.items()}
 
@@ -1452,7 +1498,24 @@ def decidable(
     # declaring module publishes.  Only the run can answer it (a module's own walk knows
     # the symbol and not whether the other module exports it), and §9 is satisfied because
     # a reference target is in the closure of every run holding this document.
-    bound = lower_names.assign(mod, carriers, elsewhere, judged, abroad)
+    # **§3a STEP 3: the SUBJECTS the bundle named, minus the one this module is the home
+    # of** (``lower_names.SUBJECT_SCOPE``).  "A name is minted per ENTRY and never per
+    # position ... a position has a role, an entry has a subject, and only a subject gets
+    # a name."  A titled document root IS an entry -- §3a's "a document root is already a
+    # home" -- so these are the names the bundle itself gave, and a position deriving one
+    # of them from its own ROLE lengthens rather than claiming it.
+    #
+    # **Subtracted by SYMBOL and not by document, which is the ``AudienceSource`` case.**
+    # Two home documents root one symbol (``core/audience-source.json`` and
+    # ``enums/audience-source.json``); §1 permits the two paths, and exempting by symbol
+    # leaves each of them its own name while still reserving it against every third
+    # position. Subtracting by document would have left one of the two to be pushed off a
+    # name the bundle gave it.
+    #
+    # ``mod.root`` and not the title read again: the two agree by the assertion above, so
+    # this spends the reading that is already in hand.
+    subjects = frozenset(rooted_subjects(bundle_dir)) - {mod.root}
+    bound = lower_names.assign(mod, carriers, elsewhere, judged, abroad, subjects)
     if isinstance(bound, Refusal):
         # §4's two naming refusals, both VERDICTS of the document: two pointers deriving
         # one class name, and a branch with no identity.  Returned from here because this

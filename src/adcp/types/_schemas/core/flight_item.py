@@ -25,7 +25,7 @@ class Origin(AdCPBaseModel):
     city: Annotated[str | None, Field(description="City name (e.g., 'Amsterdam', 'New York').")] = None
 
 
-class Destination(AdCPBaseModel):
+class FlightItemDestination(AdCPBaseModel):
     """
     Arrival airport or city.
     """
@@ -47,7 +47,7 @@ class FlightItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/flight-item.json', pointer='#')
     flight_id: Annotated[str, Field(description='Unique identifier for this flight route or offer.')]
     origin: Annotated[Origin, Field(description='Departure airport or city.')]
-    destination: Annotated[Destination, Field(description='Arrival airport or city.')]
+    destination: Annotated[FlightItemDestination, Field(description='Arrival airport or city.')]
     airline: Annotated[str | None, Field(description='Airline name or IATA airline code.')] = None
     price: Annotated[Price | None, Field(description='Ticket price or starting fare.')] = None
     description: Annotated[str | None, Field(description='Route description or promotional text.')] = None

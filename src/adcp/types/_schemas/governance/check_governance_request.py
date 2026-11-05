@@ -35,7 +35,7 @@ from ..enums.purchase_type import PurchaseType
 from ..media_buy.change_term_constraints import Money
 
 
-class Pacing(StrEnum):
+class DeliveryMetricsPacing(StrEnum):
     """
     Whether delivery is ahead of, on track with, or behind the planned pace.
     """
@@ -67,7 +67,7 @@ class AudienceDistribution(AdCPBaseModel):
     cumulative_indices: Annotated[dict[CheckGovernanceRequestDeliveryMetricsAudienceDistributionCumulativeIndices, NonNegativeFloat] | None, Field(description='Cumulative audience index values since the governed action started. Same key format as indices (dimension:value). Use for detecting sustained bias drift that may not appear in a single reporting period.')] = None
 
 
-class DeliveryMetrics(AdCPBaseModel):
+class CheckGovernanceRequestDeliveryMetrics(AdCPBaseModel):
     """
     Seller-attributed canonical delivery statement. MUST be present for 'delivery' phase. The authenticated seller binds one immutable statement_id and digest to a monotonically increasing sequence; the buyer can later submit the copy it received or an independent observation through report_plan_outcome.
     """
@@ -87,7 +87,7 @@ class DeliveryMetrics(AdCPBaseModel):
     cumulative_impressions: Annotated[NonNegativeInt | None, Field(description='Total impressions since the governed action started.')] = None
     geo_distribution: Annotated[dict[str, FloatMin0Max100] | None, Field(description='Actual geographic distribution. Keys are ISO 3166-1 alpha-2 codes, values are percentages.')] = None
     channel_distribution: Annotated[dict[str, FloatMin0Max100] | None, Field(description='Actual channel distribution. Keys are channel enum values, values are percentages.')] = None
-    pacing: Annotated[Pacing | None, Field(description='Whether delivery is ahead of, on track with, or behind the planned pace.')] = None
+    pacing: Annotated[DeliveryMetricsPacing | None, Field(description='Whether delivery is ahead of, on track with, or behind the planned pace.')] = None
     audience_distribution: Annotated[AudienceDistribution | None, Field(description='Actual audience composition during the reporting period. Enables mid-flight drift detection when actual delivery skews from planned audience targeting.')] = None
 
 
@@ -149,7 +149,7 @@ class CheckGovernanceRequest(AdCPVersionEnvelope):
     consultation_context: Annotated[ConsultationContext | None, Field(description='Opaque, non-authorizing handle returned with an intent conditions verdict. Pass it only when re-checking the adjusted intent so the governance agent can correlate negotiation attempts. The governance agent MUST resolve it under the authenticated principal and reject the re-check unless principal, caller, plan_id, tool, purchase_type, and target audience match the original conditions check. Services MUST NOT receive or accept this value as authorization.')] = None
     phase: Annotated[GovernancePhase | None, Field(default_factory=lambda: TypeAdapter(GovernancePhase).validate_python('purchase'), description="The phase of an execution-shaped governed action. Ignored for intent-shaped tool+payload requests. 'purchase': initial commitment; 'modification': update to an existing commitment; 'delivery': periodic delivery reporting. Defaults to purchase if omitted. planned_delivery.media_buy_id is optional for purchase and required for modification/delivery.", json_schema_extra={'default': 'purchase'})]
     planned_delivery: Annotated[PlannedDelivery | None, Field(description='What the seller will actually deliver. Present on execution checks.')] = None
-    delivery_metrics: Annotated[DeliveryMetrics | None, Field(description="Seller-attributed canonical delivery statement. MUST be present for 'delivery' phase. The authenticated seller binds one immutable statement_id and digest to a monotonically increasing sequence; the buyer can later submit the copy it received or an independent observation through report_plan_outcome.")] = None
+    delivery_metrics: Annotated[CheckGovernanceRequestDeliveryMetrics | None, Field(description="Seller-attributed canonical delivery statement. MUST be present for 'delivery' phase. The authenticated seller binds one immutable statement_id and digest to a monotonically increasing sequence; the buyer can later submit the copy it received or an independent observation through report_plan_outcome.")] = None
     modification_summary: Annotated[StrMaxLen1000 | None, Field(description="Human-readable summary of what changed. SHOULD be present for 'modification' phase.")] = None
     runtime_attestations: Annotated[list[RuntimeAttestationsItem] | None, Field(description='Optional independently issued runtime evidence for an activate_signal intent check whose payload action is activate (or omitted, which defaults to activate). It MUST NOT be supplied for deactivate. Each item is the shared portable AttestationReference from the core #4529 contract; it carries no authoritative buyer-supplied decision or confidence. The governance agent MUST evaluate every item under adcp.attestations plus governance.runtime_attestations capability policy, preserve input order in response runtime_attestation_evaluations[], and reject off-policy issuers, resolvers, credential origins, and verifier nominations without network access. This field is per-check evidence outside the synced plan and therefore outside the plan_hash preimage. Other tools and purchase types cannot carry this field.', max_length=10, min_length=1)] = None
     invoice_recipient: Annotated[BusinessEntity | None, Field(description='Invoice recipient from the purchase request. MUST be present when the tool payload includes invoice_recipient, so the governance agent can validate billing changes.')] = None
