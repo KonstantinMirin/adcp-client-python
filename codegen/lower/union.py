@@ -2274,9 +2274,9 @@ def lower_union(
 #: union is one TYPE and there is no slot on a ``ir.TypeRef`` for a sibling fact at
 #: all.  Both ends of that were measured on the pinned harness: the document states the
 #: sibling at this very pointer -- which is where the document-side reading finds it
-#: (``harness._settled``) -- and the union's type has no slot that could answer for it,
-#: so dropping it is a model wider than its document with nothing at the pointer to say
-#: so.
+#: (``harness._written_and_settled``) -- and the union's type has no slot that could
+#: answer for it, so dropping it is a model wider than its document with nothing at the
+#: pointer to say so.
 #:
 #: **The mechanism is a CONSTRAINING sibling's, and it is read as one** (§5's ``$ref``
 #: row draws the same line in the same table: "an annotation sibling -> the sibling's
