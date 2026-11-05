@@ -1342,6 +1342,18 @@ entry can be fifteen times its own document's distinct content when written out 
 two references to it then costs that again per occurrence, which is how a node of a few kilobytes
 reaches tens of gigabytes.
 
+**AND THIS RULE HAS A BOUNDARY, WHICH IS THAT THE WALK MUST PRESERVE ITS CHILDREN'S IDENTITY.** It
+holds for a walk over a structure whose repeated subtrees are held BY REFERENCE — that is what makes
+the text key quadratic and the identity key linear. **It inverts for a function that REBUILDS its
+argument**, because then every child it recurses on is a fresh object sharing identity with nothing,
+and an identity key cannot hit what no two call sites hold in common. Measured on the strategy
+builder, whose first statement rebuilds its argument through text: the existing **text** key hits
+**97.2% and 98.3%**, and an identity key would hit **20% and 16%**. So the discriminator is not
+which key is cheaper to compute — it is **whether the walk hands the same object twice**, and that
+is a property of the callee rather than of the data. Ask it before applying this rule anywhere; the
+rule read as unconditional turned a 97%-effective memo into a proposal to replace it with a
+16%-effective one.
+
 **AND THE ACCEPTS RESOLVER INLINES AND DOES NOT CANONICALISE**, which is a statement about where a
 cost belongs rather than about correctness. The draw's own strategy builder canonicalises whatever
 it is handed, so **a draw pays canonicalisation inside the draw, over the schema it will generate
