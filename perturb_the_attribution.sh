@@ -28,9 +28,13 @@
 # REQUIRES A CLEAN TREE: uncommitted work in any of them is destroyed. It refuses to
 # run otherwise.
 #
-# A COLLECTION ERROR IS NOT A GREEN RUN: the verdict matches "failed|error", because
-# a malformed perturbation leaves a run that never executed, and a scraper matching
-# only "failed" records that as a guard that cannot redden.
+# A COLLECTION ERROR IS NOT A GREEN RUN, and INTERNALERROR IS A THIRD SHAPE. The
+# verdict matches "failed|error|INTERNALERROR", because a malformed perturbation
+# leaves a run that never executed and a scraper matching only "failed" records that
+# as a guard that cannot redden. The third shape was measured here: a perturbation
+# that cut a dict entry at the wrong closing paren left a SyntaxError, pytest printed
+# INTERNALERROR with no "N failed" line at all, and the case scored STAYED GREEN with
+# an empty verdict column. Any scraper over pytest output needs all three.
 set -u
 cd "$(dirname "$0")" || exit 1
 
@@ -50,8 +54,8 @@ py() { CCM_INDEX_BYPASS=1 env -u VIRTUAL_ENV uv run --no-sync python "$@"; }
 # so selecting is what keeps this script re-runnable rather than a thing nobody runs.
 run() {  # run <label> <-k expression selecting the reading it should redden>
   out=$(py -m pytest "$T" -q -n 0 -p no:randomly -k "$2" 2>&1 | tail -4)
-  if echo "$out" | grep -qE "[0-9]+ (failed|error)"; then verdict=REDDENS; else verdict="STAYED GREEN"; fi
-  printf '%-60s %-12s %s\n' "$1" "$verdict" "$(echo "$out" | grep -oE '[0-9]+ (passed|failed|error).*' | head -1)"
+  if echo "$out" | grep -qE "[0-9]+ (failed|error)|INTERNALERROR"; then verdict=REDDENS; else verdict="STAYED GREEN"; fi
+  printf '%-60s %-12s %s\n' "$1" "$verdict" "$(echo "$out" | grep -oE '[0-9]+ (passed|failed|error).*|INTERNALERROR.*' | head -1)"
   git checkout -- "$A" "$T" "$R"
 }
 
@@ -85,7 +89,7 @@ echo "=== THE REGISTRY'S EQUALITY, BOTH DIRECTIONS ==="
 # one that SHIPS -- `src/adcp/types/envelopes.py` tells a consumer "Upstream:
 # adcontextprotocol/adcp#8516" -- so this is the direction that covers a claim made to
 # somebody who installed the wheel.
-edit "import pathlib,re;p=pathlib.Path('$A');s=p.read_text();a='    \"adcontextprotocol/adcp#8516\": Sighting(';i=s.index(a);e=s[i:];e=e[:e.index('    ),\n')+len('    ),\n')];assert s.count(e)==1;p.write_text(s.replace(e,''))"
+edit "import pathlib,re;p=pathlib.Path('$A');s=p.read_text();r=re.compile(r'^    \"adcontextprotocol/adcp#8516\": Sighting\(.*?^    \),\n', re.S|re.M);assert len(r.findall(s))==1;p.write_text(r.sub('',s))"
 run "the sighting for the reference the WHEEL cites, removed" "cites_has_a_sighting"
 
 # BACKWARD: a sighting nothing cites. This is what stops the registry becoming an

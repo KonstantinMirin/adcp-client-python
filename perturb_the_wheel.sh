@@ -25,9 +25,13 @@
 # REQUIRES A CLEAN TREE: uncommitted work in either file is destroyed. It refuses to
 # run otherwise.
 #
-# A COLLECTION ERROR IS NOT A GREEN RUN: the verdict matches "failed|error", because a
-# malformed perturbation leaves a run that never executed and a scraper matching only
-# "failed" records that as a guard that cannot redden.
+# A COLLECTION ERROR IS NOT A GREEN RUN, and INTERNALERROR IS A THIRD SHAPE. The
+# verdict matches "failed|error|INTERNALERROR", because a malformed perturbation
+# leaves a run that never executed and a scraper matching only "failed" records that
+# as a guard that cannot redden. The third shape was measured here: a perturbation
+# that cut a dict entry at the wrong closing paren left a SyntaxError, pytest printed
+# INTERNALERROR with no "N failed" line at all, and the case scored STAYED GREEN with
+# an empty verdict column. Any scraper over pytest output needs all three.
 set -u
 cd "$(dirname "$0")" || exit 1
 
@@ -45,16 +49,16 @@ py() { CCM_INDEX_BYPASS=1 env -u VIRTUAL_ENV uv run --no-sync python "$@"; }
 # single process is both faster and the only way the verdict names one worker's run.
 run() {  # run <label> <-k expression selecting the test it should redden>
   out=$(py -m pytest "$T" -q -n 0 -p no:randomly -k "$2" 2>&1 | tail -4)
-  if echo "$out" | grep -qE "[0-9]+ (failed|error)"; then verdict=REDDENS; else verdict="STAYED GREEN"; fi
-  printf '%-58s %-12s %s\n' "$1" "$verdict" "$(echo "$out" | grep -oE '[0-9]+ (passed|failed|error).*' | head -1)"
+  if echo "$out" | grep -qE "[0-9]+ (failed|error)|INTERNALERROR"; then verdict=REDDENS; else verdict="STAYED GREEN"; fi
+  printf '%-58s %-12s %s\n' "$1" "$verdict" "$(echo "$out" | grep -oE '[0-9]+ (passed|failed|error).*|INTERNALERROR.*' | head -1)"
   git checkout -- "$P" "$T"
 }
 
 # The control: the same perturbation against the two checks that SIMULATE the install.
 control() {  # control <label> <test file> <-k expression>
   out=$(py -m pytest "$2" -q -n 0 -p no:randomly -k "$3" 2>&1 | tail -4)
-  if echo "$out" | grep -qE "[0-9]+ (failed|error)"; then verdict="REDDENS"; else verdict="STAYED GREEN"; fi
-  printf '%-58s %-12s %s\n' "$1" "$verdict" "$(echo "$out" | grep -oE '[0-9]+ (passed|failed|error).*' | head -1)"
+  if echo "$out" | grep -qE "[0-9]+ (failed|error)|INTERNALERROR"; then verdict="REDDENS"; else verdict="STAYED GREEN"; fi
+  printf '%-58s %-12s %s\n' "$1" "$verdict" "$(echo "$out" | grep -oE '[0-9]+ (passed|failed|error).*|INTERNALERROR.*' | head -1)"
 }
 
 edit() { py -c "$1" || { echo "perturbation did not apply: $1" >&2; exit 1; }; }
@@ -89,8 +93,8 @@ echo "=== PACKAGING: py.typed, which is reading 7's whole promise ==="
 # wheel without a marker, and the declaration case is recorded as NOT CAUGHT below.
 edit "import pathlib,shutil;shutil.move('src/adcp/py.typed','py.typed.perturbed')"
 out=$(py -m pytest "$T" -q -n 0 -p no:randomly -k "marker_reading_7_promises" 2>&1 | tail -4)
-if echo "$out" | grep -qE "[0-9]+ (failed|error)"; then verdict=REDDENS; else verdict="STAYED GREEN"; fi
-printf '%-58s %-12s %s\n' "the marker file removed from the package" "$verdict" "$(echo "$out" | grep -oE '[0-9]+ (passed|failed|error).*' | head -1)"
+if echo "$out" | grep -qE "[0-9]+ (failed|error)|INTERNALERROR"; then verdict=REDDENS; else verdict="STAYED GREEN"; fi
+printf '%-58s %-12s %s\n' "the marker file removed from the package" "$verdict" "$(echo "$out" | grep -oE '[0-9]+ (passed|failed|error).*|INTERNALERROR.*' | head -1)"
 py -c "import shutil;shutil.move('py.typed.perturbed','src/adcp/py.typed')"
 git checkout -- "$P" "$T"
 
@@ -157,8 +161,8 @@ py -c "import pathlib,shutil;shutil.rmtree('build',ignore_errors=True)"
 out=$(py -m pytest "$T" -q -n 0 -p no:randomly -k "payload_is_the_packages_committed_files" 2>&1 | tail -4)
 edit "import pathlib;p=pathlib.Path('$P');s=p.read_text();a='\"adcp.types._schemas\" = [\"*.json\", \"**/*.json\"]';assert s.count(a)==1;p.write_text(s.replace(a,''))"
 out=$(py -m pytest "$T" -q -n 0 -p no:randomly -k "payload_is_the_packages_committed_files" 2>&1 | tail -4)
-if echo "$out" | grep -qE "[0-9]+ (failed|error)"; then verdict=REDDENS; else verdict="STAYED GREEN"; fi
-printf '%-58s %-12s %s\n' "  BLIND: records dropped, build/ kept from the run before" "$verdict" "$(echo "$out" | grep -oE '[0-9]+ (passed|failed|error).*' | head -1)"
+if echo "$out" | grep -qE "[0-9]+ (failed|error)|INTERNALERROR"; then verdict=REDDENS; else verdict="STAYED GREEN"; fi
+printf '%-58s %-12s %s\n' "  BLIND: records dropped, build/ kept from the run before" "$verdict" "$(echo "$out" | grep -oE '[0-9]+ (passed|failed|error).*|INTERNALERROR.*' | head -1)"
 git checkout -- "$P" "$T"
 py -c "import shutil;shutil.rmtree('build',ignore_errors=True)"
 
