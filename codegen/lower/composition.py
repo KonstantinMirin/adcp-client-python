@@ -790,6 +790,104 @@ def _conjunct_base(
     return compiler.local_target(mod, decided.type.path), parsed
 
 
+def _carries_nothing(word: str, position: Position) -> bool:
+    """Whether the TABLE gives ``word`` no effect at all at ``position``.
+
+    §3: "a keyword's answer is the cell's".  :data:`keywords.Effect.NOTHING` is the one
+    effect a lowering neither compiles nor carries, so a node whose every annotation is
+    one of these states nothing a class could hold -- and a keyword with no row is not
+    admitted here either, because the screen that refuses it by name has already run and
+    this function must not quietly answer for a cell that does not exist.
+    """
+    answer = keywords.cell(word, position)
+    return answer is not None and answer.effect is keywords.Effect.NOTHING
+
+
+def states_nothing_but_a_reference(
+    node: nodes.Base,
+    *,
+    conjunct_bases: Sequence[ir.TypeRef],
+    bases: Sequence[ir.TypeRef],
+    union: compiler.UnionBase | None,
+    inherits: compiler.Shape | None,
+    base_if_none_composes: ir.TypeRef | None,
+    local: Mapping[str, Any],
+    required: AbstractSet[str],
+    conjunct_rules: Sequence[Mapping[str, Any]],
+    conjunct_values: Sequence[object],
+    conjoined: Sequence[object],
+    contains: Any | None,
+    facts: Mapping[str, Any],
+) -> bool:
+    """Whether this node composes ONE class base and says nothing else about an instance.
+
+    ``docs/plan/final-state.md`` reading 4: *"a type stated at more than one position is
+    written once and referenced, never restated"*, and reading 4's own test for which of
+    the two a position is -- *"whether the bundle REFERENCES one node from the others or
+    RESTATES it is the question that tells our defect from the schema's own duplication"*.
+    A node whose whole content is ``{"allOf": [{"$ref": X}]}`` is the bundle REFERENCING,
+    so a class declared at it is a second declaration of X's type under a second name, and
+    that is ours.
+
+    **EVERY ARGUMENT IS A WAY FOR THIS NODE TO SAY SOMETHING**, and the predicate is the
+    conjunction that there is none -- which is why they are parameters rather than a
+    re-reading of the node.  ``local`` and ``required`` are what the node and its inline
+    conjuncts declare about keys; ``conjunct_rules``, ``conjunct_values``, ``contains`` and
+    ``facts`` are §5's "the other conjuncts and the ``allOf``'s siblings constrain it", one
+    carrier each; ``conjoined`` is a second ``$ref`` whose target is not a class; ``bases``,
+    ``inherits``, ``union`` and ``base_if_none_composes`` are the CALLER's contributions,
+    and a union root or a union branch arrives with one, so none of them is in this row.
+    The node's own three are read off :class:`nodes.Base`: ``declares`` holds every key it
+    states about an instance, ``annotations`` every admitted key it carries without
+    constraining, and ``rules`` its own rule sources.
+
+    **``annotations`` IS IN THE CONJUNCTION BY ITS EFFECT AND NOT BY A LIST OF NAMES, and
+    ``description`` is why there is a screen at all.**  §6's description-authority rule
+    makes the node's own ``description`` authoritative at its own pointer, and a type that
+    IS the target carries no statement of this document's -- so a node stating one is
+    restating something, even though what it restates admits nothing.  So the admitted
+    annotations are the ones :data:`keywords.Effect.NOTHING` names: read off the TABLE at
+    this node's own position, which is §3's rule that a keyword's answer is the cell's.
+    ``x-adcp-schema-uri`` is NOTHING at PROP and ``description`` is ANNOTATION, which is
+    the whole of the difference between the 7 nodes below and the 50 beside them.
+
+    Measured over the 1,054 portable documents: **235 nodes state an ``allOf`` of exactly
+    one ``$ref``**, 108 of them at a document root; of the 127 at a non-root position
+    **7 state nothing else that is not NOTHING** -- 3 ``push_notification_config`` and 4
+    ``context``, in four ``media-buy`` requests, each carrying ``x-adcp-schema-uri`` and
+    nothing more -- and the next largest sibling set is a bare ``description`` at 50
+    positions.  Admitting those 50 would drop a description the document states at a
+    pointer, which is a different row and the opposite of this one.
+
+    **The 7 are not 7 classes, and the 4 that are not say what this predicate adds.**
+    ``core/context.json``'s root is not a class, so :func:`intersect.the_conjuncts_own_type`
+    already answers those four with the target's symbol -- the same answer, through §5's
+    other arm.  The 3 that reach here compose ``core/push-notification-config.json``, which
+    IS a class, and are the group ``tests/test_one_node_is_one_declaration.py`` reports as
+    four declarations of one type: the root's own and three empty subclasses of it.
+    """
+    return (
+        node.position is not Position.ROOT
+        and len(conjunct_bases) == 1
+        and not bases
+        and union is None
+        and inherits is None
+        and base_if_none_composes is None
+        and set(node.declares) <= {"allOf"}
+        and all(_carries_nothing(word, node.position) for word in node.annotations)
+        and not node.rules
+        and node.extra is None
+        and getattr(node, "extras", None) is None
+        and not local
+        and not required
+        and not conjunct_rules
+        and not conjunct_values
+        and not conjoined
+        and contains is None
+        and not facts
+    )
+
+
 def lower_composition(
     node: nodes.Base,
     mod: compiler.Module,
@@ -1638,6 +1736,42 @@ def lower_composition(
     )
     if sibling is not None:
         return sibling
+
+    if states_nothing_but_a_reference(
+        node,
+        conjunct_bases=conjunct_bases,
+        bases=bases,
+        union=union,
+        inherits=inherits,
+        base_if_none_composes=base_if_none_composes,
+        local=local,
+        required=required,
+        conjunct_rules=conjunct_rules,
+        conjunct_values=conjunct_values,
+        conjoined=conjoined,
+        contains=contains,
+        facts=facts,
+    ):
+        # **A SUBCLASS THAT ADDS NOTHING IS NOT A BASE, IT IS A SECOND NAME FOR ONE
+        # TYPE**, which is ``docs/plan/final-state.md`` reading 4 read at this row's own
+        # limit: "a type stated at more than one position is written once and referenced,
+        # never restated".  §5's ``$ref`` row at CONJ gives "a BASE where the target is a
+        # class DECLARING FIELDS", and the clause the predicate above holds the compiler
+        # to is the one §5 states for the row's other arm -- "at a node that declares no
+        # fields of its own" -- which is a property of THIS node and not of the target's
+        # kind.  Where it holds and the target is a class, the base would supply every
+        # field, every rule, every ``extra`` and the description, and the subclass would
+        # state nothing: so the target is this node's own TYPE here exactly as it is where
+        # the target is a scalar, and the answer is one return rather than a second shape.
+        #
+        # **ROOT is excluded and that is §1 and D5 rather than a caution.**
+        # ``lower.references._root`` already decided the same question for a bare ``$ref``
+        # at a document root and answered SUBCLASS: "binding this module's symbol to
+        # another module's class would be a second way to reach one class, against §1",
+        # and D5 fixes a root's symbol so the module must declare one.  A non-root
+        # position declares no symbol of its own -- the field's annotation is the imported
+        # name -- so there is nothing for a second reach to be.
+        return ir.Decided(conjunct_bases[0])
 
     #: §5's DISTRIBUTION clause, where the row above answered with the target's BRANCHES:
     #: the conjunct's own pointer, the branches, and the node each branch class is
