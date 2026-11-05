@@ -7,9 +7,14 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 
+from ..enums.attribution_methodology import AttributionMethodology
 from ..enums.available_metric import AvailableMetric
+from ..enums.completion_source import CompletionSource
+from ..enums.lift_dimension import LiftDimension
+from ..enums.viewability_standard import ViewabilityStandard
 from .brand_ref import BrandReference
 from .canonical_metric_qualifier import CanonicalMetricQualifier
+from .duration import Duration
 from .vendor_metric_id import VendorMetricID
 
 
@@ -37,7 +42,19 @@ class CommittedMetricStandard(CommittedMetric):
     committed_at: Annotated[AwareDatetime, Field(description='ISO 8601 timestamp when this metric became part of the contract. Day-1 commitments use `create_media_buy.confirmed_at`; mid-flight additions use the time the amendment was accepted.')]
 
 
-Qualifier = Annotated[CanonicalMetricQualifier, Field(description='Optional qualifier disambiguating commitments to the same vendor metric measured under different methodologies or windows. Same closed key set as standard-scope entries; new keys ship explicitly.')]
+class Qualifier(AdCPBaseModel):
+    """
+    Optional qualifier disambiguating commitments to the same vendor metric measured under different methodologies or windows. Same closed key set as standard-scope entries; new keys ship explicitly.
+    """
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/committed-metric.json', pointer='#/oneOf/1/properties/qualifier')
+    viewability_standard: Annotated[ViewabilityStandard | None, Field(description='Viewability standard for this vendor metric, as a closed enum.')] = None
+    completion_source: Annotated[CompletionSource | None, Field(description='Completion attestation source for this vendor metric.')] = None
+    attribution_methodology: Annotated[AttributionMethodology | None, Field(description='Attribution methodology for this vendor outcome metric.')] = None
+    attribution_window: Annotated[Duration | None, Field(description='Attribution window for this vendor outcome metric, as a structured duration.')] = None
+    lift_dimension: Annotated[LiftDimension | None, Field(description='Brand-lift dimension for this vendor metric.')] = None
 
 
 class CommittedMetricVendor(CommittedMetric):

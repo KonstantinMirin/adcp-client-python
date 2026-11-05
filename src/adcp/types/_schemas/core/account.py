@@ -45,7 +45,7 @@ class CreditLimit(AdCPBaseModel):
     currency: GetAccountFinancialsResponseSuccessCurrency
 
 
-class Setup(AdCPBaseModel):
+class ObjUrlMessageExpiresAt(AdCPBaseModel):
     """
     Present when status is 'pending_approval'. Contains next steps for completing account activation.
     """
@@ -58,7 +58,7 @@ class Setup(AdCPBaseModel):
     expires_at: Annotated[AwareDatetime | None, Field(description='When this setup link expires.')] = None
 
 
-class GovernanceAgentsItem(AdCPBaseModel):
+class ObjUrl(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -121,9 +121,9 @@ class Account(AdCPBaseModel):
     rate_card: Annotated[str | None, Field(description='Identifier for the rate card applied to this account')] = None
     payment_terms: Annotated[PaymentTerms | None, Field(description='Payment terms agreed for this account. Binding for all invoices when the account is active.')] = None
     credit_limit: Annotated[CreditLimit | None, Field(description='Maximum outstanding balance allowed')] = None
-    setup: Annotated[Setup | None, Field(description="Present when status is 'pending_approval'. Contains next steps for completing account activation.")] = None
+    setup: Annotated[ObjUrlMessageExpiresAt | None, Field(description="Present when status is 'pending_approval'. Contains next steps for completing account activation.")] = None
     account_scope: AccountScope | None = None
-    governance_agents: Annotated[list[GovernanceAgentsItem] | None, Field(description="Governance agent endpoint registered on this account. Exactly one entry per sync_governance's one-agent-per-account invariant. The array shape is preserved for wire compatibility with 3.0; `maxItems: 1` is load-bearing and mirrors the singular `governance_context` on the protocol envelope. Authentication credentials are write-only and not included in responses — use sync_governance to set or update credentials.", max_length=1, min_length=1)] = None
+    governance_agents: Annotated[list[ObjUrl] | None, Field(description="Governance agent endpoint registered on this account. Exactly one entry per sync_governance's one-agent-per-account invariant. The array shape is preserved for wire compatibility with 3.0; `maxItems: 1` is load-bearing and mirrors the singular `governance_context` on the protocol envelope. Authentication credentials are write-only and not included in responses — use sync_governance to set or update credentials.", max_length=1, min_length=1)] = None
     reporting_bucket: Annotated[ReportingBucket | None, Field(description="Cloud storage bucket where the seller delivers offline reporting files for this account. Seller provisions a dedicated bucket or a per-account prefix within a shared bucket, and grants the buyer read access out-of-band. Access MUST be scoped at the IAM layer so each account can only read its own prefix — bucket-wide grants are non-compliant even with per-account prefixes. Seller MUST revoke access when the account's status transitions to inactive, suspended, or closed. See security considerations for offline delivery in docs/media-buy/media-buys/optimization-reporting. Only present when the seller supports offline delivery (reporting_delivery_methods includes 'offline' in capabilities).")] = None
     sandbox: Annotated[bool | None, Field(description='When true, this is a sandbox account — no real platform calls, no real spend. For account-id namespaces, sandbox accounts are pre-existing test accounts on the platform discovered via list_accounts or supplied out-of-band. For buyer-declared accounts, sandbox is part of the natural key: the same brand/operator pair can have both a production and sandbox account.')] = None
     notification_configs: Annotated[list[NotificationConfig] | None, Field(description='Account-level webhook subscriptions for creative lifecycle/assignment changes, indicators.changed, account status, durable account-change wake-ups, wholesale feed changes, and reporting.delivery_ready. Buyers manage entries via sync_accounts and verify persisted state on list_accounts. account.change_recorded wakes receivers to drain list_account_changes; reporting.delivery_ready is repaired through get_reporting_status; indicator and assignment payloads are invalidations repaired completely through get_media_buys; list_creatives may provide a bounded reverse projection. Distinct from per-resource push_notification_config. Entries are keyed by account-scoped subscriber_id; credentials are write-only.', max_length=16)] = None
@@ -132,4 +132,4 @@ class Account(AdCPBaseModel):
     ext: ExtensionObject | None = None
 
 
-__all__ = ["Account", "CreditLimit", "GovernanceAgentsItem", "ReportingBucket", "Setup"]
+__all__ = ["Account", "CreditLimit", "ObjUrl", "ObjUrlMessageExpiresAt", "ReportingBucket"]

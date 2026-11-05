@@ -19,7 +19,7 @@ from .pricing_option import PricingOption
 from .product import Product
 from .signal_coverage_forecast import SignalCoverageForecast
 from .signal_id import SignalID
-from .signal_listing import SignalListing
+from .signal_listing import ObjMinMax, SignalListing
 from .signal_ref import SignalRef
 from .vendor_pricing_option import VendorPricingOption
 
@@ -215,18 +215,6 @@ class WholesaleFeedEventProductRemovedProduct(WholesaleFeedEvent):
     payload: Annotated[WholesaleFeedEventProductRemovedProductPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
 
 
-class Range(AdCPBaseModel):
-    """
-    Valid range for numeric signals. Present when value_type is 'numeric'.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/wholesale-feed-event.json', pointer='#/$defs/signal/properties/range')
-    min: Annotated[float, Field(description='Minimum value, inclusive.')]
-    max: Annotated[float, Field(description='Maximum value, inclusive.')]
-
-
 class Signal(SignalListing):
     """
     One signal entry using the same wire shape as an item in get_signals.signals[].
@@ -245,7 +233,7 @@ class Signal(SignalListing):
     description: Annotated[StrMinLen1, Field(description='Detailed signal description')]
     value_type: SignalValueType | None = None
     categories: Annotated[list[str] | None, Field(description="Valid values for categorical signals. Present when value_type is 'categorical'.", min_length=1)] = None
-    range: Annotated[Range | None, Field(description="Valid range for numeric signals. Present when value_type is 'numeric'.")] = None
+    range: Annotated[ObjMinMax | None, Field(description="Valid range for numeric signals. Present when value_type is 'numeric'.")] = None
     signal_type: SignalAvailabilityType
     data_provider: StrMinLen1 | None = None
     coverage_percentage: Annotated[FloatMin0Max100 | None, Field(description='DEPRECATED for detailed planning. Optional legacy scalar percentage of audience coverage retained only as a fallback for clients that do not consume coverage_forecast. When coverage_forecast is present, coverage_forecast is authoritative for signal-level discovery and coverage_percentage is fallback-only.')] = None

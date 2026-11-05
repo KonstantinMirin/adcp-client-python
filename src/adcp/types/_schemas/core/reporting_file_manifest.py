@@ -7,22 +7,13 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import ComplyTestControllerRequestParamsReceivedReportingRevisionId, StrMinLen1
+from adcp.types.constraints import ComplyTestControllerRequestParamsReceivedReportingRevisionId
 
 from .reporting_control_total import ReportingControlTotal
 from .reporting_delivery_method import FileFormat
 from .reporting_file_compression import ReportingFileCompression
 from .reporting_file_entry import ReportingFileEntry
-
-
-class Period(AdCPBaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-file-manifest.json', pointer='#/properties/period')
-    start: AwareDatetime
-    end: AwareDatetime
-    source_timezone: StrMinLen1
+from .reporting_revision import ObjStartEndSourceTimezone
 
 
 class ReportingFileManifest(AdCPBaseModel):
@@ -41,7 +32,7 @@ class ReportingFileManifest(AdCPBaseModel):
     reporting_revision_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId
     reporting_obligation_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId
     reporting_materialization_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId
-    period: Period
+    period: ObjStartEndSourceTimezone
     format: FileFormat
     compression: ReportingFileCompression
     files: Annotated[list[ReportingFileEntry], Field(min_length=1)]

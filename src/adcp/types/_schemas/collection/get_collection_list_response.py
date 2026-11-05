@@ -14,18 +14,9 @@ from ..core.pagination_response import PaginationResponse
 from ..core.protocol_envelope import ProtocolEnvelope
 from ..core.version_envelope import AdCPVersionEnvelope
 from ..enums.collection_kind import CollectionKind
-from ..enums.distribution_identifier_type import DistributionIdentifierType
 from ..enums.genre_taxonomy import GenreTaxonomy
+from .base_collection_source import IdentifiersItem
 from .collection_list import CollectionList
-
-
-class DistributionIdsItem(AdCPBaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='collection/get-collection-list-response.json', pointer='#/properties/collections/items/properties/distribution_ids/items')
-    type: Annotated[DistributionIdentifierType, Field(description='Type of distribution identifier')]
-    value: Annotated[str, Field(description='The identifier value')]
 
 
 class CollectionsItem(AdCPBaseModel):
@@ -37,14 +28,11 @@ class CollectionsItem(AdCPBaseModel):
     publisher_domain: Annotated[str | None, Field(description='Domain of the adagents.json that declares this collection — the canonical namespace for collection_id. SHOULD be returned whenever known: together with collection_id it is the domain-qualified identity that makes a resolved row matchable when no platform-independent distribution identifier exists (e.g. a channel known only by a platform_channel_id).')] = None
     collection_id: Annotated[str | None, Field(description="Publisher-assigned collection ID within publisher_domain's adagents.json. SHOULD be returned whenever known; identity is the tuple (publisher_domain, collection_id).")] = None
     name: Annotated[str, Field(description='Human-readable collection name')]
-    distribution_ids: Annotated[list[DistributionIdsItem] | None, Field(description='Platform-independent identifiers for cross-publisher matching')] = None
+    distribution_ids: Annotated[list[IdentifiersItem] | None, Field(description='Platform-independent identifiers for cross-publisher matching')] = None
     content_rating: Annotated[ContentRating | None, Field(description='Baseline content rating for this collection')] = None
     genre: Annotated[list[str] | None, Field(description='Genre tags for this collection')] = None
     genre_taxonomy: Annotated[GenreTaxonomy | None, Field(description='Taxonomy system for genre values')] = None
     kind: CollectionKind | None = None
-
-
-CoverageGapsValueItem = DistributionIdsItem
 
 
 class GetCollectionListResponse(AdCPVersionEnvelope, ProtocolEnvelope):
@@ -60,7 +48,7 @@ class GetCollectionListResponse(AdCPVersionEnvelope, ProtocolEnvelope):
     pagination: PaginationResponse | None = None
     resolved_at: Annotated[AwareDatetime | None, Field(description='When the list was resolved')] = None
     cache_valid_until: Annotated[AwareDatetime | None, Field(description='Cache expiration timestamp. Re-fetch the list after this time to get updated collections.')] = None
-    coverage_gaps: Annotated[dict[str, list[CoverageGapsValueItem]] | None, Field(description="Collections included in the list despite missing metadata for a filtered dimension. Maps dimension name (e.g., 'genre', 'content_rating') to arrays of distribution identifiers for collections not covered. Only present when filters are applied and some collections lack the filtered metadata.")] = None
+    coverage_gaps: Annotated[dict[str, list[IdentifiersItem]] | None, Field(description="Collections included in the list despite missing metadata for a filtered dimension. Maps dimension name (e.g., 'genre', 'content_rating') to arrays of distribution identifiers for collections not covered. Only present when filters are applied and some collections lack the filtered metadata.")] = None
     context: ContextObject | None = None
     ext: ExtensionObject | None = None
 

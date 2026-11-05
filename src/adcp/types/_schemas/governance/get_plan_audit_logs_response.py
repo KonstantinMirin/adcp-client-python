@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Annotated, Any, ClassVar
+from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNegativeInt
 
@@ -13,7 +13,6 @@ from adcp.types.constraints import (
     FloatMin0Max1,
     GetAccountFinancialsResponseSuccessCurrency,
     HttpUrl,
-    IntMin1,
     PlansItemEntriesItemPlanHash,
     StrMinLen1MaxLen255,
     ZipAssetDigest,
@@ -25,13 +24,13 @@ from ..core.attestation_reference import AttestationReference
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
 from ..core.protocol_envelope import ProtocolEnvelope
+from ..core.reporting_reliability_statistics import ObjStartEnd
 from ..core.version_envelope import AdCPVersionEnvelope
-from ..enums.escalation_severity import EscalationSeverity
 from ..enums.governance_decision import GovernanceDecision
 from ..enums.governance_mode import GovernanceMode
 from ..enums.outcome_type import OutcomeType
 from ..enums.purchase_type import PurchaseType
-from .check_governance_response import CheckType
+from .check_governance_response import CheckType, DeliveryStatement, FindingsItem
 from .reported_outcome_error import ReportedOutcomeError
 
 _VALUES_ACTIVE_SUSPENDED_COMPLETED: tuple[str, ...] = (
@@ -177,62 +176,6 @@ class EntriesItemType(StrEnum):
     ADJUSTMENT = 'adjustment'
 
 
-class FindingsItem(AdCPBaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/get-plan-audit-logs-response.json', pointer='#/properties/plans/items/properties/entries/items/properties/findings/items')
-    category_id: str
-    policy_id: str | None = None
-    source_plan_id: Annotated[str | None, Field(description='Plan whose policy triggered this finding when the audit entry aggregates findings across plans.')] = None
-    severity: EscalationSeverity
-    explanation: str
-    details: Annotated[dict[str, Any] | None, Field(description='Structured finding details retained exactly as emitted by check_governance.')] = None
-    confidence: FloatMin0Max1 | None = None
-    uncertainty_reason: Annotated[str | None, Field(description='Reason the finding carries less than full confidence, retained exactly as emitted by check_governance.')] = None
-    attestation_reference_digest: Annotated[ZipAssetDigest | None, Field(description='reference_digest of the runtime attestation evaluation this finding relied on.')] = None
-
-
-class DeliveryStatementReportingPeriod(AdCPBaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/get-plan-audit-logs-response.json', pointer='#/properties/plans/items/properties/entries/items/properties/delivery_statement/properties/reporting_period')
-    start: AwareDatetime
-    end: AwareDatetime
-
-
-class CanonicalPayload(AdCPBaseModel):
-    """
-    Exact retained payload used to verify statement_digest after removing delivery_metrics.statement_digest.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/get-plan-audit-logs-response.json', pointer='#/properties/plans/items/properties/entries/items/properties/delivery_statement/properties/canonical_payload')
-    seller_reference: str
-    delivery_metrics: dict[str, Any]
-
-
-class DeliveryStatement(AdCPBaseModel):
-    """
-    Canonical seller statement retained on a delivery check entry.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/get-plan-audit-logs-response.json', pointer='#/properties/plans/items/properties/entries/items/properties/delivery_statement')
-    statement_id: str
-    statement_digest: ZipAssetDigest
-    sequence: IntMin1
-    issued_at: AwareDatetime
-    seller_reference: str
-    cumulative_spend: NonNegativeFloat
-    currency: GetAccountFinancialsResponseSuccessCurrency
-    reporting_period: DeliveryStatementReportingPeriod
-    canonical_payload: Annotated[CanonicalPayload, Field(description='Exact retained payload used to verify statement_digest after removing delivery_metrics.statement_digest.')]
-
-
 class AdjustmentType(StrEnum):
     """
     Commercial adjustment type (present for adjustment entries).
@@ -263,18 +206,6 @@ class Source(StrEnum):
     BUYER_MEASUREMENT = 'buyer_measurement'
 
 
-class EntriesItemDeliveryReportingPeriod(AdCPBaseModel):
-    """
-    Start and end timestamps for the reporting window.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/get-plan-audit-logs-response.json', pointer='#/properties/plans/items/properties/entries/items/properties/delivery/properties/reporting_period')
-    start: AwareDatetime
-    end: AwareDatetime
-
-
 class Delivery(AdCPBaseModel):
     """
     Buyer-attributed observation retained as audit evidence on a delivery outcome. It never overwrites the seller statement.
@@ -288,7 +219,7 @@ class Delivery(AdCPBaseModel):
     observed_at: AwareDatetime | None = None
     seller_statement_id: Annotated[str | None, Field(description='Seller statement identifier as received by the buyer. Required for seller_statement_copy.')] = None
     seller_statement_digest: Annotated[ZipAssetDigest | None, Field(description='Digest received with the seller statement. Governance compares it to the seller-authenticated canonical digest.')] = None
-    reporting_period: Annotated[EntriesItemDeliveryReportingPeriod | None, Field(description='Start and end timestamps for the reporting window.')] = None
+    reporting_period: Annotated[ObjStartEnd | None, Field(description='Start and end timestamps for the reporting window.')] = None
     cumulative_spend: Annotated[NonNegativeFloat | None, Field(description='Buyer-attributed cumulative spend for the governed action.')] = None
     currency: GetAccountFinancialsResponseSuccessCurrency | None = None
     period_closed: Annotated[bool | None, Field(description='Buyer-declared operational closure of this governance reporting period. When true, governance freezes the period after recording this observation. An unresolved mismatch becomes closed_unresolved and no longer blocks later governance. Closure is not final billing or commercial settlement.')] = False
@@ -404,18 +335,6 @@ class GovernedActionsItemStatus(StrEnum):
     COMPLETED = _VALUES_ACTIVE_SUSPENDED_COMPLETED[2]
 
 
-class GovernedActionsItemDeliveryReportingPeriod(AdCPBaseModel):
-    """
-    Current seller statement period summarized for this governed action.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/get-plan-audit-logs-response.json', pointer='#/properties/plans/items/properties/governed_actions/items/properties/delivery_reporting_period')
-    start: AwareDatetime
-    end: AwareDatetime
-
-
 GovernedActionsItemDeliveryReconciliationStatus = DeliveryReconciliationStatus
 
 
@@ -443,7 +362,7 @@ class GovernedActionsItem(AdCPBaseModel):
     net_committed: Annotated[float | None, Field(description='Current ledger obligation for this action after restored headroom.')] = None
     seller_reported_spend: NonNegativeFloat | None = None
     buyer_observed_spend: NonNegativeFloat | None = None
-    delivery_reporting_period: Annotated[GovernedActionsItemDeliveryReportingPeriod | None, Field(description='Current seller statement period summarized for this governed action.')] = None
+    delivery_reporting_period: Annotated[ObjStartEnd | None, Field(description='Current seller statement period summarized for this governed action.')] = None
     conservative_exposure: Annotated[NonNegativeFloat | None, Field(description='Greater of seller-reported and buyer-observed spend while evidence is unresolved.')] = None
     delivery_reconciliation_status: GovernedActionsItemDeliveryReconciliationStatus | None = None
     delivery_period_state: Annotated[GovernedActionsItemDeliveryPeriodState | None, Field(description='Whether the current governance reporting period remains actionable. Closure is not final billing.')] = None

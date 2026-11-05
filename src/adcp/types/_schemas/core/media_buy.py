@@ -31,7 +31,7 @@ from .media_buy_frequency_cap import MediaBuyFrequencyCap
 from .package import Package
 
 
-class Cancellation(AdCPBaseModel):
+class ObjCanceledAtCanceledByReason(AdCPBaseModel):
     """
     Cancellation metadata. Present only when status is 'canceled'.
     """
@@ -76,7 +76,7 @@ class MediaBuy(AdCPBaseModel):
     impairments: Annotated[list[Impairment] | None, Field(description="Open impairments — upstream dependency state changes that affect delivery for at least one package on this buy. Empty when health is 'ok'. Sellers MUST add an entry on next sync/poll response after a referenced resource transitions to an offline state, and MUST remove the entry (flipping health to 'ok' when the array empties) when the resource returns to a serviceable state. Staleness budget: the snapshot MUST reflect the impairment within 5 minutes of impairment.observed_at regardless of buyer poll cadence — sellers cannot rely on rare buyer polls to defer write propagation. See impairment.coherence assertion for the cross-resource invariant.")] = None
     rejection_reason: Annotated[str | None, Field(description="Reason provided by the seller when status is 'rejected'. Present only when status is 'rejected'.")] = None
     confirmed_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp when the seller committed to this media buy. May be null until seller commitment occurs in deferred/manual approval flows. Once populated, remains stable through later pause, resume, activation, completion, cancellation, and reporting transitions.')]
-    cancellation: Annotated[Cancellation | None, Field(description="Cancellation metadata. Present only when status is 'canceled'.")] = None
+    cancellation: Annotated[ObjCanceledAtCanceledByReason | None, Field(description="Cancellation metadata. Present only when status is 'canceled'.")] = None
     total_budget: Annotated[NonNegativeFloat, Field(description='Hard aggregate lifetime budget amount')]
     daily_budget_cap: Annotated[NonNegativeFloat | None, Field(description='Current hard aggregate spend ceiling per calendar day. Sellers MUST echo this whenever an aggregate daily cap is set. It bounds total media-buy spend without allocating or reserving spend for packages.')] = None
     frequency_cap: Annotated[MediaBuyFrequencyCap | None, Field(description='Current hard MediaBuy-level cap. Sellers MUST echo it whenever set. Its counter aggregates exposures across all participating packages; each package targeting_overlay.frequency_cap remains independently binding.')] = None

@@ -9,7 +9,6 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import (
     CanonicalProposalTermsDigest,
-    GetAccountFinancialsResponseSuccessCurrency,
     IoAcceptanceSignatory,
     MediaBuyName,
     StrMinLen1,
@@ -25,18 +24,7 @@ from ..core.opportunity_context import OpportunityContext
 from ..core.push_notification_config import PushNotificationConfig
 from ..core.reporting_webhook import ReportingWebhook
 from ..core.version_envelope import AdcpMajorVersion, AdcpVersion, AdCPVersionEnvelope
-
-
-class TotalBudget(AdCPBaseModel):
-    """
-    Execution amount when the committed proposal defines scalable percentages or constraints rather than a fixed total.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/accept-proposal-request.json', pointer='#/properties/total_budget')
-    amount: NonNegativeFloat
-    currency: GetAccountFinancialsResponseSuccessCurrency
+from .change_term_constraints import Money
 
 
 class IoAcceptance(AdCPBaseModel):
@@ -79,7 +67,7 @@ class AcceptProposalRequest(AdCPVersionEnvelope):
     account: CanonicalAccountReference
     proposal_id: StrMinLen1
     proposal_terms_digest: Annotated[CanonicalProposalTermsDigest, Field(description='terms_digest from the committed proposal. The seller MUST atomically verify both ID and digest before acceptance.')]
-    total_budget: Annotated[TotalBudget | None, Field(description='Execution amount when the committed proposal defines scalable percentages or constraints rather than a fixed total.')] = None
+    total_budget: Annotated[Money | None, Field(description='Execution amount when the committed proposal defines scalable percentages or constraints rather than a fixed total.')] = None
     daily_budget_cap: Annotated[NonNegativeFloat | None, Field(description="Optional hard aggregate daily spend ceiling applied when the committed proposal is accepted. It constrains execution without changing the proposal's negotiated pricing.")] = None
     budget_cap_timezone: Annotated[StrMinLen1 | None, Field(description='Optional shared IANA cap-day timezone override. Requires buyer_timezone_override support. When omitted, budget_capping.timezone_basis selects Account.timezone or fixed_timezone.')] = None
     io_acceptance: IoAcceptance | None = None

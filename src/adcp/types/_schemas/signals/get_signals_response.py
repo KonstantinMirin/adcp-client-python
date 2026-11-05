@@ -19,25 +19,13 @@ from ..core.pagination_response import PaginationResponse
 from ..core.protocol_envelope import ProtocolEnvelope
 from ..core.signal_coverage_forecast import SignalCoverageForecast
 from ..core.signal_definition_enrichment import SignalDefinitionEnrichment
-from ..core.signal_listing import SignalListing
+from ..core.signal_listing import ObjMinMax, SignalListing
 from ..core.signal_ref import SignalRef
 from ..core.vendor_pricing_option import VendorPricingOption
 from ..core.version_envelope import AdCPVersionEnvelope
 from ..core.wholesale_feed_webhook import CacheScope
 from ..enums.signal_catalog_type import SignalAvailabilityType
 from ..enums.signal_value_type import SignalValueType
-
-
-class Range(AdCPBaseModel):
-    """
-    Valid range for numeric signals. Present when value_type is 'numeric'.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='signals/get-signals-response.json', pointer='#/properties/signals/items/properties/range')
-    min: Annotated[float, Field(description='Minimum value (inclusive)')]
-    max: Annotated[float, Field(description='Maximum value (inclusive)')]
 
 
 class SignalsItem(SignalListing, SignalDefinitionEnrichment):
@@ -57,7 +45,7 @@ class SignalsItem(SignalListing, SignalDefinitionEnrichment):
     description: Annotated[str, Field(description='Detailed signal description. For data_provider and signal_source refs, this is optional contextual display text and MUST NOT replace the referenced definition.')]
     value_type: Annotated[SignalValueType | None, Field(description="The data type of this signal's values (binary, categorical, numeric)")] = None
     categories: Annotated[list[str] | None, Field(description="Valid values for categorical signals. Present when value_type is 'categorical'. Buyers must use one of these values in SignalTargeting.values.", min_length=1)] = None
-    range: Annotated[Range | None, Field(description="Valid range for numeric signals. Present when value_type is 'numeric'.")] = None
+    range: Annotated[ObjMinMax | None, Field(description="Valid range for numeric signals. Present when value_type is 'numeric'.")] = None
     signal_type: Annotated[SignalAvailabilityType, Field(description='Commercial/provenance type of signal (marketplace, custom, owned)')]
     data_provider: Annotated[str | None, Field(description='Human-readable source name for the signal, when applicable. For data_provider-scoped signals this is the data provider name; for signal_source-scoped signals it may identify the signal source or proprietary origin.')] = None
     coverage_percentage: Annotated[FloatMin0Max100 | None, Field(description='DEPRECATED for detailed planning. Optional legacy scalar percentage of audience coverage retained only as a fallback for clients that do not consume coverage_forecast. When coverage_forecast is present, coverage_forecast is authoritative for signal-level discovery and coverage_percentage is fallback-only. If coverage_forecast includes an absent bucket over the same denominator, coverage_percentage SHOULD align with 100 * (1 - absent coverage_rate.mid).')] = None

@@ -35,7 +35,6 @@ from ._schemas.collection.delete_collection_list_response import (
     DeleteCollectionListResponse as DeleteCollectionListResponse,
 )
 from ._schemas.collection.get_collection_list_request import GetCollectionListRequest as GetCollectionListRequest
-from ._schemas.collection.get_collection_list_response import CoverageGapsValueItem as CoverageGapsValueItem
 from ._schemas.collection.get_collection_list_response import GetCollectionListResponse as GetCollectionListResponse
 from ._schemas.collection.list_collection_lists_request import ListCollectionListsRequest as ListCollectionListsRequest
 from ._schemas.collection.list_collection_lists_response import (
@@ -53,7 +52,6 @@ __all__ = [
     'CollectionList',
     'CollectionListChangedWebhook',
     'CollectionListFilters',
-    'CoverageGapsValueItem',
     'CreateCollectionListRequest',
     'CreateCollectionListResponse',
     'DeleteCollectionListRequest',

@@ -44,32 +44,23 @@ def lower(node: nodes.Object, mod: compiler.Module) -> ir.Decided | Refusal:
     document is refused at the innermost node that carried the keyword and this row adds
     no sentence of its own to it.
     """
-    # **§3a's CATALOGUE, layer L2, asked at the node's own position** -- "the catalogue is
-    # an INPUT to the walk, never a pass over its output: a node's type is a REFERENCE to a
-    # catalogue entry, or a fresh type where the node is genuinely unique".
-    # :attr:`compiler.Module.objects` is the first of those, so a position that RESTATES an
-    # object type the bundle NAMES imports the symbol the naming position declares instead
-    # of minting a second class over the same field set.
+    # **§3a's CATALOGUE, layer L2, is asked in ``compiler.lower_node`` and NOT here**
+    # (reading 4, 2026-11-04).  It was asked here, at this row's own entry, and measured
+    # over this bundle 7 of the object layer's 167 restating positions never reach this
+    # row at all -- a node holding a combinator beside its ``properties`` goes to the
+    # composing row, a conjunct's property is declared by the node holding the ``allOf``,
+    # and §4's dedup runs before the dispatch.  Each of those emitted a second definition
+    # of a structure the catalogue had collected, so the question belongs to the walk's
+    # per-node entry, where it is asked of every arm alike; that function's docstring
+    # carries the measurement and the ordering argument.
     #
-    # **Asked FIRST, which is the one ordering this row has and is reading 4's own.** The
-    # class declarer records a shape, a hop and a declaration at this pointer; a position
-    # that is not going to declare must not do any of that, or the module carries a
-    # declaration nothing references and §4 names it.
-    #
-    # The three positions this table never holds are ``catalogue.ShapeEntry.restating``'s
-    # and each is a standing rule rather than a precaution: a document ROOT declares
-    # because §1 says every portable document contributes a symbol; a position in the
-    # home's own document is §4's content dedup's and not this layer's; and the home
-    # declares. A home whose document REFUSED is absent from the table for the reason
-    # ``emit.objects`` gives -- there is no symbol to import, and refusing this document
-    # would charge it for a defect in another.
-    entry = mod.objects.get(node.pointer)
-    if entry is not None:
-        # The same two records a ``$ref`` writes, through the same one writer: §1 gives a
-        # class one import path, so the symbol is taken from the module that DECLARES it
-        # and never re-exported from a third.
-        mod.importing(entry.symbol, compiler.Importable(entry.module, entry.document))
-        return ir.Decided(ir.TypeRef(entry.symbol))
+    # The positions the table never holds are ``catalogue.ShapeEntry.restating``'s and
+    # each is a standing rule rather than a precaution: a document ROOT declares because
+    # §1 says every portable document contributes a symbol; a position in the home's own
+    # document is §4's content dedup's and not this layer's; the home declares; and a
+    # position that declares no class has nothing to stop minting.  A home whose document
+    # REFUSED is absent for the reason ``emit.objects`` gives -- there is no symbol to
+    # import, and refusing this document would charge it for a defect in another.
     declared = lower_object(node, mod)
     if isinstance(declared, Refusal):
         return declared

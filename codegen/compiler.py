@@ -759,12 +759,32 @@ def lower_node(
     by REACHABILITY now, over the closure of ``schema/`` and ``lower/``, so the next
     module placed between a handler and the run reddens without being named.
 
-    **Three statements about THE NODE AT A POINTER, which is what makes them a wrapper
-    rather than an arm** (§5: the dispatch "contains no decision beyond the route"): adopt
-    the class an EQUAL node declared, name the node where the bundle's ``$ref``\\ s name
-    its pointer, and seed the content memo at it.  All three apply to every arm equally --
-    an array, a scalar, a mapping and a multi-type node are all annotations with no name
-    -- so they sit outside the ``match`` and above all twelve arms.
+    **FOUR statements about THE NODE AT A POINTER, which is what makes them a wrapper
+    rather than an arm** (§5: the dispatch "contains no decision beyond the route"):
+    reference the CATALOGUE ENTRY this position restates, adopt the class an EQUAL node
+    declared, name the node where the bundle's ``$ref``\\ s name its pointer, and seed the
+    content memo at it.  All four apply to every arm equally -- an array, a scalar, a
+    mapping and a multi-type node are all annotations with no name -- so they sit outside
+    the ``match`` and above all twelve arms.
+
+    **§3a's CATALOGUE IS THE FIRST OF THEM, and it is HERE and not in a row** (reading 4,
+    2026-11-04).  "The catalogue is an INPUT to the walk, never a pass over its output -- a
+    node's type is a REFERENCE to a catalogue entry, or a fresh type where the node is
+    genuinely unique."  It was asked in §5's object row alone, and measured over this
+    bundle 7 of the object layer's 167 restating positions never reach that row: three are
+    nodes holding a COMBINATOR beside their ``properties``, so §5 routes them to the
+    composing row; two are properties of a CONJUNCT, which the composing row declares on
+    the node holding the ``allOf``; and two are reached by §4's dedup below, which runs
+    before the dispatch and bound them to a local class of their own.  Each of those
+    emitted a second definition of a structure the catalogue had already collected.
+
+    **BEFORE §4's dedup, because the two rules have different SCOPES and the wider one
+    decides first.**  §4's dedup is "two nodes of identical content are one class WITHIN
+    one module" and §3a's collection is the same question over the bundle; a position the
+    catalogue answers declares nothing, so there is nothing for the local dedup to adopt
+    and nothing to seed.  §1 says the same thing from the naming end: "two names bound to
+    one object by a statement each, in documents that each state it, are two declarations
+    of one ENTRY, and the catalogue layer owns that case".
 
     **§4's content dedup: nodes with identical content are one node.**  The memo is
     consulted BEFORE the dispatch and seeded after it, so the second occurrence of a node
@@ -794,6 +814,13 @@ def lower_node(
     from codegen.lower.decide import decide
 
     pointer = node.pointer
+    entry = mod.objects.get(pointer)
+    if entry is not None:
+        # The same two records a ``$ref`` writes, through the same one writer: §1 gives a
+        # class one import path, so the symbol is taken from the module that DECLARES it
+        # and never re-exported from a third.
+        mod.importing(entry.symbol, Importable(entry.module, entry.document))
+        return ir.Decided(ir.TypeRef(entry.symbol))
     collapsed = names.same_node(mod, node)
     if collapsed is not None:
         mod.adopted[pointer] = collapsed

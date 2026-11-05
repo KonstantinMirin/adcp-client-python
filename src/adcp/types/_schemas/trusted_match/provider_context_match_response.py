@@ -11,19 +11,10 @@ from adcp.types.constraints import IntMin0Max86400
 
 from ..core.protocol_envelope import ProtocolEnvelope
 from ..core.version_envelope import AdCPVersionEnvelope
+from .context_match_response import ObjKeyValue
 from .offer import Offer
 
-
-class TargetingKvsItem(AdCPBaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='trusted-match/provider-context-match-response.json', pointer='#/definitions/targeting_kvs/items')
-    key: Annotated[str, Field(description='Provider-local targeting key. It is not a globally unique or publisher-owned ad-server destination.')]
-    value: Annotated[str, Field(description='Targeting value that the router preserves unchanged.')]
-
-
-ContextMatchResponseProviderRouterTargetingKvs = Annotated[list[TargetingKvsItem], Field(description="Provider-local key-value pairs for ad-server targeting. The router preserves each pair unchanged under the emitting provider's registered provider_id.")]
+ContextMatchResponseProviderRouterTargetingKvs = Annotated[list[ObjKeyValue], Field(description="Provider-local key-value pairs for ad-server targeting. The router preserves each pair unchanged under the emitting provider's registered provider_id.")]
 
 
 class Signals(AdCPBaseModel):

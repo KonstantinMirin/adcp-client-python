@@ -5,10 +5,9 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, RequiredGroups, Rule
 from adcp.types.constraints import (
-    GetAccountFinancialsResponseSuccessCurrency,
     IntMin1,
     MediaBuyName,
     StrMinLen1,
@@ -27,16 +26,8 @@ from ..core.push_notification_config import PushNotificationConfig
 from ..core.reporting_webhook import ReportingWebhook
 from ..core.version_envelope import AdcpMajorVersion, AdcpVersion, AdCPVersionEnvelope
 from ..enums.pacing import Pacing
+from .change_term_constraints import Money
 from .package_control import PackageControl
-
-
-class TotalBudget(AdCPBaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/control-media-buy-request.json', pointer='#/properties/total_budget')
-    amount: NonNegativeFloat
-    currency: GetAccountFinancialsResponseSuccessCurrency
 
 
 class ControlMediaBuyRequest(AdCPVersionEnvelope):
@@ -63,7 +54,7 @@ class ControlMediaBuyRequest(AdCPVersionEnvelope):
     paused: bool | None = None
     canceled: Annotated[Literal[True] | None, Field(description='Exercise an already-accepted unilateral cancellation right. A cancellation requiring seller agreement is requested by refining the accepted proposal.')] = None
     cancellation_reason: StrMinLen1MaxLen500 | None = None
-    total_budget: TotalBudget | None = None
+    total_budget: Money | None = None
     daily_budget_cap: Annotated[NonNegativeFloat | None, Field(description='Replace the hard aggregate daily cap; null removes it. Numeric changes apply immediately with current-cap-day spend counted and do not redistribute purchase caps.')] = None
     frequency_cap: Annotated[MediaBuyFrequencyCap | None, Field(description='Replace the shared MediaBuy frequency cap; null removes it. The change applies immediately without resetting counters: qualifying prior exposures still count in the resulting active window. Sellers MUST reject the complete mutation with UNSUPPORTED_FEATURE, before any change, if the cap is outside declared constraints or any active package cannot participate in the resulting shared counter, and MUST NOT clamp it. Requires update_media_buy_frequency_cap in available_actions.')] = None
     budget_cap_timezone: Annotated[StrMinLen1 | None, Field(description='Replace the shared IANA cap-day timezone override; null restores the default selected by budget_capping.timezone_basis (Account.timezone or fixed_timezone). A timezone change begins at the next boundary under the previously effective timezone.')] = None

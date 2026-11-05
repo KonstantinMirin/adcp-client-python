@@ -5,67 +5,16 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import FloatMin0Max100, IntMin1
+from adcp.types._base import SchemaRef
 
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
 from ..core.protocol_envelope import ProtocolEnvelope
+from ..core.tasks_get_response import ObjCodeMessageDetails, ObjTimestampTypeData, Progress
 from ..core.version_envelope import AdCPVersionEnvelope
 from ..enums.adcp_protocol import AdCPProtocol
-from ..enums.history_entry_type import HistoryEntryType
 from ..enums.task_status import TaskStatus
 from ..enums.task_type import TaskType
-
-
-class Progress(AdCPBaseModel):
-    """
-    Progress information for long-running tasks
-    """
-    model_config = ConfigDict(
-        extra='allow',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/get-task-status-response.json', pointer='#/properties/progress')
-    percentage: Annotated[FloatMin0Max100 | None, Field(description='Completion percentage (0-100)')] = None
-    current_step: Annotated[str | None, Field(description='Current step or phase of the operation')] = None
-    total_steps: Annotated[IntMin1 | None, Field(description='Total number of steps in the operation')] = None
-    step_number: Annotated[IntMin1 | None, Field(description='Current step number')] = None
-
-
-class Details(AdCPBaseModel):
-    """
-    Additional error context
-    """
-    model_config = ConfigDict(
-        extra='allow',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/get-task-status-response.json', pointer='#/properties/error/properties/details')
-    protocol: Annotated[AdCPProtocol | None, Field(description='AdCP protocol where error occurred')] = None
-    operation: Annotated[str | None, Field(description='Specific operation that failed')] = None
-    specific_context: Annotated[dict[str, Any] | None, Field(description='Domain-specific error context')] = None
-
-
-class GetTaskStatusResponseError(AdCPBaseModel):
-    """
-    Convenience summary for failed tasks. When include_result was true and the canonical terminal result is also present, this error MUST agree with the canonical fatal error in result. A legacy poll carrying only this singular summary proves failure status but not equivalence to a richer terminal webhook artifact.
-    """
-    model_config = ConfigDict(
-        extra='allow',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/get-task-status-response.json', pointer='#/properties/error')
-    code: Annotated[str, Field(description='Error code for programmatic handling')]
-    message: Annotated[str, Field(description='Detailed error message')]
-    details: Annotated[Details | None, Field(description='Additional error context')] = None
-
-
-class HistoryItem(AdCPBaseModel):
-    model_config = ConfigDict(
-        extra='allow',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/get-task-status-response.json', pointer='#/properties/history/items')
-    timestamp: Annotated[AwareDatetime, Field(description='When this exchange occurred (ISO 8601)')]
-    type: Annotated[HistoryEntryType, Field(description='Whether this was a request from client or response from server')]
-    data: Annotated[dict[str, Any], Field(description='The full request or response payload')]
 
 
 class GetTaskStatusResponse(AdCPVersionEnvelope, ProtocolEnvelope):
@@ -85,8 +34,8 @@ class GetTaskStatusResponse(AdCPVersionEnvelope, ProtocolEnvelope):
     completed_at: Annotated[AwareDatetime | None, Field(description='When the task completed (ISO 8601, only for completed/failed/canceled tasks)')] = None
     has_webhook: Annotated[bool | None, Field(description='Whether this task has webhook configuration')] = None
     progress: Annotated[Progress | None, Field(description='Progress information for long-running tasks')] = None
-    error: Annotated[GetTaskStatusResponseError | None, Field(description='Convenience summary for failed tasks. When include_result was true and the canonical terminal result is also present, this error MUST agree with the canonical fatal error in result. A legacy poll carrying only this singular summary proves failure status but not equivalence to a richer terminal webhook artifact.')] = None
-    history: Annotated[list[HistoryItem] | None, Field(description='Complete conversation history for this task (only included if include_history was true in request)')] = None
+    error: Annotated[ObjCodeMessageDetails | None, Field(description='Convenience summary for failed tasks. When include_result was true and the canonical terminal result is also present, this error MUST agree with the canonical fatal error in result. A legacy poll carrying only this singular summary proves failure status but not equivalence to a richer terminal webhook artifact.')] = None
+    history: Annotated[list[ObjTimestampTypeData] | None, Field(description='Complete conversation history for this task (only included if include_history was true in request)')] = None
     result: Annotated[dict[str, Any] | None, Field(description='Canonical task-specific terminal payload. Present when include_result was true and a completed, failed, or rejected task produced a terminal artifact; canceled tasks may omit it. For failed tasks, the singular error field is a convenience summary and MUST agree with the canonical fatal error represented here. Consumers and sellers MUST resolve and validate the exact schema through manifest.task_result_resolution: use terminal_schema_overrides[task_type] when present, otherwise tools[task_type].response_schema. The polling envelope keeps this field generic so get_task_status does not embed every task response schema.')] = None
     context: ContextObject | None = None
     ext: ExtensionObject | None = None

@@ -40,7 +40,7 @@ class ReportingDatasetShareDestinationExisting(ReportingDatasetShareDestination)
     destination_ref: Annotated[StrMinLen1MaxLen255, Field(description='Seller-issued immutable recipient/destination-generation reference returned by sync_agent_configuration, an earlier sync, or bilateral setup.')]
 
 
-class Provider(AdCPBaseModel):
+class ObjDomain(AdCPBaseModel):
     """
     Data-sharing platform, such as databricks.com or snowflake.com.
     """
@@ -77,7 +77,7 @@ class ProvisionRecipient(ReportingDatasetShareDestination):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-dataset-share-destination.json', pointer='#/oneOf/1')
     mode: Literal['provision']
-    provider: Annotated[Provider, Field(description='Data-sharing platform, such as databricks.com or snowflake.com.')]
+    provider: Annotated[ObjDomain, Field(description='Data-sharing platform, such as databricks.com or snowflake.com.')]
     access_mode: Annotated[AgentReportingDestinationFileTransferDestinationTransport, Field(description='Provider access family, such as databricks_to_databricks, open_sharing, or secure_data_sharing.')]
     recipient: Annotated[Recipient, Field(description='Intended buyer principal. The identity is interpreted by the provider and access mode; for example, a Databricks sharing identifier, Snowflake organization/account pair, or Open Sharing recipient email. It is an identifier, never a credential.')]
 

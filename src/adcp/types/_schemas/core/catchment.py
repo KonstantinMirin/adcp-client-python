@@ -48,7 +48,7 @@ class GeometryType(StrEnum):
     MULTIPOLYGON = 'MultiPolygon'
 
 
-class Geometry(AdCPBaseModel):
+class ObjTypeCoordinates(AdCPBaseModel):
     """
     Pre-computed GeoJSON geometry defining the catchment boundary. Use this when the buyer has already calculated isochrones (via TravelTime, Mapbox, etc.) or has custom trade area boundaries. Supports Polygon and MultiPolygon types.
     """
@@ -76,7 +76,7 @@ class Catchment(AdCPBaseModel):
     travel_time: Annotated[TravelTime | None, Field(description='Travel time limit for isochrone calculation. The platform resolves this to a geographic boundary based on actual transportation networks, accounting for road connectivity, transit schedules, and terrain.')] = None
     transport_mode: Annotated[TransportMode | None, Field(description='Transportation mode for isochrone calculation. Required when travel_time is provided.')] = None
     radius: Annotated[Radius | None, Field(description="Simple radius from the store location. The platform draws a circle of this distance around the store's coordinates.")] = None
-    geometry: Annotated[Geometry | None, Field(description='Pre-computed GeoJSON geometry defining the catchment boundary. Use this when the buyer has already calculated isochrones (via TravelTime, Mapbox, etc.) or has custom trade area boundaries. Supports Polygon and MultiPolygon types.')] = None
+    geometry: Annotated[ObjTypeCoordinates | None, Field(description='Pre-computed GeoJSON geometry defining the catchment boundary. Use this when the buyer has already calculated isochrones (via TravelTime, Mapbox, etc.) or has custom trade area boundaries. Supports Polygon and MultiPolygon types.')] = None
     ext: ExtensionObject | None = None
 
 

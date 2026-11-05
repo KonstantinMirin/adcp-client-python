@@ -486,7 +486,6 @@ from ._schemas.core.collection_selector import CollectionSelector as CollectionS
 from ._schemas.core.committed_metric import CommittedMetric as CommittedMetric
 from ._schemas.core.committed_metric import CommittedMetricStandard as CommittedMetricStandard
 from ._schemas.core.committed_metric import CommittedMetricVendor as CommittedMetricVendor
-from ._schemas.core.committed_metric import Qualifier as Qualifier
 from ._schemas.core.compact_task_input_required import CompactTaskInputRequired as CompactTaskInputRequired
 from ._schemas.core.compact_task_submitted import CompactTaskSubmitted as CompactTaskSubmitted
 from ._schemas.core.compact_task_working import CompactTaskWorking as CompactTaskWorking
@@ -681,19 +680,9 @@ from ._schemas.core.geo_place_support import GeographicPlaceSystemSupport as Geo
 from ._schemas.core.geo_place_system import GeographicPlaceIdentifierSystem as GeographicPlaceIdentifierSystem
 from ._schemas.core.geo_place_type import GeographicPlaceType as GeographicPlaceType
 from ._schemas.core.geo_region_requirement import GeographicRegionRequirement as GeographicRegionRequirement
-from ._schemas.core.geo_region_requirement import (
-    GeographicRegionRequirementCountriesValueAllValues as GeographicRegionRequirementCountriesValueAllValues,
-)
-from ._schemas.core.geo_region_requirement import (
-    GeographicRegionRequirementCountriesValueValues as GeographicRegionRequirementCountriesValueValues,
-)
 from ._schemas.core.geo_region_support import GeographicRegionSupport as GeographicRegionSupport
-from ._schemas.core.geo_region_support import (
-    GeographicRegionSupportCountriesValueAllValues as GeographicRegionSupportCountriesValueAllValues,
-)
-from ._schemas.core.geo_region_support import (
-    GeographicRegionSupportCountriesValueValues as GeographicRegionSupportCountriesValueValues,
-)
+from ._schemas.core.geo_region_support import ObjAllValues as ObjAllValues
+from ._schemas.core.geo_region_support import ObjValues as ObjValues
 from ._schemas.core.get_geo_place_resolution_request import (
     GetGeographicPlaceResolutionRequest as GetGeographicPlaceResolutionRequest,
 )
@@ -756,8 +745,8 @@ from ._schemas.core.media_buy_support_requirements import (
     ProductMediaBuySupportRequirements as ProductMediaBuySupportRequirements,
 )
 from ._schemas.core.missing_metric import MissingMetric as MissingMetric
-from ._schemas.core.missing_metric import MissingMetricStandard as MissingMetricStandard
 from ._schemas.core.missing_metric import MissingMetricVendor as MissingMetricVendor
+from ._schemas.core.missing_metric import ObjScopeMetricIdQualifier as ObjScopeMetricIdQualifier
 from ._schemas.core.negative_keyword import NegativeKeyword as NegativeKeyword
 from ._schemas.core.notification_config import NotificationConfig as NotificationConfig
 from ._schemas.core.offering import Offering as Offering
@@ -829,8 +818,6 @@ from ._schemas.core.package_signal_targeting_groups import PackageSignalTargetin
 from ._schemas.core.package_targeting_resolution import PackageTargetingResolution as PackageTargetingResolution
 from ._schemas.core.pagination_request import PaginationRequest as PaginationRequest
 from ._schemas.core.pagination_response import PaginationResponse as PaginationResponse
-from ._schemas.core.performance_feedback import MetricStandard as MetricStandard
-from ._schemas.core.performance_feedback import MetricVendor as MetricVendor
 from ._schemas.core.performance_feedback import PerformanceFeedback as PerformanceFeedback
 from ._schemas.core.performance_feedback_assertion import PerformanceFeedbackAssertion as PerformanceFeedbackAssertion
 from ._schemas.core.performance_feedback_metric import PerformanceFeedbackMetric as PerformanceFeedbackMetric
@@ -1086,7 +1073,6 @@ from ._schemas.core.reporting_delivery_method import (
     ReportingDeliveryMethodFileTransfer as ReportingDeliveryMethodFileTransfer,
 )
 from ._schemas.core.reporting_delivery_method import WarehouseMaterialization as WarehouseMaterialization
-from ._schemas.core.reporting_delivery_offering import ProducerIdentityProvider as ProducerIdentityProvider
 from ._schemas.core.reporting_delivery_offering import ReportingDeliveryOffering as ReportingDeliveryOffering
 from ._schemas.core.reporting_delivery_offering_id import ReportingDeliveryOfferingID as ReportingDeliveryOfferingID
 from ._schemas.core.reporting_delivery_ready_webhook import (
@@ -1819,11 +1805,7 @@ __all__ = [
     'GeographicPlaceSystemSupport',
     'GeographicPlaceType',
     'GeographicRegionRequirement',
-    'GeographicRegionRequirementCountriesValueAllValues',
-    'GeographicRegionRequirementCountriesValueValues',
     'GeographicRegionSupport',
-    'GeographicRegionSupportCountriesValueAllValues',
-    'GeographicRegionSupportCountriesValueValues',
     'GetCreativeFeaturesAsyncSubmitted',
     'GetCreativeFeaturesSubmitted',
     'GetGeographicPlaceResolutionRequest',
@@ -1949,19 +1931,19 @@ __all__ = [
     'MediaBuyFrequencyCapRequirement',
     'MediaBuyFrequencyCapSupport',
     'MediaBuyTermsReference',
-    'MetricStandard',
-    'MetricVendor',
     'MetroRequirement',
     'MetroRequirementSystems',
     'MetroSupport',
     'MetroSupportSystems',
     'MissingMetric',
-    'MissingMetricStandard',
     'MissingMetricVendor',
     'NativeInFeedFormatDeclaration',
     'NegativeKeyword',
     'NonblockingImpacts',
     'NotificationConfig',
+    'ObjAllValues',
+    'ObjScopeMetricIdQualifier',
+    'ObjValues',
     'Offering',
     'OfferingAssetConstraint',
     'OfferingAssetGroup',
@@ -2077,7 +2059,6 @@ __all__ = [
     'PrincipalChangedWebhook',
     'PrincipalDeclarationsState',
     'PrincipalState',
-    'ProducerIdentityProvider',
     'Product',
     'ProductAllocation',
     'ProductAllowedAction',
@@ -2118,7 +2099,6 @@ __all__ = [
     'PublisherPropertySelectorById',
     'PublisherPropertySelectorByTag',
     'PushNotificationConfig',
-    'Qualifier',
     'Query',
     'RealEstateItem',
     'ReferenceAsset',

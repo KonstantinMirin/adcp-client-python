@@ -9,17 +9,8 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import RequiredGroups, Rule
 from adcp.types.constraints import ComplyTestControllerRequestParamsIdentifierValueDigestsItem
 
-from ..enums.uid_type import UIDType
+from .audience_member import UidsItem
 from .ext import ExtensionObject
-
-
-class UidsItem(AdCPBaseModel):
-    model_config = ConfigDict(
-        extra='allow',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/user-match.json', pointer='#/properties/uids/items')
-    type: Annotated[UIDType, Field(description='Universal ID type')]
-    value: Annotated[str, Field(description='Universal ID value')]
 
 
 class UserMatch(AdCPBaseModel):

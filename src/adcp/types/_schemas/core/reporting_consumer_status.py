@@ -14,23 +14,11 @@ from adcp.types.constraints import (
     ConsumerCommitRef,
     IntMin1,
     ReportingAdjustmentReceiptObservedAdjustmentSha256,
-    StrMinLen1,
     StrMinLen1MaxLen255,
     SyncAccountsRequestIdempotencyKey,
 )
 
-
-class Period(AdCPBaseModel):
-    """
-    Expected half-open reporting period derived from the accepted configuration generation. This identity works even when the seller omitted the corresponding obligation.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-consumer-status.json', pointer='#/properties/period')
-    start: AwareDatetime
-    end: AwareDatetime
-    source_timezone: StrMinLen1
+from .reporting_revision import ObjStartEndSourceTimezone
 
 
 class ConsumerStatus(StrEnum):
@@ -89,7 +77,7 @@ class ReportingConsumerStatus(AdCPBaseModel):
     delivery_config_id: AccountChangeRecordedWebhookSubscriberId
     delivery_config_version: IntMin1
     report_definition_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId, Field(description='Exact immutable report definition accepted with the configuration generation, preventing unlike reporting promises from sharing a status chain.')]
-    period: Annotated[Period, Field(description='Expected half-open reporting period derived from the accepted configuration generation. This identity works even when the seller omitted the corresponding obligation.')]
+    period: Annotated[ObjStartEndSourceTimezone, Field(description='Expected half-open reporting period derived from the accepted configuration generation. This identity works even when the seller omitted the corresponding obligation.')]
     reporting_obligation_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId | None, Field(description='Seller-issued obligation identity when one was visible. Omitted when the consumer is reporting a missing obligation.')] = None
     reporting_revision_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId | None, Field(description='Exact revision successfully consumed or found unreadable. Omitted when no required revision was available.')] = None
     observed_revision_content_sha256: Annotated[ReportingAdjustmentReceiptObservedAdjustmentSha256 | None, Field(description='revision_content_sha256 independently recomputed from the exact consumed Core revision binding. Required for received and content_mismatch, where it proves which exact revision content the consumer read; unlike a Reconciled Billing receipt it carries no materialization evidence, row totals, canonical digest, or billing acceptance.')] = None

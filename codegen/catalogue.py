@@ -1047,6 +1047,68 @@ class Shaped:
     #: adds is only whether the node the combinator belongs to is the document's own root.
     #: Measured, it selects exactly two positions of this bundle.
     of_a_root_union: bool = False
+    #: The names of this node's own ``properties``, **in the document's own order**, which
+    #: is the field set :func:`structure_in_words` spells a name from.  Empty for an L3
+    #: position, which states an element type and no field set.
+    #:
+    #: The ORDER is out of the key (:class:`Admitted`) because no payload can see it, and
+    #: it is in here because a NAME is not an admission fact: two positions whose property
+    #: bags differ only in order are one entry, and the name is spelled from the HOME's
+    #: order, which is derived and reads the way the document reads.
+    fields: tuple[str, ...] = ()
+    #: **Does this position sit INSIDE an ``if``, ``then``, ``else`` or ``not``?**  §3a's
+    #: "a RULE position mints no type, so a node inside an ``if``, ``then``, ``else`` or
+    #: ``not`` is not a stating position of any layer" -- read TRANSITIVELY, which is what
+    #: the sentence says and what :func:`shape_states`' own screen reads one step deep.
+    #:
+    #: **This layer neither collapses such a position nor counts it out**, and the split is
+    #: ``adcp-client-python-q5g``'s: whether it is a stating position at all is that row's
+    #: question, so the census is left exactly where it was and the COLLAPSE declines to
+    #: reach a subschema that states what an instance must not be and names no subject.
+    #: It is one of :attr:`declares_no_class`' three reasons.
+    beneath_a_rule: bool = False
+    #: **Is this position's subschema CONSUMED by the node that holds it, so that no class
+    #: is declared at its pointer?**  Three reasons, each a standing rule of another
+    #: section, and all three have the same consequence here: such a position is **neither
+    #: a HOME nor a restating position** -- a home that declares nothing leaves the entry
+    #: with no class for anything to reference, and a position that declares nothing is not
+    #: one minting a second definition.  It is :attr:`ShapeEntry.undeclared`, reported.
+    #:
+    #: * **a RULE position**, which is §3a's own "a RULE position mints no type", read
+    #:   transitively (:attr:`beneath_a_rule`, ``adcp-client-python-q5g``);
+    #: * **a CONJ position**, which is §5's ``allOf`` row -- "inline conjuncts are fields
+    #:   and rules of THIS class" -- so a conjunct's properties are declared on the node
+    #:   holding the ``allOf`` and the conjunct's own pointer carries no class.  Measured
+    #:   over this bundle: 0 of the 21 CONJ stating positions of a collected structure
+    #:   carry one, and 8 structures took one as a home and were left homeless by it;
+    #: * **a position beneath a ``contains``**, which is that keyword's own cell -- "the
+    #:   model states the **predicate**, not a transcription of the subschema" -- so the
+    #:   subschema there is a predicate source.  Its descent POSITION is ELEM, the same
+    #:   one ``items`` descends to, so the position cannot tell the two apart and the PATH
+    #:   is what does; 1 position of this bundle.
+    declares_no_class: bool = False
+    #: **Is this position a node the bundle's own ``$ref``\\ s NAME?**
+    #: ``bundle.named_nodes`` is the reading, and §5's answer is that such a node declares
+    #: a symbol on demand because a reference names it -- so a referring document imports
+    #: that symbol and a position that stopped declaring takes the referrer with it.
+    #:
+    #: **So the collapse is WITHHELD here and the position is reported**, which is
+    #: :attr:`keeps_a_named_node`'s rule read from the other side: that one is a position
+    #: whose SUBTREE carries the local reference reaching a named entry, this one is the
+    #: named node itself.  Measured, it selects one position of this bundle --
+    #: ``core/committed-metric.json#/oneOf/1/properties/qualifier``, which
+    #: ``compliance/comply-test-controller-request.json`` names by absolute ``$ref``, and
+    #: collapsing it refused that document on "its target declares no symbol at that
+    #: pointer".
+    #:
+    #: **An ALIAS at the position is the available answer and it is not taken here**: §3a's
+    #: "a restated title that a consumer needs is an alias at its position, never a second
+    #: class" would have the module bind the imported symbol under the name §4 derives, and
+    #: a referrer would import THAT.  What makes it the wrong call for this layer is §1 --
+    #: the name a cross-module reference resolves is read off ``ir.Module.symbols`` and the
+    #: binding is the thing §1's one-path rule then has to decide about, which is that
+    #: section's and not this one's.
+    is_a_named_node: bool = False
 
     @property
     def is_a_root(self) -> bool:
@@ -1056,21 +1118,59 @@ class Shaped:
 
 @dataclass(frozen=True)
 class ShapeEntry:
-    """One L2 entry: a structure, the name the bundle gives it, and where it is declared."""
+    """One L2 entry: a structure, the name §4 derives for it, and where it is declared.
+
+    **A STRUCTURE THE BUNDLE NEVER TITLES IS NAMED FROM ITSELF** (``rebuild-plan.md``,
+    2026-11-04), which retires the reading of §3a's third answer this class was written
+    under -- "pending a name" was being read as "pending upstream", and it waits for
+    nothing.  So an entry's name is §4's three ordered steps and :attr:`step` says which
+    answered; the upstream ask stays filed (``adcontextprotocol/adcp#8735``) and an answer
+    there REPLACES a derived name with a stated one.
+    """
 
     key: str
-    #: The ``title`` the bundle states.  Never ``None``: an untitled structure is §3a's
-    #: THIRD answer -- "separate types pending a name ... an upstream ask and not a local
-    #: answer" -- and is carried by :attr:`Shapes.untitled` instead.
-    title: str
+    #: The ``title`` the bundle states, or ``None`` where it titles this structure at no
+    #: position -- which is §4's steps 2 and 3 instead, and :attr:`name` is what they
+    #: derive.
+    title: str | None
     #: Every position that states this structure, in bundle order.
     positions: tuple[Shaped, ...]
     #: The position this entry is DECLARED at.
     at: Shaped
+    #: **The name §4's step 2 derives, or ``None`` where step 3 answers.**
+    #:
+    #: Step 3 is "the declaring position", and at this layer that needs no name minted
+    #: here: the home declares in its own document's module, where §4's "the module path
+    #: already carries the document" holds, so §4's own spelling AT the home IS the
+    #: declaring position.  ``None`` therefore means "§4 names it where it is declared",
+    #: which is exactly what the 17 entries the bundle TITLES already carry -- there the
+    #: title is the name §4 derives at the naming position, so a row would be a second
+    #: statement of one answer (``emit.judged``).
+    #:
+    #: L1's :attr:`ScalarEntry.name` is never ``None`` for the opposite reason, and the
+    #: difference is derived rather than a convention: a constrained scalar is declared in
+    #: ``adcp.types.constraints``, a module with no document, so there is no position for
+    #: §4 to spell it at and :func:`_home_name` has to write the document into the name.
+    name: str | None = None
+    #: **WHICH of §4's three steps answered**: 1 the bundle's own title, 2 the structure in
+    #: words, 3 the declaring position.  **There is no fourth** --
+    #: :attr:`ScalarEntry.step` is the same field one layer down and
+    #: ``docs/plan/rebuild-plan.md`` §4 is the one statement of the list.
+    step: int = 1
 
     @property
     def documents(self) -> frozenset[str]:
         return frozenset(p.document for p in self.positions)
+
+    @property
+    def spelled(self) -> str:
+        """What a REPORT calls this entry: §4's three steps read as one string.
+
+        The bundle's title, else the name derived from the structure, else the declaring
+        position -- which is step 3's own answer and is a name a reader follows to the
+        position rather than a digest.
+        """
+        return self.title or self.name or f"{self.at.document}{self.at.pointer or ' /'}"
 
     @property
     def restating(self) -> tuple[Shaped, ...]:
@@ -1081,17 +1181,17 @@ class ShapeEntry:
         the same three reasons -- a document ROOT must declare because §1 says every
         portable document contributes a symbol; a position in the home's own document is
         §4's content dedup's and not this layer's; and the home itself declares.  The
-        fourth is :attr:`Shaped.keeps_a_named_node` and is this layer's own.
+        fourth and the fifth are :attr:`Shaped.keeps_a_named_node` and
+        :attr:`Shaped.is_a_named_node`, which are §5's two sides of a named node, and the
+        sixth is :attr:`Shaped.declares_no_class`.
         """
-        home = (self.at.document, self.at.pointer)
         return tuple(
             p
-            for p in self.positions
-            if (p.document, p.pointer) != home
-            and not p.is_a_root
-            and p.document != self.at.document
-            and not p.keeps_a_named_node
+            for p in self._elsewhere
+            if not p.keeps_a_named_node
             and not p.of_a_root_union
+            and not p.is_a_named_node
+            and not p.declares_no_class
         )
 
     @property
@@ -1099,9 +1199,43 @@ class ShapeEntry:
         """The positions this entry does NOT answer at, with the reason each carries.
 
         **Enumerated and never counted**, which is reading 4's own requirement of a
-        separate-type decision.  Two reasons, and each is a standing rule of another
+        separate-type decision.  Three reasons, and each is a standing rule of another
         section rather than a judgement of this one: :attr:`Shaped.of_a_root_union` is §3's
-        and §4's union rows, and :attr:`Shaped.keeps_a_named_node` is §5's.
+        and §4's union rows, and :attr:`Shaped.keeps_a_named_node` and
+        :attr:`Shaped.is_a_named_node` are §5's two sides of a node a ``$ref`` names.
+
+        **A position INSIDE a rule is not one of these**, and the difference is what a
+        reader of either list may conclude: a withheld position MUST declare -- the reason
+        it carries is why a reference cannot stand there -- so a check asserts that it
+        still does, and one that stopped means the reason went stale.  A position inside a
+        rule, a conjunct or a predicate declares nothing at all (:attr:`undeclared`).
+        """
+        return tuple(
+            p
+            for p in self._elsewhere
+            if not p.declares_no_class
+            and (p.keeps_a_named_node or p.of_a_root_union or p.is_a_named_node)
+        )
+
+    @property
+    def undeclared(self) -> tuple[Shaped, ...]:
+        """The positions of this entry at which no class is declared at all.
+
+        :attr:`Shaped.declares_no_class` carries the three reasons and the owner of each.
+        Reported, so the population is read rather than assumed, and left alone: there is
+        no second definition at such a position to remove.
+        """
+        return tuple(p for p in self._elsewhere if p.declares_no_class)
+
+    @property
+    def _elsewhere(self) -> tuple[Shaped, ...]:
+        """Every position of this entry that is not one §1 or §4 obliges to declare.
+
+        :attr:`Entry.restating`'s first three exclusions, verbatim and for the same three
+        reasons, as the one reading the three lists above each screen further: the home
+        declares, a document ROOT declares because §1 says every portable document
+        contributes a symbol, and a position in the home's own document is §4's content
+        dedup's.
         """
         home = (self.at.document, self.at.pointer)
         return tuple(
@@ -1110,7 +1244,6 @@ class ShapeEntry:
             if (p.document, p.pointer) != home
             and not p.is_a_root
             and p.document != self.at.document
-            and (p.keeps_a_named_node or p.of_a_root_union)
         )
 
 
@@ -1135,10 +1268,20 @@ class Shapes:
 
     The parts are a PARTITION of the structures stated at more than one position, and the
     partition is what a check ranges over: a structure is stated in one document
-    (:attr:`restated`) or in several, and in the second case the bundle names it
-    (:attr:`entries`), names it nowhere (:attr:`untitled`), gives it two names neither of
-    which is a document's own (:attr:`conflicting`), or names it at nothing BUT document
-    roots (:attr:`duplicated`).
+    (:attr:`restated`) or in several, and in the second case it is COLLECTED
+    (:attr:`entries`) -- named by the bundle's own title or, where the bundle titles it
+    nowhere, from the structure itself -- or it is one of the three the key does not
+    settle: two names neither of which is a document's own (:attr:`conflicting`), nothing
+    but document roots (:attr:`duplicated`), or nothing but positions inside a rule
+    (:attr:`declaring_nothing`).  :attr:`untitled` is the layer that collects NOTHING, which is
+    L3's by derivation.
+
+    **THE UNTITLED STRUCTURES ARE COLLECTED AT L2 AND NOT AT L3, and the reason is §3a's
+    own and not a scope.**  "The array layer collects nothing, by derivation rather than by
+    measurement: ``list[X]`` is written once in Python by construction, so the only thing
+    an array position can write twice is its ELEMENT -- and an element is owned by a layer
+    beneath."  So an untitled ARRAY structure has nothing to declare and nothing to name,
+    and the check that ranges over it asks whether the layer beneath owns its element.
 
     **The last of those is a part L0 has no members in and L2 does.**  Ten of this
     bundle's object structures are stated at exactly two positions, both of them a document
@@ -1152,11 +1295,13 @@ class Shapes:
     layer's.
     """
 
-    #: key -> the entry, for a structure the bundle states in more than one document and
-    #: names at exactly one name.
+    #: key -> the entry, for every structure this layer COLLECTS: stated in more than one
+    #: document, and named either by the one title the bundle gives it or -- where the
+    #: bundle titles it at no position -- by §4's steps 2 and 3 from the structure itself.
     entries: Mapping[str, ShapeEntry]
-    #: The structures stated in more than one document with NO title anywhere.  §3a's THIRD
-    #: answer -- separate types pending a name, an upstream ask, never a local answer.
+    #: The structures stated in more than one document with NO title anywhere, at a layer
+    #: that COLLECTS NOTHING, which is L3's by the derivation in the class docstring.
+    #: Empty at L2, where the same structures are :attr:`entries` named from themselves.
     untitled: tuple[tuple[Shaped, ...], ...]
     #: §3a's conflict case, for the owner.
     conflicting: tuple[ShapeConflict, ...]
@@ -1166,11 +1311,22 @@ class Shapes:
     #: The structures whose every stating position is a document ROOT.  See the class
     #: docstring: §1 and reading 4 give different answers and the key settles neither.
     duplicated: tuple[tuple[Shaped, ...], ...]
+    #: The structures NO stating position of which declares a class
+    #: (:attr:`Shaped.declares_no_class`).  Reported and left alone: a structure with no
+    #: position that declares has nothing to write once and nothing to stop minting.  The
+    #: reason per position is the position's own, and for the rule positions among them
+    #: whether they are stating positions at all is ``adcp-client-python-q5g``'s question.
+    declaring_nothing: tuple[tuple[Shaped, ...], ...]
     #: The positions of an ENTRY this layer withholds the collapse at, as
-    #: ``(entry title, position)`` -- :attr:`ShapeEntry.withheld`, flattened so a report
+    #: ``(entry spelled, position)`` -- :attr:`ShapeEntry.withheld`, flattened so a report
     #: and a check range over one list.  **Enumerated, never counted**, which is reading
     #: 4's requirement of every separate-type decision.
     withheld: tuple[tuple[str, Shaped], ...]
+    #: The positions of an ENTRY at which no class is declared, flattened the same way
+    #: (:attr:`ShapeEntry.undeclared`).  Separate from :attr:`withheld` because a withheld
+    #: position must DECLARE -- that is what its reason is about -- and one of these
+    #: declares nothing, so there is nothing at it to collapse or to assert.
+    undeclared: tuple[tuple[str, Shaped], ...]
     #: Every stating position, which is the set every count above partitions.
     positions: tuple[Shaped, ...]
 
@@ -1186,7 +1342,7 @@ class Shapes:
         out: dict[str, dict[str, Reference]] = {}
         for entry in self.entries.values():
             home = Reference(
-                document=entry.at.document, pointer=entry.at.pointer, title=entry.title
+                document=entry.at.document, pointer=entry.at.pointer, title=entry.spelled
             )
             for position in entry.restating:
                 out.setdefault(position.document, {})[position.pointer] = home
@@ -1214,6 +1370,14 @@ def shape_states(
     position inside one declares nothing") and is :attr:`Stated.reached`'s own reading at
     L0.  Sixteen L2 positions and three L3 positions of this bundle are of that kind, and
     they are the whole of the difference between this population and the 42 row's.
+
+    **THE SCREEN IS READ ONE STEP DEEP AND THAT IS ``adcp-client-python-q5g``'s ROW, so
+    the census is unmoved and a position BENEATH a rule is MARKED** instead
+    (:attr:`Shaped.beneath_a_rule`).  §3a's sentence says "inside", which is transitive,
+    and the ``continue`` above reads it as "at": a node at ``#/oneOf/1/not/anyOf/1`` is a
+    BRANCH position with the ``not`` one hop above it and is collected.  Changing the
+    population is that row's decision; what this layer does with the mark is this one's,
+    and the answer is that the COLLAPSE declines to reach such a position.
     """
     names = bundle.named_nodes(admitted.dir)
     for document in sorted(
@@ -1222,6 +1386,13 @@ def shape_states(
         doc = admitted.document(document)
         unreferenced = tuple(
             sorted(bundle.section_entries(doc) - names.get(document, frozenset()))
+        )
+        #: Every pointer of this document at which a RULE holds its subschema, as the
+        #: prefixes a descendant of one is recognised by.  The POSITION is the descent
+        #: column's (``bundle.nodes_at``) and not a reading of the pointer string, which
+        #: is §6's rule; what the prefix adds is only whether an ancestor is one of them.
+        of_a_rule = tuple(
+            sorted(p for p, _, at in bundle.nodes_at(doc) if at is keywords.Position.RULE)
         )
         for pointer, node, position in bundle.nodes_at(doc):
             if position is keywords.Position.RULE:
@@ -1250,10 +1421,20 @@ def shape_states(
                 of_a_root_union=(
                     position is keywords.Position.BRANCH and pointer.count("/") == 2
                 ),
+                fields=tuple(node.get("properties", {}) or ()),
+                beneath_a_rule=(beneath := any(
+                    pointer.startswith(f"{at}/") for at in of_a_rule
+                )),
+                declares_no_class=(
+                    beneath
+                    or position is keywords.Position.CONJ
+                    or bool(PREDICATED.intersection(pointer.split("/")))
+                ),
+                is_a_named_node=pointer in names.get(document, frozenset()),
             )
 
 
-def shape_ranked(position: Shaped, title: str) -> tuple[object, ...]:
+def shape_ranked(position: Shaped, title: str | None) -> tuple[object, ...]:
     """:attr:`ShapeEntry.at`'s order over the positions of one entry, best first.
 
     :func:`ranked` is L0's and this is the same order: a root carrying the entry's own
@@ -1261,8 +1442,16 @@ def shape_ranked(position: Shaped, title: str) -> tuple[object, ...]:
     is what puts the roots first -- "every portable document contributes a symbol", so a
     root cannot become a reference to another module's class and is the one position of its
     group that MUST declare.
+
+    ``title`` is ``None`` for a structure the bundle titles nowhere, and the order then
+    reads as :attr:`Entry.naming`'s own untitled arm does: every position's title equals
+    the entry's, so the first two terms separate nothing and what decides is a ROOT where
+    the group has one and the bundle's ORDER where it does not.  **A position INSIDE a
+    rule sorts last**, because the home is where the structure is DECLARED and a subschema
+    inside a rule declares nothing -- a home chosen there would leave the entry homeless.
     """
     return (
+        position.declares_no_class,
         not (position.is_a_root and position.title == title),
         position.title != title,
         not position.is_a_root,
@@ -1271,21 +1460,191 @@ def shape_ranked(position: Shaped, title: str) -> tuple[object, ...]:
     )
 
 
+#: The keywords whose subschema the model states a **PREDICATE** over rather than a type,
+#: so no class is declared beneath one (:attr:`Shaped.declares_no_class`).
+#:
+#: ``keywords.py``'s own cell is the reason and the whole of it: "an existential
+#: quantifier -- ``items`` constrains every element, ``contains`` says at least one matches
+#: -- and the model states the **predicate**, not a transcription of the subschema".
+#:
+#: **LISTED and not derived from the table, which is the one place in this module that is
+#: true, and the reason is in the cell rather than in a column**: ``contains`` descends to
+#: ``ELEM``, exactly as ``items`` does, and carries ``Effect.TYPE``, exactly as ``items``
+#: does -- so no field of the row tells the two apart and only the cell's sentence does.
+#: A second such keyword joins by the same reading of its own cell.
+PREDICATED = frozenset({"contains"})
+
+#: **The word an OBJECT structure's own kind contributes to a name in words.**
+#: :data:`BASE_WORD` is L1's -- ``Str``, ``Int``, ``Float`` -- and this is the same
+#: alphabet one layer up: ``StrMaxLen100`` reads as the constrained string it is, and
+#: ``ObjStartEnd`` reads as the object with those two fields.
+#:
+#: **It is what stops a ONE-FIELD structure claiming a subject.**  ``{status}`` spelled
+#: ``Status`` reads as a status, which is the thing the field is a property OF, and the
+#: name would then claim exactly what §3a refuses; ``ObjStatus`` claims only what the key
+#: proves -- this is the type with this field.  ``_home_name``'s own measurement is why it
+#: cannot collide back: "no class of the tree is named for a type word".
+OBJECT_WORD = "Obj"
+
+#: **The longest name a derivation IN WORDS may spell, which is §4's own measurement of
+#: what a name is and not a budget.**  §4 on the fold this one replaced: it "needs no
+#: collision rule because it cannot collide -- and that is why 808 of 2,118 emitted
+#: classes were longer than 30 characters and one was
+#: ``GetMediaBuyArtifactsResponseArtifactsMediaBuyIdArtifactsItemBrandContext``".
+#:
+#: A field set whose words do not fit in a name has **no spelling in words**, exactly as a
+#: ``pattern`` is a constraint L1 can spell none of (``collect_scalars``' step 2), and
+#: §4's next step answers instead.  It bounds a DERIVATION and is never a check's figure:
+#: nothing asserts how many entries fall either side of it.
+IN_WORDS = 30
+
+
+def structure_in_words(fields: Collection[str]) -> str | None:
+    """§4's step 2 at L2: the STRUCTURE in words, or ``None`` where it has no spelling.
+
+    ``docs/plan/rebuild-plan.md``: "where the bundle does not name a structure, the name is
+    derived FROM THE STRUCTURE, by §4's steps in order", and "an object structure's
+    identity is its field set, so the same derivation applies one layer up".  So this is
+    ``constraints.symbol`` at the layer above -- the layer's own identity, spelled -- and
+    an object type's identity is the names of its fields.
+
+    **It claims only what it can prove.**  "A name derived from the fields claims only what
+    it can prove: *this is the type with these fields.*  A name taken from one position's
+    property key claims a subject, and that is what §3a refuses."  Every word here is in
+    the layer's identity, so it is stated at EVERY position of the entry; a property key is
+    stated at one, which is ``^[A-Z]{3}$`` at ``currency`` AND ``airport_code`` one layer
+    down.
+
+    **In the HOME's own document order and never sorted.**  Order is out of the KEY
+    (:class:`Admitted`) because no payload can see it; a name is not an admission fact, and
+    the home is derived, so the home's own order is a function of the bundle and reads the
+    way the document reads.  Sorting spells ``ObjEndStart`` for a period the bundle writes
+    ``start`` then ``end``.
+
+    ``None`` for an L3 position, which states an element type and carries no field set --
+    the array layer collects nothing and has nothing to name (:class:`Shapes`).
+    """
+    if not fields:
+        return None
+    spelled = OBJECT_WORD + "".join(names.class_name(field) for field in fields)
+    return spelled if len(spelled) <= IN_WORDS else None
+
+
+def shape_declared_at(
+    positions: Collection[Shaped], title: str | None, standing: Mapping[str, int]
+) -> Shaped:
+    """The position one STRUCTURE's single class is declared at (:attr:`ShapeEntry.at`).
+
+    :func:`declared_at` is L0's and the first half is the same: a TITLE or a ROOT answers
+    outright (:func:`shape_ranked`).  **What is left is a structure the bundle names at no
+    position and states at no root**, and there §3a asks that the home be "the stating
+    position the other stating positions reach through a reference", so that the arrow a
+    restatement adds runs the way the dependency arrows already run.
+
+    **AND THE ORDER IT RANKS BY IS THE STANDING ONE OVER THE WHOLE BUNDLE, NOT A COUNT
+    INSIDE THE GROUP -- which is the one place this layer's rule is stronger than L0's,
+    and the reason is measured.**  :func:`declared_at` ranks a position by how many of its
+    OWN group's documents reach it, and that is a reading inside one entry: two entries
+    over one pair of documents answer in opposite directions, because their groups differ
+    and so do their counts.  Measured, that is exactly the residue --
+    ``ObjUrlMessageExpiresAt`` homed in ``account/sync-accounts-response.json`` while the
+    step-3 entry at ``core/account.json#/properties/credit_limit`` is homed in
+    ``core/account.json``, neither document ``$ref``\\ s the other, and the two edges close
+    a cycle no single entry can see.
+
+    ``standing`` is ``emit.standing_order``'s: document -> its index in the dependency
+    order of the graph that ALREADY EXISTS -- every reference the walk lowers, and every
+    edge L0's own collection adds.  **The home is the group's earliest document in it**,
+    so every edge this layer adds runs BACKWARDS along a topological order of all the
+    other edges, and the graph with this layer's edges in it is acyclic by construction
+    rather than by measurement.  That is §3a's "the dependency arrows point one way" held
+    by a derivation, which is what the section asks for: "a cycle is not avoided by care --
+    it is unrepresentable".
+
+    **It is handed IN and not recomputed**, which is §3a's own rule -- "a derived reading
+    of the bundle is an argument, not something a callee recomputes" -- and is why
+    ``collect_shapes`` takes it positionally: a caller cannot forget it and read a
+    different collection than the run does.
+
+    Measured over this bundle at L2, against the three orders that are equally functions
+    of it.  **Both columns come from ONE instrument, the emitter's own run**, which is what
+    makes them comparable: a cycle is a VERDICT for every document ON it (``emit.order``)
+    and every document that REFERENCES one refuses through the chain, so the two are
+    different denominators over one reading and neither is the other.
+
+    ========================================================  ========  ========  =======
+    the home is                                               emitted   on a      refused
+                                                                        cycle     in all
+    ========================================================  ========  ========  =======
+    the first stating position in bundle order                     838        10       216
+    the document the most other stating documents reach (L0's)    1041         2        13
+    the stating document of the smallest transitive reach          1028         6        26
+    **the group's earliest document in the standing order**     **1054**     **0**    **0**
+    ========================================================  ========  ========  =======
+
+    So none of the rejected orders emits a wrong answer -- the first refuses 216 of the
+    bundle's 1,054 documents, 10 of them on a cycle and 206 chained behind those.  **A
+    reach-SIZE order is a linear extension of the reference graph and is still not
+    enough**, and the reason is the whole argument for ranking by the standing order: L0's
+    edges are not reference edges and do not run the reference graph's way, so an
+    extension of the references alone has L0's arrows pointing against it.
+    """
+    best = min(positions, key=lambda p: shape_ranked(p, title))
+    if (best.title == title and title is not None) or best.is_a_root:
+        return best
+
+    def already_beneath(position: Shaped) -> tuple[object, ...]:
+        # A position INSIDE a rule sorts last for :attr:`Stated.reached`'s own reason: a
+        # home that declares nothing leaves the entry with no class to reference.  A
+        # document the standing order does not name sorts after every one it does, which
+        # is what a document reaching nothing and reached by nothing is.
+        return (
+            position.declares_no_class,
+            standing.get(position.document, len(standing)),
+            position.document,
+            position.pointer,
+        )
+
+    return min(positions, key=already_beneath)
+
+
 def collect_shapes(
-    admitted: Admitted, layer: str, documents: Collection[str] | None = None
+    admitted: Admitted,
+    layer: str,
+    standing: Mapping[str, int],
+    documents: Collection[str] | None = None,
 ) -> Shapes:
     """One STRUCTURAL layer over the bundle: §3a's L2 or L3, under the decided key.
 
-    §3a's three-way split, asked of each group of positions that state one structure and
-    answered exactly as L0 answers it:
+    §3a's three-way split, asked of each group of positions that state one structure, with
+    its third case decided rather than deferred (``docs/plan/rebuild-plan.md``, 2026-11-04,
+    "A STRUCTURE THE BUNDLE NEVER TITLES IS NAMED FROM ITSELF"):
 
     * **one named type** where the bundle names the subject -- one title, or several of
       which exactly one belongs to a document ROOT (:func:`the_name`'s rule);
-    * **separate types over one definition** where the names conflict
-      (:attr:`Shapes.conflicting`) or where every position is a root the bundle obliges to
-      declare (:attr:`Shapes.duplicated`);
-    * **separate types pending a name** where the bundle titles the structure nowhere
-      (:attr:`Shapes.untitled`), which is an upstream ask and never a local answer.
+    * **one named type NAMED FROM ITSELF** where the bundle titles the structure nowhere.
+      That is §4's steps 2 and 3 in §4's own order: the structure in words
+      (:func:`structure_in_words`), else the declaring position, which at this layer is
+      §4's own spelling at the home.  The upstream ask is not withdrawn and is not a
+      blocker -- an answer there replaces a derived name with a stated one;
+    * **separate types over one definition** where the key does not settle it: the names
+      conflict (:attr:`Shapes.conflicting`), every position is a root the bundle obliges to
+      declare (:attr:`Shapes.duplicated`), or no position of it declares a class and so
+      declares no class at all (:attr:`Shapes.declaring_nothing`).
+
+    **WHY NAMING FROM THE STRUCTURE IS SAFE, and it is the whole argument**: two positions
+    sharing :class:`Admitted`'s key ADMIT IDENTICALLY, so collapsing them cannot change
+    what any class accepts or refuses.  A name is not an acceptance fact, so neither half
+    of this moves a verdict.
+
+    **A step-2 candidate TWO entries derive has identified neither, so both fall to step
+    3**, which is ``collect_scalars``' own rule at the layer below and §4's first-fit
+    semantics for its name candidates.  Two structures derive one step-2 name exactly when
+    they share a field set and differ in a keyword the key holds and the name does not --
+    ``required`` or ``additionalProperties`` -- and a name that cannot tell them apart is
+    not a name for either.
+
+    ``standing`` is §3a's home rule's own input and :func:`shape_declared_at` is the rule.
     """
     grouped: dict[str, list[Shaped]] = {}
     every: list[Shaped] = []
@@ -1298,6 +1657,12 @@ def collect_shapes(
     conflicting: list[ShapeConflict] = []
     restated: list[tuple[Shaped, ...]] = []
     duplicated: list[tuple[Shaped, ...]] = []
+    declaring_nothing: list[tuple[Shaped, ...]] = []
+    #: key -> (the title the bundle states or ``None``, the home), for every group this
+    #: layer collects.  Read in one pass BEFORE the names are derived, because §4's
+    #: first-fit is a statement about the whole set: a step-2 candidate two entries derive
+    #: identifies neither, and that cannot be known one entry at a time.
+    collecting: dict[str, tuple[str | None, Shaped]] = {}
 
     for key, group in grouped.items():
         if len(group) < 2:
@@ -1306,23 +1671,56 @@ def collect_shapes(
             restated.append(tuple(group))
             continue
         stated = frozenset(p.title for p in group if p.title is not None)
-        if not stated:
-            untitled.append(tuple(group))
-            continue
+        title: str | None = None
         if len(stated) == 1:
             title = next(iter(stated))
-        else:
+        elif len(stated) > 1:
             rooted = {p.title for p in group if p.is_a_root and p.title is not None}
             if len(rooted) != 1:
                 conflicting.append(ShapeConflict(key, tuple(sorted(stated)), tuple(group)))
                 continue
             title = next(iter(rooted))
-        at = min(group, key=lambda p: shape_ranked(p, title))
-        entry = ShapeEntry(key=key, title=title, positions=tuple(group), at=at)
-        # Every position a ROOT: §1 obliges each to declare, so the entry has nothing to
-        # stop minting and the question the key cannot settle is reported instead.
+        elif layer != "L2":
+            # The array layer COLLECTS NOTHING, by derivation (:class:`Shapes`): an array
+            # type renders as ``list[X]``, which Python writes once by construction, so
+            # there is nothing here to declare and nothing to name.
+            untitled.append(tuple(group))
+            continue
+        elif all(p.declares_no_class for p in group):
+            declaring_nothing.append(tuple(group))
+            continue
+        collecting[key] = (title, shape_declared_at(group, title, standing))
+
+    #: §4's step 2 per group, and then its first-fit rule over the whole layer: a name two
+    #: groups derive is taken by neither.
+    candidate = {
+        key: structure_in_words(at.fields) if title is None else None
+        for key, (title, at) in collecting.items()
+    }
+    taken: dict[str, int] = {}
+    for spelled in candidate.values():
+        if spelled is not None:
+            taken[spelled] = taken.get(spelled, 0) + 1
+
+    for key, (title, at) in collecting.items():
+        name = candidate[key]
+        if name is not None and taken[name] > 1:
+            name = None
+        entry = ShapeEntry(
+            key=key,
+            title=title,
+            positions=tuple(grouped[key]),
+            at=at,
+            name=name,
+            step=1 if title is not None else (2 if name is not None else 3),
+        )
+        # **An entry with no position to stop minting is not an entry**, and which part
+        # it belongs to is read off the positions rather than asserted: every position a
+        # ROOT is §1's case, where each is obliged to declare; every other position inside
+        # a RULE is q5g's, where none of them declares at all.  Both are questions the key
+        # cannot settle, so both are reported.
         if not entry.restating and not entry.withheld:
-            duplicated.append(tuple(group))
+            (declaring_nothing if entry.undeclared else duplicated).append(entry.positions)
             continue
         entries[key] = entry
 
@@ -1332,10 +1730,16 @@ def collect_shapes(
         conflicting=tuple(conflicting),
         restated=tuple(restated),
         duplicated=tuple(duplicated),
+        declaring_nothing=tuple(declaring_nothing),
         withheld=tuple(
-            (entry.title, position)
+            (entry.spelled, position)
             for entry in entries.values()
             for position in entry.withheld
+        ),
+        undeclared=tuple(
+            (entry.spelled, position)
+            for entry in entries.values()
+            for position in entry.undeclared
         ),
         positions=tuple(every),
     )

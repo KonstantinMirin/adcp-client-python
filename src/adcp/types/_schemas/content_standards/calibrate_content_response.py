@@ -62,7 +62,7 @@ class CalibrateContentResponseVerdict(CalibrateContentResponse):
     ext: ExtensionObject | None = None
 
 
-class CalibrateContentResponseErrors(CalibrateContentResponse, FailedResponse):
+class ObjErrorsContextExt(CalibrateContentResponse, FailedResponse):
     """
     Error response
     """
@@ -75,7 +75,7 @@ class CalibrateContentResponseErrors(CalibrateContentResponse, FailedResponse):
     ext: ExtensionObject | None = None
 
 
-CalibrateContentResponse._branch_models = (CalibrateContentResponseVerdict, CalibrateContentResponseErrors,)
+CalibrateContentResponse._branch_models = (CalibrateContentResponseVerdict, ObjErrorsContextExt,)
 CalibrateContentResponse.model_rebuild(force=True)
 
 

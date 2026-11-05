@@ -6,43 +6,12 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import (
-    AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem,
-    FloatMinNeg90Max90,
-    FloatMinNeg180Max180,
-    HttpUrl,
-)
+from adcp.types.constraints import HttpUrl
 
 from .catchment import Catchment
+from .destination_item import ObjLatLng
 from .ext import ExtensionObject
-
-
-class Location(AdCPBaseModel):
-    """
-    Geographic coordinates of the store.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/store-item.json', pointer='#/properties/location')
-    lat: Annotated[FloatMinNeg90Max90, Field(description='Latitude in decimal degrees (WGS 84).')]
-    lng: Annotated[FloatMinNeg180Max180, Field(description='Longitude in decimal degrees (WGS 84).')]
-
-
-class Address(AdCPBaseModel):
-    """
-    Structured address for display and geocoding fallback.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/store-item.json', pointer='#/properties/address')
-    street: Annotated[str | None, Field(description="Street address (e.g., '123 Main St').")] = None
-    city: Annotated[str | None, Field(description='City name.')] = None
-    region: Annotated[str | None, Field(description="State, province, or region. ISO 3166-2 subdivision code preferred (e.g., 'NL-NH', 'US-CA').")] = None
-    postal_code: Annotated[str | None, Field(description='Postal or ZIP code.')] = None
-    country: Annotated[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem | None, Field(description='ISO 3166-1 alpha-2 country code.')] = None
-
+from .hotel_item import Address
 
 HoursValue = Annotated[str, Field(description="Time range in HH:MM-HH:MM format (e.g., '09:00-21:00'). Use 'closed' for days the store is not open.")]
 
@@ -57,7 +26,7 @@ class StoreItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/store-item.json', pointer='#')
     store_id: Annotated[str, Field(description='Unique identifier for this store. Used to reference specific stores in targeting, inventory feeds, and creative templates.')]
     name: Annotated[str, Field(description="Human-readable store name (e.g., 'Amsterdam Flagship', 'Brooklyn Heights').")]
-    location: Annotated[Location, Field(description='Geographic coordinates of the store.')]
+    location: Annotated[ObjLatLng, Field(description='Geographic coordinates of the store.')]
     address: Annotated[Address | None, Field(description='Structured address for display and geocoding fallback.')] = None
     catchments: Annotated[list[Catchment] | None, Field(description='Catchment areas for this store. Each defines a reachable area using travel time (isochrone), simple radius, or pre-computed GeoJSON. Multiple catchments allow different modes — e.g., 15-minute drive AND 10-minute walk.', min_length=1)] = None
     phone: Annotated[str | None, Field(description="Store phone number in E.164 format (e.g., '+31201234567').")] = None

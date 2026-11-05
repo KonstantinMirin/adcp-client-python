@@ -9,9 +9,10 @@ from pydantic import ConfigDict, Field, NonNegativeFloat, TypeAdapter
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types.constraints import AdCPUrl, IntMin1
 
-from ..content_standards.artifact import Artifact
+from ..content_standards.content_standards import CalibrationExemplars
 from .ext import ExtensionObject
 from .feature_requirement import FeatureRequirement
+from .provenance import ObjAgentUrlFeatureId
 
 
 class Direction(StrEnum):
@@ -29,18 +30,6 @@ class RankByItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/evaluator-spec.json', pointer='#/properties/rank_by/items')
     feature_id: Annotated[str, Field(description='Creative feature to order by (discovered via get_adcp_capabilities; the same feature_id space the chosen evaluator form returns in eval.features[]).')]
     direction: Annotated[Direction | None, Field(default_factory=lambda: TypeAdapter(Direction).validate_python('maximize'), description='Sort direction for this feature: `maximize` ranks higher feature values first (e.g. creative_quality_score), `minimize` ranks lower values first (e.g. predicted_cpa).', json_schema_extra={'default': 'maximize'})]
-
-
-class FeatureAgent(AdCPBaseModel):
-    """
-    Optional buyer-attached pointer to a get_creative_features-capable creative-feature / governance agent the producing agent calls to evaluate each leaf (the gate's SOURCE of feature values). This is the buyer-represents → seller-calls pattern #5280 established for provenance, generalized to the evaluator gate: the buyer REPRESENTS which agent it used, but the seller is the verifier-of-record and decides which agent it actually calls. `agent_url` MUST appear (canonicalized per /docs/reference/url-canonicalization) in the seller's `creative_policy.accepted_verifiers[].agent_url`; an off-list agent is rejected with `EVALUATOR_AGENT_NOT_ACCEPTED` (mirrors PROVENANCE_VERIFIER_NOT_ACCEPTED) before any outbound call. The outbound evaluator call authenticates on the transport; this pointer MUST NOT carry API keys, bearer tokens, client secrets, authorization values, JWKs, JWKS documents, or JWKS URIs. Reuses the same allowlist mechanism — no new allowlist is introduced. Distinct from the `agent_url` oneOf form, which names the evaluator's source directly; `feature_agent` attaches the gate's measurement source alongside any of the three forms.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/evaluator-spec.json', pointer='#/properties/feature_agent')
-    agent_url: Annotated[AdCPUrl, Field(description="URL of the get_creative_features-capable agent the producing agent calls to obtain creative-feature values for the gate. MUST use https:// and MUST match an entry in the seller's `creative_policy.accepted_verifiers[].agent_url`; off-list → `EVALUATOR_AGENT_NOT_ACCEPTED`.")]
-    feature_id: Annotated[str | None, Field(description="Optional canonical feature_id the producing agent SHOULD request against this agent. When present it SHOULD match the agent's `accepted_verifiers[].feature_id` or be omitted; when absent the seller selects a feature at evaluation time. Resolves selector ambiguity exactly as the provenance verify_agent.feature_id does.")] = None
 
 
 class EvalBudget(AdCPBaseModel):
@@ -84,18 +73,9 @@ class EvaluatorSpec(BranchDispatchMixin, AdCPBaseModel):
     )
     feature_requirement: Annotated[list[FeatureRequirement] | None, Field(description='Optional hard GATE over creative-feature values — the predicates a leaf MUST satisfy for the producing agent to recommend/return it. Reuses the feature-requirement shape (min_value/max_value for quantitative features like creative_quality_score, allowed_values for binary/categorical) — the same predicate vocabulary that gates property/audience filters, which its own schema names as an intended creative-gate reuse. A leaf that fails any predicate is DROPPED from the agent\'s best_of_n survivors before ranking — this is internal pruning of which leaves the agent recommends, not an AdCP-layer block of an already-produced billable leaf (what is produced/billed is governed by max_variants/max_creatives/max_spend). Distinct from `rank_by`: the gate is a pass/fail predicate (drop on fail), `rank_by` is an ordering over survivors. Each predicate\'s `if_not_covered` (exclude|include, default exclude) is the fail-open knob when the source cannot measure that feature. A pass/warn/fail verdict is expressed as a categorical string feature value gated via `allowed_values` (e.g. ["pass"] or ["pass","warn"]) — the buyer\'s predicate decides whether warn passes; the verdict is derived, never stored on creative-feature-result. Omit to leave evaluation advisory (no leaf is dropped).', min_length=1)] = None
     rank_by: Annotated[list[RankByItem] | None, Field(description='Optional RANK ordering over creative-feature values — an ordered list (most significant first) the agent uses to order the gate survivors into recommended/rank. An explicit {feature_id, direction} ordering rather than the feature-requirement predicate (which has no sort direction): the gate decides pass/fail, rank_by decides better/worse. Soft preference, never a gate: leaves are not dropped by rank_by, they are only ordered. Omit to let the evaluator/seller choose the ordering.', min_length=1)] = None
-    feature_agent: Annotated[FeatureAgent | None, Field(description="Optional buyer-attached pointer to a get_creative_features-capable creative-feature / governance agent the producing agent calls to evaluate each leaf (the gate's SOURCE of feature values). This is the buyer-represents → seller-calls pattern #5280 established for provenance, generalized to the evaluator gate: the buyer REPRESENTS which agent it used, but the seller is the verifier-of-record and decides which agent it actually calls. `agent_url` MUST appear (canonicalized per /docs/reference/url-canonicalization) in the seller's `creative_policy.accepted_verifiers[].agent_url`; an off-list agent is rejected with `EVALUATOR_AGENT_NOT_ACCEPTED` (mirrors PROVENANCE_VERIFIER_NOT_ACCEPTED) before any outbound call. The outbound evaluator call authenticates on the transport; this pointer MUST NOT carry API keys, bearer tokens, client secrets, authorization values, JWKs, JWKS documents, or JWKS URIs. Reuses the same allowlist mechanism — no new allowlist is introduced. Distinct from the `agent_url` oneOf form, which names the evaluator's source directly; `feature_agent` attaches the gate's measurement source alongside any of the three forms.")] = None
+    feature_agent: Annotated[ObjAgentUrlFeatureId | None, Field(description="Optional buyer-attached pointer to a get_creative_features-capable creative-feature / governance agent the producing agent calls to evaluate each leaf (the gate's SOURCE of feature values). This is the buyer-represents → seller-calls pattern #5280 established for provenance, generalized to the evaluator gate: the buyer REPRESENTS which agent it used, but the seller is the verifier-of-record and decides which agent it actually calls. `agent_url` MUST appear (canonicalized per /docs/reference/url-canonicalization) in the seller's `creative_policy.accepted_verifiers[].agent_url`; an off-list agent is rejected with `EVALUATOR_AGENT_NOT_ACCEPTED` (mirrors PROVENANCE_VERIFIER_NOT_ACCEPTED) before any outbound call. The outbound evaluator call authenticates on the transport; this pointer MUST NOT carry API keys, bearer tokens, client secrets, authorization values, JWKs, JWKS documents, or JWKS URIs. Reuses the same allowlist mechanism — no new allowlist is introduced. Distinct from the `agent_url` oneOf form, which names the evaluator's source directly; `feature_agent` attaches the gate's measurement source alongside any of the three forms.")] = None
     eval_budget: Annotated[EvalBudget | None, Field(description='Optional soft ceiling on evaluation effort. Advisory in v1 with no billing coupling. Well-known soft fields max_calls / max_seconds; open for evaluator-specific knobs.')] = None
     ext: ExtensionObject | None = None
-
-
-class Exemplars(AdCPBaseModel):
-    """
-    Pass/fail examples that calibrate the single prediction feature (e.g. `predicted_performance` in [0,1]) the evaluator returns in eval.features[]. Artifact-based, mirroring content-standards.json calibration_exemplars.
-    """
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/evaluator-spec.json', pointer='#/oneOf/0/properties/exemplars')
-    pass_: Annotated[list[Artifact] | None, Field(alias='pass', description='Artifacts exemplifying variants the buyer considers good — the high end (≈1) of the calibrated prediction feature.')] = None
-    fail: Annotated[list[Artifact] | None, Field(description='Artifacts exemplifying variants the buyer considers bad — the low end (≈0) of the calibrated prediction feature.')] = None
 
 
 class EvaluatorSpecExemplars(EvaluatorSpec):
@@ -106,7 +86,7 @@ class EvaluatorSpecExemplars(EvaluatorSpec):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/evaluator-spec.json', pointer='#/oneOf/0')
-    exemplars: Annotated[Exemplars, Field(description='Pass/fail examples that calibrate the single prediction feature (e.g. `predicted_performance` in [0,1]) the evaluator returns in eval.features[]. Artifact-based, mirroring content-standards.json calibration_exemplars.')]
+    exemplars: Annotated[CalibrationExemplars, Field(description='Pass/fail examples that calibrate the single prediction feature (e.g. `predicted_performance` in [0,1]) the evaluator returns in eval.features[]. Artifact-based, mirroring content-standards.json calibration_exemplars.')]
 
 
 class EvaluatorSpecEvaluatorId(EvaluatorSpec):

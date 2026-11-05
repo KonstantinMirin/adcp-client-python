@@ -8,7 +8,6 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import (
-    GetAccountFinancialsResponseSuccessCurrency,
     MediaBuyName,
     StrMaxLen100,
     StrMinLen1,
@@ -36,16 +35,8 @@ from ..core.start_timing import StartTiming
 from ..core.version_envelope import AdcpMajorVersion, AdcpVersion, AdCPVersionEnvelope
 from ..enums.advertiser_industry import AdvertiserIndustry
 from ..enums.pacing import Pacing
+from .change_term_constraints import Money
 from .product_purchase_input import ProductPurchaseInput
-
-
-class TotalBudget(AdCPBaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/buy-products-request.json', pointer='#/properties/total_budget')
-    amount: NonNegativeFloat
-    currency: GetAccountFinancialsResponseSuccessCurrency
 
 
 class Opportunity(OpportunityContext):
@@ -89,7 +80,7 @@ class BuyProductsRequest(BranchDispatchMixin, AdCPVersionEnvelope):
     feed_version: Annotated[StrMinLen1, Field(description='list_products feed_version containing the published offers being accepted. Sellers reject stale or mismatched versions rather than silently applying changed terms.')]
     pricing_version: Annotated[StrMinLen1 | None, Field(description='list_products pricing_version containing the accepted rate. Buyers MUST include this whenever list_products returned one; omission means the seller does not version pricing separately.')] = None
     purchases: Annotated[list[ProductPurchaseInput], Field(min_length=1)]
-    total_budget: TotalBudget | None = None
+    total_budget: Money | None = None
     daily_budget_cap: Annotated[NonNegativeFloat | None, Field(description="Optional hard aggregate daily spend ceiling in total_budget.currency or the media buy's derived currency. It bounds the shared daily spend pool without allocating or reserving amounts for purchases.")] = None
     frequency_cap: Annotated[MediaBuyFrequencyCap | None, Field(description='Optional max-impression cap using one counter across purchases. Buyers send it only when aggregate_frequency_capping is advertised. Every selected product must declare compatible media_buy_support; otherwise the purchase is rejected atomically with UNSUPPORTED_FEATURE before any mutation, never clamped.')] = None
     budget_cap_timezone: Annotated[StrMinLen1 | None, Field(description='Optional IANA timezone override shared by every aggregate and purchase daily cap. Requires buyer_timezone_override support; otherwise rejected with UNSUPPORTED_FEATURE. When omitted, budget_capping.timezone_basis selects Account.timezone or fixed_timezone.')] = None

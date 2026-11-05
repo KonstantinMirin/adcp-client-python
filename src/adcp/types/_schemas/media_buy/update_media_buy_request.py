@@ -5,9 +5,8 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import SchemaRef
 from adcp.types.constraints import (
-    GetAccountFinancialsResponseSuccessCurrency,
     GovernanceContext,
     IntMin1,
     MediaBuyName,
@@ -28,20 +27,9 @@ from ..core.reporting_webhook import ReportingWebhook
 from ..core.start_timing import StartTiming
 from ..core.version_envelope import AdCPVersionEnvelope
 from ..enums.pacing import Pacing
+from .change_term_constraints import Money
 from .package_request import PackageRequest
 from .package_update import PackageUpdate
-
-
-class TotalBudget(AdCPBaseModel):
-    """
-    Updated hard aggregate lifetime budget. currency MUST equal the existing media-buy currency; an update does not redenominate a buy. When supplied alone (without packages or new_packages), in fixed mode the seller MUST atomically scale every active package budget in proportion to its current committed budget, rejecting the entire request if any derived budget cannot be accepted. When supplied with packages or new_packages, the amount MUST equal the resulting fixed-mode package sum; the seller applies the explicit package mutations and rejects with VALIDATION_ERROR if the total is inconsistent. In seller-optimized mode this changes the shared pool without converting package caps into allocations. Already-spent amounts still count against the new total.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/update-media-buy-request.json', pointer='#/properties/total_budget')
-    amount: NonNegativeFloat
-    currency: GetAccountFinancialsResponseSuccessCurrency
 
 
 class UpdateMediaBuyRequest(AdCPVersionEnvelope):
@@ -62,7 +50,7 @@ class UpdateMediaBuyRequest(AdCPVersionEnvelope):
     cancellation_reason: Annotated[StrMaxLen500 | None, Field(description='Reason for cancellation. Sellers SHOULD store this and return it in subsequent get_media_buys responses.')] = None
     start_time: StartTiming | None = None
     end_time: Annotated[AwareDatetime | None, Field(description='New end date/time in ISO 8601 format')] = None
-    total_budget: Annotated[TotalBudget | None, Field(description='Updated hard aggregate lifetime budget. currency MUST equal the existing media-buy currency; an update does not redenominate a buy. When supplied alone (without packages or new_packages), in fixed mode the seller MUST atomically scale every active package budget in proportion to its current committed budget, rejecting the entire request if any derived budget cannot be accepted. When supplied with packages or new_packages, the amount MUST equal the resulting fixed-mode package sum; the seller applies the explicit package mutations and rejects with VALIDATION_ERROR if the total is inconsistent. In seller-optimized mode this changes the shared pool without converting package caps into allocations. Already-spent amounts still count against the new total.')] = None
+    total_budget: Annotated[Money | None, Field(description='Updated hard aggregate lifetime budget. currency MUST equal the existing media-buy currency; an update does not redenominate a buy. When supplied alone (without packages or new_packages), in fixed mode the seller MUST atomically scale every active package budget in proportion to its current committed budget, rejecting the entire request if any derived budget cannot be accepted. When supplied with packages or new_packages, the amount MUST equal the resulting fixed-mode package sum; the seller applies the explicit package mutations and rejects with VALIDATION_ERROR if the total is inconsistent. In seller-optimized mode this changes the shared pool without converting package caps into allocations. Already-spent amounts still count against the new total.')] = None
     daily_budget_cap: Annotated[NonNegativeFloat | None, Field(description='Replace the hard aggregate daily cap; null removes it. Numeric changes apply immediately with current-day spend counted. A cap below that spend pauses delivery for the day. Package caps are unchanged. Requires advertised media_buy scope; otherwise rejected with UNSUPPORTED_FEATURE.')] = None
     frequency_cap: Annotated[MediaBuyFrequencyCap | None, Field(description='Replace the hard MediaBuy-level frequency cap; null removes it. Changes apply immediately without resetting the shared counter, so prior qualifying exposures in the resulting window continue to count. Every active package must support the resulting cap or the request is rejected atomically with UNSUPPORTED_FEATURE before any change; sellers MUST NOT clamp it. The check applies to the state the request would produce, so null combined with new_packages adds those packages uncapped.')] = None
     budget_cap_timezone: Annotated[StrMinLen1 | None, Field(description='Replace the shared IANA cap-day timezone; null restores the default selected by budget_capping.timezone_basis (Account.timezone or fixed_timezone). Requires buyer_timezone_override. Changes start at the next boundary in the previously effective timezone; numeric cap changes remain immediate.')] = None

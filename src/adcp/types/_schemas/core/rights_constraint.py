@@ -67,7 +67,7 @@ class Disclosure(AdCPBaseModel):
     text: StrMinLen1 | None = None
 
 
-class Issuer(AttestationBrandIssuer):
+class ObjTypeBrand(AttestationBrandIssuer):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -75,7 +75,7 @@ class Issuer(AttestationBrandIssuer):
     type: Annotated[Literal['brand'], Field(description='The issuer is identified by an AdCP BrandRef.')]
 
 
-class Subject(AttestationResourceSubject):
+class ObjTypeResourceType(AttestationResourceSubject):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -92,9 +92,9 @@ class AttestationRefsItem(AttestationReference):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/rights-constraint.json', pointer='#/properties/attestation_refs/items')
-    issuer: Issuer
+    issuer: ObjTypeBrand
     claim_type: Annotated[Literal['https://adcontextprotocol.org/claims/rights/grant'], Field(description='Open, absolute URI identifying the claim vocabulary. The URI is an identifier and need not be dereferenceable. AdCP does not maintain an enum of approved claims.')]
-    subject: Subject
+    subject: ObjTypeResourceType
 
 
 class RightsConstraint(AdCPBaseModel):

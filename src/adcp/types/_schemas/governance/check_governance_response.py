@@ -21,6 +21,7 @@ from adcp.types.constraints import (
 from ..core.attestation_evaluation import AttestationEvaluation
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
+from ..core.reporting_reliability_statistics import ObjStartEnd
 from ..core.version_envelope import AdCPVersionEnvelope
 from ..enums.escalation_severity import EscalationSeverity
 from ..enums.governance_decision import GovernanceDecision
@@ -61,15 +62,6 @@ class ConditionsItem(AdCPBaseModel):
     reason: Annotated[str, Field(description='Why this condition is required.')]
 
 
-class ReportingPeriod(AdCPBaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/check-governance-response.json', pointer='#/properties/delivery_statement/properties/reporting_period')
-    start: AwareDatetime
-    end: AwareDatetime
-
-
 class CanonicalPayload(AdCPBaseModel):
     """
     Exact retained digest-bearing payload. To verify statement_digest, apply RFC 8785 JCS after removing delivery_metrics.statement_digest.
@@ -95,7 +87,7 @@ class DeliveryStatement(AdCPBaseModel):
     sequence: IntMin1
     issued_at: AwareDatetime
     seller_reference: str
-    reporting_period: ReportingPeriod
+    reporting_period: ObjStartEnd
     cumulative_spend: NonNegativeFloat
     currency: GetAccountFinancialsResponseSuccessCurrency
     canonical_payload: Annotated[CanonicalPayload, Field(description='Exact retained digest-bearing payload. To verify statement_digest, apply RFC 8785 JCS after removing delivery_metrics.statement_digest.')]

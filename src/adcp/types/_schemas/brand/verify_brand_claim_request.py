@@ -88,7 +88,7 @@ class Store(StrEnum):
     OTHER = 'other'
 
 
-class Property(AdCPBaseModel):
+class ObjTypeIdentifierStoreRegion(AdCPBaseModel):
     """
     Shape matches brand.json properties[] entry.
     """
@@ -102,12 +102,12 @@ class Property(AdCPBaseModel):
     region: str | None = None
 
 
-class VerifyPropertyClaimClaim(AdCPBaseModel):
+class ObjPropertyUseCase(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/verify-brand-claim-request.json', pointer='#/oneOf/2/properties/claim')
-    property: Annotated[Property, Field(description='Shape matches brand.json properties[] entry.')]
+    property: Annotated[ObjTypeIdentifierStoreRegion, Field(description='Shape matches brand.json properties[] entry.')]
     use_case: Annotated[StrMaxLen100 | None, Field(description='Optional caller-declared use case. The agent MAY scope its answer.')] = None
 
 
@@ -120,7 +120,7 @@ class VerifyPropertyClaim(VerifyBrandClaimRequest):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/verify-brand-claim-request.json', pointer='#/oneOf/2')
     claim_type: Literal['property']
-    claim: VerifyPropertyClaimClaim
+    claim: ObjPropertyUseCase
 
 
 class VerifyTrademarkClaimClaim(AdCPBaseModel):

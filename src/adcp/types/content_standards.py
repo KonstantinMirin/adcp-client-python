@@ -27,21 +27,15 @@ from ._schemas.content_standards.artifact_webhook_payload import ArtifactWebhook
 from ._schemas.content_standards.calibrate_content_request import CalibrateContentRequest as CalibrateContentRequest
 from ._schemas.content_standards.calibrate_content_response import CalibrateContentResponse as CalibrateContentResponse
 from ._schemas.content_standards.calibrate_content_response import (
-    CalibrateContentResponseErrors as CalibrateContentResponseErrors,
-)
-from ._schemas.content_standards.calibrate_content_response import (
     CalibrateContentResponseVerdict as CalibrateContentResponseVerdict,
 )
+from ._schemas.content_standards.calibrate_content_response import ObjErrorsContextExt as ObjErrorsContextExt
 from ._schemas.content_standards.content_standards import ContentStandards as ContentStandards
 from ._schemas.content_standards.create_content_standards_request import (
     CreateContentStandardsRequest as CreateContentStandardsRequest,
 )
-from ._schemas.content_standards.create_content_standards_request import (
-    CreateContentStandardsRequestCalibrationExemplarsFailItemUrl as CreateContentStandardsRequestCalibrationExemplarsFailItemUrl,
-)
-from ._schemas.content_standards.create_content_standards_request import (
-    CreateContentStandardsRequestCalibrationExemplarsPassItemUrl as CreateContentStandardsRequestCalibrationExemplarsPassItemUrl,
-)
+from ._schemas.content_standards.create_content_standards_request import ObjTypeValueLanguage as ObjTypeValueLanguage
+from ._schemas.content_standards.create_content_standards_request import PassItemUrl as PassItemUrl
 from ._schemas.content_standards.create_content_standards_response import (
     CreateContentStandardsResponse as CreateContentStandardsResponse,
 )
@@ -90,12 +84,6 @@ from ._schemas.content_standards.list_content_standards_response import (
 from ._schemas.content_standards.update_content_standards_request import (
     UpdateContentStandardsRequest as UpdateContentStandardsRequest,
 )
-from ._schemas.content_standards.update_content_standards_request import (
-    UpdateContentStandardsRequestCalibrationExemplarsFailItemUrl as UpdateContentStandardsRequestCalibrationExemplarsFailItemUrl,
-)
-from ._schemas.content_standards.update_content_standards_request import (
-    UpdateContentStandardsRequestCalibrationExemplarsPassItemUrl as UpdateContentStandardsRequestCalibrationExemplarsPassItemUrl,
-)
 from ._schemas.content_standards.update_content_standards_response import (
     UpdateContentStandardsError as UpdateContentStandardsError,
 )
@@ -132,12 +120,9 @@ __all__ = [
     'AssetsItemVideo',
     'CalibrateContentRequest',
     'CalibrateContentResponse',
-    'CalibrateContentResponseErrors',
     'CalibrateContentResponseVerdict',
     'ContentStandards',
     'CreateContentStandardsRequest',
-    'CreateContentStandardsRequestCalibrationExemplarsFailItemUrl',
-    'CreateContentStandardsRequestCalibrationExemplarsPassItemUrl',
     'CreateContentStandardsResponse',
     'CreateContentStandardsResponseErrors',
     'CreateContentStandardsResponseStandardsId',
@@ -153,10 +138,11 @@ __all__ = [
     'ListContentStandardsResponse',
     'ListContentStandardsResponseErrors',
     'ListContentStandardsResponseStandards',
+    'ObjErrorsContextExt',
+    'ObjTypeValueLanguage',
+    'PassItemUrl',
     'UpdateContentStandardsError',
     'UpdateContentStandardsRequest',
-    'UpdateContentStandardsRequestCalibrationExemplarsFailItemUrl',
-    'UpdateContentStandardsRequestCalibrationExemplarsPassItemUrl',
     'UpdateContentStandardsResponse',
     'UpdateContentStandardsSuccess',
     'ValidateContentDeliveryRequest',

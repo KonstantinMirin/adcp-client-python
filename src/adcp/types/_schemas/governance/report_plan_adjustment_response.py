@@ -6,21 +6,11 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import FloatGt0, GetAccountFinancialsResponseSuccessCurrency
 
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
 from ..core.version_envelope import AdCPVersionEnvelope
-from .get_plan_audit_logs_response import AccountingMode, AdjustmentState, AdjustmentType
-
-
-class Amount(AdCPBaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/report-plan-adjustment-response.json', pointer='#/properties/amount')
-    amount: FloatGt0
-    currency: GetAccountFinancialsResponseSuccessCurrency
+from .get_plan_audit_logs_response import AccountingMode, AdjustmentState, AdjustmentType, Amount
 
 
 class PlanSummary(AdCPBaseModel):

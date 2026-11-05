@@ -20,6 +20,7 @@ from ..core.protocol_envelope import ProtocolEnvelope
 from ..core.version_envelope import AdCPVersionEnvelope
 from ..enums.advertiser_industry import AdvertiserIndustry
 from ..enums.right_use import RightUse
+from .get_brand_identity_response import ObjDomainName
 
 
 class SearchBrandsResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope):
@@ -36,18 +37,6 @@ class SearchBrandsResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnv
     @classmethod
     def _branch_combinator(cls) -> str:
         return "oneOf"
-
-
-class House(AdCPBaseModel):
-    """
-    The house (corporate entity) associated with this brand. Present when a house affiliation is on record. Use relationship_trust to determine whether this association has been reciprocally confirmed by the house.
-    """
-    model_config = ConfigDict(
-        extra='allow',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/search-brands-response.json', pointer='#/definitions/SearchBrandResult/properties/house')
-    domain: Annotated[str, Field(description='House domain (e.g., acme-corp.com). For mutually confirmed relationships (relationship_trust = mutual or inline) this domain is trust-extending. For one-sided or unconfirmed claims see also claimed_house_domain.')]
-    name: Annotated[str, Field(description='House display name')]
 
 
 class RelationshipTrust(StrEnum):
@@ -95,7 +84,7 @@ class SearchBrandResult(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/search-brands-response.json', pointer='#/definitions/SearchBrandResult')
     brand_id: Annotated[str, Field(description='Brand identifier. Pass to get_brand_identity or get_rights for the next step.')]
-    house: Annotated[House | None, Field(description='The house (corporate entity) associated with this brand. Present when a house affiliation is on record. Use relationship_trust to determine whether this association has been reciprocally confirmed by the house.')] = None
+    house: Annotated[ObjDomainName | None, Field(description='The house (corporate entity) associated with this brand. Present when a house affiliation is on record. Use relationship_trust to determine whether this association has been reciprocally confirmed by the house.')] = None
     relationship_trust: Annotated[RelationshipTrust | None, Field(description="Trust verdict for the brand-to-house relationship, computed from the mutual-assertion model. inline = brand defined inside the house's own document; mutual = both sides publish the relationship (trust-extending); leaf_only = brand claims house but house has not reciprocated or declaration is expired; house_only = house claims brand, brand has not reciprocated; standalone = brand claims no house; unverifiable = claimed house could not be checked. When absent, trust has not yet been computed — absent MUST NOT be interpreted as standalone. Use get_brand_identity or verify_brand_claim for authoritative trust resolution.")] = None
     relationship_verified_at: Annotated[AwareDatetime | None, Field(description='When the mutual-assertion edge was last confirmed by both sides. Present only when relationship_trust is mutual.')] = None
     claimed_house_domain: Annotated[str | None, Field(description='Canonical domain of the house this brand self-declares as its parent. Not trust-extending on its own. Present for leaf_only and unverifiable trust states where the brand has made a claim that could not be or has not been reciprocated.')] = None

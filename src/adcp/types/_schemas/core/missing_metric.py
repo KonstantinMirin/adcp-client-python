@@ -26,7 +26,7 @@ class MissingMetric(BranchDispatchMixin, AdCPBaseModel):
         return "oneOf"
 
 
-class MissingMetricStandard(MissingMetric):
+class ObjScopeMetricIdQualifier(MissingMetric):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -47,7 +47,7 @@ class MissingMetricVendor(MissingMetric):
     qualifier: Annotated[CanonicalMetricQualifier | None, Field(description='Mirrors the qualifier on the corresponding vendor-scope `committed_metrics` entry. MUST match that entry so reconciliation joins on (vendor, metric_id, qualifier).')] = None
 
 
-MissingMetric._branch_models = (MissingMetricStandard, MissingMetricVendor,)
+MissingMetric._branch_models = (ObjScopeMetricIdQualifier, MissingMetricVendor,)
 MissingMetric.model_rebuild(force=True)
 
 

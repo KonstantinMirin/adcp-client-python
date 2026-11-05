@@ -28,45 +28,11 @@ from ..core.canonical_proposal import CanonicalProposal
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
 from ..core.planned_delivery import PlannedDelivery
+from ..core.reporting_reliability_statistics import ObjStartEnd
 from ..core.version_envelope import AdCPVersionEnvelope
 from ..enums.governance_phase import GovernancePhase
 from ..enums.purchase_type import PurchaseType
-
-
-class ProposedCommitment(AdCPBaseModel):
-    """
-    Task-neutral monetary amount the intent would authorize. For update_media_buy and control_media_buy this is the buyer-computed positive incremental commitment, not the post-update total. For accept_proposal it is derived from the supplied proposal commercial_terms; for buy_products it is derived from the purchase payload. Amount 0 explicitly represents a verified no-cost action. The governance agent persists this value as authoritative check state.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/check-governance-request.json', pointer='#/properties/proposed_commitment')
-    amount: NonNegativeFloat
-    currency: GetAccountFinancialsResponseSuccessCurrency
-
-
-class ExecutionCommitment(AdCPBaseModel):
-    """
-    Seller-computed positive incremental commitment for a MediaBuy execution check. The seller MUST derive this atomically from its authoritative proposal or current revision and the requested operation, and the governance agent MUST reject it when it exceeds the prior intent ceiling or uses another currency.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/check-governance-request.json', pointer='#/properties/execution_commitment')
-    amount: NonNegativeFloat
-    currency: GetAccountFinancialsResponseSuccessCurrency
-
-
-class ReportingPeriod(AdCPBaseModel):
-    """
-    Start and end timestamps for the reporting window.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/check-governance-request.json', pointer='#/properties/delivery_metrics/properties/reporting_period')
-    start: AwareDatetime
-    end: AwareDatetime
+from ..media_buy.change_term_constraints import Money
 
 
 class Pacing(StrEnum):
@@ -113,7 +79,7 @@ class DeliveryMetrics(AdCPBaseModel):
     statement_digest: Annotated[ZipAssetDigest | None, Field(description='SHA-256 digest of RFC 8785 JCS over {seller_reference, delivery_metrics}, excluding statement_digest itself. The authenticated submission binds the seller to this digest.')] = None
     sequence: Annotated[IntMin1 | None, Field(description='Monotonically increasing sequence for this governed action. A statement ID or sequence cannot be reused with different content.')] = None
     issued_at: Annotated[AwareDatetime | None, Field(description='When the seller issued the canonical statement.')] = None
-    reporting_period: Annotated[ReportingPeriod, Field(description='Start and end timestamps for the reporting window.')]
+    reporting_period: Annotated[ObjStartEnd, Field(description='Start and end timestamps for the reporting window.')]
     spend: Annotated[NonNegativeFloat | None, Field(description='Total spend during the reporting period.')] = None
     cumulative_spend: Annotated[NonNegativeFloat | None, Field(description='Total spend since the governed action started.')] = None
     currency: Annotated[GetAccountFinancialsResponseSuccessCurrency | None, Field(description='Currency of spend fields; must match the plan and planned delivery.')] = None
@@ -174,8 +140,8 @@ class CheckGovernanceRequest(AdCPVersionEnvelope):
     caller: Annotated[HttpUrl, Field(description='Claimed URL of the agent making the request. The transport credential MUST resolve to an agent URL; the governance agent requires an exact match and uses only that resolved URL for authorization, audit, and signed context issuance. On intent checks the authenticated buyer must be the plan owner or hold an active delegation, while approved_sellers is evaluated against the target service that becomes the token audience. On execution checks the authenticated caller MUST equal that preserved audience. An unresolved body assertion never grants plan access or authorization.')]
     purchase_type: Annotated[PurchaseType | None, Field(default_factory=lambda: TypeAdapter(PurchaseType).validate_python('media_buy'), description="The type of financial commitment being checked. Determines which budget allocation (if any) to validate against. Defaults to 'media_buy' when omitted.", json_schema_extra={'default': 'media_buy'})]
     target_agent: Annotated[HttpUrl | None, Field(description='Exact agent URL of the downstream service that will receive the governed task. Required on intent checks and copied byte-for-byte into the signed governance_context aud claim. This routing and authorization field is not part of payload: payload remains exactly the downstream task arguments. A consultation re-check MUST use the same target_agent.')] = None
-    proposed_commitment: Annotated[ProposedCommitment | None, Field(description='Task-neutral monetary amount the intent would authorize. For update_media_buy and control_media_buy this is the buyer-computed positive incremental commitment, not the post-update total. For accept_proposal it is derived from the supplied proposal commercial_terms; for buy_products it is derived from the purchase payload. Amount 0 explicitly represents a verified no-cost action. The governance agent persists this value as authoritative check state.')] = None
-    execution_commitment: Annotated[ExecutionCommitment | None, Field(description='Seller-computed positive incremental commitment for a MediaBuy execution check. The seller MUST derive this atomically from its authoritative proposal or current revision and the requested operation, and the governance agent MUST reject it when it exceeds the prior intent ceiling or uses another currency.')] = None
+    proposed_commitment: Annotated[Money | None, Field(description='Task-neutral monetary amount the intent would authorize. For update_media_buy and control_media_buy this is the buyer-computed positive incremental commitment, not the post-update total. For accept_proposal it is derived from the supplied proposal commercial_terms; for buy_products it is derived from the purchase payload. Amount 0 explicitly represents a verified no-cost action. The governance agent persists this value as authoritative check state.')] = None
+    execution_commitment: Annotated[Money | None, Field(description='Seller-computed positive incremental commitment for a MediaBuy execution check. The seller MUST derive this atomically from its authoritative proposal or current revision and the requested operation, and the governance agent MUST reject it when it exceeds the prior intent ceiling or uses another currency.')] = None
     tool: Annotated[str | None, Field(description="The AdCP tool being checked (e.g., 'create_media_buy', 'acquire_rights', 'activate_signal'). Present on intent checks (orchestrator). The governance agent uses the presence of tool+payload to identify an intent check.")] = None
     payload: Annotated[dict[str, Any] | None, Field(description='The full downstream tool arguments exactly as they will be sent to target_agent. Present on intent checks. Governance routing metadata is carried by target_agent, never injected into this object. The governance agent can inspect any field to validate against the plan.')] = None
     proposal: Annotated[CanonicalProposal | None, Field(description='Exact committed proposal being authorized for accept_proposal. The governance agent verifies proposal.terms_digest against commercial_terms and binds that digest into its decision state; the downstream payload carries the same digest without repeating the terms.')] = None

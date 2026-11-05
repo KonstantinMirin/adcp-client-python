@@ -9,7 +9,6 @@ from pydantic import ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule, UniqueItems
 from adcp.types.constraints import (
-    AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain,
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
     ReportingReportDefinitionFinalityPoliciesItemDurationAfterPeriodEnd,
     StrMinLen1MaxLen64,
@@ -20,14 +19,7 @@ from adcp.types.constraints import (
 )
 
 from ..enums.daast_version import DAASTVersion
-
-
-class Provider(AdCPBaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-report-definition.json', pointer='#/properties/source/properties/provider')
-    domain: AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain
+from .reporting_dataset_share_destination import ObjDomain
 
 
 class Source(AdCPBaseModel):
@@ -35,7 +27,7 @@ class Source(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-report-definition.json', pointer='#/properties/source')
-    provider: Provider
+    provider: ObjDomain
     system: StrMinLen1MaxLen128
     api_version: StrMinLen1MaxLen128
     query_semantics: Annotated[dict[str, Any], Field(description='Canonical JSON object containing every source option that can change the numbers, including attribution settings, action-report-time, filters, and mapping version.')]

@@ -8,9 +8,9 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule
-from adcp.types.constraints import AdCPUrl
 from adcp.types.envelopes import FailedResponse
 
+from ..core.account import ObjUrl
 from ..core.account_ref import AccountReference
 from ..core.context import ContextObject
 from ..core.error import Error
@@ -43,14 +43,6 @@ class Status(StrEnum):
     FAILED = 'failed'
 
 
-class GovernanceAgentsItem(AdCPBaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='account/sync-governance-response.json', pointer='#/oneOf/0/properties/accounts/items/properties/governance_agents/items')
-    url: Annotated[AdCPUrl, Field(description='Governance agent endpoint URL.')]
-
-
 class AccountsItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
@@ -62,7 +54,7 @@ class AccountsItem(AdCPBaseModel):
     )
     account: Annotated[AccountReference, Field(description='Account reference, echoed from request')]
     status: Annotated[Status, Field(description='Sync result. synced: governance agents persisted. failed: could not complete (see errors).')]
-    governance_agents: Annotated[list[GovernanceAgentsItem] | None, Field(description='Governance agent now synced on this account. Reflects the persisted state after sync. Exactly one entry; the array shape mirrors the request schema and the one-agent-per-account invariant. See sync_governance request schema.', max_length=1, min_length=1)] = None
+    governance_agents: Annotated[list[ObjUrl] | None, Field(description='Governance agent now synced on this account. Reflects the persisted state after sync. Exactly one entry; the array shape mirrors the request schema and the one-agent-per-account invariant. See sync_governance request schema.', max_length=1, min_length=1)] = None
     errors: Annotated[list[Error] | None, Field(description="Per-account errors (only present when status is 'failed')", min_length=1)] = None
 
 

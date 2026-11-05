@@ -3,11 +3,11 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import AwareDatetime, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import PaginationMaxResults
 
+from ..collection.get_collection_list_request import ObjMaxResultsCursor
 from ..core.account_ref import AccountReference
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
@@ -23,18 +23,6 @@ class TimeRange(AdCPBaseModel):
     end: Annotated[AwareDatetime | None, Field(description='End of time range (exclusive)')] = None
 
 
-class Pagination(AdCPBaseModel):
-    """
-    Pagination parameters. Uses higher limits than standard pagination because artifact result sets can be very large.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/get-media-buy-artifacts-request.json', pointer='#/properties/pagination')
-    max_results: Annotated[PaginationMaxResults | None, Field(description='Maximum number of artifacts to return per page')] = 1000
-    cursor: Annotated[str | None, Field(description='Opaque cursor from a previous response to fetch the next page')] = None
-
-
 class GetMediaBuyArtifactsRequest(AdCPVersionEnvelope):
     """
     Request parameters for retrieving content artifacts from a media buy for validation
@@ -45,7 +33,7 @@ class GetMediaBuyArtifactsRequest(AdCPVersionEnvelope):
     package_ids: Annotated[list[str] | None, Field(description='Filter to specific packages within the media buy', min_length=1)] = None
     failures_only: Annotated[bool | None, Field(description="When true, only return artifacts where the seller's local model returned local_verdict: 'fail'. Useful for auditing false positives. Not useful when the seller does not run a local evaluation model (all verdicts are 'unevaluated').")] = False
     time_range: Annotated[TimeRange | None, Field(description='Filter to specific time period')] = None
-    pagination: Annotated[Pagination | None, Field(description='Pagination parameters. Uses higher limits than standard pagination because artifact result sets can be very large.')] = None
+    pagination: Annotated[ObjMaxResultsCursor | None, Field(description='Pagination parameters. Uses higher limits than standard pagination because artifact result sets can be very large.')] = None
     context: ContextObject | None = None
     ext: ExtensionObject | None = None
 

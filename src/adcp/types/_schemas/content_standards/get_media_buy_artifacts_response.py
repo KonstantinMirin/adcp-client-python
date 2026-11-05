@@ -37,7 +37,7 @@ class GetMediaBuyArtifactsResponse(BranchDispatchMixin, AdCPVersionEnvelope, Pro
     )
 
 
-class BrandContext(AdCPBaseModel):
+class ObjBrandIdSkuId(AdCPBaseModel):
     """
     Brand information for policy evaluation. Schema TBD - placeholder for brand identifiers.
     """
@@ -63,7 +63,7 @@ class ArtifactsItem(AdCPBaseModel):
     artifact: Annotated[Artifact, Field(description='Full artifact with content assets')]
     country: Annotated[str | None, Field(description='ISO 3166-1 alpha-2 country code where delivery occurred')] = None
     channel: Annotated[str | None, Field(description='Channel type (e.g., display, video, audio, social)')] = None
-    brand_context: Annotated[BrandContext | None, Field(description='Brand information for policy evaluation. Schema TBD - placeholder for brand identifiers.')] = None
+    brand_context: Annotated[ObjBrandIdSkuId | None, Field(description='Brand information for policy evaluation. Schema TBD - placeholder for brand identifiers.')] = None
     local_verdict: Annotated[LocalVerdict | None, Field(description="Seller's local model verdict for this artifact")] = None
 
 

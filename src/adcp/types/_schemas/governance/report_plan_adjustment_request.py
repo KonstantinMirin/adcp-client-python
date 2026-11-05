@@ -9,8 +9,6 @@ from pydantic import AwareDatetime, ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import (
-    FloatGt0,
-    GetAccountFinancialsResponseSuccessCurrency,
     StrMinLen1,
     StrMinLen1MaxLen255,
     StrMinLen1MaxLen1000,
@@ -21,7 +19,7 @@ from adcp.types.constraints import (
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
 from ..core.version_envelope import AdCPVersionEnvelope
-from .get_plan_audit_logs_response import AdjustmentType, EvidenceType
+from .get_plan_audit_logs_response import AdjustmentType, Amount, EvidenceType
 
 
 class Action(StrEnum):
@@ -38,18 +36,6 @@ class Decision(StrEnum):
     """
     ACCEPT = 'accept'
     DISPUTE = 'dispute'
-
-
-class Amount(AdCPBaseModel):
-    """
-    Positive adjustment amount in the plan currency.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/report-plan-adjustment-request.json', pointer='#/properties/amount')
-    amount: Annotated[FloatGt0, Field(description='Finite positive amount. Cumulative adjustments for an outcome cannot exceed its authoritative commitment.')]
-    currency: Annotated[GetAccountFinancialsResponseSuccessCurrency, Field(description='Three-letter uppercase currency code matching the plan currency.')]
 
 
 class Evidence(AdCPBaseModel):

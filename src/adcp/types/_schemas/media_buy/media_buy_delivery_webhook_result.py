@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import GetAccountFinancialsResponseSuccessCurrency, IntMin1, StrMaxLen50, StrMinLen1
+from adcp.types.constraints import GetAccountFinancialsResponseSuccessCurrency, IntMin1, StrMaxLen50
 
 from ..core.attribution_window import AttributionWindow
 from ..core.context import ContextObject
@@ -16,20 +16,7 @@ from ..core.ext import ExtensionObject
 from ..core.package_delivery_metric_value import PackageDeliveryMetricValue
 from ..enums.delivery_status import DeliveryStatus
 from ..enums.pricing_model import PricingModel
-from .get_media_buy_delivery_response import NotificationType, Status
-
-
-class ReportingPeriod(AdCPBaseModel):
-    """
-    Period covered by the delivery report. start and end are instants on the reporting timezone's period boundaries (the products' reporting_capabilities.timezone, echoed in timezone). They fall on UTC midnight only when that timezone is UTC.
-    """
-    model_config = ConfigDict(
-        extra='allow',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/media-buy-delivery-webhook-result.json', pointer='#/properties/reporting_period')
-    start: AwareDatetime
-    end: AwareDatetime
-    timezone: Annotated[StrMinLen1 | None, Field(description="Reporting timezone applied to this report, as 'UTC' or an IANA timezone identifier. Same meaning as get_media_buy_delivery reporting_period.timezone. Sellers SHOULD return it whenever every reported media buy shares one reporting timezone.")] = None
+from .get_media_buy_delivery_response import NotificationType, ObjStartEndTimezone, Status
 
 
 class Totals(DeliveryMetrics):
@@ -97,7 +84,7 @@ class MediaBuyDeliveryWebhookResult(AdCPBaseModel):
     unavailable_count: Annotated[NonNegativeInt | None, Field(description='Number of media buys with reporting_delayed or failed status when partial_data is true.')] = None
     sequence_number: Annotated[IntMin1 | None, Field(description='Sequential notification number for this reporting webhook stream.')] = None
     next_expected_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp for the next expected notification. Omitted on final notifications.')] = None
-    reporting_period: Annotated[ReportingPeriod, Field(description="Period covered by the delivery report. start and end are instants on the reporting timezone's period boundaries (the products' reporting_capabilities.timezone, echoed in timezone). They fall on UTC midnight only when that timezone is UTC.")]
+    reporting_period: Annotated[ObjStartEndTimezone, Field(description="Period covered by the delivery report. start and end are instants on the reporting timezone's period boundaries (the products' reporting_capabilities.timezone, echoed in timezone). They fall on UTC midnight only when that timezone is UTC.")]
     currency: Annotated[GetAccountFinancialsResponseSuccessCurrency | None, Field(description='Deprecated in AdCP 3.2 and removed in AdCP 4.0. Optional legacy report-wide ISO 4217 currency code. It may be used only when every monetary value in the report has that denomination. A report can contain media buys with different currencies, so buyers MUST NOT interpret this field as an aggregation currency or evidence of currency conversion. Prefer media_buy_deliveries[].currency when present and package-level currency otherwise.')] = None
     attribution_window: Annotated[AttributionWindow | None, Field(description='Attribution methodology and lookback windows used for conversion metrics in this report.')] = None
     media_buy_deliveries: Annotated[list[MediaBuyDeliveriesItem], Field(description='Delivery rows for one or more media buys included in this notification.')]

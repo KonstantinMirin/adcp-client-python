@@ -20,7 +20,7 @@ from .offering_asset_group import OfferingAssetGroup
 from .price import Price
 
 
-class Location(AdCPBaseModel):
+class ObjLatLng(AdCPBaseModel):
     """
     Geographic coordinates of the destination.
     """
@@ -59,7 +59,7 @@ class DestinationItem(AdCPBaseModel):
     city: Annotated[str | None, Field(description='City name, if applicable.')] = None
     region: Annotated[str | None, Field(description='State, province, or region name.')] = None
     country: Annotated[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem | None, Field(description='ISO 3166-1 alpha-2 country code.')] = None
-    location: Annotated[Location | None, Field(description='Geographic coordinates of the destination.')] = None
+    location: Annotated[ObjLatLng | None, Field(description='Geographic coordinates of the destination.')] = None
     destination_type: Annotated[DestinationType | None, Field(description='Destination category.')] = None
     price: Annotated[Price | None, Field(description='Starting price for a trip to this destination.')] = None
     image_url: Annotated[HttpUrl | None, Field(description='Destination hero image URL.')] = None

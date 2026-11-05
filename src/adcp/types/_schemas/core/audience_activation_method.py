@@ -39,7 +39,7 @@ class AdCPAudienceSync(AudienceActivationMethod):
     pattern: Literal['sync_audiences']
 
 
-class BuyerAgent(AdCPBaseModel):
+class ObjAgentUrl(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -56,7 +56,7 @@ class TMPIdentityMatch(AudienceActivationMethod):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/audience-activation-method.json', pointer='#/oneOf/1')
     pattern: Literal['tmp_identity_match']
-    buyer_agent: BuyerAgent
+    buyer_agent: ObjAgentUrl
 
 
 class DirectionsItem(StrEnum):

@@ -6,13 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import (
-    GetAccountFinancialsResponseSuccessCurrency,
-    StrMaxLen100,
-    StrMinLen1,
-    StrMinLen1MaxLen255,
-    StrMinLen1MaxLen500,
-)
+from adcp.types.constraints import StrMaxLen100, StrMinLen1, StrMinLen1MaxLen255, StrMinLen1MaxLen500
 
 from ..core.bidding_policy import BiddingPolicy
 from ..core.brand_key import BrandKey
@@ -25,6 +19,7 @@ from ..core.start_timing import StartTiming
 from ..enums.advertiser_industry import AdvertiserIndustry
 from ..enums.pacing import Pacing
 from .change_term import MediaBuyChangeTerm
+from .change_term_constraints import Money
 from .product_purchase import EndTime, ProductPurchase, StartTime
 
 
@@ -41,15 +36,6 @@ class PurchasesItem(ProductPurchase):
     start_time: Annotated[StartTime, Field(description='Resolved package flight start. On direct-purchase input, omission inherits the MediaBuy start; accepted proposal snapshots carry the resolved timestamp.')]
 
 
-class TotalBudget(AdCPBaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/commercial-terms.json', pointer='#/properties/total_budget')
-    amount: NonNegativeFloat
-    currency: GetAccountFinancialsResponseSuccessCurrency
-
-
 class ReportingCommitmentsItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -59,16 +45,13 @@ class ReportingCommitmentsItem(AdCPBaseModel):
     metrics: Annotated[list[CanonicalReportingCommitment], Field(min_length=1)]
 
 
-Fee = TotalBudget
-
-
 class CancellationTerms(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/commercial-terms.json', pointer='#/properties/cancellation_terms')
     effective_at: AwareDatetime
-    fee: Fee | None = None
+    fee: Money | None = None
     reason: StrMinLen1MaxLen500 | None = None
 
 
@@ -87,7 +70,7 @@ class CommercialTerms(AdCPBaseModel):
     purchases: Annotated[list[PurchasesItem], Field(description='Exact canonical product, pricing, format, catalog, budget, targeting, bidding, optimization, resolved flight, measurement, and performance terms in the commercial envelope.', min_length=1)]
     start_time: StartTiming
     end_time: AwareDatetime
-    total_budget: TotalBudget | None = None
+    total_budget: Money | None = None
     daily_budget_cap: Annotated[NonNegativeFloat | None, Field(description='Hard aggregate daily spend ceiling accepted as part of these terms. It bounds total spend without creating purchase allocations.')] = None
     frequency_cap: Annotated[MediaBuyFrequencyCap | None, Field(description='Hard MediaBuy-level cap accepted as part of these terms. One counter aggregates exposures across every purchase; purchase targeting caps remain independently binding.')] = None
     budget_cap_timezone: Annotated[StrMinLen1 | None, Field(description='Shared IANA calendar-day boundary for aggregate and purchase daily caps in these terms.')] = None

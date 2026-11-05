@@ -7,8 +7,9 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import FloatMinNeg90Max90, FloatMinNeg180Max180, HttpUrl, Year
+from adcp.types.constraints import HttpUrl, Year
 
+from .destination_item import ObjLatLng
 from .ext import ExtensionObject
 from .offering_asset_group import OfferingAssetGroup
 from .price import Price
@@ -77,18 +78,6 @@ class FuelType(StrEnum):
     PLUG_IN_HYBRID = 'plug_in_hybrid'
 
 
-class Location(AdCPBaseModel):
-    """
-    Dealer or vehicle location.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/vehicle-item.json', pointer='#/properties/location')
-    lat: Annotated[FloatMinNeg90Max90, Field(description='Latitude in decimal degrees (WGS 84).')]
-    lng: Annotated[FloatMinNeg180Max180, Field(description='Longitude in decimal degrees (WGS 84).')]
-
-
 class VehicleItem(AdCPBaseModel):
     """
     A vehicle listing within a vehicle-type catalog. Carries the make/model, pricing, and specification data that platforms use for automotive inventory ads. Maps to Meta Automotive Inventory Ads, Microsoft Auto Inventory feeds, Google vehicle ads, and similar formats.
@@ -112,7 +101,7 @@ class VehicleItem(AdCPBaseModel):
     fuel_type: Annotated[FuelType | None, Field(description='Fuel or powertrain type.')] = None
     exterior_color: Annotated[str | None, Field(description='Exterior color.')] = None
     interior_color: Annotated[str | None, Field(description='Interior color.')] = None
-    location: Annotated[Location | None, Field(description='Dealer or vehicle location.')] = None
+    location: Annotated[ObjLatLng | None, Field(description='Dealer or vehicle location.')] = None
     image_url: Annotated[HttpUrl | None, Field(description='Primary vehicle image URL.')] = None
     url: Annotated[HttpUrl | None, Field(description='Vehicle listing page URL.')] = None
     tags: Annotated[list[str] | None, Field(description="Tags for filtering (e.g., 'low-mileage', 'one-owner', 'dealer-certified').", min_length=1)] = None

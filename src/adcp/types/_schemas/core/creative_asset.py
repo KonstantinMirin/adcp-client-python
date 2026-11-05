@@ -19,6 +19,7 @@ from adcp.types._runtime import (
 from adcp.types.constraints import AccountAuthorizationAllowedTasksItem, FloatMin0Max100
 
 from ..enums.creative_status import CreativeStatus
+from ..media_buy.build_creative_request import PreviewInputsItem
 from .canonical_format_kind import CanonicalFormatKind
 from .creative_assets import CreativeAssets
 from .format_id import FormatReferenceStructuredObject
@@ -28,16 +29,6 @@ from .placement_ref import PlacementReference
 from .provenance import Provenance
 from .representation_selection import RepresentationSelection
 from .rights_constraint import RightsConstraint
-
-
-class InputsItem(AdCPBaseModel):
-    model_config = ConfigDict(
-        extra='allow',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/creative-asset.json', pointer='#/properties/inputs/items')
-    name: Annotated[str, Field(description='Human-readable name for this preview variant')]
-    macros: Annotated[dict[str, str] | None, Field(description='Macro values to apply for this preview')] = None
-    context_description: Annotated[str | None, Field(description='Natural language description of the context for AI-generated content')] = None
 
 
 class CreativeAsset(AdCPBaseModel):
@@ -66,7 +57,7 @@ class CreativeAsset(AdCPBaseModel):
     representation_selection: Annotated[RepresentationSelection | None, Field(description='Readback lineage to the complete CreativeRepresentationSet revision and representation selected before this seller-bound creative was synced.')] = None
     assets: Annotated[dict[str, Any], Field(description='Assets required by the format, keyed by asset_id or canonical asset_group_id. Each slot value is either a single asset object or an array of asset objects (for slots with `min`/`max > 1` like carousel `cards` or responsive_creative `headlines`). Each asset value carries an `asset_type` discriminator that selects the matching asset schema, including reference assets such as `published_post` when a product accepts already-published post references.')]
     component_assets: Annotated[dict[AccountAuthorizationAllowedTasksItem, CreativeAssets] | None, Field(description='Component-addressed canonical asset maps for `coordinated_placements`. Keys match coordinated component IDs. This field is preserved by creative-library sync and list readback; it MUST be absent for every other format kind.')] = None
-    inputs: Annotated[list[InputsItem] | None, Field(description='Preview contexts for generative formats - defines what scenarios to generate previews for')] = None
+    inputs: Annotated[list[PreviewInputsItem] | None, Field(description='Preview contexts for generative formats - defines what scenarios to generate previews for')] = None
     tags: Annotated[list[str] | None, Field(description='User-defined tags for organization and searchability')] = None
     status: Annotated[CreativeStatus | None, Field(description="For generative creatives: set to 'approved' to finalize, 'rejected' to request regeneration with updated assets/message. Omit for non-generative creatives (system will set based on processing state).")] = None
     weight: Annotated[FloatMin0Max100 | None, Field(description='Optional delivery weight for creative rotation when uploading via create_media_buy or update_media_buy (0-100). If omitted, platform determines rotation. Only used during upload to media buy - not stored in creative library.')] = None

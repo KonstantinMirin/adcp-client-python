@@ -18,7 +18,7 @@ from adcp.types.constraints import (
 from .ext import ExtensionObject
 
 
-class GeographicRegionSupportCountriesValueAllValues(AdCPBaseModel):
+class ObjAllValues(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -26,7 +26,7 @@ class GeographicRegionSupportCountriesValueAllValues(AdCPBaseModel):
     all_values: Annotated[Literal[True], Field(description="Every protocol-valid ISO 3166-2 subdivision active in this declaration's support snapshot is selectable. Values introduced by a later catalog revision are not included automatically.")]
 
 
-class GeographicRegionSupportCountriesValueValues(AdCPBaseModel):
+class ObjValues(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -45,7 +45,7 @@ class GeographicRegionSupport(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/geo-region-support.json', pointer='#')
-    countries: Annotated[dict[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, GeographicRegionSupportCountriesValueAllValues | GeographicRegionSupportCountriesValueValues], Field(description='Selectable ISO subdivision values keyed by ISO 3166-1 alpha-2 country.', min_length=1)]
+    countries: Annotated[dict[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, ObjAllValues | ObjValues], Field(description='Selectable ISO subdivision values keyed by ISO 3166-1 alpha-2 country.', min_length=1)]
     catalog_version: Annotated[StrMinLen1 | None, Field(description='Optional opaque ISO subdivision catalog or seller-mapping version that identifies the support snapshot. It is provenance, not part of subdivision identity.')] = None
     as_of: Annotated[date | None, Field(description='Optional date on which the seller last validated this support declaration.')] = None
     max_values_per_package: Annotated[IntMin1 | None, Field(description='Optional maximum number of region values selectable on one package.')] = None

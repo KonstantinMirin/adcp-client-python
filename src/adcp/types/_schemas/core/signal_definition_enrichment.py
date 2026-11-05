@@ -26,7 +26,7 @@ from .demographic_predicate import DemographicPredicate
 from .signal_modeling_disclosure import SignalModelingDisclosure
 
 
-class ValuesItem(AdCPBaseModel):
+class ObjIdPathModifiers(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -65,7 +65,7 @@ class Taxonomy(AdCPBaseModel):
     version: str | None = None
     segtax: IntMin1 | None = None
     etag: str | None = None
-    values: Annotated[list[ValuesItem], Field(min_length=1)]
+    values: Annotated[list[ObjIdPathModifiers], Field(min_length=1)]
     value_mappings: Annotated[list[ValueMappingsItem] | None, Field(min_length=1)] = None
     parent_match_behavior: ParentMatchBehavior | None = None
 
@@ -168,7 +168,7 @@ class SeedSourceType(StrEnum):
     BEHAVIORAL = 'behavioral'
 
 
-class SeedSource(AdCPBaseModel):
+class ObjTypeProviderSigned(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -189,7 +189,7 @@ class Modeling(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-definition-enrichment.json', pointer='#/properties/modeling')
     method: Method
-    seed_source: SeedSource
+    seed_source: ObjTypeProviderSigned
     training_data_jurisdictions: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem], Field(min_length=1)]
     ai_act_risk_class: AiActRiskClass
     disclosure: SignalModelingDisclosure | None = None

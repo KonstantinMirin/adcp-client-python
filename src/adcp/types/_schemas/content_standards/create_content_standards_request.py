@@ -28,7 +28,7 @@ class Scope(AdCPBaseModel):
     description: Annotated[str | None, Field(description='Human-readable description of this scope')] = None
 
 
-class CreateContentStandardsRequestCalibrationExemplarsPassItemUrl(AdCPBaseModel):
+class PassItemUrl(AdCPBaseModel):
     """
     URL reference - specific page to fetch and evaluate
     """
@@ -38,7 +38,7 @@ class CreateContentStandardsRequestCalibrationExemplarsPassItemUrl(AdCPBaseModel
     language: Annotated[str | None, Field(description='BCP 47 language tag for content at this URL')] = None
 
 
-class CreateContentStandardsRequestCalibrationExemplarsFailItemUrl(AdCPBaseModel):
+class ObjTypeValueLanguage(AdCPBaseModel):
     """
     URL reference - specific page to fetch and evaluate
     """
@@ -57,8 +57,8 @@ class CalibrationExemplars(AdCPBaseModel):
         Approximation(document='content-standards/create-content-standards-request.json', pointer='#/properties/calibration_exemplars/properties/pass/items/oneOf', keyword='oneOf', kind='UNDERDETERMINED', rung='JOIN', fact=({'type': 'object', 'description': 'URL reference - specific page to fetch and evaluate', 'properties': {'type': {'type': 'string', 'const': 'url', 'description': 'Indicates this is a URL reference'}, 'value': {'type': 'string', 'format': 'uri', 'description': "Full URL to a specific page (e.g., 'https://espn.com/nba/story/_/id/12345/lakers-win')"}, 'language': {'type': 'string', 'description': 'BCP 47 language tag for content at this URL'}}, 'required': ['type', 'value']}, {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/content-standards/artifact.json', 'description': 'Full artifact with pre-extracted content (text, images, video, audio)'}), attribution='docs/plan/rebuild-plan.md §5 combinators/oneOf'),
         Approximation(document='content-standards/create-content-standards-request.json', pointer='#/properties/calibration_exemplars/properties/fail/items/oneOf', keyword='oneOf', kind='UNDERDETERMINED', rung='JOIN', fact=({'type': 'object', 'description': 'URL reference - specific page to fetch and evaluate', 'properties': {'type': {'type': 'string', 'const': 'url', 'description': 'Indicates this is a URL reference'}, 'value': {'type': 'string', 'format': 'uri', 'description': "Full URL to a specific page (e.g., 'https://news.example.com/controversial-article')"}, 'language': {'type': 'string', 'description': 'BCP 47 language tag for content at this URL'}}, 'required': ['type', 'value']}, {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/content-standards/artifact.json', 'description': 'Full artifact with pre-extracted content (text, images, video, audio)'}), attribution='docs/plan/rebuild-plan.md §5 combinators/oneOf'),
     )
-    pass_: Annotated[list[CreateContentStandardsRequestCalibrationExemplarsPassItemUrl | Artifact] | None, Field(alias='pass', description='Content that passes the standards')] = None
-    fail: Annotated[list[CreateContentStandardsRequestCalibrationExemplarsFailItemUrl | Artifact] | None, Field(description='Content that fails the standards')] = None
+    pass_: Annotated[list[PassItemUrl | Artifact] | None, Field(alias='pass', description='Content that passes the standards')] = None
+    fail: Annotated[list[ObjTypeValueLanguage | Artifact] | None, Field(description='Content that fails the standards')] = None
 
 
 class CreateContentStandardsRequest(AdCPVersionEnvelope):
