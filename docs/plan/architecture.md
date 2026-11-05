@@ -562,7 +562,7 @@ between the markers. Editing a cell's MEANING — a grid line outside what the t
 or a reasoning paragraph — is a change to a decision, which §13's rule covers: the row reports
 it and stops.
 
-**Where the RUNG of a widening comes from.** *This subsection said "where the kind of a refusal
+**Where the WIDENING of a dropped keyword comes from.** *This subsection said "where the kind of a refusal
 comes from" and the directive rewrote its subject on 2026-10-26.* The question the table answers
 is no longer which of two kinds a refusal is — §2 leaves one kind, and `bundle.record` is its
 only producer — but which widening a keyword the handler cannot render drops to. The mechanism is
@@ -980,7 +980,7 @@ title is rendered in the tree's own convention — `Account Status` names `Accou
 convention is not a second decision per entry. The construction above is for the untitled sets, which are the
 set.
 
-### THE SAME VALUES UNDER TWO NAMES IS A POPULATION OF THREE
+### THE SAME VALUES UNDER TWO NAMES IS A SET OF THREE
 
 Measured across the whole bundle, one member set carrying more than one title happens exactly
 three times:
