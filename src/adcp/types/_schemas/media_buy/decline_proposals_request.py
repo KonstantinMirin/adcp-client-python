@@ -16,13 +16,6 @@ from ..core.version_envelope import AdcpMajorVersion, AdcpVersion, AdCPVersionEn
 from .proposal_decline import ProposalDecline
 
 
-class DeclineProposalsRequestPushNotificationConfig(PushNotificationConfig):
-    """
-    Webhook configuration for asynchronous task notifications. Uses A2A-compatible PushNotificationConfig structure. By default, webhooks are signed with the AdCP RFC 9421 profile (see docs/building/by-layer/L1/security.mdx#webhook-callbacks) — the seller signs outbound with a key published at the jwks_uri on its own brand.json `agents[]` entry and the buyer verifies against that JWKS, so no shared secret crosses the wire. The optional `authentication` block selects the legacy Bearer or HMAC-SHA256 fallback for compatibility with receivers that have not yet adopted the 9421 profile; this fallback is deprecated and will be removed in AdCP 4.0. Note: the `idempotency_key` that receivers dedup on lives inside the webhook **payload** body (see docs/building/by-layer/L3/webhooks.mdx#reliability and the mcp-webhook-payload schema), not in this configuration object — this schema only describes the receiver-side transport config sent to the seller. This schema is designed for composition via allOf - consuming schemas should define their own additionalProperties constraints.
-    """
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/decline-proposals-request.json', pointer='#/properties/push_notification_config')
-
-
 class DeclineProposalsRequest(AdCPVersionEnvelope):
     """
     Terminally decline one or more immutable proposals. Repeating an already-applied decline with a new idempotency key succeeds with outcome declined and preserves the first recorded reason and detail; the proposal cannot later be executed.
@@ -39,7 +32,7 @@ class DeclineProposalsRequest(AdCPVersionEnvelope):
     context_id: Annotated[StrMinLen1 | None, Field(description='MCP compatibility field: servers ignore this value; A2A uses transport-native Message/Task contextId.')] = None
     context: ContextObject | None = None
     governance_context: StrMinLen1MaxLen4096 | None = None
-    push_notification_config: DeclineProposalsRequestPushNotificationConfig | None = None
+    push_notification_config: PushNotificationConfig | None = None
     idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Client-generated key required for retry-safe proposal decline.')]
     declines: Annotated[list[ProposalDecline], Field(description='Proposal declines to apply. proposal_id is the semantic uniqueness key and values MUST be unique even when two entries otherwise differ; implementations enforce this rule because JSON Schema uniqueItems only compares whole objects. Results preserve request order.', json_schema_extra={'uniqueItems': True}, max_length=25, min_length=1)]
     opportunity: Annotated[OpportunityContext | None, Field(description='Optional planning-cycle update. Every named proposal MUST belong to this opportunity_id. Sellers apply the update only when every result is declined; if any result is unable, the opportunity remains unchanged. Use status closed when these declines end the broader opportunity.')] = None

@@ -72,6 +72,20 @@ table's row.  So the assertion is per document and the cross-document groups are
 the report rather than asserted over -- which is section 8's clause, "a check that
 enumerates a subset reports on that subset only, and says so".
 
+**AND ONE CROSS-DOCUMENT SHAPE IS ASSERTED AFTER ALL, because the BUNDLE decides it and
+not a judgment.**  Reading 4's own test for which of the two a position is -- *"whether the
+bundle REFERENCES one node from the others or RESTATES it is the question that tells our
+defect from the schema's own duplication"* -- has an answer that needs no name where the
+reference is written down: a node whose whole content is ``{"allOf": [{"$ref": X}]}`` IS
+the bundle referencing X, so a class declared at it is a second declaration of X's type
+and the collapse is licensed by the document rather than by the two classes sharing a field
+set.  :func:`test_a_node_whose_whole_content_is_a_reference_declares_no_class_of_its_own`
+is that, as an equality between a derivation over the BUNDLE and a derivation over the
+TREE.  It is the one cross-document assertion here and it asserts nothing about a group:
+the four groups the report names are decided by their DOCUMENTS and three of them disagree,
+which is :func:`test_the_key_agrees_on_a_value_wherever_it_groups`'s blind spot and not
+this file's gate.
+
 **THE TREE IS THE EMITTED ONE.**  ``tests/fresh.py`` binds the generated half of
 ``adcp.types`` to a fresh run's output before collection, so importing
 ``adcp.types._schemas`` here reads the tree this run wrote and never ``src/``.
@@ -92,7 +106,7 @@ from nodeset import claimed, partitions
 from pydantic import BaseModel, ValidationError, field_validator
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from codegen import bundle
+from codegen import bundle, keywords
 
 REPO = Path(__file__).resolve().parents[1]
 BUNDLE = REPO / "schemas" / "cache" / "3.2"
@@ -547,6 +561,121 @@ def test_one_document_declaring_two_classes_for_one_type_reddens_the_gate() -> N
         ),
     ]
     assert restated_within_one_document(split) == {}, restated_within_one_document(split)
+
+
+# --------------------------------------------------------------------------- #
+# 2a. A position whose whole content is a reference, read off the BUNDLE
+# --------------------------------------------------------------------------- #
+def asserts_nothing_anywhere() -> frozenset[str]:
+    """Every keyword the TABLE answers ``NOTHING`` for at every position it has a cell at.
+
+    **DERIVED from ``codegen/keywords.py`` and not listed**, which is ``codegen/catalogue``'s
+    ``_carried`` for the same reason §9 gives: *"a keyword handled in code but named in none
+    of §5, §6 or §7 is an invented rule"*, and a list beside the table is how the two come
+    to disagree -- it would have said ``default`` is an annotation while the table says its
+    cell is FIELD at PROP.
+
+    Narrower than that function on purpose: ``_carried`` admits ANNOTATION too, because an
+    annotation does not change what a node ADMITS, and the question here is not what a node
+    admits but whether it STATES anything of its own.  §6's description-authority rule makes
+    a ``description`` a statement this document makes at this pointer, which a type that IS
+    another document's class cannot carry -- so ``description`` is out and
+    ``x-adcp-schema-uri``, whose every cell is NOTHING, is in.
+    """
+    return frozenset(
+        word
+        for word, row in keywords.TABLE.items()
+        if all(cell.effect is keywords.Effect.NOTHING for cell in (row.default, *row.at.values()))
+    )
+
+
+def whole_content_is_a_reference(document: str) -> set[str]:
+    """The non-root pointers of ``document`` whose whole content is one ``$ref``.
+
+    Read off the document as the bundle ships it and never off the record: §3's record
+    INLINES every cross-document reference, so a reading over it cannot tell a position
+    that references from one that restates -- which is the distinction reading 4 turns on.
+
+    A ROOT is excluded, and that is ``lower.references._root``'s decision rather than a
+    caution: D5 fixes a root's symbol, so a document whose root is a bare reference must
+    declare a class of its own -- *"binding this module's symbol to another module's class
+    would be a second way to reach one class, against §1"* -- and the answer there is a
+    subclass.  A non-root position declares no symbol, so there is nothing for a second
+    reach to be.
+    """
+    inert = asserts_nothing_anywhere()
+    found: set[str] = set()
+
+    def walk(node: Any, pointer: str) -> None:
+        if isinstance(node, dict):
+            conjuncts = node.get("allOf")
+            if (
+                pointer != "#"
+                and isinstance(conjuncts, list)
+                and len(conjuncts) == 1
+                and isinstance(conjuncts[0], dict)
+                and set(conjuncts[0]) == {"$ref"}
+                and set(node) - {"allOf"} <= inert
+            ):
+                found.add(pointer)
+            for word, sub in node.items():
+                walk(sub, f"{pointer}/{word}")
+        elif isinstance(node, list):
+            for index, sub in enumerate(node):
+                walk(sub, f"{pointer}/{index}")
+
+    walk(bundle.read(BUNDLE, document), "#")
+    return found
+
+
+def test_a_node_whose_whole_content_is_a_reference_declares_no_class_of_its_own() -> None:
+    """Reading 4 at the one position where the BUNDLE answers it: write once, reference.
+
+    *"A type stated at more than one position is written once and referenced, never
+    restated"*, and reading 4's own clause for deciding which this is -- *"whether the
+    bundle REFERENCES one node from the others or RESTATES it is the question that tells our
+    defect from the schema's own duplication"*.  A node stating ``{"allOf": [{"$ref": X}]}``
+    and nothing that asserts anything is the bundle REFERENCING, so the type is X's, X's
+    module declares it, and a class here would be a second declaration of it under a second
+    name -- which is ours and needs no title, because the bundle has already named the type
+    in X's own document.
+
+    **AN EQUALITY BETWEEN TWO DERIVATIONS and not a count**: the positions the BUNDLE states
+    that way, against the subset of them the TREE declares no class at.  Both sides move
+    with the inputs -- the first with the bundle, the second with the compiler -- so there is
+    no figure here to re-point when either moves, and the failure names the pointers rather
+    than a difference of two totals.
+
+    Its RED direction is the tree that was committed before this landed: three
+    ``push_notification_config`` properties in ``media-buy/decline-proposals-request.json``,
+    ``refine-proposals-request.json`` and ``request-proposals-request.json``, each an
+    ``allOf`` of one ``$ref`` to ``core/push-notification-config.json`` plus an
+    ``x-adcp-schema-uri``, and each declaring an empty subclass of that document's class.
+    The same four declarations are what
+    ``test_the_key_agrees_on_a_value_wherever_it_groups`` reported as one group of four with
+    no disagreement on any payload -- a group's members agreeing is the five-part key's
+    hypothesis, and the document stating the reference is the verdict.
+
+    **The four remaining ``context`` positions are in the claimed set and were never
+    classes**: ``core/context.json``'s root is not a class, so §5's ``$ref`` row at CONJ
+    already answered them with the target's own symbol.  They are in the set this check
+    ranges over, which is what makes the equality a statement about every position the
+    bundle states this way rather than about the three that moved.
+    """
+    positions = claimed(
+        "positions whose whole content is a reference",
+        {
+            (document, pointer)
+            for document in bundle.portable(BUNDLE)
+            for pointer in whole_content_is_a_reference(document)
+        },
+    )
+    declared = {ref_of(cls) for members in the_tree().values() for cls in members}
+    assert positions - declared == positions, {
+        "the bundle references here and the tree declares a class anyway": sorted(
+            positions & declared
+        )
+    }
 
 
 # --------------------------------------------------------------------------- #
