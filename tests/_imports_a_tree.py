@@ -36,10 +36,24 @@ def main() -> int:
     import adcp.types._schemas as pkg
 
     failures: list[tuple[str, str]] = []
+    # **A PACKAGE ROOT IS A DOCUMENT'S MODULE, so ``ispkg`` is NOT a screen here.**
+    # ``emit.module_file``'s layout rule writes a document whose own path is also a
+    # DIRECTORY of the bundle to ``<path>/__init__.py``, so ``brand.json``'s module is
+    # ``adcp.types._schemas.brand`` and ``pkgutil`` reports it as a package.  Screening
+    # those out made this obligation -- "every module of a fresh tree imports and
+    # resolves every class" -- range over 1,057 of the tree's 1,088 modules and over
+    # 2,992 of its 3,103 classes, with the 111 in ``brand/__init__.py`` discharged by
+    # nothing.  Measured at ``sdk/collapse`` on the sibling script
+    # (``_vocabularies_in_a_tree.py``, whose comment carries the same reading):
+    # ``FontFileStyle`` read ONE carrier while the tree held TWO, because the true
+    # declaration was in the module no walk could see.  A gate that cannot reach part of
+    # the tree reports green for free on that part.
+    #
+    # Recursion was never the thing the screen suppressed: ``walk_packages`` descends
+    # into a package whether or not the caller keeps its ``ispkg`` entry, so what was
+    # lost is exactly the package's OWN module -- the ``__init__.py`` body.
     names = sorted(
-        info.name
-        for info in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".")
-        if not info.ispkg
+        info.name for info in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".")
     )
     classes = 0
     for name in names:
