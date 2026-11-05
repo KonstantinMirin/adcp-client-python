@@ -1,0 +1,19 @@
+{
+  "issue": "https://github.com/adcontextprotocol/adcp/issues/8735",
+  "against": "adcontextprotocol/adcp schemas bundle 3.2",
+  "summary": "The ADDITIVE half of #8735's ask, applied only where the bundle already states the name at every position. #8735 asks for a `title` at each of 95 object structures the bundle restates and never titles; 50 of the 95 are UNDECIDABLE on the bundle's own evidence (survey/judgment.py) and titling them here would decide, for the protocol, a question only the protocol's authors can answer. This patch set holds the entries where there is nothing to decide: the bundle names every stating position with one and the same word, no other entry of the layer derives it, and its own $refs reach one of those positions -- so the title is a transcription and not a judgment. Annotation-only: no keyword a draft-07 validator acts on moves at any pointer of any document, which tests/test_patch_additive.py checks over all 1,054 portable documents.",
+  "extractions": [],
+  "additions": [
+    {
+      "document": "brand.json",
+      "pointer": "/definitions/data_subject_contestation",
+      "keyword": "title",
+      "value": "Data Subject Contestation",
+      "names": "the contact point where a data subject contests an automated decision",
+      "defect": "the bundle states this structure at two positions in two documents -- brand.json#/definitions/data_subject_contestation and core/brand-ref.json#/properties/data_subject_contestation -- calls both of them `data_subject_contestation`, joins them by no $ref, and titles neither. Its own $refs reach the first, so the bundle already has a path and a pointer for this subject and writes the structure out again anyway.",
+      "ask": "adcontextprotocol/adcp#8735",
+      "why_not_an_extraction": "the bundle already names this node: a $ref inside brand.json reaches #/definitions/data_subject_contestation. Extracting it would give one subject a SECOND name, which is the one thing naming it was for. The keyword is the whole of what is missing.",
+      "why_this_string": "`data_subject_contestation` is the word the bundle itself writes at both positions, spelled by the project's own naming rule. docs/plan/architecture.md, 'WHEN A NAME IS THE BUNDLE'S': 'the property name the positions share | stated | take it'. Nothing here is lifted from a description."
+    }
+  ]
+}
