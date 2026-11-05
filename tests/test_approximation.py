@@ -246,7 +246,7 @@ def test_an_attribution_entry_with_no_issue_is_a_build_failure() -> None:
     with pytest.raises(BuildFailure, match="names an upstream issue"):
         attribution.Issue("", "a summary with no issue behind it")
     with pytest.raises(BuildFailure, match="states no summary"):
-        attribution.Issue("adcontextprotocol/adcp#1", "   ")
+        attribution.Issue("example/schema#1", "   ")
     assert attribution.malformed() == ()
     assert attribution.malformed({(DOC, "#", "uniqueItems"): "a free-text note"}) == (
         (DOC, "#", "uniqueItems"),
@@ -694,7 +694,7 @@ def test_an_attribution_the_registry_does_not_hold_is_a_defect() -> None:
     assert harness.unattributed([good._replace(rung="MOSTLY")]), "a rung off the ladder"
     assert harness.unattributed([good._replace(kind="SORT_OF")]), "a kind off the pair"
     assert harness.unattributed(
-        [good._replace(attribution="adcontextprotocol/adcp#1: unfiled")]
+        [good._replace(attribution="example/schema#1: unfiled")]
     ), "an upstream reference with no registry entry"
 
 

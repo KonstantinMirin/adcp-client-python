@@ -66,7 +66,7 @@ issue reclassifies an attribution and changes no type and no emission.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 
 from codegen.refusal import BuildFailure
@@ -161,78 +161,262 @@ def malformed(registry: Mapping[Site, object] | None = None) -> tuple[Site, ...]
         sorted(
             site
             for site, entry in registry.items()
-            if not isinstance(entry, Issue)
-            or not entry.reference.strip()
-            or not entry.summary.strip()
+            if not isinstance(entry, Issue) or not entry.reference.strip() or not entry.summary.strip()
         )
     )
 
 
-#: **Issues whose EXISTENCE has been verified, as the reference and what was seen.**
-#: Empty, and :func:`unverified` is the gate over it.
+#: The three things a look at upstream's tracker can find, and no fourth.
+#:
+#: ``ABSENT`` is a state and not a missing entry, which is the whole reason this is an
+#: enumeration: a reference that does not resolve is a FACT somebody measured, and
+#: recording it is what tells a reader "this was checked and there is nothing there" apart
+#: from "nobody has looked".  :func:`absent` is the gate over it.
+STATES = ("OPEN", "CLOSED", "ABSENT")
+
+
+@dataclass(frozen=True)
+class Sighting:
+    """What was seen when somebody looked at one upstream reference, and when.
+
+    ``state`` is one of :data:`STATES`, ``title`` is the issue's own title as the tracker
+    prints it -- so a reader can tell whether the issue is about what the citation claims
+    without following the link -- and ``seen`` is the date of the look.
+
+    ``title`` is required for ``OPEN`` and ``CLOSED`` and must be empty for ``ABSENT``:
+    there is no title to quote for an issue that does not exist, and a sentence invented
+    for one would be the record claiming to have seen something it did not.
+
+    Frozen, so an entry cannot be re-pointed after import.  ``survey/upstream_issues.py``
+    is what regenerates this registry from the tracker, which is what makes "somebody
+    looked" reproducible rather than asserted.
+    """
+
+    reference: str
+    state: str
+    title: str
+    seen: str
+
+    def __post_init__(self) -> None:
+        if self.state not in STATES:
+            raise BuildFailure(
+                f"{self.reference!r} is recorded as {self.state!r}, which is not one of "
+                f"{STATES}: a sighting records what a look at the tracker found, and a "
+                "fourth state would be a reading nobody made"
+            )
+        if self.state == "ABSENT" and self.title.strip():
+            raise BuildFailure(
+                f"{self.reference!r} is recorded ABSENT and carries the title "
+                f"{self.title!r}: there is no title to quote for an issue that does not "
+                "exist, so this record claims to have seen something it did not"
+            )
+        if self.state != "ABSENT" and not self.title.strip():
+            raise BuildFailure(
+                f"{self.reference!r} is recorded {self.state} with no title: the title is "
+                "how a reader tells whether the issue is about what the citation claims, "
+                "without following the link"
+            )
+        if not self.seen.strip():
+            raise BuildFailure(
+                f"{self.reference!r} carries no date: a sighting with no date cannot go "
+                "stale, which makes it an assertion rather than a measurement"
+            )
+
+
+#: **Every upstream reference THIS REPOSITORY CITES, with what was seen when somebody
+#: looked.**  Compared against the citations in both directions.
 #:
 #: ``docs/plan/final-state.md`` reading 9: "Each declared fact is ours with a decision
 #: recorded, or **upstream with an issue that exists**", decided by "every ``upstream``
 #: attribution naming a live issue".  :class:`Issue` already refuses an entry with no
 #: REFERENCE -- an empty string is not a value this module can hold -- and that is a
 #: different claim: a reference is a well-formed spelling, and existence is a fact about
-#: upstream's tracker.  No offline check can derive it, and this package has no network in a
+#: upstream's tracker.  No offline check can derive it and this package has no network in a
 #: test, so what is checkable is that somebody LOOKED and recorded what they saw.
 #:
-#: **That is a registry and it is compared in both directions, which is what keeps it from
-#: being an allowlist.**  Forward: an attribution whose reference is not here is a claim on
-#: someone else's backlog that nobody has checked, and :func:`unverified` reports it.
-#: Backward: an entry here that no attribution names is a list of issues doing nothing, and
-#: :func:`unnamed` reports that.  So this cannot grow ahead of an attribution and cannot
-#: stay behind one.
+#: **WHY IT RANGES OVER THE CITATIONS AND NOT OVER :data:`REGISTRY`, which is the one
+#: decision in this block.**  :data:`REGISTRY` is empty, so a sighting registry keyed on it
+#: is empty too and reading 9's existence clause is answered by a gate with nothing in it.
+#: Meanwhile the repository makes the claim in other places: ``codegen/catalogue.py`` rests
+#: a decision on ``adcontextprotocol/adcp#8735``, ``codegen/dump_exemptions.py`` on
+#: ``#8398``, and ``src/adcp/types/envelopes.py`` -- which SHIPS IN THE WHEEL -- tells a
+#: consumer "Upstream: adcontextprotocol/adcp#8516".  Those are the same kind of claim as
+#: an attribution: a sentence of ours that rests on somebody else's backlog.  So the
+#: population is every reference the repository cites, and an attribution is one way to
+#: cite one.
 #:
-#: **BOTH DIRECTIONS ARE VACUOUS TODAY AND THAT IS SAID PLAINLY**, because a gate that
-#: passes for want of a set is the thing this project has been bitten by repeatedly.
-#: :data:`REGISTRY` is empty, so there are zero ``upstream`` attributions, so there is
-#: nothing for either direction to range over.  What makes it non-vacuous the moment one is
-#: added is the forward direction's shape: an attribution arrives with its verification or
-#: it reddens, and adding both is one diff a reviewer reads.
+#: **WHAT IS NOT A CITATION OF OURS**: a reference inside a BUNDLE DOCUMENT.  Upstream's
+#: own documents cite upstream's own issues, and those references arrive here twice -- in
+#: ``schemas/cache/`` and again in the records under ``src/adcp/types/_schemas/`` -- plus a
+#: third time in ``patches/``, whose payloads are candidate bundle text.  Measured: eight
+#: references (2511, 3075, 3078, 3666, 3823, 3844, 3961, 7440) appear ONLY in that text and
+#: are nobody's claim of ours.  ``tests/test_decision_set.py`` does not take that on trust:
+#: it requires every reference it excludes to appear in the bundle, so the exclusion can
+#: only ever hide upstream's own words.
 #:
-#: **One upstream issue exists and is deliberately NOT here**:
-#: ``adcontextprotocol/adcp#8698`` attributes nothing, because it is a question and not a
-#: verdict -- and an entry for it would be exactly the backward-direction defect above.
-#: ``codegen/dump_exemptions.py``'s ``adcontextprotocol/adcp#8398`` is not here either, and
-#: for a different reason: it is a DUMP exemption and not an approximation's attribution,
-#: graded by that module's own test over its own set.
-VERIFIED: Mapping[str, str] = {}
+#: **BOTH DIRECTIONS.**  Forward: a reference the repository cites with no sighting is a
+#: claim on someone else's backlog that nobody has checked (:func:`unsighted`).  Backward: a
+#: sighting no citation names is a list of issues doing nothing (:func:`unnamed`).  So this
+#: cannot grow ahead of a citation and cannot stay behind one -- and neither direction is
+#: vacuous, which is the change: there are nine references here where there were none.
+#:
+#: **ONE WAS ABSENT AND IT WAS IN THE TREE, not planted.**  Issue number ONE of the
+#: ``adcontextprotocol/adcp`` tracker was cited three times -- twice in
+#: ``tests/test_approximation.py`` and once in ``tests/test_decision_set.py``, every one an
+#: injected fixture meaning "a reference only has to be a non-empty string" -- and
+#: ``gh issue view 1 --repo adcontextprotocol/adcp`` answers "Could not resolve to an issue
+#: or pull request".  So the repository cited a non-existent upstream issue, which is
+#: exactly what reading 9 forbids, and the fixtures now spell a reference that does not name
+#: a real tracker at all (``example/schema#1``).  That is the rule they broke and the reason
+#: this registry found it.
+#:
+#: **AND THAT NUMBER IS NOT SPELLED AS A REFERENCE ANYWHERE, INCLUDING HERE.**  The census
+#: in ``tests/test_decision_set.py`` matches the spelling a citation uses, so a sentence
+#: EXPLAINING an absent reference that spells it out is reported as the thing it explains --
+#: the same failure as a suppression detector matching the prose about a suppression, which
+#: ``tests/test_type_checker.py`` solves by anchoring to a comment's start.  Here the
+#: explanation names the repository and the number apart, which no citation does.
+#:
+#: **ONE IS CLOSED AND IS CITED ONLY BY THE DESIGN PROSE**: ``adcontextprotocol/adcp#7959``,
+#: a backport ask, in ``docs/schema-patterns-brief.md``.  :func:`closed` reports it and the
+#: rule its test applies is "the prose may record what was asked and answered; CODE may
+#: not rest a decision on an issue upstream has already settled."
+VERIFIED: Mapping[str, Sighting] = {
+    "adcontextprotocol/adcp#7919": Sighting(
+        reference="adcontextprotocol/adcp#7919",
+        state="OPEN",
+        title=("core/compact-task-submitted composes neither envelope and redeclares four protocol-envelope fields"),
+        seen="2026-11-05",
+    ),
+    "adcontextprotocol/adcp#7959": Sighting(
+        reference="adcontextprotocol/adcp#7959",
+        state="CLOSED",
+        title=(
+            "Backport #7580, #7583 and #7617 to 3.1.x: 3.1.25 still ships the defective "
+            "signing vectors and webhook_emission storyboard"
+        ),
+        seen="2026-11-05",
+    ),
+    "adcontextprotocol/adcp#8398": Sighting(
+        reference="adcontextprotocol/adcp#8398",
+        state="OPEN",
+        title="URL validation is over-specified: eight patterns where ^https:// is enough",
+        seen="2026-11-05",
+    ),
+    "adcontextprotocol/adcp#8470": Sighting(
+        reference="adcontextprotocol/adcp#8470",
+        state="OPEN",
+        title=(
+            "The submitted-task envelope is named in core/compact-task-submitted.json and "
+            "re-declared inline 16 times, each dropping task_id.minLength"
+        ),
+        seen="2026-11-05",
+    ),
+    "adcontextprotocol/adcp#8472": Sighting(
+        reference="adcontextprotocol/adcp#8472",
+        state="OPEN",
+        title="x-adcp-validation has 380 invented key names and 54% prose: no SDK can enforce it",
+        seen="2026-11-05",
+    ),
+    "adcontextprotocol/adcp#8516": Sighting(
+        reference="adcontextprotocol/adcp#8516",
+        state="OPEN",
+        title=(
+            "Failed-response envelope {context, errors, ext} has 12 spellings across 26 "
+            "documents; 5 omit errors.minItems"
+        ),
+        seen="2026-11-05",
+    ),
+    "adcontextprotocol/adcp#8525": Sighting(
+        reference="adcontextprotocol/adcp#8525",
+        state="OPEN",
+        title=(
+            "The bundle repeats shapes it never names: 110 patterns over 830 sites, 10 "
+            "titled -- extract and $ref instead of repairing in place"
+        ),
+        seen="2026-11-05",
+    ),
+    "adcontextprotocol/adcp#8698": Sighting(
+        reference="adcontextprotocol/adcp#8698",
+        state="OPEN",
+        title=(
+            "Is `status` meant to be required in the completed branch of "
+            "refine-proposals-response and request-proposals-response?"
+        ),
+        seen="2026-11-05",
+    ),
+    "adcontextprotocol/adcp#8735": Sighting(
+        reference="adcontextprotocol/adcp#8735",
+        state="OPEN",
+        title=(
+            "The bundle restates 95 object shapes it never titles, over 255 positions in "
+            "131 documents -- give each one a `title`"
+        ),
+        seen="2026-11-05",
+    ),
+}
 
 
 def unverified(
     registry: Mapping[Site, Issue] | None = None,
-    verified: Mapping[str, str] | None = None,
+    verified: Mapping[str, Sighting] | None = None,
 ) -> tuple[tuple[Site, str], ...]:
-    """Every site whose upstream issue has no recorded verification that it exists.
+    """Every SITE whose upstream issue has no recorded sighting.
 
-    Reading 9's second clause, made mechanical.  The site AND the reference, because the
-    question a reader of a failure asks is "which issue am I being asked to believe in".
+    Reading 9's second clause at the site level, which is where an attribution lives.  The
+    site AND the reference, because the question a reader of a failure asks is "which issue
+    am I being asked to believe in".
+
+    Vacuous while :data:`REGISTRY` is empty, and :func:`unsighted` is the direction that is
+    not: an attribution is one way to cite an upstream issue and the repository has others.
     """
     rows = REGISTRY if registry is None else registry
     seen = VERIFIED if verified is None else verified
-    return tuple(
-        sorted(
-            (site, entry.reference)
-            for site, entry in rows.items()
-            if entry.reference not in seen
-        )
-    )
+    return tuple(sorted((site, entry.reference) for site, entry in rows.items() if entry.reference not in seen))
 
 
-def unnamed(
-    registry: Mapping[Site, Issue] | None = None,
-    verified: Mapping[str, str] | None = None,
-) -> tuple[str, ...]:
-    """Every verified issue that no attribution names.
+def unsighted(cited: Iterable[str], verified: Mapping[str, Sighting] | None = None) -> tuple[str, ...]:
+    """Every reference ``cited`` for which nobody has recorded a look at the tracker.
+
+    The forward direction over the whole population: a reference this repository prints is
+    a claim on someone else's backlog, and a claim nobody has checked is the thing reading
+    9's "an issue that exists" is about.  ``cited`` is a MEASUREMENT over the tree and is
+    never written down here, which is what keeps this from being an allowlist.
+    """
+    seen = VERIFIED if verified is None else verified
+    return tuple(sorted({one for one in cited if one not in seen}))
+
+
+def unnamed(cited: Iterable[str], verified: Mapping[str, Sighting] | None = None) -> tuple[str, ...]:
+    """Every sighting that no citation in ``cited`` names.
 
     The backward direction, and the reason :data:`VERIFIED` is a registry rather than a
-    list: it holds what an attribution needs and nothing else, so it shrinks when an issue
-    closes and an attribution becomes ours again.
+    list: it holds what a citation needs and nothing else, so an entry leaves by this door
+    on the day the last sentence that cited it is deleted.
     """
-    rows = REGISTRY if registry is None else registry
     seen = VERIFIED if verified is None else verified
-    named = {entry.reference for entry in rows.values()}
-    return tuple(sorted(ref for ref in seen if ref not in named))
+    names = set(cited)
+    return tuple(sorted(ref for ref in seen if ref not in names))
+
+
+def absent(verified: Mapping[str, Sighting] | None = None) -> tuple[str, ...]:
+    """Every reference whose sighting records that the issue DOES NOT EXIST.
+
+    Reading 9's "upstream with an issue that **exists**", read off the record.  A sighting
+    is not an admission: ``ABSENT`` is how a look says there is nothing there, and this
+    function is what makes recording one a failure rather than a note.
+    """
+    seen = VERIFIED if verified is None else verified
+    return tuple(sorted(ref for ref, one in seen.items() if one.state == "ABSENT"))
+
+
+def closed(verified: Mapping[str, Sighting] | None = None) -> tuple[str, ...]:
+    """Every reference whose sighting records a CLOSED issue.
+
+    Reading 9's decided-by says "a **live** issue", and closed is not absent: an issue
+    upstream has settled still exists and a sentence recording what was asked and answered
+    is worth keeping.  What may not happen is a DECISION of ours resting on one, so the
+    rule its test applies is about which kind of file cites it.
+    """
+    seen = VERIFIED if verified is None else verified
+    return tuple(sorted(ref for ref, one in seen.items() if one.state == "CLOSED"))
