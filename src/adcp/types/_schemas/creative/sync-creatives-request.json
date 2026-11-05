@@ -4663,7 +4663,8 @@
         {
           "$ref": "#/definitions/Shared86"
         }
-      ]
+      ],
+      "title": "URL Macro Declaration"
     },
     "Shared75": {
       "anyOf": [

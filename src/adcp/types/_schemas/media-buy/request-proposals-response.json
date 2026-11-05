@@ -7264,7 +7264,8 @@
                       {
                         "$ref": "#/definitions/Shared178"
                       }
-                    ]
+                    ],
+                    "title": "Publisher Placement Reference"
                   },
                   {
                     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -8146,7 +8147,8 @@
             "collection_ids"
           ]
         }
-      ]
+      ],
+      "title": "Explicit Collection Selector"
     },
     "Shared8": {
       "const": "completed",

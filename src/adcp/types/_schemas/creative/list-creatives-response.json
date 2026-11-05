@@ -1540,7 +1540,8 @@
         {
           "$ref": "#/definitions/Shared142"
         }
-      ]
+      ],
+      "title": "URL Macro Declaration"
     },
     "Shared119": {
       "anyOf": [

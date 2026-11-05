@@ -7190,7 +7190,8 @@
           {
             "$ref": "#/definitions/Shared1"
           }
-        ]
+        ],
+        "title": "Publisher Placement Reference"
       },
       "minItems": 1,
       "type": "array",

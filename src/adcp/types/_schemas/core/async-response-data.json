@@ -22364,7 +22364,8 @@
             "collection_ids"
           ]
         }
-      ]
+      ],
+      "title": "Explicit Collection Selector"
     },
     "Shared298": {
       "properties": {
@@ -45322,7 +45323,8 @@
         {
           "$ref": "#/definitions/Shared421"
         }
-      ]
+      ],
+      "title": "Publisher Placement Reference"
     },
     "Shared763": {
       "items": {
@@ -47894,7 +47896,8 @@
         {
           "$ref": "#/definitions/Shared936"
         }
-      ]
+      ],
+      "title": "URL Macro Declaration"
     },
     "Shared887": {
       "anyOf": [

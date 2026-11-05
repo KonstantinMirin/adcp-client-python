@@ -10237,7 +10237,8 @@
         {
           "$ref": "#/definitions/Shared109"
         }
-      ]
+      ],
+      "title": "Publisher Placement Reference"
     },
     "Shared89": {
       "required": [
@@ -16012,7 +16013,8 @@
                                 "collection_ids"
                               ]
                             }
-                          ]
+                          ],
+                          "title": "Explicit Collection Selector"
                         },
                         "minItems": 1,
                         "type": "array",

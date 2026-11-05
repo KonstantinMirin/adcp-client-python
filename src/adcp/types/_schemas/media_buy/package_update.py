@@ -12,7 +12,6 @@ from adcp.types.constraints import StrMaxLen500
 from ..core.bidding_policy import BiddingPolicy
 from ..core.catalog import Catalog
 from ..core.context import ContextObject
-from ..core.creative_asset import CreativeAsset
 from ..core.creative_assignment import CreativeAssignment
 from ..core.ext import ExtensionObject
 from ..core.keyword_target import KeywordTarget
@@ -20,19 +19,7 @@ from ..core.negative_keyword import NegativeKeyword
 from ..core.optimization_goal import OptimizationGoal
 from ..core.targeting_input import TargetingOverlayInput
 from ..enums.pacing import Pacing
-
-
-class CreativesItem(CreativeAsset):
-    """
-    Creative asset for upload to library — supports static assets, generative formats, and third-party snippets. Identifies which format this creative conforms to via EITHER a legacy `format_id` (structured `{agent_url, id}`) OR a 3.1+ `format_kind` (canonical format name), with optional `format_option_ref` when the target product needs disambiguation. Mutually exclusive — see the `oneOf` at the schema root.
-    """
-    model_config = ConfigDict(
-        extra='allow',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/package-update.json', pointer='#/properties/creatives/items')
-    _adcp_rules: ClassVar[tuple[Rule, ...]] = (
-        ForbiddenGroups((('localization',),)),
-    )
+from .package_request import CreativesItem
 
 
 class PackageUpdate(AdCPBaseModel):

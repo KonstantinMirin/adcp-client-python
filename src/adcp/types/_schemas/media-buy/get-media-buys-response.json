@@ -648,7 +648,8 @@
                       "collection_ids"
                     ]
                   }
-                ]
+                ],
+                "title": "Explicit Collection Selector"
               },
               "minItems": 1,
               "type": "array",
@@ -4992,7 +4993,8 @@
         {
           "$ref": "#/definitions/Shared209"
         }
-      ]
+      ],
+      "title": "Publisher Placement Reference"
     },
     "Shared187": {
       "required": [

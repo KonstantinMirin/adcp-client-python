@@ -597,7 +597,8 @@
         {
           "$ref": "#/definitions/Shared142"
         }
-      ]
+      ],
+      "title": "Publisher Placement Reference"
     },
     "Shared121": {
       "required": [
@@ -16825,7 +16826,8 @@
                                     "collection_ids"
                                   ]
                                 }
-                              ]
+                              ],
+                              "title": "Explicit Collection Selector"
                             },
                             "minItems": 1,
                             "type": "array",

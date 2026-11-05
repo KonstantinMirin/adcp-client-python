@@ -6597,7 +6597,8 @@
         {
           "$ref": "#/definitions/Shared108"
         }
-      ]
+      ],
+      "title": "URL Macro Declaration"
     },
     "Shared97": {
       "anyOf": [

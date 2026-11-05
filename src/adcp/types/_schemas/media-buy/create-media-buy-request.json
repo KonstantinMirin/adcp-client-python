@@ -4058,7 +4058,8 @@
         {
           "$ref": "#/definitions/Shared167"
         }
-      ]
+      ],
+      "title": "URL Macro Declaration"
     },
     "Shared155": {
       "anyOf": [
@@ -7769,7 +7770,8 @@
                   ]
                 }
               }
-            ]
+            ],
+            "title": "Unlocalized Creative Asset"
           },
           "maxItems": 100,
           "minItems": 1,
@@ -8493,7 +8495,8 @@
                                   "collection_ids"
                                 ]
                               }
-                            ]
+                            ],
+                            "title": "Explicit Collection Selector"
                           },
                           "minItems": 1,
                           "type": "array",
@@ -9366,7 +9369,8 @@
                                       "publisher_domain"
                                     ]
                                   }
-                                ]
+                                ],
+                                "title": "Publisher Placement Reference"
                               },
                               {
                                 "$schema": "http://json-schema.org/draft-07/schema#",

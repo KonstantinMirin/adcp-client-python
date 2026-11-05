@@ -5648,7 +5648,8 @@
         {
           "$ref": "#/definitions/Shared64"
         }
-      ]
+      ],
+      "title": "Publisher Placement Reference"
     },
     "Shared45": {
       "required": [
@@ -12896,7 +12897,8 @@
                           "collection_ids"
                         ]
                       }
-                    ]
+                    ],
+                    "title": "Explicit Collection Selector"
                   },
                   "minItems": 1,
                   "type": "array",

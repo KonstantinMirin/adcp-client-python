@@ -94,6 +94,7 @@ from ._schemas.core.assets.display_tag_asset import DisplayTagAsset as DisplayTa
 from ._schemas.core.assets.display_tag_asset import InlineMarkup as InlineMarkup
 from ._schemas.core.assets.display_tag_asset import PairedRedirect as PairedRedirect
 from ._schemas.core.assets.display_tag_asset import TagURL as TagURL
+from ._schemas.core.assets.display_tag_asset import TagURLMacroDeclarationsItem as TagURLMacroDeclarationsItem
 from ._schemas.core.assets.html_asset import HTMLAsset as HTMLAsset
 from ._schemas.core.assets.image_asset import ImageAsset as ImageAsset
 from ._schemas.core.assets.javascript_asset import JavaScriptAsset as JavaScriptAsset
@@ -730,9 +731,9 @@ from ._schemas.core.placement_property_delivery_metrics import (
     PlacementPropertyDeliveryMetrics as PlacementPropertyDeliveryMetrics,
 )
 from ._schemas.core.placement_ref import PlacementReference as PlacementReference
-from ._schemas.core.placement_selection import PlacementRefsItem as PlacementRefsItem
 from ._schemas.core.placement_selection import PlacementSelection as PlacementSelection
 from ._schemas.core.placement_selection import ProductDefaultPlacements as ProductDefaultPlacements
+from ._schemas.core.placement_selection import PublisherPlacementReference as PublisherPlacementReference
 from ._schemas.core.placement_selection import SelectedPlacements as SelectedPlacements
 from ._schemas.core.planned_delivery import PlannedDelivery as PlannedDelivery
 from ._schemas.core.platform_extension_ref import PlatformExtensionReference as PlatformExtensionReference
@@ -1876,7 +1877,6 @@ __all__ = [
     'PlacementPresentationReference',
     'PlacementPropertyDeliveryMetrics',
     'PlacementReference',
-    'PlacementRefsItem',
     'PlacementSelection',
     'PlannedDelivery',
     'PlatformDistribution',
@@ -1959,6 +1959,7 @@ __all__ = [
     'PublisherCatalogFormatOptionReference',
     'PublisherCatalogPlacementIdentity',
     'PublisherDesignatedPreviewProvider',
+    'PublisherPlacementReference',
     'PublisherPropertySelector',
     'PublisherPropertySelectorAll',
     'PublisherPropertySelectorById',
@@ -2107,6 +2108,7 @@ __all__ = [
     'SyncCreativesAsyncWorking',
     'TMPIdentityMatch',
     'TagURL',
+    'TagURLMacroDeclarationsItem',
     'Tags',
     'Talent',
     'TargetLocalizationReadback',
