@@ -314,7 +314,9 @@ GRIDS = (*SECTION_5, ADMITTED, REFUSED)
 NAMESPACE = "x-"
 
 #: The grid line that stands for the whole vendor namespace, and the sentence every
-#: row of it carries.  One line for 29 rows, because section 6 writes one.
+#: row of it carries.  One line for 30 rows, because section 6 writes one.  (29 until
+#: bundle 3.3 added ``x-adcp-owned``; the three ``x-max-*-4.0`` keys it also added are
+#: NOT on this line and :data:`_FUTURE_BOUNDS` says why.)
 _X_LABEL = "the `x-` namespace"
 _X_COMPILES = "Nothing, and **still listed by name** — see below."
 
@@ -1265,6 +1267,23 @@ _ENUM_DESCRIPTIONS = Row(
     )
 )
 
+#: The two keys ``extensions/adcp.json``'s root states as the manifest header of the
+#: extension it declares; one row object, so the generator writes them one grid line.
+_MANIFEST_HEADER = Row(
+    Cell(
+        Effect.NOTHING,
+        False,
+        None,
+        "Nothing. An extension manifest's own header at a schema root: where a reader "
+        "goes for the extension's prose, and the protocol version it became valid at. "
+        "Neither says anything about an instance — draft-07 says the same by ignoring "
+        "an unknown key — so an annotation that omits them omits no fact. "
+        "`extensions/adcp.json` is the one document stating them at a schema position, "
+        "and it states a real schema beside them, so it emits normally with the two "
+        "compiling to nothing.",
+    )
+)
+
 _ADMITTED: dict[str, Row] = {
     "$schema": Row(
         Cell(
@@ -1275,6 +1294,43 @@ _ADMITTED: dict[str, Row] = {
             "runs, and through it the format checkers a type may be selected for. The "
             "one annotation that decides a behaviour, and it decides it on the schema "
             "half.",
+        )
+    ),
+    #: **draft-07's own identifier, and the one keyword of the seven 3.3 adds that
+    #: COULD have changed a reading.**  It is not a constraint -- draft-07 defines it as
+    #: the document's URI and as the BASE every reference in it resolves against -- so
+    #: the question is not whether it bounds an instance but whether it REDIRECTS a
+    #: reference.  Measured over the 3.3 bundle, it cannot:
+    #:
+    #: * 1,138 of 1,138 portable documents state it, all of them at ROOT and NONE at any
+    #:   other pointer, so there is no nested ``$id`` to re-base a subtree against;
+    #: * every one of the bundle's 4,164 non-local references is an ABSOLUTE URI and the
+    #:   remaining 450 are local pointers into the referrer, so no reference's resolution
+    #:   is a function of a base at all;
+    #: * ``bundle.document_for`` matches a reference's longest trailing run of path
+    #:   segments against the bundle's own FILE SET and reads no ``$id`` -- which is also
+    #:   what makes the 39 documents whose ``$id`` names a path other than their own
+    #:   (``core/async-response-refs/...``) resolve by where they are and not by what
+    #:   they call themselves.
+    #:
+    #: So the identifier is read by nothing in either half, and the cell is NOTHING at
+    #: every position for the same reason ``$schema``'s is: an annotation that omits it
+    #: omits no fact about an instance.
+    "$id": Row(
+        Cell(
+            Effect.NOTHING,
+            False,
+            None,
+            "Nothing. draft-07's URI for the document, and the base a reference in it "
+            "would resolve against — so it identifies and does not constrain, and an "
+            "annotation that omits it omits no fact. It cannot redirect a reference "
+            "here either: the bundle states it at document roots and at no node below "
+            "one, every non-local `$ref` is an absolute URI, and the resolver matches "
+            "a reference's trailing path segments against the bundle's own file set "
+            "rather than against any `$id` — which is why a document whose `$id` names "
+            "a path other than its own is still reached at the path it is written at. "
+            "Bundle 3.2 states it nowhere and 3.3 states it at every document root, "
+            "and that is the whole of the difference it makes.",
         )
     ),
     "title": Row(
@@ -1411,6 +1467,22 @@ _ADMITTED: dict[str, Row] = {
     "notes": Row(
         Cell(Effect.NOTHING, False, None, "Nothing: English sentences for a reader.")
     ),
+    #: **An extension manifest's own metadata, and the registry line's reason one level
+    #: in.**  ``extensions/adcp.json`` is a schema AND the manifest of the extension it
+    #: declares, so its root states two keys that describe the extension rather than the
+    #: ``ext`` payload the schema below them admits.  Measured on the 3.3 bundle: one
+    #: document, one occurrence each, both at ROOT and neither anywhere else.
+    #: ``extensions/index.json`` states them a second time inside its ``extensions``
+    #: value, which is a registry's instance data and a key the walk does not descend
+    #: into, so they reach no schema position there.
+    #:
+    #: ONE row object for the two, which the generator renders as one grid line: they are
+    #: one decision about one document's manifest header, and ``readOnly`` / ``writeOnly``
+    #: is the shape section 6 already writes it in.  NOT ``_REGISTRY_KEYS``, whose
+    #: sentence is about a root that is ONLY instance data and emits as a permissive
+    #: model -- this root carries a real schema beside them and emits normally.
+    "docs_url": _MANIFEST_HEADER,
+    "valid_from": _MANIFEST_HEADER,
     "discriminator": Row(
         Cell(
             Effect.NOTHING,
@@ -1438,6 +1510,7 @@ _EXTENSIONS = (
     "x-adcp-hoist",
     "x-adcp-model-context-inline",
     "x-adcp-open-payload",
+    "x-adcp-owned",
     "x-adcp-schema-uri",
     "x-adcp-sdk-local",
     "x-adcp-validation",
@@ -1466,6 +1539,56 @@ for _name in _EXTENSIONS:
     _ADMITTED[_name] = Row(
         Cell(Effect.NOTHING, False, None, _X_COMPILES), label=_X_LABEL
     )
+
+# --------------------------------------------------------------------------- #
+# a future version's bounds, announced early: the `x-max-*-4.0` keys
+# --------------------------------------------------------------------------- #
+#: **The one group in the namespace whose keys READ as constraints, and they are not
+#: constraints of THIS version.**  Bundle 3.3 states three of them -- ``x-max-length-4.0``
+#: beside ``type: string`` (80 sites in 18 documents), ``x-max-items-4.0`` beside
+#: ``type: array`` (78 in 16), ``x-max-properties-4.0`` beside ``type: object`` (6 in 5),
+#: each carrying a number -- and the ``-4.0`` suffix is the whole of what they say: these
+#: are the bounds version 4.0 will impose, written into a 3.3 document so an implementer
+#: can see them coming.
+#:
+#: **So the cell is NOTHING, and reading one as a bound would be the one error section 1
+#: forbids outright.**  3.3's validator ignores an unknown key, so a string longer than
+#: its ``x-max-length-4.0`` is a string the 3.3 document ADMITS; a class carrying that
+#: number as a ``max_length`` would refuse a payload its own document accepts, which is a
+#: NARROWING -- section 2's "an annotation tighter than its document refuses a payload the
+#: protocol accepts", the direction that is never a legitimate approximation.  The three
+#: are therefore annotations BY THE VERSION THE BUNDLE IS and not by the keyword's
+#: spelling, which is why they are not on the namespace line with the other metadata.
+#:
+#: **Where they are promoted.**  Against a 4.0 bundle each one becomes the cell its own
+#: unprefixed keyword already has -- ``maxLength``, ``maxItems``, ``maxProperties``, in
+#: section 5's strings, arrays and objects grids, each ``TYPE``/``RULE`` with that row's
+#: own rung -- and the promotion is a row of its own, because it changes what a class
+#: admits.  Not ``reported``: the drop is reported nowhere because there is no drop, the
+#: keyword constrains nothing at this version, and a note saying the class carries nothing
+#: for a bound the document does not impose would read as a loss where there is none.
+_FUTURE_BOUNDS = ("x-max-length-4.0", "x-max-items-4.0", "x-max-properties-4.0")
+_FUTURE_BOUND_ROW = Row(
+    Cell(
+        Effect.NOTHING,
+        False,
+        None,
+        "Nothing **at this version**, and the keys are listed apart from the namespace "
+        "line because each one reads as a bound. Each sits beside the `type` word it "
+        "would bound — `x-max-length-4.0` beside a `string`, `x-max-items-4.0` beside an "
+        "`array`, `x-max-properties-4.0` beside an `object` — and names the bound "
+        "**version 4.0** will impose, which is what the suffix says. A 3.3 document is "
+        "not bounded by it: 3.3's validator ignores the key, so a value exceeding the "
+        "number is a value the document ADMITS, and a class carrying it as a constraint "
+        "would refuse a payload its own document accepts — the narrowing §1 and §2 "
+        "forbid outright. So these annotate **by the version the bundle is**, not by how "
+        "they are spelled. Promoting them is a 4.0 row: each becomes the cell its "
+        "unprefixed keyword already has — `maxLength`, `maxItems`, `maxProperties` — and "
+        "this line is the reason it had not happened yet.",
+    ),
+)
+for _name in _FUTURE_BOUNDS:
+    _ADMITTED[_name] = _FUTURE_BOUND_ROW
 
 
 # --------------------------------------------------------------------------- #
