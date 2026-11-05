@@ -17,7 +17,7 @@ from ..enums.offering_availability_status import OfferingAvailabilityStatus
 from .si_sponsored_context import SISponsoredContext
 
 
-class Offering(AdCPBaseModel):
+class SIGetOfferingResponseOffering(AdCPBaseModel):
     """
     Offering details
     """
@@ -63,7 +63,7 @@ class SIGetOfferingResponse(AdCPVersionEnvelope, ProtocolEnvelope):
     offering_token: Annotated[str | None, Field(description="Token to pass to si_initiate_session for session continuity. Brand stores the full query context server-side (products shown, order, context) so they can resolve references like 'the second one' when the session starts.")] = None
     ttl_seconds: Annotated[NonNegativeInt | None, Field(description='How long this offering information is valid (seconds). Host should re-fetch after TTL expires.')] = None
     checked_at: Annotated[AwareDatetime | None, Field(description='When this offering information was retrieved')] = None
-    offering: Annotated[Offering | None, Field(description='Offering details')] = None
+    offering: Annotated[SIGetOfferingResponseOffering | None, Field(description='Offering details')] = None
     matching_products: Annotated[list[MatchingProductsItem] | None, Field(description='Products matching the request context. Only included if include_products was true.')] = None
     sponsored_context: Annotated[SISponsoredContext | None, Field(description='Declaration for the sponsored context carried by this offering response. When present, it applies to the returned offering and matching_products package as a whole unless a future extension narrows the declaration to individual items. Hosts MUST either honor the declared context_use and disclosure_obligation or reject the context before using it.')] = None
     total_matching: Annotated[NonNegativeInt | None, Field(description='Total number of products matching the context (may be more than returned in matching_products)')] = None

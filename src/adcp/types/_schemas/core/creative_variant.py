@@ -15,7 +15,7 @@ from .ext import ExtensionObject
 from .identifier import Identifier
 
 
-class Artifact(AdCPBaseModel):
+class GenerationContextArtifact(AdCPBaseModel):
     """
     Reference to the content-standards artifact that provided the generation context. Links this variant to the specific piece of content (article, video, podcast segment, etc.) where the ad was placed.
     """
@@ -36,7 +36,7 @@ class GenerationContext(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/creative-variant.json', pointer='#/allOf/1/properties/generation_context')
     context_type: Annotated[str | None, Field(description="Type of context that triggered generation (e.g., 'web_page', 'conversational', 'search', 'app', 'dooh')")] = None
-    artifact: Annotated[Artifact | None, Field(description='Reference to the content-standards artifact that provided the generation context. Links this variant to the specific piece of content (article, video, podcast segment, etc.) where the ad was placed.')] = None
+    artifact: Annotated[GenerationContextArtifact | None, Field(description='Reference to the content-standards artifact that provided the generation context. Links this variant to the specific piece of content (article, video, podcast segment, etc.) where the ad was placed.')] = None
     ext: ExtensionObject | None = None
 
 

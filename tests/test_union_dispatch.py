@@ -481,11 +481,22 @@ def test_the_submitted_arm_requires_what_its_target_requires() -> None:
 #:
 #: Pinned as a set of SITES and not as a count: these are positions of the bundle
 #: SOURCE, which does not move when a row lands.
+#:
+#: **THE SITES ARE UNCHANGED AND THE SYMBOLS MOVED, which is §3a step 3 and not a
+#: relaxation of this row** (``adcp-client-python-5tf``).  Both of these positions
+#: derived the bare name ``Account`` from their own property KEY, and
+#: ``core/account.json`` is titled "Account" -- so the name claimed a subject the
+#: bundle had already given to another document's root.  "A position has a role, an
+#: entry has a subject, and only a subject gets a name": the role word now lengthens
+#: by §4's own ancestor axis, and what this row asserts about the two sites is
+#: untouched.  The symbol is still read off the module rather than derived here, so a
+#: future move reddens at this pin rather than silently grading another class.
 ACCOUNT_RESTATEMENTS = (
     ("media-buy/buy-products-request.json", "#/anyOf/1/properties/account",
-     "adcp.types._schemas.media_buy.buy_products_request", "Account"),
+     "adcp.types._schemas.media_buy.buy_products_request", "BuyProductsRequestBranch1Account"),
     ("media-buy/request-proposals-request.json", "#/anyOf/1/properties/account",
-     "adcp.types._schemas.media_buy.request_proposals_request", "Account"),
+     "adcp.types._schemas.media_buy.request_proposals_request",
+     "RequestProposalsRequestAccountAccount"),
 )
 
 

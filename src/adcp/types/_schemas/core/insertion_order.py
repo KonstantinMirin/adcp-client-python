@@ -19,7 +19,7 @@ class TotalBudget(AdCPBaseModel):
     currency: Annotated[TermsTotalBudgetCurrency, Field(description='ISO 4217 currency code')]
 
 
-class PaymentTerms(StrEnum):
+class TermsPaymentTerms(StrEnum):
     """
     Payment terms
     """
@@ -43,7 +43,7 @@ class Terms(AdCPBaseModel):
     total_budget: Annotated[TotalBudget | None, Field(description='Total committed budget')] = None
     flight_start: Annotated[AwareDatetime | None, Field(description='Campaign start date')] = None
     flight_end: Annotated[AwareDatetime | None, Field(description='Campaign end date')] = None
-    payment_terms: Annotated[PaymentTerms | None, Field(description='Payment terms')] = None
+    payment_terms: Annotated[TermsPaymentTerms | None, Field(description='Payment terms')] = None
 
 
 class InsertionOrder(AdCPBaseModel):

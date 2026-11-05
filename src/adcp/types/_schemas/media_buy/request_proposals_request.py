@@ -78,7 +78,7 @@ class RequestProposalsRequestBrand(RequestProposalsRequest):
     brand: Annotated[BrandKey, Field(description='Alternative brand source for proposal terms. Provide either top-level brand or a natural-key account containing brand and operator, not both.')]
 
 
-class Account(BranchDispatchMixin, AdCPBaseModel):
+class RequestProposalsRequestAccountAccount(BranchDispatchMixin, AdCPBaseModel):
     """
     Alternative brand source for proposal terms. Provide either this natural-key account containing brand and operator or top-level brand, not both.
     """
@@ -91,22 +91,22 @@ class Account(BranchDispatchMixin, AdCPBaseModel):
         return "anyOf"
 
 
-class RequestProposalsRequestAccountAccountAccountId(Account, CanonicalAccountReferenceAccountId):
+class RequestProposalsRequestAccountAccountAccountId(RequestProposalsRequestAccountAccount, CanonicalAccountReferenceAccountId):
     model_config = ConfigDict(
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/request-proposals-request.json', pointer='#/anyOf/1/properties/account/allOf/0/anyOf/0')
 
 
-class RequestProposalsRequestAccountAccountBrandOperator(Account, CanonicalAccountReferenceBrandOperator):
+class RequestProposalsRequestAccountAccountBrandOperator(RequestProposalsRequestAccountAccount, CanonicalAccountReferenceBrandOperator):
     model_config = ConfigDict(
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/request-proposals-request.json', pointer='#/anyOf/1/properties/account/allOf/0/anyOf/1')
 
 
-Account._branch_models = (RequestProposalsRequestAccountAccountAccountId, RequestProposalsRequestAccountAccountBrandOperator,)
-Account.model_rebuild(force=True)
+RequestProposalsRequestAccountAccount._branch_models = (RequestProposalsRequestAccountAccountAccountId, RequestProposalsRequestAccountAccountBrandOperator,)
+RequestProposalsRequestAccountAccount.model_rebuild(force=True)
 
 
 class RequestProposalsRequestAccount(RequestProposalsRequest):
@@ -114,7 +114,7 @@ class RequestProposalsRequestAccount(RequestProposalsRequest):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/request-proposals-request.json', pointer='#/anyOf/1')
-    account: Annotated[Account, Field(description='Alternative brand source for proposal terms. Provide either this natural-key account containing brand and operator or top-level brand, not both.')]
+    account: Annotated[RequestProposalsRequestAccountAccount, Field(description='Alternative brand source for proposal terms. Provide either this natural-key account containing brand and operator or top-level brand, not both.')]
 
 
 RequestProposalsRequest._branch_models = (RequestProposalsRequestBrand, RequestProposalsRequestAccount,)

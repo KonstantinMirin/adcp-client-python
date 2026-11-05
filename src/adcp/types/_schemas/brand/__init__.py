@@ -463,7 +463,7 @@ class Relationship(StrEnum):
     AD_NETWORK = 'ad_network'
 
 
-class Property(AdCPBaseModel):
+class BrandDiscoveryProperty(AdCPBaseModel):
     """
     A digital property associated with a brand. Defaults to owned; use 'relationship' to declare direct, delegated, or ad_network properties. For direct, delegated, and network paths, these values match the delegation_type field in adagents.json, creating a bilateral verification chain: the operator declares the relationship here, the publisher confirms by setting the same delegation_type on the agent's authorization in their adagents.json. 'owned' is an inline ownership declaration with no adagents.json counterpart.
     """
@@ -1024,7 +1024,7 @@ class TextEntrance(StrEnum):
     NONE = 'none'
 
 
-class Pacing(StrEnum):
+class MotionGuidelinesPacing(StrEnum):
     """
     Overall editing rhythm
     """
@@ -1045,7 +1045,7 @@ class MotionGuidelines(AdCPBaseModel):
     animation_speed: Annotated[AnimationSpeed | None, Field(description='Overall animation pacing')] = None
     easing: Annotated[str | None, Field(description="Default easing function (e.g., 'ease-in-out', 'spring', 'linear')")] = None
     text_entrance: Annotated[TextEntrance | None, Field(description='How text enters the frame')] = None
-    pacing: Annotated[Pacing | None, Field(description='Overall editing rhythm')] = None
+    pacing: Annotated[MotionGuidelinesPacing | None, Field(description='Overall editing rhythm')] = None
     kinetic_typography: Annotated[bool | None, Field(description='Whether animated/kinetic typography is allowed')] = None
     tags: Annotated[list[str] | None, Field(description='Additional motion style descriptors')] = None
 
@@ -1515,7 +1515,7 @@ class Brand(AdCPBaseModel):
     tone: Annotated[str | Tone | None, Field(description='Brand voice and messaging tone guidelines')] = None
     tagline: Annotated[str | NonEmptyList[LocalizedName] | None, Field(description='Brand tagline or slogan. Accepts a plain string or a localized array matching the names pattern.')] = None
     assets: Annotated[list[Asset] | None, Field(description='Brand asset library')] = None
-    properties: Annotated[list[Property] | None, Field(description='Digital properties associated with this brand — owned, managed, or represented')] = None
+    properties: Annotated[list[BrandDiscoveryProperty] | None, Field(description='Digital properties associated with this brand — owned, managed, or represented')] = None
     product_catalog: ProductCatalog | None = None
     privacy_policy_url: Annotated[HttpUrl | None, Field(description="URL to the brand's privacy policy")] = None
     data_subject_contestation: DataSubjectContestation | None = None
@@ -1619,4 +1619,4 @@ BrandDiscovery._branch_models = (AuthoritativeLocationRedirect, HouseRedirect, B
 BrandDiscovery.model_rebuild(force=True)
 
 
-__all__ = ["Agents", "Asset", "AssetLibrary", "AuthorizedOperator", "BorderRadius", "Brand", "BrandAgentEntry", "BrandDiscovery", "BrandDiscoveryBrandAgent", "BrandDiscoveryContact", "BrandDiscoveryFontRole", "BrandId", "BrandShapes", "ColorConstraint", "ColorRef", "ColorValue", "Colors", "Colorway", "CompositionRules", "DataSubjectContestation", "Domain", "Elevation", "Fonts", "GraphicElement", "GraphicStyle", "GuidelineSeverity", "HexColor", "House", "Iconography", "IdentityRelyingParty", "KellerType", "LocalizedName", "LocalizedScalar", "LocalizedStringList", "LocalizedStringListEntry", "Logo", "LogoId", "LogoPlacement", "LogoUsageRule", "MarkLockup", "MotionGuidelines", "ObjUrlWeightWeightRangeStyle", "PhotographyStyle", "PortfolioEntry", "ProductCatalog", "Property", "RightsAgent", "Spacing", "Trademark", "TypeScaleEntry", "VisualGuidelines"]
+__all__ = ["Agents", "Asset", "AssetLibrary", "AuthorizedOperator", "BorderRadius", "Brand", "BrandAgentEntry", "BrandDiscovery", "BrandDiscoveryBrandAgent", "BrandDiscoveryContact", "BrandDiscoveryFontRole", "BrandDiscoveryProperty", "BrandId", "BrandShapes", "ColorConstraint", "ColorRef", "ColorValue", "Colors", "Colorway", "CompositionRules", "DataSubjectContestation", "Domain", "Elevation", "Fonts", "GraphicElement", "GraphicStyle", "GuidelineSeverity", "HexColor", "House", "Iconography", "IdentityRelyingParty", "KellerType", "LocalizedName", "LocalizedScalar", "LocalizedStringList", "LocalizedStringListEntry", "Logo", "LogoId", "LogoPlacement", "LogoUsageRule", "MarkLockup", "MotionGuidelines", "ObjUrlWeightWeightRangeStyle", "PhotographyStyle", "PortfolioEntry", "ProductCatalog", "RightsAgent", "Spacing", "Trademark", "TypeScaleEntry", "VisualGuidelines"]

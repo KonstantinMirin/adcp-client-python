@@ -196,7 +196,7 @@ class Params(AdCPBaseModel):
     result: Annotated[ComplianceTaskCompletionData | None, Field(description="Deterministic result payload. force_get_creative_features_arm uses it when arm is completed and returns it on the next matching operation call. force_task_completion records it against an existing task and supports the bounded get_products, get_signals, create_media_buy, and get_creative_features completion union; polling and production SDKs resolve all task results through the originating task's manifest response mapping instead of embedding a global result union. The seller MUST preserve caller-supplied fields. Sellers MUST emit INVALID_PARAMS when the payload does not match the required response branch and MAY reject payloads exceeding 256 KB.")] = None
 
 
-class Account(AdCPBaseModel):
+class ComplyTestControllerRequestAccount(AdCPBaseModel):
     """
     Sandbox account assertion. The runner MUST set sandbox: true on every comply_test_controller request. The seller MUST refuse the request (returning a structured error) if the targeted account is not a sandbox account in the seller's persisted records. This field is a caller-side declaration of intent — it does not grant sandbox status; sellers verify against their own account state. The (Sandbox) verification tier is defined by this gate: real production endpoints accept sandbox-flagged traffic and process it without real-world side effects, no separate test-mode endpoint required. See spec issue #3755 and the (Sandbox) framing in #4379.
     """
@@ -249,7 +249,7 @@ class ComplyTestControllerRequest(AdCPVersionEnvelope):
     params: Annotated[Params | None, Field(description='Scenario-specific parameters. Required for all scenarios except list_scenarios.')] = None
     context: ContextObject | None = None
     ext: ExtensionObject | None = None
-    account: Annotated[Account, Field(description="Sandbox account assertion. The runner MUST set sandbox: true on every comply_test_controller request. The seller MUST refuse the request (returning a structured error) if the targeted account is not a sandbox account in the seller's persisted records. This field is a caller-side declaration of intent — it does not grant sandbox status; sellers verify against their own account state. The (Sandbox) verification tier is defined by this gate: real production endpoints accept sandbox-flagged traffic and process it without real-world side effects, no separate test-mode endpoint required. See spec issue #3755 and the (Sandbox) framing in #4379.")]
+    account: Annotated[ComplyTestControllerRequestAccount, Field(description="Sandbox account assertion. The runner MUST set sandbox: true on every comply_test_controller request. The seller MUST refuse the request (returning a structured error) if the targeted account is not a sandbox account in the seller's persisted records. This field is a caller-side declaration of intent — it does not grant sandbox status; sellers verify against their own account state. The (Sandbox) verification tier is defined by this gate: real production endpoints accept sandbox-flagged traffic and process it without real-world side effects, no separate test-mode endpoint required. See spec issue #3755 and the (Sandbox) framing in #4379.")]
 
 
 __all__ = ["ComplyTestControllerRequest"]

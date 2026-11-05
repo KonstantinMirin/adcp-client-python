@@ -54,7 +54,7 @@ class Geo(AdCPBaseModel):
     sort_direction: Annotated[SortDirection | None, Field(default_factory=lambda: TypeAdapter(SortDirection).validate_python('desc'), description="Direction for sort_by ordering. Defaults to 'desc' (largest first). 'asc' enables bottom-N queries (e.g., the 25 worst placements by viewable_rate) that cannot be recovered from a truncated descending pull. Sellers MUST apply the requested direction to the applied sort metric — direction has no availability fallback.", json_schema_extra={'default': 'desc'})]
 
 
-class DeviceType(AdCPBaseModel):
+class ReportingDimensionsDeviceType(AdCPBaseModel):
     """
     Request device type breakdown.
     """
@@ -68,7 +68,7 @@ class DeviceType(AdCPBaseModel):
     cursor: Annotated[str | None, Field(description="Opaque cursor from a previous response's by_device_type_pagination to fetch the next page of a truncated by_device_type breakdown. Omit for the first page. limit, sort_by, and sort_direction MUST be repeated unchanged across paged requests for the same logical query.")] = None
 
 
-class DevicePlatform(AdCPBaseModel):
+class ReportingDimensionsDevicePlatform(AdCPBaseModel):
     """
     Request device platform breakdown.
     """
@@ -124,7 +124,7 @@ class Spot(AdCPBaseModel):
     limit: Annotated[IntMin1 | None, Field(description='Optional maximum number of spot rows to return. When the response is incomplete because of this limit or a seller-imposed maximum, by_spot_truncated is true.')] = None
 
 
-class Placement(AdCPBaseModel):
+class ReportingDimensionsPlacement(AdCPBaseModel):
     """
     Request placement breakdown.
     """
@@ -150,13 +150,13 @@ class ReportingDimensions(AdCPBaseModel):
     creative: Annotated[DeliveryBreakdownControls | None, Field(description='Request a negotiated creative breakdown. Omitting this key preserves the automatic behavior — sellers return creative rows at their discretion with no truncation contract. Including it (even as {}) makes the truncation disclosure and applied-sort echo binding.')] = None
     keyword: Annotated[DeliveryBreakdownControls | None, Field(description='Request a negotiated keyword breakdown. Omitting this key preserves the automatic behavior — sellers return keyword rows at their discretion with no truncation contract. Including it (even as {}) makes the truncation disclosure and applied-sort echo binding.')] = None
     geo: Annotated[Geo | None, Field(description='Request geographic breakdown. Check reporting_capabilities.supports_geo_breakdown for available levels and systems.')] = None
-    device_type: Annotated[DeviceType | None, Field(description='Request device type breakdown.')] = None
-    device_platform: Annotated[DevicePlatform | None, Field(description='Request device platform breakdown.')] = None
+    device_type: Annotated[ReportingDimensionsDeviceType | None, Field(description='Request device type breakdown.')] = None
+    device_platform: Annotated[ReportingDimensionsDevicePlatform | None, Field(description='Request device platform breakdown.')] = None
     format: Annotated[DeliveryBreakdownControls | None, Field(description='Request delivery broken down by canonical creative format kind. This dimension is negotiated on the GET path. Reporting webhook configuration does not negotiate or guarantee dimensional breakdowns, although a webhook payload may carry the same fields as an extension.')] = None
     audience: Annotated[Audience | None, Field(description='Request audience segment breakdown.')] = None
     demographic: Annotated[Demographic | None, Field(description="Request delivery broken down by demographic. Check the product's reporting_capabilities.supports_demographic_breakdown independently from demographic_targeting. When age_ranges is present, every requested range MUST be exactly supported by exact_predicates or equal one of the declared enumerated_intervals; sellers MUST reject unsupported ranges with UNSUPPORTED_FEATURE rather than silently widen or narrow them.")] = None
     spot: Annotated[Spot | None, Field(description='Request a spot-level as-run airing log for broadcast TV, radio, or other scheduled inventory. Rows are ordered by aired_at ascending. When limit is omitted, sellers SHOULD return the complete log for the requested reporting period.')] = None
-    placement: Annotated[Placement | None, Field(description='Request placement breakdown.')] = None
+    placement: Annotated[ReportingDimensionsPlacement | None, Field(description='Request placement breakdown.')] = None
     property: Annotated[DeliveryBreakdownControls | None, Field(description='Request delivery by canonical publisher property. Check reporting_capabilities.supports_property_breakdown.')] = None
     collection: Annotated[DeliveryBreakdownControls | None, Field(description='Request delivery by canonical content collection. Check reporting_capabilities.supports_collection_breakdown.')] = None
     installment: Annotated[DeliveryBreakdownControls | None, Field(description='Request delivery by canonical installment within a collection. Check reporting_capabilities.supports_installment_breakdown.')] = None
