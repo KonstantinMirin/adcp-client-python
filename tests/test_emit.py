@@ -99,6 +99,7 @@ from codegen.harness import (
     LivenessResult,
     Pair,
     PairReport,
+    WideningResult,
     _composed,  # the harness's own folding of an allOf conjunct's facts
     check_accepts,
     check_liveness,
@@ -1247,19 +1248,75 @@ def graded_reports() -> list[tuple[Graded, PairReport]]:
     that constant are three of the four readers paying the full pass on three different
     workers.  A fifth reader added here takes the mark too, or it adds a whole pass.
     """
-    return [
-        (
-            g,
-            check_pair(
+    return [(g, graded_report(g)) for g in graded()]
+
+
+#: Seconds one pair of this suite's grading pass may spend before the run reports
+#: ``over_budget`` under that pair's own name.
+#:
+#: **THIS IS WHAT MAKES THE FILE RUNNABLE IN ONE INVOCATION, and ``pyproject.toml``'s own
+#: ``timeout`` section is the row that asked for it**: "The pair grade's own budget belongs
+#: on the pair grade, as a marker on that test, and that is a row -- not a figure here that
+#: every other check then has to live under."  That section also measures why the global
+#: backstop cannot be it: ``pytest-timeout``'s signal method arms a ONE-SHOT
+#: ``signal.alarm``, ``hypothesis``'s garbage-collection callback swallows it, and "the pair
+#: then ran thirteen minutes against a 45 s budget with no alarm left to fire".
+#: :func:`harness.within` repeats its timer for exactly that reason, which is why the bound
+#: has to come from here and not from the plugin.
+#:
+#: **WHAT THE NUMBER IS, measured on this base rather than chosen.**  Over all 2,593 graded
+#: pairs, floor-only, the whole population costs 370.6 s of pair time of which 300 s is ONE
+#: pair: 2,591 of them are 0.0-7.8 s, ``creative/sync-creatives-response.json#`` is 33.2 s,
+#: and ``media-buy/get-media-buys-response.json#`` exceeds every bound tried.  There is
+#: nothing between 33 s and unbounded, so the bound is far enough above the slowest pair
+#: that grades that no working check can reach it.
+#:
+#: **AND A CUT IS A NAMED RED AND NEVER A SKIP.**  ``OverBudget`` is a ``BaseException``
+#: and is caught BY NAME one frame out, exactly as ``codegen/__main__.py`` catches it; the
+#: pair then FAILS with ``over_budget`` and its own pointer in the message, so it lands in
+#: the junit XML as itself.  No ``xfail``, no ``skip``, no exemption list: the residue is
+#: visible as a failure under its own name, which ``docs/plan/final-state.md`` reading 1
+#: requires and an unobtainable run cannot give.
+PAIR_BUDGET = 300
+
+
+def graded_report(g: Graded) -> PairReport:
+    """One pair's three checks, bounded by :data:`PAIR_BUDGET`.
+
+    The one place this file grades a pair, so the bound cannot be present in one reader of
+    the population and absent in another -- which is the shape the whole-file hang was:
+    :func:`graded_reports`' pass and the parametrised test below both grade every pair, and
+    a bound on one of them leaves the other able to hang the run on its own.
+
+    A cut is reported as a ``PairReport`` whose every check NAMES the budget, so a reader
+    of a total sees the pair and the reason rather than an exception out of a list
+    comprehension -- and **all three and not only the accepts one**, because a ``None``
+    result is read as ``unrun`` by :attr:`PairReport.outcome` and as an ``AttributeError``
+    by the three tests that group the population by ``r.liveness.outcome``.  A crash in a
+    reader is not a report about a pair, which is the whole distinction this function
+    exists to keep.
+    """
+    try:
+        with harness.within(PAIR_BUDGET):
+            return check_pair(
                 pair_of(g),
                 custom_formats=FORMAT_STRATEGIES,
                 corpus=corpus.STORE,
                 widening_corpus=corpus.WIDENING_STORE,
                 fixtures=fixtures(),
-            ),
+            )
+    except harness.OverBudget:
+        name = f"{g.ref.document}{g.ref.pointer}"
+        why = f"{name} did not grade inside {PAIR_BUDGET} s"
+        return PairReport(
+            name=name,
+            accepts=AcceptsResult(outcome="over_budget", detail=why),
+            liveness=LivenessResult(outcome="over_budget", how=why),
+            #: ``WideningResult.outcome`` is DERIVED, so a cut is spelled with the field
+            #: that makes it one: ``detail`` is read as ``error`` there, which is what a
+            #: check that did not run is -- never ``pass`` and never ``no_declarations``.
+            widening=WideningResult(detail=why),
         )
-        for g in graded()
-    ]
 
 
 @pytest.mark.xdist_group(GRADED_REPORTS_GROUP)
@@ -1375,15 +1432,16 @@ def test_every_class_passes_all_three_checks(row: Graded) -> None:
     **Parametrised, and that is load-bearing for the suite's wall clock.** xdist
     distributes by TEST, so this is 1,055 work items that spread across the workers
     while the three tests reading a population TOTAL are one item each.
+
+    **And BOUNDED, by :data:`PAIR_BUDGET`, which is what makes this file completable in
+    one invocation.**  A pair whose draw does not terminate used to hang the worker it
+    landed on -- ``harness.within`` had exactly one caller and it was not here -- so the
+    item neither finished nor reported anything and the whole run was unobtainable.  A cut
+    is now ``accepts:over_budget`` with this pair's own name in the message, asserted below
+    like any other non-pass verdict: a NAMED RED, not an ``xfail``, not a skip and not an
+    exemption, which is the only honest form a residue can take.
     """
-    pair = pair_of(row)
-    rep = check_pair(
-        pair,
-        custom_formats=FORMAT_STRATEGIES,
-        corpus=corpus.STORE,
-        widening_corpus=corpus.WIDENING_STORE,
-        fixtures=fixtures(),
-    )
+    rep = graded_report(row)
     assert rep.missing_formats == []
     if rep.accepts.outcome != "strategy_error":
         assert rep.accepts.outcome == "pass", (rep.accepts.detail, rep.accepts.counterexample)
@@ -3230,30 +3288,35 @@ def _an_instance(schema: dict, document: dict | None = None) -> Any:
     ``core/reporting-delivery-method.json``'s and
     ``core/reporting-dataset-share-destination.json``'s branches when row .3 stopped
     inlining a local reference.
+
+    **AND THE DRAW IS ``harness.one_instance``, WHICH IS THE SEAM AND NOT A SECOND ONE.**
+    This function called ``hypothesis_jsonschema.from_schema`` itself, and that is the
+    whole of why this file could not be run to completion on this box.  ``one_instance``
+    is where the three rules the harness applies to a draw are installed -- §8's
+    combinator COVER (``a_combinator_is_covered_and_never_enumerated``), the
+    canonicalisation memo and the validator-class cache -- and its own docstring already
+    states the rule this violated: "Every derived draw in this module arrives here ... One
+    seam, so reading 2 cannot stay blocked where reading 1 is not."  A draw outside it gets
+    the library exactly as it ships.
+
+    **Measured with a profiler rather than inferred**, which is the only way this was
+    findable: at 1 h 19 m into a ``tests/test_emit.py`` run, 2,687 of 2,688 items reported
+    and nine of ten workers idle, ``py-spy dump`` on the tenth showed
+    ``merged_as_strategies (_from_schema.py:101)`` -- the power-set enumeration the cover
+    replaces -- under it ``CacheableSchema.__init__`` -> ``json.dumps``, the library's
+    validator cache keying on the node's TEXT, and ``canonicalish`` recursing through
+    ``merged`` eighteen frames deep.  ``pytest-timeout``'s 900 s backstop had not fired,
+    for the reason ``pyproject.toml`` measures: a one-shot ``signal.alarm`` that
+    ``hypothesis``'s garbage-collection callback swallows leaves nothing to fire.  So the
+    run was unobtainable, and it was unobtainable at a call site no pair's verdict passes
+    through.
     """
     if document is not None:
         try:
             schema = harness.resolve(schema, store={}, referrer=document)
         except Exception:  # any resolution failure falls back to the node
             pass
-    drawn: list[Any] = []
-
-    @settings(
-        max_examples=1,
-        deadline=None,
-        database=None,
-        derandomize=True,
-        phases=[Phase.generate],
-        suppress_health_check=list(HealthCheck),
-    )
-    @given(st.data())
-    def body(data: st.DataObject) -> None:
-        from hypothesis_jsonschema import from_schema
-
-        drawn.append(data.draw(from_schema(schema)))
-
-    body()
-    return drawn[0]
+    return harness.one_instance(schema, {})
 
 
 def test_a_consumers_subclass_of_a_union_base_keeps_its_own_schema() -> None:

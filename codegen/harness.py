@@ -543,13 +543,14 @@ class Location(NamedTuple):
 
     * ``"const"`` -- one value every statement admits, which is the saving: a 287 KB
       property becomes a few KB of value.
-    * ``"reduce"`` -- the position's own REDUCTION, for the two frontier items no single
-      value answers for.  A union BRANCH is an ALTERNATIVE, so pinning it to a value one
-      branch admits says nothing about what the union admits and can meet a conjunct that
-      refuses it.  And an UNCONDITIONAL statement about a location some consequent also
-      decides must not be pinned, because the consequent's pin and this one would both
-      have to hold wherever the condition matches.  Both are narrowed in place instead,
-      which is a restriction and keeps every conjunction satisfiable.
+    **AND THERE IS ONE KIND SINCE THIS ROW, WHICH IS ITS RESULT AND NOT A TIDYING.**  What
+    stood beside it was ``"reduce"``: the UNCONDITIONAL statement about a location that a
+    consequent or a union branch also decides, narrowed IN PLACE rather than pinned.
+    :func:`locations` carries the three measurements that removed it -- the narrowing is a
+    second answer to a question the scope's own pin has already answered, and no order of
+    the two and no restriction of that position preserves satisfiability.  Such a position
+    is left EXACTLY as the document states it.  The field stays because a reader of a
+    frontier item is entitled to ask what the pin IS.
     """
 
     at: str
@@ -589,9 +590,12 @@ def locations(node: Any, *, depth: int = 32) -> tuple[Location, ...]:
       what one key or one element must satisfy and a pin per conjunct would be two
       documents answering one question with an empty intersection (§8's measured clause).
       The pin is ONE value drawn from their conjunction, placed at all of them.
-    * a **union node**, taken whole and not descended into, because a union's branches are
-      alternatives rather than conjuncts and a restriction inside one of them can widen a
-      ``oneOf``.
+    * a **union BRANCH**, descended into under a SCOPE of its own, because its interior
+      describes the same instance as the conjuncts beside it: one location's statements
+      are then one group whether they are stated unconditionally, inside a consequent or
+      inside a branch, and one value answers for all of them.  A union NODE is not a
+      location of its own -- a value one branch admits can meet a conjunct that refuses
+      it, which is what the comment in the walk below measures.
 
     Nothing under ``not`` or ``if`` is a frontier item (:data:`_INVERTS`), and neither is a
     ``definitions`` entry -- it has no instance location, which is §8's own reading of why
@@ -602,7 +606,6 @@ def locations(node: Any, *, depth: int = 32) -> tuple[Location, ...]:
     #: the several conjuncts deciding one key arrive as ONE item.
     #: ``(instance location, conditional scope) -> (positions to replace, statements)``.
     found: dict[tuple[str, str], tuple[list[str], list[Mapping[str, Any]]]] = {}
-    branches: list[Location] = []
 
     def take(key: tuple[str, str], pointer: str, sub: Any, *, owns: bool) -> None:
         if not isinstance(sub, Mapping):
@@ -625,15 +628,40 @@ def locations(node: Any, *, depth: int = 32) -> tuple[Location, ...]:
         #: the generator untouched.  A union describes the node's OWN instance, so it is
         #: not a location of its own; what is reducible about it is each branch's
         #: interior, and that is what is substituted.
+        #:
+        #: **AND A BRANCH IS SCOPED EXACTLY AS A CONSEQUENT IS, WHICH IS THE WHOLE OF WHAT
+        #: THIS LOOP DOES NOW.**  A branch reduced by a SEPARATE call -- which is what a
+        #: ``Location`` of its own made it -- reads a frontier of its own, so the same
+        #: instance location was pinned twice: once by the unconditional conjuncts here and
+        #: once inside the branch, to two values, and the conjunction of the two is EMPTY.
+        #: Measured on ``creative/sync-creatives-response.json#``'s ``("demand",
+        #: ['creatives', 0, 'assignment_errors'])`` draw: ``/allOf/1/properties/creatives``
+        #: pinned ``[{"assignment_errors": null}]`` while
+        #: ``/allOf/0/oneOf/0/properties/creatives`` pinned ``[]``, and ``/status`` was
+        #: ``"failed"`` unconditionally against ``"submitted"`` in a branch.  The node went
+        #: 6,907,894 -> 11,268 bytes -- 613x -- and the reduced node admitted NOTHING
+        #: (``Unsatisfiable``, 459 of 459 draws filtered out, 5.94 s), so
+        #: :meth:`Fixtures._draw`'s fail-safe fell through to the UNREDUCED 6.9 MB draw and
+        #: the pair reported ``over_budget`` at every bound to 300 s.  The saving was
+        #: computed and then discarded.
+        #:
+        #: The machinery that answers it is already here and was written for ``if``/``then``:
+        #: a SCOPE makes the branch's statement about a location arrive as its own group,
+        #: the unconditional statements about that location are conjoined INTO it (``beside``
+        #: below), so one value satisfies the branch and the conjuncts together -- and the
+        #: unconditional position is not pinned at all, because its value and the branch's
+        #: would both have to hold wherever that branch is the one that matches.  Scoped by
+        #: the branch's own POINTER for the reason the consequent's comment states: a scope
+        #: that collapsed two branches into one key would ask for a value satisfying both
+        #: alternatives at once.
         for keyword in ("oneOf", "anyOf"):
             held = current.get(keyword)
             if not isinstance(held, list):
                 continue
             for index, sub in enumerate(held):
                 if isinstance(sub, Mapping) and sub:
-                    branches.append(
-                        Location(at, (f"{rel}/{keyword}/{index}",), (sub,), "reduce")
-                    )
+                    suffix = f"/{keyword}/{index}"
+                    walk(sub, rel + suffix, at, rel + suffix, left - 1)
         patterns = current.get("patternProperties")
         patterns = patterns if isinstance(patterns, Mapping) else {}
         properties = current.get("properties")
@@ -679,25 +707,79 @@ def locations(node: Any, *, depth: int = 32) -> tuple[Location, ...]:
                 walk(sub, rel + suffix, at, rel + suffix, left - 1)
 
     walk(node, "", "", "", depth)
-    #: Which locations a CONSEQUENT decides, so the unconditional statement about one is
-    #: narrowed in place instead of pinned: the two pins would both have to hold wherever
-    #: the condition matches.
+    #: Which locations a CONSEQUENT or a union BRANCH decides, so the unconditional
+    #: statement about one is narrowed in place instead of pinned: the two pins would both
+    #: have to hold wherever the condition matches or that branch is the one that does.
     conditioned = {token for token, scope in found if scope}
     children: list[Location] = []
     for (token, scope), (pointers, nodes) in found.items():
         if not pointers:
             continue
+        #: **AND THE UNCONDITIONAL STATEMENT ABOUT A SCOPED LOCATION IS LEFT EXACTLY AS THE
+        #: DOCUMENT STATES IT -- NOT NARROWED IN PLACE, WHICH IS WHAT STOOD HERE.**  A
+        #: narrowing is a second answer to a question the scope's own pin has already
+        #: answered, and the two are drawn from conjunctions that cannot see each other: the
+        #: scoped value satisfies the UNREDUCED statement beside it -- that statement is in
+        #: the conjunction it was drawn from -- and a narrowing of that statement need not
+        #: admit it.  The scope is then dead, and two readings make that fatal rather than
+        #: merely wasteful:
+        #:
+        #: * a ``oneOf`` whose every branch is dead admits nothing;
+        #: * a consequent whose ``if`` the rule's own pins FORCE to match is not escapable
+        #:   either -- measured on ``media-buy/get-media-buys-response.json#``, where
+        #:   ``/state`` was pinned ``"ready"`` and ``/allOf/0/if`` is ``state == "ready"``,
+        #:   so ``/allOf/0/then``'s ``/configuration`` had to hold and said ``active:
+        #:   true`` while the in-place narrowing of the same location said ``active:
+        #:   false``.
+        #:
+        #: Measured on ``creative/sync-creatives-response.json#``'s ``("demand",
+        #: ['creatives', 0, 'assignment_errors'])`` draw: ``/allOf/1/properties/creatives``
+        #: was narrowed to ``items: {const: {"assignment_errors": null}}`` while
+        #: ``/allOf/0/oneOf/0/properties/creatives`` was pinned to a one-element array the
+        #: UNREDUCED statement admitted and the narrowed one did not, so the 15,345-byte
+        #: node admitted nothing (``Unsatisfiable``, 459 of 459 draws filtered, 5.94 s) and
+        #: :meth:`_Draws._draw`'s fail-safe paid the UNREDUCED 6.9 MB draw instead -- which
+        #: is the whole-document draw this rule exists to avoid, at every bound to 300 s.
+        #: Drawn against the narrowed statement, the same draw is **0.74 s on a
+        #: 15,360-byte node and the pair passes**.
+        #:
+        #: **AN ``{"enum": [...]}`` OF THE SCOPES' OWN VALUES AT THE UNCONDITIONAL POSITION
+        #: WAS TRIED AND IS REFUTED**, which is worth stating because it is the obvious
+        #: alternative and its soundness argument is correct: every member is drawn from a
+        #: conjunction containing that statement, so the enum is a RESTRICTION.  What it
+        #: does not preserve is satisfiability.  Measured on the same draw: the enum at
+        #: ``/status`` was ``["submitted"]`` -- the one value a branch had been pinned to --
+        #: and ``oneOf/1`` states ``not: {anyOf: [..., {properties: {status: {const:
+        #: "submitted"}}, required: ["status"]}]}``, so forcing that value killed the only
+        #: branch left and the 11,377-byte node admitted nothing.  A restriction of a
+        #: location shared by ALTERNATIVES can empty the node even where every member of it
+        #: is admissible on its own.
+        #:
+        #: **AND SO WAS THE OTHER ORDER -- narrow first, then draw the scoped value against
+        #: the narrowing, so the two agree by construction.**  It is the obvious repair and
+        #: it fails symmetrically, because the narrowing is itself drawn with no knowledge of
+        #: the scope: on the same draw the demand's ``/creatives`` narrowed to ``items:
+        #: {const: {"assignment_errors": null}}``, ``oneOf/0``'s own ``items`` requires
+        #: ``action`` and ``creative_id``, their intersection is empty, so the branch's pin
+        #: answered :data:`NONE` and its 6.8 MB stood -- node 6,847,477 bytes of 6,907,894,
+        #: cut again.  Neither order makes two independent draws agree; what does is not
+        #: drawing twice.
+        if not scope and token in conditioned:
+            continue
         if scope:
-            #: The unconditional statements are conjoined into the consequent's value, so
-            #: a consequent's pin satisfies what the node itself says about the location
-            #: and cannot conflict with it.
+            #: The unconditional statements are conjoined into the scoped value, so a
+            #: consequent's or a branch's pin satisfies what the node itself says about the
+            #: location and cannot conflict with it.  Where their intersection is empty the
+            #: draw answers :data:`NONE` and nothing is pinned there, which is the right
+            #: answer: that consequent or that branch is one the enclosing conjunction can
+            #: never take, and it is left standing exactly as the document states it.
             beside = found.get((token, ""), ([], []))[1]
-            children.append(Location(token, tuple(pointers), tuple(nodes) + tuple(beside), "const"))
-        elif token in conditioned:
-            children.append(Location(token, tuple(pointers), tuple(nodes), "reduce"))
+            children.append(
+                Location(token, tuple(pointers), tuple(nodes) + tuple(beside), "const")
+            )
         else:
             children.append(Location(token, tuple(pointers), tuple(nodes), "const"))
-    return tuple(children) + tuple(branches)
+    return tuple(children)
 
 
 @functools.lru_cache(maxsize=4096)
@@ -984,12 +1066,17 @@ class Fixtures:
           location and placed at all of them.  ``{"const": v}`` admits a subset of what
           each of those statements admits, so the result is a restriction, and the value is
           screened against the conjunction before it is kept.
-        * a **union node** is replaced by an ``{"enum": [...]}`` of its branches' own
-          values, each screened against the whole union node with its siblings in place --
-          because a union is not monotone branch by branch (narrowing one branch of a
-          ``oneOf`` can make an instance that matched two match one, which the node then
-          ADMITS), while an ``enum`` of values the node admits is a subset of them
-          whatever the branches overlap.
+        * a **location a SCOPE also decides** -- a consequent's or a union branch's own
+          statement about the same instance location -- is pinned once per scope, each from
+          the conjunction of that scope's statement WITH the unconditional ones, and the
+          unconditional position itself is LEFT EXACTLY AS THE DOCUMENT STATES IT.  A union
+          is not monotone branch by branch (narrowing one branch of a ``oneOf`` can make an
+          instance that matched two match one, which the node then ADMITS) and the scopes
+          are alternatives with no value in common, so there is no one value for that
+          position, no restriction of it that cannot empty the node, and no ORDER of the
+          two that makes them agree.  A statement left standing cannot contradict a value
+          drawn from a conjunction that contains it, which is why that direction is the one
+          that terminates; :func:`locations` carries all three measurements.
 
         **Every pin is DERIVED and never hand-written** (§8: "a hand-written one is a
         thousand files to maintain and a silent exemption the first time a document changes
@@ -1041,16 +1128,11 @@ class Fixtures:
     def _derived_pin(self, item: Location, depth: int) -> Any:
         """The subschema one frontier item is replaced by, or :data:`NONE`.
 
-        :class:`Location`'s ``kind`` says which of the two this is and why; here is only
-        how each is made.  A reduction that shrinks nothing is :data:`NONE`: a placement
-        that replaces a node by an equal one is a copy and not a saving, and counting it
-        would overstate what the rule did.
+        One kind since this row (:class:`Location`), so this is the pin and not a
+        dispatch: one value for the conjunction of the item's statements, as a
+        ``{"const": v}``.  :data:`NONE` where no value survives, which is the fail-safe
+        direction -- the position then stands as the document states it.
         """
-        if item.kind == "reduce":
-            if depth <= 1:
-                return NONE
-            narrowed, placed = self.reduced(item.nodes[0], depth - 1)
-            return narrowed if placed else NONE
         value = self.value(item.nodes, depth - 1)
         return NONE if value is NONE else {"const": value}
 
