@@ -411,7 +411,16 @@ def test_every_upstream_reference_this_repository_cites_has_a_sighting() -> None
     Both populations are named through ``tests/nodeset.py``'s ``claimed``, so a census that
     selected nothing fails rather than passing.
     """
-    cited = claimed("upstream references this repository cites", _cited())
+    # **AN ATTRIBUTION IS A CLAIM AND IS ADDED BACK PROGRAMMATICALLY**, which is the other
+    # half of excluding the registry's own module (:data:`REGISTRY_MODULE`).  The module's
+    # TEXT makes no citation -- a sighting spells its own reference and would certify
+    # itself -- but an ENTRY of :data:`attribution.REGISTRY` is exactly the kind of claim
+    # reading 9 names.  Read off the entries and not off the file, so the sightings cannot
+    # come back in beside them.
+    cited = claimed(
+        "upstream references this repository claims",
+        set(_cited()) | {entry.reference for entry in attribution.REGISTRY.values()},
+    )
     sighted = claimed("references with a recorded sighting", attribution.VERIFIED)
     assert attribution.unsighted(cited) == (), (
         "this repository cites an upstream issue that nobody has looked up: "
