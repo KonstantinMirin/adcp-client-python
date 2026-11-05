@@ -461,6 +461,32 @@ def apply(published: Path, patch_set: Path, out: Path) -> tuple[Extraction, ...]
     Both orders are defensible and this one is checkable: a keyword added before the
     rewrite would be a sibling the match reads as an annotation, so the entry that asked for
     it would silently decide whether its own site still matched an extraction.
+
+    **A DOCUMENT THE PATCH DOES NOT REWRITE KEEPS THE PUBLISHED BYTES, and the write is
+    skipped rather than made identical.**  ``copytree`` above has already put the published
+    file there, so a document the rewrite and the additions both leave alone is already
+    correct on disk and re-serialising it can only change it.  Measured over the BUILD's
+    1,625 files before this line existed: 571 identical (``bundled/`` and ``mcp/``, which
+    this loop never visits), **854 differing by a trailing newline alone** -- re-serialised,
+    semantically untouched -- and 200 differing in content.
+
+    **AND THE TRAILING NEWLINE WAS NOT COSMETIC**, which is the whole reason this is a
+    decision and not a tidy-up.  ``bundle.source_identities`` digests a document's own RAW
+    BYTES and its reference closure's, so each of those 854 moved its own key and dragged
+    every referrer's with it: source identity moved for 1,054 of 1,054 documents, every
+    accepts-corpus entry in the repository missed, and the whole graded population drew cold
+    -- for one byte of whitespace in documents the patch says nothing about.  With the write
+    skipped the moved set is 434 of 1,054 and 873 of 2,598 graded pairs keep their committed
+    floor entry.
+
+    It is the class ``docs/plan/rebuild-plan.md`` §9 already names -- *"I re-serialised
+    brand.json with json.dumps to insert one key"* -- arriving inside the build instead of
+    inside a review: **edit, or copy, the text; never round-trip the parsed object for its
+    own sake.**  The gate is
+    ``tests/test_patch_8525.py::test_a_document_the_patch_leaves_alone_keeps_the_published_bytes``,
+    which equates the set that moved by BYTES with the set that moved by CONTENT --
+    ``test_the_measurement_8525_argues_from_is_reproducible`` compares parsed objects and is
+    blind to this by construction.
     """
     extractions = load(patch_set, published)
     grown = additions(patch_set, published)
@@ -468,10 +494,13 @@ def apply(published: Path, patch_set: Path, out: Path) -> tuple[Extraction, ...]
         shutil.rmtree(out)
     shutil.copytree(published, out)
     for document in bundle.portable(published):
-        doc = rewritten(document, bundle.read(published, document), extractions)
+        before = bundle.read(published, document)
+        doc = rewritten(document, before, extractions)
         for grows in grown:
             if grows.document == document:
                 doc = added_at(doc, grows.pointer, grows.keyword, grows.value)
+        if doc == before:
+            continue
         (out / document).write_text(json.dumps(doc, indent=2) + "\n")
     for held in extractions:
         destination = out / held.document
