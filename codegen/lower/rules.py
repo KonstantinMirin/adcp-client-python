@@ -1001,16 +1001,39 @@ def _complement(
     read = _clauses(inner, root)
     if read is None or len(read) != 1:
         return None
-    key, _, allowed, forbidden = read[0]
+    key, present, allowed, forbidden = read[0]
     if forbidden is not None:
         # The inner condition is itself complemented, so its negation is a POSITIVE value
         # set -- but only where the inner states nothing else about the key, and a clause
         # carrying both sets says more than one De Morgan step can undo.  Left to declare
         # rather than guessed at: no node of this bundle reaches it.
         return None
-    if allowed is None:
-        return [(key, False, None, None)]
-    return [(key, None, None, allowed)]
+    # **THE NEGATION IS TAKEN OF THE PRESENCE STATE THE INNER CLAUSE CARRIES, AND THE
+    # INNER MAY NOW CARRY THE IMMATERIAL ONE.**  :func:`_clauses` reads a condition
+    # stating ``properties`` and no ``required`` as an IMMATERIAL clause, so the three
+    # inner states have three different negations and a reading that assumed ``present``
+    # was ``True`` would state the wrong one of them:
+    #
+    # * ``present=True``, no value set -- *k is present* -> *k is absent*;
+    # * ``present=True`` with a value set -- *k is present AND in A* -> *k is absent OR
+    #   not in A*, which is the immaterial clause with ``A`` forbidden;
+    # * ``present=None`` with a value set -- *k is absent OR in A* -> *k is present AND
+    #   not in A*, which is the PRESENT clause with ``A`` forbidden.
+    #
+    # The third is the one the three-state presence adds, and it is as exact as the other
+    # two.  Reading it as the second would have made the condition hold at the ABSENT
+    # instance, where the document's own negation does not -- a rule firing where the
+    # document's does not is the narrowing §2 forbids outright.
+    if present is True:
+        if allowed is None:
+            return [(key, False, None, None)]
+        return [(key, None, None, allowed)]
+    if present is None and allowed is not None:
+        return [(key, True, None, allowed)]
+    # ``present is False`` is a doubly-negated condition and an immaterial clause with no
+    # value set states nothing to negate.  Neither shape occurs in this bundle and neither
+    # is guessed at: the node declares.
+    return None
 
 
 def _clauses(
@@ -1018,11 +1041,35 @@ def _clauses(
 ) -> list[Clause] | None:
     """An ``if`` as ``(key, present, allowed values, forbidden values)`` clauses, or ``None``.
 
-    Every clause must be about a key the ``if`` also REQUIRES.  A ``properties`` entry
-    for a key the ``if`` does not require is satisfied by the key being ABSENT as well
-    as by its value matching, and a clause cannot say "absent or one of these" -- so
-    such an ``if`` reduces to nothing rather than to something stronger than the
-    document.
+    **A ``properties`` ENTRY FOR A KEY THE ``if`` DOES NOT REQUIRE IS ONE IMMATERIAL
+    CLAUSE, AND THIS IS §8 SENTENCE 3b's THREE-STATE PRESENCE READ IN THE POSITIVE
+    DIRECTION.**  What stood here said such an ``if`` "reduces to nothing rather than to
+    something stronger than the document", on the ground that *"a clause cannot say
+    'absent or one of these'"*.  **That was the two-state flag speaking, and it is exactly
+    the sentence 3b retires**: presence is three-state, and the IMMATERIAL state says
+    *absent, or present with its value in this set* -- which is draft-07's own reading of
+    a ``properties`` entry, because a ``properties`` entry constrains an instance only
+    where the key is there.
+
+    So the reduction reads the condition as draft-07 states it, in two parts:
+
+    * each name in ``required`` -- the key PRESENT, and its value in the set its
+      ``properties`` entry pins where it has one;
+    * each ``properties`` entry for a key ``required`` does NOT name -- the key
+      IMMATERIAL, its value in that set.
+
+    Measured over the 1,054 portable documents: **35 conditions of this bundle state a
+    ``properties`` entry and no ``required`` at all**, every one of them a single key
+    pinned to a ``const`` or an ``enum`` -- ``compliance/comply-test-controller-request.json``
+    states 25 of them on one ``scenario`` key -- and all 35 declared an approximation
+    under the old reading.  They lower exactly here and declare nothing.
+
+    **An immaterial clause whose value set cannot be read is still ``None`` for the whole
+    condition, and that direction is load-bearing.**  Dropping such a conjunct would leave
+    a ``when`` that holds MORE often than the document's condition, so the consequent would
+    be required of instances the document does not require it of -- a rule refusing what
+    the document admits, which is the one outcome §2 forbids outright.  The 19 ``contains``
+    conditions and the 11 nested-object ones are declined here for that reason and declare.
 
     **A condition that is exactly a ``not`` is read by :func:`_complement`** (§8's
     sentence 3b), which takes the negation of what this function reads of the inner
@@ -1030,6 +1077,14 @@ def _clauses(
     annotation beside the ``not`` does not take the arm: a key that annotates without
     constraining is not part of what a rule TESTS, which is the position this module
     reads everything at.
+
+    **A ``not`` over a ``const`` or an ``enum`` AT A PROPERTY DECLARATION is the value
+    set's complement read one level down** (:func:`_excluded`), and it is the same
+    sentence as :func:`_complement`'s asked of one clause instead of the whole condition:
+    ``properties: {k: {not: {const: v}}}`` beside ``required: [k]`` is *k present AND k is
+    not v*, which is the key, presence REQUIRED, ``v`` forbidden.
+    ``media-buy/get-products-response.json#/allOf/2`` is the one site the bundle states it
+    at and it declared until this reading.
 
     **The condition and each property declaration inside it are read THROUGH the record's
     own storage** (:func:`through_the_storage`, §8's sentence 3a).  Both hops are needed
@@ -1047,21 +1102,42 @@ def _clauses(
         return _complement(sub["not"], root)
     if sub.get("type") not in (None, "object"):
         return None
-    if not keys <= {"required", "properties", "type"} or not isinstance(sub.get("required"), list):
+    if not keys <= {"required", "properties", "type"}:
         return None
-    required = [n for n in sub["required"] if isinstance(n, str)]
+    stated = sub.get("required")
+    if stated is None:
+        stated = []  # a condition of ``properties`` alone: every clause is IMMATERIAL
+    elif not isinstance(stated, list):
+        return None
+    required = [n for n in stated if isinstance(n, str)]
     properties = sub.get("properties") or {}
-    if not isinstance(properties, dict) or not set(properties) <= set(required):
+    if not isinstance(properties, dict):
         return None
+    # The required names in the document's own order, then the ``properties`` entries the
+    # condition states for keys it does not require, in the document's own order.  A
+    # function of the document's CONTENT and not of a set's iteration (P7), and the two
+    # groups are disjoint by construction.
+    order: list[tuple[str, bool | None]] = [(name, True) for name in required]
+    order += [(name, None) for name in properties if name not in required]
     out: list[Clause] = []
-    for name in required:
+    for name, present in order:
         declaration = through_the_storage(properties.get(name), root)
-        allowed = None
+        allowed: tuple[Any, ...] | None = None
+        forbidden: tuple[Any, ...] | None = None
         if isinstance(declaration, dict):
             allowed = _values(declaration)
             if allowed is None:
+                forbidden = _excluded(declaration, root)
+            if allowed is None and forbidden is None:
                 return None
-        out.append((name, True, allowed, None))
+        elif present is None:
+            # A ``properties`` entry that is not a declaration -- a boolean schema, or a
+            # reference the storage does not resolve.  The key is required by nothing, so
+            # there is no presence fact to fall back on and the conjunct would be dropped
+            # whole: the condition declares rather than hold more often than the
+            # document's.
+            return None
+        out.append((name, present, allowed, forbidden))
     return out or None
 
 
@@ -1080,6 +1156,32 @@ def _values(sub: dict) -> tuple[Any, ...] | None:
     if "enum" in keys and keys <= {"enum", "type"} and isinstance(sub["enum"], list):
         return tuple(sub["enum"]) or None
     return None
+
+
+def _excluded(sub: dict, root: Mapping[str, Any] | None = None) -> tuple[Any, ...] | None:
+    """The values a property declaration FORBIDS, as a tuple, or ``None``.
+
+    :func:`_values`' complement, one level down, and §8 sentence 3b's own sentence asked
+    of a CLAUSE rather than of a whole condition: *"the value set gains its complement"*.
+    ``{"not": {"const": v}}`` admits every value but ``v``, so the clause that reads it
+    carries ``v`` FORBIDDEN -- and :class:`adcp.types._runtime.Match` composes that with
+    whichever presence state the condition states for the key, which is what makes this
+    one function rather than a second reduction per state.
+
+    **The keys must be EXACTLY ``not``, and that is the whole gate.**  A ``type`` beside
+    the ``not`` is a second constraint the clause would not carry, and a clause stating
+    less than the document's condition HOLDS MORE OFTEN -- so the rule would fire where
+    the document's conditional does not and refuse a payload the document admits.
+    :func:`_values` may admit a ``type`` beside a ``const`` because the ``const`` already
+    decides the value; a ``not`` decides nothing about the values it leaves.
+
+    Read through the record's own storage for :func:`_clauses`' reason: the negated node
+    is a subtree and the record stores each distinct subtree once.
+    """
+    if _keys(sub) != {"not"}:
+        return None
+    inner = through_the_storage(sub["not"], root)
+    return _values(inner) if isinstance(inner, dict) else None
 
 
 def _branch(sub: Any) -> tuple[tuple[str, ...], tuple[str, ...]] | None:

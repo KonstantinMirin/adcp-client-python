@@ -6,8 +6,8 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
-from adcp.types._runtime import ForbiddenGroups, RequiredGroups, Rule
+from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, RequiredGroups, Rule
 from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, IntMin1
 
 from ..core.context import ContextObject
@@ -60,12 +60,10 @@ class PreviewCreativeRequest(AdCPVersionEnvelope):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/preview-creative-request.json', pointer='#')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
+        ConditionalRequired((Match('request_type', None, ('batch',)),), require=('requests',), forbid=()),
+        ConditionalRequired((Match('request_type', None, ('variant',)),), require=('variant_id',), forbid=()),
         ForbiddenGroups((('creative_manifest', 'creative_id'),)),
         ForbiddenGroups((('target_capability_id', 'format_id'),)),
-    )
-    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='creative/preview-creative-request.json', pointer='#/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'request_type': {'const': 'batch'}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
-        Approximation(document='creative/preview-creative-request.json', pointer='#/allOf/3', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'request_type': {'const': 'variant'}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     request_type: Annotated[RequestType, Field(description="Preview mode. 'single' previews one creative manifest. 'batch' previews multiple creatives in one call. 'variant' replays a post-flight variant by ID.")]
     creative_manifest: Annotated[CreativeManifest | None, Field(description='Complete creative manifest with all required assets for the format. In single mode, provide exactly one of creative_manifest or creative_id. Also accepted per item in batch mode.')] = None

@@ -148,6 +148,36 @@ def _carried() -> dict[tuple[str, str, str], Any]:
 #: cells ``tests/test_cells.py`` excluded by a derived predicate, and that predicate is
 #: deleted in the same commit.
 #:
+#: **RE-PINNED AT ``sdk/cond``: 128 IN 63 -> 92 IN 58, AND THE SENTENCE ABOVE IS WHAT
+#: MOVED.**  "§8 sentence 3b's complement does not reach one that states no ``required``"
+#: was read off the lowering and not off the derivation, and the derivation says the
+#: opposite: 3b makes presence THREE-STATE, and *immaterial* is precisely draft-07's own
+#: reading of a ``properties`` entry for a key nothing requires -- *absent, or present
+#: with its value in this set*.  ``lower.rules._clauses`` read that state only in the
+#: NEGATIVE direction (``_complement``, where the De Morgan step produced it) and
+#: declined to mint it in the positive one, so 35 conditions of this bundle declared a
+#: fact the vocabulary could already carry.
+#:
+#: **36 LEFT AND NOTHING ARRIVED**, measured over the same 1,054 portable documents, in
+#: two shapes and both of them one clause about one key:
+#:
+#: * **35 conditions state ``properties`` and no ``required``** -- 25 of them one
+#:   ``scenario`` key under ``compliance/comply-test-controller-request.json``, the rest
+#:   at ``core/delivery-metric-aggregate.json``, ``core/reporting-delivery-config-state.json``,
+#:   ``creative/preview-creative-request.json``,
+#:   ``compliance/comply-test-controller-response.json`` and
+#:   ``aao/agent-publishers.json`` -- and each lowers to one IMMATERIAL clause carrying
+#:   the ``const`` or ``enum`` the entry pins.
+#: * **one states a ``not`` over a ``const`` at a property declaration** --
+#:   ``media-buy/get-products-response.json#/allOf/2``, *``status`` present and not
+#:   ``"rejected"``* -- which is the key, presence REQUIRED and that value FORBIDDEN:
+#:   3b's complement read one level down, at a clause instead of at a whole condition
+#:   (``lower.rules._excluded``).
+#:
+#: Nothing stopped being declared that was not lowered in its place, and no cell moved:
+#: ``./check``'s other figures are unchanged (``emitted 1054 / refused 0``, ``primary 0,
+#: chained 0``) and the 2,757 pairs gained, lost and changed no verdict.
+#:
 #: **THE 141 THAT LEFT ARE NOT A SET THIS FILE SHOULD HAVE HELD**, which is why this is a
 #: re-pin and not a loosening: every one of them was a second entry for a fact already here,
 #: at a pointer a REFERRING document spells for a node another document states.  §3a settled
@@ -184,11 +214,16 @@ def _carried() -> dict[tuple[str, str, str], Any]:
 #:   is a plain keyword rather than a structural answer:
 #:   ``compliance/comply-test-controller-response.json`` at
 #:   ``#/oneOf/6/properties/recorded_calls/items/properties/payload``.
-#: * ``if`` at the KEYWORD rung -- **89 sites in 33 documents**, the condition §5's
-#:   ``if`` row cannot reduce to a clause list and §8 sentence 3b's complement cannot
-#:   reach: it states no ``required``, and a clause tests a key that is PRESENT.
+#: * ``if`` at the KEYWORD rung -- **53 sites in 26 documents**, the condition §5's ``if``
+#:   row cannot reduce to a clause list.  **FIVE CAUSES, and each is named because §8
+#:   requires a declaration that remains to say why the complement does not cover it.**
+#:   Every one of them fails the same way for the same reason: a conjunct of the
+#:   document's condition that the clause list cannot carry has to be DROPPED, a ``when``
+#:   short of a conjunct holds MORE often than the condition it came from, and a rule
+#:   firing where the document's conditional does not refuses a payload the document
+#:   admits -- the one direction §2 forbids outright.  So the whole condition declines:
 #:
-#: **RE-PINNED AT ``sdk/collapse``: 128 IN 63 -> 126 IN 62, AND IT IS §3a's OWN PREDICTED
+#: **RE-PINNED TWICE: 128 IN 63 -> 126 IN 62 AT ``sdk/collapse``, THEN -> 90 IN 57 AS 36 CONDITIONS BECAME RULES, AND IT IS §3a's OWN PREDICTED
 #: DENOMINATOR AND NOT PROGRESS.**  §3a: "An approximation is counted today at the
 #: declaration SITE, because each position derives its own type and a dropped fact is
 #: dropped at that position.  **Under a catalogue the denominator becomes the ENTRY** ...
@@ -214,46 +249,66 @@ def _carried() -> dict[tuple[str, str, str], Any]:
 #: set at 2, one keyword at 1.  The pointer count and
 #: the cause count are different numbers over different denominators and the report never
 #: adds them.
+#:
+#:   * **22 test a ``contains``** -- *the array at this key has an element equal to v* --
+#:     19 of them a bare ``contains`` and 3 beside a ``type`` (``core/signal-definition.json``,
+#:     ``governance/sync-plans-request.json`` twice).  One key, and the complement does
+#:     not reach it because the predicate is EXISTENTIAL OVER A COLLECTION and not a
+#:     membership of the key's own value in a set: ``Match`` compares ``values[key]`` to a
+#:     value set, and no complement of a value set says "some element of this array".
+#:     A third clause state would not help; what this needs is a clause whose predicate is
+#:     a quantifier, which §8 does not derive and no row has written.
+#:   * **18 test a NESTED OBJECT** -- 11 a bare ``required`` inside the entry
+#:     (``core/canonical-product.json``, ``core/product.json`` five times,
+#:     ``protocol/get-adcp-capabilities-response.json`` four), 7 a ``properties`` with a
+#:     ``const`` inside it (``media-buy/get-reporting-status-response.json``,
+#:     ``protocol/get-adcp-capabilities-response.json`` five, ``core/signal-listing.json``).
+#:     One key again, and again not a value set: the predicate is about the keys and
+#:     values of the object the key HOLDS, which is a clause list one level down.  The
+#:     vocabulary has no nesting -- ``Match`` reads a key of the instance and compares a
+#:     scalar -- and a complement over the outer key's whole value would be a different
+#:     statement.
+#:   * **10 state an ``anyOf``** -- ``core/package.json``, ``core/product.json``,
+#:     ``formats/canonical/native_in_feed.json``, ``governance/check-governance-request.json``
+#:     twice, ``media-buy/build-creative-request.json``,
+#:     ``media-buy/get-media-buy-delivery-response.json``,
+#:     ``media-buy/get-media-buys-response.json``, ``media-buy/get-products-request.json``,
+#:     ``signals/get-signals-request.json``.  **This is the residue §8 sentence 1 names by
+#:     hand and the vocabulary is RIGHT not to express**: *``signal_targeting_options``
+#:     required OR ``signal_targeting_rules`` required* is a disjunction ACROSS KEYS, a
+#:     rule's ``when`` is a conjunction, and the per-key complement states *both absent*
+#:     -- strictly stronger than the document.  "The test is whether the disjunction is
+#:     inside one key's predicate or across several", and here it is across.
+#:   * **2 test a NUMERIC BOUND** -- ``core/reporting-obligation.json#/allOf/0`` and
+#:     ``core/reporting-reliability-statistics.json#/allOf/0``, each ``{"minimum": 1}`` at
+#:     the entry.  One key, and the complement is of a FINITE SET of named values; a bound
+#:     names no values to complement.  (``intersect.declaring`` reports no declaring
+#:     keyword at RULE for these, which is a second reading worth its own row -- the
+#:     reduction does not rely on it: a declaration it cannot read declines either way.)
+#:   * **1 states ``properties`` and no ``required`` and is still unreadable** --
+#:     ``core/demographic-targeting-resolution.json#/allOf/0``, whose single entry holds a
+#:     nested ``properties``/``required``.  It is the immaterial state's own residue: the
+#:     presence is expressible now and the VALUE predicate is the nested-object one above.
+#:
+#:   The ``else`` shape above is the sixth conditional cause and is NOT a condition the
+#:   complement could reach: all four of its conditions lower, and what declares is the
+#:   CONSEQUENT, a conditional nested in the ``else`` arm (``adcp-client-python-3bb``).
+#:
+#: **SEVEN CAUSES AT THE SHAPE LEVEL AND ELEVEN AT THE CAUSE LEVEL, NOT 92**, which is the
+#: reading ``codegen/dump_exemptions.py``'s own instrument records for the same shape: five
+#: conditional causes over 53 conditions, one derivation at 25 unions, one cell at 7
+#: containers, one conditional shape at 4 nodes, one discarded drop set at 2, one keyword
+#: at 1.  The pointer count and the cause count are different numbers over different
+#: denominators and the report never adds them.
 DECLARED_WIDENINGS = {
-    # if at KEYWORD: 89 sites in 33 documents
-    ('aao/agent-publishers.json', '#/definitions/PublisherEntry/allOf/0', 'if'),
+    # if at KEYWORD: 53 sites in 26 documents
     ('adagents.json', '#/oneOf/1/allOf/1', 'if'),
-    ('compliance/comply-test-controller-request.json', '#/allOf/10', 'if'),
-    ('compliance/comply-test-controller-request.json', '#/allOf/11', 'if'),
-    ('compliance/comply-test-controller-request.json', '#/allOf/12', 'if'),
-    ('compliance/comply-test-controller-request.json', '#/allOf/13', 'if'),
-    ('compliance/comply-test-controller-request.json', '#/allOf/14', 'if'),
-    ('compliance/comply-test-controller-request.json', '#/allOf/15', 'if'),
-    ('compliance/comply-test-controller-request.json', '#/allOf/16', 'if'),
-    ('compliance/comply-test-controller-request.json', '#/allOf/17', 'if'),
-    ('compliance/comply-test-controller-request.json', '#/allOf/18', 'if'),
-    ('compliance/comply-test-controller-request.json', '#/allOf/19', 'if'),
-    ('compliance/comply-test-controller-request.json', '#/allOf/2', 'if'),
-    ('compliance/comply-test-controller-request.json', '#/allOf/20', 'if'),
-    ('compliance/comply-test-controller-request.json', '#/allOf/21', 'if'),
-    ('compliance/comply-test-controller-request.json', '#/allOf/22', 'if'),
-    ('compliance/comply-test-controller-request.json', '#/allOf/23', 'if'),
-    ('compliance/comply-test-controller-request.json', '#/allOf/25', 'if'),
-    ('compliance/comply-test-controller-request.json', '#/allOf/26', 'if'),
-    ('compliance/comply-test-controller-request.json', '#/allOf/3', 'if'),
-    ('compliance/comply-test-controller-request.json', '#/allOf/4', 'if'),
-    ('compliance/comply-test-controller-request.json', '#/allOf/5', 'if'),
-    ('compliance/comply-test-controller-request.json', '#/allOf/6', 'if'),
-    ('compliance/comply-test-controller-request.json', '#/allOf/7', 'if'),
-    ('compliance/comply-test-controller-request.json', '#/allOf/8', 'if'),
-    ('compliance/comply-test-controller-request.json', '#/allOf/9', 'if'),
-    ('compliance/comply-test-controller-response.json', '#/oneOf/3/properties/forced/allOf/0', 'if'),
-    ('compliance/comply-test-controller-response.json', '#/oneOf/3/properties/forced/allOf/1', 'if'),
     ('core/agent-notification-config.json', '#', 'if'),
     ('core/attestation-capabilities.json', '#/allOf/0', 'if'),
     ('core/bidding-policy-capability.json', '#/definitions/policy_profile/allOf/0', 'if'),
     ('core/bidding-policy-capability.json', '#/definitions/policy_profile/allOf/1', 'if'),
     ('core/canonical-product.json', '#/allOf/0', 'if'),
     ('core/canonical-product.json', '#/allOf/1', 'if'),
-    ('core/delivery-metric-aggregate.json', '#/oneOf/0/allOf/0', 'if'),
-    ('core/delivery-metric-aggregate.json', '#/oneOf/0/allOf/1', 'if'),
-    ('core/delivery-metric-aggregate.json', '#/oneOf/0/allOf/2', 'if'),
-    ('core/delivery-metric-aggregate.json', '#/oneOf/0/allOf/3', 'if'),
     ('core/demographic-reporting-capability.json', '#/properties/age/allOf/0', 'if'),
     ('core/demographic-reporting-capability.json', '#/properties/age/allOf/1', 'if'),
     ('core/demographic-targeting-capability.json', '#/properties/age/allOf/0', 'if'),
@@ -273,15 +328,11 @@ DECLARED_WIDENINGS = {
     ('core/product.json', '#/allOf/9', 'if'),
     ('core/reporting-delivery-capabilities.json', '#/allOf/5', 'if'),
     ('core/reporting-delivery-capabilities.json', '#/allOf/6', 'if'),
-    ('core/reporting-delivery-config-state.json', '#/allOf/0', 'if'),
-    ('core/reporting-delivery-config-state.json', '#/allOf/2', 'if'),
     ('core/reporting-obligation.json', '#/allOf/0', 'if'),
     ('core/reporting-reliability-statistics.json', '#/allOf/0', 'if'),
     ('core/signal-definition.json', '#/allOf/4', 'if'),
     ('core/signal-listing.json', '#/allOf/0', 'if'),
     ('core/targeting-overlay-support.json', '#/definitions/daypartSupport/anyOf/1/allOf/0', 'if'),
-    ('creative/preview-creative-request.json', '#/allOf/2', 'if'),
-    ('creative/preview-creative-request.json', '#/allOf/3', 'if'),
     ('formats/canonical/native_in_feed.json', '#/allOf/2', 'if'),
     ('governance/check-governance-request.json', '#/allOf/10', 'if'),
     ('governance/check-governance-request.json', '#/allOf/14', 'if'),
@@ -291,7 +342,6 @@ DECLARED_WIDENINGS = {
     ('media-buy/get-media-buy-delivery-response.json', '#/allOf/3', 'if'),
     ('media-buy/get-media-buys-response.json', '#/properties/media_buys/items/properties/packages/items/allOf/4', 'if'),
     ('media-buy/get-products-request.json', '#/allOf/1', 'if'),
-    ('media-buy/get-products-response.json', '#/allOf/2', 'if'),
     ('media-buy/get-reporting-status-response.json', '#/allOf/6', 'if'),
     ('protocol/get-adcp-capabilities-response.json', '#/allOf/10', 'if'),
     ('protocol/get-adcp-capabilities-response.json', '#/allOf/15', 'if'),
@@ -539,6 +589,14 @@ def test_the_committed_trees_declarations_are_the_runs() -> None:
     **This is the figure that makes the two populations' disagreement actionable**, and
     nothing held it before: the artifact's own declarations were what the backlog was
     read against, so the gap was not a quantity anywhere.
+
+    **BOTH CEILINGS ARE 0 AT ``sdk/cond``, which is the first time either has been**, and
+    they are lowered rather than left at 58 and 45 for the reason ``nodeset.ratchet``'s own
+    docstring gives about a floor above the truth: it gets exempted later instead of acted
+    on.  The row that lowered them is the row that re-emitted the tree in the commit that
+    changed what the walk emits -- which is what the ``because`` clauses already said was
+    the only thing that could.  A lane that moves the walk and writes no tree now reddens
+    here by name, which is the whole point of holding this BY DIRECTION.
     """
     minted, carried = set(_minted()), set(_carried())
     claimed("sites a fresh run declares", minted)
@@ -546,14 +604,14 @@ def test_the_committed_trees_declarations_are_the_runs() -> None:
     ratchet(
         "declarations the committed tree carries and a fresh run does not",
         len(carried - minted),
-        at_most=58,
+        at_most=0,
         because="regenerating the tree (adcp-client-python-uqf) can only remove these; a "
         "rise means a row changed the walk and wrote no tree",
     )
     ratchet(
         "declarations a fresh run mints and the committed tree does not carry",
         len(minted - carried),
-        at_most=45,
+        at_most=0,
         because="the same row removes these; a rise means the walk moved further ahead of "
         "the artifact every pair in tests/test_emit.py is graded from",
     )
