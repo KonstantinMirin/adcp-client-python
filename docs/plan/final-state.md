@@ -222,6 +222,22 @@ by reading two class definitions side by side.
 **And the comparison is one-directional.** Every name upstream exposes gets a verdict; the reverse
 is not asked. **A smaller count on our side is the expected outcome and not a deficit.**
 
+**THE TARGET IS A NAME AT A CANONICAL MODULE, NEVER A SPELLING.** Upstream exposes one name at up
+to nine modules, and most of its public modules declare no `__all__` at all — so the set of
+spellings is several times the set of names. **Reproducing spellings would put one object at nine
+export paths and break reading 6 outright**, which is the back door this ordering exists to close:
+compatibility that reintroduces the duplication the rest of the project removed. So an alias layer
+targets the NAMES, at a declared set of modules, and a spelling upstream carries only because its
+own surface is undisciplined is answered by a verdict and not by a path.
+
+**AND THE SET THIS READING RANGES OVER IS THE DELIBERATE SURFACE.** A name reachable only because a
+module forgot to declare what it exports is not a name an application was invited to import, and
+treating it as one makes upstream's omission our obligation. Where the two sets differ, say so and
+state which one a figure is over — the undisciplined count is the larger and the less meaningful.
+
+**A NAME THAT RAISES ON UPSTREAM'S OWN WHEEL IS NOT A NAME WE OWE.** It is a finding about them,
+reported with the error, and it belongs in no bucket that implies work for us.
+
 **Decided by** installing the wheel into an environment that has never seen this repository and
 resolving every name in the cross-check's present, renamed and relocated sets — plus every absent
 name carrying a verdict that names a schema node or says there is none. A count of unmatched names
