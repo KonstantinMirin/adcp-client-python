@@ -1195,8 +1195,13 @@ def test_the_parser_is_the_only_entry_that_reads_a_raw_mapping() -> None:
         # the document ROOT, once per document (§5's one path)
         ("emit.py", "lower_document"),
         # the ROOT of every portable document of the BUNDLE, for the title §1's
-        # domain-scope collision rule needs (``adcp-client-python-82m.9``)
-        ("emit.py", "domain_roots"),
+        # domain-scope collision rule needs (``adcp-client-python-82m.9``) and §3a step
+        # 3's SUBJECTS beside it (``adcp-client-python-5tf``).  **The site MOVED and did
+        # not multiply**: ``domain_roots`` held this parse and now regroups
+        # ``rooted_subjects``' answer, because the two rules read the same symbol off the
+        # same root and a second parse would be a second reading for them to disagree
+        # through (``emit.rooted_subjects``, and ``lower/names.py``'s ``SUBJECT_SCOPE``).
+        ("emit.py", "rooted_subjects"),
         # a ``definitions`` entry at DEF, parsed when a ``$ref`` names it (§5)
         ("compiler.py", "decide"),
         # the MERGED declaration §2's intersection rule hands back (§6)
