@@ -7,9 +7,10 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import StrMinLen1, StrMinLen1MaxLen4096, SyncAccountsRequestIdempotencyKey
+from adcp.types.constraints import StrMinLen1, StrMinLen1MaxLen4096
 
 from ..core.context import ContextObject
+from ..core.idempotency_key import IdempotencyKey
 from ..core.opportunity_context import OpportunityContext
 from ..core.push_notification_config import PushNotificationConfig
 from ..core.version_envelope import AdcpMajorVersion, AdcpVersion, AdCPVersionEnvelope
@@ -40,7 +41,7 @@ class DeclineProposalsRequest(AdCPVersionEnvelope):
     context: ContextObject | None = None
     governance_context: StrMinLen1MaxLen4096 | None = None
     push_notification_config: DeclineProposalsRequestPushNotificationConfig | None = None
-    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Client-generated key required for retry-safe proposal decline.')]
+    idempotency_key: Annotated[IdempotencyKey, Field(description='Client-generated key required for retry-safe proposal decline.')]
     declines: Annotated[list[ProposalDecline], Field(description='Proposal declines to apply. proposal_id is the semantic uniqueness key and values MUST be unique even when two entries otherwise differ; implementations enforce this rule because JSON Schema uniqueItems only compares whole objects. Results preserve request order.', json_schema_extra={'uniqueItems': True}, max_length=25, min_length=1)]
     opportunity: Annotated[OpportunityContext | None, Field(description='Optional planning-cycle update. Every named proposal MUST belong to this opportunity_id. Sellers apply the update only when every result is declined; if any result is unable, the opportunity remains unchanged. Use status closed when these declines end the broader opportunity.')] = None
 

@@ -1477,27 +1477,48 @@ def shape_states(
             )
 
 
-def shape_ranked(position: Shaped, title: str | None) -> tuple[object, ...]:
+def shape_ranked(
+    position: Shaped, title: str | None, standing: Mapping[str, int] | None = None
+) -> tuple[object, ...]:
     """:attr:`ShapeEntry.at`'s order over the positions of one entry, best first.
 
-    :func:`ranked` is L0's and this is the same order: a root carrying the entry's own
-    title, then any position carrying it, then any root, then the bundle's own order.  §1
-    is what puts the roots first -- "every portable document contributes a symbol", so a
-    root cannot become a reference to another module's class and is the one position of its
-    group that MUST declare.
+    **A ROOT, then the STANDING ORDER, and a position inside a rule last.**  §1 is what puts
+    the roots first -- "every portable document contributes a symbol", so a root cannot
+    become a reference to another module's class and is the one position of its group that
+    MUST declare.  §3a is what puts the standing order next: "THE HOME IS THE GROUP'S
+    EARLIEST DOCUMENT IN THE DEPENDENCY ORDER THAT ALREADY EXISTS", so the arrow a
+    restatement adds runs backwards along a topological order of all the other arrows and
+    "a cycle is not avoided by care -- it is unrepresentable".  A position inside a rule
+    sorts last because the home is where the structure is DECLARED and a subschema inside a
+    rule declares nothing -- a home chosen there would leave the entry homeless.
 
-    ``title`` is ``None`` for a structure the bundle titles nowhere, and the order then
-    reads as :attr:`Entry.naming`'s own untitled arm does: every position's title equals
-    the entry's, so the first two terms separate nothing and what decides is a ROOT where
-    the group has one and the bundle's ORDER where it does not.  **A position INSIDE a
-    rule sorts last**, because the home is where the structure is DECLARED and a subschema
-    inside a rule declares nothing -- a home chosen there would leave the entry homeless.
+    **A ``title`` DOES NOT ENTER THIS ORDER, and separating the two questions is what the
+    first run of the override table paid for.**  :attr:`ShapeEntry.title` answers *what is
+    this entry CALLED* and :attr:`ShapeEntry.at` answers *which document may declare it*,
+    and a rule that let the first decide the second put the home wherever the bundle -- or
+    an override -- happened to write the word.  Measured the first time
+    ``patch.apply`` reached a compile path at all: the override table's one row titles
+    ``brand.json#/definitions/data_subject_contestation``, the titled position therefore
+    outranked every other, ``core/brand-ref.json`` came to import from ``brand.json``,
+    ``brand.json`` already referenced ``core/brand-ref.json``, and the run read **emitted
+    891 / refused 163** -- 2 primary on one reference cycle and 161 chained behind them.
+
+    That is exactly the failure §3a forbids a home rule to be capable of: "a rule whose
+    soundness has to be MEASURED for cycles is the wrong rule; the right one cannot produce
+    them."  The title-first order could, this one cannot, and the entry is named by its title
+    either way because the NAME is read off :attr:`ShapeEntry.title` and never off the home.
+
+    ``standing`` is ``emit.standing_order``'s and is handed IN (§3a: "a derived reading of
+    the bundle is an argument, not something a callee recomputes").  ``None`` is for a caller
+    comparing positions of ONE document, where the term separates nothing; the pointer below
+    it is then what decides.  ``title`` is unused and kept in the signature because every
+    caller holds one and a caller that stopped passing it would read as though the name had
+    stopped mattering.
     """
     return (
         position.declares_no_class,
-        not (position.is_a_root and position.title == title),
-        position.title != title,
         not position.is_a_root,
+        0 if standing is None else standing.get(position.document, len(standing)),
         position.document,
         position.pointer,
     )
@@ -1632,23 +1653,12 @@ def shape_declared_at(
     edges are not reference edges and do not run the reference graph's way, so an
     extension of the references alone has L0's arrows pointing against it.
     """
-    best = min(positions, key=lambda p: shape_ranked(p, title))
-    if (best.title == title and title is not None) or best.is_a_root:
-        return best
-
-    def already_beneath(position: Shaped) -> tuple[object, ...]:
-        # A position INSIDE a rule sorts last for :attr:`Stated.reached`'s own reason: a
-        # home that declares nothing leaves the entry with no class to reference.  A
-        # document the standing order does not name sorts after every one it does, which
-        # is what a document reaching nothing and reached by nothing is.
-        return (
-            position.declares_no_class,
-            standing.get(position.document, len(standing)),
-            position.document,
-            position.pointer,
-        )
-
-    return min(positions, key=already_beneath)
+    # **ONE ORDER AND NOT TWO ARMS**, which is :func:`shape_ranked`'s own correction: this
+    # function held a TITLED arm that fell through to the document's name and an untitled arm
+    # that ranked by the standing order, and a title therefore decided WHERE the entry was
+    # declared as well as what it was called.  §3a states one home rule and
+    # :func:`shape_ranked` is now it, so there is nothing left here to branch on.
+    return min(positions, key=lambda p: shape_ranked(p, title, standing))
 
 
 def collect_shapes(

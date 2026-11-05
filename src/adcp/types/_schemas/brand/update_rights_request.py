@@ -7,11 +7,12 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
-from adcp.types.constraints import GovernanceContext, IntMin1, SyncAccountsRequestIdempotencyKey
+from adcp.types.constraints import GovernanceContext, IntMin1
 
 from ..core.account_ref import AccountReference
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
+from ..core.idempotency_key import IdempotencyKey
 from ..core.push_notification_config import PushNotificationConfig
 from ..core.version_envelope import AdCPVersionEnvelope
 
@@ -32,7 +33,7 @@ class UpdateRightsRequest(AdCPVersionEnvelope):
     pricing_option_id: Annotated[str | None, Field(description="Switch to a different pricing option from the original get_rights offering. The new option must be compatible with the existing grant's uses and countries.")] = None
     paused: Annotated[bool | None, Field(description='Pause or resume the rights grant. When paused, generation credentials are suspended and creative delivery should stop. When resumed, credentials are re-activated.')] = None
     push_notification_config: Annotated[PushNotificationConfig | None, Field(description='Webhook for async update notifications if the update requires approval')] = None
-    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Client-generated idempotency key for safe retries. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.')]
+    idempotency_key: Annotated[IdempotencyKey, Field(description='Client-generated idempotency key for safe retries. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.')]
     context: ContextObject | None = None
     ext: ExtensionObject | None = None
 

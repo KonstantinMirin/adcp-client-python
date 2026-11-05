@@ -296,8 +296,10 @@
           },
           "properties": {
             "data_provider_domain": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
               "description": "Domain that publishes the signal definition in its adagents.json signals[].",
               "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+              "title": "Domain Name",
               "type": "string"
             },
             "scope": {
@@ -378,8 +380,10 @@
           "description": "Data-provider signal - references a signal from a data provider's published adagents.json signals[]. Buyers can verify authorization by checking the data provider's adagents.json.",
           "properties": {
             "data_provider_domain": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
               "description": "Domain of the data provider that owns this signal (e.g., 'pinnacle-data.example'). The signal definition is published at this domain's /.well-known/adagents.json",
               "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+              "title": "Domain Name",
               "type": "string"
             },
             "id": {
@@ -1401,7 +1405,10 @@
       ]
     },
     "Shared6": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "ISO 3166-1 alpha-2 country code. Extracted unchanged from the 65 sites that stated it inline; see adcontextprotocol/adcp#8525.",
       "pattern": "^[A-Z]{2}$",
+      "title": "Country Code",
       "type": "string"
     },
     "Shared7": {
@@ -1477,10 +1484,12 @@
       "$ref": "#/definitions/Shared0"
     },
     "idempotency_key": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "description": "Client-generated unique key for at-most-once execution. `plan_id` gives resource-level dedup per plan, but the sync envelope emits audit events and can trigger governance reapproval \u2014 this key prevents those side effects from firing twice on retry. MUST be unique per (seller, request) pair. Use a fresh UUID v4 for each request.",
       "maxLength": 255,
       "minLength": 16,
       "pattern": "^[A-Za-z0-9_.:-]{16,255}$",
+      "title": "Idempotency Key",
       "type": "string"
     },
     "plans": {
@@ -1917,9 +1926,11 @@
                                   "description": "Buyer's representation that this embedding can be verified by a governance agent on the seller's `creative_policy.accepted_verifiers` list. The `agent_url` MUST match (canonicalized) one of the seller's published `accepted_verifiers[].agent_url` entries; sellers reject `sync_creatives` submissions whose `verify_agent.agent_url` is off-list with `PROVENANCE_VERIFIER_NOT_ACCEPTED`. This is buyer-supplied evidence, not buyer-driven routing \u2014 the seller is the verifier-of-record and the seller controls which agent it actually calls (the seller MAY use a different on-list agent if it determines this is more appropriate; the seller does not call buyer-asserted endpoints outside its allowlist). MAY be omitted for self-verifiable embeddings (e.g., a C2PA text manifest with a public key the seller already trusts).",
                                   "properties": {
                                     "agent_url": {
+                                      "$schema": "http://json-schema.org/draft-07/schema#",
                                       "description": "URL of the governance agent the buyer represents was used to embed/verify this layer. MUST use the `https://` scheme and MUST appear in the seller's `creative_policy.accepted_verifiers[].agent_url` list (canonicalized per /docs/reference/url-canonicalization: lowercase scheme and host, strip default port, normalize path dot-segments). Sellers MUST NOT call this URL until the canonicalized match is confirmed.",
                                       "format": "uri",
                                       "pattern": "^https://",
+                                      "title": "HTTPS URL",
                                       "type": "string"
                                     },
                                     "feature_id": {
@@ -2061,9 +2072,11 @@
                                   "description": "Buyer's representation that this watermark can be detected by a governance agent on the seller's `creative_policy.accepted_verifiers` list. The `agent_url` MUST match (canonicalized) one of the seller's published `accepted_verifiers[].agent_url` entries; sellers reject `sync_creatives` submissions whose `verify_agent.agent_url` is off-list with `PROVENANCE_VERIFIER_NOT_ACCEPTED`. This is buyer-supplied evidence, not buyer-driven routing \u2014 the seller is the verifier-of-record and the seller controls which agent it actually calls (the seller MAY use a different on-list agent if it determines this is more appropriate; the seller does not call buyer-asserted endpoints outside its allowlist).",
                                   "properties": {
                                     "agent_url": {
+                                      "$schema": "http://json-schema.org/draft-07/schema#",
                                       "description": "URL of the governance agent the buyer represents was used to apply/detect this watermark. MUST use the `https://` scheme and MUST appear in the seller's `creative_policy.accepted_verifiers[].agent_url` list (canonicalized per /docs/reference/url-canonicalization: lowercase scheme and host, strip default port, normalize path dot-segments). Sellers MUST NOT call this URL until the canonicalized match is confirmed.",
                                       "format": "uri",
                                       "pattern": "^https://",
+                                      "title": "HTTPS URL",
                                       "type": "string"
                                     },
                                     "feature_id": {
@@ -2158,16 +2171,21 @@
                     "$ref": "#/definitions/Shared7"
                   },
                   "url": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "description": "A URL whose scheme is https. Extracted unchanged from the 46 sites that stated it inline; see adcontextprotocol/adcp#8525. This is the shape adcontextprotocol/adcp#8398 asks the other seven uri patterns to reduce to.",
                     "format": "uri",
                     "pattern": "^https://",
+                    "title": "HTTPS URL",
                     "type": "string"
                   }
                 },
                 "type": "object"
               },
               "domain": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
                 "description": "Domain where /.well-known/brand.json is hosted, or the brand's operating domain",
                 "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                "title": "Domain Name",
                 "type": "string"
               },
               "industries": {

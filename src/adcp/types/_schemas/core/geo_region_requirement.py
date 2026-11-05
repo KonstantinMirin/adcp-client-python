@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem
+from adcp.types.constraints import StrCountryCode
 
 from .geo_region_support import ObjAllValues, ObjValues
 
@@ -19,7 +19,7 @@ class GeographicRegionRequirement(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/geo-region-requirement.json', pointer='#')
-    countries: Annotated[dict[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, ObjAllValues | ObjValues], Field(description='Required ISO subdivision support keyed by ISO 3166-1 alpha-2 country.', min_length=1)]
+    countries: Annotated[dict[StrCountryCode, ObjAllValues | ObjValues], Field(description='Required ISO subdivision support keyed by ISO 3166-1 alpha-2 country.', min_length=1)]
 
 
 __all__ = ["GeographicRegionRequirement"]

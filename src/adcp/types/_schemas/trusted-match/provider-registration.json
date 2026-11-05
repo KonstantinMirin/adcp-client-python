@@ -43,7 +43,10 @@
     "countries": {
       "description": "ISO 3166-1 alpha-2 country codes this provider serves. The router filters Identity Match providers by the request's country field. MUST be present and non-empty when identity_match is true.",
       "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "ISO 3166-1 alpha-2 country code. Extracted unchanged from the 65 sites that stated it inline; see adcontextprotocol/adcp#8525.",
         "pattern": "^[A-Z]{2}$",
+        "title": "Country Code",
         "type": "string"
       },
       "minItems": 1,

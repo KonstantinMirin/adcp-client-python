@@ -12,10 +12,10 @@ from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
     IntMin1,
+    StrIdempotencyKey,
     StrMinLen1,
     StrMinLen1MaxLen128,
     StrMinLen1MaxLen255,
-    SyncAccountsRequestIdempotencyKey,
 )
 
 from ..enums.reporting_finality import ReportingFinality
@@ -85,7 +85,7 @@ class ReportingObligation(AdCPBaseModel):
     production_status: Annotated[ProductionStatus, Field(description='Whether any revision has been produced for this obligation. published includes zero-row revisions.')]
     revision_count: Annotated[NonNegativeInt, Field(description='Number of revision records for this obligation in the consistent ledger snapshot.')]
     consumer_status_count: Annotated[NonNegativeInt | None, Field(description='Complete number of immutable authenticated consumer status statements associated with this obligation in the ledger snapshot, whether originally joined by reporting_obligation_id or by the exact configuration-generation, report-definition, and period key before the obligation existed. Core status-sync history is counted independently from Reconciled Billing receipts.')] = None
-    current_consumer_status_id: Annotated[SyncAccountsRequestIdempotencyKey | None, Field(description='Current unsuperseded consumer status statement associated with this obligation by seller ID or its exact logical period key. Omitted when consumer_status_count is zero.')] = None
+    current_consumer_status_id: Annotated[StrIdempotencyKey | None, Field(description='Current unsuperseded consumer status statement associated with this obligation by seller ID or its exact logical period key. Omitted when consumer_status_count is zero.')] = None
     adjustment_count: Annotated[NonNegativeInt | None, Field(description='Number of immutable post-official reporting adjustment records for this obligation in the consistent ledger snapshot.')] = None
     materialization_count: Annotated[NonNegativeInt | None, Field(description="Number of materialization records for this obligation's revisions in the consistent ledger snapshot. Present iff the obligation is managed-delivery (destination_ref present).")] = None
     successful_materialization_count: Annotated[NonNegativeInt | None, Field(description='Number of available/delivered verified materializations in the consistent ledger snapshot. Present iff the obligation is managed-delivery (destination_ref present).')] = None

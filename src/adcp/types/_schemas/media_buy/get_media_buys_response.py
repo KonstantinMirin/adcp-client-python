@@ -10,7 +10,6 @@ from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Dependencies, ForbiddenGroups, Match, Rule, UniqueItems
 from adcp.types.constraints import (
     CanonicalProposalTermsDigest,
-    GetAccountFinancialsResponseSuccessCurrency,
     IntMin1,
     MediaBuyName,
     StrMaxLen500,
@@ -27,6 +26,7 @@ from ..core.canonical_media_buy_action import CanonicalMediaBuyAction
 from ..core.canonical_proposal import CanonicalProposal
 from ..core.context import ContextObject
 from ..core.creative_approval_scope import ScopedCreativeApproval
+from ..core.currency_code import CurrencyCode
 from ..core.error import Error
 from ..core.ext import ExtensionObject
 from ..core.format_id import FormatReferenceStructuredObject
@@ -147,7 +147,7 @@ class Snapshot(AdCPBaseModel):
     staleness_seconds: Annotated[NonNegativeInt, Field(description='Maximum age of this data in seconds. For example, 900 means the data may be up to 15 minutes old. Use this to interpret zero delivery: a value of 900 means zero impressions is likely real; a value of 14400 means reporting may still be catching up.')]
     impressions: Annotated[NonNegativeFloat, Field(description='Total impressions delivered since package start')]
     spend: Annotated[NonNegativeFloat, Field(description='Total spend since package start, denominated in snapshot.currency when present, otherwise package.currency or media_buy.currency')]
-    currency: Annotated[GetAccountFinancialsResponseSuccessCurrency | None, Field(description='ISO 4217 currency code for spend in this snapshot. Optional when unchanged from package.currency or media_buy.currency.')] = None
+    currency: Annotated[CurrencyCode | None, Field(description='ISO 4217 currency code for spend in this snapshot. Optional when unchanged from package.currency or media_buy.currency.')] = None
     clicks: Annotated[NonNegativeFloat | None, Field(description='Total clicks since package start (when available)')] = None
     pacing_index: Annotated[NonNegativeFloat | None, Field(description='Current delivery pace relative to expected (1.0 = on track, <1.0 = behind, >1.0 = ahead). Absent when pacing cannot be determined.')] = None
     delivery_status: Annotated[DeliveryStatus | None, Field(description="Operational delivery state of this package. 'not_delivering' means the package is within its scheduled flight but has delivered zero impressions for at least one full staleness cycle — the signal for automated price adjustments or buyer alerts. Implementers must not return 'not_delivering' until at least staleness_seconds have elapsed since package activation.")] = None
@@ -199,7 +199,7 @@ class PackagesItem(IndicatorBearingResourceState):
     budget: Annotated[NonNegativeFloat | None, Field(description='Hard lifetime package spend cap denominated in media_buy.currency. In seller-optimized mode this is not a current allocation.')] = None
     min_spend_target: Annotated[NonNegativeFloat | None, Field(description='Accepted soft lifetime spend target for this package under seller-optimized allocation.')] = None
     daily_budget_cap: Annotated[NonNegativeFloat | None, Field(description='Current hard package spend ceiling per shared media-buy cap day, denominated in media_buy.currency. It is a subordinate ceiling, not a reserved allocation; media_buy.budget_cap_timezone defines the day boundary.')] = None
-    currency: Annotated[GetAccountFinancialsResponseSuccessCurrency | None, Field(description='Legacy/readback package denomination for buys created outside the canonical 3.2 path. For AdCP-authored media buys this MUST equal media_buy.currency; canonical package budget and BiddingPolicy values always use media_buy.currency. Snapshot currency may still identify externally reported spend denomination.')] = None
+    currency: Annotated[CurrencyCode | None, Field(description='Legacy/readback package denomination for buys created outside the canonical 3.2 path. For AdCP-authored media buys this MUST equal media_buy.currency; canonical package budget and BiddingPolicy values always use media_buy.currency. Snapshot currency may still identify externally reported spend denomination.')] = None
     bid_price: Annotated[NonNegativeFloat | None, Field(description='DEPRECATED legacy bid representation. 3.2 sellers SHOULD normalize and echo package.bidding instead.')] = None
     bidding: Annotated[PackagesItemBidding | None, Field(description='Package-authored bidding override. `{automatic:true}` explicitly overrides media_buy.bidding with provider automatic delivery. Omitted when this package inherits; sellers MUST NOT copy an inherited block here. Monetary fields use media_buy.currency.')] = None
     optimization_goals: Annotated[list[OptimizationGoal] | None, Field(description='Current package objective functions. Currency-bearing execution controls are returned separately in package.bidding or inherited from media_buy.bidding.', min_length=1)] = None
@@ -282,7 +282,7 @@ class MediaBuysItem(IndicatorBearingResourceState):
     health: Annotated[MediaBuyHealth | None, Field(default_factory=lambda: TypeAdapter(MediaBuyHealth).validate_python('ok'), description='Dependency health of the media buy, orthogonal to `status`. `ok` (default) when no upstream resource that this buy depends on is in an offline state. `impaired` when at least one such resource (audience, creative, catalog_item, event_source, property) is offline and affects delivery for one or more packages — `impairments[]` MUST be non-empty in that case. On terminal-status buys, the seller MAY leave this field in whatever state held at the terminal transition. See lifecycle.mdx § Compliance and the impairment.coherence assertion.', json_schema_extra={'default': 'ok'})]
     impairments: Annotated[list[Impairment] | None, Field(description='Open impairments — upstream dependency state changes that affect delivery for at least one package on this buy. Empty when `health` is `ok`; non-empty iff `health` is `impaired` (health-iff rule on non-terminal buys). Sellers MUST add an entry on the next read after a referenced resource transitions to an offline state, and MUST remove the entry when the resource returns to a serviceable state or stops being a dependency (e.g., via assignment swap via update_media_buy). Staleness budget: the snapshot MUST reflect the impairment within 5 minutes of `impairment.observed_at` regardless of buyer poll cadence — sellers cannot rely on rare buyer polls to defer write propagation. See impairment.coherence assertion for the cross-resource invariant.')] = None
     rejection_reason: Annotated[str | None, Field(description="Reason provided by the seller when status is 'rejected'. Present only when status is 'rejected'.")] = None
-    currency: Annotated[GetAccountFinancialsResponseSuccessCurrency, Field(description='Single ISO 4217 denomination for total_budget, package budget constraints, and canonical BiddingPolicy monetary fields. Every selected pricing option on an AdCP-authored media buy MUST declare this currency. Legacy or externally-created mixed-currency buys must not expose canonical bidding until normalized or split.')]
+    currency: Annotated[CurrencyCode, Field(description='Single ISO 4217 denomination for total_budget, package budget constraints, and canonical BiddingPolicy monetary fields. Every selected pricing option on an AdCP-authored media buy MUST declare this currency. Legacy or externally-created mixed-currency buys must not expose canonical bidding until normalized or split.')]
     total_budget: Annotated[NonNegativeFloat, Field(description='Hard aggregate lifetime budget, denominated in media_buy.currency')]
     daily_budget_cap: Annotated[NonNegativeFloat | None, Field(description='Current hard aggregate spend ceiling per calendar day, denominated in media_buy.currency. It bounds total spend without allocating or reserving package spend.')] = None
     frequency_cap: Annotated[MediaBuyFrequencyCap | None, Field(description='Current hard MediaBuy-level cap. Sellers MUST echo it whenever set, separately from package targeting-overlay caps.')] = None

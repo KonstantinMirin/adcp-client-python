@@ -144,8 +144,10 @@
       "type": "array"
     },
     "Shared2": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "description": "ISO 4217 currency code. For a source declaring value_currencies, monetary records MUST carry a currency from that list.",
       "pattern": "^[A-Z]{3}$",
+      "title": "Currency Code",
       "type": "string"
     },
     "Shared3": {

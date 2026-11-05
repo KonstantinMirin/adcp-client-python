@@ -6,9 +6,9 @@ from typing import Annotated, ClassVar
 from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import SyncAccountsRequestIdempotencyKey
 
 from ..core.ext import ExtensionObject
+from ..core.idempotency_key import IdempotencyKey
 from .artifact import Artifact
 
 
@@ -38,7 +38,7 @@ class ArtifactWebhookPayload(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/artifact-webhook-payload.json', pointer='#')
-    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Sender-generated key stable across retries of the same webhook event. Sales agents MUST generate a cryptographically random value (UUID v4 recommended) per distinct emission of a batch and reuse the same key on every retry. Recipients MUST dedupe by this key, scoped to the authenticated sender identity (HMAC secret or Bearer credential) — keys from different sales agents are independent. Distinct from `batch_id`, which identifies the logical batch: `idempotency_key` identifies this specific emission event, so a re-emission of the same `batch_id` (e.g., after a correction) is a different event and MUST carry a fresh `idempotency_key`.')]
+    idempotency_key: Annotated[IdempotencyKey, Field(description='Sender-generated key stable across retries of the same webhook event. Sales agents MUST generate a cryptographically random value (UUID v4 recommended) per distinct emission of a batch and reuse the same key on every retry. Recipients MUST dedupe by this key, scoped to the authenticated sender identity (HMAC secret or Bearer credential) — keys from different sales agents are independent. Distinct from `batch_id`, which identifies the logical batch: `idempotency_key` identifies this specific emission event, so a re-emission of the same `batch_id` (e.g., after a correction) is a different event and MUST carry a fresh `idempotency_key`.')]
     media_buy_id: Annotated[str, Field(description='Media buy identifier these artifacts belong to')]
     batch_id: Annotated[str, Field(description='Unique identifier for this batch of artifacts. Use for deduplication and acknowledgment.')]
     timestamp: Annotated[AwareDatetime, Field(description='When this batch was generated (ISO 8601)')]

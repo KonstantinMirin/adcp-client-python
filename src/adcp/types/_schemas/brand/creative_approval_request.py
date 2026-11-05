@@ -6,11 +6,12 @@ from typing import Annotated, Any, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
-from adcp.types.constraints import HttpUrl, SyncAccountsRequestIdempotencyKey
+from adcp.types.constraints import HttpUrl
 
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
 from ..core.format_id import FormatReferenceStructuredObject
+from ..core.idempotency_key import IdempotencyKey
 from ..core.version_envelope import AdCPVersionEnvelope
 
 
@@ -28,7 +29,7 @@ class CreativeApprovalRequest(AdCPVersionEnvelope):
     creative_format: Annotated[FormatReferenceStructuredObject | None, Field(description='Format of the creative being submitted')] = None
     description: Annotated[str | None, Field(description='Description of the creative for reviewer context')] = None
     metadata: Annotated[dict[str, Any] | None, Field(description='Additional creative metadata (duration, dimensions, target audience, etc.)')] = None
-    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Client-generated key for safe retries. Resubmitting with the same key returns the original response. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.')]
+    idempotency_key: Annotated[IdempotencyKey, Field(description='Client-generated key for safe retries. Resubmitting with the same key returns the original response. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.')]
     context: ContextObject | None = None
     ext: ExtensionObject | None = None
 

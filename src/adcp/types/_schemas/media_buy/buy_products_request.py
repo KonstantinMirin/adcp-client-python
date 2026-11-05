@@ -7,14 +7,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
-from adcp.types.constraints import (
-    MediaBuyName,
-    StrMaxLen100,
-    StrMinLen1,
-    StrMinLen1MaxLen255,
-    StrMinLen1MaxLen4096,
-    SyncAccountsRequestIdempotencyKey,
-)
+from adcp.types.constraints import MediaBuyName, StrMaxLen100, StrMinLen1, StrMinLen1MaxLen255, StrMinLen1MaxLen4096
 
 from ..core.bidding_policy import BiddingPolicy
 from ..core.brand_key import BrandKey
@@ -27,6 +20,7 @@ from ..core.canonical_account_ref import (
 from ..core.canonical_budget_allocation import CanonicalBudgetAllocation
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
+from ..core.idempotency_key import IdempotencyKey
 from ..core.media_buy_frequency_cap import MediaBuyFrequencyCap
 from ..core.opportunity_context import OpportunityContext
 from ..core.push_notification_config import PushNotificationConfig
@@ -72,7 +66,7 @@ class BuyProductsRequest(BranchDispatchMixin, AdCPVersionEnvelope):
     )
     adcp_version: AdcpVersion | None = None
     adcp_major_version: AdcpMajorVersion | None = None
-    idempotency_key: SyncAccountsRequestIdempotencyKey
+    idempotency_key: IdempotencyKey
     name: Annotated[MediaBuyName | None, Field(description='Human-readable name for this media buy, shared by buyer and seller for trafficking UI display and operational communication. When supplied, the seller MUST persist it and echo it unchanged on the commitment success response and subsequent get_media_buys reads. The name is operational metadata outside accepted_proposal and is not covered by terms_digest. This display label is not an identifier or financial reference.')] = None
     account: Annotated[CanonicalAccountReference, Field(description='Execution account. A natural-key account is the single brand source and MUST NOT be combined with top-level brand.')]
     brand: Annotated[BrandKey | None, Field(description='Brand source required when account is ID-only. Omit when account already contains brand and operator.')] = None

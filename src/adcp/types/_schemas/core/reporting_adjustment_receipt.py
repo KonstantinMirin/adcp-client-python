@@ -12,7 +12,7 @@ from adcp.types.constraints import (
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
     ReportingAdjustmentReceiptObservedAdjustmentSha256,
     ReportingAdjustmentReceiptRejectionCode,
-    SyncAccountsRequestIdempotencyKey,
+    StrIdempotencyKey,
 )
 
 from ..common._vocabularies import _VALUES_ACCEPTED_REJECTED
@@ -39,10 +39,10 @@ class ReportingAdjustmentReceipt(AdCPBaseModel):
         ConditionalRequired((Match('status', True, ('rejected',)),), require=('rejection_codes',), forbid=()),
         NegatedConditional((Match('status', True, ('rejected',)),), require=(), forbid=('rejection_codes',)),
     )
-    reporting_receipt_id: SyncAccountsRequestIdempotencyKey
+    reporting_receipt_id: StrIdempotencyKey
     reporting_adjustment_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId
     adjusts_reporting_revision_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId
-    supersedes_reporting_receipt_id: Annotated[SyncAccountsRequestIdempotencyKey | None, Field(description='Optional immutable rejected receipt replaced by this new receipt for the same adjustment. Accepted current receipts are terminal.')] = None
+    supersedes_reporting_receipt_id: Annotated[StrIdempotencyKey | None, Field(description='Optional immutable rejected receipt replaced by this new receipt for the same adjustment. Accepted current receipts are terminal.')] = None
     status: Status
     observed_adjustment_sha256: Annotated[ReportingAdjustmentReceiptObservedAdjustmentSha256, Field(description='Digest recomputed from the adjustment using its canonical evidence rule.')]
     rejection_codes: Annotated[list[ReportingAdjustmentRejectionCode] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None

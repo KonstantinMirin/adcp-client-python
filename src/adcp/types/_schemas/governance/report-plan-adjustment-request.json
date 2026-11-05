@@ -224,8 +224,10 @@
           "type": "number"
         },
         "currency": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
           "description": "Three-letter uppercase currency code matching the plan currency.",
           "pattern": "^[A-Z]{3}$",
+          "title": "Currency Code",
           "type": "string"
         }
       },
@@ -300,10 +302,12 @@
       "type": "object"
     },
     "idempotency_key": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "description": "Caller-generated retry key. Exact replays return the original report or review; reuse with another payload is rejected.",
       "maxLength": 255,
       "minLength": 16,
       "pattern": "^[A-Za-z0-9_.:-]{16,255}$",
+      "title": "Idempotency Key",
       "type": "string"
     },
     "outcome_id": {

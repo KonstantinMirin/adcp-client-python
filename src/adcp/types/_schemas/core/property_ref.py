@@ -6,8 +6,8 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain
 
+from .domain_name import DomainName
 from .property_id import PropertyID
 
 
@@ -19,7 +19,7 @@ class PropertyReference(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/property-ref.json', pointer='#')
-    publisher_domain: Annotated[AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, Field(description='Domain where the adagents.json declaring this property is hosted.')]
+    publisher_domain: Annotated[DomainName, Field(description='Domain where the adagents.json declaring this property is hosted.')]
     property_id: Annotated[PropertyID, Field(description="Property ID from the publisher's adagents.json property catalog.")]
 
 

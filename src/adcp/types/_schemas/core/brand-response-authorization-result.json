@@ -36,9 +36,11 @@
   ],
   "properties": {
     "jwks_uri": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "description": "JWKS URI selected only from the matched brand.json agent entry, or its same-origin default.",
       "format": "uri",
       "pattern": "^https://",
+      "title": "HTTPS URL",
       "type": "string"
     },
     "kid": {

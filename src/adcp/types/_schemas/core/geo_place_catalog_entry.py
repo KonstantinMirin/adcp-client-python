@@ -8,12 +8,9 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import (
-    AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem,
-    GeoForecastDimensionCode,
-    StrMinLen1,
-)
+from adcp.types.constraints import GeoForecastDimensionCode, StrMinLen1
 
+from .country_code import CountryCode
 from .ext import ExtensionObject
 from .geo_place_type import GeographicPlaceType
 
@@ -36,7 +33,7 @@ class GeographicPlaceCatalogEntry(AdCPBaseModel):
         UniqueItems('replaced_by_values'),
     )
     value: Annotated[StrMinLen1, Field(description='Stable identifier in the response system and system_version.')]
-    country: AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem
+    country: CountryCode
     subdivision: Annotated[GeoForecastDimensionCode | None, Field(description='ISO 3166-2 subdivision containing the place when the catalog has a subdivision mapping. Required by resolver semantics when the request constrained subdivision.')] = None
     place_type: GeographicPlaceType
     label: Annotated[StrMinLen1, Field(description='Human-readable display label; never an authoritative targeting key.')]

@@ -9,8 +9,6 @@ from pydantic import AwareDatetime, ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule, UniqueItems
 from adcp.types.constraints import (
-    AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem,
-    AdCPUrl,
     DataSubjectRightsResponseSlaDays,
     DataSubjectRightsUpstreamSourceDomain,
     HttpUrl,
@@ -22,7 +20,9 @@ from adcp.types.constraints import (
 from ..enums.consent_basis import ConsentBasis
 from ..enums.restricted_attribute import RestrictedAttribute
 from ._vocabularies import _VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY
+from .country_code import CountryCode
 from .demographic_predicate import DemographicPredicate
+from .https_url import HTTPSURL
 from .signal_modeling_disclosure import SignalModelingDisclosure
 
 
@@ -190,7 +190,7 @@ class Modeling(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-definition-enrichment.json', pointer='#/properties/modeling')
     method: Method
     seed_source: ObjTypeProviderSigned
-    training_data_jurisdictions: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem], Field(min_length=1)]
+    training_data_jurisdictions: Annotated[list[CountryCode], Field(min_length=1)]
     ai_act_risk_class: AiActRiskClass
     disclosure: SignalModelingDisclosure | None = None
 
@@ -213,10 +213,10 @@ class ChannelsItem(AdCPBaseModel):
         UniqueItems('rights'),
     )
     rights: Annotated[list[RightsItem], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
-    url: AdCPUrl | None = None
+    url: HTTPSURL | None = None
     email: Annotated[str | None, Field(json_schema_extra={'format': 'email'})] = None
     languages: list[str] | None = None
-    countries: list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem] | None = None
+    countries: list[CountryCode] | None = None
 
 
 class DataSubjectRights(AdCPBaseModel):
@@ -230,7 +230,7 @@ class DataSubjectRights(AdCPBaseModel):
     upstream_source_domain: Annotated[DataSubjectRightsUpstreamSourceDomain | None, Field(json_schema_extra={'format': 'hostname'})] = None
     channels: Annotated[list[ChannelsItem], Field(min_length=1)]
     response_sla_days: DataSubjectRightsResponseSlaDays | None = None
-    ccpa_opt_out_url: AdCPUrl | None = None
+    ccpa_opt_out_url: HTTPSURL | None = None
 
 
 class SignalDefinitionEnrichment(AdCPBaseModel):
@@ -257,7 +257,7 @@ class SignalDefinitionEnrichment(AdCPBaseModel):
     refresh_cadence: RefreshCadence | None = None
     lookback_window: LookbackWindow | None = None
     onboarder: Onboarder | None = None
-    countries: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem] | None, Field(min_length=1)] = None
+    countries: Annotated[list[CountryCode] | None, Field(min_length=1)] = None
     consent_basis: Annotated[list[ConsentBasis] | None, Field(description="Data provider's declared GDPR Article 6 lawful basis or consent basis for the underlying signal definition, projected into this get_signals response row when requested. Sellers and federating agents that pass through another provider's signal MUST NOT substitute their own processing basis for the provider-declared basis.", min_length=1)] = None
     art9_basis: Annotated[Art9Basis | None, Field(description="Data provider's declared GDPR Article 9 basis for the underlying signal definition when special-category data is involved and Article 9 applies, projected into this get_signals response row when requested. Sellers and federating agents that pass through another provider's signal MUST NOT substitute their own Article 9 basis for the provider-declared basis.")] = None
     modeling: Modeling | None = None

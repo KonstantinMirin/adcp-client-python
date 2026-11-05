@@ -8,8 +8,9 @@ from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import PropertyCount, Rule
-from adcp.types.constraints import FloatMin0Max100, GetAccountFinancialsResponseSuccessCurrency, StrMinLen1
+from adcp.types.constraints import FloatMin0Max100, StrMinLen1
 
+from .currency_code import CurrencyCode
 from .ext import ExtensionObject
 
 
@@ -36,7 +37,7 @@ class CpmPricing(VendorPricing):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-pricing.json', pointer='#/oneOf/0')
     model: Literal['cpm']
     cpm: Annotated[NonNegativeFloat, Field(description='Cost per thousand impressions')]
-    currency: Annotated[GetAccountFinancialsResponseSuccessCurrency, Field(description='ISO 4217 currency code')]
+    currency: Annotated[CurrencyCode, Field(description='ISO 4217 currency code')]
     ext: ExtensionObject | None = None
 
 
@@ -51,7 +52,7 @@ class PercentOfMediaPricing(VendorPricing):
     model: Literal['percent_of_media']
     percent: Annotated[FloatMin0Max100, Field(description='Percentage of media spend, e.g. 15 = 15%')]
     max_cpm: Annotated[NonNegativeFloat | None, Field(description='Optional CPM cap. When set, the effective charge is min(percent × media_spend_per_mille, max_cpm).')] = None
-    currency: Annotated[GetAccountFinancialsResponseSuccessCurrency, Field(description='ISO 4217 currency code for the resulting charge')]
+    currency: Annotated[CurrencyCode, Field(description='ISO 4217 currency code for the resulting charge')]
     ext: ExtensionObject | None = None
 
 
@@ -76,7 +77,7 @@ class FlatFeePricing(VendorPricing):
     model: Literal['flat_fee']
     amount: Annotated[NonNegativeFloat, Field(description='Fixed charge for the billing period')]
     period: Annotated[Period, Field(description='Billing period for the flat fee.')]
-    currency: Annotated[GetAccountFinancialsResponseSuccessCurrency, Field(description='ISO 4217 currency code')]
+    currency: Annotated[CurrencyCode, Field(description='ISO 4217 currency code')]
     ext: ExtensionObject | None = None
 
 
@@ -91,7 +92,7 @@ class PerUnitPricing(VendorPricing):
     model: Literal['per_unit']
     unit: Annotated[str, Field(description="What is counted — e.g. 'format', 'image', 'token', 'variant', 'render', 'evaluation'.")]
     unit_price: Annotated[NonNegativeFloat, Field(description='Cost per one unit')]
-    currency: Annotated[GetAccountFinancialsResponseSuccessCurrency, Field(description='ISO 4217 currency code')]
+    currency: Annotated[CurrencyCode, Field(description='ISO 4217 currency code')]
     ext: ExtensionObject | None = None
 
 
@@ -120,7 +121,7 @@ class CustomPricing(VendorPricing):
     model: Literal['custom']
     description: Annotated[StrMinLen1, Field(description='Human-readable description of the custom pricing model. Buyers display this to the operator when requesting approval.')]
     metadata: Annotated[Metadata, Field(description="Structured parameters for the custom model. Keys follow lowercase_snake_case. Values may be primitives, arrays, or nested objects. Must be sufficient for a human to understand the pricing basis and for a downstream system to reconstruct the charge. Vendors SHOULD include a `summary_for_operator` string (one or two sentences, suitable for display in a buyer's operator-review UI) so reviewers across vendors see a consistent prompt. Required operator-review fields (approver role, dollar threshold for automatic approval, escalation contact) MAY be surfaced via additional keys the buyer's review surface recognizes.")]
-    currency: Annotated[GetAccountFinancialsResponseSuccessCurrency | None, Field(description='ISO 4217 currency code. Present when the pricing resolves to a monetary charge in a specific currency.')] = None
+    currency: Annotated[CurrencyCode | None, Field(description='ISO 4217 currency code. Present when the pricing resolves to a monetary charge in a specific currency.')] = None
     ext: ExtensionObject | None = None
 
 

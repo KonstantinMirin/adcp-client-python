@@ -14,10 +14,10 @@ from adcp.types.constraints import (
     StrMinLen1MaxLen100,
     StrMinLen1MaxLen255,
     StrMinLen1MaxLen4096,
-    SyncAccountsRequestIdempotencyKey,
 )
 
 from .ext import ExtensionObject
+from .idempotency_key import IdempotencyKey
 
 
 class Resource(AdCPBaseModel):
@@ -44,7 +44,7 @@ class AccountChangeRecordedWebhook(AdCPBaseModel):
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='core/account-change-recorded-webhook.json', pointer='#/properties/ext', keyword='maxProperties', kind='WIDENED', rung='KEYWORD', fact=20, attribution='docs/plan/rebuild-plan.md §5 objects/maxProperties'),
     )
-    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Sender-generated delivery key stable across retries of one fire. Deliberate re-emission uses a new key.')]
+    idempotency_key: Annotated[IdempotencyKey, Field(description='Sender-generated delivery key stable across retries of one fire. Deliberate re-emission uses a new key.')]
     notification_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId, Field(description='Logical notification identifier. Always equals change_id; retries and deliberate re-emissions of the same change retain it.')]
     notification_type: Literal['account.change_recorded']
     fired_at: AwareDatetime

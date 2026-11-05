@@ -54,7 +54,7 @@ from pathlib import Path
 
 from adcp.types._base import KINDS, SchemaRef, schema_at
 from codegen import bundle as bundle_module
-from codegen import harness, held, keywords, refusal
+from codegen import harness, held, keywords, patch, refusal
 from codegen.emit import PACKAGE, TREE, emit, write
 
 #: Where the run writes §10's per-pair verdict table, relative to the tree it wrote.
@@ -245,7 +245,16 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("document", nargs="+", help="bundle-relative document paths")
     ns = ap.parse_args(argv)
 
-    out = emit(ns.bundle, ns.document)
+    # **THE PATCH SET IS PART OF THE BUILD** (``patch.BUILD``, ``patch.for_build``).  The
+    # bundle stays an ARGUMENT, which is D9 -- no version lives in ``codegen/`` -- and what
+    # this line adds is that whatever bundle is named is read through the override table
+    # rather than raw.  Measured before it existed: ``grep 'patch.apply\|patch.additions'
+    # codegen/*.py`` matched nothing, so the table was written and reviewed and the emitter
+    # never saw it.  The GRADE reads the same directory: a harness validating an instance
+    # against the published document while the model was compiled from the patched one would
+    # be §8's comparison asked of two different schemas.
+    bundle_dir = patch.for_build(ns.bundle)
+    out = emit(bundle_dir, ns.document)
     write(out, ns.tree, ns.package)
     if ns.package is None:
         print(
@@ -347,7 +356,7 @@ def main(argv: list[str] | None = None) -> int:
     # LAST, after every line above, because grading imports the tree this run wrote and a
     # tree that does not import must not cost the report its numbers.
     started = time.time()
-    table, written = grade(ns.tree, ns.package, ns.bundle)
+    table, written = grade(ns.tree, ns.package, bundle_dir)
     path = ns.tree.parent / VERDICTS
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(table)

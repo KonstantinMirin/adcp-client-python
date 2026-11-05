@@ -66,10 +66,20 @@ from pathlib import Path
 
 from compiled import CACHE_ROOT, compiled, digest
 
-from codegen import bundle, emit
+from codegen import bundle, emit, patch
 
 REPO = Path(__file__).resolve().parents[1]
-BUNDLE = REPO / "schemas" / "cache" / "3.2"
+
+#: **The bundle a run reads**: the published one with every patch set the BUILD applies
+#: (:data:`codegen.patch.BUILD`).  ``./check`` reads the same derivation, so the fast loop's
+#: figures and the gate's range over ONE input -- which they did not before this line, when
+#: the override table was applied in two test files and in no compile path.
+#:
+#: ``tests/test_patch_8525.py`` and ``tests/test_judgment_table.py`` keep their own
+#: ``PUBLISHED`` and must: an addition is REFUSED where the node already states the keyword,
+#: so a check of the override table read against the patched bundle would refuse every entry
+#: in it and call that the defect being gone.
+BUNDLE = patch.for_build(REPO / "schemas" / "cache" / "3.2")
 
 #: The package set every reader of this tree needs to turn a document into a FILE.
 #:

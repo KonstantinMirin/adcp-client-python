@@ -6,12 +6,12 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
-from adcp.types.constraints import SyncAccountsRequestIdempotencyKey
 
 from ..core.account_ref import AccountReference
 from ..core.brand_ref import BrandReference
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
+from ..core.idempotency_key import IdempotencyKey
 from ..core.version_envelope import AdCPVersionEnvelope
 from .base_property_source import BasePropertySource
 from .property_list_filters import PropertyListFilters
@@ -31,7 +31,7 @@ class CreatePropertyListRequest(AdCPVersionEnvelope):
     base_properties: Annotated[list[BasePropertySource] | None, Field(description="Array of property sources to evaluate. Each entry is a discriminated union: publisher_tags (publisher_domain + tags), publisher_ids (publisher_domain + property_ids), or identifiers (direct identifiers). If omitted, queries the agent's entire property database.", min_length=1)] = None
     filters: Annotated[PropertyListFilters | None, Field(description='Dynamic filters to apply when resolving the list')] = None
     brand: Annotated[BrandReference | None, Field(description='Brand reference. When provided, the agent automatically applies appropriate rules based on brand characteristics (industry, target_audience, etc.). Resolved at execution time.')] = None
-    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Client-generated unique key for this request. Prevents duplicate property list creation on retries. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.')]
+    idempotency_key: Annotated[IdempotencyKey, Field(description='Client-generated unique key for this request. Prevents duplicate property list creation on retries. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.')]
     context: ContextObject | None = None
     ext: ExtensionObject | None = None
 

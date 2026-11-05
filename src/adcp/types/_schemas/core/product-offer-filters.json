@@ -187,7 +187,10 @@
       "uniqueItems": true
     },
     "Shared2": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "ISO 4217 alphabetic currency code. Extracted unchanged from the 83 sites that stated it inline; see adcontextprotocol/adcp#8525.",
       "pattern": "^[A-Z]{3}$",
+      "title": "Currency Code",
       "type": "string"
     },
     "Shared20": {
@@ -306,7 +309,10 @@
       ]
     },
     "Shared4": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "ISO 3166-1 alpha-2 country code. Extracted unchanged from the 65 sites that stated it inline; see adcontextprotocol/adcp#8525.",
       "pattern": "^[A-Z]{2}$",
+      "title": "Country Code",
       "type": "string"
     },
     "Shared5": {
@@ -374,8 +380,10 @@
           "uniqueItems": true
         },
         "domain": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
           "description": "Domain that hosts /.well-known/brand.json or is registered for the brand.",
           "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+          "title": "Domain Name",
           "type": "string"
         }
       },
@@ -869,8 +877,10 @@
                 "type": "string"
               },
               "publisher_domain": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
                 "description": "Publisher domain where the adagents.json declaring this format option is hosted.",
                 "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                "title": "Domain Name",
                 "type": "string"
               },
               "scope": {
@@ -1288,8 +1298,10 @@
                 "description": "Valid country-local postal system pairing. Registered countries only accept their registered local systems; countries without a registered local system use postal_code or custom.",
                 "properties": {
                   "country": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
                     "description": "ISO 3166-1 alpha-2 country code.",
                     "pattern": "^[A-Z]{2}$",
+                    "title": "Country Code",
                     "type": "string"
                   },
                   "system": {
@@ -1334,8 +1346,10 @@
             ],
             "properties": {
               "country": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
                 "description": "ISO 3166-1 alpha-2 country code for the postal values.",
                 "pattern": "^[A-Z]{2}$",
+                "title": "Country Code",
                 "type": "string"
               },
               "system": {

@@ -8,7 +8,6 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types.constraints import (
-    AdCPUrl,
     BrandDiscoveryColorValue,
     IntMin0Max8192,
     IntMin1Max8192,
@@ -16,6 +15,8 @@ from adcp.types.constraints import (
     TextDecorationText,
     ZipAssetDigest,
 )
+
+from .https_url import HTTPSURL
 
 
 class Canvas(AdCPBaseModel):
@@ -108,7 +109,7 @@ class ImageRef(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/placement-presentation.json', pointer='#/definitions/image_decoration/properties/image_ref')
-    uri: Annotated[AdCPUrl, Field(description='Untrusted image asset. Fetch with public-address-only SSRF protection, no redirects, DNS pinning, and body/time limits; do not attach ambient credentials.')]
+    uri: Annotated[HTTPSURL, Field(description='Untrusted image asset. Fetch with public-address-only SSRF protection, no redirects, DNS pinning, and body/time limits; do not attach ambient credentials.')]
     digest: Annotated[ZipAssetDigest, Field(description='SHA-256 digest of the exact image bytes. Consumers MUST fail closed on mismatch.')]
 
 

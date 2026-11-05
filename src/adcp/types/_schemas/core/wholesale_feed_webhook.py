@@ -8,9 +8,10 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule
-from adcp.types.constraints import AccountChangeRecordedWebhookSubscriberId, SyncAccountsRequestIdempotencyKey
+from adcp.types.constraints import AccountChangeRecordedWebhookSubscriberId
 
 from .ext import ExtensionObject
+from .idempotency_key import IdempotencyKey
 from .notification_config import ProductPayloadView
 from .wholesale_feed_event import WholesaleFeedEvent, WholesaleFeedEventType
 
@@ -35,7 +36,7 @@ class WholesaleFeedWebhook(AdCPBaseModel):
         ConditionalRequired((Match('notification_type', True, ('product.created', 'product.updated', 'product.priced', 'product.removed')),), require=('product_payload_view',), forbid=()),
         NegatedConditional((Match('notification_type', True, ('product.created', 'product.updated', 'product.priced', 'product.removed')),), require=(), forbid=('product_payload_view',)),
     )
-    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Sender-generated key stable across retries of the same webhook fire. Receivers MUST dedupe by this key, scoped to the authenticated sender identity.')]
+    idempotency_key: Annotated[IdempotencyKey, Field(description='Sender-generated key stable across retries of the same webhook fire. Receivers MUST dedupe by this key, scoped to the authenticated sender identity.')]
     notification_id: Annotated[str, Field(description='Stable identifier for this logical wholesale feed event. MUST equal event.event_id. Re-emissions of the same logical event reuse this value under a new idempotency_key.', json_schema_extra={'format': 'uuid'})]
     notification_type: Annotated[WholesaleFeedEventType, Field(description='Wholesale feed notification type discriminator. MUST match event.event_type.')]
     fired_at: Annotated[AwareDatetime, Field(description='ISO 8601 timestamp when the seller initiated this webhook fire. Distinct from event.created_at, which is when the seller observed or recorded the feed change.')]

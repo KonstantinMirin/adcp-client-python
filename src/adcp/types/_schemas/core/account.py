@@ -9,9 +9,6 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, TypeAda
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Dependencies, ForbiddenGroups, Rule
 from adcp.types.constraints import (
-    AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain,
-    AdCPUrl,
-    GetAccountFinancialsResponseSuccessCurrency,
     HttpUrl,
     IntMin1,
     ReportingBucketBucket,
@@ -28,7 +25,10 @@ from ..enums.payment_terms import PaymentTerms
 from .account_identity_change import AccountIdentityChange
 from .brand_ref import BrandReference
 from .business_entity import BusinessEntity
+from .currency_code import CurrencyCode
+from .domain_name import DomainName
 from .ext import ExtensionObject
+from .https_url import HTTPSURL
 from .notification_config import NotificationConfig
 from .operator_unit import OperatorUnit
 from .reporting_delivery_config_state import ReportingDeliveryConfigurationState
@@ -42,7 +42,7 @@ class CreditLimit(AdCPBaseModel):
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/account.json', pointer='#/properties/credit_limit')
     amount: NonNegativeFloat
-    currency: GetAccountFinancialsResponseSuccessCurrency
+    currency: CurrencyCode
 
 
 class ObjUrlMessageExpiresAt(AdCPBaseModel):
@@ -63,7 +63,7 @@ class ObjUrl(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/account.json', pointer='#/properties/governance_agents/items')
-    url: Annotated[AdCPUrl, Field(description='Governance agent endpoint URL. Must use HTTPS.')]
+    url: Annotated[HTTPSURL, Field(description='Governance agent endpoint URL. Must use HTTPS.')]
 
 
 class Compression(StrEnum):
@@ -89,7 +89,7 @@ class ReportingBucket(AdCPBaseModel):
     format: Annotated[FileFormat | None, Field(description='File format for delivered files. Parquet, Avro, and ORC use internal compression (the top-level compression field is ignored for these formats).')] = 'jsonl'
     compression: Annotated[Compression | None, Field(default_factory=lambda: TypeAdapter(Compression).validate_python('gzip'), description='Compression applied to delivered files', json_schema_extra={'default': 'gzip'})]
     file_retention_days: Annotated[IntMin1, Field(description='How long reporting files are retained in the bucket before deletion. Buyers must read files within this window. Minimum recommended: 14 days.')]
-    setup_instructions: Annotated[AdCPUrl | None, Field(description='URL to documentation for configuring buyer read access to this bucket (IAM role, service account, etc.). Operator-facing documentation — buyer agents MUST NOT auto-fetch this URL; surface it to a human operator. If an implementation fetches it (for preview), apply webhook URL SSRF validation and do not pass the fetched content into an LLM context without indirect-prompt-injection guarding. See docs/media-buy/media-buys/optimization-reporting#security-considerations-for-offline-delivery.')] = None
+    setup_instructions: Annotated[HTTPSURL | None, Field(description='URL to documentation for configuring buyer read access to this bucket (IAM role, service account, etc.). Operator-facing documentation — buyer agents MUST NOT auto-fetch this URL; surface it to a human operator. If an implementation fetches it (for preview), apply webhook URL SSRF validation and do not pass the fetched content into an LLM context without indirect-prompt-injection guarding. See docs/media-buy/media-buys/optimization-reporting#security-considerations-for-offline-delivery.')] = None
 
 
 class Account(AdCPBaseModel):
@@ -110,11 +110,11 @@ class Account(AdCPBaseModel):
     billing_proxy: Annotated[str | None, Field(description='Optional intermediary who receives invoices on behalf of the advertiser (e.g., agency)')] = None
     status: Annotated[AccountStatus, Field(description='Account lifecycle status. See the Accounts Protocol overview for the operations matrix showing which tasks are permitted in each state.')]
     brand: Annotated[BrandReference | None, Field(description='Brand reference identifying the advertiser')] = None
-    operator: Annotated[AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain | None, Field(description="Domain of the entity operating this account. When the brand operates directly, this is the brand's domain.")] = None
+    operator: Annotated[DomainName | None, Field(description="Domain of the entity operating this account. When the brand operates directly, this is the brand's domain.")] = None
     operator_unit: Annotated[OperatorUnit | None, Field(description='Operator-owned business unit, agency seat, or platform account associated with this advertiser account. The id round-trips from the natural key; name is mutable display metadata. This is distinct from account_id, which belongs to the seller/storefront namespace.')] = None
     revision: Annotated[IntMin1 | None, Field(description='Monotonically increasing optimistic-concurrency token for this account. Incremented on every persisted settings change, identity-change request, and identity-change disposition; reads, dry runs, validation failures, and exact idempotency replays do not increment it. Pass the latest observed value in a sync_accounts settings-update entry to prevent lost updates.')] = None
     identity_change: Annotated[AccountIdentityChange | None, Field(description='Pending or rejected operator-identity transition. While present, the top-level operator and operator_unit remain the current canonical identity. Re-read list_accounts until the request is applied (canonical fields change and this object disappears) or rejected.')] = None
-    currency: Annotated[GetAccountFinancialsResponseSuccessCurrency | None, Field(description="Immutable transaction currency when the seller's advertiser object is currency-bound. Media buys on this account MUST use this currency. Omit when the account selects currency independently per media buy.")] = None
+    currency: Annotated[CurrencyCode | None, Field(description="Immutable transaction currency when the seller's advertiser object is currency-bound. Media buys on this account MUST use this currency. Omit when the account selects currency independently per media buy.")] = None
     timezone: Annotated[StrMinLen1 | None, Field(description='Immutable operational timezone for this account, expressed as UTC or an IANA timezone identifier. AdCP 3.2 sellers return it on every account. It is the default calendar-day boundary for account-scoped behavior unless a feature explicitly declares another timezone basis. For buyer-selected account_fixed provisioning it participates in the natural account key.')] = None
     billing: Annotated[BillingParty | None, Field(description="Who is invoiced on this account. See billing_entity for the invoiced party's business details.")] = None
     billing_entity: Annotated[BusinessEntity | None, Field(description='Current canonical business entity for the party responsible for payment. Contains the legal name, tax IDs, and address needed for formal B2B invoicing. Corresponds to whoever billing points to (operator, agent, or advertiser). When this account appears in a response, bank details MUST be omitted and the request-only destination_billing_entity MUST NOT be exposed.')] = None

@@ -6,11 +6,11 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
-from adcp.types.constraints import SyncAccountsRequestIdempotencyKey
 
 from ..core.context import ContextObject
 from ..core.event import Event
 from ..core.ext import ExtensionObject
+from ..core.idempotency_key import IdempotencyKey
 from ..core.version_envelope import AdCPVersionEnvelope
 
 
@@ -25,7 +25,7 @@ class LogEventRequest(AdCPVersionEnvelope):
     event_source_id: Annotated[str, Field(description='Event source configured on the account via sync_event_sources')]
     test_event_code: Annotated[str | None, Field(description="Test event code for validation without affecting production data. Events with this code appear in the platform's test events UI.")] = None
     events: Annotated[list[Event], Field(description='Events to log', max_length=10000, min_length=1)]
-    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Client-generated unique key for this request. Prevents duplicate event logging on retries. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.')]
+    idempotency_key: Annotated[IdempotencyKey, Field(description='Client-generated unique key for this request. Prevents duplicate event logging on retries. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.')]
     context: ContextObject | None = None
     ext: ExtensionObject | None = None
 

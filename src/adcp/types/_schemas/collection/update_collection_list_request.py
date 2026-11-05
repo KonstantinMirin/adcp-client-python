@@ -6,12 +6,13 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
-from adcp.types.constraints import HttpUrl, SyncAccountsRequestIdempotencyKey
+from adcp.types.constraints import HttpUrl
 
 from ..core.account_ref import AccountReference
 from ..core.brand_ref import BrandReference
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
+from ..core.idempotency_key import IdempotencyKey
 from ..core.version_envelope import AdCPVersionEnvelope
 from .base_collection_source import BaseCollectionSource
 from .collection_list_filters import CollectionListFilters
@@ -35,7 +36,7 @@ class UpdateCollectionListRequest(AdCPVersionEnvelope):
     webhook_url: Annotated[HttpUrl | None, Field(description='Update the webhook URL for list change notifications (set to empty string to remove). Governance agents MUST validate this URL against SSRF per docs/building/by-layer/L1/security#webhook-url-validation-ssrf.')] = None
     context: ContextObject | None = None
     ext: ExtensionObject | None = None
-    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Client-generated unique key for at-most-once execution. If a request with the same key has already been processed, the server returns the original response without re-processing. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.')]
+    idempotency_key: Annotated[IdempotencyKey, Field(description='Client-generated unique key for at-most-once execution. If a request with the same key has already been processed, the server returns the original response without re-processing. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.')]
 
 
 __all__ = ["UpdateCollectionListRequest"]

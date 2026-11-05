@@ -7,8 +7,10 @@
       "description": "Complete desired operator identity submitted by the buyer.",
       "properties": {
         "operator": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
           "description": "Domain of the entity operating on the brand's behalf. When the brand operates directly, this is the brand's domain.",
           "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+          "title": "Domain Name",
           "type": "string",
           "x-entity": "operator"
         },

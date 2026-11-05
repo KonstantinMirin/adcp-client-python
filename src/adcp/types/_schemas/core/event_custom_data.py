@@ -6,8 +6,9 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field, NonNegativeFloat, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import FloatMin0Max100, GetAccountFinancialsResponseSuccessCurrency, IntMin1
+from adcp.types.constraints import FloatMin0Max100, IntMin1
 
+from .currency_code import CurrencyCode
 from .ext import ExtensionObject
 
 
@@ -31,7 +32,7 @@ class EventCustomData(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/event-custom-data.json', pointer='#')
     value: Annotated[NonNegativeFloat | None, Field(description='Monetary value of the event. For an event source that declares value_currencies, currency is required and MUST appear in that list. Legacy sources without the new contract remain schema-compatible but are ineligible for canonical ROAS.')] = None
-    currency: Annotated[GetAccountFinancialsResponseSuccessCurrency | None, Field(description='ISO 4217 currency code. For a source declaring value_currencies, monetary records MUST carry a currency from that list.')] = None
+    currency: Annotated[CurrencyCode | None, Field(description='ISO 4217 currency code. For a source declaring value_currencies, monetary records MUST carry a currency from that list.')] = None
     order_id: Annotated[str | None, Field(description='Unique order or transaction identifier')] = None
     content_ids: Annotated[list[str] | None, Field(description="Item identifiers for catalog attribution. Values are matched against catalog items using the identifier type declared by the catalog's content_id_type field (e.g., SKUs, GTINs, or vertical-specific IDs like job_id).")] = None
     content_type: Annotated[str | None, Field(description="Category of content associated with the event (e.g., 'product', 'job', 'hotel'). Corresponds to the catalog type when used for catalog attribution.")] = None

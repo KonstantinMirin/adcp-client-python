@@ -17,7 +17,6 @@ from adcp.types.constraints import (
     StrMaxLen100,
     StrMinLen1,
     StrMinLen16,
-    SyncAccountsRequestIdempotencyKey,
 )
 
 from ..core.account_ref import AccountReference
@@ -27,6 +26,7 @@ from ..core.budget_allocation import BudgetAllocation, BudgetAllocationFixed, Bu
 from ..core.business_entity import BusinessEntity
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
+from ..core.idempotency_key import IdempotencyKey
 from ..core.media_buy_frequency_cap import MediaBuyFrequencyCap
 from ..core.opportunity_context import OpportunityContext
 from ..core.push_notification_config import Authentication, PushNotificationConfig
@@ -128,7 +128,7 @@ class CreateMediaBuyRequest(BranchDispatchMixin, AdCPVersionEnvelope):
         Approximation(document='media-buy/create-media-buy-request.json', pointer='#/anyOf', keyword='anyOf', kind='UNDERDETERMINED', rung='JOIN', fact=({'title': 'Explicit packages with fixed allocation', 'properties': {'budget_allocation': {'properties': {'mode': {'const': 'fixed'}}, 'required': ['mode']}, 'packages': {'items': {'allOf': [{'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/media-buy/package-request.json'}, {'required': ['budget']}, {'not': {'required': ['min_spend_target']}}]}}}, 'required': ['packages'], 'not': {'required': ['proposal_id']}}, {'title': 'Explicit packages with seller-optimized allocation', 'properties': {'budget_allocation': {'properties': {'mode': {'const': 'seller_optimized'}}, 'required': ['mode']}}, 'required': ['packages', 'total_budget', 'budget_allocation'], 'not': {'required': ['proposal_id']}}, {'title': 'Committed proposal execution', 'required': ['proposal_id', 'total_budget'], 'not': {'anyOf': [{'required': ['packages']}, {'required': ['budget_allocation']}, {'required': ['frequency_cap']}]}}), attribution='docs/plan/rebuild-plan.md §5 combinators/anyOf'),
     )
     governance_context: Annotated[GovernanceContext | None, Field(description='Opaque intent authorization for this media-buy commitment. Required when governance applies to the resolved account.')] = None
-    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Client-generated unique key for this request. If a request with the same idempotency_key and account has already been processed, the seller returns the existing media buy rather than creating a duplicate. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.')]
+    idempotency_key: Annotated[IdempotencyKey, Field(description='Client-generated unique key for this request. If a request with the same idempotency_key and account has already been processed, the seller returns the existing media buy rather than creating a duplicate. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.')]
     plan_id: Annotated[str | None, Field(description='DEPRECATED on seller-facing requests. New buyers send the approved governance_context on the protocol envelope; the seller forwards that opaque context and does not need the plan identifier. If both are present, the governance agent MUST reject a mismatch. Removed in 4.0.')] = None
     account: Annotated[AccountReference, Field(description='Account to bill for this media buy. Pass a natural key (brand, operator, optional sandbox) or a seller-assigned account_id from list_accounts.')]
     proposal_id: Annotated[str | None, Field(description="ID of the exact committed proposal snapshot to execute. With total_budget, the publisher creates packages using the proposal's fixed percentages or seller-optimized constraints. Mutually exclusive: provide packages or proposal_id, not both. AdCP 3.2 request_proposals and ordinary refine_proposals revisions issue drafts; refine_proposals action finalize creates the executable committed hold. Sellers reject draft, declined, or previously executed snapshots, while exact retries with the original idempotency key replay historical success. Changed commercial terms are issued under a new proposal_id, so no separate proposal version is required.")] = None

@@ -10,10 +10,10 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
-    SyncAccountsRequestIdempotencyKey,
 )
 
 from ..core.ext import ExtensionObject
+from ..core.idempotency_key import IdempotencyKey
 
 
 class ChangeKind(StrEnum):
@@ -30,7 +30,7 @@ class CreativeAssignmentChangedWebhook(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/creative-assignment-changed-webhook.json', pointer='#')
-    idempotency_key: SyncAccountsRequestIdempotencyKey
+    idempotency_key: IdempotencyKey
     notification_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId, Field(description='Stable identity for this logical assignment change across re-emissions.')]
     notification_type: Literal['creative.assignment_changed']
     fired_at: AwareDatetime

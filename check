@@ -24,6 +24,12 @@ record -- and this is the one command that reads them.
 
 A document argument needs no bundle path: it is relative to ``schemas/cache/3.2``.
 
+**AND THE BUNDLE IS THE PATCHED ONE** (:func:`codegen.patch.for_build`), which is the bundle
+a RUN reads and the same one ``tests/fresh.py`` and ``tests/test_emit.py`` read.  The figures
+here and the figures the gate reports therefore range over ONE input; they did not before --
+the override table was applied in two test files and in no compile path, so this command's
+three numbers described a bundle no delivery shipped.
+
 **The numbers this prints are the ones a delivery reports**, read the way the directive
 requires them: ``emitted`` and ``refused`` with its ``resolved`` split, ``accounted``, and
 primary/chained off ``Refusal.kind`` and never off a sentence.  They are never summed.
@@ -36,7 +42,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "tests"))
 
-BUNDLE = Path("schemas/cache/3.2")
+from codegen import patch  # noqa: E402  (the sys.path line above is what makes it resolve)
+
+#: **The bundle a run reads**: the published one with the build's patch sets applied.  One
+#: derivation, shared with ``tests/fresh.py``, so this command and the gate cannot range
+#: over two bundles.
+BUNDLE = patch.for_build(Path("schemas/cache/3.2"))
 
 
 def _out(population: list[str] | None = None):

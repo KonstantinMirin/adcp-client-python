@@ -11,7 +11,6 @@ from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule
 from adcp.types.constraints import (
     CanonicalProposalTermsDigest,
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
-    GetAccountFinancialsResponseSuccessCurrency,
     IntMin1,
     StrMaxLen2000,
     StrMinLen1,
@@ -22,6 +21,7 @@ from adcp.types.constraints import (
 from ..enums.proposal_status import ProposalStatus
 from ..media_buy.commercial_terms import CommercialTerms
 from .canonical_delivery_forecast import CanonicalDeliveryForecast
+from .currency_code import CurrencyCode
 from .insertion_order import InsertionOrder
 
 
@@ -45,7 +45,7 @@ class TotalBudgetGuidance(AdCPBaseModel):
     min: NonNegativeFloat | None = None
     recommended: NonNegativeFloat | None = None
     max: NonNegativeFloat | None = None
-    currency: GetAccountFinancialsResponseSuccessCurrency
+    currency: CurrencyCode
 
 
 class Forecast(CanonicalDeliveryForecast):

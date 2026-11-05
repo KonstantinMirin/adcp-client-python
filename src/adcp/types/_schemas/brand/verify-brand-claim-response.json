@@ -410,8 +410,10 @@
       "type": "string"
     },
     "Shared16": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "description": "Brand tenant whose policy store produced the answer. The signer MUST derive this from server-side tenant resolution, not caller-supplied request fields.",
       "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+      "title": "Domain Name",
       "type": "string"
     },
     "Shared17": {

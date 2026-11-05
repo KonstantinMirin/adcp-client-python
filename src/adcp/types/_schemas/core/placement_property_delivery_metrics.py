@@ -6,9 +6,9 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import SchemaRef
-from adcp.types.constraints import AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain
 
 from .delivery_metrics import DeliveryMetrics
+from .domain_name import DomainName
 from .identifier import Identifier
 from .placement_identity import PlacementIdentity
 from .property_ref import PropertyReference
@@ -25,7 +25,7 @@ class PlacementPropertyDeliveryMetrics(DeliveryMetrics):
     placement_id: Annotated[str, Field(description='Required flat compatibility ID. It MUST equal placement_identity.placement_id when placement_identity is present.')]
     placement_identity: Annotated[PlacementIdentity, Field(description='Required self-contained placement identity. Unlike the legacy-compatible by_placement dimension, the new by_placement_property dimension has no pre-3.2 row shape and always names the placement authority.')]
     placement_name: Annotated[str | None, Field(description='Current convenience name for the placement.')] = None
-    publisher_domain: Annotated[AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, Field(description="Publisher or platform authority that namespaces the property identifier. This may differ from a publisher-catalog placement's publisher_domain.")]
+    publisher_domain: Annotated[DomainName, Field(description="Publisher or platform authority that namespaces the property identifier. This may differ from a publisher-catalog placement's publisher_domain.")]
     identifier: Annotated[Identifier, Field(description='Primary operational identifier of the property that delivered.')]
     property_ref: Annotated[PropertyReference | None, Field(description="Canonical publisher-scoped property catalog identity when available. Its publisher_domain MUST equal the row's publisher_domain.")] = None
     property_name: Annotated[str | None, Field(description='Current convenience name for the property.')] = None

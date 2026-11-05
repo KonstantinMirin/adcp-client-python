@@ -4,8 +4,10 @@
   "description": "The buyer-desired operator portion of an advertiser account identity. The operator domain identifies the entity operating for the brand; operator_unit identifies that operator's internal buying context. Buyers that already administer the account control unit metadata and identity within the current operator. Changing the operator domain is an inter-entity handoff that requires seller-mediated approval by the current account authority, the brand, and the destination operator. When used as a sync_accounts settings-update value, this object is a complete desired replacement: omitting operator_unit removes the current unit rather than preserving it.",
   "properties": {
     "operator": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "description": "Domain of the entity operating on the brand's behalf. When the brand operates directly, this is the brand's domain.",
       "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+      "title": "Domain Name",
       "type": "string",
       "x-entity": "operator"
     },
