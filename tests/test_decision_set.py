@@ -45,7 +45,7 @@ no longer is:
   moment an attribution is filed.
 * **the CITATION-LEVEL upstream half is not vacuous and is the change.**  Reading 9's
   existence clause was decided over :data:`attribution.REGISTRY` alone, which is empty, so
-  it was a gate with nothing in it -- while the repository cited TEN upstream references
+  it was a gate with nothing in it -- while the repository cited NINE upstream references
   elsewhere, including one in a generated module that ships in the wheel, and one that
   does not exist.  The population is now every reference the repository cites, measured
   off ``git ls-files``, and :data:`attribution.VERIFIED` is compared against it in both
@@ -227,7 +227,7 @@ def test_every_upstream_attribution_names_an_issue_that_exists() -> None:
     ``codegen/dump_exemptions.py`` and ``src/adcp/types/envelopes.py`` -- which ships in
     the wheel -- do it another way.  Keeping this gate's population at :data:`REGISTRY`
     alone is how the existence clause came to be answered by an empty set while the
-    repository cited ten upstream references, one of which did not exist.
+    repository cited nine upstream references, one of which did not exist.
 
     Existence cannot be derived offline and this file has no network, so what is checked is
     that somebody looked and wrote down what they saw.  ``codegen/attribution.py`` carries
@@ -319,6 +319,32 @@ BUNDLE_TEXT = "schemas/cache/"
 DERIVED_TEXT = ("src/adcp/types/_schemas/",)
 CARRIED = (BUNDLE_TEXT, *DERIVED_TEXT)
 
+#: **The module that DECLARES the registry, which is not a citation of anything.**
+#:
+#: A sighting's entry spells its own reference twice -- the key and the ``reference`` field
+#: -- so a census that reads this module finds every sighting citing itself, and the
+#: BACKWARD direction can never fail: an entry nobody needs certifies its own necessity.
+#: Measured: it did.  ``perturb_the_attribution.sh``'s "a sighting no sentence of ours
+#: cites" case printed STAYED GREEN for exactly that reason, and it had looked red earlier
+#: only because the script was spelling a second, unsighted reference beside it.
+#:
+#: So the registry's own module is out of the population: it RECORDS citations and makes
+#: none.  Derived from the module object rather than written as a path, so the two cannot
+#: come apart if the file moves.
+#:
+#: **AND THE MODULE'S OWN SENTENCE ABOUT #8698 IS WHY THIS IS THE RIGHT RULE RATHER THAN A
+#: CONVENIENCE.**  Its docstring already said: "One upstream issue exists and is
+#: deliberately NOT here: [issue 8698] attributes nothing, because it is a question and not
+#: a verdict -- and an entry for it would be exactly the backward-direction defect above."
+#: A census that read the module counted that very sentence as a claim and gave the issue a
+#: sighting, which is the defect the sentence describes.  With the module out, nothing else
+#: cites it and the registry does not hold it.
+#:
+#: The number is written in brackets rather than as a reference, for the reason the
+#: docstrings in this file already give twice: prose that spells out the citation it is
+#: explaining gets reported as the citation.
+REGISTRY_MODULE = str(Path(attribution.__file__).resolve().relative_to(ROOT))
+
 
 def _cited() -> dict[str, list[str]]:
     """Every upstream reference this repository CITES, and the files that cite it.
@@ -331,7 +357,7 @@ def _cited() -> dict[str, list[str]]:
     files = subprocess.run(["git", "ls-files"], cwd=ROOT, check=True, capture_output=True, text=True).stdout.split("\n")
     out: dict[str, list[str]] = {}
     for name in files:
-        if not name or name.startswith(CARRIED):
+        if not name or name.startswith(CARRIED) or name == REGISTRY_MODULE:
             continue
         try:
             text = (ROOT / name).read_text(errors="ignore")

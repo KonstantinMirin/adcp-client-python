@@ -258,7 +258,13 @@ class Sighting:
 #: claim on someone else's backlog that nobody has checked (:func:`unsighted`).  Backward: a
 #: sighting no citation names is a list of issues doing nothing (:func:`unnamed`).  So this
 #: cannot grow ahead of a citation and cannot stay behind one -- and neither direction is
-#: vacuous, which is the change: there are TEN references here where there were none.
+#: vacuous, which is the change: there are NINE references here where there were none.
+#:
+#: **THIS MODULE IS NOT IN THE POPULATION, and it cannot be.**  A sighting's entry spells
+#: its own reference twice, so a census that read this file would find every entry citing
+#: itself and the backward direction could never fail -- an entry nobody needs certifying
+#: its own necessity.  ``tests/test_decision_set.py``'s ``REGISTRY_MODULE`` is the
+#: exclusion and carries the measurement that forced it.
 #:
 #: **ONE WAS ABSENT AND IT WAS IN THE TREE, not planted.**  Issue number ONE of the
 #: ``adcontextprotocol/adcp`` tracker was cited three times -- twice in
@@ -339,15 +345,6 @@ VERIFIED: Mapping[str, Sighting] = {
         title=(
             "The bundle repeats shapes it never names: 110 patterns over 830 sites, 10 "
             "titled -- extract and $ref instead of repairing in place"
-        ),
-        seen="2026-11-05",
-    ),
-    "adcontextprotocol/adcp#8698": Sighting(
-        reference="adcontextprotocol/adcp#8698",
-        state="OPEN",
-        title=(
-            "Is `status` meant to be required in the completed branch of "
-            "refine-proposals-response and request-proposals-response?"
         ),
         seen="2026-11-05",
     ),

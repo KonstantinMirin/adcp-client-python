@@ -9,7 +9,7 @@
 # Measured on this tree: all 90 declared facts are OURS -- every attribution is a
 # cell address in `docs/plan/rebuild-plan.md` §5 and not an issue reference -- so
 # `attribution.REGISTRY` is empty and the clause had nothing to range over. What the
-# repository DOES have is ten upstream references it cites in its own sentences,
+# repository DOES have is nine upstream references it cites in its own sentences,
 # one of them in a generated module that ships in the wheel. Those are the
 # population `attribution.VERIFIED` is compared against, in both directions, and the
 # cases below are what say so.
