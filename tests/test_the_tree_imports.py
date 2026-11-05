@@ -203,13 +203,23 @@ def test_every_module_a_fresh_run_emits_imports_and_every_class_of_it_is_defined
     # modules the child walked and the ``.py`` files ``emit.write`` just wrote -- so
     # neither is a number anybody re-points (``tests/test_every_check_names_its_set.py``'s
     # first rule).
+    # **THE SAME BLINDNESS WAS ON THIS SIDE TOO**, and it is why the equality held while
+    # the obligation did not.  ``not rel.endswith("__init__.py")`` dropped all 32 of the
+    # package markers, and the child's ``if not info.ispkg`` dropped the 31 of them that
+    # ``walk_packages`` yields -- so both derivations read 1,057 and agreed about a tree
+    # of 1,088 modules.  Repairing the child alone reddens this at ``(1088, 1057)``, which
+    # is the measurement: 31 modules and ``brand/__init__.py``'s 111 classes were outside
+    # the obligation, discharged by nothing.
+    #
+    # ``rel != "__init__.py"`` and not a suffix test: the ONE file excluded is the tree's
+    # own root, ``_schemas/__init__.py``, which ``walk_packages(pkg.__path__, ...)`` cannot
+    # yield because it enumerates that package's CHILDREN and a package's ``__init__`` IS
+    # the package.  Every other ``__init__.py`` is a module of the tree -- 30 of them the
+    # empty layout markers, one of them a document's own body (``emit.module_file``'s
+    # layout rule) -- and all of them must import.
     written = claimed(
         "modules a fresh run wrote",
-        {
-            rel
-            for rel in out.files
-            if rel.endswith(".py") and not rel.endswith("__init__.py")
-        },
+        {rel for rel in out.files if rel.endswith(".py") and rel != "__init__.py"},
     )
     assert report["modules"] == len(written), (report["modules"], len(written))
     assert report["classes"] > len(written), (report["classes"], len(written))
@@ -219,14 +229,13 @@ def test_every_module_a_fresh_run_emits_imports_and_every_class_of_it_is_defined
 def test_the_import_obligation_reports_both_halves_of_a_defect_it_is_shown(
     tmp_path: Path,
 ) -> None:
-    """The instrument, on the two shapes it exists to report, over a package of THREE.
+    """The instrument, on the three shapes it exists to report, over a package of FIVE.
 
     §9: a rule nothing can break is a finding about the rule -- and the check above is
     green, so without this nothing says it could ever be red.  The population is a
     hand-built ``_schemas`` and not the bundle's, because what is being graded here is the
-    CHILD and not the compiler: a three-module tree runs in a second where the real one
-    costs three minutes, and the two defects are the two
-    ``adcp-client-python-10l.21`` and ``-10l.98`` actually produced.
+    CHILD and not the compiler: a five-module tree runs in a second where the real one
+    costs three minutes, and the three defects are ones this epic actually produced.
 
     * **a name the module does not import** -- ``10l.21``'s shape, where ``render.klass``'s
       import filter hid every name inside a call.  The module IMPORTS and the class
@@ -234,7 +243,24 @@ def test_the_import_obligation_reports_both_halves_of_a_defect_it_is_shown(
     * **a base list naming one class twice** -- ``10l.98``'s shape, which is
       ``TypeError: duplicate base class`` and takes the module's IMPORT down.  Reported as
       that module's failure and NOT as the whole run's, which is the property the decision
-      turns on: the third module is clean and the child still reports it.
+      turns on: the clean module is reached and the child still reports it;
+    * **a defect in a module that is a PACKAGE** -- ``adcp-client-python-bxu``'s shape, and
+      the one the gate above cannot say anything about.  ``emit.module_file``'s layout rule
+      writes a document whose own path is also a DIRECTORY of the bundle to
+      ``<path>/__init__.py``, so ``brand.json``'s module is ``adcp.types._schemas.brand``
+      and ``pkgutil`` reports it as a package; the child screened ``ispkg`` and 31 of the
+      tree's 1,088 modules -- ``brand/__init__.py``'s 111 classes among them -- were
+      outside the obligation.  **Graded here and not above because the gate above is green
+      either way**: both its derivations dropped the package markers, so the equality held
+      over a tree the walk could not see all of, and a fix to a blind gate is unverifiable
+      by that gate's own green.  Here the package module carries a DEFECT, so the walk
+      either names it or does not, and the ``rooted/under.py`` beside it says the loss was
+      never recursion -- ``walk_packages`` descends into a package whatever the caller does
+      with its ``ispkg`` entry, and what the screen dropped is the ``__init__.py`` body.
+
+    **By behaviour and never by inspection**: nothing here reads the child's source or
+    asks how it walks.  The claim is that a known package module's classes are REACHED,
+    and what says so is a failure reported from inside one.
     """
     shutil.copytree(
         REPO / "src" / "adcp",
@@ -259,6 +285,22 @@ def test_the_import_obligation_reports_both_halves_of_a_defect_it_is_shown(
         "from adcp.types._base import AdCPBaseModel\n"
         "class Clean(AdCPBaseModel):\n    a: str\n"
     )
+    # ``rooted/`` is ``brand/``'s shape: a DOCUMENT's module written to the package's own
+    # ``__init__.py``, carrying classes, with the directory's documents as its submodules.
+    # The unresolved annotation is ``10l.21``'s again, placed here so the only thing that
+    # can name ``...rooted.Rooted`` is a walk that imported the package itself.
+    rooted = schemas / "rooted"
+    rooted.mkdir()
+    (rooted / "__init__.py").write_text(
+        "from __future__ import annotations\n"
+        "from adcp.types._base import AdCPBaseModel\n"
+        "class Rooted(AdCPBaseModel):\n"
+        "    a: Annotated[str, Field(description='x')]\n"
+    )
+    (rooted / "under.py").write_text(
+        "from adcp.types._base import AdCPBaseModel\n"
+        "class Under(AdCPBaseModel):\n    a: str\n"
+    )
 
     done = subprocess.run(
         [sys.executable, str(CHILD)],
@@ -270,26 +312,52 @@ def test_the_import_obligation_reports_both_halves_of_a_defect_it_is_shown(
     )
     assert done.returncode == 0, done.stderr[-2000:]
     report = json.loads(done.stdout)
-    # The three modules BY NAME and not by count, which is also what says the clean one
-    # was reached: a raise on either defective module would have taken the walk down.
-    assert {m.stem for m in schemas.glob("*.py")} == {
-        "unresolved",
-        "duplicated",
-        "clean",
-        "__init__",
+    # The modules BY NAME and not by count, read off the directory as POSIX paths so the
+    # package root is distinguishable from a plain module -- ``rooted/__init__.py`` and
+    # ``rooted/under.py`` are two files and one of them is the package's own body.
+    assert {
+        str(m.relative_to(schemas).as_posix()) for m in schemas.rglob("*.py")
+    } == {
+        "__init__.py",
+        "unresolved.py",
+        "duplicated.py",
+        "clean.py",
+        "rooted/__init__.py",
+        "rooted/under.py",
     }
-    assert report["modules"] == len(list(schemas.glob("*.py"))) - 1, report
+    # Minus ONE and not minus the ``__init__.py`` count: the single file outside the walk
+    # is the tree's own root, which ``walk_packages(pkg.__path__, ...)`` cannot yield
+    # because it enumerates that package's children.  ``rooted`` is one of those children.
+    assert report["modules"] == len(list(schemas.rglob("*.py"))) - 1, report
     named = {name for name, _ in report["failures"]}
     assert named == {
         "adcp.types._schemas.unresolved.Unresolved",
         "adcp.types._schemas.duplicated",
+        # **THE PACKAGE MODULE'S CLASS WAS REACHED**, and this entry is the only thing in
+        # the suite that says so.  A walk screening ``ispkg`` imports ``rooted.under`` and
+        # never ``rooted`` itself, so it reports two failures here and this set is short by
+        # one -- which is ``brand/__init__.py``'s 111 classes, in miniature and red.
+        "adcp.types._schemas.rooted.Rooted",
     }, report["failures"]
     why = dict(report["failures"])
     assert "not fully defined" in why["adcp.types._schemas.unresolved.Unresolved"], why
     assert "duplicate base class" in why["adcp.types._schemas.duplicated"], why
-    # And the clean module WAS reached, which is the half a raise would have taken out:
-    # every module walked, the clean class resolved, two defects named.
-    assert report["classes"], report
+    assert "not fully defined" in why["adcp.types._schemas.rooted.Rooted"], why
+    # And the clean modules WERE reached -- including ``rooted/under.py``, the submodule
+    # under the package root, which is what says recursion was never what the ``ispkg``
+    # screen cost.  As an EQUALITY BETWEEN TWO DERIVATIONS and not a pinned count
+    # (``tests/test_every_check_names_its_set.py``'s first rule): every ``class``
+    # statement of the modules that IMPORTED, which is the fixture minus ``duplicated``.
+    # That one fails at IMPORT, so neither of its two classes is ever reached -- the
+    # difference between the shape that takes a module down and the shape that does not.
+    declared = sum(
+        1
+        for path in sorted(schemas.rglob("*.py"))
+        if path.stem != "duplicated"
+        for line in path.read_text().splitlines()
+        if line.startswith("class ")
+    )
+    assert report["classes"] == declared, (report, declared)
 
 
 # --------------------------------------------------------------------------- #
