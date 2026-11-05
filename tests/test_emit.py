@@ -2726,7 +2726,7 @@ def _source(document: str) -> str:
 
 @functools.cache
 def _symbol(document: str) -> str:
-    """The name the emitted module exports, read off the module itself.
+    """The name the emitted module gives this document's ROOT, read off the module itself.
 
     Memoized because it RUNS THE EMITTER: at step 2's 43 documents the repeated
     runs were affordable and at step 3's 282 they are not, and the two tests
@@ -2734,20 +2734,38 @@ def _symbol(document: str) -> str:
     answer is a function of (bundle, document) alone, so the memo cannot hide a
     change.
     """
-    # ``__all__[0]`` AND NOT A ONE-ELEMENT UNPACK.  ``salesagent-j3k2l.31`` made a
-    # module export more than its root -- the root, plus every pointer the bundle
-    # names, plus the field types a composing subclass re-uses -- so 24 of the 677
-    # modules now list several names and the unpack this line used to do raised
-    # ``ValueError`` at all 12 call sites: ``core/catalog.json`` lists 6 names and
-    # ``aao/agent-publishers.json`` lists 2.
+    # **BY THE PROVENANCE REF AND NEVER BY POSITION.**  This read ``__all__[0]`` and
+    # called the root-first ordering "a fact that is itself graded", and the fact had
+    # stopped being true: ``codegen/render.py``'s ``module`` writes ``sorted(exports,
+    # key=_export_key)`` -- ``RUF022``'s order, which 6cb95c568 adopted to clear 31
+    # linter findings -- so ``emit.exported``'s ``[named.root, *sorted(rest)]`` is
+    # discarded by the renderer and the head is the alphabetically first export.
+    # Measured over the committed tree: 31 of 1,054 modules, including
+    # ``core/format.json`` (``BaseGroupAsset`` before ``Format``), ``brand.json``
+    # (``Agents`` before ``BrandDiscovery``) and ``core/targeting.json`` with 24 names.
+    # So 31 documents were handed another node's class and asked for its fields, which
+    # is how ``test_the_serializer_is_set_on_the_schema...`` got a ``list``.
     #
-    # THE ROOT IS FIRST BY A FACT THAT IS ITSELF GRADED, which is what makes position
-    # 0 safe rather than an assumption: ``tests/test_enum.py`` asserts
-    # ``listed[:1] == [root]`` for every emitted module, with the expected root derived
-    # from ``compiler.class_name`` over the document's own title.  So this reads index 0
-    # instead of filtering by name or re-deriving the title, and if that order ever
-    # changes the assertion over there fails before anything here does.
-    return importlib.import_module(compiled(BUNDLE, [document]).emitted[document]).__all__[0]
+    # ``__adcp_schema__`` is the one reading that cannot drift, because it is the
+    # EMITTER's own record of which node a class came from (§8): the root is the node at
+    # pointer ``#`` of this very document.  Two branches, and both are the module's own
+    # statement rather than a name match:
+    #
+    # 1. **A CLASS carries the ref itself** -- 774 modules.
+    # 2. **A module exporting ONE name has nothing to choose between** -- 280.  241 are
+    #    §5's root bindings, where D2 makes the root an ``Annotated`` alias or a
+    #    ``StrEnum`` with no class attribute to hold a ref, so the module declares
+    #    ``__adcp_schema__`` at module level instead; the other 39 are documents whose
+    #    root IS another document's node, re-exported rather than copied, so the class
+    #    correctly carries the OTHER document's ref.
+    module = importlib.import_module(compiled(BUNDLE, [document]).emitted[document])
+    root = SchemaRef(document, "#")
+    carrying = [n for n in module.__all__ if getattr(getattr(module, n), "__adcp_schema__", None) == root]
+    if len(carrying) == 1:
+        return carrying[0]
+    assert not carrying, (document, carrying)
+    assert len(module.__all__) == 1, (document, module.__all__)
+    return module.__all__[0]
 
 
 def test_a_cross_document_reference_is_an_import_and_not_a_copy() -> None:
@@ -6249,11 +6267,27 @@ def test_a_document_whose_path_is_also_a_directorys_is_that_packages_root() -> N
                 assert "__init__" not in (node.module or ""), (path, node.module)
                 assert all(a.name != "__init__" for a in node.names), path
 
-    # Clause 5: the cycle the layout makes POSSIBLE is absent, and it is asserted
-    # rather than argued: a package root's ``__init__`` executes on every import of
-    # anything under it, so an ``__init__`` importing its own submodule, or a submodule
-    # importing the root, is a cycle this tree has never had before.  Both directions
-    # are derived from the emitted import edges, so neither is a reading of one file.
+    # Clause 5: the cycle the layout makes POSSIBLE is absent -- and ONLY ONE OF THE TWO
+    # DIRECTIONS IS A CYCLE, which is the correction this clause carries.
+    #
+    # **A submodule importing its package root is not a cycle, and asserting that it was
+    # forbade the import §1 requires.**  Python initialises a package before any module
+    # under it runs, so by the time ``brand/get_brand_identity_response.py``'s body
+    # executes, ``adcp.types._schemas.brand`` is in ``sys.modules`` and COMPLETE -- there
+    # is no partially-initialised module for it to read.  Measured as the first import of
+    # a fresh interpreter: ``import
+    # adcp.types._schemas.brand.get_brand_identity_response`` succeeds, and
+    # ``tests/test_the_tree_imports.py`` imports all 31 package modules besides.  What the
+    # old assertion ruled out was the two edges the bundle actually states --
+    # ``brand/get-brand-identity-response.json`` and ``brand/search-brands-response.json``
+    # each name five and four of ``brand.json``'s own nodes -- so the only way to satisfy
+    # it was to COPY those classes, which is the second spelling §1's one-import-path rule
+    # exists to forbid.
+    #
+    # So the direction that IS a cycle is graded, STRENGTHENED past the spelling it used
+    # to read, and the other direction is graded for the thing that can really go wrong
+    # there: the import binds the root module's own class object and not a copy.
+    borrowing: set[tuple[str, str, str]] = set()
     for document in sorted(emitting):
         stem = emit.module_path(document)
         inward = {
@@ -6261,14 +6295,49 @@ def test_a_document_whose_path_is_also_a_directorys_is_that_packages_root() -> N
             for d in out.emitted
             if d != document and emit.module_path(d).startswith(f"{stem}/")
         }
+        # (a) THE CYCLE: the root's ``__init__`` reaches no module under its own package.
+        # Read off the RESOLVED target rather than off ``level == 1``, because
+        # ``from ..brand.rights_terms import X`` is the same cycle in a spelling that test
+        # missed -- a package's ``__init__`` importing its own child has to finish
+        # initialising the package the child is about to ask for.
         own = ast.parse((TREE / f"{stem}/__init__.py").read_text())
         for node in ast.walk(own):
-            if isinstance(node, ast.ImportFrom) and node.level == 1:
-                raise AssertionError(f"{stem}/__init__.py imports its own package: {node.module}")
+            if not isinstance(node, ast.ImportFrom) or not node.level:
+                continue
+            up = Path(f"{stem}/__init__").parent
+            for _ in range(node.level - 1):
+                up = up.parent
+            resolved = str(up / (node.module or "").replace(".", "/"))
+            assert resolved == stem or not resolved.startswith(f"{stem}/"), (
+                f"{stem}/__init__.py imports its own package: {node.module} -> {resolved}"
+            )
+        # (b) §1's ONE IMPORT PATH across that edge.  The submodule's name for the symbol
+        # is the ROOT MODULE's own object, so a consumer's ``isinstance`` holds against
+        # the class the root validates into -- which is what a copy would break and what
+        # the refusal this clause used to make would have forced.
         for other in sorted(inward):
             text = (TREE / f"{emit.module_file(other, roots)}.py").read_text()
             spelled = emit.relative_module(other, document, roots)
-            assert f"from {spelled} import " not in text, (other, spelled)
+            if f"from {spelled} import " not in text:
+                continue
+            borrowed = sorted(
+                {
+                    alias.name
+                    for node in ast.walk(ast.parse(text))
+                    if isinstance(node, ast.ImportFrom)
+                    and "." * node.level + (node.module or "") == spelled
+                    for alias in node.names
+                }
+            )
+            held = importlib.import_module(out.emitted[other])
+            at_the_root = importlib.import_module(out.emitted[document])
+            for name in claimed(f"{other}'s names borrowed from {document}", borrowed):
+                assert getattr(held, name) is getattr(at_the_root, name), (other, name)
+                borrowing.add((other, document, name))
+    # And the identity half ranges over something: a bundle whose package root has no
+    # submodule referencing its nodes gives clause 5(b) nothing to grade, and a clause
+    # that grades nothing is indistinguishable from one that holds.
+    claimed("(submodule, package root, symbol) borrowings", borrowing)
 
 
 #: A two-document bundle for the prune: both documents emit, and the second is then
@@ -6548,6 +6617,7 @@ def test_the_output_is_a_function_of_its_inputs_and_of_nothing_else() -> None:
     cmd = [sys.executable, "-m", "codegen", "--bundle", str(BUNDLE), "--tree"]
     trees = []
     reports = []
+    progress = []
     for seed in ("0", "12345"):
         into = Path(tempfile.mkdtemp())
         env = {**os.environ, "PYTHONHASHSEED": seed, "PYTHONPATH": SUBPROCESS_PATH}
@@ -6556,9 +6626,35 @@ def test_the_output_is_a_function_of_its_inputs_and_of_nothing_else() -> None:
         )
         trees.append({str(p.relative_to(into)): p.read_text() for p in sorted(into.rglob("*.py"))})
         reports.append(done.stdout.decode())
+        progress.append(done.stderr.decode())
         shutil.rmtree(into)
     assert trees[0] and trees[0] == trees[1]
     assert reports[0] and reports[0] == reports[1]
+
+    # **AND THE REPORT STILL SAYS WHAT THE RUN WROTE**, which is the half the equality
+    # above cannot hold on its own: deleting a line makes two reports agree.  The verdict
+    # table's row count and its path are the sentence that moved off stdout's
+    # non-deterministic neighbour (``adcp-client-python-qzx.1``), so they are named here
+    # -- a report that stops reporting them fails this, where before it would have been
+    # the shortest way to make the property green.
+    # The file name is the RUN's own constant, read the way
+    # ``tests/test_the_run_writes_its_verdicts.py`` reads it -- a local import, because
+    # ``codegen.__main__`` is the module ``runpy`` binds and a module-level import here
+    # would be a second object for one file.
+    from codegen.__main__ import VERDICTS
+
+    named = re.search(r"verdicts (\d+) rows -> (\S+)", reports[0])
+    assert named, reports[0]
+    assert int(named.group(1)) > 0, named.group(0)
+    assert named.group(2).endswith(VERDICTS), named.group(0)
+
+    # **THE WALL CLOCK IS ON STDERR AND NOT IN THE OUTPUT**, asserted in both directions
+    # so neither half can drift back.  A duration is the one thing the run says that no
+    # input decides, and while it was on stdout this property failed on it alone -- the
+    # two reports differed by ``50.3 s`` against ``48.8 s`` and agreed on all 159,876
+    # other characters, so every refusal sentence it exists to compare went ungraded.
+    assert not re.search(r"\(\d+\.\d s[;)]", reports[0]), reports[0]
+    assert re.search(r"\(\d+\.\d s\)", progress[0]), progress[0]
 
 
 def test_the_cli_reports_a_refusal_rather_than_raising_it(tmp_path) -> None:
