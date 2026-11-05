@@ -248,6 +248,36 @@ class Cell(NamedTuple):
     #: channels section 10 forbids summing stay two (``Module.carries_nothing`` against
     #: ``Module.approximations``).
     reported: bool = False
+    #: **Does this keyword's subschema OWN the child instance location it descends to**:
+    #: does it state something about EVERY instance at that location, and about exactly
+    #: that one?  A QUALIFIER OF :attr:`descends` and never true without it
+    #: (:func:`_with_ownership` raises otherwise).
+    #:
+    #: ``properties`` owns one named key, a single-schema ``items`` owns every element,
+    #: and ``additionalProperties`` owns the keys no other keyword names.  A keyword that
+    #: descends to the same position WITHOUT owning it speaks about SOME instance there or
+    #: about SEVERAL locations at once -- ``contains`` about one element of the array,
+    #: ``patternProperties`` about every key one pattern matches -- so no single value can
+    #: answer for it, and a reader that replaced it would be answering a question the
+    #: document asked of something else.  ``propertyNames`` descends to a KEY, which is a
+    #: location of a different kind and not a value a child holds.
+    #:
+    #: **A FIELD, and section 3's test of that is met on the DESCENT column's own triple**
+    #: -- the triple that section 3 states the test over for :attr:`widens_to`:
+    #: ``items`` and ``contains`` are both ``TYPE``, both unrendered, and both descend to
+    #: ``ELEM``, and one owns the element location while the other states an existential
+    #: about it.  So no reading of ``effect``, ``rendered`` and ``descends`` separates
+    #: them.  Neither does :attr:`widens_to` stand in for it: a rung says what DROPPING
+    #: the keyword costs, which is a different question, and the three places it happens
+    #: to disagree (``items`` JOIN against ``contains`` KEYWORD, ``additionalProperties``
+    #: rendered against ``patternProperties`` not, ``properties`` at PROP against
+    #: ``propertyNames`` at KEY) are three unrelated coincidences and not one predicate --
+    #: a disjunction over them would read a pydantic round-trip fact as an ownership fact
+    #: and would answer the first new keyword silently and wrongly.
+    #:
+    #: Its reader is :func:`owns_a_location`, and the frontier walk's
+    #: ``harness._OWNS`` is that set.
+    owns: bool = False
 
 
 class Row(NamedTuple):
@@ -1708,10 +1738,78 @@ def _filled(cell: Cell, rung: Rung | None) -> Cell:
     return cell._replace(widens_to=rung) if states_a_fact(cell.effect) else cell
 
 
+#: **The keywords whose subschema OWNS the child instance location it descends to**, and
+#: the whole of :attr:`Cell.owns` (which states what owning IS and why no other column
+#: answers it).  Declared per KEYWORD and folded onto its cells by
+#: :func:`_with_ownership`, for the reason :data:`_RUNG` is -- "one pass and not 107
+#: positional arguments" -- and because ownership is draft-07's APPLICABILITY and the same
+#: fact at every position the keyword descends from: ``properties`` names one key whether
+#: the object is a root, a branch or a conjunct.
+#:
+#: Each of the three is one sentence of draft-07's own applicability:
+#:
+#: * ``properties`` -- an entry applies to the instance at ITS key and to no other, so
+#:   that key is its location and one value answers for it.
+#: * ``items`` in its SINGLE-SCHEMA form -- applies to EVERY element, so the elements are
+#:   one location and one value answers for all of them.  (A list-valued ``items`` is a
+#:   per-INDEX location that ``additionalItems`` also reaches, which is why section 5's
+#:   row refuses it and why ownership here is the single-schema reading.)
+#: * ``additionalProperties`` in its schema form -- applies to the keys no other keyword
+#:   names, which is a location of its own and meets nothing.
+#:
+#: **The three keywords that descend to the same positions and are NOT here**, because an
+#: owner is what a single value can answer for: ``patternProperties`` (one entry reaches
+#: several keys), ``contains`` (an existential about one element) and ``propertyNames``
+#: (a KEY and not a value a child holds).  A reader that pinned one of them would answer
+#: a question the document asked of something else.
+_OWNS_ITS_LOCATION = frozenset({"properties", "items", "additionalProperties"})
+
+
+def _with_ownership(table: dict[str, Row]) -> dict[str, Row]:
+    """Every cell of ``table``, with :attr:`Cell.owns` filled from the declaration.
+
+    The CELL carries the answer afterwards, which is what puts the decision in the table
+    rather than in a set beside it (section 3), and :func:`owns_a_location` reads it there.
+
+    Two malformed-table conditions, raised as ``ValueError`` for :func:`_with_rungs`'s own
+    reason -- this module imports nothing of this package, so a malformed table stops the
+    import rather than reaching a reader:
+
+    * a keyword declared an owner with no row, which is an ownership decision about a
+      keyword the table does not carry;
+    * a keyword declared an owner with a cell that DESCENDS NOWHERE, since ownership
+      qualifies the descent column and there is no location to own without it.
+    """
+    out: dict[str, Row] = {}
+    for keyword, row in table.items():
+        owns = keyword in _OWNS_ITS_LOCATION
+        if owns and all(c.descends is None for c in (row.default, *row.at.values())):
+            raise ValueError(
+                f"{keyword!r} is declared in _OWNS_ITS_LOCATION and no cell of it "
+                "descends: Cell.owns qualifies the descent column, so there is no child "
+                "instance location for it to own"
+            )
+        out[keyword] = row._replace(
+            default=row.default._replace(owns=owns and row.default.descends is not None),
+            at={
+                position: cell._replace(owns=owns and cell.descends is not None)
+                for position, cell in row.at.items()
+            },
+        )
+    unrowed = _OWNS_ITS_LOCATION - set(table)
+    if unrowed:
+        raise ValueError(
+            f"_OWNS_ITS_LOCATION names keywords with no row: {sorted(unrowed)} -- a cell "
+            "is where an ownership decision lives, so a keyword the table does not carry "
+            "cannot be declared an owner"
+        )
+    return out
+
+
 #: **The table.**  Insertion order is the document's own grid order, because a grid
 #: line's position in its sub-table is read off it.
 TABLE: Mapping[str, Row] = _with_rungs(
-    {
+    _with_ownership({
         **_STRUCTURE,
         **_VALUES,
         **_STRINGS,
@@ -1720,7 +1818,7 @@ TABLE: Mapping[str, Row] = _with_rungs(
         **_OBJECTS,
         **_COMBINATORS,
         **_ADMITTED,
-    }
+    })
 )
 
 _NUMERIC = frozenset({"minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "multipleOf"})
@@ -1920,6 +2018,29 @@ def descends_at(position: Position) -> Mapping[str, Position]:
         if answer is not None and answer.descends is not None:
             out[keyword] = answer.descends
     return out
+
+
+def owns_a_location() -> frozenset[str]:
+    """The keywords whose subschema OWNS the child instance location it descends to.
+
+    **The frontier walk's own set, read off the ownership column** (:attr:`Cell.owns`,
+    which states what owning is and why no other column answers it): ``harness._OWNS`` is
+    this call, and a frontier item is grouped by the location an owner decides while a
+    keyword that merely CO-STATES one is conjoined where it stands.  Section 3's monopoly
+    is the reason it is a reading and not a tuple beside the walk -- "the table is the one
+    place a keyword decision lives" -- and which keywords own a location is a keyword
+    decision: changing it changes which positions a pin REPLACES, so the two halves must
+    read one declaration or the frontier and the table can disagree silently.
+
+    **Position-free, unlike :func:`rendered_at` and :func:`descends_at`**, and the
+    asymmetry is the fact and not an omission: ownership is draft-07's applicability, the
+    same at every position a keyword descends from, and the walk reads a node's KEYS
+    without being told the node's position -- so a position-keyed reader would make every
+    caller choose one arbitrarily and would answer the same thing at all of them.
+    """
+    return frozenset(
+        k for k, row in TABLE.items() if any(c.owns for c in (row.default, *row.at.values()))
+    )
 
 
 def lowers(answer: Cell) -> bool:

@@ -378,6 +378,57 @@ def test_the_descent_column_is_the_one_the_bundles_walk_descends_by() -> None:
         assert {at for _, _, _, at in reached} == {position}, (keyword, reached)
 
 
+#: One node per container kind, each stating EVERY keyword whose subschema reaches a child
+#: instance location: the three the table says own one and the three it says do not.  A
+#: node and not a keyword list, because the property below is about what the frontier walk
+#: REPLACES, and that is only visible on a node it walks.
+_BOTH_KINDS = (
+    {
+        "type": "object",
+        "properties": {"a": {"type": "string"}},
+        "patternProperties": {"^a$": {"minLength": 1}},
+        "additionalProperties": {"type": "integer"},
+        "propertyNames": {"maxLength": 4},
+    },
+    {"type": "array", "items": {"type": "string"}, "contains": {"const": "x"}},
+)
+
+
+def test_the_ownership_column_is_the_set_the_frontier_walk_replaces_at() -> None:
+    """:attr:`keywords.Cell.owns` against the walk's own BEHAVIOUR, not against a literal.
+
+    ``harness._OWNS`` is :func:`keywords.owns_a_location` (``adcp-client-python-aeu``), and
+    the walk spells the same three keywords again in its own arms -- so the column and the
+    walk are two readings of one decision and could drift without this.  What is asserted
+    is the only thing the decision DOES: a frontier item's ``pointers`` are the positions a
+    pin REPLACES, so a keyword the column says owns a location appears in them and a
+    keyword it says co-states one never does, while its subschema still arrives in
+    ``nodes`` to be conjoined.
+
+    Behaviour and not structure: nothing here reads the walk's source or counts its arms.
+    """
+    from codegen import harness
+
+    owners = claimed("keywords the table says own a child instance location", keywords.owns_a_location())
+    stated = claimed(
+        "the keywords these two nodes state that reach a child instance location",
+        {k for node in _BOTH_KINDS for k in node if k in keywords.descends_at(Position.ROOT)},
+    )
+    assert owners <= stated, sorted(owners - stated)
+
+    replaced_at, conjoined = set(), []
+    for node in _BOTH_KINDS:
+        for item in harness.locations(node):
+            replaced_at |= {p.split("/")[1] for p in item.pointers if p}
+            conjoined.extend(item.nodes)
+
+    assert replaced_at == owners, sorted(replaced_at ^ owners)
+    # The co-staters' own subschemas are still collected, which is what "conjoined and left
+    # standing" means: left out of ``pointers`` and present in ``nodes``.
+    for sub in ({"minLength": 1}, {"const": "x"}):
+        assert sub in conjoined, (sub, conjoined)
+
+
 # --------------------------------------------------------------------------- #
 # §3's monopoly: "nothing else in codegen/ names a keyword in a set literal"
 # --------------------------------------------------------------------------- #

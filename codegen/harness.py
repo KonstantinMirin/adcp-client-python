@@ -514,7 +514,16 @@ _CONDITIONAL = frozenset({"then", "else"})
 #: ``additionalItems`` also reaches, and ``propertyNames`` decides a key and not a value --
 #: both are §8's own named caveat, "two fixtures can still meet on one instance through
 #: ``uniqueItems`` or a tuple-valued ``items``".
-_OWNS = frozenset({"properties", "items", "additionalProperties"})
+#:
+#: **READ OFF THE TABLE'S OWNERSHIP COLUMN and not retyped here** (§3's monopoly, and
+#: ``adcp-client-python-aeu`` is the red that said so): which keywords own a location is a
+#: keyword decision, so it lives in the cell (:attr:`keywords.Cell.owns`) and this is
+#: :func:`keywords.owns_a_location` reading it.  The three sentences above are the REASON
+#: each one owns, which the cell carries too; what the table could not say before was the
+#: answer itself -- ``items`` and ``contains`` agree on ``effect``, ``rendered`` and
+#: ``descends`` and only one of them owns, which is §3's own test that the column is a
+#: field.
+_OWNS = keywords.owns_a_location()
 
 #: The keywords :func:`locations` reads but never replaces: they state something about a
 #: location another keyword owns, so they are conjoined into that location's value and
