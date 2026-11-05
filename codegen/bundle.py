@@ -153,6 +153,68 @@ def package_roots(bundle: Path) -> frozenset[str]:
     return frozenset(d for d in documents if d.removesuffix(".json") in directories)
 
 
+def repeated(bundle: Path) -> dict[str, str]:
+    """A REPEATED DOCUMENT's non-home paths, each mapped to the path that is its home.
+
+    **§3a's layers collect a structure stated at more than one POSITION, and this is the
+    one duplication that survives all four of them: a repeated DOCUMENT.**  Two
+    byte-identical documents are two nodes of identical content at two ROOTS, and a root
+    is a stating position of exactly one document -- so no layer's group ever holds both,
+    and :attr:`catalogue.ShapeEntry.restating` excludes a root outright ("a document ROOT
+    must declare because §1 says every portable document contributes a symbol").  Measured
+    on bundle 3.2: 1,054 portable paths over **1,015 distinct byte-contents**, with 39
+    contents at exactly two paths each, every one of them a document under
+    ``core/async-response-refs/<domain>/`` beside the same document under ``<domain>/``.
+
+    **THE IDENTITY IS THE DOCUMENT'S OWN BYTES, and it is strictly FINER than any layer's
+    key -- which is why this cannot be a layer's job and is measured, not argued.**  L2's
+    key is admission-equivalence, so it drops ``title`` and ``description``: asked of these
+    78 roots it answers 10 groups of two, **10 more roots inside groups that mix
+    DIFFERENT protocol states** (five operations' *Submitted* envelopes admit identically
+    and their titles conflict, which is ``catalogue.ShapeConflict`` doing the right thing),
+    one inside a three-position entry, and **18 it does not collect at all** because their
+    root is an ``allOf`` with no ``properties`` of its own.  Byte-identity answers all 39
+    and over-groups nothing: two documents equal byte for byte agree on the title too.
+
+    **THE HOME IS THE SHALLOWEST PATH**, ties broken lexicographically -- a function of the
+    bundle, order-independent, and total.  The rule the bundle itself gives agrees with it
+    and does not reach: ``core/async-response-data.json#/anyOf`` is the node that states
+    the async-response union, and of its 42 arms **23 name a member of one of these groups
+    -- every one of them the SHALLOW path, and none of them the deep one.  Nothing in the
+    bundle references any of the 39 deep paths at all** (measured over every ``$ref`` in
+    the whole tree, 44,864 of them, projections and registry included).  So the shallow
+    rule contradicts the reference rule at 0 of the 23 it decides and answers the 16 it
+    does not.  ``emit.standing_order`` is NOT the rule here and the measurement is why: it
+    splits these groups 17/22 and would home 22 of them in ``core``, which is the domain
+    the protocol's own union never names.
+
+    **A NON-HOME MEMBER IS NOT A STATING POSITION OF ANY LAYER**, which is the one
+    consequence that inverts nothing: §3a already screens positions out -- a RULE, a CONJ,
+    a ``contains``, a ``definitions`` entry no reference names -- and this is that same
+    screen one level up, because the document declares nothing at all.  Without it 6 L0
+    vocabularies and 1 L2 structure take a home inside a document that emits no class, and
+    their restating positions import a symbol no module wrote.
+
+    **IT IS STILL A PORTABLE DOCUMENT AND STILL EMITS A MODULE**, so ``emitted`` is 1,054
+    and not 1,015: this reading decides what the module DECLARES, never what the bundle
+    holds.  Which paths belong in the bundle is ``adcp-client-python-82m.39``'s question
+    and it is upstream's.
+    """
+    groups: dict[bytes, list[str]] = {}
+    for document in portable(bundle):
+        groups.setdefault(hashlib.sha256((bundle / document).read_bytes()).digest(), []).append(
+            document
+        )
+    return {
+        member: home
+        for paths in groups.values()
+        if len(paths) > 1
+        for home in [min(paths, key=lambda p: (p.count("/"), p))]
+        for member in paths
+        if member != home
+    }
+
+
 def read(bundle: Path, document: str) -> dict:
     doc = json.loads((bundle / document).read_text())
     if not isinstance(doc, dict):

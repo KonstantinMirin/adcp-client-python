@@ -810,6 +810,36 @@ def lower_document(
     # -- and because every derived name is a concatenation onto this one, so the proof
     # that a nested name is an identifier rests on it (``compiler.local_reference``).
     mod.hops[""] = lower_names.Root(title)
+    #: **§3a's catalogue, the layer above L3 -- a REPEATED DOCUMENT -- asked at the ONE
+    #: position the walk's per-node entry does not own.**  ``compiler.lower_node`` asks
+    #: ``mod.objects`` of every pointer it is handed, and the ROOT is not one of them: §5
+    #: makes a document ``parse(raw, position=ROOT)`` followed by ``decide``, so the root
+    #: reaches the dispatch directly and this function is the only frame that knows a root
+    #: is a root.  The question is the same one the walk asks everywhere else -- "is this
+    #: position a REFERENCE to a catalogue entry" -- and the answer is the same shape.
+    #:
+    #: **A RE-EXPORT and not a binding**, which is the one thing a cross-module restatement
+    #: at a root can be that one at an inner position cannot: the two documents are
+    #: byte-identical, so they carry the same ``title`` and derive the SAME symbol, and a
+    #: binding would be ``X = X`` -- or, once ``spell_the_rungs`` lengthened it away from
+    #: the import it collides with, a name no document states.  So the module's root symbol
+    #: IS the home's, the import block is the whole module, and §1's "``X is Y`` holds, and
+    #: the surface exports it once" is held by construction: there is no second class
+    #: statement to be a second object, and no second declaration for the surface to
+    #: export.  ``lower.names.assign`` reads :attr:`compiler.Module.root` for the module's
+    #: root symbol exactly because nothing is declared at ``""`` here.
+    #:
+    #: **The children are not lowered, which is the collapse.**  §4's own dedup has the
+    #: same property -- "a second occurrence's CHILDREN are never lowered" -- and it is why
+    #: ``catalogue.stating`` screens this document out of every layer beneath: a position
+    #: inside it is one no class is emitted at.
+    repeated_root = mod.objects.get("")
+    if repeated_root is not None:
+        mod.root = mod.importing(
+            repeated_root.symbol,
+            compiler.Importable(repeated_root.module, repeated_root.document),
+        )
+        return mod, mod.root
     decided = decide(root, mod)
     if isinstance(decided, Refusal):
         # §6, returned upward unchanged: the refusal names the innermost node that
@@ -1665,6 +1695,25 @@ def emit(
     #: (``compiler.Module.objects``).  36 positions over 17 documents for this bundle's 17
     #: named object types.
     restating_objects = l2.restating()
+    #: **§3a's catalogue, the layer ABOVE L3: a REPEATED DOCUMENT**, as the one row it adds
+    #: to the table above -- the non-home member's ROOT restates the home's root.
+    #: :func:`bundle.repeated` is the reading, its home rule and its measurement; what is
+    #: HERE is only that a document-level entry enters the walk through the same slot an
+    #: L2 entry does, because the walk's question at a position is the same one ("is this
+    #: position a REFERENCE to a catalogue entry") and ``compiler.lower_node`` asks it of
+    #: every pointer alike, the root included.
+    #:
+    #: **The root and no other pointer**, which is what keeps this layer's scope the
+    #: DOCUMENT: binding the root makes the children unreachable by construction -- a
+    #: second occurrence's children are never lowered -- so one row per repeated document
+    #: is the whole of the collapse and a row per inner position would be a second
+    #: statement of it.
+    for member, home in sorted(bundle.repeated(bundle_dir).items()):
+        restating_objects.setdefault(member, {})[""] = catalogue.Reference(
+            document=home,
+            pointer="",
+            title=bundle.read(bundle_dir, home).get("title"),
+        )
     #: document -> pointer -> the entry that position RESTATES, which is the one thing
     #: the walk consults (``compiler.Module.vocabularies``).  22 positions over 21
     #: documents for this bundle's 15 named vocabularies.

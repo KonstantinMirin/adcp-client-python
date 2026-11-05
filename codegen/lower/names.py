@@ -1760,7 +1760,14 @@ def assign(
         symbols[pointer] = symbols[declares]
     return ir.Module(
         document=mod.document,
-        root=symbols.get("", ""),
+        # **The walk's own root symbol where nothing is DECLARED at the root**, which is
+        # §3a's repeated-DOCUMENT layer and nothing else: ``emit.lower_document`` makes
+        # such a module a RE-EXPORT of the home's class, so there is no declaration at
+        # ``""`` for this pass to spell and ``mod.root`` already holds the symbol the
+        # import brought in.  Every other module declares at ``""`` -- a class, an
+        # enumeration under a ``RootBinding``, or an alias -- so the fallback selects
+        # nothing for them, and the empty string it replaced was a module with no root.
+        root=symbols.get("", mod.root),
         # §3a's value list written once, for two types of this module over one value
         # list (:func:`the_value_lists`).  AFTER the binding, because the constant is
         # named from its MEMBERS and the enumerations it serves are named from their

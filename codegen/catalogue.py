@@ -634,6 +634,32 @@ def value_list(stated: Stated) -> Vocabulary:
     return (KIND[type(stated.members[0])], stated.members)
 
 
+def stating(bundle_dir: Path, documents: Collection[str] | None = None) -> list[str]:
+    """The documents every layer of this file collects positions FROM, in sorted order.
+
+    Two readings in one place, because all three state generators need both and a third
+    spelling of either is a third thing to keep in agreement:
+
+    * ``documents`` defaults to :func:`bundle.portable`, which is the whole bundle.  **A
+      caller that passes the RUN's document set would be the census §9 forbids**, which is
+      why the default is the bundle and the parameter is documented as a test's.
+    * **A NON-HOME MEMBER OF A REPEATED DOCUMENT IS NOT A STATING POSITION OF ANY LAYER**
+      (:func:`bundle.repeated`, whose docstring carries the measurement and the home rule).
+      The document declares nothing -- its module binds the home's root symbol -- so a
+      position inside it is one no class is emitted at, and §3a's own sentence about a CONJ
+      home is the precedent: "a layer that collects a position no class is emitted at has
+      collected a home that cannot declare."  Measured on bundle 3.2: without this screen 6
+      L0 vocabularies and 1 L2 structure home inside such a document and their restating
+      positions import a symbol no module wrote.
+    """
+    repeated = bundle.repeated(bundle_dir)
+    return sorted(
+        d
+        for d in (documents if documents is not None else bundle.portable(bundle_dir))
+        if d not in repeated
+    )
+
+
 def states(bundle_dir: Path, documents: Collection[str] | None = None) -> Iterator[Stated]:
     """Every position of the bundle that STATES a vocabulary this layer collects.
 
@@ -644,7 +670,7 @@ def states(bundle_dir: Path, documents: Collection[str] | None = None) -> Iterat
     one of them is a function of the pinned input.
     """
     names = bundle.named_nodes(bundle_dir)
-    for document in sorted(documents if documents is not None else bundle.portable(bundle_dir)):
+    for document in stating(bundle_dir, documents):
         doc = bundle.read(bundle_dir, document)
         # The ``definitions`` entries of this document that NO ``$ref`` names, which §5
         # lowers no type from: a position inside one declares nothing, so it cannot be an
@@ -1236,6 +1262,15 @@ class ShapeEntry:
         declares, a document ROOT declares because §1 says every portable document
         contributes a symbol, and a position in the home's own document is §4's content
         dedup's.
+
+        **AND ``not p.is_a_root`` IS WHY THE 39 BYTE-IDENTICAL DOCUMENT PAIRS SURVIVED
+        READING 4 AT ALL FOUR LAYERS** (``adcp-client-python-82m.40``): a root is screened
+        out here, so no entry of any layer ever held two of them as restating positions,
+        and the duplication was invisible to a gate stated over :attr:`restating`.  The
+        clause STANDS -- every portable document does contribute a symbol, and the 39
+        contribute theirs by RE-EXPORTING the home's class rather than declaring a second
+        one (``emit.lower_document``) -- so what was missing was never a weakening of this
+        line but a layer above it whose subject is the DOCUMENT (:func:`bundle.repeated`).
         """
         home = (self.at.document, self.at.pointer)
         return tuple(
@@ -1283,16 +1318,26 @@ class Shapes:
     beneath."  So an untitled ARRAY structure has nothing to declare and nothing to name,
     and the check that ranges over it asks whether the layer beneath owns its element.
 
-    **The last of those is a part L0 has no members in and L2 does.**  Ten of this
-    bundle's object structures are stated at exactly two positions, both of them a document
-    ROOT, both carrying the SAME title -- the bundle ships one document at two paths, under
-    ``core/async-response-refs/`` and under the domain's own directory.  §1 obliges both to
-    export a symbol, so neither can become a reference to the other, and the decided key
-    says they admit identically.  **The decided key does not settle it**, so it is reported
-    and not chosen in: the local answer available is an ALIAS at the second root, which is
-    §3a's "a restated title that a consumer needs is an alias at its position, never a
-    second class", and the question of which root is the alias is §1's rather than this
-    layer's.
+    **The last of those is EMPTY, and what emptied it is a layer above this one rather
+    than a judgement inside it** (``adcp-client-python-82m.40``).  It held ten object
+    structures stated at exactly two positions, both of them a document ROOT, both carrying
+    the same title -- the bundle ships one document at two paths, under
+    ``core/async-response-refs/`` and under the domain's own directory -- and this layer
+    reported them because the decided key does not settle which root may become a reference
+    to the other.
+
+    **It still does not settle it, and the measurement says why the question was never this
+    layer's.**  Asked of the 78 roots of the 39 byte-identical document pairs, the
+    admission key answers those ten, **ten more inside groups that mix DIFFERENT protocol
+    states** -- five operations' *Submitted* envelopes admit identically and their titles
+    conflict, which is :class:`ShapeConflict` doing the right thing -- one inside a
+    three-position entry, and **eighteen it does not collect at all**, their root being an
+    ``allOf`` with no ``properties`` of its own.  So this layer's key both over-groups and
+    under-reaches the population, because the subject is not a structure stated twice: it
+    is a **repeated DOCUMENT**, whose identity is the document's own bytes and is strictly
+    finer than admission-equivalence.  :func:`bundle.repeated` is that layer, it answers all
+    39, and :func:`stating` is what keeps a non-home member out of this one -- so the
+    positions never reach a group here and the part is empty by derivation.
     """
 
     #: key -> the entry, for every structure this layer COLLECTS: stated in more than one
@@ -1380,9 +1425,7 @@ def shape_states(
     and the answer is that the COLLAPSE declines to reach such a position.
     """
     names = bundle.named_nodes(admitted.dir)
-    for document in sorted(
-        documents if documents is not None else bundle.portable(admitted.dir)
-    ):
+    for document in stating(admitted.dir, documents):
         doc = admitted.document(document)
         unreferenced = tuple(
             sorted(bundle.section_entries(doc) - names.get(document, frozenset()))
@@ -2108,7 +2151,7 @@ def scalar_states(
     each node alone collects neither the branch nor the alias the walk derives for it.
     """
     named = bundle.named_nodes(bundle_dir)
-    for document in sorted(documents if documents is not None else bundle.portable(bundle_dir)):
+    for document in stating(bundle_dir, documents):
         doc = bundle.read(bundle_dir, document)
         unreferenced = tuple(
             sorted(bundle.section_entries(doc) - named.get(document, frozenset()))
