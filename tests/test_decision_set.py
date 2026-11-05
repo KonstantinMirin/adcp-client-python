@@ -45,7 +45,7 @@ no longer is:
   moment an attribution is filed.
 * **the CITATION-LEVEL upstream half is not vacuous and is the change.**  Reading 9's
   existence clause was decided over :data:`attribution.REGISTRY` alone, which is empty, so
-  it was a gate with nothing in it -- while the repository cited NINE upstream issues
+  it was a gate with nothing in it -- while the repository cited TEN upstream references
   elsewhere, including one in a generated module that ships in the wheel, and one that
   does not exist.  The population is now every reference the repository cites, measured
   off ``git ls-files``, and :data:`attribution.VERIFIED` is compared against it in both
@@ -227,7 +227,7 @@ def test_every_upstream_attribution_names_an_issue_that_exists() -> None:
     ``codegen/dump_exemptions.py`` and ``src/adcp/types/envelopes.py`` -- which ships in
     the wheel -- do it another way.  Keeping this gate's population at :data:`REGISTRY`
     alone is how the existence clause came to be answered by an empty set while the
-    repository cited nine upstream issues, one of which did not exist.
+    repository cited ten upstream references, one of which did not exist.
 
     Existence cannot be derived offline and this file has no network, so what is checked is
     that somebody looked and wrote down what they saw.  ``codegen/attribution.py`` carries

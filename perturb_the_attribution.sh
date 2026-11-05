@@ -9,7 +9,7 @@
 # Measured on this tree: all 90 declared facts are OURS -- every attribution is a
 # cell address in `docs/plan/rebuild-plan.md` §5 and not an issue reference -- so
 # `attribution.REGISTRY` is empty and the clause had nothing to range over. What the
-# repository DOES have is nine upstream references it cites in its own sentences,
+# repository DOES have is ten upstream references it cites in its own sentences,
 # one of them in a generated module that ships in the wheel. Those are the
 # population `attribution.VERIFIED` is compared against, in both directions, and the
 # cases below are what say so.
@@ -65,21 +65,29 @@ edit() { py -c "$1" || { echo "perturbation did not apply: $1" >&2; exit 1; }; }
 # real document and a pointer nothing declares, so the planted entry moves the CITATION
 # readings and not the declared-facts one -- which is the point: a reference enters the
 # tree the moment somebody types it, whether or not a fact is attributed to it yet.
-PLANT='REGISTRY: Mapping[Site, Issue] = {\n    ("core/pagination-request.json", "#/properties/max_results", "maximum"): Issue(\n        "adcontextprotocol/adcp#99999999",\n        "the document should state this bound",\n    ),\n}'
+# **THE FICTIONAL NUMBERS ARE BUILT FROM TWO HALVES AND NEVER SPELLED.** This script is
+# a tracked file, so `tests/test_decision_set.py`'s census reads it -- and a plant spelled
+# out here is a citation of this repository's, with no sighting, which reddens the gate on
+# the COMMITTED tree. Measured: it did, and a fresh worktree is what caught it, because
+# the census is over `git ls-files` and these two files were still untracked when the gate
+# was last run. The halves are concatenated by the interpreter, so the perturbed file gets
+# the whole reference and this file cites nothing.
+UP='"adcontextprotocol/adcp"+"#"'
+PLANT='REGISTRY: Mapping[Site, Issue] = {\n    ("core/pagination-request.json", "#/properties/max_results", "maximum"): Issue(\n        "ABSENT_REFERENCE",\n        "the document should state this bound",\n    ),\n}'
 
 echo "=== AN ATTRIBUTION NAMING AN ISSUE THAT DOES NOT EXIST ==="
 
 # The case the brief asks for. The reference enters the citation census the moment it is
 # written, and no sighting records it, so the FORWARD direction reports it by name.
-edit "import pathlib;p=pathlib.Path('$A');s=p.read_text();a='REGISTRY: Mapping[Site, Issue] = {}';assert s.count(a)==1;p.write_text(s.replace(a,'''$PLANT'''.replace('\\\\n','\n')))"
-run "an attribution naming #99999999, no sighting" "cites_has_a_sighting"
+edit "import pathlib;p=pathlib.Path('$A');s=p.read_text();a='REGISTRY: Mapping[Site, Issue] = {}';b='''$PLANT'''.replace('\\\\n','\n').replace('ABSENT_REFERENCE',$UP+'99999999');assert s.count(a)==1;p.write_text(s.replace(a,b))"
+run "an attribution naming issue 99999999, no sighting" "cites_has_a_sighting"
 
 # And the same attribution with the sighting somebody would actually have written after
 # looking: the look found nothing, so the record says ABSENT and `absent()` reports it.
 # This is the direction that cannot be satisfied by writing an entry: a sighting is what
 # was SEEN, and `survey/upstream_issues.py` is what re-derives it from the tracker.
-edit "import pathlib;p=pathlib.Path('$A');s=p.read_text();a='REGISTRY: Mapping[Site, Issue] = {}';assert s.count(a)==1;p.write_text(s.replace(a,'''$PLANT'''.replace('\\\\n','\n')))"
-edit "import pathlib;p=pathlib.Path('$A');s=p.read_text();a='VERIFIED: Mapping[str, Sighting] = {';assert s.count(a)==1;p.write_text(s.replace(a,a+'\n    \"adcontextprotocol/adcp#99999999\": Sighting(\n        reference=\"adcontextprotocol/adcp#99999999\",\n        state=\"ABSENT\",\n        title=\"\",\n        seen=\"2026-11-05\",\n    ),'))"
+edit "import pathlib;p=pathlib.Path('$A');s=p.read_text();a='REGISTRY: Mapping[Site, Issue] = {}';b='''$PLANT'''.replace('\\\\n','\n').replace('ABSENT_REFERENCE',$UP+'99999999');assert s.count(a)==1;p.write_text(s.replace(a,b))"
+edit "import pathlib;p=pathlib.Path('$A');s=p.read_text();a='VERIFIED: Mapping[str, Sighting] = {';assert s.count(a)==1;r=$UP+'99999999';p.write_text(s.replace(a,a+'\n    \"'+r+'\": Sighting(\n        reference=\"'+r+'\",\n        state=\"ABSENT\",\n        title=\"\",\n        seen=\"2026-11-05\",\n    ),'))"
 run "the same attribution, sighted and recorded ABSENT" "cites_has_a_sighting"
 
 echo
@@ -95,7 +103,7 @@ run "the sighting for the reference the WHEEL cites, removed" "cites_has_a_sight
 # BACKWARD: a sighting nothing cites. This is what stops the registry becoming an
 # allowlist that grows and never shrinks -- an entry leaves when the last sentence that
 # cited it is deleted, and nothing else has to notice.
-edit "import pathlib;p=pathlib.Path('$A');s=p.read_text();a='VERIFIED: Mapping[str, Sighting] = {';assert s.count(a)==1;p.write_text(s.replace(a,a+'\n    \"adcontextprotocol/adcp#4242\": Sighting(\n        reference=\"adcontextprotocol/adcp#4242\",\n        state=\"OPEN\",\n        title=\"an issue nothing in this repository cites\",\n        seen=\"2026-11-05\",\n    ),'))"
+edit "import pathlib;p=pathlib.Path('$A');s=p.read_text();a='VERIFIED: Mapping[str, Sighting] = {';assert s.count(a)==1;r=$UP+'4242';p.write_text(s.replace(a,a+'\n    \"'+r+'\": Sighting(\n        reference=\"'+r+'\",\n        state=\"OPEN\",\n        title=\"an issue nothing in this repository cites\",\n        seen=\"2026-11-05\",\n    ),'))"
 run "a sighting no sentence of ours cites" "cites_has_a_sighting"
 
 echo
@@ -105,7 +113,7 @@ echo "=== THE EXCLUSION, which is the only place a citation could hide ==="
 # document is upstream citing upstream. A citation of OURS written into a record would
 # be hidden by that rule -- so the rule requires every reference a record cites to appear
 # in the BUNDLE too, and this is that requirement put to the test.
-edit "import pathlib;p=pathlib.Path('$R');s=p.read_text();assert '99999999' not in s;p.write_text(s.rstrip()+'\n\n# Upstream: adcontextprotocol/adcp#99999999\n')"
+edit "import pathlib;p=pathlib.Path('$R');s=p.read_text();assert '99999999' not in s;p.write_text(s.rstrip()+'\n\n# Upstream: '+$UP+'99999999'+'\n')"
 run "a citation of ours written into an emitted record" "cites_has_a_sighting"
 
 echo

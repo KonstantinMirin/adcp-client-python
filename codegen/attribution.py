@@ -258,7 +258,7 @@ class Sighting:
 #: claim on someone else's backlog that nobody has checked (:func:`unsighted`).  Backward: a
 #: sighting no citation names is a list of issues doing nothing (:func:`unnamed`).  So this
 #: cannot grow ahead of a citation and cannot stay behind one -- and neither direction is
-#: vacuous, which is the change: there are nine references here where there were none.
+#: vacuous, which is the change: there are TEN references here where there were none.
 #:
 #: **ONE WAS ABSENT AND IT WAS IN THE TREE, not planted.**  Issue number ONE of the
 #: ``adcontextprotocol/adcp`` tracker was cited three times -- twice in
@@ -277,10 +277,16 @@ class Sighting:
 #: ``tests/test_type_checker.py`` solves by anchoring to a comment's start.  Here the
 #: explanation names the repository and the number apart, which no citation does.
 #:
-#: **ONE IS CLOSED AND IS CITED ONLY BY THE DESIGN PROSE**: ``adcontextprotocol/adcp#7959``,
-#: a backport ask, in ``docs/schema-patterns-brief.md``.  :func:`closed` reports it and the
-#: rule its test applies is "the prose may record what was asked and answered; CODE may
-#: not rest a decision on an issue upstream has already settled."
+#: **ONE IS CLOSED**: ``adcontextprotocol/adcp#7959``, a 3.1.x backport ask, cited in
+#: ``docs/schema-patterns-brief.md``.  :func:`closed` reports it, and the rule its test
+#: applies is about the ATTRIBUTIONS and not about which file names a number -- a path rule
+#: reddens on the sighting that records the closure and on the sentence explaining it.
+#:
+#: **ONE IS A PULL REQUEST AND THAT IS NOT A SECOND KIND OF THING**:
+#: ``adcontextprotocol/adcp#8753``, opened for ``#8735``'s title ask.  Issues and pull
+#: requests share one numbering space and ``gh issue view`` resolves either, so a citation
+#: naming a PR names something that exists; ``survey/upstream_issues.py`` records a MERGED
+#: PR as ``CLOSED``, because what this registry needs to know is whether the ask is live.
 VERIFIED: Mapping[str, Sighting] = {
     "adcontextprotocol/adcp#7919": Sighting(
         reference="adcontextprotocol/adcp#7919",
@@ -352,6 +358,12 @@ VERIFIED: Mapping[str, Sighting] = {
             "The bundle restates 95 object shapes it never titles, over 255 positions in "
             "131 documents -- give each one a `title`"
         ),
+        seen="2026-11-05",
+    ),
+    "adcontextprotocol/adcp#8753": Sighting(
+        reference="adcontextprotocol/adcp#8753",
+        state="OPEN",
+        title="schemas(brand): title data_subject_contestation (#8735)",
         seen="2026-11-05",
     ),
 }
