@@ -79,8 +79,23 @@ run "the recursive half of the glob dropped" "payload_is_the_packages_committed_
 echo
 echo "=== PACKAGING: py.typed, which is reading 7's whole promise ==="
 
+# **MEASURED, AND IT CORRECTS A SENTENCE IN `pyproject.toml`.** Dropping the declaration
+# does NOT drop the marker: `setuptools` as pinned ships `src/adcp/py.typed` whether or
+# not `[tool.setuptools.package-data]` names it, so that entry's own comment -- "the wheel
+# is built without it and the promise is made to readers alone" -- is not what makes the
+# marker ship. The declaration is still worth keeping (it is what reading 7's gate reads,
+# and it is what survives a builder that does not special-case the name), but the file is
+# what decides. So the perturbation removes the FILE, which is the one edit that makes a
+# wheel without a marker, and the declaration case is recorded as NOT CAUGHT below.
+edit "import pathlib,shutil;shutil.move('src/adcp/py.typed','py.typed.perturbed')"
+out=$(py -m pytest "$T" -q -n 0 -p no:randomly -k "marker_reading_7_promises" 2>&1 | tail -4)
+if echo "$out" | grep -qE "[0-9]+ (failed|error)"; then verdict=REDDENS; else verdict="STAYED GREEN"; fi
+printf '%-58s %-12s %s\n' "the marker file removed from the package" "$verdict" "$(echo "$out" | grep -oE '[0-9]+ (passed|failed|error).*' | head -1)"
+py -c "import shutil;shutil.move('py.typed.perturbed','src/adcp/py.typed')"
+git checkout -- "$P" "$T"
+
 edit "import pathlib;p=pathlib.Path('$P');s=p.read_text();a='\"adcp\" = [\"py.typed\"]';assert s.count(a)==1;p.write_text(s.replace(a,''))"
-run "py.typed dropped from package-data" "marker_reading_7_promises"
+run "  NOT CAUGHT: the declaration dropped, file kept" "marker_reading_7_promises"
 
 # The CONTROL, and it is the reason this file exists: reading 7's own gate reads
 # `src/adcp/py.typed` and the `[tool.setuptools.package-data]` DECLARATION, so it
@@ -129,19 +144,21 @@ edit "import pathlib;p=pathlib.Path('$T');s=p.read_text();a='import adcp\nimport
 run "src appended to sys.path, losing the import race" "never_seen_this_repository"
 
 echo
-echo "=== THE STALE BUILD DIRECTORY, which made every case above green once ==="
+echo "=== THE STALE BUILD DIRECTORY, and this one must print STAYED GREEN ==="
 
 # `setuptools` stages the wheel in `build/lib` and prunes nothing, so a second build over
 # a changed configuration packages the union of the two. Every packaging perturbation
-# above printed STAYED GREEN until `_built` removed that directory. This case is the
-# regression: take the removal out and the gate stops seeing packaging at all.
+# above printed STAYED GREEN until `_built` removed that directory, so the evidence that
+# the removal is load-bearing is a case that goes BLIND when it is taken out: the records
+# are dropped from `package-data` and the gate cannot see it. STAYED GREEN here is the
+# finding, not a failure of the script.
 edit "import pathlib;p=pathlib.Path('$T');s=p.read_text();a='    shutil.rmtree(ROOT / \"build\", ignore_errors=True)';assert s.count(a)==1;p.write_text(s.replace(a,'    pass  # perturbed: the stale build directory is kept'))"
 py -c "import pathlib,shutil;shutil.rmtree('build',ignore_errors=True)"
 out=$(py -m pytest "$T" -q -n 0 -p no:randomly -k "payload_is_the_packages_committed_files" 2>&1 | tail -4)
 edit "import pathlib;p=pathlib.Path('$P');s=p.read_text();a='\"adcp.types._schemas\" = [\"*.json\", \"**/*.json\"]';assert s.count(a)==1;p.write_text(s.replace(a,''))"
 out=$(py -m pytest "$T" -q -n 0 -p no:randomly -k "payload_is_the_packages_committed_files" 2>&1 | tail -4)
 if echo "$out" | grep -qE "[0-9]+ (failed|error)"; then verdict=REDDENS; else verdict="STAYED GREEN"; fi
-printf '%-58s %-12s %s\n' "the records dropped, build/ kept from the run before" "$verdict" "$(echo "$out" | grep -oE '[0-9]+ (passed|failed|error).*' | head -1)"
+printf '%-58s %-12s %s\n' "  BLIND: records dropped, build/ kept from the run before" "$verdict" "$(echo "$out" | grep -oE '[0-9]+ (passed|failed|error).*' | head -1)"
 git checkout -- "$P" "$T"
 py -c "import shutil;shutil.rmtree('build',ignore_errors=True)"
 
@@ -189,6 +206,8 @@ edit "import pathlib;p=pathlib.Path('$T');s=p.read_text();a='        exported[na
 run "every __all__ truncated to its first name" "exports_imports_from_it"
 
 echo
-echo "every case above must print REDDENS except the line under NOT CAUGHT and the control"
-echo "marked 'copytree', which must print STAYED GREEN: those two are the measurement of"
-echo "what this file does and does not add."
+echo "EVERY LINE MUST PRINT REDDENS EXCEPT FOUR, and each of the four is a measurement:"
+echo "  control: the copytree'd consumer check    -- the gap this file closes"
+echo "  NOT CAUGHT: the declaration dropped       -- setuptools ships py.typed anyway"
+echo "  BLIND: build/ kept from the run before    -- why _built removes that directory"
+echo "  every __all__ truncated to its first name -- the surface is the wheel's own claim"
