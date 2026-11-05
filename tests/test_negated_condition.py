@@ -47,8 +47,9 @@ document admits, which is the one outcome §2 forbids outright.
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
+
+import fresh
 
 from adcp.types._runtime import Match
 from codegen import bundle
@@ -56,7 +57,15 @@ from codegen.keywords import Position
 from codegen.lower import rules
 from tests.nodeset import claimed
 
-BUNDLE = Path(__file__).resolve().parents[1] / "schemas" / "cache" / "3.2"
+#: **The bundle a RUN reads, re-exported from ``tests/fresh.py``** -- the same seam
+#: ``tests/test_the_domain_surface.py`` takes it from, and for the same measured reason
+#: (``adcp-client-python-lzzj.9``):
+#: ``test_a_negated_condition_is_declared_where_the_rule_declines_it`` compiles over
+#: ``fresh.population()``, which is the document set of the bundle ``tests/fresh.py``
+#: materialised the graded tree from.  With the build's patch sets applied that set
+#: carries documents the published bundle does not hold, so a reader spelling its own
+#: published path opens a file that is not there.  One run, one bundle.
+BUNDLE = fresh.BUNDLE
 
 #: The payload the defect was measured with, and the key the condition is about.
 #:
@@ -237,7 +246,6 @@ def test_no_widening_is_declared_where_the_complement_lowers() -> None:
     reading is over the stating document's own module, which is where §8 sentence 2 puts
     a fact's declaration.
     """
-    import fresh
     from compiled import compiled
 
     stating = {document for document, _ in _negated_conditions()}
