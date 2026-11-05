@@ -79,9 +79,32 @@ This is the deliverable's correctness and the definition of "the schemas produce
 Emission is not this: a document emits when the walk produces a class for it, which says nothing
 about what the class states.
 
-**Decided by** the draw, over every pair of a class and the document and pointer it names. The
-verdict is per pair and names the value. A pair the instrument cannot grade is not a pair that
-passes: a budget cut is reported as a cut, and no pair passes by leaving the check unexecuted.
+**THIS IS A PROPERTY OF THE COMPILER AND NOT OF ONE BUNDLE.** It must hold for every document of
+every bundle the compiler is pointed at. An instrument that answers only for the bundle whose
+values someone stored answers the wrong question: it cannot say whether a NEW bundle emitted
+correctly, which is the only question anyone asks of a compiler.
+
+**Decided by** the keyword table's CELLS, each verified once from its own statement. The table is
+the whole of the transformation — a keyword at a position, and what it emits there — so if every
+cell admits exactly what its keyword admits at that position, then every class the composition
+produces admits exactly what its document admits. **A cell is a statement about JSON Schema, so it
+carries no bundle, holds no stored value, and nothing about it expires when the bundle moves.**
+
+**The per-document draw CORROBORATES and does not decide.** It samples the image of a function
+whose domain is the table, so it can find a cell whose statement is wrong, and it is worth running
+for that. It cannot establish the reading: no number of passing documents says anything about the
+document nobody sampled, and a stored value makes an improvement to the bundle cost exactly as much
+as a regression.
+
+**NO VERIFICATION ARTIFACT IS KEYED ON A DOCUMENT'S BYTES.** A key is over what the document
+ADMITS. A compiler edit must move no key — and neither must an acceptance-preserving transformation
+of the bundle, because by definition it cannot invalidate a value. What belongs in a key is what
+changes which values are drawn.
+
+**AND A PAIR THAT CAN ONLY BE GRADED FROM A STORE IS NOT VERIFIED, IT IS REMEMBERED.** Where the
+store is load-bearing rather than a saving, the reading does not hold for that pair and the store
+is hiding it. A budget cut is reported as a cut, and no pair passes by leaving the check
+unexecuted.
 
 ## 2. Every exception to reading 1 is a declared widening, proved by a value
 
