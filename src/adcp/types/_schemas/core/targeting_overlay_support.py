@@ -212,9 +212,6 @@ class TargetingOverlaySupport(AdCPBaseModel):
         PropertyCount(minimum=1, maximum=None),
         ForbiddenGroups((('frequency_cap', 'frequency_cap_support'),)),
     )
-    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='core/targeting-overlay-support.json', pointer='#/definitions/daypartSupport/anyOf/1/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'timezone_modes': {'contains': {'const': 'iana'}}}, 'required': ['timezone_modes']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
-    )
     geo_countries: CountrySupport | None = None
     geo_countries_exclude: CountrySupport | None = None
     geo_regions: Supported | GeographicRegionSupport | None = None
