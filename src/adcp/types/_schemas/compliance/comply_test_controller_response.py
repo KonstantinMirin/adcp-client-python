@@ -7,7 +7,7 @@ from typing import Annotated, Any, ClassVar, Literal
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
-from adcp.types._runtime import ForbiddenGroups, Rule
+from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule
 from adcp.types.constraints import ComplyTestControllerRequestParamsIdentifierValueDigestsItem, HttpUrl, StrMaxLen128, StrMinLen1MaxLen1000, StrMinLen1MaxLen2000, StrMinLen1MaxLen255, UpstreamTrafficSuccessRecordedCallsItemStatusCode
 
 from ..core.context import ContextObject
@@ -33,8 +33,6 @@ class ComplyTestControllerResponse(BranchDispatchMixin, AdCPVersionEnvelope, Pro
     def _branch_combinator(cls) -> str:
         return "oneOf"
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='compliance/comply-test-controller-response.json', pointer='#/oneOf/3/properties/forced/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'arm': {'const': 'rejected'}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
-        Approximation(document='compliance/comply-test-controller-response.json', pointer='#/oneOf/3/properties/forced/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'arm': {'const': 'submitted'}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
         Approximation(document='compliance/comply-test-controller-response.json', pointer='#/oneOf/6/properties/recorded_calls/items/properties/payload', keyword='maxLength', kind='WIDENED', rung='KEYWORD', fact=65536, attribution='docs/plan/rebuild-plan.md §5 strings/maxLength'),
     )
 
@@ -102,9 +100,9 @@ class Forced(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='compliance/comply-test-controller-response.json', pointer='#/oneOf/3/properties/forced')
-    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='compliance/comply-test-controller-response.json', pointer='#/oneOf/3/properties/forced/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'arm': {'const': 'rejected'}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
-        Approximation(document='compliance/comply-test-controller-response.json', pointer='#/oneOf/3/properties/forced/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'arm': {'const': 'submitted'}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    _adcp_rules: ClassVar[tuple[Rule, ...]] = (
+        ConditionalRequired((Match('arm', None, ('rejected',)),), require=('reason',), forbid=('task_id',)),
+        ConditionalRequired((Match('arm', None, ('submitted',)),), require=(), forbid=('reason', 'suggestions')),
     )
     arm: Annotated[Arm, Field(description='Arm the seller will emit on the next forced operation response.')]
     task_id: Annotated[StrMaxLen128 | None, Field(description="Echo of the registered task_id. Present only when arm is 'submitted' (the arm that emits a task envelope).")] = None
@@ -123,10 +121,6 @@ class ForcedDirectiveSuccess(ComplyTestControllerResponse):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='compliance/comply-test-controller-response.json', pointer='#/oneOf/3')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('error',), ('scenarios',), ('previous_state',), ('simulated',), ('recorded_calls',), ('audit_observations',))),
-    )
-    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='compliance/comply-test-controller-response.json', pointer='#/oneOf/3/properties/forced/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'arm': {'const': 'rejected'}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
-        Approximation(document='compliance/comply-test-controller-response.json', pointer='#/oneOf/3/properties/forced/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'arm': {'const': 'submitted'}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     success: Literal[True]
     forced: Annotated[Forced, Field(description='Echo of the registered directive. The next matching operation call from this sandbox account will return the named arm.')]
