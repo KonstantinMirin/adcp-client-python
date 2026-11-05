@@ -158,6 +158,21 @@ references it resolves.
 branches and aliases alike — at exactly one such path, with the domain derived from the document's
 own path. No second way reaches the same class, and no name in one namespace means two classes.
 
+**AND ONE NAME MEANING TWO THINGS IN TWO NAMESPACES IS NOT A VIOLATION OF THIS READING, BUT IT IS
+NOT NOTHING EITHER.** `AudienceSource` is a class at `adcp.types.core` and an enumeration at
+`adcp.types.enums`: `core/audience-source.json` is an object with a `oneOf`, `enums/audience-source.json`
+is a string with six members, neither references the other, and **both are titled "Audience
+Source"**. Reading 4 is right to keep them apart — they admit different sets — and this reading is
+satisfied, because each is at exactly one path and no single namespace carries one name for two
+classes.
+
+**What it costs is a consumer importing from the wrong module and getting something that silently
+is not what they meant**, which no gate here can see because nothing is duplicated. So it is
+**reported, with both schema nodes named, and it is an upstream ask over the set of titles the
+bundle uses twice for different subjects** — never resolved by renaming one of ours, because the
+name comes from the bundle and §4 forbids us to choose a different word for a subject the protocol
+has named.
+
 **Decided by** counting OBJECTS, not names: the number of export paths equals the number of distinct
 objects behind them, and the object reached is the same object as the private path's. A check that
 resolves every export and requires exactly one path each is answered `yes` by two names for one
