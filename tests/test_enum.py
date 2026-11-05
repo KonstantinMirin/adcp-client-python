@@ -1199,11 +1199,24 @@ def test_the_emitted_tree_still_declares_every_module_it_imports() -> None:
     direction off the AST, so a module importing a symbol from a sibling that does
     not export it fails here by name.
 
-    The ORDER is graded too, because ``__all__`` holds more than one name since
-    salesagent-j3k2l.31 and ``tests/test_emit.py`` reads the root off the head of it.
-    The expected head is derived -- ``emit.class_name`` over the document's own title,
-    which is the function ``lower_document`` makes the symbol with -- so this cannot
-    pass by restating what the tree happens to hold.
+    **THE ROOT IS EXPORTED, AND THE ORDER IS NOT A CLAIM ANY MORE.**  This asserted
+    ``listed[:1] == [root]`` -- the document's own class at the HEAD of ``__all__`` --
+    and ``tests/test_emit.py``'s ``_symbol`` read index 0 on the strength of it.  The
+    position stopped being the emitter's to decide at 6cb95c568: ``render.module``
+    writes ``sorted(exports, key=_export_key)``, which is ``RUF022``'s order and was
+    adopted to clear 31 findings in the generated tree, so ``emit.exported``'s
+    root-first list is sorted away.  Measured here: the root is at index 0 in 1,023 of
+    1,054 modules and somewhere else in 31 -- ``BaseGroupAsset`` before ``Format``,
+    ``Agents`` before ``BrandDiscovery``, ``AgeRestriction`` first of
+    ``core/targeting.json``'s 24.
+
+    So the claim is restated as the one the emitter can keep while a linter decides the
+    order, and it is the claim ``_symbol`` now depends on: the root is EXPORTED, and the
+    two independent derivations of which symbol it is agree.  ``compiler.class_name``
+    over the document's own ``title`` is the function ``lower_document`` makes the symbol
+    with; ``__adcp_schema__`` is §8's record of the node a class came from, and the root
+    is the class at pointer ``#``.  Neither restates what the tree happens to hold, and a
+    renamed root that the walk did not follow fails both halves.
     """
     # **THE TWO READINGS ARE BOTH NEEDED HERE and they are not interchangeable**, which
     # is why each has its own name below.  ``module`` is the NAME's path and it is what a
@@ -1213,6 +1226,12 @@ def test_the_emitted_tree_still_declares_every_module_it_imports() -> None:
     # ``emit.relative_module`` is written to: ``brand.json`` is a package root, so its
     # name is ``brand`` and its file is ``brand/__init__``, one level deeper.
     exported: dict[str, set[str]] = {}
+    #: The two halves of the root claim, each named so neither can grade an empty set:
+    #: every document's root is exported, and the subset of roots that are CLASSES --
+    #: the ones with somewhere to carry a ref, D2 making a scalar root an alias instead --
+    #: is where the provenance derivation can be asked at all.
+    by_title: set[tuple[str, str]] = set()
+    by_provenance: set[tuple[str, str]] = set()
     for document in sorted({g.ref.document for g in graded()}):
         module = emit.module_path(document)
         tree = ast.parse((TREE / f"{emit.module_file(document, PACKAGES)}.py").read_text())
@@ -1226,8 +1245,27 @@ def test_the_emitted_tree_still_declares_every_module_it_imports() -> None:
             if isinstance(e, ast.Constant)
         ]
         root = compiler.class_name(bundle.read(BUNDLE, document)["title"])
-        assert listed[:1] == [root], (module, listed[:1], root)
+        assert root in listed, (module, listed, root)
+        by_title.add((document, root))
+        held = importlib.import_module(emit.module_name(document))
+        carrying = [
+            name
+            for name in listed
+            if getattr(getattr(held, name), "__adcp_schema__", None) == SchemaRef(document, "#")
+        ]
+        # A class carries the ref or the module does (§5's root binding), and a module
+        # whose root is another document's node re-exports that class, which correctly
+        # carries the OTHER document's ref.  Where a class answers, it is the root the
+        # title derived; where none does, the module exports one name and there is
+        # nothing for two derivations to disagree about.
+        if carrying:
+            assert carrying == [root], (module, carrying, root)
+            by_provenance.add((document, root))
+        else:
+            assert listed == [root], (module, listed, root)
         exported[module] = set(listed)
+    claimed("documents whose root symbol the title derives", by_title)
+    claimed("documents whose root CLASS carries the document's own ref", by_provenance)
     checked: set[tuple[str, str, str]] = set()
     for document in sorted({g.ref.document for g in graded()}):
         module = emit.module_path(document)

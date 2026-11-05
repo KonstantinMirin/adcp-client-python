@@ -353,9 +353,22 @@ def main(argv: list[str] | None = None) -> int:
     path.write_text(table)
     print(
         f"verdicts {written} rows -> {path} "
-        f"({time.time() - started:.1f} s; grep 'dump=fail' for one check, "
-        f"diff against the last run for what moved)"
+        f"(grep 'dump=fail' for one check, diff against the last run for what moved)"
     )
+    # **THE DURATION IS ON STDERR, because stdout is an OUTPUT and a wall clock is not a
+    # function of the inputs.**  P7 is "the output is a function of its inputs and of
+    # nothing else", and ``tests/test_emit.py``'s property compares the whole report
+    # between two runs at different hash seeds precisely because a refused document says
+    # everything it has to say here and nowhere in ``files``.  A ``.1f`` of elapsed
+    # seconds made that comparison fail on the one character of the report that no input
+    # decides -- 50.3 s against 48.8 s -- so the property could not grade the sentences
+    # it exists for.
+    #
+    # Not deleted, because the figure is what tells an operator that grading is the
+    # expensive half of the run.  ``./check`` already settled where it goes: its own
+    # ``({...:.2f} s)`` line is printed to ``sys.stderr`` beside three stdout lines that
+    # are the delivery's numbers.  This is that same split, in the other entry point.
+    print(f"({time.time() - started:.1f} s)", file=sys.stderr)
     return 1 if out.refusals else 0
 
 
