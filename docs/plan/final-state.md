@@ -256,7 +256,35 @@ what to use instead.
 thousands of spellings and most of it is reachable only because a module forgot to declare what it
 exports. **The set that decides this reading is measured off real consumer code** — upstream's own
 example server and a production application — and it is the only denominator that means anything
-here.
+here. Measured, consumers touch well under half of the flat namespace's declared names, and **the
+flat module alone carries more import sites than every `adcp.types.<something>` combined**, which
+is why that module is where the compatibility surface lives.
+
+**AN ALIAS IS KEYED ON A SCHEMA SUBJECT, NEVER ON A NAME.** A name resolves to a *different* class
+of ours depending on which upstream module the import came from, so one flat alias cannot serve
+both — and resolving by name alone put one upstream `Unit` onto a class from an entirely different
+document, two documents sharing one word. **The key is identity: the field set read by wire alias,
+or the enum's value list.** A name is the thing being aliased, not the thing that decides what it
+aliases to.
+
+**AND A COLLAPSE MUST NOT DECIDE A SPLIT — §4's RULE, AT THIS LAYER.** An instrument that matches
+upstream's names onto ours by agreement is a collapse, and many upstream names landing on one class
+of ours is a *hypothesis*, not a verdict. Some are one subject spelled twice; some are distinct
+subjects our walk folded, and publishing an alias for each would **republish the duplication
+reading 4 exists to remove, under the name "compatibility"**. Every many-to-one target is decided
+by reading the bundle first — whether it REFERENCES one node from the others or RESTATES it — and
+never by the agreement that found it.
+
+**AND NO ALIAS POINTS AT A NAME THIS COMPILER MINTED FROM STRUCTURE.** §4's derivation ends in a
+name taken from the structure where the bundle names nothing, and such a name is *pending* an
+upstream title. Publishing an alias onto it makes a placeholder permanent and public, which is the
+one thing §4's placeholder rule forbids: a name minted for want of a subject must not become a name
+an application depends on.
+
+**AND WHERE UPSTREAM'S NAME MEANS A DIFFERENT SET OF VALUES, AN ALIAS IS A DEFECT AND NOT A
+BRIDGE.** Their `TaskStatus` is a transport's five states; the schema's is its own list. An alias
+there hands a caller something that silently is not what it asked for, which is worse than an
+import error. That name takes a migration note naming both sets.
 
 **An alias is a NAME and never a second type.** Reading 6 still holds with the aliases counted:
 export paths equal distinct declarations, and `isinstance` holds across every spelling. An alias
