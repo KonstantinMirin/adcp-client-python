@@ -61,6 +61,7 @@ import subprocess
 import sys
 import tempfile
 import types
+from collections.abc import Mapping
 from dataclasses import replace
 from pathlib import Path
 from typing import Annotated, Any, ClassVar, Literal, NamedTuple
@@ -2726,46 +2727,35 @@ def _source(document: str) -> str:
 
 @functools.cache
 def _symbol(document: str) -> str:
-    """The name the emitted module gives this document's ROOT, read off the module itself.
+    """The name the emitted module binds the document's ROOT to.
 
     Memoized because it RUNS THE EMITTER: at step 2's 43 documents the repeated
     runs were affordable and at step 3's 282 they are not, and the two tests
     below ask for the same target's symbol once per referencing property.  The
     answer is a function of (bundle, document) alone, so the memo cannot hide a
     change.
+
+    **RESOLVED BY THE PROVENANCE POINTER AND NEVER BY A POSITION IN A LIST.**  This
+    read ``__all__[0]`` and the fact it stood on is retired: ``6cb95c568`` made the
+    RENDERER decide ``__all__``'s order -- ``RUF022``'s, two groups and case-sensitive,
+    which is what a linter reads the generated tree against -- so the head of the list
+    is the alphabetically first export and not the root.  Measured, it is wrong for
+    ``brand.json``, whose 52 exports begin ``Agents`` (an ``Annotated`` alias at a
+    ``definitions`` entry) while the root binds ``BrandDiscovery``: four union checks
+    below then asked ``list`` for ``model_validate``.
+
+    ``Emitted.declared`` and ``Emitted.adopted`` are the run's own symbol table keyed by
+    POINTER, so ``""`` is the root by construction and no order, title or spelling enters
+    the answer.  Both maps are read because they PARTITION that table: a root whose class
+    was bound by identity to another pointer's declaration is in the second
+    (``emit.emit``'s ``out.declared`` / ``out.adopted`` split), and a reader taking one
+    alone would miss it.
     """
-    # **BY THE PROVENANCE REF AND NEVER BY POSITION.**  This read ``__all__[0]`` and
-    # called the root-first ordering "a fact that is itself graded", and the fact had
-    # stopped being true: ``codegen/render.py``'s ``module`` writes ``sorted(exports,
-    # key=_export_key)`` -- ``RUF022``'s order, which 6cb95c568 adopted to clear 31
-    # linter findings -- so ``emit.exported``'s ``[named.root, *sorted(rest)]`` is
-    # discarded by the renderer and the head is the alphabetically first export.
-    # Measured over the committed tree: 31 of 1,054 modules, including
-    # ``core/format.json`` (``BaseGroupAsset`` before ``Format``), ``brand.json``
-    # (``Agents`` before ``BrandDiscovery``) and ``core/targeting.json`` with 24 names.
-    # So 31 documents were handed another node's class and asked for its fields, which
-    # is how ``test_the_serializer_is_set_on_the_schema...`` got a ``list``.
-    #
-    # ``__adcp_schema__`` is the one reading that cannot drift, because it is the
-    # EMITTER's own record of which node a class came from (§8): the root is the node at
-    # pointer ``#`` of this very document.  Two branches, and both are the module's own
-    # statement rather than a name match:
-    #
-    # 1. **A CLASS carries the ref itself** -- 774 modules.
-    # 2. **A module exporting ONE name has nothing to choose between** -- 280.  241 are
-    #    §5's root bindings, where D2 makes the root an ``Annotated`` alias or a
-    #    ``StrEnum`` with no class attribute to hold a ref, so the module declares
-    #    ``__adcp_schema__`` at module level instead; the other 39 are documents whose
-    #    root IS another document's node, re-exported rather than copied, so the class
-    #    correctly carries the OTHER document's ref.
-    module = importlib.import_module(compiled(BUNDLE, [document]).emitted[document])
-    root = SchemaRef(document, "#")
-    carrying = [n for n in module.__all__ if getattr(getattr(module, n), "__adcp_schema__", None) == root]
-    if len(carrying) == 1:
-        return carrying[0]
-    assert not carrying, (document, carrying)
-    assert len(module.__all__) == 1, (document, module.__all__)
-    return module.__all__[0]
+    # By the provenance pointer and never by position: ``__all__`` is sorted, so
+    # index 0 is the root for only 1,023 of 1,054 modules.  ``declared``/``adopted``
+    # at pointer ``""`` is the emitter's own record of what it bound there.
+    out = compiled(BUNDLE, [document])
+    return {**out.adopted[document], **out.declared[document]}[""]
 
 
 def test_a_cross_document_reference_is_an_import_and_not_a_copy() -> None:
@@ -3133,19 +3123,21 @@ def test_a_union_root_emits_a_base_plus_one_subclass_per_branch() -> None:
       caller had nothing to ``isinstance`` against.  Asserted as: the module's ``__all__``
       is the root's own name, that name is a CLASS, and it derives
       ``BranchDispatchMixin``;
-    * **one subclass per branch**, exactly -- as many branch classes as the document has
-      branches, each deriving the base, each naming its own ``#/<kw>/<i>``;
+    * **every branch answered by a class that derives the base**, and every branch class
+      answering exactly one branch.  Not "as many branch classes as the document has
+      branches", which §4's union row makes false at a DISTRIBUTING branch --
+      :func:`_answers_per_branch` is the derivation and carries the measurement;
     * the base declares the three facts the mixin reads;
     * the module installs the union, because the branches do not exist while the base is
       being built.
 
-    Everything compared is derived: the branch count from the document, the symbol from
-    the module's own ``__all__``, the pointers from the classes themselves.
+    Everything compared is derived: the branch set from the document, the symbol from the
+    run's own symbol table at the ROOT POINTER, the pointers from the classes themselves.
     """
     assert emitted_union_bases(), "no union root was emitted; this test grades nothing"
+    distributing: set[str] = set()
     for document in emitted_union_bases():
         doc = bundle.read(BUNDLE, document)
-        kw = lower_union.keyword(doc)
         symbol = _symbol(document)
         tree = ast.parse(_source(document))
         classes = {c.name: c for c in tree.body if isinstance(c, ast.ClassDef)}
@@ -3187,7 +3179,18 @@ def test_a_union_root_emits_a_base_plus_one_subclass_per_branch() -> None:
             for name, node in classes.items()
             if [b.id for b in node.bases if isinstance(b, ast.Name)][:1] == [symbol]
         )
-        assert len(branch_classes) == len(doc[kw]), (document, branch_classes, len(doc[kw]))
+        # **EVERY BRANCH ANSWERED, AND EVERY BRANCH CLASS ANSWERING ONE BRANCH.**  This
+        # read ``len(branch_classes) == len(doc[kw])`` and §4's union row makes that false
+        # where a branch DISTRIBUTES: :func:`_answers_per_branch` is the derivation and
+        # its docstring the reason.  Over the provenance pointers the module itself
+        # writes, so the names §4 derives are not what the partition turns on.
+        distributing.update(
+            f"{document}{branch_at}"
+            for branch_at, named in _answers_per_branch(
+                document, {name: _branch_pointer(classes[name]) for name in branch_classes}
+            ).items()
+            if len(named) > 1
+        )
 
         declared = {
             t.target.id
@@ -3212,6 +3215,7 @@ def test_a_union_root_emits_a_base_plus_one_subclass_per_branch() -> None:
             document,
             assigned,
         )
+    claimed("branches that distribute over their target's branches", distributing)
 
 
 def test_the_base_the_root_name_binds_is_the_class_every_branch_descends_from() -> None:
@@ -3223,19 +3227,58 @@ def test_the_base_the_root_name_binds_is_the_class_every_branch_descends_from() 
     a root that declares its own ``required``, so no document in this step's population
     produces a non-empty one, and the field is graded by the mixin's unit test below
     rather than by the tree.
+
+    **A BRANCH THAT IS ITSELF A UNION ROOT DECLARES ITS OWN BRANCH LIST, and this
+    asserted that none does.**  ``"_branch_models" not in branch.__dict__`` is the claim
+    "no branch shadows the base's list" written as "no branch declares one", and the two
+    are not the same sentence: §5's nested row makes a branch that composes a union a
+    union BASE of its own, so the dispatch continues inside it -- which is the shape
+    ``tests/test_ref_branch_union.py::
+    test_the_nested_union_base_of_postal_area_imports_and_dispatches`` asserts is
+    CORRECT, on ``PostalAreaCountrySystemValues``.  Measured here on ``adagents.json``:
+    ``AdCPAgentsAuthorizationCommunityFormatRegistry`` is the root's ``#/oneOf/1`` and
+    holds six branches of its own, declared at pointers beneath it.
+
+    So the claim asserted is the one the title makes, and it is asserted BY PROVENANCE:
+    a branch's own list, where it has one, is not the base's, and every member of it is a
+    proper subclass declared at a pointer strictly UNDER the branch's.  The set of
+    branches that are union bases is named, so the nested arm cannot go vacuous the day
+    the tree stops producing one.
     """
     assert emitted_union_bases()
+    nested_bases: set[str] = set()
+    distributing: set[str] = set()
     for document in emitted_union_bases():
         doc = bundle.read(BUNDLE, document)
         base = getattr(importlib.import_module(_module_of(document)), _symbol(document))
         branches = base._branch_models
 
         assert "_branch_models" in base.__dict__, document
-        assert len(branches) == len(doc[lower_union.keyword(doc)]), document
+        # **EVERY BRANCH ANSWERED, over the live classes' own provenance.**  This read
+        # ``len(branches) == len(doc[kw])``, which §4's union row makes false where a
+        # branch DISTRIBUTES: ``46 == 42`` at ``core/async-response-data.json`` and no
+        # way to say which four.  :func:`_answers_per_branch` is the derivation.
+        distributing.update(
+            f"{document}{branch_at}"
+            for branch_at, named in _answers_per_branch(
+                document, {b.__name__: b.__adcp_schema__.pointer for b in branches}
+            ).items()
+            if len(named) > 1
+        )
         for branch in branches:
             assert issubclass(branch, base) and branch is not base, (document, branch)
-            assert "_branch_models" not in branch.__dict__, (document, branch)
             assert branch.__adcp_schema__.document == document, (document, branch)
+            own = branch.__dict__.get("_branch_models")
+            if own is None:
+                continue
+            nested_bases.add(f"{document}{branch.__adcp_schema__.pointer}")
+            assert own != branches, (document, branch)
+            for nested in own:
+                assert issubclass(nested, branch) and nested is not branch, (branch, nested)
+                assert nested.__adcp_schema__.document == document, (branch, nested)
+                assert nested.__adcp_schema__.pointer.startswith(
+                    f"{branch.__adcp_schema__.pointer}/"
+                ), (branch, nested, nested.__adcp_schema__.pointer)
         assert base._branch_combinator() == lower_union.keyword(doc), document
         # **The root's OWN ``required``, derived from the document** (§14 step 9).  This
         # asserted ``()`` and said so because ``union.ROOT_CONJUNCTS`` refused a root
@@ -3246,10 +3289,80 @@ def test_the_base_the_root_name_binds_is_the_class_every_branch_descends_from() 
         # ``test_a_payload_no_branch_admits_is_refused_in_the_documents_own_vocabulary``
         # now grades against a live document rather than a constructed one.
         assert base._ROOT_REQUIRED == tuple(doc.get("required") or ()), document
+    claimed("branches that are union bases of their own", nested_bases)
+    claimed("branches that distribute over their target's branches", distributing)
 
 
 def _module_of(document: str) -> str:
     return f"{emit.PACKAGE}.{emit.module_path(document).replace('/', '.')}"
+
+
+def _answers_per_branch(document: str, at: Mapping[str, str]) -> dict[str, list[str]]:
+    """Each of ``document``'s branch pointers -> the class pointers that answer it.
+
+    **§4's union row, which is why "one class per branch" is not the claim.**  "A ``$ref``
+    branch whose target is a dispatch root declaring nothing of its own is one class per
+    branch of the target, each with that branch and this union's base", and
+    ``lower.union._branch_classes`` says the other half: *no class is declared at a
+    distributing branch's own pointer*.  So a branch is answered by a class at its OWN
+    pointer, or by one per LIVE branch of the target it distributes over.
+
+    Asserted here as a PARTITION over provenance pointers and not as a count: every class
+    answers exactly one branch, and every branch is answered.  Measured over the bundle,
+    exactly one document distributes -- ``core/async-response-data.json``, whose
+    ``#/anyOf/10`` and ``#/anyOf/11`` reference ``media-buy/media-buy-commitment-response``
+    and ``media-buy/control-media-buy-response``, each a dispatch root with three branches
+    and no field set of its own -- so the two checks that read this held ``46 == 42`` and
+    could not say which four were extra.
+
+    ``at`` maps a name a reader can report (a symbol, a class) to the provenance pointer
+    the emitter gave it; the answer is keyed by branch pointer so a caller can say which
+    branch distributed and over what.
+    """
+    doc = bundle.read(BUNDLE, document)
+    kw = lower_union.keyword(doc)
+    answers: dict[str, list[str]] = {f"#/{kw}/{i}": [] for i in range(len(doc[kw]))}
+    for name, pointer in sorted(at.items()):
+        owners = [b for b in answers if pointer == b or pointer.startswith(f"{b}/")]
+        assert len(owners) == 1, (document, name, pointer, owners)
+        answers[owners[0]].append(pointer)
+    assert all(answers.values()), (
+        document,
+        [b for b, named in answers.items() if not named],
+    )
+    # **AND WHERE A BRANCH ANSWERS WITH MORE THAN ONE CLASS, THOSE ARE ITS TARGET'S OWN
+    # BRANCHES**, read off the TARGET document -- so the extra classes are accounted for
+    # by the bundle rather than by this check agreeing with the emitter about a number.
+    for branch_at, named in sorted(answers.items()):
+        if len(named) == 1:
+            continue
+        branch = doc[kw][int(branch_at.rsplit("/", 1)[1])]
+        head, _ = bundle.split_ref(branch["$ref"])
+        target = bundle.document_for(head, set(tree_population()))
+        raw = bundle.read(BUNDLE, target)
+        into = lower_union.keyword(raw)
+        assert sorted(named) == sorted(
+            f"{branch_at}/{into}/{j}" for j in range(len(raw[into]))
+        ), (document, branch_at, target, sorted(named))
+    return answers
+
+
+def _branch_pointer(node: ast.ClassDef) -> str:
+    """The ``__adcp_schema__`` pointer one emitted class declares, off the module's AST.
+
+    Read off the ``SchemaRef`` call's ``pointer`` keyword, which is the provenance the
+    emitter wrote; a reader deriving it from the class NAME would be asking §4's naming
+    rules a question about identity, which is the thing names are not.
+    """
+    for statement in node.body:
+        if not isinstance(statement, ast.AnnAssign) or not isinstance(statement.target, ast.Name):
+            continue
+        if statement.target.id != "__adcp_schema__" or not isinstance(statement.value, ast.Call):
+            continue
+        for keyword in statement.value.keywords:
+            if keyword.arg == "pointer" and isinstance(keyword.value, ast.Constant):
+                return str(keyword.value.value)
+    raise AssertionError(f"{node.name} declares no __adcp_schema__ pointer")
 
 
 def test_a_payload_resolves_to_its_branch_on_all_four_paths() -> None:
@@ -3265,6 +3378,28 @@ def test_a_payload_resolves_to_its_branch_on_all_four_paths() -> None:
     pass by hand-picking an instance that happens to resolve.  ``strict_validate`` is the
     fifth path and is graded by ``check_pair``; it is included here because it is the
     production entry point and it must agree with the other four about the class.
+
+    **"RESOLVES TO ITS BRANCH" IS DISPATCH REACHING THE BRANCH, AND DISPATCH DOES NOT
+    STOP AT A BRANCH THAT IS A UNION ROOT.**  Each of the five lines asserted
+    ``type(got) is branch``, which is the right claim for a branch that is a leaf and the
+    wrong one for a branch that composes a union of its own: §5's nested row makes such a
+    branch a union BASE, so the hook fires again inside it and the class that comes back
+    is one of ITS branches -- a proper subclass of the branch, reached by dispatch, which
+    is the sentence holding and not failing.
+
+    That is ``adcp-client-python-1bj`` and the row is a MISDIAGNOSIS, measured here:
+    ``adagents.json``'s ``AdCPAgentsAuthorizationCommunityFormatRegistry`` is the root's
+    ``#/oneOf/1`` and the class returned is
+    ``…CommunityFormatRegistryBranch0``, declared at
+    ``#/oneOf/1/allOf/0/anyOf/0`` -- a branch OF that branch and a subclass of it, not
+    "another branch of the root admitting a payload drawn from this one".  No two
+    branches of ``adagents.json`` overlap; the ``is`` was reading two dispatch hops as a
+    wrong answer to one.
+
+    So what is asserted is :func:`_dispatched_to` -- the class is the branch, or a class
+    the branch's own branch list reaches, transitively -- AND that all five paths return
+    the SAME class, which is the property the five-way comparison was really for and
+    which an ``is`` against a fixed expectation stated only by accident.
     """
     assert emitted_union_bases()
     graded_arms = 0
@@ -3280,16 +3415,48 @@ def test_a_payload_resolves_to_its_branch_on_all_four_paths() -> None:
                 schema_at(branch.__adcp_schema__),
                 schema_at(SchemaRef(branch.__adcp_schema__.document, "#")),
             )
-            assert type(base.model_validate(payload)) is branch, (document, branch, payload)
-            assert type(adapter.validate_python(payload)) is branch, (document, branch)
-            assert type(Holder.model_validate({"v": payload}).v) is branch, (document, branch)
-            assert type(base(**payload)) is branch, (document, branch)
-            assert type(base.strict_validate(payload)) is branch, (document, branch)
+            paths = {
+                "model_validate": type(base.model_validate(payload)),
+                "TypeAdapter": type(adapter.validate_python(payload)),
+                "a nested field": type(Holder.model_validate({"v": payload}).v),
+                "Base(**data)": type(base(**payload)),
+                "strict_validate": type(base.strict_validate(payload)),
+            }
+            assert len(set(paths.values())) == 1, (document, branch, payload, paths)
+            for path, got in paths.items():
+                assert _dispatched_to(branch, got), (document, branch, path, got, payload)
             graded_arms += 1
     assert graded_arms == sum(
         len(bundle.read(BUNDLE, d)[lower_union.keyword(bundle.read(BUNDLE, d))])
         for d in emitted_union_bases()
     ), graded_arms
+
+
+def _dispatched_to(branch: type, got: type) -> bool:
+    """Is ``got`` the class dispatch reaches from ``branch``?
+
+    ``branch`` itself, or a class one of the union bases beneath it names in its OWN
+    ``_branch_models`` -- transitively, because a nested union's branch may compose a
+    third.  The walk is over the DECLARED lists (``__dict__``) and not the inherited
+    attribute, so the relation is "this base dispatches to that class" and never "that
+    class happens to inherit a list"; an unrelated consumer subclass of ``branch`` is
+    therefore not reached, which is the distinction
+    ``test_a_consumers_subclass_of_a_union_base_keeps_its_own_schema`` is about.
+
+    Not ``issubclass``, which would admit that consumer subclass and so would stop the
+    check from grading the dispatch at all.
+    """
+    seen: set[type] = set()
+    frontier = [branch]
+    while frontier:
+        at = frontier.pop()
+        if at is got:
+            return True
+        if at in seen:
+            continue
+        seen.add(at)
+        frontier += list(at.__dict__.get("_branch_models", ()))
+    return False
 
 
 def _an_instance(schema: dict, document: dict | None = None) -> Any:
@@ -3652,339 +3819,52 @@ def test_a_branch_with_no_derivable_identity_takes_its_index_and_the_document_em
     shutil.rmtree(BUNDLE_FIXTURE)
 
 
-def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_keyword() -> None:
-    """The step's own arithmetic: 126 union roots, 40 emitted and 86 refused, each named.
+def test_every_union_root_emits_and_one_that_does_not_is_refused_by_name_and_pointer() -> None:
+    """**EVERY UNION ROOT THE SELECTOR CLAIMS EMITS, so the refused half is EMPTY** --
+    which is reading 3's own population statement and the strongest form this check has
+    had.
 
-    The by-keyword profile is asserted as a WHOLE rather than as a total, because the
-    profile is the readable result of the step -- it says which later step unblocks what.
+    It held a by-keyword PROFILE of the refused half: one line per refused document, so
+    "a row that clears a refusal DELETES ITS LINE" -- the design the profile was written
+    for, against a keyword -> count total that accounted for nothing by name.  Every line
+    is deleted now.  ``adagents.json`` was the last ``anyOf`` entry and ``brand.json`` the
+    last ``$ref`` one; both emit, both bind their root to a base over
+    ``BranchDispatchMixin``, and a profile of nothing is not a profile.
 
-    **``allOf`` still dominates and no longer means "waiting on step 4".**  It used to:
-    the keyword screen refused a root ``allOf`` with "a later D2 row does", naming step
-    4's product row.  That row claims 0 of these documents -- ``composes_at_the_root``
-    excludes a root carrying a union -- so the deferral named a row that was never going
-    to see them.  All 51 are THIS module's own refusals: either a root where the
-    ``allOf`` is a conjunction with every branch and no pointer addresses the
-    conjunction (``ROOT_CONJUNCTS``).  The other half of that row is gone:
-    ``salesagent-j3k2l.40`` shared the conjunct reader, so a branch that composes is
-    lowered by ``lower.composition.lower_composition`` rather than refused, and ``allOf`` fell
-    51 -> 44.  So the profile's largest row is a bill rather than a queue, which is
-    what it is for.  The 37 + 9 split the previous revision quoted was measured when
-    ``allOf`` was 46 and is not re-measured here; what is asserted is the row.
+    **WHAT REPLACES IT IS AN EQUALITY BETWEEN TWO DERIVATIONS AND NOT A PIN ON ZERO.**
+    ``populations.union_root`` selects the roots off the bundle and ``Emitted.emitted`` is
+    what the run wrote; asserting the two sets EQUAL reddens the moment any one root
+    stops emitting, and names it -- which no floor over the refused half can do, because
+    a floor over an empty set is the vacuity ``nodeset.claimed`` exists to catch and that
+    is the red this replaces.  The emitted half keeps its ``claimed``, because ITS
+    emptiness would be a defect rather than a fact.
+
+    The refusal loop stays and now ranges over nothing BY DERIVATION: the day a root
+    refuses, the equality fails first and this loop says by name, pointer and keyword
+    which one and on what -- which is the claim the title makes.
     """
     out = compiled(BUNDLE, population())
     roots = union_roots()
     emitted = [d for d in roots if d in out.emitted]
     refused = [d for d in roots if d in out.refusals]
     claimed("union roots the selector claims", roots)
-    # Roots emit only once another step's row is beside this one -- a nested ``enum``
-    # (step 3), a nested container (step 6) -- and the presence-only combinators are
-    # left for step 7.  Joint unblocking, which no single lane reaches.
-    #
-    # **34 / 92, RE-MEASURED AT 64131600f (``salesagent-j3k2l.29``).**  The 28 / 98
-    # these replace were themselves a re-measurement, and the note then recorded that
-    # 28 / 98 read identically at trunk ``29c553504``, so neither figure was that
-    # lane's doing.  The same holds here: 126 is the SELECTOR's population and it has
-    # not moved, while which of the 126 emit is a function of the other steps' rows,
-    # and six more of them emit now.  Both halves are over one emit, so the two
-    # numbers cannot drift apart -- the sum is asserted below.
-    #
-    # **34 / 92 -> 38 / 88 at ``salesagent-j3k2l.40``**, and these four are THIS
-    # module's own doing rather than another row's: a composing branch is lowered now,
-    # so ``core/canonical-optimization-goal.json``,
-    # ``core/publisher-property-selector.json``, ``core/targeting-modification.json``
-    # and ``core/canonical-media-buy-action.json`` -- 3 of the 10 that waited on the
-    # shared reader, plus one reached through them -- left the refused half.
-    #
-    # **38 / 88 -> 40 / 86 at ``salesagent-j3k2l.21``**, and these two are this module's
-    # own doing as well: a union root whose instance the DOCUMENT says is a scalar is a
-    # root scalar, so it takes D2's alias instead of a base plus subclasses, and
-    # ``core/start-timing.json`` and ``core/media-buy-available-action-id.json`` left the
-    # refused half.  **Which half they emit into is pinned separately** --
-    # ``test_a_union_root_is_a_base_or_an_alias_and_the_document_decides_which`` holds the
-    # base half at 38 and the alias half at 2 -- because a single total here would absorb
-    # a root swapping sides, and §8 says no step takes a root off ``BranchDispatchMixin``.
-    #
-    # **40 / 86 -> 42 / 84, D2's Literal amendment, in this same row.** An untitled
-    # enum branch is a Literal of its members and claims no symbol, so
-    # core/geo-place-system.json and core/geo-place-type.json stop colliding with
-    # their own root's name and emit as aliases.
-    # The two halves PARTITION the selector's roots, by name, and ``emitted`` is the
-    # set the tree carries.  Neither half has a count of its own any more: which of the
-    # roots emit is a function of the OTHER steps' rows, so the split moved at .29, .40
-    # and .21 and every move was correct work being done -- 28/98, 34/92, 38/88, 40/86,
-    # 42/84, each one a pair of numbers two lanes could not both be right about.  What
-    # is asserted is the property no row may break: every root is accounted for exactly
-    # once, both halves are non-empty, and the emitted half IS the emitted set.
+    # The two halves PARTITION the selector's roots, by name, and ``emitted`` IS the
+    # emitted set -- three readings of one run that cannot disagree.
     partitions(roots, emitted=emitted, refused=refused)
     claimed("union roots this step emits", emitted, inside=roots)
-    claimed("union roots this step refuses", refused, inside=roots)
     assert emitted == emitted_unions()
+    # **THE EQUALITY, over NAMES and in the direction that reports.**  Every root the
+    # selector claims is one the run emitted; a root that stops emitting is named here
+    # before any assertion about a refusal's shape is reached.
+    assert set(emitted) == set(roots), sorted(set(roots) - set(emitted))
 
-    # **EVERY REFUSED ROOT, BY NAME, WITH THE KEYWORD IT REFUSES ON.**  This test's
-    # title claims an accounting by name, pointer and keyword; what it held was a
-    # keyword -> COUNT profile, which accounts for nothing by name -- a document moving
-    # from one keyword to another left it unchanged, and every row that cleared a
-    # refusal had to recompute between two and eleven integers that no other row could
-    # agree with.  The mapping below is the same information as a set of names per
-    # keyword, one line per document, so a row that clears a refusal DELETES ITS LINE
-    # and two rows clearing different refusals merge instead of colliding.
-    #
-    # The POINTER is asserted present per document rather than pinned: a chained
-    # refusal's pointer moves deeper as its chain resolves, which is a correct move and
-    # not this check's fact.  The keyword is the attribution, and ``allOf`` is the bulk
-    # of it because a root conjunct is still deferred ground.
-    refused_on: dict[str, str] = {}
+    # **AND IF ONE EVER REFUSES, BY NAME, POINTER AND KEYWORD.**  Empty by the equality
+    # above rather than by a pinned zero, so this loop cannot be the thing that passes:
+    # it is unreachable exactly while the equality holds, and the equality is what fails
+    # when it becomes reachable.
     for document in refused:
         row = out.refusals[document]
         assert row["keyword"] and row["pointer"], document
-        refused_on[document] = row["keyword"]
-    # **FOUR LEFT AND ONE WAS RE-ATTRIBUTED AT ``salesagent-j3k2l.43``, and nothing
-    # arrived.**  The four left because they EMIT:
-    # ``core/canonical-media-buy-action.json`` (was ``const``),
-    # ``core/collection-selection.json`` and ``core/placement-selection.json``
-    # (``required``) and ``core/product-execution-requirement.json`` (``not``) -- the
-    # requiredness overlay and the fields-and-a-rule conjunct, which is this row's work,
-    # plus the restatement the intersection rule now reads instead of refusing.
-    #
-    # The one re-attributed was ``media-buy/control-media-buy-response.json``, ``$ref``
-    # -> ``const``: its refusal was CHAINED through
-    # ``core/canonical-media-buy-action.json``, which emits, so the walk got further and
-    # named its own verdict at
-    # ``/oneOf/0/properties/warnings/items/allOf/1/properties/code``.  That is the
-    # attribution moving in the honest direction, which is what this profile is for.
-    #
-    # **AND IT LEFT AT ``adcp-client-python-10l.5``, because that verdict was the one
-    # §5's ``$ref`` row retires.**  The pointer it named is a conjunct restating
-    # ``{"const": "inventory_shortfall_forecast"}`` over ``core/warning.json``'s
-    # ``code``, which is a bare ``$ref``: the intersection merged the two into
-    # ``{"$ref": T, "const": v}`` -- a node the document does not state and draft-07
-    # reads as ``T`` alone -- and the walk then refused the document on the ``const``
-    # the merge itself had put beside the reference, which is §9's "never refuse a
-    # keyword the walk itself inserted".  The document emits, and its two branch pairs
-    # pass all three checks.
-    # **RE-MEASURED IN FULL AT ``adcp-client-python-10l.20`` (§14 step 9), and the
-    # profile is a DIFFERENT SET of keywords because the one this row retired was the
-    # most common entry in it.**  ``union.ROOT_CONJUNCTS`` reported 61 of these roots
-    # on ``allOf``, ``properties``, ``required`` or ``additionalProperties`` -- "there is
-    # no pointer to the conjunction for a branch class to name" -- and §8's pairing rule
-    # answers all 61, so every one of them either EMITS (15 of them, and 14 are the chain
-    # roots named in the row's delivery note) or reports the obstruction behind it.  The
-    # new profile is what those obstructions are, and each is another row's by a sentence:
-    #
-    # * ``oneOf``/``anyOf`` (16) -- §4's third dispatch source cannot separate the
-    #   branches, which is the UNDERDETERMINED row step 10 owns;
-    # * ``required`` (11, now **5**) -- a branch declaring no property constrains only
-    #   key presence, which is step 7's row.  **6 of the 11 left the population entirely
-    #   at ``adcp-client-python-onq``**, which is the only way an entry leaves this
-    #   profile other than by emitting: §5's "A union of presence-only branches that also
-    #   forbid" (2026-10-27) makes a branch stating ``required`` plus a ``not`` over
-    #   ``required`` a presence CLAUSE, so ``core/audience-characteristic.json``,
-    #   ``core/catchment.json``, ``core/creative-asset.json``,
-    #   ``core/creative-manifest.json``,
-    #   ``core/frequency-cap-impression-constraints.json`` and
-    #   ``core/frequency-cap-interval-constraints.json`` are no longer union roots at all
-    #   -- ``populations.union_root`` reads 126 -> 120 -- and this census is stated over
-    #   union roots.  Three of the six EMIT and three report their own next keyword, each
-    #   named in that row's delivery note.  The remaining 5 are the shape §5 still does
-    #   not decide, which is step 7's row;
-    # * ``items``/``properties``/``additionalProperties`` on a restatement (4) -- §5's
-    #   ``properties`` row, "two object declarations compose as an ``allOf`` of the two at
-    #   that property", decided and unwritten;
-    # * ``$ref`` -- a chain onto one of the above, or onto a document refused elsewhere.
-    #
-    # The claim this profile makes is unchanged: every union root the step does not emit
-    # is refused BY NAME, POINTER AND KEYWORD, and no such document is silently absent.
-    # **RE-MEASURED IN FULL AT ``adcp-client-python-10l.21``'s SECOND INSTALMENT: 54
-    # -> 49 refused, and the ``oneOf``/``anyOf`` entries are GONE.**  §4's own answer is
-    # written -- a union matching none of the three dispatch sources emits a plain
-    # ``A | B`` and DECLARES an UNDERDETERMINED approximation -- so no union root refuses
-    # on its combinator any more, and the 16 that did either emit or report the
-    # obstruction behind them.  Named here, every one of them, which is what this map is
-    # for:
-    #
-    # * **5 EMIT**: ``content-standards/calibrate-content-response.json``,
-    #   ``content-standards/create-content-standards-response.json``,
-    #   ``content-standards/validate-content-delivery-response.json`` with the
-    #   declaration; ``media-buy/sync-audiences-response.json`` and
-    #   ``media-buy/sync-catalogs-response.json`` WITHOUT one, because
-    #   ``adcp-client-python-10l.27``'s two derivations separate them -- the
-    #   ``not``/``anyOf`` reduction keeping the disjuncts it can read, and §4's fourth
-    #   separator.
-    # * **the rest report their own next keyword**, each another row's: ``$ref`` for the
-    #   chains through ``content-standards/content-standards.json`` and
-    #   ``core/budget-allocation.json``, ``title`` for a branch D3 cannot name
-    #   (``creative/get-creative-features-response.json``,
-    #   ``trusted-match/provider-registration.json`` -- and
-    #   ``core/postal-country-system.json`` joined them at
-    #   ``adcp-client-python-10l.35``.  **``title`` is ONE entry now
-    #   (``adcp-client-python-10l.41``)**: §4's fourth branch rung names a branch with no
-    #   identity by its INDEX, so two of the three EMIT and what is left is
-    #   ``trusted-match/provider-registration.json``, whose two branches pin one ``const``
-    #   and derive ONE name -- a different mechanism, and
-    #   ``adcp-client-python-10l.42``'s row), ``anyOf`` for
-    #   ``adagents.json``'s conjunct
-    #   and ``$ref`` for ``brand.json``, which is ``adcp-client-python-857``.
-    #
-    # Three more left by EMITTING on §5(b)'s ``uniqueItems`` row:
-    # ``core/postal-area.json`` is not one of them -- it stays -- while
-    # ``account/sync-accounts-response.json``, ``core/async-response-data.json`` and
-    # ``media-buy/list-products-response.json`` moved with their chains.
-    # **FIVE LEFT THE SET at ``adcp-client-python-10l.21``'s third instalment**, each one
-    # a union root that now EMITS: ``core/budget-allocation.json`` and
-    # ``core/delivery-metric-aggregate.json`` by a ``not`` beside a conjoined type
-    # becoming a ``NotValue`` on the value's own annotated type, and
-    # ``content-standards/get-media-buy-artifacts-response.json``,
-    # ``core/evaluator-spec.json`` and ``error-details/governance-agent-not-accepted.json``
-    # behind a ``type`` word beside a NESTED combinator.  49 -> 44 refused, and the
-    # emitted half rose with it.
-    # **ONE LEFT AND TWO MOVED their keyword at ``adcp-client-python-10l.21``'s FIFTH
-    # instalment**, and all three are §5's ``properties`` row at CONJ.
-    # ``account/list-account-changes-response.json`` EMITS: it refused on a ``$ref`` the
-    # intersection of two composed declarations produced, at a pointer no edge of its own
-    # text carries, and ``emit.inherited_sites`` resolves that site now.  The two
-    # ``*-asset`` roots move from ``items`` to ``properties``: their branch's restatement
-    # of ``macro_declarations`` stopped being "neither matches nor narrows" and the
-    # document now reports the obstruction behind it -- the merged ``items`` node is
-    # typeless, because ``intersection`` drops a base's whole-content ``$ref`` rather
-    # than writing a node draft-07 reads as the target alone, so no row lowers its
-    # ``properties``.  That is the second of this row's three pointer shapes and it is
-    # named in the delivery as unfinished.
-    #
-    # **THREE LEFT AT ``adcp-client-python-10l.43``, ALL THREE BY EMITTING, AND ALL THREE
-    # ON ONE ROUTING GAP.**  ``lower.composition.lower_composition``'s ``$ref``-conjunct arm asked
-    # the binder for every reference, so a LOCAL pointer -- a pointer into the document
-    # being written -- got ``emit.answer``'s "this is not a binding at all" as the
-    # DOCUMENT's verdict.  The arm branches on the parser's document half now and routes a
-    # local pointer through ``compiler.local_reference`` (``lower.composition._conjunct_base``).
-    # ``core/account-identity-change-preview.json`` and ``core/registry-event.json`` held
-    # the two live sites (``#/definitions/impact`` at
-    # ``/definitions/nonblocking_impacts/items/allOf/0``, and ``#/$defs/propertyPayload``
-    # at ``/oneOf/0/properties/payload/allOf/0``), and
-    # ``account/sync-accounts-response.json`` was CHAINED behind the first and leaves with
-    # it.  The fourth document the group freed, ``core/registry-feed-response.json``, is
-    # not a union root and so was never in this profile.
-    assert refused_on == {
-        "adagents.json": "anyOf",
-        "brand.json": "$ref",
-        "brand/acquire-rights-response.json": "$ref",
-        "brand/update-rights-response.json": "$ref",
-        "brand/verify-brand-claim-response.json": "$ref",
-        # ``type`` -> ``$ref`` at ``adcp-client-python-10l.21``'s third instalment: the
-        # worded nested union at ``/definitions/result_entry`` stopped refusing, so the
-        # document reports its own next obstruction -- a restatement of ``payload`` at
-        # ``/definitions/signed_response/allOf/1`` that neither matches nor narrows.
-        "brand/verify-brand-claims-response.json": "$ref",
-        # ``additionalProperties`` -> ``maxLength`` at ``adcp-client-python-10l.34``: the
-        # nested union at ``/oneOf/6/properties/recorded_calls/items`` carried
-        # ``properties``, ``required`` and ``additionalProperties`` beside the combinator
-        # and §8's composition rule now gives all three a base to live on, so the document
-        # reports its own next obstruction -- §5(b)'s ``maxLength`` row at
-        # ``.../items/properties/payload``, which nobody has written.
-        "compliance/comply-test-controller-response.json": "maxLength",
-        "compliance/task-completion-data.json": "$ref",
-        "content-standards/get-content-standards-response.json": "$ref",
-        "content-standards/list-content-standards-response.json": "$ref",
-        # **``core/assets/asset-union.json``'s LINE IS DELETED AT
-        # ``adcp-client-python-10l.55``, and the document EMITS.**  It held ``$ref`` for
-        # the branch row's "VASTAsset is not a class", which asked whether the target had
-        # a ``compiler.Shape`` and reported the answer as a statement about classes --
-        # two different questions once §4's three root outcomes are told apart, because a
-        # UNION root is a class whose shape ``emit.answer`` nulled on §5's ``$ref`` row at
-        # CONJ.  The gate reads ``compiler.TargetKind`` now and §4's own sentence stands:
-        # a ``$ref`` branch is a class with two bases, the target supplying the fields.
-        # **``core/assets/daast-asset.json`` and ``core/assets/vast-asset.json`` are
-        # DELETED at ``adcp-client-python-10l.21``'s seventh instalment, and
-        # ``core/assets/display-tag-asset.json``'s line went at ``97w``'s sixth.**  All
-        # three spell one composition -- the branch's element overlay over the root's
-        # ``{"items": {"$ref": core/macro-declaration.json}}`` -- and display-tag spells
-        # it in full in its own branch text, which ``intersect._conjoins`` reads.  These
-        # two spell it as a bare overlay: §2's intersection rule writes the composition
-        # at ``items`` now, the base's reference survives it as a ``$ref`` CONJUNCT, and
-        # §8's pairing carries the enclosing statement DOWN by key so that the composed
-        # element class can be graded.  Both emit, with 9 documents chained behind them.
-        "core/async-response-data.json": "$ref",
-        "core/canonical-placement.json": "$ref",
-        # ``$ref`` -> ``allOf`` at ``adcp-client-python-10l.41``.  It held the chain into
-        # ``core/postal-country-system.json``, which EMITS now, so this document reports
-        # its OWN obstruction one pointer on: ``/anyOf/0/allOf/0`` conjoins that document
-        # and the class it resolves to is not a class at all -- a root union matching none
-        # of §4's dispatch sources is a plain ``A | B``, which §5's ``$ref`` row at CONJ
-        # cannot make a base of.  Another row's keyword and a PRIMARY verdict of its own,
-        # where it was chained before.
-        "core/postal-area.json": "allOf",
-        # **``core/postal-country-system.json``'s LINE IS DELETED AT
-        # ``adcp-client-python-10l.41``, and the document EMITS.**  It held ``pattern``,
-        # then ``title`` at ``adcp-client-python-10l.35`` when the pin made both the
-        # ``const`` and the ``enum`` rows claim the merged pattern.  The ``title`` was
-        # D3's identity refusal: ``/anyOf/4`` through ``/anyOf/9`` state no title, and 4
-        # through 8 pin a ``const`` on BOTH of their properties, so no SINGLE one is the
-        # discriminator and §4's second rung declines to choose by spelling.  §4's FOURTH
-        # rung names them, ``PostalCountrySystemBranch4`` through ``...Branch9``, beside
-        # ``PostalCountrySystemUS``, ``...GB``, ``...CA`` and ``...Plz``, which keep rung
-        # 2.  The five documents chained behind it moved with it: four still chain and
-        # ``core/postal-area.json`` became a primary verdict, which is its line above.
-        "core/product-format-declaration.json": "required",
-        # **``core/requirements/asset-requirements.json``'s LINE IS DELETED AT
-        # ``adcp-client-python-10l.41``, and the document EMITS.**  It held ``$ref`` until
-        # ``adcp-client-python-10l.21``'s third instalment freed its chain, and then
-        # ``title``: 12 bare ``$ref`` branches, none of which states a title or pins a
-        # ``const``, so the first three rungs answer nothing.  §4's fourth names them
-        # ``AssetRequirementsBranch0`` through ``...Branch11``, each inheriting its
-        # target's class.  ``core/requirements/catalog-requirements.json`` and
-        # ``core/requirements/offering-asset-constraint.json`` chained behind it and emit
-        # with it.
-        "core/tracker-execution-selector.json": "$ref",
-        "core/wholesale-feed-event.json": "$ref",
-        # **``creative/get-creative-features-response.json``'s LINE IS DELETED AT
-        # ``adcp-client-python-10l.41``, and the document EMITS.**  Its ``/oneOf/0`` is a
-        # bare ``$ref`` with no title, beside two arms that state their own, so §4's
-        # fourth rung names it ``GetCreativeFeaturesResponseBranch0`` and the two titled
-        # arms keep rung 1 -- the two rungs in one module.
-        # ``properties`` -> ``$ref`` at ``adcp-client-python-10l.34``: the nested union at
-        # ``/oneOf/1/properties/results/items`` composes its siblings now, so the document
-        # reports a CHAIN instead -- its ``/oneOf/2/properties/manifest`` references
-        # ``core/creative-manifest.json``, which is refused through
-        # ``core/rights-constraint.json``.  The site itself composed; what is left is
-        # another document's obstruction.
-        "creative/preview-creative-response.json": "$ref",
-        # ``creative/sync-creatives-response.json``'s line is deleted at
-        # ``adcp-client-python-10l.55`` with ``core/assets/asset-union.json``'s: it held
-        # the chain through it, four documents deep, and the whole chain emits.
-        "error-details/vast-version-mismatch.json": "required",
-        "media-buy/build-creative-response.json": "$ref",
-        "media-buy/buy-products-request.json": "required",
-        "media-buy/create-media-buy-request.json": "required",
-        "media-buy/create-media-buy-response.json": "$ref",
-        "media-buy/decline-proposals-response.json": "required",
-        # ``oneOf`` -> ``$ref`` and ``anyOf`` -> ``$ref`` at
-        # ``adcp-client-python-10l.66``, and this is THE PIN WORKING for the two roots
-        # whose BRANCH is itself a union of shapes.  ``_plan`` claimed the ROOT's
-        # combinator and not a nested one, so the screen answered "a later D2 row does"
-        # of a keyword whose cell at BRANCH is ``Effect.TYPE`` at rung ``JOIN``.  The
-        # branch loop recurses now, exactly as §5's cell says -- "a sibling a CLASS
-        # carries -> that same base-plus-branches shape, at a union in ANY position" --
-        # with the enclosing union's base as the nested base's base, so both roots get
-        # past the branch and report what is actually behind it.
-        #
-        # ``get-reporting-status-response`` reaches §5(b)'s restatement row at
-        # ``/oneOf/0/oneOf/0/properties/view``: the inner branch restates a ``$ref``
-        # property as ``{"const": ..., "type": "string"}``, which neither matches nor
-        # narrows, and that row is unwritten -- a DEFERRAL, and another lane's.
-        # ``proposal-refinement`` reaches a CHAIN at ``/properties/criteria`` onto
-        # ``media-buy/product-discovery-criteria.json``, which runs out to
-        # ``core/postal-country-system.json``'s ``/anyOf/4`` branch-naming VERDICT, so it
-        # joins :data:`VERDICTS` behind the six ``adcp-client-python-10l.35`` put there.
-        # Emitted is unchanged at 923 on both trees; ``accounted`` rose 958 -> 959.
-        "media-buy/get-reporting-status-response.json": "$ref",
-        "media-buy/list-products-response.json": "$ref",
-        "media-buy/media-buy-commitment-response.json": "$ref",
-        "media-buy/proposal-refinement.json": "$ref",
-        "media-buy/refine-proposals-response.json": "type",
-        "media-buy/request-proposals-request.json": "required",
-        "media-buy/request-proposals-response.json": "$ref",
-        "media-buy/update-media-buy-response.json": "$ref",
-        "trusted-match/provider-registration.json": "title",
-    }, refused_on
 
 
 def test_an_object_node_with_properties_and_no_type_refuses_because_it_admits_a_non_object() -> None:
@@ -4356,12 +4236,38 @@ def test_every_root_reaches_one_arm_and_the_populations_partition_the_bundle() -
     # refuses" was only ever how it was observed.
     emitted_here = claimed(
         "uncounted roots that emit",
-        {d for d in uncounted if d not in out.refusals},
+        {d for d in uncounted if d in out.emitted},
         inside=uncounted,
     )
+    partitions(
+        uncounted,
+        emitted=emitted_here,
+        refused={d for d in uncounted if d in out.refusals},
+    )
+    # **WHICH ARM ANSWERED IS SPLIT OFF THE DOCUMENT, because they are not one arm.**
+    # This asserted ``RootModelDecl`` of every emitter and called each one "§4's third
+    # root shape"; ``core/signal-pricing-option.json`` is not one -- it states a BARE
+    # ROOT ``$ref`` and nothing else, so §4's reference arm answers it and binds the
+    # target's class under this document's own name, with no root model anywhere.  It
+    # also cannot be re-lowered here: ``emit.lower_document`` with no ``sites`` is a
+    # document lowered OUTSIDE a run, and the reference arm's own answer for an
+    # unresolved site is a verdict (``compiler.unresolved``), so the standalone call
+    # refused a document the run emits.
+    through_a_reference = {d for d in emitted_here if "$ref" in bundle.read(BUNDLE, d)}
+    partitions(
+        emitted_here,
+        through_the_reference_arm=through_a_reference,
+        through_a_permissive_root_model=emitted_here - through_a_reference,
+    )
     for document in sorted(emitted_here):
-        # Each one is §4's third root shape, so the module declares a ``RootModelDecl``
-        # and nothing else answers for the root.
+        # **THE ARM ANSWERED BY NAME, read off the RUN and keyed on the ROOT POINTER.**
+        # The two maps partition the run's symbol table, so a root bound by identity to
+        # another pointer's declaration is answered too, and no spelling enters it.
+        at_the_root = {**out.adopted[document], **out.declared[document]}
+        assert at_the_root.get(""), (document, sorted(at_the_root))
+    for document in sorted(emitted_here - through_a_reference):
+        # §4's third root shape, so the module declares a ``RootModelDecl`` and nothing
+        # else answers for the root.
         built = emit.lower_document(document, bundle.read(BUNDLE, document))
         assert not isinstance(built, Refusal), (document, built)
         module, _ = built
