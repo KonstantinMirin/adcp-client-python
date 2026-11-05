@@ -198,19 +198,26 @@ def test_a_ref_branch_root_with_no_derivable_dispatch_names_its_branches_by_inde
     differently and better -- there is no refusal to carry a kind -- so what is left to
     assert is that the dispatch is silent and each fixture reaches ITS OWN next outcome.
 
-    **Two of the three now EMIT** (``adcp-client-python-10l.41``): §4's fourth branch
-    rung names a branch with no identity by its INDEX, ``<Base>Branch<i>``, so a bare
-    ``$ref`` branch with no title, no pin and no ``required`` of its own is named rather
-    than refused.  The third still refuses, and on the OTHER naming mechanism: two
-    branches pinning one ``const`` derive the SAME name, and both chains are one segment,
-    so §4's collision rule has nothing to lengthen by.  That is the bundle's own
-    ``trusted-match/provider-registration.json`` in a fixture, and
-    ``adcp-client-python-10l.42`` is the row that owns it.
+    **THE INDEX IS §4's FIFTH RUNG AND NOT ITS FOURTH, so a bare ``$ref`` branch
+    reaches it only where the TARGET names nothing.**  This asserted
+    ``AnimalBranch0``/``AnimalBranch1`` of all three fixtures, which was right while the
+    index was the rung after ``required``.  :data:`names.REF_TARGET_RUNG` sits between
+    them now -- "where the branch is a bare ``$ref``, the TARGET's own derived name" --
+    and a bare ``$ref`` branch ALWAYS has a target, so for these three fixtures rung 4
+    answers and the index is never reached: ``Cat`` and ``Dog`` say something
+    ``Animal`` does not, so the branches are ``AnimalCat`` and ``AnimalDog``.
 
-    Three fixtures, because "no shared distinct const" has three shapes: no pin at all,
-    a pin only one branch carries, and one pin repeated.  That the first two emit and the
-    third refuses on a DIFFERENT sentence is what says the dispatch stopped standing in
-    front of §4's naming rules.
+    So the fixtures grade the LADDER and the index keeps a fixture of its own, which is
+    the one shape that reaches rung 5 through a ``$ref`` branch: a target whose derived
+    name says nothing the ROOT's does not (``names._distinguishing`` answers ``""``).
+    ``AnimalKind`` over a target titled ``Animal`` is that case, and the second branch's
+    ``Zebra`` is rung 4 beside it -- the two rungs meeting in one module, which is what
+    this test claimed before and now has a fixture that can show.
+
+    Four fixtures, because "no shared distinct const" has three shapes -- no pin at all,
+    a pin only one branch carries, and one pin repeated -- and the index has a fourth of
+    its own.  That all three of the first land on rung 4 and the fourth falls past it to
+    the index is what says the dispatch stopped standing in front of §4's naming rules.
 
     ``tests/test_union_disjointness.py::
     test_a_root_whose_branches_overlap_declares_underdetermined_and_emits`` is where the
@@ -226,45 +233,57 @@ def test_a_ref_branch_root_with_no_derivable_dispatch_names_its_branches_by_inde
         name: {**doc, "properties": {**doc["properties"], "kind": {"type": "string", "const": "pet"}}}
         for name, doc in _PINNED.items()
     }
-    # Neither branch has an identity, so BOTH take §4's fourth rung; with one pin only
-    # the pinned branch takes rung 2 and the other the index, which is the two rungs
-    # meeting in one module.
-    for targets, want in ((unpinned, ["AnimalBranch0", "AnimalBranch1"]),
-                          (one_sided, ["AnimalBranch1", "AnimalCat"])):
+    #: The one ``$ref``-branch shape that reaches the INDEX: the first target's derived
+    #: name is a leading run of the root's own, so rung 4 has no distinguishing remainder
+    #: to spell and answers nothing; the second target's does, so it keeps rung 4.
+    index_root = {**_ROOT, "title": "Animal Kind"}
+    index_targets = {
+        "cat.json": {**unpinned["cat.json"], "title": "Animal"},
+        "dog.json": {**unpinned["dog.json"], "title": "Zebra"},
+    }
+    # **Rung 4 for all three**, from three different places on the ladder: the first
+    # fixture reaches it because rungs 1-3 answer nothing, the second because only one
+    # branch has a pin (that one takes rung 2, which spells the same chain here), and the
+    # third from a COLLISION -- rung 2 derives one name for both, so neither is
+    # identified and both fall.
+    for targets, want in ((unpinned, ["AnimalCat", "AnimalDog"]),
+                          (one_sided, ["AnimalCat", "AnimalDog"]),
+                          (repeated, ["AnimalCat", "AnimalDog"])):
         at = _fixture(_ROOT, targets)
         try:
             out = emit.emit(at, ["root.json"])
             assert not out.refusals, out.refusals
+            assert "root.json" in out.emitted, out.emitted
             text = out.files["root.py"]
             for name in want:
                 assert f"class {name}(Animal, " in text, (name, text)
+            # **THE THIRD FIXTURE EMITS, and §4 is what changed** (rung 2 collides so
+            # both branches FALL, 2026-10-29; ``adcp-client-python-10l.78``).  It refused
+            # here on the collision rule with a hand-minted VERDICT: both branches pin
+            # ``pet``, both derived ``AnimalPet``, and both chains were one segment with
+            # nothing to lengthen by.  §4 reads that as the rung having failed to identify
+            # either branch rather than as the document's own fault -- "two nodes of this
+            # document derive one class name" is a fact about ``lower/names.py``.
+            #
+            # The name the collision produced appears NOWHERE: it identified neither
+            # branch, so it is not a name either of them keeps.
+            assert "AnimalPet" not in text, text
         finally:
             shutil.rmtree(at)
 
-    at = _fixture(_ROOT, repeated)
+    at = _fixture(index_root, index_targets)
     try:
         out = emit.emit(at, ["root.json"])
-        # **THE THIRD FIXTURE EMITS NOW, and §4 is what changed** (rung 2 collides so both
-        # branches FALL, 2026-10-29; ``adcp-client-python-10l.78``).  It refused here on
-        # the collision rule with a hand-minted VERDICT: both branches pin ``pet``, both
-        # derived ``AnimalPet``, and both chains were one segment with nothing to lengthen
-        # by.  §4 reads that as the rung having failed to identify either branch rather
-        # than as the document's own fault -- "two nodes of this document derive one class
-        # name" is a fact about ``lower/names.py`` -- so both fall.
-        #
-        # They land on rung FOUR and not rung three, and the reason is this fixture's own
-        # shape: a bare ``$ref`` branch states no ``required`` of its OWN (its target
-        # does), so rung 3 answers nothing for it and the index is what is left.  That is
-        # the same reading the first two fixtures above exercise, reached from a collision
-        # instead of from an absence.
         assert not out.refusals, out.refusals
         assert "root.json" in out.emitted, out.emitted
         text = out.files["root.py"]
-        for name in ("AnimalBranch0", "AnimalBranch1"):
-            assert f"class {name}(Animal, " in text, (name, text)
-        # The name the collision produced appears NOWHERE: it identified neither branch,
-        # so it is not a name either of them keeps.
-        assert "AnimalPet" not in text, text
+        # Rung 5 and rung 4 in one module, each named: the first branch's target says
+        # nothing the root's name does not, the second's does.
+        assert "class AnimalKindBranch0(AnimalKind, Animal):" in text, text
+        assert "class AnimalKindZebra(AnimalKind, Zebra):" in text, text
+        # And the index is a FALLBACK and not a default: the branch that could be named
+        # is not named by its position.
+        assert "AnimalKindBranch1" not in text, text
     finally:
         shutil.rmtree(at)
 

@@ -2582,29 +2582,42 @@ def emit(
                 referenced[uri] = node
 
     # **WHAT THE RUN WRITES is §10's own sentence and not everything the order
-    # visited**: "a module cannot import from a module no run wrote".  So a run owes the
-    # documents it was NAMED, and every document one of those actually REFERENCED,
-    # transitively -- and the sites a walk asked about are the record of that
-    # (``compiler.Module.asked``).
+    # visited**, and the sentence is about IMPORTS: "a module cannot import from a module
+    # no run wrote".  So a run owes the documents it was NAMED and every document a
+    # module it writes IMPORTS FROM, transitively -- and
+    # :attr:`compiler.Module.imported` is the record of that, written by
+    # ``Module.importing`` and by no other path, so an import whose declarer the run did
+    # not write is unrepresentable rather than merely unmeasured.
     #
-    # The closure and the order range over a STATIC reading
-    # (``bundle.lowered_references``), which is what lets a target be finished before its
-    # referrer is parsed; that reading is an over-approximation of what the walk reaches,
-    # because a document that refuses stops before its later sites.  Measured on the
-    # suite's population of 991: taking the order's visit set as the output writes 11
-    # modules nothing imports and nobody named -- ``core/collection.json`` and 10 like
-    # it, every one reached only from a document that refused.
+    # **A ``$ref`` IS ONE CONTRIBUTOR TO THAT RELATION AND NOT THE WHOLE OF IT**
+    # (``adcp-client-python-82m.46``).  This ranged over the reference SITES a walk asked
+    # about (:attr:`compiler.Module.asked`) -- and §3a's catalogue gives a position its
+    # type by IMPORTING the symbol the entry's HOME declares: a vocabulary collected
+    # across documents, a restating title, an object type whose home is elsewhere, a
+    # repeated document's root.  None of those is a ``$ref`` in the source document, so
+    # the reference reading wrote a module importing from a module it did not write.
+    # Measured over this bundle: 146 such edges in 110 documents, every one of them
+    # invisible on the FULL population -- where every declarer is written anyway -- and
+    # false on every subset, which is why the gate for it emits one
+    # (``tests/test_import_rule.py``).
+    #
+    # The closure and the order range over a STATIC reading (:func:`needs`), which is
+    # what lets a target be finished before its referrer is parsed; that reading is an
+    # over-approximation of what the walk reaches, because a document that refuses stops
+    # before its later sites.  Measured on the suite's population of 991: taking the
+    # order's visit set as the output writes 11 modules nothing imports and nobody named
+    # -- ``core/collection.json`` and 10 like it, every one reached only from a document
+    # that refused.
     #
     # Written as a FIXED POINT over the run's own record, so it is a function of
     # (bundle, named set, this package) and of nothing a caller orders.
-    sited = {(e.uri, e.pointer): e.target for e in found}
     wanted = set(documents)
     unread = sorted(wanted)
     while unread:
         document = unread.pop()
-        for site in sorted(asked.get(document, ())):
-            target = sited.get(site)
-            if target is not None and target not in wanted:
+        held = lowered.get(document)
+        for target in sorted(set(held[0].imported.values())) if held else ():
+            if target not in wanted:
                 wanted.add(target)
                 unread.append(target)
     lowered = {d: held for d, held in lowered.items() if d in wanted}
