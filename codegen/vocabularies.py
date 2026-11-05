@@ -35,10 +35,10 @@ titles -- so a row cannot go stale and cannot reach a question a title already a
     vocabulary's own positions."
 
 :data:`AGREED` needs no name here at all, and that is the whole reason it is a separate
-collection: **every position of those 62 value lists already derived one and the same name
+collection: **every position of those 56 value lists already derived one and the same name
 under §4, independently, before this layer existed.**  There is nothing to choose, so
 nothing is written down -- the entry takes the name §4 derives at its home position, which
-is the name every other position derived too.  61 of the 62 also share one property name
+is the name every other position derived too.  55 of the 56 also share one property name
 across every position, which is §3a's "the property name the positions share -- take it";
 the one that does not is ``{master, sub_brand, endorsed, independent}``, stated at
 ``brand.json``'s ``keller_type`` and at a position that carries the enum without the
@@ -104,8 +104,25 @@ if TYPE_CHECKING:
     # annotations alone, so the import is the type checker's and the cycle is not one.
     from codegen.catalogue import Vocabulary
 
-#: The value lists every stating position already names ALIKE under §4 (62).  One subject,
+#: The value lists every stating position already names ALIKE under §4 (56).  One subject,
 #: and the name is the one the home position derives -- see the module docstring.
+#:
+#: **SIX ROWS LEFT when §3a's repeated-DOCUMENT layer landed** (``bundle.repeated``,
+#: ``adcp-client-python-82m.40``), and they left for this file's own reason rather than by a
+#: judgement being revisited: each was a ``reason`` enum stated at exactly TWO positions,
+#: and the second was ``/properties/reason`` of a ``core/async-response-refs/`` copy of the
+#: first's document.  A non-home member of a repeated document declares nothing, so it is
+#: not a stating position of any layer (``catalogue.stating``) -- which leaves each of the
+#: six stated ONCE, where ``catalogue.Catalogue.alone`` homes it and §3a's three-way naming
+#: split has nothing to decide.  ``tests/test_vocabularies.py`` is what reported them, by
+#: both of its readings at once, and that is the half this file has no other way to keep.
+#: The six are ``{APPROVAL_REQUIRED, ASSET_CONFIRMATION, FORMAT_CLARIFICATION}``,
+#: ``{APPROVAL_REQUIRED, BUDGET_EXCEEDS_LIMIT}``, ``{APPROVAL_REQUIRED,
+#: CHANGE_CONFIRMATION}``, ``{APPROVAL_REQUIRED, CREATIVE_DIRECTION_NEEDED,
+#: ASSET_SELECTION_NEEDED}``, ``{APPROVAL_REQUIRED, FEED_VALIDATION, ITEM_REVIEW,
+#: FEED_ACCESS}`` and ``{CLARIFICATION_NEEDED, BUDGET_REQUIRED}``; every one of them was
+#: ``AGREED``, so no judgement is lost -- the one name §4 derived at the surviving position
+#: is still the name, and now it is derived there and nowhere else.
 AGREED: frozenset[Vocabulary] = frozenset(
     {
     ('string', ('buyer_uploaded', 'publisher_host_recorded', 'seller_pre_rendered_from_brief', 'seller_human_designed', 'agent_synthesized', 'publisher_owned_reference')),   # AssetSource
@@ -117,12 +134,6 @@ AGREED: frozenset[Vocabulary] = frozenset(
     ('string', ('master', 'sub_brand', 'endorsed', 'independent')),   # KellerType
     ('string', ('preferred', 'accepted', 'discouraged')),   # SellerPreference
     ('string', ('transient', 'correctable', 'terminal')),   # Recovery
-    ('string', ('APPROVAL_REQUIRED', 'ASSET_CONFIRMATION', 'FORMAT_CLARIFICATION')),   # Reason
-    ('string', ('APPROVAL_REQUIRED', 'BUDGET_EXCEEDS_LIMIT')),   # Reason
-    ('string', ('APPROVAL_REQUIRED', 'CHANGE_CONFIRMATION')),   # Reason
-    ('string', ('APPROVAL_REQUIRED', 'CREATIVE_DIRECTION_NEEDED', 'ASSET_SELECTION_NEEDED')),   # Reason
-    ('string', ('APPROVAL_REQUIRED', 'FEED_VALIDATION', 'ITEM_REVIEW', 'FEED_ACCESS')),   # Reason
-    ('string', ('CLARIFICATION_NEEDED', 'BUDGET_REQUIRED')),   # Reason
     ('string', ('access', 'rectification', 'erasure', 'portability', 'objection')),   # RightsItem
     ('string', ('account', 'media_buy', 'creative', 'landing_page', 'targeting', 'delivery', 'format')),   # AppliesToItem
     ('string', ('active', 'suppressed')),   # Availability
