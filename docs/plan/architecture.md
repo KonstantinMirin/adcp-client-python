@@ -1167,6 +1167,38 @@ a coincidental member-set overlap from an identity; 3 carry conflicting titles a
 brought to the owner. **The same three-way split is the rule for L1, L2 and L3, and each layer's
 counts are to be measured rather than assumed from L0's.**
 
+### THE JUDGMENT IS DATA, NEVER CODE — AND THE DATA IS A MEASURE OF UPSTREAM'S DEFECTS
+
+**COLLECTION IS DETERMINISTIC AND SO IS GENERATION. THE ONLY THING THAT IS NOT IS WHETHER TWO
+IDENTICAL-LOOKING TYPES ARE THE SAME SUBJECT (the owner's decision), and that question exists ONLY
+because of schema composition, schema duplication and outright schema defects.** Two nodes can
+carry the same admitted-set key and be different concepts; two nodes can describe one concept and
+differ because one of them states a constraint the other forgot. Neither is decidable from the key,
+and nothing in this compiler should pretend otherwise.
+
+**SO THE JUDGMENT LIVES IN A DECLARED TABLE THAT THE PIPELINE READS, AND NEVER IN A HANDLER'S
+LOGIC.** Two kinds of entry, each keyed on schema nodes and never on a name:
+
+- **COLLAPSE** — the keys differ and the subject is one. The bundle restates one concept twice, or
+  one statement of it is missing a constraint the other has.
+- **SPLIT** — the keys agree and the subjects are two. A coincidental overlap, which is why a
+  vocabulary with no `title` is not collapsed across documents.
+
+**EVERY ENTRY CARRIES THE UPSTREAM DEFECT IT COMPENSATES FOR AND THE ASK FILED AGAINST IT.** An
+entry with no named defect is not a judgment, it is a preference, and it does not belong in the
+table.
+
+**AND THE TABLE'S SIZE IS A DEBT FIGURE, NOT A DESIGN FEATURE. IT MUST SHRINK AS THE SCHEMA IS
+FIXED, AND AN ENTRY WHOSE ASK UPSTREAM ACCEPTS IS DELETED RATHER THAN KEPT.** A table that only
+ever grows has stopped recording the schema's defects and started recording ours. **For a
+well-defined bundle it is EMPTY and the whole process is mechanical** — that is the target state,
+and the distance to it is exactly the number of entries.
+
+**THE CORRESPONDING OBLIGATION IS TO DELETE.** Because the decision is made once from a table and
+a complete catalogue, the machinery that generated duplicates and the machinery that hunted them
+afterwards are both dead code — not refactored, removed. **A change implementing this order that
+adds more lines than it deletes has misread it.**
+
 ### What this does to the defects already open
 
 The `const` override dissolves rather than being patched: where a root's `enum` and a branch's
