@@ -1199,6 +1199,33 @@ a complete catalogue, the machinery that generated duplicates and the machinery 
 afterwards are both dead code — not refactored, removed. **A change implementing this order that
 adds more lines than it deletes has misread it.**
 
+### AN OVERRIDE THE BUILD DOES NOT APPLY IS A LIE, AND THE GATE IS ON THE ARTIFACT
+
+**A PATCH SET THAT NO COMPILE PATH READS MUST FAIL.** `codegen/patch.py` was written on
+2026-10-27 to patch the bundle before generation, with a record check grading it over all 1,054
+documents, and **for nine days nothing called it.** Its test was green the whole time, because a
+test proves the function transforms a bundle in a temporary directory; it says nothing about
+whether the run does. The five documents the patch set extracts do not exist in the bundle the
+compiler reads, so no emitted class has ever moved.
+
+**THE INVARIANTS COULD NOT HAVE CAUGHT IT, AND THAT IS THE WHOLE LESSON.** `./check`'s three
+figures are *designed* to be unmoved by a correct change, so "unmoved" was read as proof of no harm
+when it was equally proof of no effect. **An invariant that holds whether or not the work happened
+cannot be the acceptance test for the work.** The acceptance test is a measurement that MOVES: here
+the count of field sets emitted more than once, read off the emitted tree.
+
+So, as a rule rather than a lesson:
+
+- **THE ACCEPTANCE TEST FOR ANY OVERRIDE IS THE EMITTED ARTIFACT**, never the mechanism, never a
+  table, never a filed ask. A judgment table nothing consumes is instrumentation, and §11's rule
+  applies to it: an instrument is not product.
+- **A NON-EMPTY PATCH SET WITH NO EFFECT ON THE TREE IS RED.** Not a warning, not a scope note. If
+  `patches/` states an entry and the emitted tree carries no trace of it, the run is wrong.
+- **AND THE SENTENCE "IT MOVES ONLY IN A BUNDLE NOTHING COMPILES YET" IS A DEFECT REPORT.** It was
+  written in a lane's own report, quoted into a merge commit, and read as a scope note by the owner.
+  Any phrase of that kind — *prepared*, *ready*, *applies cleanly*, *green in a fixture* — names the
+  gap between a mechanism and a deliverable, and is to be read as the gap rather than as progress.
+
 ### AN OVERRIDE DECLARES THE DEFECT IT COMPENSATES FOR, AND FAILS WHEN THE DEFECT IS GONE
 
 The entry above says the table must shrink. **This says the shrinking is not a discipline anyone
