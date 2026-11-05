@@ -317,6 +317,21 @@ def _built() -> dict:
     # worker; the pid is what makes a second worker -- or a second lane on this box --
     # harmless rather than a race that reads as six defects.
     where = Path(tempfile.mkdtemp(prefix=f"reading8-{os.getpid()}-"))
+    # **THE BUILD DIRECTORY IS REMOVED FIRST, AND THAT IS NOT TIDINESS.**  ``setuptools``
+    # stages the wheel's contents in ``build/lib`` and does not prune files it no longer
+    # intends, so a second build over a CHANGED configuration packages the union of the
+    # two -- and this gate was green for every packaging perturbation in
+    # ``perturb_the_wheel.sh`` until this line existed, which is the "a gate that passes
+    # when nothing happens is not a gate" failure arriving as a stale directory.  It is
+    # the same shape as the bd memory on an untracked file making a guard green: the
+    # evidence of the defect is a directory that happens to be there.
+    #
+    # Both are build output and both are gitignored (``build/``, ``*.egg-info/``), so
+    # removing them moves nothing the repository holds -- and ``git ls-files src/`` is
+    # what the payload is compared against precisely because it does not see them.
+    shutil.rmtree(ROOT / "build", ignore_errors=True)
+    for stale in (ROOT / "src").glob("*.egg-info"):
+        shutil.rmtree(stale, ignore_errors=True)
     env = _clean_env()
     subprocess.run(
         [UV, "build", "--wheel", "--out-dir", str(where / "dist")],
