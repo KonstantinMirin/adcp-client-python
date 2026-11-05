@@ -526,6 +526,23 @@ def test_the_underdetermined_equality_holds_in_both_directions() -> None:
 
     An equality is an OBLIGATION and not a ratchet, so this stays red and names the 7.
 
+    **RE-MEASURED AT ``781f873d1`` AND THE STALE DIRECTION IS AT ONE, NOT SEVEN**
+    (2026-11-05, ``sdk/cellred``; ``adcp-client-python-tsg`` carries the figure):
+
+        PYTHONPATH=.:src ./.venv/bin/python -m pytest tests/test_the_declared_backlog.py
+        -p no:randomly -n 2 -q   ->  1 failed, 2 passed
+
+    ``stale`` is ``['media-buy/proposal-refinement.json#/oneOf/1/anyOf']`` and nothing
+    else, and the SILENT direction now equals :data:`UNDERDETERMINED_UNIONS` exactly -- so
+    the first branch of the report below contributes no disagreement at all.  §3a's
+    catalogue pass is what moved it: the four ``calibration_exemplars`` sites,
+    ``available_actions/items`` and ``core/async-response-data.json#/anyOf`` are gone from
+    this direction, which is the paragraph above being discharged rather than restated.
+    The one that remains is the site that paragraph measured at 6 of 7 bare-reference
+    branches, so it is the same cause with the largest branch list and it is the LAST of
+    it.  The figures 16, 7 and 1 are three deliveries of one obligation and the sentences
+    above are kept beside this one for that reason; this row's own history is not a pin.
+
     ``silent`` arrives as ``harness``'s own SENTENCE and :data:`UNDERDETERMINED_UNIONS`
     holds the SITE, so the site is taken off the front: the suffix is constant text and
     the site is the fact.
