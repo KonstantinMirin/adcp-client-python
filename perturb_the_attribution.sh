@@ -82,6 +82,12 @@ echo "=== AN ATTRIBUTION NAMING AN ISSUE THAT DOES NOT EXIST ==="
 edit "import pathlib;p=pathlib.Path('$A');s=p.read_text();a='REGISTRY: Mapping[Site, Issue] = {}';b='''$PLANT'''.replace('\\\\n','\n').replace('ABSENT_REFERENCE',$UP+'99999999');assert s.count(a)==1;p.write_text(s.replace(a,b))"
 run "an attribution naming issue 99999999, no sighting" "cites_has_a_sighting"
 
+# The SITE-level reading of the same plant, which is the one the registry's own module
+# answers: `unverified` is over REGISTRY against the sightings, and it is vacuous until an
+# attribution exists. This is what makes it non-vacuous for one run.
+edit "import pathlib;p=pathlib.Path('$A');s=p.read_text();a='REGISTRY: Mapping[Site, Issue] = {}';b='''$PLANT'''.replace('\\\\n','\n').replace('ABSENT_REFERENCE',$UP+'99999999');assert s.count(a)==1;p.write_text(s.replace(a,b))"
+run "  the same plant at the SITE level" "attribution_names_an_issue_that_exists"
+
 # And the same attribution with the sighting somebody would actually have written after
 # looking: the look found nothing, so the record says ABSENT and `absent()` reports it.
 # This is the direction that cannot be satisfied by writing an entry: a sighting is what

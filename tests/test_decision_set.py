@@ -394,8 +394,11 @@ def test_every_upstream_reference_this_repository_cites_has_a_sighting() -> None
 
     Four readings:
 
-    * **forward** -- a reference the repository cites with no recorded sighting is a claim
-      nobody has checked;
+    * **forward** -- a reference the repository CLAIMS with no recorded sighting is a claim
+      nobody has checked.  "Claims" is the census plus the references
+      :data:`attribution.REGISTRY`'s own entries name: the registry's MODULE is out of the
+      census because a sighting spells its own reference, and an attribution is a claim, so
+      the entries go back in programmatically;
     * **backward** -- a sighting no citation names is a list of issues doing nothing, which
       is what keeps the registry from growing into an allowlist;
     * **no sighting records an ABSENT issue**, which is reading 9's own word "exists".  This
@@ -412,7 +415,10 @@ def test_every_upstream_reference_this_repository_cites_has_a_sighting() -> None
     sighted = claimed("references with a recorded sighting", attribution.VERIFIED)
     assert attribution.unsighted(cited) == (), (
         "this repository cites an upstream issue that nobody has looked up: "
-        + ", ".join(f"{ref} ({', '.join(_cited()[ref])})" for ref in attribution.unsighted(cited))
+        + ", ".join(
+            f"{ref} ({', '.join(_cited().get(ref, ['an attribution in the registry']))})"
+            for ref in attribution.unsighted(cited)
+        )
         + ". Run survey/upstream_issues.py and record what it finds."
     )
     assert attribution.unnamed(cited) == (), (
