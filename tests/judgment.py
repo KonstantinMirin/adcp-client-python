@@ -50,7 +50,7 @@ from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 
-from codegen import bundle, catalogue
+from codegen import bundle, catalogue, constraints
 
 BUNDLE = Path("schemas/cache/3.2")
 
@@ -99,6 +99,9 @@ class Judged:
     #: The stating positions the bundle's own ``$ref``\\ s reach, or that are document
     #: roots.  Reported, never a branch of the outcome -- see the module docstring.
     named: tuple[catalogue.Shaped, ...] = ()
+    #: For an L3 entry, which layer beneath owns its ELEMENT (:func:`element_owner`); the
+    #: empty string at L2, which states the structure itself.
+    element: str = ""
 
     @property
     def one_name(self) -> str | None:
@@ -150,6 +153,19 @@ class Judged:
         """
         n = len(self.positions)
         docs = len({p.document for p in self.positions})
+        if self.element and OWNED[self.element] is None:
+            # §3a's array derivation, read as what it means for a DEFECT: "the only thing
+            # an array position can write twice is its ELEMENT -- and an element is owned by
+            # a layer beneath".  Where the bundle already names that element, ``list[X]`` is
+            # written once by construction and the entry records nothing the bundle did
+            # wrong.  It stays in the PASS, because the pass accounts for every pending
+            # entry, and it can never reach the override table, because the table takes only
+            # entries that name a defect.
+            return (
+                f"NONE: the element is {self.element}, so the {n} positions in {docs} "
+                "documents write one `list[X]` by construction and this entry records no "
+                "defect of the bundle's"
+            )
         if self.outcome == COLLAPSE:
             return (
                 f"RESTATEMENT OF A NAMED SUBJECT: the bundle states this structure at {n} "
@@ -262,6 +278,7 @@ def judged(admitted: catalogue.Admitted, standing: dict[str, int]) -> list[Judge
                     names=stated,
                     shared_with_another_entry=one is not None and derived[one] > 1,
                     carries_field_names=_carries_field_names(admitted, layer, group[0]),
+                    element="" if layer == "L2" else element_owner(admitted, group[0]),
                     named=tuple(
                         p
                         for p in group
@@ -272,17 +289,76 @@ def judged(admitted: catalogue.Admitted, standing: dict[str, int]) -> list[Judge
     return out
 
 
-#: The ask each part of the pending set is filed under, by the one axis that separates
-#: them: ``adcp-client-python-q5g``'s carve-out.  #8735's own denominator is the L2 entries
-#: with no position inside a rule -- 95 over 255 -- and its L3 comments carry the array set
-#: "for completeness and not as an ask", so the two rows that are still BARE are named
-#: here rather than left implicit.
-ASK = {
-    ("L2", False): "adcontextprotocol/adcp#8735",
-    ("L3", False): "adcp-client-python-t8m.l3 (bare: #8735 posts the set, does not ask it)",
-    ("L2", True): "adcp-client-python-q5g (bare: #8735's denominator excludes it)",
-    ("L3", True): "adcp-client-python-q5g (bare: #8735's denominator excludes it)",
+#: What OWNS an L3 entry's element, which is what decides the ask it is filed under.
+#:
+#: §3a: "an element is owned by a layer beneath: a reference, an object, a constrained
+#: scalar, an enumeration, a composition, or a scalar with no type to write".  Measured over
+#: the 237 pending array entries, **all six cases are occupied and none is empty**: 148 a
+#: document the bundle names, 3 a node it names, 21 an L2 object, 31 an L1 constrained
+#: scalar, 14 an L0 vocabulary, 9 a composition, 11 a bare scalar.  So the array layer owes
+#: no ask of its own, and an entry whose element is already named owes none at all.
+OWNED = {
+    "a DOCUMENT the bundle names": None,
+    "a NAMED NODE the bundle names": None,
+    "an L0 vocabulary": None,
+    "a composition": None,
+    "a bare scalar, no type to write": None,
+    "an L1 constrained scalar": "adcontextprotocol/adcp#8525",
+    "an L2 object": "adcontextprotocol/adcp#8735",
 }
+
+#: The keywords that make an element a CONSTRAINED SCALAR, which is #8525's own layer.
+#: Derived from the module that spells them, so a constraint joining the layer joins this.
+_L1 = frozenset(keyword for keyword, _ in constraints.SPELLING)
+
+
+def element_owner(admitted: catalogue.Admitted, at: catalogue.Shaped) -> str:
+    """Which layer beneath owns this array entry's element.  §3a's own six cases."""
+    element = bundle.node_at(admitted.document(at.document), at.pointer).get("items")
+    if not isinstance(element, dict):
+        return "a bare scalar, no type to write"
+    if "$ref" in element:
+        target = admitted.target(at.document, element["$ref"])
+        if target is not None and target[1] == "":
+            return "a DOCUMENT the bundle names"
+        return "a NAMED NODE the bundle names"
+    if element.get("enum") or "const" in element:
+        return "an L0 vocabulary"
+    if element.get("properties"):
+        return "an L2 object"
+    if _L1.intersection(element):
+        return "an L1 constrained scalar"
+    if {"anyOf", "oneOf", "allOf"}.intersection(element):
+        return "a composition"
+    return "a bare scalar, no type to write"
+
+
+def ask_for(row: Judged) -> str:
+    """The ask this entry is filed under, derived and never assigned.
+
+    Three axes, each a reading rather than a choice:
+
+    * **inside a rule** -- ``adcp-client-python-q5g``'s carve-out, and it is BARE.  #8735's
+      own denominator excludes these 26 entries because a subschema inside a ``not`` has no
+      subject and cannot be the object of a title ask, so the ask cannot be filed until
+      that row closes the screen to §3a's depth;
+    * **L2** -- ``adcontextprotocol/adcp#8735``, whose set is exactly these 95 entries over
+      255 positions;
+    * **L3** -- the ELEMENT's layer's ask (:data:`OWNED`), because the array layer collects
+      nothing and owes nothing: #8735 posts the array set in three comments "for
+      completeness and **not** as an ask", and this is the derivation behind that sentence.
+    """
+    if row.beneath_a_rule:
+        return "adcp-client-python-q5g (BARE: #8735's denominator excludes a node inside a rule)"
+    if row.layer == "L2":
+        return "adcontextprotocol/adcp#8735"
+    owed = OWNED[row.element]
+    if owed is None:
+        return (
+            f"none owed: the element is {row.element}, so `list[X]` is written once by "
+            "construction and there is nothing here to name"
+        )
+    return f"{owed} (the element's layer: {row.element})"
 
 
 def digest(key: str) -> str:
@@ -309,7 +385,8 @@ def table(rows: list[Judged]) -> dict:
                 "positions": [f"{p.document}#{p.pointer or '/'}" for p in row.positions],
                 "evidence": row.evidence,
                 "defect": row.defect,
-                "ask": ASK[(row.layer, row.beneath_a_rule)],
+                "ask": ask_for(row),
+                **({"element": row.element} if row.element else {}),
                 **({"would_decide_it": row.would_decide_it} if row.would_decide_it else {}),
             }
             for row in rows

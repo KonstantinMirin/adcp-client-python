@@ -20,7 +20,7 @@ from collections import Counter
 from pathlib import Path
 
 from codegen import catalogue, emit
-from tests.judgment import BUNDLE, COLLAPSE, SPLIT, UNDECIDABLE, judged, table
+from tests.judgment import BUNDLE, COLLAPSE, SPLIT, UNDECIDABLE, ask_for, judged, table
 
 
 def main(argv: list[str]) -> int:
@@ -42,17 +42,25 @@ def main(argv: list[str]) -> int:
         f"TOTAL {len(rows)} entries over {sum(len(row.positions) for row in rows)} "
         "positions: " + ", ".join(f"{k} {v}" for k, v in sorted(counted.items()))
     )
-    asked = [row for row in rows if not row.beneath_a_rule and row.layer == "L2"]
-    posted = [row for row in rows if not row.beneath_a_rule and row.layer == "L3"]
-    bare = [row for row in rows if row.beneath_a_rule]
-    for what, rows_ in (("#8735 ASKS", asked), ("#8735 POSTS, does not ask", posted),
-                        ("BARE behind q5g", bare)):
+    by_ask: dict[str, list] = {}
+    for row in rows:
+        by_ask.setdefault(ask_for(row), []).append(row)
+    print("\nTHE ASK EACH ENTRY IS FILED UNDER, derived per entry:")
+    for ask, mine in sorted(by_ask.items(), key=lambda kv: -len(kv[1])):
         print(
-            f"{what}: {len(rows_)} entries over {sum(len(r.positions) for r in rows_)} "
+            f"  {len(mine):4d} entries over {sum(len(r.positions) for r in mine):5d} "
             "positions -- " + ", ".join(
-                f"{k} {v}" for k, v in sorted(Counter(r.outcome for r in rows_).items())
+                f"{k} {v}" for k, v in sorted(Counter(r.outcome for r in mine).items())
             )
         )
+        print(f"        {ask}")
+    carried = [r for r in rows if ask_for(r).startswith("adcontextprotocol")]
+    bare = [r for r in rows if "BARE" in ask_for(r)]
+    none = [r for r in rows if ask_for(r).startswith("none owed")]
+    print(
+        f"\nFILED {len(carried)} / BARE {len(bare)} / NO ASK OWED {len(none)}  "
+        f"(= {len(carried) + len(bare) + len(none)} of {len(rows)})"
+    )
     print(
         "NAMED MEMBERS: "
         f"{sum(1 for r in rows if r.named)} entries have a position the bundle's own $refs "

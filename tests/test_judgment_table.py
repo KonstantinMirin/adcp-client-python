@@ -33,7 +33,7 @@ from pathlib import Path
 import pytest
 
 from codegen import bundle, catalogue, emit, keywords, patch
-from tests.judgment import COLLAPSE, judged, table
+from tests.judgment import COLLAPSE, OWNED, ask_for, judged, table
 from tests.nodeset import claimed, partitions, ratchet
 
 #: The published bundle every verdict is read off.
@@ -129,6 +129,48 @@ def test_every_undecidable_entry_names_what_would_decide_it(rows: list) -> None:
         at_most=88,
         because="FALLS as upstream titles one: a title at the positions turns an "
         "UNDECIDABLE into a verdict, which is the whole of #8735's ask",
+    )
+
+
+def test_every_pending_entry_is_filed_bare_or_owes_no_ask(rows: list) -> None:
+    """THE ASK ACCOUNTING, over all of them and in three parts that do not overlap.
+
+    §3a: "EVERY REPEATED VALUE SET IS AN UPSTREAM QUESTION ... there is always something to
+    ask".  There is one exception and it is a derivation rather than a concession: an array
+    entry whose ELEMENT the bundle already names writes one ``list[X]`` by construction, so
+    it records no defect and owes no ask -- which is why #8735 posts the array set in three
+    comments and asks none of it.
+
+    The three parts are asserted to PARTITION the pending set, because the figure this file
+    reports is "how many entries carry a filed ask versus how many are still bare", and an
+    entry in neither bucket would be missing from both halves of that sentence.
+    """
+    every = claimed("the pending entries", rows)
+    partitions(
+        {f"{row.layer} {row.key}" for row in every},
+        filed={
+            f"{row.layer} {row.key}"
+            for row in every
+            if ask_for(row).startswith("adcontextprotocol")
+        },
+        bare={f"{row.layer} {row.key}" for row in every if "BARE" in ask_for(row)},
+        no_ask_owed={
+            f"{row.layer} {row.key}" for row in every if ask_for(row).startswith("none owed")
+        },
+    )
+    # Every one of §3a's six owning cases is read, and the owner an entry reports is one of
+    # them -- so a seventh case appearing in the bundle reddens here instead of falling to a
+    # default that says no ask is owed.
+    for row in every:
+        if row.layer == "L3":
+            assert row.element in OWNED, row.element
+    ratchet(
+        "pending entries whose ask is still BARE",
+        len({f"{row.layer} {row.key}" for row in every if "BARE" in ask_for(row)}),
+        at_most=26,
+        because="FALLS when adcp-client-python-q5g closes the RULE screen to §3a's depth, "
+        "after which the set is either out of the pending population or inside #8735's "
+        "denominator and filed with it",
     )
 
 
@@ -368,6 +410,10 @@ def test_every_addition_is_backed_by_a_collapse_the_bundle_evidences(rows: list)
         assert len(mine) == 1, f"{at}: the judgment pass reaches no COLLAPSE here"
         row = mine[0]
         assert entry.keyword == "title", entry
+        # And the backing row must record a DEFECT, not merely a verdict: an array entry
+        # whose element the bundle names reaches COLLAPSE and owes nothing, so an override
+        # standing on one would be a preference wearing a verdict's clothes.
+        assert not row.defect.startswith("NONE"), row.defect
         # The STRING is the bundle's own word at every position, spelled by §4's rule --
         # which is what "the property name the positions share | stated | take it" licenses
         # and all it licenses.
