@@ -231,12 +231,32 @@ that module breaks the package that depends on it. Its non-type code imports **8
 module against ours and 421 exist nowhere in ours at all** — and those come from the very layers
 this reading's own verdicts say should not exist.
 
-**So "a wheel installed in place of upstream" is a decision about a PRODUCT and not a reading about
-an artifact**, and it is recorded as the owner's: either we own upstream's machinery too, at the
-cost of 421 names with no schema node behind them, or we are the type surface others depend on.
-**This reading holds under both** — which is why it is worded over the types, and why that wording
-is not a retreat: the type surface is what this compiler produces, what the schema decides, and
-the only part whose correctness a reading can state.
+**AND THE FLAT `adcp.types` NAMESPACE IS AN ALIAS LAYER, WHICH IS WHAT IT WAS ALWAYS FOR (the
+owner's decision).** §1's design already separates the private generated tree from the public
+surface for exactly this reason: **so that a generated class can change without disturbing what an
+application imports.** Read that way the 806-pair problem is not a problem at all — every name
+upstream's flat namespace carries becomes **an alias into whatever we generate**, and
+`adcp.types.<domain>` is the new surface beside it rather than instead of it.
+
+So the three layers are:
+
+- **`adcp.types._schemas.<path>`** — private, generated, free to change.
+- **`adcp.types.<domain>`** — the surface §1 decides, one import path per declaration.
+- **`adcp.types` flat** — the compatibility surface: **an alias for every name an application
+  actually imports today, pointing at the generated class.** An alias is a NAME, so reading 6 holds
+  with the aliases counted.
+
+**A NAME WITH NO SCHEMA SUBJECT GETS A MIGRATION NOTE AND NEVER A CLASS.** Where upstream's flat
+namespace carries something no document states — a hand-written ergonomic, eager, legacy or
+registry layer — an alias has nothing to point at, and **minting a nodeless class to satisfy an
+import is the back door this ordering exists to close.** Those are named in a migration guide, with
+what to use instead.
+
+**AND THE SET IS WHAT CONSUMERS IMPORT, NOT WHAT UPSTREAM EXPORTS.** The export surface is tens of
+thousands of spellings and most of it is reachable only because a module forgot to declare what it
+exports. **The set that decides this reading is measured off real consumer code** — upstream's own
+example server and a production application — and it is the only denominator that means anything
+here.
 
 **An alias is a NAME and never a second type.** Reading 6 still holds with the aliases counted:
 export paths equal distinct declarations, and `isinstance` holds across every spelling. An alias
