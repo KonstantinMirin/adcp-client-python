@@ -873,8 +873,8 @@ def test_the_pairing_is_intrinsic_to_every_class_the_tree_carries() -> None:
 
     * every class and alias in the tree names a document THIS run emitted, so no
       module survives from a run over a different population;
-    * every emitted document has exactly one ROOT pair, so N is a count of
-      documents and not of classes;
+    * every emitted document that DECLARES has exactly one ROOT pair, so N is a count
+      of declaring documents and not of classes;
     * a nested class names its own node and not its document's root, because a
       nested class is a subschema (and the previous arrangement could not bind
       one at all -- a nested class had no row and so no ``strict_validate``).
@@ -887,12 +887,28 @@ def test_the_pairing_is_intrinsic_to_every_class_the_tree_carries() -> None:
     the compile and the classes come from the tree that compile wrote, so neither can be
     stale with respect to the other -- which is what makes the first clause a claim about
     the COMPILER rather than about when ``src/`` was last regenerated.
+
+    **AND "EVERY EMITTED DOCUMENT" IS NOT EVERY DOCUMENT THE RUN EMITS A MODULE FOR**
+    (``adcp-client-python-82m.40``).  §3a's layer above L3 is the repeated DOCUMENT
+    (``bundle.repeated``): where the bundle ships one document byte for byte at two paths,
+    the non-home path's module is a RE-EXPORT of the home's class and declares nothing, so
+    it has no pair to grade -- the one class is graded under the HOME's document, which is
+    the whole of what this row fixed.  39 of the 1,054 paths are of that kind.
+
+    **The equality still reddens in BOTH directions and nothing is weakened by this**: a
+    non-home duplicate that started declaring again would appear on the left and not on the
+    right, and a declaring document that stopped would appear on the right and not on the
+    left.  What changed is which documents the right-hand side names, and that is a reading
+    of the BUNDLE rather than a list -- so a bundle version that stops shipping the
+    duplicates narrows nothing and needs no edit here.
     """
+    repeated = bundle.repeated(BUNDLE)
     emitted = set(compiled(BUNDLE, tree_population()).emitted)
+    declaring = claimed("emitted documents that DECLARE a class", emitted - set(repeated))
     rows = graded()
-    assert {g.ref.document for g in rows} == emitted
+    assert {g.ref.document for g in rows} == declaring
     roots = [g for g in rows if g.ref.pointer == "#"]
-    assert sorted(g.ref.document for g in roots) == sorted(emitted)
+    assert sorted(g.ref.document for g in roots) == sorted(declaring)
     nested = [g for g in rows if g.ref.pointer != "#"]
     assert nested, "no nested class was emitted; the pointer case is graded by nothing"
     for g in nested:
