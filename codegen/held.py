@@ -56,12 +56,20 @@ ROOT = Path(__file__).resolve().parents[1]
 #: ``bundle.record`` -- this package's own inlining -- so any compiler edit invalidated
 #: every entry: a committed corpus would have been permanently stale behind a permanently
 #: red gate, and the gate would have been reddening on in-flight work rather than on a
-#: changed question.  ``harness.corpus_key``'s argument is now ``bundle.source_identities``
-#: -- the document's own raw bytes, the raw bytes of its reference closure, the example
-#: count, the format strategies and the generator version.  **A compiler edit moves no
-#: key.  Only a bundle bump or a generator bump does**, and each of those is a deliberate,
-#: reviewable event with a redraw attached.  So the obligation that had no instrument has
-#: one: ``test_every_graded_pair_has_a_committed_entry_under_the_current_key``.
+#: changed question.  ``harness.corpus_key``'s argument is now
+#: ``catalogue.admitted_identities`` -- what the document ADMITS with every ``$ref``
+#: resolved, the instances it STATES and ADMITS, the format strategies and the generator
+#: version.  **A compiler edit moves no key.  Only a changed CONSTRAINT or a generator bump
+#: does**, and each of those is a deliberate, reviewable event with a redraw attached.  So
+#: the obligation that had no instrument has one:
+#: ``test_every_graded_pair_has_a_committed_entry_under_the_current_key``.
+#:
+#: **AND NEITHER DOES AN ACCEPTANCE-PRESERVING REWRITE OF THE BUNDLE**, which is the half
+#: the byte digest got wrong (``adcp-client-python-lzzj.8``).  Keyed on a document's raw
+#: bytes, an improvement to the schema cost exactly what a regression cost: measured over
+#: the published bundle against the patched one, 1,054 of 1,054 identities moved on 22,338
+#: differences a validator cannot see -- 854 of them a trailing newline.  Keyed on
+#: admission, 0 of 1,054 move and the committed floor below is still the floor.
 #:
 #: And the size was never the obstacle.  Re-measured 2026-10-30 over the whole graded
 #: population at ``accepts_examples=1``: the reading is ``Store.bytes_held`` over
@@ -112,8 +120,9 @@ DIRECTORY = CACHE_ROOT / "accepts-corpus"
 #:   allowed to be somewhere else.
 #: * **No lane can invalidate it by editing the compiler**, which is a property of the KEY
 #:   and not of the path -- and it is the property that makes a path inside the tree
-#:   admissible at all.  ``harness.corpus_key`` hashes ``bundle.source_identities``, so
-#:   what moves these file names is a bundle bump or a generator bump.
+#:   admissible at all.  ``harness.corpus_key`` hashes ``catalogue.admitted_identities``,
+#:   so what moves these file names is a changed CONSTRAINT or a generator bump, and never
+#:   a gained annotation.
 #:
 #: Under ``tests/`` because the population it answers for is the suite's
 #: (``test_emit.graded()``) and the gate over it lives next to it; HYPHENATED so it is not

@@ -35,8 +35,11 @@ bundle would be a pass over an empty loop, which is what
 
 from __future__ import annotations
 
+import contextlib
 import functools
+import importlib
 import json
+import sys
 from pathlib import Path
 
 import jsonschema
@@ -1129,3 +1132,181 @@ def test_the_population_of_document_side_local_refs_is_not_empty() -> None:
         "media-buy/get-reporting-status-request.json",
     }, dict(per_document)
     assert all(per_document.values()), dict(per_document)
+
+
+# --------------------------------------------------------------------------- #
+# WHICH TREE the record comes from: the one the class was emitted into
+# --------------------------------------------------------------------------- #
+def _tree_with(root: Path, document: str, record: dict, module: str, symbol: str) -> str:
+    """A module and its record, written into ``root`` as an emitted tree writes them.
+
+    The module is written the way ``codegen.render`` writes one -- ``__adcp_schema__``
+    naming a bundle-relative document, ``strict_validate`` off the base -- so what the
+    test exercises is the production entry point and not a hand-built stand-in.
+    """
+    (root / document).parent.mkdir(parents=True, exist_ok=True)
+    (root / document).write_text(json.dumps(record))
+    (root / f"{module}.py").write_text(
+        "from adcp.types._base import AdCPBaseModel, SchemaRef\n\n\n"
+        f"class {symbol}(AdCPBaseModel):\n"
+        f"    __adcp_schema__ = SchemaRef({document!r}, '#')\n"
+    )
+    return f"{_base.PACKAGE}.{module}"
+
+
+@contextlib.contextmanager
+def _bound_in_front(root: Path):
+    """``root`` in front of the records package's ``__path__``, as a run binds its tree.
+
+    ``codegen/__main__.py`` does exactly this -- an emitted module says
+    ``from adcp.types.constraints import ...``, an absolute name, so the modules have to
+    be imported under the package's own name and cannot be loaded from a path.  Undone on
+    the way out, with the modules it bound dropped from ``sys.modules``, so no later test
+    inherits the binding.
+    """
+    package = importlib.import_module(_base.PACKAGE)
+    before = set(sys.modules)
+    package.__path__.insert(0, str(root))
+    importlib.invalidate_caches()
+    try:
+        yield
+    finally:
+        package.__path__.remove(str(root))
+        for name in sorted(set(sys.modules) - before):
+            del sys.modules[name]
+        importlib.invalidate_caches()
+
+
+def test_a_class_resolves_its_record_from_the_tree_it_was_emitted_into(tmp_path) -> None:
+    """**THE SILENT CASE, AND IT IS THE ONE THAT SHIPS** (``adcp-client-python-ir3l``).
+
+    ``_base._document`` resolved every record through ``importlib.resources.files`` over
+    the IMPORTED package, which answers from wherever that package's ``__init__`` was
+    loaded and never from the directories its ``__path__`` currently names.  A run that
+    writes a tree binds it in FRONT and imports the modules it just wrote, so the class
+    came from the new tree and its record came from the committed one.  Measured while
+    grading bundle 3.3: 1,806 pairs, 0 pass, 1,806 absent -- 107 ``FileNotFoundError``
+    where a 3.3-only document has no record in the committed tree, 28
+    ``KeyError``/``IndexError`` at a pointer that is not 3.3's -- **and a document present
+    in BOTH trees was served the 3.2 text with no error at all.**  So a class emitted from
+    3.3 carried a ``__adcp_schema__`` naming a 3.3 document and validated payloads against
+    the installed 3.2 record: a consumer getting a verdict from the wrong version of the
+    protocol, with nothing to tell it so.
+
+    This is that case, with the two trees differing in what they ACCEPT so the defect is
+    visible as a verdict and not only as a path: the front tree admits ``{"a": "x"}`` and
+    the back tree requires ``b``.  Both halves are asserted -- what ``schema_at`` returns
+    and what the production ``strict_validate`` does with a payload -- because the record
+    is read on both paths and §4 of the semantics document requires the two to agree.
+
+    ``docs/plan/final-state.md`` reading 1 is the rule: "BOTH CHECKS ARE A FUNCTION OF
+    (class, document) AND OF NOTHING ELSE."
+    """
+    document = "scratch/two-trees.json"
+    back = tmp_path / "back"
+    front = tmp_path / "front"
+    name = _tree_with(
+        back,
+        document,
+        {"type": "object", "required": ["b"], "properties": {"b": {"type": "string"}}},
+        "two_trees_back",
+        "TwoTreesBack",
+    )
+    with _bound_in_front(back):
+        behind = importlib.import_module(name)
+        assert schema_at(behind.TwoTreesBack.__adcp_schema__, module=name)["required"] == ["b"]
+
+    name = _tree_with(
+        front,
+        document,
+        {"type": "object", "required": ["a"], "properties": {"a": {"type": "string"}}},
+        "two_trees_front",
+        "TwoTreesFront",
+    )
+    # The BACK tree stays bound as well, so the document exists under both roots and the
+    # front one is not answering by being the only answer.
+    with _bound_in_front(back), _bound_in_front(front):
+        ahead = importlib.import_module(name)
+        held = schema_at(ahead.TwoTreesFront.__adcp_schema__, module=name)
+        assert held["required"] == ["a"], (
+            "the class was emitted into the front tree and read the record behind it"
+        )
+        # And the production entry point, which is the half that ships: the front tree's
+        # record accepts ``{"a": ...}`` and the one behind it refuses it for a missing
+        # ``b``, so a wrong read is a wrong VERDICT and not a cosmetic difference.
+        assert ahead.TwoTreesFront.strict_validate({"a": "x"})
+        with pytest.raises(ValidationError):
+            ahead.TwoTreesFront.strict_validate({"b": "x"})
+
+
+def test_a_record_the_classs_own_tree_does_not_carry_is_an_error_and_not_a_fallback(
+    tmp_path,
+) -> None:
+    """**An absent record raises, naming the tree -- it is never served from another one.**
+
+    This is the 107 of ``adcp-client-python-ir3l``'s 1,806, inverted into the shape that
+    makes the rule testable: the document exists in the tree BEHIND and not in the tree the
+    class was emitted into.  Reaching back for it is exactly the fallback that made a
+    3.3-emitted class validate against a 3.2 record, and "the next root happened to have a
+    file of that name" is not a weaker version of the right answer -- it is a different
+    document.
+
+    The error names the tree, because a reader who gets this has to know which tree was
+    searched; asserted on the message, so a later change that raises somewhere else for
+    some other reason does not read as this rule holding.
+    """
+    document = "scratch/only-behind.json"
+    back = tmp_path / "back"
+    front = tmp_path / "front"
+    _tree_with(back, document, {"type": "string"}, "only_behind_back", "OnlyBehindBack")
+    front.mkdir(parents=True, exist_ok=True)
+    (front / "only_behind_front.py").write_text(
+        "from adcp.types._base import AdCPBaseModel, SchemaRef\n\n\n"
+        "class OnlyBehindFront(AdCPBaseModel):\n"
+        f"    __adcp_schema__ = SchemaRef({document!r}, '#')\n"
+    )
+    name = f"{_base.PACKAGE}.only_behind_front"
+    with _bound_in_front(back), _bound_in_front(front):
+        ahead = importlib.import_module(name)
+        # The control: the document IS resolvable from the tree behind, so the raise below
+        # is the rule and not an absent file.
+        assert _base._document(document, str(back))["type"] == "string"
+        with pytest.raises(FileNotFoundError) as caught:
+            schema_at(ahead.OnlyBehindFront.__adcp_schema__, module=name)
+        assert str(front) in str(caught.value), caught.value
+        with pytest.raises(FileNotFoundError):
+            ahead.OnlyBehindFront.strict_validate("anything")
+
+
+def test_an_alias_takes_the_module_it_is_defined_in_and_not_its_callers(tmp_path) -> None:
+    """D2's root SCALAR has no class to carry a module, so the module is the CALLER's.
+
+    ``codegen.render`` writes ``strict_validate = strict_alias(__adcp_schema__, "X", X)``
+    at module scope, so the frame calling ``strict_alias`` IS the emitted module -- the
+    same fact a class reads off ``cls.__module__``, by the only name an alias has for it.
+    Read at import and not inside the returned closure, which is the distinction this test
+    is for: the closure's caller is a CONSUMER, in some other module entirely, and a
+    module read there would resolve the record against whatever tree the consumer lives
+    in.  So the alias is called from THIS test module after the tree is bound, and the
+    record it refuses by must still be the tree's.
+    """
+    document = "scratch/alias-tree.json"
+    front = tmp_path / "front"
+    (front / document).parent.mkdir(parents=True, exist_ok=True)
+    (front / document).write_text(json.dumps({"type": "string", "maxLength": 2}))
+    (front / "alias_tree.py").write_text(
+        "from typing import Annotated\n\n"
+        "from adcp.types._base import SchemaRef, strict_alias\n\n"
+        f"__adcp_schema__ = SchemaRef({document!r}, '#')\n"
+        "AliasTree = Annotated[str, None]\n"
+        '__all__ = ["AliasTree"]\n'
+        'strict_validate = strict_alias(__adcp_schema__, "AliasTree", AliasTree)\n'
+    )
+    name = f"{_base.PACKAGE}.alias_tree"
+    with _bound_in_front(front):
+        module = importlib.import_module(name)
+        assert module.strict_validate("ab") == "ab"
+        # The tree's record bounds the string at 2, so this refusal is proof the alias
+        # read the record beside its own module and not the committed package's.
+        with pytest.raises(ValidationError):
+            module.strict_validate("abc")

@@ -73,10 +73,14 @@ document accepts.
 from __future__ import annotations
 
 import functools
+import importlib
+import inspect
 import json
 import re
+import sys
 from collections.abc import Callable, Mapping, Sequence
 from importlib import resources
+from pathlib import Path
 from typing import (
     TYPE_CHECKING,
     Annotated,
@@ -231,17 +235,78 @@ KINDS = (WIDENED, UNDERDETERMINED)
 APPROXIMATIONS = "__adcp_approximations__"
 
 
+def _record_root(module: str | None) -> str | None:
+    """**The tree ``module`` was LOADED FROM**, which is the tree its records live in.
+
+    ``None`` for a caller that names no module, and for a module that is not inside
+    :data:`PACKAGE` at all -- a hand-written class naming a document has no tree of its
+    own, and this package's own records are then the only answer there is.
+
+    **WHY A CLASS'S RECORD IS NOT READ OFF THE INSTALLED PACKAGE**
+    (``adcp-client-python-ir3l``).  :func:`_document` used to resolve every record through
+    ``resources.files(PACKAGE)``, which answers from wherever the package's ``__init__``
+    was loaded and NOT from the directories its ``__path__`` currently names.  A run that
+    writes a tree binds it in front (``codegen/__main__.py`` prepends it to
+    ``_schemas.__path__``) and imports the modules it just wrote -- so the class came from
+    the new tree and its record came from the committed one.  Measured while grading
+    bundle 3.3: of 1,806 pairs, 107 raised ``FileNotFoundError`` because a 3.3-only
+    document has no record in the committed tree and 28 raised ``KeyError``/``IndexError``
+    at a pointer that is not 3.3's.  **And the shared case was worse than either: a
+    document present in BOTH trees was served the 3.2 text with no error at all**, so a
+    class emitted from 3.3 carried a ``__adcp_schema__`` naming a 3.3 document and
+    validated payloads against the installed 3.2 record -- a consumer getting a verdict
+    from the wrong version of the protocol with nothing to tell it so.
+    ``docs/plan/final-state.md`` reading 1 is the rule it breaks: "BOTH CHECKS ARE A
+    FUNCTION OF (class, document) AND OF NOTHING ELSE."
+
+    **The module's own file is the answer and ``__path__`` ORDER is not.**  Taking the
+    first ``__path__`` entry that happens to hold a record would be right whenever the
+    graded modules all come from the front of the path and silently wrong the moment one
+    does not -- which is the same accident in a new place.  A module was loaded from
+    exactly one of those directories, that directory is the tree it was emitted into, and
+    its record is there or it is nowhere: :func:`_document` raises rather than reaching
+    into the next root.
+    """
+    if module is None:
+        return None
+    where = getattr(sys.modules.get(module), "__file__", None)
+    if where is None:
+        return None
+    held = Path(where).resolve()
+    for root in getattr(importlib.import_module(PACKAGE), "__path__", ()):
+        candidate = Path(root).resolve()
+        if held == candidate or held.is_relative_to(candidate):
+            return str(candidate)
+    return None
+
+
 @functools.cache
-def _document(document: str) -> dict:
-    """One document, read from the package and held.
+def _document(document: str, root: str | None = None) -> dict:
+    """One document, read from the tree ``root`` names -- or from the package -- and held.
 
     Per DOCUMENT, which is the fix the previous whole-table cache's own docstring
     named: that one parsed every row to validate against one of them, so its
     cost grew with the size of the population rather than with the number of
     documents a process actually validates against.  This one is bounded by the
     number of distinct documents the caller touches, and a process that
-    validates against one reads one.
+    validates against one reads one.  ``root`` joins the key because two trees carry two
+    answers for one name, which is the whole of :func:`_record_root`.
+
+    **AN ABSENT RECORD IS AN ERROR AND NEVER A FALLBACK.**  Where a ``root`` is named, the
+    record is read from that tree alone: a document the tree does not carry raises here,
+    naming the tree, rather than resolving against whatever other root is installed.  The
+    fallback is the defect -- see :func:`_record_root` for what it was measured to cost --
+    and "the next root happened to have a file of that name" is not a weaker version of
+    the right answer, it is a different document.
     """
+    if root is not None:
+        path = Path(root).joinpath(*document.split("/"))
+        if not path.is_file():
+            raise FileNotFoundError(
+                f"{document} has no record in {root}, which is the tree the asking "
+                f"module was loaded from; a record is never served from another tree"
+            )
+        return json.loads(path.read_text())
     resource = resources.files(PACKAGE)
     for part in document.split("/"):
         resource = resource.joinpath(part)
@@ -1026,8 +1091,18 @@ def applied_schema(root: dict, pointer: str) -> dict:
     return {**applied, "allOf": [*conjoined, *(own if isinstance(own, list) else [])]}
 
 
-def schema_at(ref: SchemaRef) -> dict:
+def schema_at(ref: SchemaRef, *, module: str | None = None) -> dict:
     """The subschema ``ref`` names, as the document applies it.
+
+    **``module`` IS WHICH TREE, AND IT IS THE MODULE THE CLASS WAS EMITTED INTO.**
+    :func:`_record_root` carries the measurement; the short form is that a record resolved
+    through the IMPORTED package is read from whatever is installed and never from the
+    tree the run wrote, so a class emitted from one bundle was graded -- and shipped --
+    against another bundle's record.  Every caller that has a class has its module:
+    ``SchemaBound.strict_validate`` reads ``cls.__module__``, :func:`strict_alias` takes
+    the module it is called from, and ``codegen/__main__.py`` passes the one
+    ``harness.pairs`` recorded.  A caller that names none asks this package for its own
+    records, which is the only tree such a caller has named.
 
     The pointer is resolved here and not at emit time, because the document is
     what the package carries: a nested class's node is part of its document's
@@ -1048,11 +1123,11 @@ def schema_at(ref: SchemaRef) -> dict:
     the text the record stated before the storage existed.  :func:`store_expanded` says
     why the accessor and not the validator, and what it costs.
     """
-    root = _document(ref.document)
+    root = _document(ref.document, _record_root(module))
     return store_expanded(applied_schema(root, ref.pointer), root)
 
 
-def _refuse_at(ref: SchemaRef, payload: Any, name: str) -> None:
+def _refuse_at(ref: SchemaRef, payload: Any, name: str, *, module: str | None = None) -> None:
     """:func:`_refuse` for a node a :class:`SchemaRef` names: the DOCUMENT is the scope.
 
     **One call so the node and its resolution scope cannot be supplied separately**,
@@ -1071,8 +1146,16 @@ def _refuse_at(ref: SchemaRef, payload: Any, name: str) -> None:
     -- both reach the schema half through here, so neither can read a node without
     its document.  :func:`_refuse` stays the mechanism and takes a schema, which is
     what a caller grading a hand-written document has.
+
+    **``module`` IS WHICH TREE, and it is why this is the shipped half of
+    ``adcp-client-python-ir3l``.**  :func:`_record_root` carries the measurement: resolved
+    through the imported package, a class emitted from one bundle validated its payloads
+    against whatever record was installed -- so the two production entry points supply the
+    module they were emitted into, a class from ``cls.__module__`` and an alias from the
+    module :func:`strict_alias` is called in.  Nothing here falls back to another tree: a
+    record the class's own tree does not carry raises in :func:`_document`.
     """
-    root = _document(ref.document)
+    root = _document(ref.document, _record_root(module))
     _refuse(applied_schema(root, ref.pointer), payload, name, root=root)
 
 
@@ -1192,9 +1275,25 @@ def strict_alias(ref: SchemaRef, symbol: str, alias: Any) -> Callable[[Any], Any
         if carries_its_own
         else TypeAdapter(alias, config=ConfigDict(regex_engine=REGEX_ENGINE))
     )
+    #: **THE DEFINING MODULE, read off the CALLER, because an alias has no class to carry
+    #: one.**  A class answers "which tree was I emitted into" with ``cls.__module__``
+    #: (:meth:`SchemaBound.strict_validate`), and ``adcp-client-python-ir3l`` is the
+    #: measurement for why that question has to be answered at all.  D2's root scalar has
+    #: no class, and the emitted module's one line is
+    #: ``strict_validate = strict_alias(__adcp_schema__, "X", X)`` at MODULE SCOPE -- so
+    #: the module asking is the frame calling, and it is the same fact by the same name.
+    #: Read HERE, at import, and not inside the closure: the closure's caller is a
+    #: consumer, which is a different frame and not this alias's home.
+    #:
+    #: ``inspect.currentframe`` and not ``sys._getframe``, which is the public spelling of
+    #: the same reading; ``None`` where an implementation offers no frame support, and the
+    #: alias then resolves its record from the package as a caller naming no module does.
+    here = inspect.currentframe()
+    calling = None if here is None else here.f_back
+    defining = None if calling is None else calling.f_globals.get("__name__")
 
     def strict_validate(payload: Any) -> Any:
-        _refuse_at(ref, payload, symbol)
+        _refuse_at(ref, payload, symbol, module=defining)
         return adapter.validate_python(payload)
 
     strict_validate.__doc__ = f"Validate against {ref.document}, then construct {symbol}."
@@ -1252,8 +1351,15 @@ class SchemaBound(RuleBound):
         through it, so a root model's accepted set is its document's exactly as a
         class's is, and a consumer writes ``X.strict_validate(payload)`` without
         knowing which of the two shapes ``X`` turned out to be.
+
+        **``cls.__module__`` IS WHICH TREE THIS CLASS WAS EMITTED INTO**, and it is
+        supplied because a record resolved through the imported package is read from
+        whatever is installed: ``adcp-client-python-ir3l`` measured a 3.3-emitted class
+        validating its payloads against the installed 3.2 record, silently, wherever the
+        document existed in both.  The class names its document and its module names its
+        tree, and the two together are the only pair that cannot disagree.
         """
-        _refuse_at(cls.__adcp_schema__, payload, cls.__name__)
+        _refuse_at(cls.__adcp_schema__, payload, cls.__name__, module=cls.__module__)
         return cls.model_validate(payload)
 
 

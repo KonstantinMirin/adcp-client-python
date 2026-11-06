@@ -92,7 +92,7 @@ from adcp.types._base import (
     schema_at,
 )
 from adcp.types._runtime import Dependencies, Rule, RuleBound, UniqueItems, bound_rules
-from codegen import bundle, compiler, emit, harness, intersect, ir, keywords, render
+from codegen import bundle, catalogue, compiler, emit, harness, intersect, ir, keywords, render
 from codegen import constraints as constraints_module
 from codegen import refusal as refusal_module
 from codegen.harness import (
@@ -495,12 +495,19 @@ def test_every_format_strategy_is_graded_before_it_is_trusted() -> None:
 
 
 #: Cached for ``leaves()``'s reason and with its own reading: one call reads every portable
-#: document's raw bytes once and takes the reference closure over ``bundle.edges``, which
-#: is a function of the bundle alone, and every pair of one document wants the same answer.
+#: document once, keys what it ADMITS (``catalogue.Admitted``, which resolves a ``$ref`` to
+#: what it names) and takes the stated-instance closure over ``bundle.edges`` -- a function
+#: of the bundle alone, and every pair of one document wants the same answer.
 @functools.cache
-def source_identities() -> dict[str, str]:
-    """``bundle.source_identities(BUNDLE)``, once per process."""
-    return bundle.source_identities(BUNDLE)
+def admitted_identities() -> dict[str, str]:
+    """``catalogue.admitted_identities(BUNDLE)``, once per process.
+
+    ``harness.stated_instances`` is the screen, handed in: the key must carry the instances
+    a node STATES and ADMITS because ``check_accepts`` answers "the store, then the
+    document's own ``examples``, then the draw", and one screen for both means the key
+    cannot stand still while the witness moves.
+    """
+    return catalogue.admitted_identities(BUNDLE, stated=harness.stated_instances)
 
 
 def identity_of(ref: SchemaRef) -> dict[str, str]:
@@ -510,9 +517,21 @@ def identity_of(ref: SchemaRef) -> dict[str, str]:
     from the pair's schema: the schema is ``bundle.record``'s rendering of a document, so an
     identity read off it moves whenever this package's inliner moves and every held instance
     is redrawn for a bundle nobody touched.  This is the same node named by facts the
-    compiler cannot move -- the document's own raw bytes and its raw reference closure's
-    (``bundle.source_identities``), and the POINTER, which says which node of that document
-    the pair is.
+    compiler cannot move -- what the document ADMITS and the instances it STATES
+    (``catalogue.admitted_identities``), and the POINTER, which says which node of that
+    document the pair is.
+
+    **``admits`` AND NOT A DIGEST OF THE DOCUMENT'S BYTES, which is this field's whole
+    current change** (``adcp-client-python-lzzj.8``).  ``bundle.source_identities`` hashed
+    the raw text of the document and of its raw reference closure, so an
+    ACCEPTANCE-PRESERVING rewrite of the bundle moved every key -- measured at 1,054 of
+    1,054 identities moved by a patch whose 22,338 differences are every one a gained
+    ``$schema``/``title``/``description`` and none of them visible to a validator, 854 of
+    them by a TRAILING NEWLINE alone.  ``docs/plan/final-state.md`` reading 1 is the rule:
+    "A stored value, a key over a document's bytes, or any artifact that must be
+    re-derived when the bundle moves makes an improvement to the schema cost exactly as
+    much as a regression."  Over that same pair of bundles the admitted identity moves 0 of
+    1,054.
 
     The pointer is a pointer into the RECORD and so is a name within our own rendering; what
     keeps that honest is ``harness.corpus_defect``, which re-offers the held instance to the
@@ -522,7 +541,7 @@ def identity_of(ref: SchemaRef) -> dict[str, str]:
     return {
         "document": ref.document,
         "pointer": ref.pointer,
-        "source": source_identities()[ref.document],
+        "admits": admitted_identities()[ref.document],
     }
 
 

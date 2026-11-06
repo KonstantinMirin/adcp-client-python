@@ -10,13 +10,16 @@ instances is admissible only under conditions, and every one of them is graded h
    same bytes, through the same ``body``, and every counter the report carries is the one
    a drawing run produced.
 2. **A changed DOCUMENT does not reuse a held instance, and a changed RENDERING of an
-   unchanged document does.**  The key is the content address of the caller's static
-   identity for the draw -- for a bundle pair, the document's own raw bytes and its raw
-   reference closure's (``bundle.source_identities``) beside the pointer -- so an upstream
-   edit anywhere in the closure misses, and a change to how ``bundle.record`` inlines
-   misses nothing.  Both halves are graded, the second one by perturbing the inliner.
-   There is no dependency graph anywhere in it: the closure is read off the ``$ref``
-   strings the documents themselves write.
+   unchanged document does -- AND NEITHER DOES AN ACCEPTANCE-PRESERVING REWRITE OF THE
+   BUNDLE.**  The key is the content address of the caller's static identity for the draw
+   -- for a bundle pair, what the document ADMITS and the instances it STATES
+   (``catalogue.admitted_identities``) beside the pointer -- so an upstream edit anywhere
+   in the closure that changes a CONSTRAINT misses, a change to how ``bundle.record``
+   inlines misses nothing, and a gained ``title`` or ``description`` misses nothing.  All
+   three halves are graded: the second by perturbing the inliner, the third against the
+   patched bundle itself.  There is no dependency graph anywhere in it: the closure is
+   read off the ``$ref`` strings the documents themselves write, and
+   ``catalogue.Admitted`` resolves a reference to what it names before keying.
 3. **A held entry that cannot stand in reddens**, and the two shapes of that are checked
    separately: an instance the document refuses, and an entry that cannot cover the
    obligation -- *including an empty one*, which is the one failure mode that would read
@@ -77,7 +80,7 @@ from pydantic import BaseModel, ConfigDict
 import fresh
 
 from adcp.types._base import PACKAGE, SchemaRef
-from codegen import bundle, harness
+from codegen import bundle, catalogue, harness
 from codegen.harness import Pair, check_accepts, check_pair, corpus_defect, corpus_key
 
 REPO = Path(__file__).resolve().parents[1]
@@ -359,6 +362,40 @@ def test_the_key_is_the_same_in_another_process() -> None:
 # --------------------------------------------------------------------------- #
 # 2b. the key covers the dependency closure, and NOT our rendering of it
 # --------------------------------------------------------------------------- #
+def test_every_portable_document_states_one_dialect() -> None:
+    """**THE DIALECT IS ASSERTED OVER THE BUNDLE RATHER THAN DIGESTED PER DOCUMENT.**
+
+    ``$schema`` is in ``catalogue.ANNOTATIONS`` -- it changes no keyword's VALUE -- so the
+    admitted identity drops it, and ``adcp-client-python-lzzj.8`` is the row that says that
+    is safe on this bundle **only by accident**: ``harness.validator_for`` defaults to
+    ``Draft7Validator`` and every document that states a ``$schema`` states draft-07, so
+    nothing moves.  A document in another dialect would change what every other keyword
+    MEANS while its admitted key stood still, and every held instance drawn under draft-07
+    would be evidence about a schema nobody wrote.
+
+    **Carrying the string in the key would be wrong in the direction the key exists to
+    fix.** The measured patch ADDS ``$schema: draft-07`` to documents that stated none;
+    that changes no keyword's meaning, and a digested ``$schema`` would move every one of
+    those keys for an improvement.  So the obligation is a property of the BUNDLE and it is
+    read as one: ``harness.validator_for``'s own answer for every portable document, which
+    is the same function the draw and the dump build their validators from.  **A second
+    dialect is then a NAMED RED with a decision attached** -- keep the dialect in the key,
+    or refuse the document -- and never a silently re-keyed population.
+
+    Derived on both sides and over the whole portable set, so it cannot pass by ranging
+    over nothing: ``claimed`` reddens on an empty population.
+    """
+    documents = claimed("portable documents", sorted(bundle.portable(BUNDLE)))
+    dialects: dict[str, set[str]] = {}
+    for document in documents:
+        chosen = harness.validator_for(bundle.read(BUNDLE, document))
+        dialects.setdefault(chosen.__name__, set()).add(document)
+    assert sorted(dialects) == ["Draft7Validator"], {
+        name: sorted(held)[:5] for name, held in sorted(dialects.items())
+    }
+    assert len(dialects["Draft7Validator"]) == len(documents)
+
+
 def test_every_packaged_record_is_self_contained() -> None:
     """**The property the DRAW needs**, measured on the packaged tree.
 
@@ -373,8 +410,8 @@ def test_every_packaged_record_is_self_contained() -> None:
     used to hash this record, which made a dependency's edit reach the dependent BY
     CONSTRUCTION -- and made our own inlining reach it the same way, so the whole corpus was
     redrawn whenever the inliner moved and no document had.  The closure now comes from
-    ``bundle.source_identities``, over the RAW bundle, which is where the two can be told
-    apart.
+    ``catalogue.admitted_identities``, over the RAW bundle, which is where the two can be
+    told apart.
 
     A LOCAL ``$ref`` (``#/definitions/x``) is not a hole: it points inside the same record,
     which ``harness.resolve`` inlines against that same record.
@@ -406,14 +443,19 @@ def _bundle_of(root: Path, documents: dict[str, Any]) -> Path:
     return root
 
 
-def test_a_dependencys_own_raw_bytes_are_in_its_dependents_identity(tmp_path: Path) -> None:
-    """Perturb the TARGET's own bytes, and the referrer's identity moves -- no edge read.
+def _identities(root: Path) -> dict[str, str]:
+    """``catalogue.admitted_identities`` with the DRAW's own screen, as both callers pass it."""
+    return catalogue.admitted_identities(root, stated=harness.stated_instances)
 
-    This is the claim ``bundle.source_identities``' docstring makes, checked rather than
-    argued, and it is the half that the record's self-containment used to buy: the
-    dependency is in the referrer's identity because the closure is taken over the ``$ref``
-    strings the documents write, so an upstream edit to a target reaches every document that
-    reaches it.  Nothing here consults a map of what depends on what.
+
+def test_a_dependencys_own_constraint_is_in_its_dependents_identity(tmp_path: Path) -> None:
+    """Perturb the TARGET's own CONSTRAINT, and the referrer's identity moves -- no edge read.
+
+    This is the claim ``catalogue.admitted_identities``' docstring makes, checked rather
+    than argued, and it is the half that the record's self-containment used to buy: the
+    dependency is in the referrer's identity because ``catalogue.Admitted`` resolves a
+    ``$ref`` to the node it names before keying, so an upstream edit to a target reaches
+    every document that reaches it.  Nothing here consults a map of what depends on what.
 
     Two controls, and the second is the one this row adds.  A document OUTSIDE the closure
     keeps its identity, so the perturbation is not moving every identity by being a
@@ -426,11 +468,11 @@ def test_a_dependencys_own_raw_bytes_are_in_its_dependents_identity(tmp_path: Pa
         "unrelated.json": {"type": "integer"},
     }
     root = _bundle_of(tmp_path / "before", docs)
-    before = bundle.source_identities(root)
+    before = _identities(root)
     assert sorted(before) == ["dep.json", "referrer.json", "unrelated.json"], sorted(before)
 
     moved = {**docs, "dep.json": {"type": "string", "maxLength": 5}}
-    after = bundle.source_identities(_bundle_of(tmp_path / "after", moved))
+    after = _identities(_bundle_of(tmp_path / "after", moved))
 
     assert after["referrer.json"] != before["referrer.json"], (
         "the target moved and the referrer's identity did not"
@@ -443,6 +485,57 @@ def test_a_dependencys_own_raw_bytes_are_in_its_dependents_identity(tmp_path: Pa
         (tmp_path / "before" / "referrer.json").read_bytes()
         == (tmp_path / "after" / "referrer.json").read_bytes()
     )
+
+
+def test_an_annotation_the_target_gains_moves_no_identity(tmp_path: Path) -> None:
+    """**THE OWNER'S CRITICISM, as a test: an improvement must not cost what a regression does.**
+
+    ``docs/plan/final-state.md`` reading 1: "A stored value, a key over a document's bytes,
+    or any artifact that must be re-derived when the bundle moves makes an improvement to
+    the schema cost exactly as much as a regression."  So the same perturbation as the test
+    above, in the one direction that changes NO accepted set -- the target gains a
+    ``title``, a ``description`` and a ``$schema`` -- and nothing moves, including the
+    referrer that resolves through it.
+
+    **The same bundle keyed on BYTES is the control, and it is in this test rather than in
+    its prose**, so the gate cannot pass by both readings answering "unchanged": the raw
+    text of the target did move, which is what the retired ``bundle.source_identities``
+    digested and what made 1,054 of 1,054 identities move under a patch whose every
+    difference was a gained annotation.
+
+    A TRAILING NEWLINE is the third perturbation and it is the cheapest possible proof of
+    the same point: 854 of the published bundle's 1,054 documents differ from the patched
+    bundle by exactly that.
+    """
+    docs: dict[str, Any] = {
+        "referrer.json": {"type": "object", "properties": {"a": {"$ref": "dep.json"}}},
+        "dep.json": {"type": "string", "maxLength": 4},
+    }
+    before = _identities(_bundle_of(tmp_path / "before", docs))
+
+    gained = {
+        **docs,
+        "dep.json": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "title": "Dep",
+            "description": "what it is",
+            "type": "string",
+            "maxLength": 4,
+        },
+    }
+    root = _bundle_of(tmp_path / "after", gained)
+    after = _identities(root)
+    assert after == before, [d for d in sorted(after) if after[d] != before[d]]
+
+    # The control: the TEXT moved, so a key over bytes would have moved both identities.
+    assert (tmp_path / "before" / "dep.json").read_bytes() != (root / "dep.json").read_bytes()
+
+    # And a trailing newline, which is 854 of the 1,054 differences the patch makes.
+    spaced = tmp_path / "spaced"
+    _bundle_of(spaced, docs)
+    for name in sorted(docs):
+        (spaced / name).write_bytes((spaced / name).read_bytes() + b"\n")
+    assert _identities(spaced) == before
 
 
 #: The documents the inliner perturbation below is measured over.  A SAMPLE and it says so:
@@ -506,11 +599,11 @@ def test_our_own_inlining_moves_the_record_and_moves_no_key() -> None:
             #: Cleared, so a cached answer cannot stand in for the one this perturbation
             #: would produce: an identity read through ``bundle.record`` would move here,
             #: and a held value would hide that it had.
-            test_emit.source_identities.cache_clear()
+            test_emit.admitted_identities.cache_clear()
             perturbed = {d: test_emit.identity_of(SchemaRef(d, "#")) for d in sample}
             key_after = keys(perturbed)
     finally:
-        test_emit.source_identities.cache_clear()
+        test_emit.admitted_identities.cache_clear()
 
     # 1. the perturbation reaches the record, where there is an inlined copy to reach.
     assert [d for d in sample if after[d] != before[d]] == list(INLINED)
@@ -529,8 +622,8 @@ def test_our_own_inlining_moves_the_record_and_moves_no_key() -> None:
 
     # And the identity's own reading is pinned to the RAW bundle, which is what an
     # identity read off the packaged record -- yesterday's inlining -- would fail.
-    source = bundle.source_identities(BUNDLE)
-    assert {d: live[d]["source"] for d in sample} == {d: source[d] for d in sample}
+    admitted = _identities(BUNDLE)
+    assert {d: live[d]["admits"] for d in sample} == {d: admitted[d] for d in sample}
 
 
 # --------------------------------------------------------------------------- #
@@ -783,7 +876,7 @@ def test_no_run_writes_a_corpus_entry_inside_the_checkout() -> None:
     corpus is COMMITTED", 2026-10-30) puts the drawn instances in the tree, because the
     clause the old argument rested on -- "the gate for it would have to redden on any
     in-flight record change" -- stopped being true when ``harness.corpus_key``'s argument
-    became ``bundle.source_identities`` instead of ``bundle.record``.
+    became ``catalogue.admitted_identities`` instead of ``bundle.record``.
     ``corpus.CACHE_ROOT``'s comment carries that reasoning and
     :func:`test_every_graded_pair_has_a_committed_entry_under_the_current_key` is the gate
     the old argument said could not exist.
@@ -977,11 +1070,12 @@ def test_every_graded_pair_has_a_committed_entry_under_the_current_key(pytestcon
     in-flight record change, which is correct work".  That was true of the key it was
     written about -- ``bundle.record``, this package's own inlining, so every compiler edit
     invalidated every entry.  ``harness.corpus_key``'s argument is now
-    ``bundle.source_identities``: the document's own raw bytes, its reference closure's raw
-    bytes, the example count, the format strategies and the generator version.  **A
-    compiler edit moves nothing here.  A bundle bump or a generator bump moves everything**,
-    and both are deliberate events with a redraw attached.  So this is now gradeable, and
-    this is the grade.
+    ``catalogue.admitted_identities``: what the document ADMITS with every ``$ref``
+    resolved, the instances it STATES and ADMITS, the format strategies and the generator
+    version.  **A compiler edit moves nothing here, and neither does an
+    acceptance-preserving rewrite of the bundle.  A changed CONSTRAINT or a generator bump
+    moves everything**, and both are deliberate events with a redraw attached.  So this is
+    now gradeable, and this is the grade.
 
     **ONE EQUALITY, BOTH SIDES DERIVED**, which is ``codegen.dump_exemptions``' shape: the
     keys the committed corpus holds are exactly the keys the graded population asks for,

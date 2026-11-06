@@ -28,6 +28,7 @@ pair of classes over one document: these are three, differing in one axis each.
 
 from __future__ import annotations
 
+import json
 import time
 from typing import Any
 
@@ -761,36 +762,84 @@ def test_a_stated_instance_is_not_copied_into_the_store() -> None:
 
 
 # --------------------------------------------------------------------------- #
-# §8's substitution: a node that admits NOTHING is abandoned, and said so
+# the PIN memo's key: what the statements ADMIT, never their text
 # --------------------------------------------------------------------------- #
-#: **A CROSS-FIELD CONDITIONAL: the shape a pin per instance location cannot answer for.**
-#:
-#: ``core/postal-country-system.json``'s own shape, reduced to two branches: an ``anyOf``
-#: pairing each admissible ``country`` with the postal ``system`` values that country
-#: admits.  Neither key has an admissible value of its own -- what is admissible is the
-#: PAIR -- so ``Fixtures.substitute`` and ``Fixtures.reduced``, which pin each location
-#: from that location's own statements and independently of every other, have no value to
-#: place here.  §8 names the consequence: "two pins on one location do not narrow the node
-#: -- they empty it."
-_CROSS_FIELD: dict[str, Any] = {
-    "type": "object",
-    "required": ["country", "system"],
-    "properties": {"country": {"type": "string"}, "system": {"type": "string"}},
-    "anyOf": [
-        {"properties": {"country": {"const": "BR"}, "system": {"const": "cep"}}},
-        {"properties": {"country": {"const": "US"}, "system": {"const": "zip"}}},
-    ],
-    "additionalProperties": False,
-}
+def test_two_statements_that_admit_alike_share_one_pin_however_they_are_annotated() -> None:
+    """**An annotation-only edit must not re-bucket the fixture memo.**
 
-#: The same node with each location pinned INDEPENDENTLY, which is what the substitution
-#: produces once ``country`` is a ``$ref`` the fixture rule can answer for: a country one
-#: derivation offered and a system another did, and no branch of the ``anyOf`` admitting
-#: the pair.  A restriction of the node by construction, and empty.
-_PINNED_APART: dict[str, Any] = {
-    **_CROSS_FIELD,
-    "properties": {"country": {"const": "AA"}, "system": {"const": "cep"}},
-}
+    ``harness._content_key`` is the key ``Fixtures._pin`` memoises on, and the memo decides
+    WHICH VALUE is pinned at a fixture position.  Keyed on the raw text -- which it was,
+    ``json.dumps(list(nodes), sort_keys=True)`` -- two statements that admit exactly the
+    same instances stopped sharing one derivation the moment one of them gained a
+    ``description``, so a different value was drawn and pinned: ``adcp-client-python-lzzj.8``
+    measured that as **two of the six pairs the patch was blamed for flipping verdict on a
+    node that is byte-identical between the two bundles**.
+
+    ``docs/plan/final-state.md`` reading 1 is the rule and it does not stop at the corpus
+    key: "A stored value, a key over a document's bytes, or any artifact that must be
+    re-derived when the bundle moves makes an improvement to the schema cost exactly as
+    much as a regression."
+
+    Three claims, and the third is what keeps this from being a key that cannot tell
+    anything apart:
+
+    1. a gained ``title``/``description``/``examples``/``$comment`` -- and a gained ``x-``
+       extension, which §6 admits by PREFIX -- moves the key for none of them;
+    2. the TEXT of those nodes really did differ, so the gate is not green on two equal
+       inputs;
+    3. a changed CONSTRAINT still moves it, and so does the ``kind`` beside it.
+    """
+    plain = {"type": "string", "maxLength": 4}
+    annotated = {
+        "type": "string",
+        "maxLength": 4,
+        "title": "A Name",
+        "description": "what it is",
+        "examples": ["abcd"],
+        "$comment": "a note",
+        "x-vendor-fact": {"anything": True},
+    }
+    narrower = {"type": "string", "maxLength": 3}
+
+    assert harness._content_key([plain]) == harness._content_key([annotated]), (
+        "an annotation re-bucketed the pin memo"
+    )
+    # 2. the gate is not green on two equal inputs.
+    assert json.dumps(plain, sort_keys=True) != json.dumps(annotated, sort_keys=True)
+
+    # 3. a constraint still moves it, and so does the kind.
+    assert harness._content_key([plain]) != harness._content_key([narrower])
+    assert harness._content_key([plain], kind=b"const") != harness._content_key([plain])
+
+    # Nested, because the strike has to reach every depth: the annotation is inside a
+    # properties entry here and the two objects admit identically.
+    assert harness._content_key(
+        [{"type": "object", "properties": {"a": plain}}]
+    ) == harness._content_key([{"type": "object", "properties": {"a": annotated}}])
+
+
+def test_a_definitions_section_stays_in_the_pin_key_because_nothing_resolves_it() -> None:
+    """**The one place this key is NOT ``catalogue.Admitted``, and why it must not be.**
+
+    That class drops a ``definitions`` section because it RESOLVES a ``$ref`` before
+    keying, so the section is already in the key at every referring site.  The pin memo
+    resolves nothing -- its nodes are statements lifted out of one already-inlined record,
+    where a local ``$ref`` into the record's own storage is still a ``$ref``.  Dropping the
+    section while keeping the reference string would make two nodes that spell one pointer
+    and store two different subtrees under it collide, and the memo would hand one the
+    other's pin: a WRONG value, not a coarse key.
+    """
+    one = {
+        "$ref": "#/definitions/x",
+        "definitions": {"x": {"type": "string", "maxLength": 4}},
+    }
+    other = {
+        "$ref": "#/definitions/x",
+        "definitions": {"x": {"type": "integer", "minimum": 7}},
+    }
+    assert harness._content_key([one]) != harness._content_key([other]), (
+        "two nodes storing different subtrees under one pointer share a pin bucket"
+    )
 
 
 def test_a_substitution_that_admits_nothing_is_abandoned_and_the_abandonment_is_REPORTED(
@@ -851,3 +900,21 @@ def test_a_substitution_the_node_ADMITS_is_used_and_nothing_is_reported() -> Non
     assert res.outcome == "pass", (res.outcome, res.detail)
     assert res.abandoned == "", res.abandoned
     assert taken == [{"country": "US", "system": "zip"}], taken
+
+
+_CROSS_FIELD: dict[str, Any] = {
+    "type": "object",
+    "required": ["country", "system"],
+    "properties": {"country": {"type": "string"}, "system": {"type": "string"}},
+    "anyOf": [
+        {"properties": {"country": {"const": "BR"}, "system": {"const": "cep"}}},
+        {"properties": {"country": {"const": "US"}, "system": {"const": "zip"}}},
+    ],
+    "additionalProperties": False,
+}
+
+
+_PINNED_APART: dict[str, Any] = {
+    **_CROSS_FIELD,
+    "properties": {"country": {"const": "AA"}, "system": {"const": "cep"}},
+}
