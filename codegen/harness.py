@@ -2414,6 +2414,28 @@ def own_facts(schema: Any, depth: int = 0) -> dict[str, Any]:
     ``definitions`` entry, so the merge is of two pointers and not of two declarations.
     That reading belongs to a caller that has the root in hand; nothing in
     :func:`refused_witnesses` reads ``properties`` at all.
+
+    **AND A CONJUNCT'S ``if``/``then``/``else`` IS NOT FOLDED EITHER, BECAUSE THE FOLD WAS
+    MEASURED TO DROP ONE AND TO FABRICATE ANOTHER** (``adcp-client-python-x63t`` cause 3,
+    ``adcp-client-python-wvod``).  The gap-fill above is "the safe direction" for a keyword
+    that stands alone; a conditional does not.  Two things go wrong and both are measured
+    at ``protocol/sync-agent-notification-configs-request.json
+    #/properties/notification_configs/items``, where conjunct 0 (the ``$ref``'d document's
+    own) and conjunct 1 each state one:
+
+    * ``setdefault`` keeps conjunct 0's ``if`` and SILENTLY DISCARDS conjunct 1's
+      ``{"required": ["authentication"]}`` -- which is the whole of the fact
+      ``adcp-client-python-wvod`` is about, so the keyword never reached the derivation at
+      all;
+    * and the three keys are folded INDEPENDENTLY, so one conjunct's ``if`` can be paired
+      with another's ``then`` -- a conditional no document states, derived by this
+      function and attributable to nothing.
+
+    A conditional is a TRIPLE whose members mean nothing apart, and two conjuncts' triples
+    are two independent constraints on one instance rather than one constraint with gaps.
+    :func:`conditionals` is the reader for the composed answer and returns them unmerged;
+    the node's OWN triple stays in this mapping because the node does state it about
+    itself, and nothing reads it from here.
     """
     if not isinstance(schema, dict) or depth > _OWN_DEPTH:
         return {}
@@ -2424,12 +2446,301 @@ def own_facts(schema: Any, depth: int = 0) -> dict[str, Any]:
     for conjunct in conjuncts:
         folded = own_facts(conjunct, depth + 1)
         for keyword, value in folded.items():
+            if keyword in CONDITIONAL:
+                continue
             if keyword == "required" and isinstance(value, list):
                 have = out["required"] if isinstance(out.get("required"), list) else []
                 out["required"] = [*have, *(k for k in value if k not in have)]
                 continue
             out.setdefault(keyword, value)
     return out
+
+
+#: draft-07's conditional, read off the TABLE and never spelled here
+#: (:func:`codegen.keywords.conditional`).  Two readers need the same answer to "is this
+#: keyword part of a conditional" -- :func:`own_facts` declines to fold one and
+#: :func:`conditionals` collects them whole -- and §3 makes the table the one place a
+#: keyword decision lives, so this is a derived VIEW for :data:`_OWNS`' reason and not a
+#: second declaration.
+CONDITIONAL: frozenset[str] = frozenset(keywords.conditional())
+
+
+def conditionals(schema: Any, depth: int = 0) -> tuple[dict[str, Any], ...]:
+    """Every ``if``/``then``/``else`` TRIPLE this node states, conjuncts included, UNMERGED.
+
+    **The composed reading :func:`own_facts` declines to make**, and the reason it is a
+    tuple of triples rather than one mapping is the measurement on
+    ``adcp-client-python-wvod``'s three sites: each is an ``allOf`` of a ``$ref`` to a
+    named document that states its own conditional, plus a conjunct stating a second one.
+    Those are two constraints on the same instance -- draft-07 applies every ``allOf``
+    member to the whole instance -- so an instance must satisfy both, and a reading that
+    keeps one has dropped a fact the document states.  A reading that keeps one's ``if``
+    beside the other's ``then`` has invented a fact the document does not state.
+
+    In document order, the node's own first and then each conjunct's, depth-first, bounded
+    by :data:`_OWN_DEPTH` for the reason that constant already carries: a composed class is
+    one class over its whole conjunct list at any depth, so the collection has to reach the
+    same depth, and a walk with no base case is a crash rather than an outcome.
+
+    A triple with no ``if`` is not one: draft-07 gives ``then`` and ``else`` no effect
+    without it, so a node stating only ``then`` states no conditional and contributes
+    nothing here.
+    """
+    if not isinstance(schema, dict) or depth > _OWN_DEPTH:
+        return ()
+    out: list[dict[str, Any]] = []
+    #: The keys in the table's own order, which is why :func:`keywords.conditional`
+    #: returns a tuple: a triple whose key order came from a set would differ between two
+    #: readings of one document, and this mapping is what a reader of a failure sees.
+    if "if" in schema:
+        out.append({k: schema[k] for k in keywords.conditional() if k in schema})
+    conjuncts = schema.get("allOf")
+    if isinstance(conjuncts, list):
+        for conjunct in conjuncts:
+            out.extend(conditionals(conjunct, depth + 1))
+    return tuple(out)
+
+
+def _far_side(facts: Mapping[str, Any], instance: Any) -> Iterator[tuple[Any, str, str]]:
+    """One value on the FAR side of each boundary ``facts`` states, from ``instance``.
+
+    :func:`refused_witnesses`' derivation, extracted from its screen so that a second
+    caller can reach it: the conditional arm needs candidates violating a SUBSCHEMA -- the
+    ``then`` or the ``else`` -- while screening each against the whole document, and a
+    derivation that screened as it went could only ever answer about the node it was handed.
+
+    So this yields and never decides: a candidate here is a value some keyword of ``facts``
+    says is outside its boundary, with no claim that the DOCUMENT refuses it.  The claim is
+    the caller's and it is made by ``conforms``.  That split is what keeps the derivations
+    simple -- a keyword whose far side cannot be built, or whose far side a sibling keyword
+    widens back in, contributes nothing and costs no verdict.
+
+    ``facts`` and not a schema, because the caller chooses the fold: the node's own is
+    :func:`own_facts`, and an arm's is :func:`own_facts` of the arm.
+    """
+
+    def whole(value: Any) -> int | float | None:
+        return value if isinstance(value, (int, float)) and not isinstance(value, bool) else None
+
+    # ---- the object's KEY SET: required, the property counts, a closed object ----
+    if isinstance(instance, dict):
+        for key in facts.get("required") or []:
+            if isinstance(key, str) and key in instance:
+                yield ({k: v for k, v in instance.items() if k != key}, "required",
+                       f"drops the required key {key!r}")
+        low = whole(facts.get("minProperties"))
+        if low is not None:
+            short = dict(list(instance.items())[: max(int(low) - 1, 0)])
+            yield (short, "minProperties",
+                   f"{len(short)} keys, one short of minProperties {low}")
+        high = whole(facts.get("maxProperties"))
+        if high is not None:
+            over = dict(instance)
+            while len(over) <= int(high):
+                over[f"{_ALIEN_KEY}{len(over)}"] = 1
+            yield over, "maxProperties", f"{len(over)} keys, one past maxProperties {high}"
+        for keyword in ("additionalProperties", "propertyNames", "patternProperties"):
+            if keyword in facts:
+                yield ({**instance, _ALIEN_KEY: 1}, keyword,
+                       f"adds the undeclared key {_ALIEN_KEY!r}")
+        depends = facts.get("dependencies")
+        if isinstance(depends, dict):
+            for trigger, needs in depends.items():
+                if not isinstance(needs, list):
+                    continue
+                dropped = {k: v for k, v in instance.items() if k not in needs}
+                yield ({**dropped, trigger: instance.get(trigger, 1)}, "dependencies",
+                       f"keeps {trigger!r} and drops what it depends on")
+    # ---- the string's LENGTH and its PATTERN ----
+    if isinstance(instance, str):
+        low = whole(facts.get("minLength"))
+        if low is not None:
+            yield (instance[: max(int(low) - 1, 0)], "minLength",
+                   f"one character short of minLength {low}")
+        high = whole(facts.get("maxLength"))
+        if high is not None:
+            # EXACTLY one past the bound, built by padding the accepted instance and
+            # truncating: the witness §8 names is "both sides of each bound and the bound
+            # itself", so the far side is the bound plus one and not an arbitrarily longer
+            # string -- a reader of a failure has to see which boundary was crossed.
+            yield ((instance + "x" * (int(high) + 1))[: int(high) + 1], "maxLength",
+                   f"one character past maxLength {high}")
+        if "pattern" in facts:
+            yield _ALIEN_KEY, "pattern", "a string the pattern does not match"
+    # ---- the number's BOUNDS ----
+    if isinstance(instance, (int, float)) and not isinstance(instance, bool):
+        for keyword, step in (("minimum", -1), ("maximum", 1)):
+            bound = whole(facts.get(keyword))
+            if bound is not None:
+                yield bound + step, keyword, f"one past {keyword} {bound}"
+        for keyword in ("exclusiveMinimum", "exclusiveMaximum"):
+            bound = whole(facts.get(keyword))
+            if bound is not None:
+                yield bound, keyword, f"the excluded bound {bound} itself"
+        factor = whole(facts.get("multipleOf"))
+        if factor:
+            yield (factor + factor / 2 if isinstance(factor, float) else factor * 2 + 1,
+                   "multipleOf", f"not a multiple of {factor}")
+    # ---- the array's LENGTH and its DISTINCTNESS ----
+    if isinstance(instance, list):
+        low = whole(facts.get("minItems"))
+        if low is not None:
+            yield (instance[: max(int(low) - 1, 0)], "minItems",
+                   f"one element short of minItems {low}")
+        high = whole(facts.get("maxItems"))
+        if high is not None:
+            filler = instance[0] if instance else None
+            yield ([*instance, *([filler] * (int(high) + 1 - len(instance)))], "maxItems",
+                   f"one element past maxItems {high}")
+        if facts.get("uniqueItems") is True and instance:
+            yield [*instance, instance[0]], "uniqueItems", "repeats an element"
+        if "contains" in facts:
+            yield [], "contains", "an empty array, which contains nothing"
+    # ---- the VOCABULARY, and the JSON type itself ----
+    if "const" in facts:
+        for alien in _ALIEN_VALUES:
+            yield alien, "const", f"{alien!r}, which is not the pinned value"
+    members = facts.get("enum")
+    if isinstance(members, list):
+        for alien in (_ALIEN_KEY, *_ALIEN_VALUES):
+            if alien not in members:
+                yield alien, "enum", f"{alien!r}, which no enum member is"
+    if "type" in facts:
+        for alien in _ALIEN_VALUES:
+            if type(alien) is not type(instance):
+                yield alien, "type", f"replaces the instance with {alien!r}"
+
+
+#: How deep a conditional's ARM is descended by :func:`_violating`.
+#:
+#: **A BOUND AND NOT A REACH, and the reason is the instrument §8 deleted.**  That one
+#: mutated one keyword at every one of 27,791 sites and spent the suite's whole wall clock
+#: proving a property of ``jsonschema``; this descends an arm's ``properties`` for the keys
+#: the instance already carries, which is finite and small, and the bound is what keeps a
+#: document that nests conditionals from turning the reduction back into that sweep.
+#: ``adcp-client-python-wvod``'s three sites are reached at depth 1 -- the arm states
+#: ``properties.authentication.required`` -- so the bound is above the measured shape and
+#: not tuned to it.
+_ARM_DEPTH = 4
+
+
+def _arm_of(
+    triple: Mapping[str, Any], instance: Any, *, validator_cls: Any = None
+) -> tuple[str, Any]:
+    """WHICH of a conditional's two arms is in force for ``instance``, and the arm.
+
+    **The document's answer and not a guess.**  draft-07 applies ``then`` where the
+    instance satisfies ``if`` and ``else`` where it does not, so the accepted instance
+    decides which of the two is in force -- and only that one is a boundary a witness can
+    be taken from.  The other arm says nothing about this instance at all.
+
+    A condition the validator cannot answer (``conforms`` -> ``None``) selects ``else``,
+    which is fail-safe in the direction that matters: every candidate derived from an arm
+    is screened against the whole document, so a wrong arm contributes no witness rather
+    than an assertion the document does not make.
+
+    One function because two readers need the same answer and must not differ:
+    :func:`refused_witnesses` takes the witnesses, and :func:`unreached_conditionals`
+    reports the conditionals that yielded none.  Stated twice, the artifact could report a
+    boundary as unreached while the derivation had in fact read the other arm.
+    """
+    condition = triple.get("if")
+    satisfied = conforms(condition, instance, validator_cls=validator_cls) is True
+    which = "then" if satisfied else "else"
+    return which, triple.get(which)
+
+
+def unreached_conditionals(
+    schema: dict, instance: Any, *, validator_cls: Any = None
+) -> tuple[str, ...]:
+    """Every conditional of this node that the reduction could put NO value to, with why.
+
+    **The reduction's reach is not its population, and this is the difference measured
+    rather than described.**  :func:`check_refuses` is asked about every pair of the graded
+    population, but a conditional's boundary lies inside the region its ``if`` selects, and
+    the reduction has ONE accepted instance -- ``check_accepts``' draw at ``examples=1``.
+    Where that instance is outside the ``if``'s region and the node states no ``else``,
+    there is no arm in force and no boundary to perturb: the class is never asked about
+    that conditional at all.
+
+    Measured on ``adcp-client-python-wvod``'s own three sites, which is why this exists:
+    two of them drew an instance carrying ``authentication``, so the
+    ``{"if": {"required": ["authentication"]}}`` arm was in force and both reported the
+    undeclared widening.  The third --
+    ``account/sync-accounts-request.json#/properties/accounts/items/properties/notification_configs/items``
+    -- drew ``{event_types, subscriber_id, url}``, satisfied neither of its two ``if``s,
+    and reported ``pass`` on the witnesses it DID offer.  A ``pass`` there would say the
+    class refuses what its document refuses, about a document fact the class was never
+    offered a value for; this is what makes the cell ``absent`` instead.
+
+    Two reasons a conditional is unreached and both are reported, because they ask for
+    different work: the ARM IS ABSENT (a wider draw reaches it) and the arm states nothing
+    this reduction can perturb (:func:`_violating` is what would have to grow -- an
+    ``items`` narrowing, or ``adcp-client-python-3bb``'s conditional nested in an arm).
+    """
+    cls = validator_cls or validator_for(schema)
+    out: list[str] = []
+    for triple in conditionals(schema):
+        which, arm = _arm_of(triple, instance, validator_cls=cls)
+        condition = json.dumps(triple.get("if"), sort_keys=True, default=str)[:120]
+        if not isinstance(arm, dict):
+            out.append(
+                f"the instance is outside the region {condition} selects and the node "
+                f"states no {which}, so no arm is in force and no value was offered"
+            )
+            continue
+        if not any(True for _ in _violating(arm, instance)):
+            out.append(
+                f"the {which} of {condition} states nothing this reduction can perturb "
+                "from the accepted instance, so no value was offered"
+            )
+    return tuple(out)
+
+
+def _violating(arm: Any, instance: Any, depth: int = 0) -> Iterator[tuple[Any, str, str]]:
+    """Values that break ``arm`` while keeping ``instance``'s shape, as far as an arm goes.
+
+    **The half of the conditional a refuses-check needs.**  A node stating
+    ``{"if": C, "then": T}`` refuses every value that satisfies ``C`` and breaks ``T``, so
+    the witness is the accepted instance perturbed to break ``T`` and nothing else -- and
+    whether the perturbation also broke ``C`` is the document's question, answered by the
+    screen in :func:`refused_witnesses` rather than by this derivation.
+
+    Two descents, and the second is what ``adcp-client-python-wvod`` needs:
+
+    * the arm's OWN keywords, through :func:`_far_side`, which covers an arm stating
+      ``required`` or a ``const`` or a count on the whole instance;
+    * the arm's ``properties``, for the keys the instance ALREADY CARRIES, rebuilt as the
+      instance with that one key replaced.  wvod's three sites state
+      ``{"then": {"properties": {"authentication": {"required": ["credentials"]}}}}``, and
+      the witness is the instance with ``credentials`` dropped from ``authentication`` --
+      which is the payload that row exhibits, derived rather than written down.
+
+    **Only keys the instance carries, which is what keeps this a REDUCTION.**  Inventing a
+    key the instance does not have would be building a value rather than perturbing one,
+    and §8's whole cost argument is that this function draws nothing.
+
+    **``items`` is NOT descended and that is a stated limit, not an oversight.**  An arm
+    narrowing an array's members would need one witness per element and a reader of a
+    failure would need to be told which one; nothing in the measured population
+    (``adcp-client-python-wvod``, 13 sites) takes that shape, and a conditional nested
+    inside another conditional's ARM is ``adcp-client-python-3bb``'s row and not this one.
+    Both are reported as unreached rather than as green: a witness this cannot build
+    contributes no verdict, so the pair reads ``pass`` only on the witnesses that WERE
+    offered and the row above says which.
+    """
+    if not isinstance(arm, dict) or depth > _ARM_DEPTH:
+        return
+    facts = own_facts(arm)
+    yield from _far_side(facts, instance)
+    declared = facts.get("properties")
+    if not isinstance(declared, dict) or not isinstance(instance, dict):
+        return
+    for key, declaration in declared.items():
+        if key not in instance:
+            continue
+        for candidate, keyword, how in _violating(declaration, instance[key], depth + 1):
+            yield {**instance, key: candidate}, keyword, f"at {key!r}, {how}"
 
 
 def refused_witnesses(
@@ -2467,104 +2778,43 @@ def refused_witnesses(
     this function AIMED at; which keywords the document actually refused on is
     :func:`violated_keywords`' answer and the caller reports that beside it, for the reason
     that function's own docstring gives.
+
+    **AND A CONDITIONAL IS ONE OF THE KEYWORDS, which it was not until
+    ``adcp-client-python-x63t``.**  That row measured the hole from the far side: over
+    ``adcp-client-python-wvod``'s three nodes this function aimed at
+    ``['additionalProperties', 'required', 'type']``, no witness aimed at
+    ``if``/``then``/``else``, and "the payload the document refuses is among the witnesses:
+    False" -- so even wired onto the graded path the instrument could not have found those
+    three.  :func:`conditionals` collects the triples a node states, :func:`_arm_of` says
+    which arm an instance puts in force, and :func:`_violating` takes the far side of THAT
+    arm; the conditionals no value was offered for are
+    :func:`unreached_conditionals`' answer, which ``check_refuses`` reports beside this so
+    a ``pass`` cannot stand for a boundary nobody crossed.
     """
     cls = validator_cls or validator_for(schema)
-    facts = own_facts(schema)
     out: list[tuple[Any, str, str]] = []
 
     def take(candidate: Any, keyword: str, how: str) -> None:
         if conforms(schema, candidate, validator_cls=cls) is False:
             out.append((candidate, keyword, how))
 
-    def whole(value: Any) -> int | float | None:
-        return value if isinstance(value, (int, float)) and not isinstance(value, bool) else None
-
-    # ---- the object's KEY SET: required, the property counts, a closed object ----
-    if isinstance(instance, dict):
-        for key in facts.get("required") or []:
-            if isinstance(key, str) and key in instance:
-                take({k: v for k, v in instance.items() if k != key}, "required",
-                     f"drops the required key {key!r}")
-        low = whole(facts.get("minProperties"))
-        if low is not None:
-            short = dict(list(instance.items())[: max(int(low) - 1, 0)])
-            take(short, "minProperties", f"{len(short)} keys, one short of minProperties {low}")
-        high = whole(facts.get("maxProperties"))
-        if high is not None:
-            over = dict(instance)
-            while len(over) <= int(high):
-                over[f"{_ALIEN_KEY}{len(over)}"] = 1
-            take(over, "maxProperties", f"{len(over)} keys, one past maxProperties {high}")
-        for keyword in ("additionalProperties", "propertyNames", "patternProperties"):
-            if keyword in facts:
-                take({**instance, _ALIEN_KEY: 1}, keyword,
-                     f"adds the undeclared key {_ALIEN_KEY!r}")
-        depends = facts.get("dependencies")
-        if isinstance(depends, dict):
-            for trigger, needs in depends.items():
-                if not isinstance(needs, list):
-                    continue
-                dropped = {k: v for k, v in instance.items() if k not in needs}
-                take({**dropped, trigger: instance.get(trigger, 1)}, "dependencies",
-                     f"keeps {trigger!r} and drops what it depends on")
-    # ---- the string's LENGTH and its PATTERN ----
-    if isinstance(instance, str):
-        low = whole(facts.get("minLength"))
-        if low is not None:
-            take(instance[: max(int(low) - 1, 0)], "minLength",
-                 f"one character short of minLength {low}")
-        high = whole(facts.get("maxLength"))
-        if high is not None:
-            # EXACTLY one past the bound, built by padding the accepted instance and
-            # truncating: the witness §8 names is "both sides of each bound and the bound
-            # itself", so the far side is the bound plus one and not an arbitrarily longer
-            # string -- a reader of a failure has to see which boundary was crossed.
-            take((instance + "x" * (int(high) + 1))[: int(high) + 1], "maxLength",
-                 f"one character past maxLength {high}")
-        if "pattern" in facts:
-            take(_ALIEN_KEY, "pattern", "a string the pattern does not match")
-    # ---- the number's BOUNDS ----
-    if isinstance(instance, (int, float)) and not isinstance(instance, bool):
-        for keyword, step in (("minimum", -1), ("maximum", 1)):
-            bound = whole(facts.get(keyword))
-            if bound is not None:
-                take(bound + step, keyword, f"one past {keyword} {bound}")
-        for keyword in ("exclusiveMinimum", "exclusiveMaximum"):
-            bound = whole(facts.get(keyword))
-            if bound is not None:
-                take(bound, keyword, f"the excluded bound {bound} itself")
-        factor = whole(facts.get("multipleOf"))
-        if factor:
-            take(factor + factor / 2 if isinstance(factor, float) else factor * 2 + 1,
-                 "multipleOf", f"not a multiple of {factor}")
-    # ---- the array's LENGTH and its DISTINCTNESS ----
-    if isinstance(instance, list):
-        low = whole(facts.get("minItems"))
-        if low is not None:
-            take(instance[: max(int(low) - 1, 0)], "minItems",
-                 f"one element short of minItems {low}")
-        high = whole(facts.get("maxItems"))
-        if high is not None:
-            filler = instance[0] if instance else None
-            take([*instance, *([filler] * (int(high) + 1 - len(instance)))], "maxItems",
-                 f"one element past maxItems {high}")
-        if facts.get("uniqueItems") is True and instance:
-            take([*instance, instance[0]], "uniqueItems", "repeats an element")
-        if "contains" in facts:
-            take([], "contains", "an empty array, which contains nothing")
-    # ---- the VOCABULARY, and the JSON type itself ----
-    if "const" in facts:
-        for alien in _ALIEN_VALUES:
-            take(alien, "const", f"{alien!r}, which is not the pinned value")
-    members = facts.get("enum")
-    if isinstance(members, list):
-        for alien in (_ALIEN_KEY, *_ALIEN_VALUES):
-            if alien not in members:
-                take(alien, "enum", f"{alien!r}, which no enum member is")
-    if "type" in facts:
-        for alien in _ALIEN_VALUES:
-            if type(alien) is not type(instance):
-                take(alien, "type", f"replaces the instance with {alien!r}")
+    for candidate, keyword, how in _far_side(own_facts(schema), instance):
+        take(candidate, keyword, how)
+    #: **THE CONDITIONAL ARM, and it is LAST so no existing witness changes its label.**
+    #: The dedup below keeps the FIRST keyword that aimed at a candidate, so an arm placed
+    #: before the keyword derivations would relabel witnesses the 15-pair gate already
+    #: reads -- which is a change to what this function says about pairs nobody asked about.
+    for triple in conditionals(schema):
+        which, arm = _arm_of(triple, instance, validator_cls=cls)
+        for candidate, keyword, how in _violating(arm, instance):
+            #: **ATTRIBUTED TO ``if`` AND NOT TO THE ARM'S OWN KEYWORD**, because that is
+            #: the keyword §2's declaration carries: ``core/agent-notification-config.json``
+            #: declares its own root conditional as ``Approximation(pointer='#',
+            #: keyword='if', kind='WIDENED', rung='KEYWORD')``, so a module that declares
+            #: this widening declares it under ``if`` and ``check_refuses``' comparison
+            #: against ``declared`` has to be made on the same name.  The arm's own keyword
+            #: travels in ``how``, where a reader of a failure needs it.
+            take(candidate, "if", f"satisfies the if, and the {which} refuses it: {how}")
     #: Deduplicated by the candidate's JSON text, keeping the FIRST keyword that aimed at
     #: it: two keywords can name one value (a ``const`` and the ``type`` beside it), and
     #: offering it twice would report one disagreement twice.
@@ -2579,6 +2829,30 @@ def refused_witnesses(
     return tuple(unique)
 
 
+def _constructor(model: Any) -> Callable[[Any], Any]:
+    """``model``'s CONSTRUCTOR, for a class and for D2's root-scalar ALIAS alike.
+
+    :func:`check_refuses` takes "the constructor and not the entry point", and its whole
+    distinction from :func:`check_liveness` is that the value reaches pydantic with the
+    document taking no part -- so what this returns must be ``model_validate`` and never
+    ``pair.accept``.
+
+    **Two spellings because D2 emits two kinds of pair.**  A class carries
+    ``model_validate``; a root scalar is an ``Annotated`` ALIAS and not a class, so there
+    is no method to call and ``TypeAdapter`` is the constructor for it -- the same reading
+    ``_wire_dump`` already makes one direction out, and the same one
+    ``tests/test_refuses_check.py`` makes over its own population.
+
+    The adapter is built here and not cached: one pair builds one, ``check_refuses`` is a
+    reduction and not a draw, and a cache keyed on a type that pydantic rebuilds would be
+    a second answer to "what is this model" for the sake of microseconds.
+    """
+    validate = getattr(model, "model_validate", None)
+    if callable(validate):
+        return validate
+    return TypeAdapter(model).validate_python
+
+
 @dataclass
 class RefusesResult:
     """What the refuses-check found about one pair: the witnesses and the disagreements."""
@@ -2591,6 +2865,15 @@ class RefusesResult:
     undeclared: tuple[tuple[str, str, tuple[str, ...], bool], ...] = ()
     #: The keywords the module DECLARES an approximation for at or under this pointer.
     declared: tuple[str, ...] = ()
+    #: The conditionals of this node no value was offered for, with the reason each
+    #: (:func:`unreached_conditionals`).  **Non-empty beside a ``pass`` makes the pass a
+    #: PARTIAL one**, which is what the verdict reads: the class refused every witness it
+    #: was offered, and a boundary the document states was not among them.
+    unreached: tuple[str, ...] = ()
+    #: How many ``if``/``then``/``else`` TRIPLES this node states, conjuncts included
+    #: (:func:`conditionals`).  The denominator :attr:`unreached` is a count against, so a
+    #: reader of "2 unreached" knows whether that is two of two or two of nine.
+    conditional_sites: int = 0
     #: pass | widened_undeclared | model_error | no_witness
     outcome: str = "unrun"
     detail: str = ""
@@ -2666,6 +2949,13 @@ def check_refuses(
     """
     res = RefusesResult(declared=tuple(sorted(set(declared))))
     cls = validator_cls or validator_for(schema)
+    #: **THE REACH, RECORDED BEFORE THE VERDICT**, because the two are different facts and
+    #: a reader of a ``pass`` needs both: the witnesses say what the class was asked, and
+    #: this says which of the node's own boundaries it was NOT asked about.  Computed even
+    #: where there is no witness at all, so ``no_witness`` beside a node that states three
+    #: conditionals reads as the unreached boundaries it is rather than as an empty node.
+    res.conditional_sites = len(conditionals(schema))
+    res.unreached = unreached_conditionals(schema, instance, validator_cls=cls)
     witnesses = refused_witnesses(schema, instance, validator_cls=cls)
     if not witnesses:
         res.outcome = "no_witness"
@@ -5635,6 +5925,21 @@ class PairReport:
     #: ``None`` and not an empty result, so ``outcome`` can tell "nothing was claimed" from
     #: "a claim was checked", the way it already tells ``accepts:unrun`` from a pass.
     widening: WideningResult | None = None
+    #: **Reading 2's OTHER direction**: every value this pair's document REFUSES, offered
+    #: to the CONSTRUCTOR, and an admission that no declaration names (:func:`check_refuses`).
+    #:
+    #: A separate field from :attr:`widening` because the two grade opposite directions of
+    #: one sentence and ``docs/plan/final-state.md`` reading 2 states both: "a model may be
+    #: wider than its document and never tighter; each widening is declared at its own
+    #: pointer, the declared set equals the set a run mints in both directions, and every
+    #: declaration holds a value that demonstrates it."  :func:`check_widening` grades the
+    #: declarations that EXIST; this grades the widenings that are not declared at all, and
+    #: :attr:`RefusesResult.undeclared` is the only place in this module that reports one.
+    #:
+    #: ``None`` and not an empty result, for :attr:`widening`'s reason: ``outcome`` can
+    #: then tell "the check was never put to this pair" -- no accepted instance to reduce
+    #: -- from "the check ran and the class refused everything the document refuses".
+    undeclared: RefusesResult | None = None
     missing_formats: list[str] = field(default_factory=list)
     #: The DOCUMENT's own format-beside-pattern positions a draw CANNOT REACH, each
     #: measured by drawing that node alone (:func:`undrawable_formats`).  Filled by
@@ -5742,6 +6047,30 @@ class PairReport:
         # whole pair, where this is a verdict about one declaration's claim.
         if self.widening is not None and self.widening.outcome not in ("pass", "no_declarations"):
             return "widening:" + self.widening.outcome
+        #: **Reading 2's OTHER direction, ranked WITH the declaration check and BELOW it**,
+        #: because the two grade the same sentence and the declared half is the one a
+        #: reader acts on first: a declaration that no value proves is a claim the artifact
+        #: makes and cannot support, and a widening nobody declared is a claim the artifact
+        #: never made.
+        #:
+        #: **AND IT IS RANKED AT ALL, WHICH IS THE WHOLE OF ``adcp-client-python-x63t``.**
+        #: ``check_refuses`` existed for one merge with no caller on the graded path -- a
+        #: mechanism that computes and decides nothing -- and a check whose result reaches
+        #: no verdict is the same defect one level up.  So an undeclared widening is a
+        #: verdict about the pair, and the pair grade reddens by however many there are.
+        #:
+        #: ``no_witness`` and ``unrun`` are exempt for :func:`_undeclared_verdict`'s
+        #: reason: both say the class was never asked, which is a fact about the document
+        #: or about the draw, and the cell beside this says which.  An UNREACHED
+        #: conditional is exempt here too and reads ``absent`` in its own cell -- the
+        #: ranking carries verdicts about the class, exactly as ``widening``'s
+        #: ``no_declarations`` is exempt above.
+        if self.undeclared is not None and self.undeclared.outcome not in (
+            "pass",
+            "no_witness",
+            "unrun",
+        ):
+            return "undeclared:" + self.undeclared.outcome
         if self.accepts.outcome == "strategy_error":
             return "no_instrument" if self.no_instrument else "accepts:strategy_error"
         if not self.graded_instances:
@@ -6632,6 +6961,48 @@ def check_pair(
         if accepted
         else LivenessResult(outcome="no_payload", detail="the accepts check drew no instance")
     )
+    #: **READING 2's UNDECLARED DIRECTION, and the obstruction this line removes was the
+    #: INSTANCE** (``adcp-client-python-x63t``).  ``check_refuses``' own docstring recorded
+    #: the gap: "WHAT IS NOT HERE.  The sweep over the whole graded population, and the
+    #: obstruction is the INSTANCE rather than the check: over that population the
+    #: accepted instance is ``check_accepts``' draw, held under a key whose computation
+    #: needs the pair."  ``check_pair`` is the frame that HAS the pair, so the instance is
+    #: one argument away -- the same ``accepted[0]`` the liveness check above is already
+    #: handed, which is why that line reuses it rather than drawing.
+    #:
+    #: **IT COSTS NO DRAW.**  :func:`refused_witnesses` is a REDUCTION of that one
+    #: instance -- one ``conforms`` per keyword the node states about itself -- and never
+    #: ``from_schema``, which is 74.9% of a pair (``tests/test_emit.py``'s
+    #: ``GRADED_REPORTS_GROUP``).  So this ranges over the WHOLE graded population and not
+    #: over a selection, which is the one thing it had to do: the 15-pair selection in
+    #: ``tests/test_refuses_check.py`` is how an undeclared widening at an ``allOf``
+    #: conjunct stayed invisible (``adcp-client-python-wvod``).
+    #:
+    #: **``construct`` AND NEVER ``pair.accept``**, which is the one rule
+    #: :func:`check_refuses`' signature exists to enforce: ``accept`` validates against
+    #: the DOCUMENT first, so a witness offered there measures ``jsonschema`` and the
+    #: class takes no part in the outcome -- the exact shape of the 27,791-site instrument
+    #: §8 deleted.  :func:`_constructor` is the reading of "the constructor" that answers
+    #: for a class and for D2's root-scalar ALIAS alike.
+    #:
+    #: ``declared`` is this pair's own declarations by KEYWORD, which is ``pair.declared``
+    #: read as ``render.declared_at`` already composed it (at or inside this node).  §2's
+    #: rule is then a comparison and not an allowlist: an admission is a ``pass`` where a
+    #: declaration names its keyword and ``widened_undeclared`` where none does.
+    #:
+    #: With no accepted instance there is nothing to reduce, and ``unrun`` says so rather
+    #: than a pass: the table reads ``undeclared=absent:unrun``, which is a fact about the
+    #: draw and not evidence about the class.
+    rep.undeclared = (
+        check_refuses(
+            drawn_from,
+            _constructor(pair.model),
+            accepted[0],
+            declared=tuple(one.keyword for one in pair.declared),
+        )
+        if accepted
+        else RefusesResult(outcome="unrun", detail="the accepts check drew no instance")
+    )
     #: **Section 8's accepts obligation, and it runs only where a declaration claims
     #: something.**  "An approximation is a claim about this check, and this check is what
     #: proves it."  A pair declaring nothing owes nothing, so this costs no draw over the
@@ -6688,14 +7059,34 @@ PASS = "pass"
 FAIL = "fail"
 ABSENT = "absent"
 
-#: The four checks a row carries, in the order the table's columns are written, and the
+#: The checks a row carries, in the order the table's columns are written, and the
 #: order is the order a defect is read in: the class took the value, the class refused what
-#: the document refuses, what the class BUILT came back out, and every declaration it makes
-#: was earned.  ``refuses`` is this module's ``check_liveness`` under the name §10 and
+#: the document refuses, what the class BUILT came back out, every declaration it makes
+#: was earned, and nowhere is it wider than its document without saying so.  ``refuses`` is
+#: this module's ``check_liveness`` under the name §10 and
 #: ``adcp-client-python-82m.4`` give it; ``dump`` is the half of ``check_accepts`` that
 #: reads what the class DID with the value, reported as its own column because it is its
 #: own obligation and because ``AcceptsResult`` merges the two outcomes into one field.
-CHECKS: tuple[str, ...] = ("accepts", "refuses", "dump", "widening")
+#:
+#: **``undeclared`` IS A FIFTH COLUMN AND THAT IS A CHANGE TO §10's TABLE**
+#: (``adcp-client-python-x63t``).  §10 states the artifact as "one row per graded pair ...
+#: document, pointer, and each check's verdict", so the table's width is whatever the set
+#: of checks is -- and the set grew, because ``check_refuses`` existed with no caller on
+#: the graded path: 308 lines whose only callers were a 15-pair selection in
+#: ``tests/test_refuses_check.py`` and a spike reading a field ``PairReport`` did not have.
+#: ``docs/plan/final-state.md`` reading 2 is one sentence with two directions -- "a model
+#: may be wider than its document and never tighter; each widening is declared at its own
+#: pointer" -- and with only ``widening`` in the table the second direction was graded and
+#: the first was not, over the whole population and silently.
+#:
+#: **APPENDED and never inserted.**  ``verdict_table`` reads a row BY COLUMN POSITION
+#: (the note field is free text and can carry an ``=`` of its own), so a column added in
+#: the middle would renumber every reader's ``awk`` and silently re-point the census of
+#: every check before it.  A column appended leaves ``accepts``, ``refuses``, ``dump`` and
+#: ``widening`` at the positions they have always had, and the new one arrives at the end
+#: of the row where a diff against the previous run shows it as an addition rather than as
+#: four columns changing meaning.
+CHECKS: tuple[str, ...] = ("accepts", "refuses", "dump", "widening", "undeclared")
 
 
 @dataclass(frozen=True)
@@ -6812,14 +7203,63 @@ def _widening_verdict(w: WideningResult | None) -> Verdict:
     return Verdict(FAIL, w.outcome)
 
 
+def _undeclared_verdict(r: RefusesResult | None) -> Verdict:
+    """Is the class wider than its document anywhere the module does not SAY it is.
+
+    Reading 2's undeclared direction, which no column of this table carried until
+    ``adcp-client-python-x63t``: ``widening`` beside it grades the declarations that
+    exist, and a widening nobody declared is invisible to that check by construction --
+    ``check_widening`` iterates ``pair.declared``, so a pair declaring nothing owes it
+    nothing and reads ``absent:no_declarations``, which is exactly the cell a dropped fact
+    produces.
+
+    ``no_witness`` is ABSENT and not a pass, for the reason :func:`check_refuses` gives:
+    "a document that refuses nothing this reduction can build -- an open typeless object,
+    which draft-07 admits every instance of -- has nothing for the class to refuse, and
+    the pair is neither graded nor failed."  A pass here would make a pair that offered
+    NOTHING read identically to one that offered every witness and refused each, which is
+    the shape §8 deleted an instrument for.
+
+    ``model_error`` is FAIL and not ABSENT, and that is the one split here that is not
+    obvious.  It says the constructor raised something that is not a ``ValidationError`` --
+    not a refusal a consumer could catch -- which is a fact about the CLASS and not about
+    the instrument; the witness was built, screened by the document and offered, so the
+    pair was asked and answered badly.  An unknown outcome is FAIL for
+    :func:`_accepts_verdict`'s reason: an outcome added to ``check_refuses`` later cannot
+    enter this table as a green cell.
+
+    **AND A PASS WITH AN UNREACHED CONDITIONAL IS ``absent`` AND NOT A PASS**, which is
+    ``_dump_verdict``'s ``stopped_after_N_of_M`` rule applied to the boundary this check
+    can miss.  A conditional's boundary lies inside the region its ``if`` selects and the
+    reduction has one drawn instance, so where that instance is outside the region there is
+    no arm in force and the class is never asked
+    (:func:`unreached_conditionals`).  Measured on ``adcp-client-python-wvod``'s third
+    site, which drew an instance carrying no ``authentication`` and so satisfied neither of
+    its two ``if``s: a ``pass`` there would have claimed a green on the one fact the row is
+    about.  A FAILURE still wins over this -- a widening found is a verdict about the
+    class, and an unreached boundary is a fact about the draw.
+    """
+    if r is None:
+        return Verdict(ABSENT, "unrun")
+    if r.outcome == "pass":
+        if r.unreached:
+            return Verdict(
+                ABSENT, f"{len(r.unreached)}_of_{r.conditional_sites}_conditionals_unreached"
+            )
+        return Verdict(PASS)
+    if r.outcome in ("no_witness", "unrun"):
+        return Verdict(ABSENT, r.outcome)
+    return Verdict(FAIL, r.outcome)
+
+
 def verdicts(report: PairReport | None, *, error: str = "") -> dict[str, Verdict]:
-    """This pair's four verdicts, or four ABSENT ones with the cause.
+    """This pair's verdict per check, or one ABSENT verdict per check with the cause.
 
     ``error`` is the row for a pair that never reached a check at all -- the pairing
     raised building it, or a check raised out through this module.  It is the case
     ``adcp-client-python-82m.4`` is about: "one raised in its own setup so it never
-    computed anything", and in a per-pair table that has to be four blank columns with a
-    cause, not four missing rows.  A pair with no report and no error named is still
+    computed anything", and in a per-pair table that has to be one blank column per
+    check, each with a cause, not a missing row.  A pair with no report and no error named is still
     ABSENT in every column, because there is nothing else it could honestly be.
     """
     if error or report is None:
@@ -6830,6 +7270,7 @@ def verdicts(report: PairReport | None, *, error: str = "") -> dict[str, Verdict
         "refuses": _refuses_verdict(report.liveness),
         "dump": _dump_verdict(report.accepts),
         "widening": _widening_verdict(report.widening),
+        "undeclared": _undeclared_verdict(report.undeclared),
     }
 
 
@@ -6914,7 +7355,7 @@ def verdict_row(
     model: str = "",
     error: str = "",
 ) -> str:
-    """One pair's row: its document, its pointer, its class and its four verdicts.
+    """One pair's row: its document, its pointer, its class and one verdict per check.
 
     **Each check's cell is written ``<check>=<verdict>`` and not bare**, which is the one
     redundancy in this format and the reason the format is usable.  ``docs/plan`` asks for
@@ -6955,6 +7396,31 @@ def verdict_row(
         notes.extend(w.unproved[:2])
         if w.detail:
             notes.append(w.detail)
+    #: **The undeclared widening's own VALUE, because reading 2 is about values.**  "Every
+    #: declaration holds a value that demonstrates it", and the complement of that is that
+    #: an undeclared widening is reported with the value that demonstrates IT -- otherwise
+    #: a row says a class is too wide and the reader has to rebuild the witness to see
+    #: where.  The keyword the reduction AIMED at is beside it, and the keywords the
+    #: document actually refused on, which is the split :func:`refused_witnesses` names:
+    #: those are ``violated_keywords``' answer and not the aim.
+    #:
+    #: **Two rows at most, exactly as the widening notes above are capped.**  A pair can be
+    #: wider on every keyword its node states and the note field is one cell of one line;
+    #: the count travels with them so a reader of the cap knows it is a cap.
+    if report is not None and report.undeclared is not None:
+        r = report.undeclared
+        for candidate, keyword, refused_on, _ in r.undeclared[:2]:
+            notes.append(
+                f"undeclared widening on {keyword}: the class admitted {candidate} "
+                f"which the document refuses on {', '.join(refused_on) or '(unnamed)'}"
+            )
+        if len(r.undeclared) > 2:
+            notes.append(f"and {len(r.undeclared) - 2} more undeclared witnesses")
+        notes.extend(r.unreached[:2])
+        if len(r.unreached) > 2:
+            notes.append(f"and {len(r.unreached) - 2} more unreached conditionals")
+        if r.detail:
+            notes.append(r.detail)
     return "\t".join(
         _cell(x)
         for x in (
