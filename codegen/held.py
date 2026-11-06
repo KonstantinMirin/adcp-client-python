@@ -71,6 +71,22 @@ ROOT = Path(__file__).resolve().parents[1]
 #: differences a validator cannot see -- 854 of them a trailing newline.  Keyed on
 #: admission, 0 of 1,054 move and the committed floor below is still the floor.
 #:
+#: **THAT SENTENCE WAS FALSE FOR TEN COMMITS AND THE FLOOR PAID FOR IT**
+#: (``adcp-client-python-82m.56``).  It was measured against ``patches/8735``, which adds
+#: four titles.  ``patch.for_build`` also applies ``patches/8525``, which EXTRACTS five
+#: shared scalars into their own documents and rewrites every site that stated them inline
+#: to ``$ref`` them -- ``patch.seen_by_a_validator`` still zero -- and the admitted identity
+#: moved for **434 of 1,054** documents, because ``catalogue.Admitted`` kept ``$ref`` as a
+#: member of the key and ``admitted_identities`` digested a closure of document NAMES.  The
+#: merge that put the re-keyed floor beside that bundle was ``d4211eabb``, and from it
+#: **1,727 of 2,589 graded pairs answered no committed entry**: each of them fell back to a
+#: redraw it could not afford or to nothing, which is how
+#: ``adcp-client-python-lzzj``'s 70 floor-masked inabilities became invisible once before.
+#: ``catalogue.Resolved`` and ``catalogue.Admitted.stating`` are the repair and
+#: ``test_an_acceptance_preserving_patch_moves_no_admitted_identity`` is the sentence as a
+#: GATE -- which is the part that was missing, not the claim: a claim no run reads is a
+#: claim nothing keeps true.
+#:
 #: And the size was never the obstacle.  Re-measured 2026-10-30 over the whole graded
 #: population at ``accepts_examples=1``: the reading is ``Store.bytes_held`` over
 #: ``Store.entries``, and it is **0.4 MB of content at a mean of 131 bytes an entry** -- a
