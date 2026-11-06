@@ -934,8 +934,43 @@ class Admitted:
         named = bundle.document_for(head, self.documents)
         return None if named is None else (named, pointer)
 
+    def reached(
+        self, document: str, node: object, stack: tuple[tuple[str, str], ...] = ()
+    ) -> tuple[str, object, tuple[tuple[str, str], ...]] | None:
+        """Where a ``$ref`` node RESOLVES to, or ``None`` where it resolves nowhere.
+
+        ``(document, node, stack)`` of the node the reference names, for the two readers
+        that must treat a reference as the thing it names: :meth:`of` and
+        :meth:`stating`.  ``None`` for a reference this bundle does not hold, for a
+        pointer naming no node, and for a CYCLE -- each of which is a node whose own
+        text is all there is to read.
+        """
+        if not isinstance(node, dict) or "$ref" not in node:
+            return None
+        at = self.target(document, node["$ref"])
+        if at is None or at in stack:
+            return None
+        try:
+            found = bundle.node_at(self.document(at[0]), at[1])
+        except (KeyError, IndexError, TypeError, ValueError):
+            # A pointer naming no node: the reference is unresolvable in fact whatever
+            # its spelling, and ``bundle.record`` is what refuses the document for it.
+            # A census is not a verdict (§3a), so the key carries the URI and the run
+            # reports the refusal.
+            return None
+        return (at[0], found, (*stack, at))
+
     def of(self, document: str, node: object, stack: tuple[tuple[str, str], ...] = ()) -> object:
-        """The decided key of one node, as a hashable structure."""
+        """The decided key of one node, as a hashable structure.
+
+        **A ``$ref`` RESOLVES INTO THIS KEY AND STAYS A MEMBER OF IT**, which is a
+        DECLARATION's identity and is not admission-equivalence: a reference is a position
+        that reaches another declaration, and this key keeps that apart from a position
+        that spells the type itself.  The key an ADMISSION digest needs is
+        :class:`Resolved`'s, and ``adcp-client-python-82m.56`` carries the measurement of
+        what the difference cost -- the catalogue's own layering question is open there and
+        is not settled here, because settling it moves the emitted tree.
+        """
         if isinstance(node, list):
             return ("[]", tuple(self.of(document, v, stack) for v in node))
         if not isinstance(node, dict):
@@ -947,21 +982,13 @@ class Admitted:
             held = node[word]
             if word == "$ref":
                 at = self.target(document, held)
-                if at is None:
-                    out.append((word, ("unresolved", json.dumps(held))))
-                elif at in stack:
+                resolved = self.reached(document, node, stack)
+                if at is not None and at in stack:
                     out.append((word, (CYCLE, len(stack) - stack.index(at))))
+                elif resolved is None:
+                    out.append((word, ("unresolved", json.dumps(held))))
                 else:
-                    try:
-                        reached = bundle.node_at(self.document(at[0]), at[1])
-                    except (KeyError, IndexError, TypeError, ValueError):
-                        # A pointer naming no node: the reference is unresolvable in fact
-                        # whatever its spelling, and ``bundle.record`` is what refuses the
-                        # document for it.  A census is not a verdict (§3a), so the key
-                        # carries the URI and the run reports the refusal.
-                        out.append((word, ("unresolved", json.dumps(held))))
-                    else:
-                        out.append((word, self.of(at[0], reached, (*stack, at))))
+                    out.append((word, self.of(*resolved)))
             elif word in BY_NAME and isinstance(held, dict):
                 out.append(
                     (word, tuple(sorted((k, self.of(document, v, stack)) for k, v in held.items())))
@@ -979,6 +1006,88 @@ class Admitted:
     def key(self, document: str, node: object) -> str:
         """:meth:`of` as one string, which is what an entry is keyed on."""
         return repr(self.of(document, node))
+
+    def stating(
+        self,
+        document: str,
+        node: object,
+        pointer: str = "",
+        stack: tuple[tuple[str, str], ...] = (),
+    ) -> Iterator[tuple[str, dict]]:
+        """``bundle.nodes`` over this document's RESOLVED tree: a ``$ref`` is its target.
+
+        **Why the stated instances are read HERE and not off a closure of document NAMES**
+        (``adcp-client-python-82m.56``).  :func:`admitted_identities` used to digest, per
+        member of a document's reference closure, that member's NAME beside the instances
+        it states -- so extracting a shared scalar into its own document moved the
+        referring document's key twice over: the instance left the referrer's own text and
+        a new name joined its closure.  Measured over the published bundle against the
+        patched one, that was 434 of 1,054 documents on a difference no validator can see.
+        Read over the resolution the pointer is the same pointer in both, the instance is
+        the same instance, and 0 of 1,054 move.
+
+        A reference is MOUNTED AT THE REFERRING POINTER, which is what makes the two
+        spellings one reading: the published bundle states the node inline at ``P`` and the
+        patched one states a ``$ref`` at ``P``, and both yield the same node at ``P``.
+        ``stack`` stops a cycle, and a node whose reference resolves nowhere is yielded as
+        it stands -- :meth:`reached`'s three ``None`` cases.
+        """
+        if isinstance(node, list):
+            for i, held in enumerate(node):
+                yield from self.stating(document, held, f"{pointer}/{i}", stack)
+            return
+        if not isinstance(node, dict):
+            return
+        resolved = self.reached(document, node, stack)
+        if resolved is not None:
+            yield from self.stating(resolved[0], resolved[1], pointer, resolved[2])
+            return
+        yield pointer, node
+        for _, suffix, sub, _ in bundle.subschemas(node):
+            yield from self.stating(document, sub, f"{pointer}{suffix}", stack)
+
+
+class Resolved(Admitted):
+    """:class:`Admitted` with a resolved ``$ref`` SPLICED IN PLACE OF the node that states it.
+
+    **ADMISSION-EQUIVALENCE, which is what a DRAW's key needs and what a DECLARATION's key
+    is not** (``adcp-client-python-82m.56``).  §3a's test -- "two nodes are one entry
+    exactly when no instance distinguishes them" -- is satisfied by this class and not by
+    :class:`Admitted`, which keeps the ``$ref`` keyword as a member of the key around the
+    target's key.  So ``{"$ref": "core/currency-code.json"}`` and the inline
+    ``{"type": "string", "pattern": "^[A-Z]{3}$"}`` it names are TWO keys there and ONE
+    here, although no instance tells them apart.
+
+    **MEASURED, AND IT IS WHY THIS CLASS EXISTS.**  ``patch.for_build`` hands a run the
+    published 3.2 bundle with ``patches/8525`` applied, which extracts five shared scalars
+    into their own documents and rewrites the sites that stated them inline to ``$ref``
+    them -- ``patch.seen_by_a_validator`` is zero over the whole difference.  Keyed by
+    :class:`Admitted`, **429 of 1,054 document identities moved** for it and
+    **1,727 of 2,589 graded pairs lost their committed accepts entry**, which is the row
+    this class closes.  Keyed here, 0 of 1,054 move;
+    ``tests/test_accepts_corpus.py::test_an_acceptance_preserving_patch_moves_no_admitted_identity``
+    is that reading as a gate.
+
+    **The ``$ref``'s SIBLINGS go with it, because draft-07 ignores them** -- and the bundle
+    states none anyway: 0 of the 4,507 nodes that state a ``$ref`` also state a keyword this
+    key would carry, which ``test_a_reference_states_no_sibling_this_key_would_carry``
+    reads off the bundle rather than asserting here.  Draft-07 is the bundle's one dialect
+    (``test_every_portable_document_states_one_dialect``).
+
+    **:class:`Admitted` IS NOT CHANGED, and that is a scope decision rather than an
+    oversight.**  Its key decides which positions share an emitted DECLARATION, so
+    splicing there moves the generated tree and the public surface -- measured: it
+    re-forms ``tests/duplicates.py``'s cross-document duplicate groups, which
+    ``test_every_cross_document_duplicate_group_is_decided`` reddens on.  Whether a
+    reference and the inline spelling of what it names should be one declaration is §3a's
+    open question and the owner's; it is filed, not answered here.
+    """
+
+    def of(self, document: str, node: object, stack: tuple[tuple[str, str], ...] = ()) -> object:
+        resolved = self.reached(document, node, stack)
+        if resolved is not None:
+            return self.of(*resolved)
+        return super().of(document, node, stack)
 
 
 def unreferenced(node: Any) -> Any:
@@ -1044,6 +1153,22 @@ def admitted_identities(
     anyway, of which 854 differed by a TRAILING NEWLINE alone.  Keyed on what a document
     admits, every one of those is invisible and the held corpus is still the corpus.
 
+    **AND AN ACCEPTANCE-PRESERVING REWRITE MOVED 434 OF THE 1,054 ANYWAY, WHICH IS WHAT
+    ``adcp-client-python-82m.56`` MEASURED AND WHAT THIS FUNCTION NOW FIXES.**  The claim
+    above was asserted of the published bundle against ``patches/8735`` -- four added
+    titles -- and held there.  It is false of the bundle a RUN reads: ``patch.for_build``
+    also applies ``patches/8525``, which extracts five shared scalars into their own
+    documents and rewrites the sites that stated them inline to ``$ref`` them, with
+    ``patch.seen_by_a_validator`` zero over the whole difference.  **Both halves of the
+    digest moved for it and neither should have**: :class:`Admitted` kept ``$ref`` as a
+    member of the key (429 documents), and the stated half digested a closure of document
+    NAMES, so a new member joined and an instance left the referrer's own text (434).  The
+    floor was addressed by the old spelling, so **1,727 of 2,589 graded pairs lost their
+    committed accepts entry** and fell back to a redraw or to nothing.  The two repairs are
+    :class:`Resolved` and :meth:`Admitted.stating`, and after them 21 of 1,054 move -- every
+    one of those because ``patches/8525`` genuinely DROPS the ``examples`` its inline sites
+    stated, which is a changed witness and a key that is owed its move.
+
     **The half that must survive, and it does** (``codegen/held.py``): *a compiler edit
     moves no key.*  That is why the key was taken off ``bundle.record`` in the first place
     -- the record is OUR inlining of a document, so keying on it redrew the population
@@ -1084,15 +1209,22 @@ def admitted_identities(
       on the first one that selects a different validator.  A dialect change is then a
       NAMED RED with a decision attached, not a silently re-keyed population.
 
-    **THE CLOSURE IS STILL IN THE DIGEST, by two different routes.**  :class:`Admitted`
-    resolves every ``$ref`` into the document it names, so a referenced document's
-    CONSTRAINTS are inside this document's admitted key already -- there is no separate
-    closure walk for them and no edge list anybody maintains.  The ``stated`` half needs
-    one, because ``Fixtures._stated`` draws a fixture from the REFERENCED document's
-    ``examples`` and that text is not in the admitted key: so the stated digests are taken
-    over the reference closure (:func:`bundle.edges`), each member contributing its
-    bundle-relative NAME, which keeps no absolute path in the digest and lets a key
-    computed in one checkout equal the same key computed in another.
+    **THE CLOSURE IS IN THE DIGEST BY RESOLUTION AND BY NOTHING ELSE**, which is this
+    function's current change (``adcp-client-python-82m.56``).  :class:`Admitted` resolves
+    every ``$ref`` into the document it names, so a referenced document's CONSTRAINTS are
+    inside this document's admitted key already.  The ``stated`` half needs the closure too,
+    because ``Fixtures._stated`` draws a fixture from the REFERENCED document's
+    ``examples``; it used to get it from ``bundle.edges``, digesting each closure member's
+    bundle-relative NAME beside the instances that member states, **and that spelling moved
+    a key for a refactor.**  Extracting a shared scalar into its own document moved the
+    referring document twice over: the instance left the referrer's own text, and a new name
+    joined its closure.  Measured over the published 3.2 bundle against the one
+    ``patch.for_build`` hands the run -- which differs from it by exactly that extraction and
+    by nothing ``patch.seen_by_a_validator`` can see -- **434 of 1,054 documents moved**, and
+    1,727 of 2,589 graded pairs lost their committed accepts entry for it.  Read over
+    :meth:`Admitted.stating` -- the document's RESOLVED tree, a reference mounted at the
+    referring pointer -- the pointer and the instance are the same in both bundles and
+    **0 of 1,054 move**.  So there is no edge list here and no member name in the digest.
 
     ``stated`` is the caller's, which is the seam §9 draws for every reader the verifier
     needs: ``harness.stated_instances`` is the verifier's function and this module may not
@@ -1100,17 +1232,13 @@ def admitted_identities(
     its three readers.  Both callers -- ``codegen/__main__.py`` and
     ``tests/test_emit.identity_of`` -- hand in that one function, so there is one screen.
     """
-    admitted = Admitted(bundle_dir)
+    admitted = Resolved(bundle_dir)
     documents = sorted(admitted.documents)
-    targets: dict[str, set[str]] = {d: set() for d in documents}
-    for edge in bundle.edges(bundle_dir):
-        if edge.target is not None:
-            targets[edge.document].add(edge.target)
 
     def states(document: str) -> str:
         """Every instance ``document`` STATES and ADMITS, by the pointer that states it."""
         held: list[tuple[str, str]] = []
-        for pointer, node in bundle.nodes(admitted.document(document)):
+        for pointer, node in admitted.stating(document, admitted.document(document)):
             if "examples" not in node:
                 continue
             found = stated(unreferenced(node))
@@ -1118,23 +1246,13 @@ def admitted_identities(
                 held.append((pointer, json.dumps(found, sort_keys=True, default=repr)))
         return json.dumps(sorted(held))
 
-    says = {document: states(document) for document in documents}
     out: dict[str, str] = {}
     for document in documents:
-        reached: set[str] = set()
-        unread = [document]
-        while unread:
-            one = unread.pop()
-            if one in reached:
-                continue
-            reached.add(one)
-            unread += [t for t in targets.get(one, ()) if t not in reached]
         digest = hashlib.sha256()
         digest.update(b"admits\0")
         digest.update(admitted.key(document, admitted.document(document)).encode())
-        for member in sorted(reached):
-            digest.update(f"\0states\0{member}\0".encode())
-            digest.update(says.get(member, "").encode())
+        digest.update(b"\0states\0")
+        digest.update(states(document).encode())
         out[document] = digest.hexdigest()
     return out
 
