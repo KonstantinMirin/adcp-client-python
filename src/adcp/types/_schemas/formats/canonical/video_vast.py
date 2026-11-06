@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeInt, TypeAdapter
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule, UniqueItems
 from adcp.types.constraints import CanonicalFormatImageAspectRatio, IntMin1
 
@@ -46,6 +46,10 @@ class CanonicalFormatVASTVideo(CanonicalFormatBase):
         UniqueItems('vast_versions'),
         UniqueItems('activation_methods'),
         ConditionalRequired((Match('ctv_ad_experience', True, None),), require=('creative_type',), forbid=()),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='formats/canonical/video_vast.json', pointer='#/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['ctv_ad_experience']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='formats/canonical/video_vast.json', pointer='#/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'ctv_ad_experience': {'const': 'in_scene'}}, 'required': ['ctv_ad_experience']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     slots: Annotated[list[SlotsItem] | None, Field(default_factory=lambda: TypeAdapter(list[SlotsItem]).validate_python([{'asset_group_id': 'vast_tag', 'asset_type': 'vast', 'required': True}, {'asset_group_id': 'landing_page_url', 'asset_type': 'url', 'required': False}]), description="Default slots for video_vast canonical. Buyer ships a VAST tag (URL or inline XML, VAST 2.x-4.x) plus an optional clickthrough URL (which falls back to the VAST `ClickThrough` element when omitted). Tracking events are inherent to VAST and don't require explicit slots.", json_schema_extra={'default': [{'asset_group_id': 'vast_tag', 'asset_type': 'vast', 'required': True}, {'asset_group_id': 'landing_page_url', 'asset_type': 'url', 'required': False}]})]
     orientation: Orientation | None = None

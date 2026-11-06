@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, PropertyCount, Rule, UniqueItems
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
@@ -65,6 +65,10 @@ class ReportingDeliveryConfiguration(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-delivery-config.json', pointer='#')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ConditionalRequired((Match('reconciliation_mode', True, ('consumer_receipt',)),), require=('method',), forbid=()),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/reporting-delivery-config.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'feed_purpose': {'const': 'billing'}, 'authoritative_party': {'const': 'seller'}}, 'required': ['feed_purpose']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/reporting-delivery-config.json', pointer='#/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'feed_purpose': {'const': 'billing'}}, 'required': ['feed_purpose']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     delivery_config_id: Annotated[AccountChangeRecordedWebhookSubscriberId, Field(description='Caller-selected stable identifier, unique within the authenticated caller and account.')]
     delivery_config_version: Annotated[IntMin1, Field(description='Caller-selected immutable semantic generation. Increment when feed/profile/scope/finality/schedule/method/destination changes; lifecycle fields may change in place.')]

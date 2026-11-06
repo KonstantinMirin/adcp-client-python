@@ -114,6 +114,11 @@ class AssignedPackagesItem(IndicatorBearingResourceState):
         UniqueItems('indicators_evaluated_scope'),
         ConditionalRequired((Match('approval_status', True, ('partially_approved',)),), require=('approval_scopes',), forbid=()),
     )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='creative/list-creatives-response.json', pointer='#/properties/creatives/items/properties/assignments/properties/assigned_packages/items/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['indicators_evaluated_scope']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='creative/list-creatives-response.json', pointer='#/properties/creatives/items/properties/assignments/properties/assigned_packages/items/allOf/3', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'approval_status': {'const': 'partially_approved'}}, 'required': ['approval_status']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='creative/list-creatives-response.json', pointer='#/properties/creatives/items/properties/assignments/properties/assigned_packages/items/allOf/4', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['approval_scopes']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
     package_id: Annotated[str, Field(description='Package identifier')]
     media_buy_id: Annotated[str | None, Field(description='Media buy containing this package. A seller advertising list_creatives in media_buy.relationship_notifications.projection_tasks MUST include this field on every assignment row, including rows where indicators is omitted as unknown, so buyers can key and reread the relationship unambiguously when package IDs are reused across media buys.')] = None
     assigned_date: Annotated[AwareDatetime, Field(description='When this assignment was created')]
@@ -134,6 +139,11 @@ class Assignments(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/list-creatives-response.json', pointer='#/properties/creatives/items/properties/assignments')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='creative/list-creatives-response.json', pointer='#/properties/creatives/items/properties/assignments/properties/assigned_packages/items/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['indicators_evaluated_scope']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='creative/list-creatives-response.json', pointer='#/properties/creatives/items/properties/assignments/properties/assigned_packages/items/allOf/3', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'approval_status': {'const': 'partially_approved'}}, 'required': ['approval_status']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='creative/list-creatives-response.json', pointer='#/properties/creatives/items/properties/assignments/properties/assigned_packages/items/allOf/4', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['approval_scopes']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
     assignment_count: Annotated[NonNegativeInt, Field(description='Total number of active package assignments')]
     returned_assignment_count: Annotated[CreativesItemAssignmentsReturnedAssignmentCount | None, Field(description='Number of rows present in assigned_packages for this response.')] = None
     matching_assignment_count: Annotated[NonNegativeInt | None, Field(description='Total active assignments matching filters.indicator_types. MUST be present exactly when assignment_projection was matching. May exceed returned_assignment_count.')] = None
@@ -188,6 +198,9 @@ class CreativesItem(AdCPBaseModel):
     )
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='creative/list-creatives-response.json', pointer='#/properties/creatives/items/properties/assets', keyword='patternProperties', kind='WIDENED', rung='CONTAINER', fact={'^[a-z0-9_]+$': {'oneOf': [{'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/assets/asset-union.json'}, {'type': 'array', 'items': {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/assets/asset-union.json'}, 'minItems': 1}]}}, attribution='docs/plan/rebuild-plan.md §5 objects/patternProperties'),
+        Approximation(document='creative/list-creatives-response.json', pointer='#/properties/creatives/items/properties/assignments/properties/assigned_packages/items/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['indicators_evaluated_scope']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='creative/list-creatives-response.json', pointer='#/properties/creatives/items/properties/assignments/properties/assigned_packages/items/allOf/3', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'approval_status': {'const': 'partially_approved'}}, 'required': ['approval_status']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='creative/list-creatives-response.json', pointer='#/properties/creatives/items/properties/assignments/properties/assigned_packages/items/allOf/4', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['approval_scopes']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     creative_id: Annotated[str, Field(description='Unique identifier for the creative')]
     revision_id: Annotated[CreativeRevisionID | None, Field(description='Current buyer-authored input revision for this creative. Present when the current effective content has revision identity and the seller advertises creative.supports_revisions; omitted after an accepted content-bearing legacy update without revision_id.')] = None
@@ -244,6 +257,9 @@ class ListCreativesResponse(AdCPVersionEnvelope, ProtocolEnvelope):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/list-creatives-response.json', pointer='#')
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='creative/list-creatives-response.json', pointer='#/properties/creatives/items/properties/assets', keyword='patternProperties', kind='WIDENED', rung='CONTAINER', fact={'^[a-z0-9_]+$': {'oneOf': [{'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/assets/asset-union.json'}, {'type': 'array', 'items': {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/assets/asset-union.json'}, 'minItems': 1}]}}, attribution='docs/plan/rebuild-plan.md §5 objects/patternProperties'),
+        Approximation(document='creative/list-creatives-response.json', pointer='#/properties/creatives/items/properties/assignments/properties/assigned_packages/items/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['indicators_evaluated_scope']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='creative/list-creatives-response.json', pointer='#/properties/creatives/items/properties/assignments/properties/assigned_packages/items/allOf/3', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'approval_status': {'const': 'partially_approved'}}, 'required': ['approval_status']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='creative/list-creatives-response.json', pointer='#/properties/creatives/items/properties/assignments/properties/assigned_packages/items/allOf/4', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['approval_scopes']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
         Approximation(document='creative/list-creatives-response.json', pointer='#/properties/format_summary', keyword='patternProperties', kind='WIDENED', rung='CONTAINER', fact={'^[a-zA-Z0-9_-]+$': {'type': 'integer', 'description': 'Number of creatives with this format', 'minimum': 0}}, attribution='docs/plan/rebuild-plan.md §5 objects/patternProperties'),
     )
     query_summary: Annotated[QuerySummary, Field(description='Summary of the query that was executed')]

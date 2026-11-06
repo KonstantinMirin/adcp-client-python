@@ -799,9 +799,58 @@ def _conditional(
     conditional of its own; the keyword each declaration names is the one the document
     writes at this pointer and not the keyword the cell is about, because the fact
     dropped belongs to the conditional.
+
+    **THE DECLARATION IS THE CONDITIONAL'S AND IT IS SPELLED ``if``, WHATEVER ARM THE
+    DROPPED FACT SITS IN** (``adcp-client-python-wvod``, ``-szfx``).  A conditional is a
+    TRIPLE whose members mean nothing apart -- ``harness.own_facts`` says exactly that
+    about the same three keys -- so what a declaration here records is that the
+    CONDITIONAL stated at this pointer is approximated, and the identity §8 sentence 2
+    gives it is one per ``(document, pointer)``, not one per arm.  The verifier reads it
+    on the same name: ``harness.refused_witnesses`` attributes every witness it derives
+    from a conditional arm to ``if`` and says why ("that is the keyword §2's declaration
+    carries"), and ``check_refuses`` compares that keyword against the declared set.  Two
+    halves, one keyword, which is §9's rule for every fact that has two readers.
+
+    **AND AN ARM THAT NARROWS A VALUE IS A DROPPED FACT, which is the reading this row
+    replaced.**  The gate was ``_states_presence`` -- an arm counted only where it said
+    something about which KEYS are present, nested arms included -- on two measurements,
+    and ``check_refuses`` refuted both:
+
+    * *"declaring every unread consequent mints 40,275 ``then`` sites against 1,069 that
+      state a presence fact, because the record inlines a shared conditional at every
+      referring path."*  That is the arithmetic §8 sentence 2 retires, and the comment
+      below already says so for the unreadable-``if`` arm: a fact is declared ONCE, at the
+      node the document states it, so what this mints is the distinct conditional facts
+      and nothing per referring path.  The 40,275 was never a count of facts.
+    * *"a value a conditional narrows has no payload at the constructor to demonstrate it
+      with, because D4 gives that decision to the schema half."*  It has one at 25 pairs,
+      and they are the subject of both rows above: ``core/macro-encoding.json#`` admits
+      ``{"kind": "none", "depth": 5}``, which its own ``allOf/0`` refuses at
+      ``then/properties/depth/const``.  §8's "an approximation nothing can demonstrate
+      does not belong in the set" therefore rules these IN, not out.
+
+    So the gate is now "does a rule kind carry everything this conditional states" --
+    :func:`_arm_carried` is that question asked of one arm.  ``_states_presence`` is GONE
+    rather than left beside it: it was this function's only caller's only reading, and a
+    predicate with no caller is the defect ``adcp-client-python-x63t`` measured one layer
+    up.  The nested-arm shape it existed for (``adcp-client-python-3bb``,
+    ``core/reporting-schedule-offering.json#/allOf/0/else``) is answered more simply by
+    the new gate: an arm stating ``if``/``then`` states a keyword no rule kind carries, so
+    the conditional declares without a recursion of its own.
     """
-    arms = tuple(k for k in ("then", "else") if k in node and _states_presence(node[k]))
+    arms = tuple(k for k in ("then", "else") if k in node)
     when = _clauses(node.get("if"), root)
+    #: **Every fact this conditional states that no rule kind carries, declared ONCE under
+    #: ``if``.**  Unreadable condition, unreadable consequent, a consequent narrowing a
+    #: value, a consequent that is a whole ``$ref``: each is the same difference between
+    #: the document and the constructor, and each is one declaration at this pointer.
+    #: Written here rather than in the two arms below so a node cannot declare twice.
+    def declare_the_conditional() -> None:
+        if arms and isinstance(node.get("if"), Mapping):
+            out.dropped.append(("if", node["if"]))
+
+    if not all(_arm_carried(node[arm]) for arm in arms) or when is None:
+        declare_the_conditional()
     if when is None:
         # **A CONDITION the reduction cannot read IS DECLARED, and §8 sentence 2 is what
         # made it affordable.**  §5's ``if`` row decides the lowering -- "a ``Match``
@@ -827,68 +876,77 @@ def _conditional(
         #
         # **The KEYWORD is ``if`` and the FACT is the condition the document writes**, not
         # the keyword the cell is about: the fact dropped belongs to the conditional, and
-        # §9 requires the declared fact to be the document's own.  Declared only where an
-        # arm STATES PRESENCE, by the paragraph above -- an ``if`` whose arms say nothing
-        # about which keys are present constrains nothing a rule could have carried, so
-        # there is no difference for a declaration to describe.
-        if arms and isinstance(node.get("if"), Mapping):
-            out.dropped.append(("if", node["if"]))
+        # §9 requires the declared fact to be the document's own.  Declared above, with
+        # every other drop this conditional can have, so one node mints one declaration.
         return
     clauses = tuple(Match(*clause) for clause in when)
     for keyword, kind in (("then", ConditionalRequired), ("else", NegatedConditional)):
         branch = _branch(node.get(keyword))
         if branch is None or not any(branch):
-            if keyword in arms:
-                out.dropped.append((keyword, node[keyword]))
+            # Nothing to carry from this arm; whether anything was DROPPED is
+            # :func:`_arm_carried`'s answer and the declaration is already made.
             continue
         require, forbid = branch
         out.rules.append(kind(clauses, require=require, forbid=forbid))
 
 
-def _states_presence(sub: Any, depth: int = 0) -> bool:
-    """Does this ``then``/``else`` say anything about which KEYS are present?
+#: The two keywords a ``then``/``else`` can state that :func:`_branch` READS, and so the
+#: two a rule kind carries.  ``required`` becomes :class:`ConditionalRequired`'s
+#: ``require`` and a ``not`` over single names becomes its ``forbid``; every other keyword
+#: an arm can state narrows a VALUE, which §5 compiles to nothing on the model.
+#:
+#: Derived from :func:`_branch` in the only sense that matters -- it is the set of keys
+#: that function looks at, and :func:`_arm_carried` is the question "did it look at all of
+#: them".  A keyword added to :func:`_branch` is added here, and a keyword added here and
+#: not there would declare nothing where a fact is dropped, which is the defect
+#: ``adcp-client-python-wvod`` is about.
+_CARRIED_BY_A_RULE = frozenset({"required", "not"})
 
-    **The one question that tells a DROPPED RULE from a decided NOTHING**, and it is §2's
-    own axis rather than a filter invented here: "a rule is NOT what makes the model as
-    narrow as its document; it is what makes the ``model_validate`` CONSTRUCTOR as narrow,
-    **on the subset of statements that are about key presence**" (this module's docstring).
-    So a consequent stating ``required``, or a ``not`` over ``required``, states a fact one
-    of the rule kinds CAN carry, and a class that carries none of it has dropped a rule --
-    which reading 2 makes a declaration.  A consequent stating only ``properties`` narrows
-    a VALUE, which §5 decides compiles to nothing ("its ``properties`` -> nothing on the
-    model; the schema half narrows the value") and whose ceiling this module's docstring
-    NAMES with its measurement (``core/canvas-constraint.json``) -- there is no rule kind
-    for it at any position, so nothing was dropped that a declaration could describe.
 
-    **Measured, and the measurement is why the distinction is drawn rather than declaring
-    both**: over the 1,054 portable documents, declaring every unread consequent mints
-    **40,275 ``then`` sites** against **1,069** that state a presence fact, because the
-    record inlines a shared conditional at every referring path.  §8 is explicit that such
-    a set is not a declaration set -- "an approximation nothing can demonstrate does not
-    belong in the set" -- and a value a conditional narrows has no payload at the
-    constructor to demonstrate it with, because D4 gives that decision to the schema half.
+def _arm_carried(sub: Any) -> bool:
+    """Does a rule kind carry EVERYTHING this ``then``/``else`` states?
 
-    RECURSIVE, because the shape ``adcp-client-python-3bb`` names is a conditional nested
-    inside an arm: ``core/reporting-schedule-offering.json#/allOf/0/else`` holds an
-    ``if``/``then`` whose inner ``then`` requires a key, and a reading that looked only at
-    the arm's own ``required`` would report that fact as decided-nothing.  ``depth`` bounds
-    it for §9's reason -- a fold with no base case is a crash, and a crash is not an
-    outcome.
+    The gate on :func:`_conditional`'s declaration, and the question is the one reading 2
+    asks: a fact the document states at this arm and the constructor does not carry is a
+    widening, and §2 permits it only as a declared one.  So this answers ``True`` exactly
+    where there is no difference to declare.
+
+    Three ways to answer ``False``, and each is a measured pair of the two rows above:
+
+    * **the arm is not a mapping at all** -- a boolean schema, or a ``$ref`` to a whole
+      document.  ``core/catalog-item-availability-error.json#/allOf/1``'s ``then`` is
+      ``{"$ref": ".../catalog-item-reference-not-found-error.json"}``, whose target states
+      ``required``, a ``const`` on ``message`` and ``additionalProperties: false``; the
+      class carries none of the three and admitted
+      ``{"code": "REFERENCE_NOT_FOUND", "message": "Catalog item not found"}``, which the
+      document refuses at ``allOf/1/then/required``.
+    * **the arm states a keyword no rule kind carries** -- :data:`_CARRIED_BY_A_RULE` is
+      the two that are carried, and a ``properties`` beside them is §5's "nothing on the
+      model".  ``core/macro-encoding.json#/allOf/0``'s ``then`` is
+      ``{"properties": {"depth": {"const": 0}}}``.
+    * **the arm's ``not`` is read only in part.**  :func:`_required_groups` reads a ``not``
+      with ``partial=True``, so a disjunct it cannot reduce contributes no group and the
+      arm's forbidding is weaker on the class than in the document -- a difference, and so
+      a declaration.  A group of two or more names forbids the PAIR and :func:`_branch`
+      declines it for that reason, which is the same difference seen from the other side.
+
+    ``required`` present but EMPTY, and an arm stating neither keyword, are both ``True``:
+    there is no fact at the arm, so there is nothing for a declaration to describe, and
+    draft-07 agrees -- an arm that asserts nothing constrains no instance.
+
+    Keys that ANNOTATE rather than constrain are not read at all, which is
+    :func:`_keys`' own rule (``intersect.declaring`` at RULE): a ``description`` beside a
+    ``required`` is not a fact the class dropped.
     """
-    if not isinstance(sub, dict) or depth > _NESTED_DEPTH:
+    if not isinstance(sub, dict):
         return False
-    if any(isinstance(name, str) for name in (sub.get("required") or [])):
-        return True
-    if _required_groups(sub.get("not")):
-        return True
-    return any(_states_presence(sub.get(arm), depth + 1) for arm in ("then", "else"))
-
-
-#: How deep a conditional may nest inside another's arm before :func:`_states_presence`
-#: stops looking.  The bundle's deepest is ONE (``core/reporting-schedule-offering.json``
-#: at ``#/allOf/0/else``); the bound is here so the fold terminates on a document that
-#: nests further, which §9 requires of every fold in this compiler.
-_NESTED_DEPTH = 8
+    if not _keys(sub) <= _CARRIED_BY_A_RULE:
+        return False
+    if "not" in sub:
+        groups = _required_groups(sub["not"])
+        if not groups or not all(len(group) == 1 for group in groups):
+            return False
+    return True
 
 
 def _whole(value: Any) -> int | None:

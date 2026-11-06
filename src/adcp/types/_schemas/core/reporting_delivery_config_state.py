@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import AdCPUrl, StrMinLen1MaxLen255, StrMinLen1MaxLen2000
 
@@ -55,6 +55,10 @@ class ReportingDeliveryConfigurationState(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ConditionalRequired((Match('state', None, ('ready',)),), require=('validated_at', 'activated_at', 'current_coverage'), forbid=('setup', 'issues', 'deactivated_at')),
         ConditionalRequired((Match('state', None, ('inactive',)),), require=('deactivated_at', 'publication_stopped_at'), forbid=()),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/reporting-delivery-config-state.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'state': {'const': 'ready'}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/reporting-delivery-config-state.json', pointer='#/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'state': {'enum': ['pending_setup', 'action_required']}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     configuration: ReportingDeliveryConfiguration
     state: ReportingDeliveryConfigLifecycleState

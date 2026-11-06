@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule
 from adcp.types.constraints import DeclarationId, HttpUrl, StrMinLen1
 
@@ -69,6 +69,20 @@ class MacroDeclaration(AdCPBaseModel):
         ConditionalRequired((Match('operation', True, ('translate_to_native',)),), require=('performed_by', 'translation_target'), forbid=()),
         ConditionalRequired((Match('operation', True, ('resolve_value',)),), require=('performed_by',), forbid=('translation_target',)),
         ConditionalRequired((Match('operation', True, ('preserve',)),), require=(), forbid=('performed_by', 'translation_target')),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/macro-declaration.json', pointer='#/allOf/3', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'dialect': {'const': 'adcp'}}, 'required': ['dialect']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/macro-declaration.json', pointer='#/allOf/4', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'dialect': {'const': 'unknown'}}, 'required': ['dialect']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/macro-declaration.json', pointer='#/allOf/5', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'operation': {'const': 'translate_to_native'}}, 'required': ['operation']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/macro-declaration.json', pointer='#/allOf/6', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'operation': {'const': 'resolve_value'}}, 'required': ['operation']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/macro-declaration.json', pointer='#/allOf/7', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'dialect': {'enum': ['iab_vast', 'iab_daast']}, 'operation': {'const': 'resolve_value'}}, 'required': ['dialect', 'operation']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/macro-declaration.json', pointer='#/allOf/8', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'operation': {'const': 'preserve'}}, 'required': ['operation']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/macro-declaration.json', pointer='#/allOf/9', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'location': {'properties': {'context': {'const': 'opaque'}}, 'required': ['context']}}, 'required': ['location']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/macro-declaration.json', pointer='#/allOf/10', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'universal_semantic': {'enum': ['CATALOG_ID', 'SKU', 'GTIN', 'OFFERING_ID', 'JOB_ID', 'HOTEL_ID', 'FLIGHT_ID', 'VEHICLE_ID', 'LISTING_ID', 'STORE_ID', 'PROGRAM_ID', 'DESTINATION_ID', 'ITEM_NAME', 'ITEM_DESCRIPTION', 'ITEM_TAGLINE', 'ITEM_PRICE', 'ITEM_PRICE_CURRENCY']}}, 'required': ['universal_semantic']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/macro-declaration.json', pointer='#/allOf/11', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'required': {'const': True}}, 'required': ['required']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/macro-declaration.json', pointer='#/allOf/12', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'unavailable_behavior': {'const': 'omit_parameter'}}, 'required': ['unavailable_behavior']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/macro-declaration.json', pointer='#/allOf/13', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'unavailable_behavior': {'const': 'preserve'}}, 'required': ['unavailable_behavior']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/macro-declaration.json', pointer='#/allOf/14', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'unavailable_behavior': {'const': 'dialect_sentinel'}}, 'required': ['unavailable_behavior']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     declaration_id: Annotated[DeclarationId, Field(description='Identifier unique within the enclosing asset, used to correlate validation results.')]
     token: Annotated[StrMinLen1, Field(description='Exact byte-preserved token expression at this occurrence, including delimiters.')]

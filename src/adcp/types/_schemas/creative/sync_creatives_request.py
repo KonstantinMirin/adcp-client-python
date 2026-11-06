@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, RequiredGroups, Rule, UniqueItems
 from adcp.types.constraints import FloatMin0Max100, StrMinLen1, SyncAccountsRequestIdempotencyKey
 
@@ -99,6 +99,9 @@ class SyncCreativesRequest(AdCPVersionEnvelope):
         RequiredGroups((('creatives',), ('assignments',), ('assignment_operations',)), 'anyOf'),
         ConditionalRequired((Match('delete_missing', True, (True,)),), require=('creatives',), forbid=()),
         ForbiddenGroups((('assignments', 'assignment_operations'),)),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='creative/sync-creatives-request.json', pointer='#/allOf/3', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['assignment_operations']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     account: Annotated[AccountReference, Field(description='Account that owns these creatives.')]
     creatives: Annotated[list[CreativesItem] | None, Field(description='Array of creative assets to sync (create or update)', max_length=100, min_length=1)] = None

@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import AfterValidator, ConfigDict, Field, NonNegativeInt, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule, UniqueItems
 from adcp.types.constraints import FloatGt0, FormatRendersItemDimensionsAspectRatio, HttpUrl, IntMin1
 
@@ -597,6 +597,9 @@ class Format(AdCPBaseModel):
         UniqueItems('supported_disclosure_positions'),
         UniqueItems('reported_metrics'),
         ConditionalRequired((Match('canonical_parameters', True, None),), require=('canonical',), forbid=()),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/format.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['canonical_parameters']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     format_id: Annotated[FormatReferenceStructuredObject, Field(description="This format's own identifier — a structured object {agent_url, id}, not a string. See /schemas/core/format-id.json for the full shape.")]
     name: Annotated[str, Field(description='Human-readable format name')]

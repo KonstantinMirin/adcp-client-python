@@ -47,6 +47,9 @@ class Opportunity(OpportunityContext):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/create-media-buy-request.json', pointer='#/properties/opportunity')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='media-buy/create-media-buy-request.json', pointer='#/properties/opportunity/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'status': {'const': 'closed'}}, 'required': ['status']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
     status: Annotated[Literal['closed'] | None, Field(description='Whether the planning cycle remains open. On calls after initial creation, omission means no status update and MUST NOT reopen or close the opportunity implicitly, except that successful create_media_buy proposal execution explicitly infers accepted closure.')] = None
 
 
@@ -126,6 +129,8 @@ class CreateMediaBuyRequest(BranchDispatchMixin, AdCPVersionEnvelope):
     )
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='media-buy/create-media-buy-request.json', pointer='#/anyOf', keyword='anyOf', kind='UNDERDETERMINED', rung='JOIN', fact=({'title': 'Explicit packages with fixed allocation', 'properties': {'budget_allocation': {'properties': {'mode': {'const': 'fixed'}}, 'required': ['mode']}, 'packages': {'items': {'allOf': [{'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/media-buy/package-request.json'}, {'required': ['budget']}, {'not': {'required': ['min_spend_target']}}]}}}, 'required': ['packages'], 'not': {'required': ['proposal_id']}}, {'title': 'Explicit packages with seller-optimized allocation', 'properties': {'budget_allocation': {'properties': {'mode': {'const': 'seller_optimized'}}, 'required': ['mode']}}, 'required': ['packages', 'total_budget', 'budget_allocation'], 'not': {'required': ['proposal_id']}}, {'title': 'Committed proposal execution', 'required': ['proposal_id', 'total_budget'], 'not': {'anyOf': [{'required': ['packages']}, {'required': ['budget_allocation']}, {'required': ['frequency_cap']}]}}), attribution='docs/plan/rebuild-plan.md §5 combinators/anyOf'),
+        Approximation(document='media-buy/create-media-buy-request.json', pointer='#/properties/opportunity/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'status': {'const': 'closed'}}, 'required': ['status']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='media-buy/create-media-buy-request.json', pointer='#/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['bidding']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     governance_context: Annotated[GovernanceContext | None, Field(description='Opaque intent authorization for this media-buy commitment. Required when governance applies to the resolved account.')] = None
     idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Client-generated unique key for this request. If a request with the same idempotency_key and account has already been processed, the seller returns the existing media buy rather than creating a duplicate. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.')]

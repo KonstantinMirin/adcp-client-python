@@ -1151,14 +1151,18 @@ def lower_composition(
     conjoined: list[tuple[str, compiler.Target, nodes.Reference]] = []
     inherited: dict[str, dict] = {}
     inherited_required: set[str] = set()
-    #: The ``extra`` policy the FIRST of this node's bases that resolved one resolved
-    #: (:func:`stated_extra`), in the order the document composes them -- the caller's
-    #: own base first and the ``$ref`` conjuncts after, which is the order
-    #: :attr:`Shape.description` is gap-filled in and for that attribute's reason:
-    #: ``harness._composed`` reads the composed document that way and the two halves have
-    #: to read it the same.  So the value :func:`declare_object` writes where this node
-    #: states no ``additionalProperties`` is the composed document's, not whichever base
-    #: pydantic's ``model_config`` merge happens to reach last.
+    #: The ``extra`` policy this node's views COMPOSE TO (:func:`compiler.stated_extra`,
+    #: which is the one reading of it): the FIRST view that OPENS, in the order the
+    #: document composes them -- the caller's own base first and the ``$ref`` conjuncts
+    #: after -- and CLOSED wherever any view closes.  The order is
+    #: :attr:`Shape.description`'s and for that attribute's reason, ``harness._composed``
+    #: reads the composed document that way and the two halves have to read it the same;
+    #: the closure is draft-07's conjunction, because a ``false`` on one view and a
+    #: ``true`` on another are not alternatives -- both apply to the same instance, so the
+    #: key the closed view does not declare is refused (``adcp-client-python-szfx``).  So
+    #: the value :func:`declare_object` writes where this node states no
+    #: ``additionalProperties`` is the composed document's, not whichever base pydantic's
+    #: ``model_config`` merge happens to reach last.
     inherited_extra: str | None = None
     #: The FIELD each inherited key came out as on the base that declares it, and the
     #: base it came from.  Read only by the annotation-only arm below, which re-uses
@@ -1175,8 +1179,7 @@ def lower_composition(
         inherited.update(inherits.properties)
         inherited_fields.update(inherits.decided)
         inherited_required |= inherits.required
-        if inherited_extra is None:
-            inherited_extra = inherits.extra
+        inherited_extra = compiler.stated_extra(inherited_extra, inherits.extra)
     #: Every LOCAL declaration that won its key, and where it was declared.  The
     #: root's own properties and an inline conjunct's land in the SAME map,
     #: because draft-07 applies both to the same instance.
@@ -1192,7 +1195,20 @@ def lower_composition(
     #: not carry is declared where the document states it, which is the conjunct's pointer
     #: and not this node's (``adcp-client-python-3be.29`` is the same defect read from the
     #: other end).
-    conjunct_sites: list[str] = []
+    #:
+    #: **``None`` where the rule is the TARGET's and not this document's**, which is §8
+    #: sentence 2 read at the one conjunct that can state a rule it did not write: a
+    #: ``$ref`` whose target declares only a rule (:func:`_a_rule_the_target_states`)
+    #: contributes the TARGET's node, so the stating site is in the target's document and
+    #: this pointer states nothing but the reference.  The target is itself a portable
+    #: document and its own walk declares the fact at its own pointer; a declaration minted
+    #: here would be "once per pointer the record inlines it to", which §8 forbids by name
+    #: and which ``emit.stated_where_declared`` catches as a ``BuildFailure`` --
+    #: ``core/targeting.json#/allOf/0``, a ``$ref`` to
+    #: ``core/targeting-unknown-age-eligibility-constraint.json`` whose root is an
+    #: ``if``/``then``, is the pointer that measured it.  :func:`compiler.rules_at` reads
+    #: the ``None`` as "this view's drops are not this document's to declare".
+    conjunct_sites: list[str | None] = []
     #: **The conjuncts whose whole content is a VALUE SET** (:data:`_A_VALUE_SET`), with
     #: each one's own pointer, for §5's ``enum`` row at CONJ.  A value set constrains this
     #: node's own TYPE, so it is read after the whole list beside the reference that
@@ -1375,7 +1391,10 @@ def lower_composition(
                 stating = _a_rule_the_target_states(conjunct["$ref"], mod)
                 if stating is not None:
                     conjunct_rules.append(stating)
-                    conjunct_sites.append(where)
+                    # ``None``: the rule is the TARGET's node, so the stating site is in
+                    # the target's document and the target's own walk declares it
+                    # (:data:`conjunct_sites`, §8 sentence 2).
+                    conjunct_sites.append(None)
                     continue
                 if target.branches is not None:
                     # **§5's distribution clause drops a branch whose intersection with
@@ -1432,8 +1451,7 @@ def lower_composition(
             inherited_fields.update(target.declares.decided)
             inherited_from.update(dict.fromkeys(target.declares.properties, target))
             inherited_required |= target.declares.required
-            if inherited_extra is None:
-                inherited_extra = target.declares.extra
+            inherited_extra = compiler.stated_extra(inherited_extra, target.declares.extra)
             if inherited_description is None:
                 inherited_description = target.declares.description
             continue
@@ -1516,7 +1534,7 @@ def lower_composition(
                     "keyword over this bundle state true",
                     kind=Kind.DEFERRED,
                 )
-            if "additionalProperties" in keys and inherited_extra is None:
+            if "additionalProperties" in keys:
                 # **``true`` IS the identity for the composed value schema and it is NOT
                 # the identity for the class's ``extra``, which is the asymmetry
                 # ``adcp-client-python-6oe`` measured.**  §5's ``additionalProperties``
@@ -1535,12 +1553,14 @@ def lower_composition(
                 # ``PropertyCount(minimum=…)`` refusing what the document admits, which is
                 # the one direction §2 forbids outright.
                 #
-                # First-wins over the conjunct list and after the caller's own bases, which
-                # is exactly the order ``inherited_extra`` is already filled in and the
-                # order ``harness._composed`` gap-fills in -- so the two readings of "what
-                # does the document state here" cannot come apart.  ``true`` is the only
-                # value reachable: anything else refused two lines above.
-                inherited_extra = "allow"
+                # Folded by :func:`compiler.stated_extra`, which is the ONE reading of
+                # what a composition's ``extra`` is: first-wins among the views that
+                # OPEN, and closed wherever any view closes.  So a conjunct's ``true``
+                # fills a gap and never reopens a base that states ``false`` -- draft-07
+                # applies both to the same instance, and the conjunction is closed
+                # (``adcp-client-python-szfx``).  ``true`` is the only value reachable
+                # here: anything else refused two lines above.
+                inherited_extra = compiler.stated_extra(inherited_extra, "allow")
             if "allOf" in keys:
                 # Section 5's ``allOf`` row, CONJ: the same rule applied to the
                 # conjunct's own conjuncts.  Pushed onto the worklist at their own
@@ -2257,7 +2277,10 @@ def _distribute(
                 # ``additionalProperties`` of its own (the node is the ``$ref``
                 # conjunct), so what it DECLARES is what the composed document states at
                 # its pointer -- and :func:`declare_object` writes it, so the order the
-                # two bases sit in decides nothing.
+                # two bases sit in decides nothing.  **For this keyword the order decides
+                # nothing in a second sense**: a view that CLOSES wins wherever it sits,
+                # because draft-07 applies the root's closure and the branch's own to the
+                # same instance (:func:`compiler.stated_extra`).
                 extra=compiler.stated_extra(branch.declares.extra, base_shape.extra),
                 description=inherited,
             ),

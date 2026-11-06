@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import Dependencies, Rule, UniqueItems
 
 from ..enums.indicator_type import IndicatorType
@@ -29,6 +29,16 @@ class IndicatorBearingResourceState(AdCPBaseModel):
         UniqueItems('indicators'),
         UniqueItems('indicator_types_evaluated'),
         UniqueItems('indicators_evaluated_scope'),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/indicator-bearing.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['indicators_evaluated_scope']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/indicator-bearing.json', pointer='#/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'indicators': {'contains': {'properties': {'type': {'const': 'creative_fatigue'}}, 'required': ['type']}}}, 'required': ['indicators']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/indicator-bearing.json', pointer='#/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'indicators': {'contains': {'properties': {'type': {'const': 'creative_quality_opportunity'}}, 'required': ['type']}}}, 'required': ['indicators']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/indicator-bearing.json', pointer='#/allOf/3', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'indicators': {'contains': {'properties': {'type': {'const': 'creative_diversity_low'}}, 'required': ['type']}}}, 'required': ['indicators']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/indicator-bearing.json', pointer='#/allOf/4', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'indicators': {'contains': {'properties': {'type': {'const': 'audience_saturation'}}, 'required': ['type']}}}, 'required': ['indicators']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/indicator-bearing.json', pointer='#/allOf/5', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'indicators': {'contains': {'properties': {'type': {'const': 'inventory_shortfall_forecast'}}, 'required': ['type']}}}, 'required': ['indicators']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/indicator-bearing.json', pointer='#/allOf/6', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'indicators': {'contains': {'properties': {'type': {'const': 'pacing_risk'}}, 'required': ['type']}}}, 'required': ['indicators']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/indicator-bearing.json', pointer='#/allOf/7', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'indicators': {'contains': {'properties': {'type': {'const': 'budget_constrained'}}, 'required': ['type']}}}, 'required': ['indicators']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     indicators: Annotated[list[Indicator] | None, Field(description='Current seller assertions for the indicator types and publisher/placement coverage named by the sibling evaluation fields. Omitted means unknown or not evaluated. A present empty array means evaluated with no current assertion for indicator_types_evaluated in the evaluated scope.', json_schema_extra={'uniqueItems': True})] = None
     indicator_types_evaluated: Annotated[list[IndicatorType] | None, Field(description='Indicator types covered by this snapshot. Required whenever indicators is present. Types omitted from this list remain unknown even when indicators is empty. Every returned indicator.type MUST appear in this list.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None

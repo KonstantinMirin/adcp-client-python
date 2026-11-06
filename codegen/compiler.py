@@ -330,31 +330,49 @@ class Shape:
 
 
 def stated_extra(first: str | None, *rest: str | None) -> str | None:
-    """The ``extra`` policy of a class composing views that each resolved one: the FIRST
-    that states one, in the order the document states them.
+    """The ``extra`` policy of a class composing views that each resolved one: CLOSED
+    where any view closed, and otherwise the FIRST that states one.
 
-    **Not a lattice over the values, and that was measured.**  A first cut made
-    ``forbid`` win on §5's CONJ sentence ("``false`` on any conjunct closes the composed
-    object"), which is draft-07's own conjunction and is the TIGHTER reading -- and §5's
-    ``additionalProperties`` row does not send this to draft-07, it sends it to the fold:
-    "the value is read from what the document states at the class's own pointer **after
-    the document-side fold**".  ``harness._composed`` gap-fills -- a keyword only a
-    conjunct states fills a gap and never overrides the node's own -- so the fold answers
-    with the FIRST view that states one, and a lattice answers with something no document
-    states at that pointer.  Measured on
-    ``media-buy/decline-proposals-response.json#/anyOf/1``: the root
-    states ``additionalProperties: false`` and the branch's ``$ref`` target states
-    ``true``, the fold yields ``true``, and the lattice resolved ``forbid`` -- a model
-    REFUSING keys the document admits, which is the one direction §2 forbids outright.
+    **``forbid`` wins, and that is draft-07's conjunction read on the one keyword whose
+    two views are not alternatives but both in force** (``adcp-client-python-szfx``).
+    ``false`` on one view and ``true`` on another is not a disagreement a fold can
+    gap-fill: both assertions apply to the same instance, so a key the closed view does
+    not declare is refused however open the other view is.  §5's CONJ sentence says the
+    same thing -- "``false`` on any conjunct closes the composed object".
 
-    So this is :attr:`Shape.description`'s own rule at the same seam and for the same
-    reason, which is why that attribute's docstring already says it: "the description the
-    FIRST base that states one states ... because that is what ``harness._composed``
-    gap-fills on the document side -- ``if kw not in out`` over the conjuncts in order --
-    and the two halves have to read one composed document the same way."  One rule, two
-    keywords, one reading of the composed document.
+    **AND THE MEASUREMENT THAT RULED THAT OUT WAS WRONG ABOUT THE DOCUMENT.**  This
+    function read "the FIRST that states one" on the strength of one pair:
+    ``media-buy/decline-proposals-response.json#/anyOf/1``, "the root states
+    ``additionalProperties: false`` and the branch's ``$ref`` target states ``true``, the
+    fold yields ``true``, and the lattice resolved ``forbid`` -- a model REFUSING keys the
+    document admits".  Put to ``jsonschema`` at that very pointer, the document admits no
+    such key: ``{"status": "submitted", "task_id": "0", "<an undeclared key>": 1}`` is
+    refused at schema path ``allOf/0/additionalProperties``, because the root's
+    ``additionalProperties: false`` is a SIBLING of the ``anyOf`` and draft-07 applies a
+    sibling to the whole instance.  So the "keys the document admits" were never admitted,
+    and what the fold produced was a class admitting them undeclared -- reading 2 failing
+    at 6 pairs, with the base's own ``extra='forbid'`` deciding nothing because its
+    dispatch hands every instance to a branch that resolved ``allow``.
+
+    The narrowing the old reading feared cannot happen HERE, and the reason is structural
+    rather than lucky: a branch class's FIELDS are the union of the root's properties and
+    its target's, so they are a superset of the keys the closed view declares -- measured
+    at that pointer, 16 fields against the root's 8 -- and ``extra='forbid'`` refuses only
+    a key that is no field at all.  Every such key is one the closed view refuses too.
+    ``{"status": "submitted", "task_id": "0", "message": "m"}`` is the value either side
+    of the fix admits, and it is the one a green pair is owed.
+
+    **``None`` is not a view that closes anything.**  Silence states no
+    ``additionalProperties``, so it asserts nothing about an undeclared key and cannot
+    close a composition; it is skipped here exactly as it was, which is what keeps
+    ``content-standards/get-content-standards-response.json#/oneOf/0`` -- ``allow`` from
+    the root's envelope conjunct against a target carrying no value at all -- resolving
+    ``allow`` and dumping the keys that document admits.
     """
-    for value in (first, *rest):
+    values = (first, *rest)
+    if "forbid" in values:
+        return "forbid"
+    for value in values:
         if value is not None:
             return value
     return None
@@ -1622,6 +1640,14 @@ def rules_at(
     fail-safe direction for everything but a declaration, and is why the one caller that
     declares passes them.
 
+    **``None`` in ``at`` is a view THIS DOCUMENT DOES NOT STATE, and its facts yield no
+    ``Dropped``** (§8 sentence 2).  A ``$ref`` conjunct whose target declares only a rule
+    contributes the TARGET's node, so the fact's stating site is in the target's document;
+    declaring it here would be "once per pointer the record inlines it to", which §8
+    forbids by name and ``emit.stated_where_declared`` catches as a ``BuildFailure``.  The
+    rule itself is still LOWERED -- a draft-07 conjunct applies to this instance, so the
+    nearest class carrying it is this one -- and only the DECLARATION belongs elsewhere.
+
     **``keeps_every_key`` is the CLASS's extra policy, asked once for every view**
     (``adcp-client-python-6oe``): ``min``/``maxProperties`` are counted over the keys the
     class RETAINED, and one class carries every conjunct's rules, so the gate is a
@@ -1657,7 +1683,9 @@ def rules_at(
     ]
     #: The pointer and the position each view's facts are STATED at: the node's own for
     #: the node, and the conjunct's own at CONJ for each conjunct the caller located.
-    sites = [
+    #: ``None`` for a view this document does not state, whose drops are the stating
+    #: document's to declare and are filtered out of :attr:`Rules.dropped` below.
+    sites: list[tuple[str | None, Position]] = [
         (node.pointer, node.position),
         *((at[i] if i < len(at) else node.pointer, Position.CONJ) for i in range(len(also))),
     ]
@@ -1673,6 +1701,7 @@ def rules_at(
         dropped=tuple(
             Dropped(keyword, pointer, stated_at, fact)
             for one, (pointer, stated_at) in zip(lowered, sites, strict=True)
+            if pointer is not None
             for keyword, fact in one.dropped
         ),
         forbids=frozenset(

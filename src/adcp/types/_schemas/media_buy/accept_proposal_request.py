@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import (
     CanonicalProposalTermsDigest,
@@ -46,6 +46,9 @@ class Opportunity(OpportunityContext):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/accept-proposal-request.json', pointer='#/properties/opportunity')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='media-buy/accept-proposal-request.json', pointer='#/properties/opportunity/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'status': {'const': 'closed'}}, 'required': ['status']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
     status: Annotated[Literal['closed'] | None, Field(description='Whether the planning cycle remains open. On calls after initial creation, omission means no status update and MUST NOT reopen or close the opportunity implicitly, except that successful create_media_buy proposal execution explicitly infers accepted closure.')] = None
 
 
@@ -59,6 +62,9 @@ class AcceptProposalRequest(AdCPVersionEnvelope):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/accept-proposal-request.json', pointer='#')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('packages',), ('purchases',), ('creatives',), ('creative_assignments',))),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='media-buy/accept-proposal-request.json', pointer='#/properties/opportunity/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'status': {'const': 'closed'}}, 'required': ['status']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     adcp_version: AdcpVersion | None = None
     adcp_major_version: AdcpMajorVersion | None = None

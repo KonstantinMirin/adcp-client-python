@@ -406,6 +406,9 @@ class MediaBuyDeliveriesItem(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buy-delivery-response.json', pointer='#/properties/media_buy_deliveries/items')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='media-buy/get-media-buy-delivery-response.json', pointer='#/properties/media_buy_deliveries/items/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['currency']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
     media_buy_id: Annotated[str, Field(description="Seller's media buy identifier")]
     currency: Annotated[GetAccountFinancialsResponseSuccessCurrency | None, Field(description="ISO 4217 denomination for monetary values in this media-buy delivery row, including totals, package spend, and currency-denominated package rates. Sellers SHOULD populate this field whenever all monetary values in the row share one currency. For AdCP-authored buys it MUST equal the media-buy currency, and every by_package[].currency MUST equal it. For a legacy or externally created mixed-currency buy, omit this field, daily_breakdown, and all monetary or money-derived values from row and window totals; report those values only at package grain with each package's own currency. AdCP does not perform currency conversion.")] = None
     status: Annotated[Status, Field(description='Current media buy status. Lifecycle states use the same taxonomy as media-buy-status (`pending_creatives`, `pending_start`, `active`, `paused`, `completed`, `rejected`, `canceled`). In webhook context, reporting_delayed indicates data temporarily unavailable. `pending` is accepted as a legacy alias for pending_start.')]
@@ -433,6 +436,7 @@ class GetMediaBuyDeliveryResponse(AdCPVersionEnvelope, ProtocolEnvelope):
         ConditionalRequired((Match('aggregated_totals', True, None),), require=('currency',), forbid=()),
     )
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='media-buy/get-media-buy-delivery-response.json', pointer='#/properties/media_buy_deliveries/items/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['currency']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
         Approximation(document='media-buy/get-media-buy-delivery-response.json', pointer='#/allOf/3', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'anyOf': [{'required': ['reporting_revision']}, {'required': ['reporting_revision_binding']}, {'required': ['reporting_rows']}]}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     notification_type: Annotated[GetMediaBuyDeliveryResponseNotificationType | None, Field(description='Type of webhook notification (only present in webhook deliveries): scheduled = regular periodic update, final = campaign completed, delayed = data not yet available, adjusted = resending period with corrected data (same window), window_update = resending period with a wider measurement window (e.g., C3 superseding live, C7 superseding C3)')] = None

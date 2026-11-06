@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule
 from adcp.types.constraints import StrMaxLen2000, StrMinLen1MaxLen255
 from adcp.types.envelopes import FailedResponse
@@ -35,6 +35,10 @@ class SyncCatalogsResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnv
     @classmethod
     def _branch_combinator(cls) -> str:
         return "oneOf"
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='media-buy/sync-catalogs-response.json', pointer='#/oneOf/1/properties/errors/items/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'code': {'const': 'REFERENCE_NOT_FOUND'}}, 'required': ['code']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='media-buy/sync-catalogs-response.json', pointer='#/oneOf/1/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'errors': {'contains': {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/catalog-item-reference-not-found-error.json'}}}, 'required': ['errors']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
 
 
 class ItemIssuesItem(AdCPBaseModel):
@@ -100,6 +104,9 @@ class ErrorsItem(Error):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/sync-catalogs-response.json', pointer='#/oneOf/1/properties/errors/items')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='media-buy/sync-catalogs-response.json', pointer='#/oneOf/1/properties/errors/items/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'code': {'const': 'REFERENCE_NOT_FOUND'}}, 'required': ['code']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
 
 
 class SyncCatalogsError(SyncCatalogsResponse, FailedResponse):
@@ -112,6 +119,10 @@ class SyncCatalogsError(SyncCatalogsResponse, FailedResponse):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/sync-catalogs-response.json', pointer='#/oneOf/1')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('catalogs',), ('item_availability_updates',), ('item_availability_states',), ('dry_run',), ('sandbox',))),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='media-buy/sync-catalogs-response.json', pointer='#/oneOf/1/properties/errors/items/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'code': {'const': 'REFERENCE_NOT_FOUND'}}, 'required': ['code']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='media-buy/sync-catalogs-response.json', pointer='#/oneOf/1/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'errors': {'contains': {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/core/catalog-item-reference-not-found-error.json'}}}, 'required': ['errors']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     errors: Annotated[list[ErrorsItem], Field(description='Operation-level errors that prevented processing any catalogs (e.g., authentication failure, service unavailable, invalid request format)', min_length=1)]
     context: ContextObject | None = None

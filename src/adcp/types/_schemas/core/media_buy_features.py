@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 
 from .bidding_policy_capability import BiddingPolicyCapability
 
@@ -29,6 +29,9 @@ class MediaBuyFeatures(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/media-buy-features.json', pointer='#')
     __pydantic_extra__: dict[str, bool]
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/media-buy-features.json', pointer='#', keyword='additionalProperties', kind='WIDENED', rung='CONTAINER', fact={'type': 'boolean'}, attribution='docs/plan/rebuild-plan.md §5 objects/additionalProperties'),
+    )
     inline_creative_management: Annotated[bool | None, Field(description='Deprecated 3.x compatibility capability for creatives provided inline in create_media_buy and update_media_buy package payloads. buy_products, accept_proposal, and control_media_buy never accept inline creatives. New integrations use the dedicated creative lifecycle. Removed in 4.0.')] = None
     property_list_filtering: Annotated[bool | None, Field(description='Honors property_list parameter in get_products to filter results to buyer-approved properties')] = None
     catalog_management: Annotated[bool | None, Field(description='Supports sync_catalogs task for catalog feed management with platform review and approval')] = None

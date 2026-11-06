@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import (
     AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain,
@@ -39,6 +39,9 @@ class PublisherEntry(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='aao/agent-publishers.json', pointer='#/definitions/PublisherEntry')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ConditionalRequired((Match('discovery_method', None, ('authoritative_location', 'adagents_authoritative', 'ads_txt_managerdomain')),), require=('manager_domain',), forbid=()),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='aao/agent-publishers.json', pointer='#/definitions/PublisherEntry/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'discovery_method': {'enum': ['authoritative_location', 'adagents_authoritative', 'ads_txt_managerdomain']}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     publisher_domain: Annotated[AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, Field(description='Publisher whose adagents.json authorizes the agent.')]
     discovery_method: Annotated[DiscoveryMethod, Field(description="How the directory discovered this authorization. `direct`: agent listed in publisher's own /.well-known/adagents.json. `authoritative_location`: publisher's /.well-known/adagents.json declared `authoritative_location` pointing to a manager file that lists the agent. `adagents_authoritative`: discovered via the manager file (publisher-declared in the manager's own properties[]). `ads_txt_managerdomain`: discovered via the publisher's ads.txt `MANAGERDOMAIN=` directive pointing to the manager file. The last three paths converge on the same manager file but have different trust profiles — the `managerdomain` path is the weakest because the manager file's `publisher_domain` anchor (the `managerdomain` fallback safety rule) is the only positive cross-check.")]

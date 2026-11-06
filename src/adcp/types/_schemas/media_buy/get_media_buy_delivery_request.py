@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import (
     AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem,
@@ -45,6 +45,10 @@ class Geo(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ConditionalRequired((Match('geo_level', True, ('country', 'region')),), require=(), forbid=('country', 'system')),
         ConditionalRequired((Match('geo_level', True, ('metro',)),), require=(), forbid=('country',)),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='media-buy/get-media-buy-delivery-request.json', pointer='#/properties/reporting_dimensions/properties/geo/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'geo_level': {'const': 'metro'}}, 'required': ['geo_level']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='media-buy/get-media-buy-delivery-request.json', pointer='#/properties/reporting_dimensions/properties/geo/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'geo_level': {'const': 'postal_area'}}, 'required': ['geo_level']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     geo_level: Annotated[GeographicTargetingLevel, Field(description='Geographic granularity level for the breakdown')]
     system: Annotated[MetroAreaSystem | PostalCodeSystem | CountryFusedPostalCodeSystem | None, Field(description="Optional classification system for metro or postal_area levels. Metro uses metro-system values (e.g., 'nielsen_dma'); native postal_area uses country-local postal-system values with country (e.g., country 'US', system 'zip'); deprecated legacy postal_area requests may use legacy-postal-system values such as 'us_zip'. Omit to request the level without selecting a specific system.")] = None
@@ -146,6 +150,10 @@ class ReportingDimensions(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buy-delivery-request.json', pointer='#/properties/reporting_dimensions')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='media-buy/get-media-buy-delivery-request.json', pointer='#/properties/reporting_dimensions/properties/geo/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'geo_level': {'const': 'metro'}}, 'required': ['geo_level']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='media-buy/get-media-buy-delivery-request.json', pointer='#/properties/reporting_dimensions/properties/geo/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'geo_level': {'const': 'postal_area'}}, 'required': ['geo_level']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
     catalog_item: Annotated[DeliveryBreakdownControls | None, Field(description='Request a negotiated catalog_item breakdown. Omitting this key preserves the automatic behavior — sellers return catalog_item rows at their discretion with no truncation contract. Including it (even as {}) makes the truncation disclosure and applied-sort echo binding.')] = None
     creative: Annotated[DeliveryBreakdownControls | None, Field(description='Request a negotiated creative breakdown. Omitting this key preserves the automatic behavior — sellers return creative rows at their discretion with no truncation contract. Including it (even as {}) makes the truncation disclosure and applied-sort echo binding.')] = None
     keyword: Annotated[DeliveryBreakdownControls | None, Field(description='Request a negotiated keyword breakdown. Omitting this key preserves the automatic behavior — sellers return keyword rows at their discretion with no truncation contract. Including it (even as {}) makes the truncation disclosure and applied-sort echo binding.')] = None
@@ -177,6 +185,10 @@ class GetMediaBuyDeliveryRequest(AdCPVersionEnvelope):
         UniqueItems('requested_metrics'),
         ConditionalRequired((Match('reporting_revision_id', True, None),), require=(), forbid=('media_buy_ids', 'start_date', 'end_date', 'status_filter', 'requested_metrics', 'reporting_dimensions', 'attribution_window', 'include_package_daily_breakdown', 'time_granularity', 'include_window_breakdown')),
         ConditionalRequired((Match('pagination', True, None),), require=('reporting_revision_id',), forbid=()),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='media-buy/get-media-buy-delivery-request.json', pointer='#/properties/reporting_dimensions/properties/geo/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'geo_level': {'const': 'metro'}}, 'required': ['geo_level']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='media-buy/get-media-buy-delivery-request.json', pointer='#/properties/reporting_dimensions/properties/geo/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'geo_level': {'const': 'postal_area'}}, 'required': ['geo_level']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     account: Annotated[AccountReference | None, Field(description='Filter delivery data to a specific account. When omitted, returns data across all accessible accounts.')] = None
     media_buy_ids: Annotated[list[str] | None, Field(description='Array of media buy IDs to get delivery data for', min_length=1)] = None

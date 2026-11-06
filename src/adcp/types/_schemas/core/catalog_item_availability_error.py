@@ -5,7 +5,7 @@ from typing import ClassVar
 
 from pydantic import ConfigDict
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import Approximation, SchemaRef
 
 from .error import Error
 
@@ -18,6 +18,9 @@ class CatalogItemAvailabilityError(Error):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/catalog-item-availability-error.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/catalog-item-availability-error.json', pointer='#/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'code': {'const': 'REFERENCE_NOT_FOUND'}}, 'required': ['code']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
 
 
 __all__ = ["CatalogItemAvailabilityError"]

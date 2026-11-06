@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule, UniqueItems
 from adcp.types.constraints import (
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
@@ -64,6 +64,9 @@ class ReportingRevision(AdCPBaseModel):
         UniqueItems('control_totals'),
         ConditionalRequired((Match('finality', True, ('official',)),), require=('finality_basis', 'finality_policy_id', 'finalized_at'), forbid=()),
         NegatedConditional((Match('finality', True, ('official',)),), require=(), forbid=('finality_basis', 'finality_policy_id', 'finalized_at')),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/reporting-revision.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'data_through_precision': {'const': 'unknown'}}, 'required': ['data_through_precision']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     reporting_revision_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId, Field(description='Portable AdCP identity for this immutable report publication. Distinct from package delivery_revision_id and provider-native versions.')]
     revision_content_sha256: Annotated[ReportingAdjustmentReceiptObservedAdjustmentSha256, Field(description='SHA-256 of the immutable RFC 8785 JCS binding object containing reporting_revision_id, row_count, control_totals, and reporting_rows. Reliable Reporting 1.0 Core revisions include it and exact reads return the identical value.')]

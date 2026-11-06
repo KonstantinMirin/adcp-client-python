@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import CreativeRepresentationRepresentationId, StrMinLen1
 
@@ -33,6 +33,9 @@ class CreativeRepresentation(CreativeManifest):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/creative-representation.json', pointer='#')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('format_id',), ('format_option_ref',), ('representation_selection',))),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/creative-representation.json', pointer='#/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'format_kind': {'enum': ['video_vast', 'audio_vast']}}, 'required': ['format_kind']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     representation_id: Annotated[CreativeRepresentationRepresentationId, Field(description='Stable representation identifier, unique within the enclosing CreativeRepresentationSet revision.')]
     source: Source

@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import Approximation, SchemaRef
 from adcp.types.constraints import (
     GovernanceContext,
     IntMin1,
@@ -40,6 +40,10 @@ class UpdateMediaBuyRequest(AdCPVersionEnvelope):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/update-media-buy-request.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='media-buy/update-media-buy-request.json', pointer='#/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'bidding': {'type': 'object'}}, 'required': ['bidding']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='media-buy/update-media-buy-request.json', pointer='#/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['new_packages'], 'not': {'properties': {'budget_allocation': {'properties': {'mode': {'const': 'seller_optimized'}}, 'required': ['mode']}}, 'required': ['budget_allocation']}}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
     governance_context: Annotated[GovernanceContext | None, Field(description='Opaque intent authorization for a commitment-increasing media-buy update.')] = None
     account: Annotated[AccountReference, Field(description='Account that owns this media buy. Pass a natural key (brand, operator, optional sandbox) or a seller-assigned account_id from list_accounts. Required for governance checks and account resolution.')]
     media_buy_id: Annotated[str, Field(description="Seller's ID of the media buy to update")]

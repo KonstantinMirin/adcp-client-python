@@ -5,7 +5,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import Approximation, SchemaRef
 
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
@@ -25,6 +25,9 @@ class GetTaskStatusResponse(AdCPVersionEnvelope, ProtocolEnvelope):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/get-task-status-response.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='protocol/get-task-status-response.json', pointer='#/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'task_type': {'const': 'get_products'}, 'result': {'properties': {'status': {'const': 'rejected'}}, 'required': ['status']}}, 'required': ['task_type', 'result']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
     task_id: Annotated[str, Field(description='Unique identifier for tracking asynchronous operations. Present when a task requires extended processing time. Used to query task status and retrieve results when complete.')]
     task_type: Annotated[TaskType, Field(description='Type of AdCP operation')]
     protocol: Annotated[AdCPProtocol, Field(description='AdCP protocol this task belongs to')]

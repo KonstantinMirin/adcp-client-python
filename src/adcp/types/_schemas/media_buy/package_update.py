@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, NotValue, Rule
 from adcp.types.constraints import StrMaxLen500
 
@@ -45,6 +45,9 @@ class PackageUpdate(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/package-update.json', pointer='#')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('product_id',), ('format_ids',), ('format_option_refs',), ('format_kind',), ('params',), ('capability_ids',), ('pricing_option_id',), ('budget_cap_timezone',))),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='media-buy/package-update.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'bidding': {'type': 'object'}}, 'required': ['bidding']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     package_id: Annotated[str, Field(description="Seller's ID of package to update")]
     budget: Annotated[NonNegativeFloat | None, Field(description='Updated hard spend cap for this package in the media-buy currency. Every selected pricing option in an AdCP-authored media buy MUST declare that same currency. In seller-optimized mode a number changes the package ceiling and null removes it so only the shared total and other constraints bound the package. null is invalid when the resulting allocation mode is fixed. A number in a resulting seller-optimized buy requires advertised media_buy.features.seller_optimized_package_budgets; otherwise rejected with UNSUPPORTED_FEATURE before any over-subscription validation.')] = None

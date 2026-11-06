@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import Presence, PresenceGroups, Rule, UniqueItems
 from adcp.types.constraints import CanonicalFormatImageAspectRatio, FloatGt0, IntMin1
 
@@ -63,6 +63,9 @@ class CanonicalFormatImage(CanonicalFormatBase):
         UniqueItems('pixel_ratios'),
         UniqueItems('activation_methods'),
         PresenceGroups((Presence(require=(('width', 'height'),), forbid=(('sizes',), ('min_width',), ('max_width',), ('min_height',), ('max_height',))), Presence(require=(('sizes',),), forbid=(('width',), ('height',), ('min_width',), ('max_width',), ('min_height',), ('max_height',))), Presence(require=(('min_width',), ('max_width',), ('min_height',), ('max_height',)), forbid=(('width',), ('height',), ('sizes',))), Presence(require=(), forbid=(('width',), ('height',), ('sizes',), ('min_width',), ('max_width',), ('min_height',), ('max_height',)))), 'oneOf'),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='formats/canonical/image.json', pointer='#/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['ctv_ad_experience']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     slots: Annotated[list[SlotsItem] | None, Field(default_factory=lambda: TypeAdapter(list[SlotsItem]).validate_python([{'asset_group_id': 'image_main', 'asset_type': 'image', 'required': True}, {'asset_group_id': 'headline', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'body_text', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'primary_text', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'cta', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'landing_page_url', 'asset_type': 'url', 'required': False}]), description="Default slots for image canonical. Buyer ships an image asset (file or hosted URL) plus optional headline, body text, primary text (long-form caption), CTA (typically constrained to an enum via `cta_values`), and clickthrough URL. Products MAY override the default — make `headline` required, narrow `cta` to a value enum, or remove slots the surface doesn't consume.", json_schema_extra={'default': [{'asset_group_id': 'image_main', 'asset_type': 'image', 'required': True}, {'asset_group_id': 'headline', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'body_text', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'primary_text', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'cta', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'landing_page_url', 'asset_type': 'url', 'required': False}]})]
     width: Annotated[IntMin1 | None, Field(description="Logical render width in pixels — use for fixed-size slots (e.g., a 300×250 IAB MREC). When `pixel_ratios` is absent, the required image asset width is the same value (1x). When `pixel_ratios` is present, an accepted asset's intrinsic width is `width × pixel_ratio`. For multi-size flexible slots, use `sizes[]`; for responsive slots, use the min/max fields. The three size modes are mutually exclusive.")] = None

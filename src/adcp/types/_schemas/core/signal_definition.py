@@ -109,7 +109,9 @@ class SignalDefinition(AdCPBaseModel):
         ConditionalRequired((Match('demographic_predicate', True, None),), require=('restricted_attributes',), forbid=()),
     )
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/signal-definition.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'value_type': {'const': 'categorical'}}, 'required': ['value_type', 'taxonomy']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
         Approximation(document='core/signal-definition.json', pointer='#/allOf/4', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'data_sources': {'type': 'array', 'contains': {'enum': ['offline_survey', 'public_record_census', 'public_record_voter_file', 'public_record_other', 'offline_transaction']}}}, 'required': ['data_sources']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/signal-definition.json', pointer='#/allOf/5', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['demographic_predicate']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     id: Annotated[AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, Field(description="Signal identifier within the publishing domain's adagents.json signals[]")]
     name: Annotated[StrMinLen1MaxLen255, Field(description='Human-readable signal name')]

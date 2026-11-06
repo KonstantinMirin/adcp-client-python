@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import Approximation, SchemaRef
 from adcp.types.constraints import SyncAccountsRequestIdempotencyKey
 
 from ..core.agent_notification_config import AgentNotificationConfig
@@ -22,6 +22,9 @@ class NotificationConfigsItem(AgentNotificationConfig):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/sync-agent-notification-configs-request.json', pointer='#/properties/notification_configs/items')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='protocol/sync-agent-notification-configs-request.json', pointer='#/properties/notification_configs/items/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['authentication']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
 
 
 class SyncAgentNotificationConfigsRequest(AdCPVersionEnvelope):
@@ -32,6 +35,9 @@ class SyncAgentNotificationConfigsRequest(AdCPVersionEnvelope):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/sync-agent-notification-configs-request.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='protocol/sync-agent-notification-configs-request.json', pointer='#/properties/notification_configs/items/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['authentication']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
     idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description="Client-generated unique key for at-most-once execution. The task mutates the authenticated caller's persistent agent-level subscriber set and may trigger endpoint proof-of-control challenges, so retries MUST reuse the same key and same payload. Use a fresh UUID v4 for each logical replacement.")]
     notification_configs: Annotated[list[NotificationConfigsItem], Field(description="Complete desired set of agent-level notification subscribers for the authenticated caller or registry identity. Omit is invalid; send an empty array to remove every subscriber owned by this caller. Each entry registers a URL, the agent-level event types the subscriber wants, and optional legacy auth. Duplicate `subscriber_id` values are rejected within this caller-scoped array. If any entry fails validation or activation proof, the seller rejects the replacement and leaves this caller's previous set unchanged.", max_length=16)]
     dry_run: Annotated[bool | None, Field(description='When true, validate the replacement and report what would be persisted without applying it or sending endpoint proof-of-control challenges.')] = False

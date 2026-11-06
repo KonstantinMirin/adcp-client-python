@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import Dependencies, Rule
 from adcp.types.constraints import (
     CanonicalProposalTermsDigest,
@@ -65,6 +65,9 @@ class MediaBuy(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         Dependencies('accepted_proposal_id', ('accepted_proposal_terms_digest',)),
         Dependencies('accepted_proposal_terms_digest', ('accepted_proposal_id',)),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/media-buy.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'confirmed_at': {'type': 'null'}}, 'required': ['confirmed_at']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     media_buy_id: Annotated[str, Field(description="Seller's unique identifier for the media buy")]
     name: Annotated[MediaBuyName | None, Field(description='Human-readable name for this media buy, shared by buyer and seller for trafficking UI display and operational communication. Sellers MUST include the persisted name on read surfaces such as get_media_buys when the media buy was created through AdCP with name. Sellers MAY omit name for media buys created outside AdCP or created without name. This display label is not an identifier or financial reference.')] = None

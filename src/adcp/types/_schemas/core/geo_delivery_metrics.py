@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem
 
@@ -25,6 +25,10 @@ class GeoDeliveryMetrics(DeliveryMetrics):
         ConditionalRequired((Match('geo_level', True, ('country',)),), require=(), forbid=('system', 'country')),
         ConditionalRequired((Match('geo_level', True, ('region',)),), require=(), forbid=('system', 'country')),
         ConditionalRequired((Match('geo_level', True, ('metro',)),), require=('system',), forbid=('country',)),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/geo-delivery-metrics.json', pointer='#/allOf/1/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'geo_level': {'const': 'metro'}}, 'required': ['geo_level']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/geo-delivery-metrics.json', pointer='#/allOf/1/allOf/3', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'geo_level': {'const': 'postal_area'}}, 'required': ['geo_level']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     geo_level: Annotated[GeographicTargetingLevel, Field(description='Geographic level of this entry (country, region, metro, postal_area)')]
     system: Annotated[str | None, Field(description='Classification system for metro or postal_area levels. Metro rows use metro-system values. Native postal rows use country-local postal-system values with country; deprecated legacy postal rows may use legacy-postal-system values.')] = None

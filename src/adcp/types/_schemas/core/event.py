@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import HttpUrl, StrMinLen1MaxLen256
 
@@ -27,6 +27,9 @@ class Event(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/event.json', pointer='#')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ConditionalRequired((Match('event_type', True, ('watch_milestone',)),), require=('custom_data',), forbid=()),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/event.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'event_type': {'const': 'watch_milestone'}}, 'required': ['event_type']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     event_id: Annotated[StrMinLen1MaxLen256, Field(description='Unique identifier for deduplication (scoped to event_type + event_source_id)')]
     event_type: Annotated[EventType, Field(description='Standard event type')]

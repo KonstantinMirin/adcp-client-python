@@ -101,7 +101,7 @@ class DeclineProposalsResponseSubmitted(DeclineProposalsResponse, CompactTaskSub
     Bounded submitted envelope shared by the compact lifecycle tools.
     """
     model_config = ConfigDict(
-        extra='allow',
+        extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/decline-proposals-response.json', pointer='#/anyOf/1')
     task_id: Annotated[StrMinLen1, Field(description='Unique identifier for tracking asynchronous operations. Present when a task requires extended processing time. Used to query task status and retrieve results when complete.')]

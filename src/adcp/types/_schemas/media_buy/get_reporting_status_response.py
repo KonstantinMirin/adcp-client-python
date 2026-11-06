@@ -63,6 +63,9 @@ class Scope(AdCPBaseModel):
         UniqueItems('finality'),
         ConditionalRequired((Match('all_accessible_media_buys', True, (False,)),), require=('media_buy_ids',), forbid=()),
     )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='media-buy/get-reporting-status-response.json', pointer='#/properties/scope/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'all_accessible_media_buys': {'const': False}}, 'required': ['all_accessible_media_buys']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
     period_start: AwareDatetime
     period_end: AwareDatetime
     scope_closed: Annotated[bool, Field(description='True only when no new obligation can enter this evaluated scope.')]
@@ -109,7 +112,13 @@ class GetReportingStatusResponse(BranchDispatchMixin, AdCPVersionEnvelope, Proto
         ConditionalRequired((Match('health', True, ('healthy', 'waiting', 'complete')),), require=('issues',), forbid=()),
     )
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='media-buy/get-reporting-status-response.json', pointer='#/properties/scope/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'all_accessible_media_buys': {'const': False}}, 'required': ['all_accessible_media_buys']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='media-buy/get-reporting-status-response.json', pointer='#/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'health': {'const': 'complete'}}, 'required': ['health']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='media-buy/get-reporting-status-response.json', pointer='#/allOf/3', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'health': {'const': 'action_required'}}, 'required': ['health']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='media-buy/get-reporting-status-response.json', pointer='#/allOf/4', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'health': {'const': 'delayed'}}, 'required': ['health']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='media-buy/get-reporting-status-response.json', pointer='#/allOf/5', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'health': {'enum': ['healthy', 'waiting', 'complete']}}, 'required': ['health']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
         Approximation(document='media-buy/get-reporting-status-response.json', pointer='#/allOf/6', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'scope': {'properties': {'coverage_complete': {'const': False}}, 'required': ['coverage_complete']}}, 'required': ['scope']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='media-buy/get-reporting-status-response.json', pointer='#/oneOf/0/oneOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'health': {'const': 'complete'}}, 'required': ['health']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     view: ReportingStatusView | None = None
     ledger_snapshot_id: Annotated[StrMinLen1MaxLen255 | None, Field(description="Opaque identity of the seller's consistent reporting-ledger snapshot. Every page reached from one periods cursor MUST return the same value.")] = None
@@ -148,6 +157,9 @@ class SuccessfulLookup(GetReportingStatusResponse):
     @classmethod
     def _branch_combinator(cls) -> str:
         return "oneOf"
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='media-buy/get-reporting-status-response.json', pointer='#/oneOf/0/oneOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'health': {'const': 'complete'}}, 'required': ['health']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
     status: Annotated[Literal['completed'], Field(description='Current AdCP task state or structured outcome. Indicates whether the task completed, is in progress, was submitted for async processing, failed, requires user input, or returned a typed business rejection. REQUIRED on every task response envelope. Synchronous tasks (including read-only metadata calls like `get_adcp_capabilities`) normally emit `status: "completed"`; a task-specific rejection arm emits `status: "rejected"` without turning the transport into a failure. Async tasks emit `submitted`, `working`, `input-required`, etc. per their lifecycle. Agents MUST NOT emit the legacy task_status or response_status fields alongside this field — the status field is the single authoritative AdCP response state.')]
 
 
@@ -184,6 +196,9 @@ class PeriodsView(SuccessfulLookup):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-reporting-status-response.json', pointer='#/oneOf/0/oneOf/1')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='media-buy/get-reporting-status-response.json', pointer='#/oneOf/0/oneOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'health': {'const': 'complete'}}, 'required': ['health']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
     view: Annotated[Literal[ReportingStatusView.PERIODS], Field(description='Stable response-shape discriminator. SDK convenience methods may default this to summary, but the wire request is explicit.')]
     pagination: PeriodsViewPagination
     account_id: Annotated[StrMinLen1, Field(description='Resolved seller/storefront account identifier.')]
