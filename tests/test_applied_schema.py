@@ -139,6 +139,33 @@ def _node(doc: object, pointer: str) -> dict:
     return node
 
 
+def _refuses(document: str, node: dict, value: object) -> bool:
+    """Does ``node``, read as a schema AGAINST ITS OWN DOCUMENT, refuse ``value``?
+
+    The document-rooted validator, which is the one ``_refuse`` builds and the one
+    :func:`test_reading_the_node_alone_cannot_resolve_it_and_refuses_everything`
+    measures directly.  A node handed to a bare ``Draft7Validator`` cannot resolve a
+    document-side local ``$ref`` and RAISES instead of answering, so the bare reading
+    is an ERROR at such a node and not a verdict on the value.
+
+    **Measured on this tree (2026-11-06, ``adcp-client-python-sjzy``): 21 of the 295
+    pairs below sit at such a node** --
+    ``core/format.json#/properties/assets/items/oneOf/0/oneOf/{0..20}``, each an
+    ``allOf`` onto ``#/$defs/baseIndividualAsset`` -- and for all 21 BOTH readings
+    (``_node``'s and :func:`applied_schema`'s) raise ``_WrappedReferencingError`` under
+    a bare validator.  So a loop written on the bare validator does not merely miss
+    them, it errors on them.
+
+    **Resolving a reference against the document is NOT applying the document's
+    assertions**, which is what keeps this file's contrast intact: the root's ``type``
+    is still absent from ``node``, and the 110/185 split below is read through this
+    function on both sides so the two readings are comparable.
+    """
+    root = _base._document(document)
+    validator = jsonschema.validators.validator_for(root, jsonschema.Draft7Validator)
+    return bool(list(validator(root).evolve(schema=node).iter_errors(value)))
+
+
 @functools.cache
 def census() -> tuple[dict[str, frozenset[str]], dict[str, frozenset[str]]]:
     """Every node of the bundle that declares no ``type``, split by whether the
@@ -165,7 +192,7 @@ def _declares_properties(doc: dict, pointer: str) -> bool:
     return isinstance(node.get("properties"), dict) and bool(node["properties"])
 
 
-def test_the_two_populations_partition_the_bundles_typeless_nodes() -> None:
+def test_the_two_halves_partition_the_bundles_typeless_nodes() -> None:
     """The denominators, because the rule is a PARTITION of one set of nodes and a
     verdict over a set nobody named is a verdict over however many nodes there turned
     out to be.
@@ -177,7 +204,7 @@ def test_the_two_populations_partition_the_bundles_typeless_nodes() -> None:
     the typeless nodes, which is the property that cannot be true of one version only.
 
     The second pair is the subset the DEFECT was found on -- a node declaring a
-    non-empty ``properties``, which is the only shape a class can be declared at, so it
+    non-empty ``properties``, which is the only node a class can be declared at, so it
     is the subset the emitter's answer turns on, and it too is named rather than sized.
     """
     constrained, loose = census()
@@ -417,104 +444,55 @@ def test_what_is_conjoined_at_a_constrained_node_is_its_object_type_and_its_root
     assert built and spliced_conjuncts, (built, spliced_conjuncts)
 
 
-#: Nodes the root constrains to an object that ALSO constrain themselves, so the
-#: enclosing ``type`` adds nothing and this test's bare-versus-applied contrast has no
-#: content at them.  Excluded by NAME rather than derived from the assertion that would
-#: fail, because deriving it from that assertion makes the loop grade its own filter.
-#:
-#: The three are ``core/canonical-media-buy-action.json``'s branches, which emit since
-#: ``salesagent-j3k2l.43``: each one is ``{"allOf": [{"$ref":
-#: core/canonical-media-buy-action-fields.json}], "properties", "required"}``, and that
-#: target's own root states ``type: object`` -- so the branch node refuses a string on
-#: its own, before anything enclosing it is applied.  Measured directly:
-#: ``Draft7Validator(<the branch node>).is_valid("a string")`` is ``False``.
-#: **ELEVEN more at ``adcp-client-python-10l.20``, and the mechanism is the one this
-#: file's own earlier test already measured**: "326 of the 1,541 are in that second
-#: group, every one of them refusing a non-object for a reason of its own (a ``not`` over
-#: a ``required``, which a non-object satisfies vacuously, so the negation fails)".  Each
-#: of these is a branch of a root union §14 step 9 unblocked, each states
-#: ``not: {"required": [...]}`` -- the idiom §4's third dispatch source reads to separate
-#: them -- and a string satisfies the inner ``required`` vacuously, so the negation fails
-#: and the BARE node refuses the string before anything enclosing it is applied.
-#: Measured directly, the same way the three below were:
-#: ``Draft7Validator(<the branch node>).is_valid("a string")`` is ``False`` for all 11
-#: and ``True`` for the other 43 rows.
-#:
-#: **TWO more at ``adcp-client-python-10l.34``, by that same mechanism at a NESTED
-#: union.**  §8's composition rule reaches a union at any position, so
-#: ``account/sync-accounts-request.json``'s ``/properties/accounts/items`` emits a base
-#: plus one subclass per branch, and the two branches join this population because the
-#: node their enclosing ``items`` constrains to an object is the one each class names.
-#: Each branch's ``allOf`` conjuncts are ``not: {"required": [...]}`` and nothing else, so
-#: a string satisfies each inner ``required`` vacuously, every negation fails, and the
-#: BARE node refuses the string -- the same reading as the 11 above and measured the same
-#: way: ``Draft7Validator(<the branch node>).is_valid("a string")`` is ``False`` for both.
-#: What does hold for them, measured directly, is the clause the per-row loop is about:
-#: the schema each class NAMES refuses a string and ``accept("a string")`` raises.
-#:
-#: **TWENTY-ONE more at ``adcp-client-python-10l.55``, and they are the FIRST members
-#: whose reason is the reference itself rather than a ``not``.**
-#: ``core/assets/asset-union.json`` emits -- the branch row asked whether a ``$ref``
-#: branch's target had a ``compiler.Shape`` and reported "VASTAsset is not a class" of a
-#: class, and it asks ``compiler.TargetKind`` now -- so its 21 branch classes join this
-#: population.  Each branch's whole text is ``{"$ref": <an asset document>}`` and every
-#: one of those targets states ``type: "object"`` at its root, so the BARE node refuses a
-#: string through the reference, before the root's own ``type`` is applied: the enclosing
-#: ``type`` adds nothing and this test's bare-versus-applied contrast has no content at
-#: them.  Measured directly, the same way every member above was:
-#: ``Draft7Validator(<the branch node>).is_valid("a string")`` is ``False`` for all 21.
-ALREADY_AN_OBJECT_ITSELF = frozenset(
-    {
-        *(f"core/assets/asset-union.json#/oneOf/{i}" for i in range(21)),
-        "account/sync-accounts-request.json#/properties/accounts/items/oneOf/0",
-        "account/sync-accounts-request.json#/properties/accounts/items/oneOf/1",
-        "core/canonical-media-buy-action.json#/oneOf/0",
-        "core/canonical-media-buy-action.json#/oneOf/1",
-        "core/canonical-media-buy-action.json#/oneOf/2",
-        "brand/creative-approval-response.json#/oneOf/0",
-        "brand/creative-approval-response.json#/oneOf/1",
-        "brand/creative-approval-response.json#/oneOf/2",
-        "brand/creative-approval-response.json#/oneOf/3",
-        "brand/get-brand-identity-response.json#/oneOf/0",
-        "brand/get-brand-identity-response.json#/oneOf/1",
-        "brand/get-rights-response.json#/oneOf/0",
-        "brand/get-rights-response.json#/oneOf/1",
-        "brand/search-brands-response.json#/oneOf/0",
-        "brand/search-brands-response.json#/oneOf/1",
-        "core/brand-response-authorization-result.json#/oneOf/0",
-        # ``adcp-client-python-10l.21``'s fifth instalment: the document emits now, and
-        # its first branch ``not``s a ``required`` group, so a non-object satisfies the
-        # negated group vacuously and the BARE node already refuses the string.  Its
-        # second branch states no ``not`` and is a row.
-        "account/list-account-changes-response.json#/oneOf/0",
-        # ``adcp-client-python-10l.50``: the document emits now that §4's nested rule
-        # names a position rather than the path to it, so the two positions that folded
-        # to one class name are two names.  All SIX of its branches ``not`` a
-        # ``required`` group -- each excludes the trigger inputs the other five own --
-        # so a non-object satisfies every negated group vacuously and the bare node
-        # already refuses the string.  The document therefore contributes no row, which
-        # is why it is here in full and absent from the set of row documents above.
-        "formats/canonical/seller_rendered_stateful_display.json#/properties/transitions/items/oneOf/0",
-        "formats/canonical/seller_rendered_stateful_display.json#/properties/transitions/items/oneOf/1",
-        "formats/canonical/seller_rendered_stateful_display.json#/properties/transitions/items/oneOf/2",
-        "formats/canonical/seller_rendered_stateful_display.json#/properties/transitions/items/oneOf/3",
-        "formats/canonical/seller_rendered_stateful_display.json#/properties/transitions/items/oneOf/4",
-        "formats/canonical/seller_rendered_stateful_display.json#/properties/transitions/items/oneOf/5",
-    }
-)
-
-
 def test_every_class_at_a_constrained_node_refuses_a_non_object_its_own_node_admits() -> None:
     """End to end on the committed tree: the classes this made possible.
 
     Derived off the tree rather than listed -- every graded class whose own pointer is
-    in its document's constrained set -- and pinned to a non-zero count, because this
-    population did not exist before and an empty loop would pass.
+    in its document's constrained set -- and floored, because this set did not exist
+    before and an empty loop would pass.
 
-    For each: the BARE node admits a string, the schema the class NAMES refuses it,
-    and the class refuses it.  The middle one is the point.  The other two held before
-    this change as well, and together they are exactly the state that made the branch
-    unemittable.
+    **THE OBLIGATION IS UNIVERSAL AND HAS NO EXCEPTION LIST.**  For every one of them:
+    the schema the class NAMES refuses a non-object, and the class refuses it.  Read
+    through :func:`_refuses`, which is the document-rooted reading, because a bare
+    validator ERRORS at 21 of them rather than answering.
+
+    **THE CONTRAST IS A PARTITION BY MEASUREMENT, NOT A FILTER.**  At some of these
+    nodes the bare node refuses a non-object on its own, so the enclosing ``type`` adds
+    nothing and the bare-versus-applied contrast has no content there.  Which ones is a
+    FACT ABOUT THE BUNDLE and it is read off the bundle, not listed: the two parts are
+    named, closed with :func:`partitions`, and the contentful part is floored so it
+    cannot empty out.
+
+    **The clause this replaces, and why its own argument is what removed it.**  The
+    excluded set used to be spelled as 44 pointers under ``ALREADY_AN_OBJECT_ITSELF``
+    with the reason *"excluded by NAME rather than derived from the assertion that would
+    fail, because deriving it from that assertion makes the loop grade its own filter"*,
+    and the set of contributing DOCUMENTS as a frozen equality of 23 names.  The
+    no-self-filter rule is right about FILTERS and the answer to it is to have none:
+    nothing is excluded from the obligation above, so there is no filter for it to
+    grade, and the derived split is REPORTED as a partition instead of narrowing an
+    assertion.  Measured at ``1ade87e90`` (2026-11-06, ``adcp-client-python-sjzy``),
+    which is what made re-pointing the two literals the wrong repair:
+
+    * 295 graded classes sit at a node their own document constrains to an object.
+    * 110 of them have a bare node that refuses a non-object by itself; 44 were named
+      in the list, so **45 were not** -- each one a row the loop's first assertion
+      would have failed on.
+    * 21 are ``core/format.json``'s individual-asset branches, at which BOTH bare
+      readings raise ``_WrappedReferencingError`` under a bare validator (see
+      :func:`_refuses`) -- so the loop would have ERRORED there, not failed.
+    * the document equality was stale in BOTH directions: 32 documents had arrived and
+      **3 had left** (``brand/verify-brand-claims-request.json``,
+      ``core/performance-feedback.json``, ``media-buy/product-refinement.json``, each
+      carrying a comment asserting it contributed a row).  So "a set that grew" was
+      half the reading, and re-pasting it would have deleted three recorded facts
+      silently and left 66 pairs red.
+
+    What the two literals were FOR is kept: the obligation now ranges over all 295
+    instead of 251-minus-44, and the floors below say what may not happen.  The
+    universal half is weak at the 110 (a node that refuses on its own makes the
+    conjunction refuse trivially) and carries its whole content at the 185, which is
+    exactly why that part and not the other one is floored.
     """
     import test_emit  # the tree reader, one reading for the whole suite
 
@@ -526,115 +504,54 @@ def test_every_class_at_a_constrained_node_refuses_a_non_object_its_own_node_adm
         and g.ref.pointer.lstrip("#")
         in bundle.constrained_to_object(bundle.read(BUNDLE, g.ref.document))
     ]
-    # The exclusion is asserted to BITE and to be drawn from the set it narrows, so a
-    # stale entry is an allowlist nobody can shrink and reddens here instead.
-    reached = {f"{g.ref.document}{g.ref.pointer}" for g in constrained}
-    assert ALREADY_AN_OBJECT_ITSELF <= reached, sorted(ALREADY_AN_OBJECT_ITSELF - reached)
-    rows = [
-        g
-        for g in constrained
-        if f"{g.ref.document}{g.ref.pointer}" not in ALREADY_AN_OBJECT_ITSELF
-    ]
-    # The pairs at a constrained node, non-empty -- the per-row loop below is the
-    # obligation and 64 is the number of rows this emitted tree gives it.  WHICH
-    # documents they come from is the fact worth pinning and it is named below.
-    claimed("pairs at a node its own document constrains", {g.ref for g in rows})
-    assert {g.ref.document for g in rows} == {
-        # **``core/assets/asset-union.json`` JOINED THE POPULATION AT
-        # ``adcp-client-python-10l.55`` AND CONTRIBUTES NO ROW**, which is why it is not
-        # named here: its 21 branch classes are all in ``ALREADY_AN_OBJECT_ITSELF``, each
-        # for that set's own measured reason -- a branch whose whole text is a ``$ref``
-        # onto an object root refuses a non-object before anything enclosing it applies.
-        # **TWO more at ``adcp-client-python-10l.21``'s SEVENTH instalment**, and they
-        # arrive by that row's emission rather than by anything about this mechanism:
-        # ``core/assets/vast-asset.json`` and ``core/assets/daast-asset.json`` emit now
-        # that §2's intersection rule writes the composition at ``items`` and the base's
-        # ``$ref`` survives it as a conjunct, and each one's two branch classes sit at a
-        # node its own root constrains to an object.  Neither branch ``not``s a
-        # ``required`` group, so both contribute rows.  The per-row loop grades all 64
-        # and reported nothing new.
-        "core/assets/daast-asset.json",
-        "core/assets/vast-asset.json",
-        # **ONE more at ``adcp-client-python-10l.21``'s FIFTH instalment**, and it arrives
-        # by that row's emission rather than by anything about this mechanism:
-        # ``account/list-account-changes-response.json`` is a union root that refused on a
-        # ``$ref`` §2's intersection produced at a pointer no edge of its own text carries,
-        # ``emit.inherited_sites`` resolves that site now, and both of its branch classes
-        # sit at a node its own root constrains.  The FIRST of the two is in
-        # ``ALREADY_AN_OBJECT_ITSELF`` -- it ``not``s a ``required`` group and so refuses a
-        # non-object on its own -- so the document contributes one row.  The per-row loop
-        # grades all 60 and reported nothing new.
-        "account/list-account-changes-response.json",
-        # **SEVEN more at ``adcp-client-python-10l.21``'s third instalment**, and all
-        # seven arrive by one of that row's two shapes rather than by anything about this
-        # mechanism.  Six are §14 step 9's first faithful row -- a ``type`` word beside a
-        # NESTED combinator is in every branch already, so the document's own worded union
-        # stops refusing it -- and each contributes a class at a node its own root
-        # constrains: ``brand/verify-brand-claims-request.json``,
-        # ``core/performance-feedback.json``,
-        # ``core/requirements/image-asset-requirements.json``,
-        # ``governance/accepted-governance-agents.json``,
-        # ``media-buy/product-refinement.json``,
-        # ``registries/v1-canonical-mapping.json``, plus
-        # ``error-details/governance-agent-not-accepted.json`` chained behind the fourth
-        # of them.  The seventh is the OTHER shape: ``core/delivery-metric-aggregate.json``
-        # emits because a ``not`` beside a conjoined type is now a ``NotValue`` on the
-        # value's own annotated type.  The per-row loop grades all 59 and reported
-        # nothing new.
-        "brand/verify-brand-claims-request.json",
-        "core/delivery-metric-aggregate.json",
-        "core/performance-feedback.json",
-        "core/requirements/image-asset-requirements.json",
-        "error-details/governance-agent-not-accepted.json",
-        "governance/accepted-governance-agents.json",
-        "media-buy/product-refinement.json",
-        "registries/v1-canonical-mapping.json",
-        # **TWO more at ``adcp-client-python-10l.20``, out of six that joined and four
-        # that the exclusion above takes** (§14 step 9).  Six union roots whose own
-        # siblings now compile onto the base emit, each having refused as
-        # ``union.ROOT_CONJUNCTS`` -- "there is no pointer to the conjunction for a
-        # branch class to name" -- and §8's pairing rule is what answers it, so their
-        # branch classes reach this population by the mechanism the four below reached
-        # it by.  Four of the six contribute no ROW, because every one of their branches
-        # states a ``not`` over a ``required`` and so refuses a non-object on its own:
-        # they are in ``ALREADY_AN_OBJECT_ITSELF``, which says so and is measured there.
-        # ``core/brand-response-authorization-result.json`` contributes one of its two
-        # branches for that same reason, and ``brand/verify-brand-claim-request.json``
-        # both.  The per-row loop grades all 40 and reported nothing new.
-        "brand/verify-brand-claim-request.json",
-        "core/brand-response-authorization-result.json",
-        "core/activation-key.json",
-        "core/reporting-write-destination.json",
-        # Four more at 16052ffb0, and they are the four documents that left
-        # ``STILL_REFUSED`` below: each refused on a ``$ref`` into a document that
-        # now emits, so each one's two branch classes join this population.  The
-        # per-row loop grades all 35 and reported nothing new.
-        "core/account-ref.json",
-        "core/committed-metric.json",
-        "core/missing-metric.json",
-        "core/performance-feedback-metric.json",
-        # Third since `salesagent-j3k2l.20`: the document emits now that a
-        # `definitions` section no longer refuses it, and it carries a class at a
-        # node its own root constrains -- so it joins this population rather than
-        # changing what the population means.
-        "core/reporting-dataset-share-destination.json",
-        # Three more since `salesagent-j3k2l.19`: a `uniqueItems` is lowered on the
-        # class that holds the array, so these emit and each carries classes at
-        # nodes its own root constrains.  `media-buy/acceptance-policy-requirement.json`
-        # is the direct one -- it refused on `uniqueItems` at
-        # `/oneOf/2/properties/criteria` -- and the other two chain off newly
-        # emitted targets.  The POPULATION of this refusal is what grew; what it
-        # means is unchanged, and the per-row loop below still grades every one.
-        "core/canonical-account-ref.json",
-        "core/canonical-reporting-commitment.json",
-        "media-buy/acceptance-policy-requirement.json",
-    }
-    for g in rows:
-        bare = _node(bundle.read(BUNDLE, g.ref.document), g.ref.pointer.lstrip("#"))
-        assert jsonschema.Draft7Validator(bare).is_valid("a string"), g.ref
-        assert not jsonschema.Draft7Validator(schema_at(g.ref)).is_valid("a string"), g.ref
+    at = claimed(
+        "graded classes at a node their own document constrains to an object",
+        {f"{g.ref.document}{g.ref.pointer}" for g in constrained},
+    )
+    assert len(at) == len(constrained), "one pointer reached twice"
+
+    # THE OBLIGATION, over every one of them, with nothing excluded.
+    for g in constrained:
+        assert _refuses(g.ref.document, schema_at(g.ref), "a string"), g.ref
         with pytest.raises(Exception):  # noqa: B017 -- either half of the entry point may answer
             g.accept("a string")
+
+    # THE CONTRAST, split by what the BARE node does and reported as a partition.  Both
+    # sides of the split are read by ``_node``, a second walk, so the side that decides
+    # the split is not the function under test.
+    bare_refuses: set[str] = set()
+    bare_admits: set[str] = set()
+    for g in constrained:
+        bare = _node(bundle.read(BUNDLE, g.ref.document), g.ref.pointer.lstrip("#"))
+        key = f"{g.ref.document}{g.ref.pointer}"
+        (bare_refuses if _refuses(g.ref.document, bare, "a string") else bare_admits).add(key)
+    partitions(at, bare_refuses_a_non_object_alone=bare_refuses, bare_admits_one=bare_admits)
+
+    # The contentful part: the enclosing root's ``type`` is the whole of what refuses
+    # here, so this is the part the obligation above is a statement about.  Floored and
+    # never equal: every emitting row adds graded pairs and none removes one, so a
+    # merge of two lanes takes the LARGER reading -- the same decision
+    # ``EMITTED_FLOOR`` records in this file.  43 documents contribute at 1ade87e90.
+    claimed("pairs where only the enclosing root's type refuses a non-object", bare_admits)
+    ratchet(
+        "graded classes at a node their own document constrains",
+        len(at),
+        at_least=295,
+        because=(
+            "an emitting row adds graded pairs and removes none, so this only grows; "
+            "a drop is a document or a class that stopped emitting"
+        ),
+    )
+    ratchet(
+        "pairs where only the enclosing root's type refuses a non-object",
+        len(bare_admits),
+        at_least=185,
+        because=(
+            "this grows with the pairs above and shrinks only if a bundle node starts "
+            "refusing a non-object by itself, which empties this test of content; the "
+            f"live split by document is {sorted({k.split('#')[0] for k in bare_admits})}"
+        ),
+    )
 
 
 def test_all_eleven_emit_and_the_residue_is_empty() -> None:
@@ -1019,24 +936,43 @@ def test_reading_the_node_alone_cannot_resolve_it_and_refuses_everything() -> No
     assert list(rooted(root).evolve(schema=node).iter_errors(accepted)) == []
 
 
-def test_the_population_of_document_side_local_refs_is_not_empty() -> None:
+def test_every_document_side_local_ref_resolves_and_the_set_of_sites_is_not_empty() -> None:
     """The DENOMINATOR, which is the one thing the outcome pins cannot say.
 
-    ``test_the_harness_result_is_counted_over_the_whole_population`` pins
+    ``tests/test_emit.py``'s one harness total pins
     ``accepts:model_error`` at 0, and before this row that pin was green FOR FREE: **0
     graded pairs of the committed tree held a document-side local ``$ref`` at all**,
     because every document carrying one was refused by name
     (``codegen.lower.union``'s deleted guard measured it). A green mark over an empty
-    population says nothing, so this names the population and asserts it is not empty.
+    set says nothing, so this names the set and asserts it is not empty.
 
-    Counted as (pair, reference) sites and reported per document, so a shrink is
-    readable rather than a number going down.
+    **THE OBLIGATION IS THE LOOP, AND IT IS EVERY SITE.**  Each (pair, reference) site
+    the derivation reaches is asserted to RESOLVE through :func:`applied_schema`
+    against its own document's root, and the ones that do not are reported BY SITE.
+    Counted as (pair, reference) sites and keyed by document, where
+    ``tests/test_emit.py`` reads the same references once per document: two
+    denominators for one fact.
+
+    **THE SET OF DOCUMENTS IS DERIVED AND IS NOT A LIST OF NAMES.**  It used to be a
+    frozen equality of 29 document names, re-pasted at each of
+    ``adcp-client-python-10l.{3,20,21,55}`` with the arrivals annotated in place -- a
+    ratchet spelled as an equality, which reddens whenever the corpus grows CORRECTLY
+    and whose only repair is to paste the new reading in.  ``tests/nodeset`` says the
+    same thing of counts and the same argument settles a set of names: it is one bundle
+    version's reading of a quantity every emitting row moves, so two rows in flight
+    compute two different correct values and no merge resolves that by picking a side.
+    Measured at ``1ade87e90`` (2026-11-06, ``adcp-client-python-sjzy``): 45 documents
+    live against 29 pinned, 16 arrived, **none left**, and all 774 sites resolve -- so
+    the equality carried no fact the loop does not, and reddened on 16 correct
+    arrivals.  The floor below is what it meant.
+
+    A shrink stays readable by name: the floor's reason carries the live reading keyed
+    by document, so a breach prints which documents hold what rather than one number
+    going down.
     """
     import collections
-    import sys
 
-    sys.path.insert(0, str(Path(__file__).parent))
-    from test_emit import graded
+    import test_emit  # the tree reader, one reading for the whole suite
 
     def local_refs(node: object) -> list[str]:
         if isinstance(node, dict):
@@ -1047,91 +983,46 @@ def test_the_population_of_document_side_local_refs_is_not_empty() -> None:
         return []
 
     per_document: collections.Counter[str] = collections.Counter()
-    for g in graded():
+    sites: set[tuple[str, str]] = set()
+    unresolved: list[tuple[str, str]] = []
+    for g in test_emit.graded():
         root = _base._document(g.ref.document)
         for reference in local_refs(schema_at(g.ref)):
             if not reference.startswith("#"):
                 continue
             per_document[g.ref.document] += 1
+            sites.add((f"{g.ref.document}{g.ref.pointer}", reference))
             # and it resolves, which is what the scope widening is for
-            assert applied_schema(root, reference), (g.ref, reference)
-    # The documents, by name, each with a non-empty set of local references -- and every
-    # one of them is asserted to RESOLVE in the loop above, which is the obligation.
-    # Counted once per (PAIR, reference) here, where ``tests/test_emit.py`` reads the
-    # same references once per document: two denominators for one fact, and naming the
-    # set says which rather than how many.
-    #
-    # **3 -> 21 AT ``adcp-client-python-10l.3``, AND THE POPULATION IS THE ROW'S
-    # PRODUCT.**  Architecture §4 decides that a local ``$ref`` stays as written in the
-    # document of record; the delegated resolver it replaced INLINED one, and the three
-    # named below were only the documents whose chain is RECURSIVE and therefore had no
-    # finite inlining.  So the scope widening this test is the denominator for now has
-    # eighteen more documents under it, and every reference in all 21 resolves through
-    # ``applied_schema`` above.
-    assert set(per_document) == {
-        # **One more at ``adcp-client-python-10l.55``**, and it is a document that
-        # EMITS: ``core/creative-localization-readback.json`` chained onto
-        # ``core/assets/asset-union.json``, whose ``$ref`` branch onto the UNION root
-        # ``VASTAsset`` the branch row refused for not being a class.  It is one, the
-        # gate reads ``compiler.TargetKind`` now, and the document's own
-        # ``#/definitions/resolvedAssets`` reference reaches this loop and resolves
-        # through the widened scope exactly as the rest do.
-        "core/creative-localization-readback.json",
-        # **Two more at ``adcp-client-python-10l.21``'s third instalment**, both §14 step
-        # 9's first faithful row: a ``type`` word beside a NESTED combinator is in every
-        # branch already (``union.nested``'s screen claims it), so these two emit and the
-        # pairs that reach this loop are their own nodes.
-        # ``brand/verify-brand-claims-request.json`` states ``#/definitions/claim_entry``
-        # and ``content-standards/artifact.json`` ``#/$defs/asset_access`` -- each the
-        # very node whose worded union was being refused -- and both resolve through the
-        # widened scope exactly as the rest do.
-        "brand/verify-brand-claims-request.json",
-        "content-standards/artifact.json",
-        # **Three more at ``adcp-client-python-10l.21``'s second instalment**, and all
-        # three are §5(b)'s ``uniqueItems`` row becoming a declared WIDENING rather than
-        # a verdict.  ``core/daast-tracker-constraints.json`` and
-        # ``core/vast-tracker-constraints.json`` are the pair whose ``*_versions``
-        # section entry carried that keyword, and each states four local ``$ref``\ s
-        # into its own ``definitions``; ``governance/policy-entry.json`` emits behind
-        # ``media-buy/acceptance-policy-profile.json`` for the same reason.  Every
-        # reference in all three resolves through the widened scope, which the loop
-        # above is what asserts.
-        "core/daast-tracker-constraints.json",
-        "core/vast-tracker-constraints.json",
-        "governance/policy-entry.json",
-        # **Two more at ``adcp-client-python-10l.20``**: both are union roots §14 step 9
-        # unblocked, and both state a local ``$ref`` inside a branch -- so the pairs
-        # that reach this loop are their branch classes, and the references resolve
-        # through the widened scope exactly as the eighteen below do.
-        "brand/get-brand-identity-response.json",
-        "brand/search-brands-response.json",
-        "aao/agent-publishers.json",
-        "core/bidding-policy-capability.json",
-        "core/placement-presentation.json",
-        "core/reporting-adjustment-receipt.json",
-        "core/reporting-canonicalization-contract.json",
-        "core/reporting-coverage.json",
-        "core/reporting-dataset-share-destination.json",
-        "core/reporting-delivery-config-state.json",
-        "core/reporting-delivery-method.json",
-        "core/reporting-delivery-offering.json",
-        "core/reporting-reliability-statistics.json",
-        "core/reporting-report-definition.json",
-        "core/reporting-resource.json",
-        "core/reporting-schedule.json",
-        "core/reporting-status-issue.json",
-        "core/requirements/catalog-field-binding.json",
-        "core/response-payload-jws-envelope.json",
-        "core/verification-token-claims.json",
-        # The third of the original three joined at ``salesagent-j3k2l.41``: its
-        # bounded-value definitions reference each other locally, and the array and
-        # mapping branches that carry their own bound now have a named type to carry it
-        # on.
-        "governance/reported-outcome-error.json",
-        "media-buy/change-term-constraints.json",
-        "media-buy/get-reporting-status-request.json",
-    }, dict(per_document)
-    assert all(per_document.values()), dict(per_document)
+            if not applied_schema(root, reference):
+                unresolved.append((f"{g.ref.document}{g.ref.pointer}", reference))
+    assert not unresolved, unresolved
+
+    # The denominator, named at the point it is ranged over.  ``claimed`` and not
+    # ``assert all(per_document.values())``, which was the line here before and could
+    # never fail: a ``Counter`` holds a key only because something incremented it, so
+    # every value it holds is at least 1 and the assertion was a gate that passes when
+    # nothing happens.
+    claimed("graded (pair, document-side local reference) sites", sites)
+    ratchet(
+        "documents holding a document-side local reference",
+        len(per_document),
+        at_least=45,
+        because=(
+            "a document arrives here by EMITTING and an emitting row removes none, so "
+            "this only grows and a merge of two lanes takes the larger reading; the "
+            f"live reading keyed by document is {sorted(per_document.items())}"
+        ),
+    )
+    ratchet(
+        "(pair, document-side local reference) sites",
+        sum(per_document.values()),
+        at_least=774,
+        because=(
+            "one emitted document contributes one site per reference per graded pair, "
+            "so this grows with the documents above; a drop with the document count "
+            "held is a reference that stopped being reached"
+        ),
+    )
 
 
 # --------------------------------------------------------------------------- #
