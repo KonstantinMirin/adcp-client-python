@@ -100,6 +100,7 @@ from codegen.harness import (
     LivenessResult,
     Pair,
     PairReport,
+    RefusesResult,
     WideningResult,
     _composed,  # the harness's own folding of an allOf conjunct's facts
     check_accepts,
@@ -1317,6 +1318,13 @@ def graded_report(g: Graded) -> PairReport:
             #: that makes it one: ``detail`` is read as ``error`` there, which is what a
             #: check that did not run is -- never ``pass`` and never ``no_declarations``.
             widening=WideningResult(detail=why),
+            #: **And reading 2's undeclared direction too, for the reason above: ALL of
+            #: them and not only the accepts one.**  Left ``None`` this would be read as
+            #: ``unrun`` by one reader and as an ``AttributeError`` by the next, and a
+            #: crash in a reader is not a report about a pair.  ``over_budget`` and never
+            #: ``no_witness``: the budget was spent, which is not the document having
+            #: nothing to refuse.
+            undeclared=RefusesResult(outcome="over_budget", detail=why),
         )
 
 
@@ -1448,6 +1456,19 @@ def test_every_class_passes_all_three_checks(row: Graded) -> None:
         assert rep.accepts.outcome == "pass", (rep.accepts.detail, rep.accepts.counterexample)
         assert rep.graded_instances > 0, "nothing was constructed and dumped back out"
     assert rep.liveness.outcome in ("pass", "no_payload"), (rep.liveness.outcome, rep.liveness.how)
+    #: **Reading 2's undeclared direction, asserted with its WITNESS and not only its
+    #: outcome** (``adcp-client-python-x63t``).  ``rep.outcome`` already carries
+    #: ``undeclared:widened_undeclared`` below, so this adds no obligation -- it adds the
+    #: VALUE, because a pair reported "wider than its document" and nothing else leaves the
+    #: reader to rebuild the witness before they can act, and §2's whole rule is about
+    #: values.  ``no_witness`` and ``unrun`` are the two answers that say the class was
+    #: never asked; an unreached conditional is a ``pass`` HERE and ``absent`` in the
+    #: table's own cell, which is where the reach is reported.
+    assert rep.undeclared is not None, "the undeclared-widening check did not run"
+    assert rep.undeclared.outcome in ("pass", "no_witness", "unrun"), (
+        rep.undeclared.outcome,
+        [(keyword, candidate) for candidate, keyword, _, _ in rep.undeclared.undeclared[:3]],
+    )
     if rep.outcome == "no_instrument":
         assert rep.no_instrument, rep.name
         for cause in rep.no_instrument:

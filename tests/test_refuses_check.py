@@ -252,6 +252,222 @@ def test_a_conjuncts_keyword_is_a_witness_source_and_the_value_fold_does_not_car
 
 
 # --------------------------------------------------------------------------- #
+# the CONDITIONAL arm, and its own refutation
+# --------------------------------------------------------------------------- #
+#: ``adcp-client-python-wvod``'s shape, written out: an ``allOf`` of a document that states
+#: its OWN conditional plus a conjunct stating a second one.  Both apply to the whole
+#: instance -- draft-07 applies every ``allOf`` member to it -- so an instance must satisfy
+#: both, and the one the fold used to discard is the second.
+WVOD_SHAPE: dict[str, Any] = {
+    "type": "object",
+    "allOf": [
+        {
+            "type": "object",
+            "properties": {
+                "subscriber_id": {"type": "string"},
+                "event_types": {"type": "array", "items": {"type": "string"}},
+                "authentication": {
+                    "type": "object",
+                    "properties": {"schemes": {"type": "array"}, "credentials": {}},
+                    "required": ["schemes"],
+                },
+            },
+            "required": ["subscriber_id", "event_types"],
+            "if": {"required": ["event_types"]},
+            "then": {"properties": {"subscriber_id": {"minLength": 1}}},
+        },
+        {
+            "if": {"required": ["authentication"]},
+            "then": {"properties": {"authentication": {"required": ["credentials"]}}},
+        },
+    ],
+}
+
+#: An instance ``WVOD_SHAPE`` admits, and the one witness it must yield: the same instance
+#: with ``credentials`` dropped, which is the payload ``adcp-client-python-wvod`` exhibits.
+WVOD_ADMITTED: dict[str, Any] = {
+    "subscriber_id": "s",
+    "event_types": ["capabilities.changed"],
+    "authentication": {"schemes": ["Bearer"], "credentials": {"token": "t"}},
+}
+WVOD_REFUSED: dict[str, Any] = {
+    "subscriber_id": "s",
+    "event_types": ["capabilities.changed"],
+    "authentication": {"schemes": ["Bearer"]},
+}
+
+
+def test_the_conjunct_fold_does_not_decide_which_conditional_survives() -> None:
+    """``adcp-client-python-x63t`` cause 3, as a gate on the two readings that replaced it.
+
+    The fold was ``out.setdefault(keyword, value)`` in document order, so where two
+    conjuncts each state an ``if`` only the FIRST survived -- and the one
+    ``adcp-client-python-wvod`` is about is the second.  Measured on that row at
+    ``protocol/sync-agent-notification-configs-request.json
+    #/properties/notification_configs/items``, where conjunct 0 (the ``$ref``'d document's
+    own) and conjunct 1 both state one and the fold kept conjunct 0's.
+
+    Two obligations, because the fold went wrong in two ways:
+
+    * ``own_facts`` folds NO conjunct's conditional, so it cannot report one conjunct's as
+      the node's;
+    * ``conditionals`` returns every triple UNMERGED and in document order, so neither is
+      lost and neither conjunct's ``if`` is paired with the other's ``then`` -- a
+      conditional no document states.
+
+    The document itself is asserted to refuse ``WVOD_REFUSED``, so the shape under test is
+    the one the row measured rather than one this file arranged to pass.
+    """
+    assert harness.conforms(WVOD_SHAPE, WVOD_ADMITTED) is True
+    assert harness.conforms(WVOD_SHAPE, WVOD_REFUSED) is False
+    # The node states no conditional of its own, so a fold is the only way one could
+    # arrive -- and none does.
+    facts = own_facts(WVOD_SHAPE)
+    assert not harness.CONDITIONAL & set(facts), sorted(harness.CONDITIONAL & set(facts))
+    # Both triples, unmerged, in document order, each with the ``then`` its own conjunct
+    # states beside the ``if`` that conjunct states.
+    triples = harness.conditionals(WVOD_SHAPE)
+    assert [one["if"] for one in triples] == [
+        {"required": ["event_types"]},
+        {"required": ["authentication"]},
+    ], triples
+    assert triples[1]["then"] == {
+        "properties": {"authentication": {"required": ["credentials"]}}
+    }, triples
+
+
+def test_a_conditional_stated_by_a_conjunct_is_a_witness_source() -> None:
+    """The arm ``adcp-client-python-x63t`` measured absent, and the payload it must build.
+
+    That row's measurement, over ``adcp-client-python-wvod``'s three nodes and from an
+    instance each document admits::
+
+        refused_witnesses aimed at: ['additionalProperties', 'required', 'type']
+        ANY witness aimed at 'if'/'then'/'else': False
+        the payload the document refuses is among the witnesses: False
+
+    So even wired onto the graded path the instrument could not have found those three.
+    Both halves are asserted here, and the second is the one that matters: the witness is
+    the exhibited payload itself, DERIVED from an admitted instance rather than written
+    down, so a derivation that merely aims at ``if`` and builds something else reddens.
+
+    The keyword is ``if`` and not the arm's own ``required``, because that is the name §2's
+    declaration carries: ``core/agent-notification-config.json``'s own root conditional is
+    declared ``Approximation(..., keyword='if', ...)``, and a comparison against the
+    declared set made on a different name would excuse nothing a module can declare.
+    """
+    witnesses = refused_witnesses(WVOD_SHAPE, WVOD_ADMITTED)
+    assert any(keyword == "if" for _, keyword, _ in witnesses), witnesses
+    assert WVOD_REFUSED in [candidate for candidate, _, _ in witnesses], witnesses
+    # And it came from the conjunct's arm, named in the reason a reader of a failure gets.
+    how = next(how for candidate, _, how in witnesses if candidate == WVOD_REFUSED)
+    assert "credentials" in how and "authentication" in how, how
+
+
+def test_the_conditional_arm_fails_a_model_that_drops_the_conditional() -> None:
+    """**THE ARM'S OWN REFUTATION, which ``adcp-client-python-x63t`` requires.**
+
+    "A conditional arm must be added with its own refutation -- wvod's own payload is the
+    counterexample, so the arm is proved red by construction before it is trusted."  A
+    class that carries the document's conditional refuses ``WVOD_REFUSED``; one that drops
+    it -- which is exactly what the three measured classes do -- admits it, and with
+    nothing declared that is ``widened_undeclared``.
+
+    Both directions, because a check that failed every class would fail a dropped
+    conditional too and say nothing about the arm.  And the DECLARED direction as well: §2
+    permits the looseness as a declared widening, so a declaration naming ``if`` passes the
+    same class and the arm is a comparison rather than an allowlist.
+    """
+
+    class DropsTheConditional(BaseModel):
+        """The shape the three measured classes have: the properties, and no conditional."""
+
+        model_config = {"extra": "allow"}
+
+        subscriber_id: str
+        event_types: list[str]
+        authentication: dict[str, Any] | None = None
+
+    result = check_refuses(WVOD_SHAPE, DropsTheConditional.model_validate, WVOD_ADMITTED)
+    assert result.outcome == "widened_undeclared", result
+    assert any(row[1] == "if" for row in result.undeclared), result.undeclared
+    assert any(json.loads(row[0]) == WVOD_REFUSED for row in result.undeclared), result.undeclared
+
+    #: The same class and the same document, with the widening DECLARED under the keyword
+    #: §2 names.  A pass here is what makes the check a comparison; a failure would mean a
+    #: module cannot declare this widening at all.
+    declared = check_refuses(
+        WVOD_SHAPE, DropsTheConditional.model_validate, WVOD_ADMITTED, declared=("if",)
+    )
+    assert declared.outcome == "pass", declared
+
+    #: And a class that CARRIES the conditional refuses the witness, so the verdict is a
+    #: function of the class.  A validator over the document itself is that class: §5
+    #: lowers a conditional the annotation cannot carry to a rule on the nearest class, and
+    #: what the rule has to do is refuse this value.
+    def carries(value: Any) -> Any:
+        if harness.conforms(WVOD_SHAPE, value) is not True:
+            raise ValueError("the conditional refuses this value")
+        return value
+
+    assert check_refuses(WVOD_SHAPE, carries, WVOD_ADMITTED).outcome == "model_error"
+
+
+def test_a_conditional_no_value_was_offered_for_is_not_a_pass() -> None:
+    """**The reach, which is not the population, measured rather than described.**
+
+    A conditional's boundary lies inside the region its ``if`` selects and the reduction
+    has ONE accepted instance, so where that instance is outside the region and the node
+    states no ``else`` there is no arm in force and the class is never asked.  Measured on
+    ``adcp-client-python-wvod``'s own third site --
+    ``account/sync-accounts-request.json#/properties/accounts/items/properties/notification_configs/items``
+    -- whose draw is ``{event_types, subscriber_id, url}``: it satisfies neither of that
+    node's two ``if``s, so the row that proved the other two reports nothing there.
+
+    A ``pass`` would say the class refuses what its document refuses, about the one fact
+    the row is about and a value for which was never built.  So the result carries the
+    unreached conditionals with the reason each, and the verdict reads ``absent`` with the
+    count against the node's own total.
+    """
+    #: The admitted instance carries no ``authentication``, so the second conjunct's ``if``
+    #: is not satisfied and that conjunct states no ``else``.
+    outside = {"subscriber_id": "s", "event_types": ["capabilities.changed"]}
+    assert harness.conforms(WVOD_SHAPE, outside) is True
+    unreached = harness.unreached_conditionals(WVOD_SHAPE, outside)
+    assert len(unreached) == 1, unreached
+    assert "authentication" in unreached[0] and "else" in unreached[0], unreached
+
+    #: A class that refuses every witness this instance DOES yield -- the two required
+    #: keys, the ``minLength`` conjunct 0's own ``then`` states, and each alien JSON type.
+    #: So the result is a ``pass`` on everything offered, which is precisely the case the
+    #: verdict must not report as green: the one conditional nobody built a value for is
+    #: the fact ``adcp-client-python-wvod`` is about.
+    class CarriesWhatWasOffered(BaseModel):
+        model_config = {"extra": "allow"}
+
+        subscriber_id: Annotated[str, StringConstraints(min_length=1)]
+        event_types: list[str]
+
+    result = check_refuses(WVOD_SHAPE, CarriesWhatWasOffered.model_validate, outside)
+    assert result.outcome == "pass", result
+    assert result.unreached == unreached, result
+    #: The DENOMINATOR, as an equality between two derivations and never a pinned integer:
+    #: the result's count is the node's own triples, so a document that grows a conditional
+    #: moves both sides and neither has to be told.
+    sites = len(harness.conditionals(WVOD_SHAPE))
+    assert result.conditional_sites == sites, result
+    #: The cell, which is where a reader meets this: ``absent`` with the count, never
+    #: ``pass`` -- and the state is read off the table's own function so a rename cannot
+    #: leave this asserting a token nothing writes.
+    verdict = harness._undeclared_verdict(result)
+    assert verdict.state == harness.ABSENT, verdict
+    assert verdict.cause == f"{len(unreached)}_of_{sites}_conditionals_unreached", verdict
+    #: And the instance that IS inside the region reaches it, so the ``absent`` above is a
+    #: statement about the draw and not about the node.
+    assert harness.unreached_conditionals(WVOD_SHAPE, WVOD_ADMITTED) == (), WVOD_ADMITTED
+
+
+# --------------------------------------------------------------------------- #
 # the artifact: the pairs whose composed root states a property count
 # --------------------------------------------------------------------------- #
 @cache
