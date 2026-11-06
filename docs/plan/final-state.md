@@ -350,6 +350,25 @@ upstream title. Publishing an alias onto it makes a placeholder permanent and pu
 one thing §4's placeholder rule forbids: a name minted for want of a subject must not become a name
 an application depends on.
 
+**UNLESS THE ALIAS IS UPSTREAM'S OWN PUBLISHED WORD, DECLARED DEPRECATED AND PENDING.** The
+sentence above guards against *creating* a permanent public commitment to a placeholder. Where
+upstream's wheel already ships that spelling, the commitment exists and is theirs; an alias
+**records** it rather than minting it, and refusing one withholds a name a caller has already
+written while changing nothing about what the bundle titles. So the alias is admissible **and the
+migration entry must say the word is PROVISIONAL** — naming the untitled node by pointer and the
+upstream ask that would title it. **A deprecated alias is the one kind of public name an
+application can be told to stop depending on**, which is exactly what a placeholder needs and what
+a surface name cannot offer.
+
+**AND THIS IS NOT A LICENCE TO MINT: THE EXPORT COMES FIRST, AND READING 6 OWES IT.** An inner node
+we declare privately is invisible to any join over public names, and the row then reads *absent*
+although we state the subject and the value lists agree. The repair is the one §4 already names —
+**an EXPORT or a NAME, never a split.** A property key is NOT a type name: the bundle calling a
+field `method` does not title the enum behind it, and `Method` alone cannot be the export because a
+domain carries many. So the export's word is minted from the parent class and the key together,
+and **the fact that upstream's derivation lands on the same word is evidence the derivation is the
+natural one, not a concession to their spelling.**
+
 **AND WHERE UPSTREAM'S NAME MEANS A DIFFERENT SET OF VALUES, AN ALIAS IS A DEFECT AND NOT A
 BRIDGE.** Their `TaskStatus` is a transport's five states; the schema's is its own list. An alias
 there hands a caller something that silently is not what it asked for, which is worse than an
@@ -393,6 +412,31 @@ the exact defect this reading refused, arriving with our name on it instead of t
 Where an instrument excludes aliased names from the guide on the ground that they are the alias
 layer's business, that exclusion now holds only for names whose identity AGREES — those carry
 nothing to disclose. A shared-subject alias is in both places because the pair is the unit.
+
+**AND THE READING IS STATED AT ATTRIBUTE GRANULARITY WHEREVER THE DOCUMENT DECIDES NO IDENTIFIER.**
+An enum member is a spelling an application writes, and the table cannot reach it because the table
+ranges over names. `core/error.json` states the value list `transient|correctable|terminal` and says
+**nothing** about the attribute a caller types — so `TRANSIENT` is OUR convention and the value
+verbatim is theirs, and **neither is the document's.** Refusing the alias there defends the schema
+from nothing: both enums admit exactly the same set, so it is not a wire difference and not a
+reading 1 failure. **The emitted enum carries the value-verbatim spelling as an alias member**, and
+one member spelling blocked more of upstream's behavioural tests than any class name.
+
+**AN ENUM ALIAS IS A NAME AND NEVER A SECOND MEMBER.** `Recovery.transient` **is**
+`Recovery.TRANSIENT`: `__members__` unchanged, no value set widened, no approximated fact arising.
+That is the same sentence as the one below it, read one level down.
+
+**AND IT IS EMITTED IN THE CLASS BODY, NEVER INSTALLED AT RUNTIME.** Reading 8 says the wheel is
+the artifact, and an alias that exists because an import had a side effect is not in the artifact —
+it is a property of having run. One line per member, no import and no walk. **The runtime form
+already proved itself wrong rather than merely inelegant:** installing the members eagerly bound
+the private tree before the suite's own fixtures and brought down the collector, which is what a
+layer that must run before being true looks like when it is late.
+
+**THE ALIAS IS REFUSED WHERE THE SPELLING CANNOT BE ONE**: where the value is not a valid Python
+identifier, where two values would re-case onto one attribute, and where the alias would collide
+with a canonical member. Those are reported with their counts, not silently skipped — a member
+upstream spells and we cannot is a migration-guide entry, by the pair rule above.
 
 **An alias is a NAME and never a second type.** Reading 6 still holds with the aliases counted:
 export paths equal distinct declarations, and `isinstance` holds across every spelling. An alias
