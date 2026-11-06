@@ -61,6 +61,18 @@ TABLE = ROOT / "survey" / "alias-surface-9.6.1.tsv"
 MODULE = "adcp.types.compat"
 
 
+def _alias_names() -> set[str]:
+    """Every upstream spelling the flat namespace carries, read off the alias module.
+
+    Both of its statements: ``__all__`` is what that module declares and
+    ``__adcp_flat_only__`` names the ``PRESENT`` rows it declines to bind.  Read from the
+    module rather than from the table, because the question here is what the RUNTIME would
+    expose.
+    """
+    compat = importlib.import_module(MODULE)
+    return {*compat.__all__, *compat.__adcp_flat_only__}
+
+
 def tabled() -> list[dict[str, str]]:
     """Every row of the table, with its comment header dropped."""
     lines = [line for line in TABLE.read_text().splitlines(True) if not line.startswith("#")]
@@ -155,6 +167,85 @@ def test_every_alias_is_the_object_its_canonical_path_reaches(
     assert not not_an_instance, {"isinstance does not hold across the spellings": not_an_instance}
 
 
+def test_every_owed_spelling_resolves_at_the_flat_namespace(
+    rows: list[dict[str, str]],
+) -> None:
+    """**Reading 10's third layer, which is the import an application has already written.**
+
+    ``final-state.md`` reading 10 names ``adcp.types`` flat "the compatibility surface: an
+    alias for every name an application actually imports today", and its amendment of
+    2026-11-06 settles the one bucket that made the two halves disagree: "**'already
+    resolves' is measured at the SPELLING A CONSUMER WRITES, never at the module that
+    declares it** ... a name counted present because its domain path matches owes a flat
+    alias exactly as a relocated one does -- the buckets differ in where the alias points,
+    never in whether one is owed."
+
+    **SO THE POPULATION IS ALL THREE OWED BUCKETS AND NOT THE TWO THE ALIAS MODULE
+    DECLARES.**  ``PRESENT`` writes no statement at ``adcp.types.compat`` -- a second path
+    there to a name that already resolves at the one the surface gives it is the
+    duplication this layer exists not to reintroduce -- so those 79 are reached through
+    ``compat.__adcp_flat_only__``, which names the module each one is carried at.
+
+    A real import statement per name, and ``is`` against the module the table DECLARES for
+    it: a flat surface built by copying would resolve every name here and hand a consumer
+    an object whose ``isinstance`` is false against every instance the runtime builds.
+    Reading 8 asks the same question of the installed wheel
+    (``tests/test_the_wheel_is_the_artifact.py``), because an alias that resolves only from
+    the source tree is not shipped.
+    """
+    population = owed(rows)
+    claimed("the flat spellings this layer owes", {r["name"] for r in population})
+    failed: dict[str, str] = {}
+    not_the_same: dict[str, str] = {}
+    for row in population:
+        namespace: dict[str, object] = {}
+        try:
+            exec(f"from adcp.types import {row['name']}", namespace)  # noqa: S102
+        except BaseException as error:  # noqa: BLE001 -- the payload is the report
+            failed[row["name"]] = f"{type(error).__name__}: {error}"
+            continue
+        declared = getattr(importlib.import_module(row["declared_at"]), row["name"])
+        if namespace[row["name"]] is not declared:
+            not_the_same[row["name"]] = f"adcp.types.{row['name']} is not {row['declared_at']}.{row['name']}"
+    assert not failed, {
+        "upstream spellings that do not resolve at the flat namespace": failed,
+        "owed": len(population),
+        "unresolved": len(failed),
+    }
+    assert not not_the_same, {"a second object wearing the flat spelling": not_the_same}
+
+
+def test_a_present_name_gains_the_flat_path_and_no_path_at_the_alias_module(
+    rows: list[dict[str, str]],
+) -> None:
+    """The amendment's other half: the ONE namespace an application imports from.
+
+    ``final-state.md`` reading 10, amended: "**THIS IS NOT THE SPELLING RULE'S OPPOSITE, IT
+    IS ITS BOUNDARY.**  Refusing to reproduce upstream's spellings means refusing to put one
+    object at every module upstream happens to expose it from.  It does not mean refusing the
+    **one** namespace an application imports from."
+
+    So a ``PRESENT`` name ends with exactly two public paths -- the domain one reading 6
+    gives it, and the flat one a consumer writes -- and NOT a third at
+    ``adcp.types.compat``.  Graded as behaviour: the import resolves at the first two and
+    raises at the third.
+    """
+    present = [r for r in rows if r["bucket"] == "PRESENT"]
+    claimed("the PRESENT rows, which owe the flat spelling alone", {r["name"] for r in present})
+    wrong: dict[str, str] = {}
+    for row in present:
+        at_compat: dict[str, object] = {}
+        try:
+            exec(f"from {MODULE} import {row['name']}", at_compat)  # noqa: S102
+        except ImportError:
+            continue
+        wrong[row["name"]] = (
+            f"{MODULE}.{row['name']} resolves, which is a second path to a name already at "
+            f"{row['declared_at']}"
+        )
+    assert not wrong, {"PRESENT names that gained a path at the alias module": wrong}
+
+
 def test_the_alias_layer_adds_no_declaration(rows: list[dict[str, str]]) -> None:
     """Reading 6 WITH the aliases counted: they add names and not declarations.
 
@@ -190,7 +281,10 @@ def test_the_alias_layer_adds_no_declaration(rows: list[dict[str, str]]) -> None
     claimed("the export paths of the domain surface", behind)
     declarations = {key for key in behind.values() if key is not None}
 
-    population = [r for r in owed(rows) if r["bucket"] in ("RELOCATED", "RENAMED")]
+    # **ALL THREE OWED BUCKETS, since reading 10's amendment of 2026-11-06**: a `PRESENT`
+    # row is a flat alias too, so it is counted here exactly as a relocated one is, and its
+    # target being on the surface is the same question.
+    population = owed(rows)
     # **EVERY ALIAS IS A PATH TO A DECLARATION THE SURFACE ALREADY COUNTED**, which is
     # asked by resolving the alias's TARGET on the surface rather than by keying the alias
     # on its own module -- "keying such a path on its OWN module would count a second path
@@ -304,6 +398,27 @@ def test_the_surveys_do_not_read_their_own_output(tmp_path) -> None:
     answer, detail = migration_notes.restatement("a_module_that_raises")
     assert answer == "unimportable", (answer, detail)
     assert "ImportError" in detail and "Gone" in detail, detail
+    # **AND THE FLAT NAMESPACE IS THE THIRD WAY THE SURVEYS COULD READ THEIR OWN OUTPUT,
+    # WHICH IS WHY `adcp.types.__getattr__` IS LAZY AND NOT A `from compat import *`.**
+    # `migration_notes.dump_ours` walks `adcp.types` INCLUDING the package itself and reads
+    # `vars(mod)`; a star-import would have put 1,038 upstream spellings into that `vars()`
+    # and every one would have read as "already a name of ours, at `adcp.types`", which is
+    # the same fixed-point failure the marker above exists for, arriving through the
+    # package instead of through a module.  `vars()` does not call `__getattr__`, so the
+    # lazy form is invisible to it -- and that is a property worth a check rather than a
+    # comment, because it is what makes the derivation re-runnable.
+    import adcp.types
+
+    assert "adcp.types" in migration_notes.walk("adcp.types"), (
+        "the dumper no longer walks the package itself, so this clause grades nothing -- "
+        "re-point it at whatever enumerates the modules the dump reads"
+    )
+    leaked = sorted(set(vars(adcp.types)) & set(_alias_names()))
+    assert leaked == [], (
+        "the flat namespace has bound upstream spellings into its own `vars()`, so "
+        "`survey/migration_notes.py` will read them as our surface and the next run of "
+        f"`survey/alias_surface.py` will bind every alias to itself: {leaked[:10]}"
+    )
 
 
 def test_the_generator_refuses_to_write_a_table_that_points_at_nothing() -> None:
@@ -335,12 +450,20 @@ def test_the_generator_refuses_to_write_a_table_that_points_at_nothing() -> None
         "Account": {"bucket": "RELOCATED", "target": "adcp.types.core.Account"},
         "GoneAway": {"bucket": "RELOCATED", "target": "adcp.types.enums.GoneAway"},
         "WrongModule": {"bucket": "RENAMED", "target": "adcp.types.no_such_domain.Thing"},
+        # **A `PRESENT` ROW IS PROVED TOO, SINCE READING 10's AMENDMENT**: it writes no
+        # statement at the alias module, but `__adcp_flat_only__` names the module the flat
+        # spelling is reached at, so a target the surface stops carrying breaks
+        # `from adcp.types import <Name>` -- the DaastTarget defect one layer out.  The
+        # resolving one is asserted absent from the report beside it.
+        "StillThere": {"bucket": "PRESENT", "target": "adcp.types.media_buy.GetMediaBuysRequest"},
+        "WentAway": {"bucket": "PRESENT", "target": "adcp.types.media_buy.NoSuchRequest"},
         "NotOwed": {"bucket": "ABSENT", "why": "not a target at all"},
     }
     dangling = alias_surface.prove_the_targets(decided)
-    assert set(dangling) == {"GoneAway", "WrongModule"}, dangling
+    assert set(dangling) == {"GoneAway", "WrongModule", "WentAway"}, dangling
     assert "is not a name adcp.types.enums carries" in dangling["GoneAway"], dangling
     assert "ModuleNotFoundError" in dangling["WrongModule"], dangling
+    assert "is not a name adcp.types.media_buy carries" in dangling["WentAway"], dangling
 
 
 def test_what_this_file_does_not_grade(rows: list[dict[str, str]]) -> None:
