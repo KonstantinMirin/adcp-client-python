@@ -79,6 +79,7 @@ import ctypes.util
 import functools
 import hashlib
 import importlib
+import itertools
 import json
 import pkgutil
 import re
@@ -2945,6 +2946,398 @@ def refused_witnesses(
         seen.add(text)
         unique.append((candidate, keyword, how))
     return tuple(unique)
+
+
+#: How long a witness :func:`admitted_witnesses` grows a string leaf to.
+#:
+#: **THE INSTRUMENT'S OWN BUDGET AND NEVER A TYPE'S BOUND, which is the whole of why this
+#: is one number rather than a table.**  A position whose document states no ``maxLength``
+#: admits a string of ANY length, so no finite witness is the boundary -- there is no
+#: boundary to take, which is exactly what makes the position invisible to
+#: :func:`refused_witnesses`' derivation (it takes the far side of a bound, and here there
+#: is none).  What a witness can say is "the document admits a string this long and the
+#: class does not", and how long is then the instrument's choice.
+#:
+#: **A per-``format`` table of witnesses was the alternative and it is refused.**  Pydantic
+#: caps its URL types at 2083 characters; a witness written as "2084 characters" would be
+#: the SDK's own reading of pydantic's internals committed to a file, and would say nothing
+#: the day pydantic moved the cap or a second narrow type arrived with a different one.
+#: 2083 appears nowhere here.  One power of two above it, chosen so a single witness per
+#: leaf answers for any cap below it, is a budget: it is read once, it is reported with the
+#: result, and it is wrong in the safe direction -- too SHORT a budget loses a finding and
+#: cannot manufacture one, because every candidate is screened by the document.
+WITNESS_LENGTH = 4096
+
+#: How many string leaves of one instance :func:`admitted_witnesses` reaches.
+#:
+#: A BUDGET, and :attr:`AdmitsResult.capped` reports it as one so a ``pass`` over a capped
+#: instance is not read as a pass over the whole of it.  Measured over the graded
+#: population: 18 of 2,582 instances carry more leaves than this.
+WITNESS_LEAVES = 60
+
+
+def _string_leaves(value: Any, path: tuple[Any, ...] = ()) -> Iterator[tuple[tuple[Any, ...], str]]:
+    """Every STRING leaf of an instance, with its instance location.
+
+    The location is a path of keys and indices into the instance and never a JSON pointer:
+    what the caller does with it is :func:`_placed`, which rebuilds the instance with one
+    leaf replaced, and a pointer would have to be parsed back into exactly this.
+    """
+    if isinstance(value, str):
+        yield path, value
+    elif isinstance(value, dict):
+        for key, inner in value.items():
+            yield from _string_leaves(inner, (*path, key))
+    elif isinstance(value, list):
+        for index, inner in enumerate(value):
+            yield from _string_leaves(inner, (*path, index))
+
+
+def _at_leaf(value: Any, path: Sequence[Any], new: Any) -> Any:
+    """``value`` with ``new`` at ``path``, COPIED and never mutated in place.
+
+    Mutation would hand the next candidate an instance the previous one had already
+    changed, so one refused witness would pollute every witness after it and a failure
+    would name a value no derivation produced.
+    """
+    if not path:
+        return new
+    head, rest = path[0], path[1:]
+    if isinstance(value, dict):
+        return {**value, head: _at_leaf(value[head], rest, new)}
+    copy = list(value)
+    copy[head] = _at_leaf(copy[head], rest, new)
+    return copy
+
+
+def stated_patterns(node: Any, depth: int = 0) -> tuple[str, ...]:
+    """Every ``pattern`` this node states anywhere under it, deduplicated, document order.
+
+    **The input half of :func:`admitted_witnesses`' third derivation, and it is a WALK
+    rather than a frontier read** (:func:`locations`) because what it needs is not where
+    the pattern sits but which patterns exist to draw from: a candidate drawn from a
+    pattern is offered at a leaf the pattern already matches and screened by the whole
+    document, so a pattern read from the wrong depth yields nothing rather than a claim.
+
+    Bounded for :data:`_OWN_DEPTH`'s reason -- a graded node reaches 683,849 bytes and a
+    walk with no base case is a crash rather than an outcome.
+    """
+    out: list[str] = []
+
+    def walk(inner: Any, at: int) -> None:
+        if at > _OWN_DEPTH:
+            return
+        if isinstance(inner, dict):
+            pattern = inner.get("pattern")
+            if isinstance(pattern, str) and pattern not in out:
+                out.append(pattern)
+            for value in inner.values():
+                walk(value, at + 1)
+        elif isinstance(inner, list):
+            for value in inner:
+                walk(value, at + 1)
+
+    walk(node, depth)
+    return tuple(out)
+
+
+@functools.lru_cache(maxsize=4096)
+def matching_a_pattern(pattern: str, examples: int = 2) -> tuple[str, ...]:
+    """Strings the pattern matches, DRAWN from the pattern rather than written.
+
+    **The one derivation in this module whose source is a KEYWORD and not an instance**,
+    and ``adcp-client-python-rwng`` is why it has to exist: an instance-derived witness is
+    a perturbation of a value the generator already produced, so where that value is
+    already inside the narrow type and stays inside it under perturbation, no instance
+    witness reaches the narrowing.  Measured at ``core/https-url.json#``, whose document is
+    ``{"type": "string", "format": "uri", "pattern": "^https://"}``: the held value is
+    ``'https://A.COM'``, the trailing-newline witness is ``'https://A.COM\\n'``, and
+    pydantic NORMALISES and admits it.  Drawn from the pattern instead, the value is
+    ``'https://'`` -- a string the pattern matches, the document admits and the alias
+    refuses with ``url_parsing``, "empty host".  So the two derivations are complements:
+    the family sized by instance witnesses alone was a LOWER bound.
+
+    Cached on the pattern, because the graded population states each pattern at many
+    positions and a draw per position would pay ``from_regex`` thousands of times for an
+    answer that is a function of the pattern alone.
+
+    A pattern ``from_regex`` cannot build contributes NO witness and raises nothing: the
+    screen is what makes a candidate a claim, so a derivation that produces nothing costs
+    a verdict nobody is entitled to rather than an error.
+    """
+    out: list[str] = []
+
+    @settings(
+        max_examples=examples,
+        phases=[Phase.generate],
+        **_SETTINGS,
+    )
+    @given(st.from_regex(pattern))
+    def draw(value: str) -> None:
+        out.append(value)
+
+    try:
+        draw()
+    except Exception:  # noqa: BLE001 -- a pattern nothing can draw states no witness
+        return ()
+    return tuple(dict.fromkeys(out))
+
+
+def admitted_witnesses(
+    schema: dict,
+    instance: Any,
+    *,
+    validator_cls: Any = None,
+    length: int = WITNESS_LENGTH,
+    leaves: int = WITNESS_LEAVES,
+) -> Iterator[tuple[Any, str, str]]:
+    """Every value this document ADMITS that the DRAW will not produce, from one it admits.
+
+    **:func:`refused_witnesses` in the other direction, and it exists because reading 1's
+    first check cannot fail at a formatted position without it**
+    (``adcp-client-python-87ll``).  ``docs/plan/final-state.md`` reading 1 check 1 is "draw
+    a value from the document; the class must admit it", and :func:`_validating`'s own
+    docstring already says why the draw cannot decide it: *"hypothesis_jsonschema HONOURS a
+    format it knows when generating -- it produced an offset in 200 of 200 date-time
+    instances -- so every drawn instance landed inside the narrow type and the draw was
+    green on a model that refused every other shape the format admits."*  A class carrying
+    a pydantic type substituted for a document's ``format`` is NARROWER than its document,
+    and at 404 pairs of 2,587 the check passed without ever offering the document's own
+    wider value.  A check that cannot fail at 404 positions reports the generator and not
+    the class.
+
+    **NOTHING HERE IS LISTED PER ``format``, and that is the one rule this derivation has
+    to keep.**  A table of hand-written witnesses -- "for date-time, try a trailing
+    newline; for uri, try 2084 characters" -- would be a frozen census of pydantic's
+    internals in a file, stale the first time either side moved, and this epic has repaired
+    four of those in two days.  So: the LEAF comes from an instance the document has
+    already admitted, the perturbation is one universal string operation, the length is
+    :data:`WITNESS_LENGTH` (the instrument's budget), the pattern is the document's own
+    keyword, and **the claim that the document admits the result is the DOCUMENT's**.
+
+    Three derivations, each at every string leaf of ``instance``:
+
+    * **a trailing newline** -- ``leaf.rstrip("\\n") + "\\n"``.  One character, the same
+      universal perturbation :func:`_far_side` makes with ``"x"``.  It reaches the 164
+      ``date-time`` pairs, where ``rfc3339-validator``'s regex is ``$``-anchored and
+      Python's ``$`` matches before a trailing newline -- the same defect
+      ``test_a_root_scalar_alias_is_compiled_with_the_same_engine_as_a_class`` exists for,
+      which the project fixed in the CLASS (``regex_engine="python-re"``) rather than
+      calling the document's own admission an instrument defect.
+    * **an unbounded length** -- the leaf grown with its OWN last character to
+      :data:`WITNESS_LENGTH`.  The filler is the instance's and not a letter chosen here,
+      and a leaf whose format refuses the repetition is screened out and contributes
+      nothing.  It reaches the 188 ``url_too_long`` pairs.
+    * **a value drawn from a ``pattern`` the document states** (:func:`matching_a_pattern`),
+      offered at a leaf that pattern already matches.  ``adcp-client-python-rwng``'s route,
+      and it reaches 87 pairs no instance-derived witness does.
+
+    **THE SCREEN IS THE WHOLE OF IT** -- :func:`conforms` against ``schema`` has to answer
+    ``True`` before a candidate is yielded, which is :func:`refused_witnesses`' rule with
+    the sign flipped and buys the same thing: the derivations may be simple and wrong in
+    the safe direction, because a candidate the document does not admit says nothing about
+    the class and is never offered to it.  So this cannot manufacture a failure; it can
+    only miss one.
+
+    Yields ``(the candidate, the kind of witness, how it was derived)``.
+    """
+    cls = validator_cls or validator_for(schema)
+    patterns = stated_patterns(schema)
+    for path, old in itertools.islice(_string_leaves(instance), leaves):
+        if not old:
+            continue
+        candidates: list[tuple[Any, str, str]] = []
+        newline = old.rstrip("\n") + "\n"
+        if newline != old:
+            candidates.append(
+                (newline, "trailing_newline", "the leaf's own value with a trailing newline")
+            )
+        if len(old) < length:
+            candidates.append(
+                (
+                    old + old[-1] * (length - len(old)),
+                    "unbounded_length",
+                    f"the leaf's own value grown to {length} characters on {old[-1]!r}",
+                )
+            )
+        for pattern in patterns:
+            try:
+                governs = re.search(pattern, old) is not None
+            except re.error:  # a pattern Python cannot compile governs nothing here
+                continue
+            if not governs:
+                continue
+            for drawn in matching_a_pattern(pattern):
+                for value, how in (
+                    (drawn, f"drawn from the pattern {pattern!r}"),
+                    (
+                        drawn.rstrip("\n") + "\n",
+                        f"drawn from the pattern {pattern!r}, with a trailing newline",
+                    ),
+                ):
+                    if value != old:
+                        candidates.append((value, "pattern_derived", how))
+        for value, kind, how in candidates:
+            whole = _at_leaf(instance, path, value)
+            if conforms(schema, whole, validator_cls=cls) is not True:
+                continue
+            yield whole, kind, f"{how} at {_location(path)}"
+
+
+def _location(path: Sequence[Any]) -> str:
+    """One instance location, spelled as a path and named ``the instance itself`` at the root."""
+    return "/".join(str(step) for step in path) or "the instance itself"
+
+
+def _refusal_cause(e: BaseException) -> str:
+    """What the class refused ON, read off pydantic's own error ``type``.
+
+    :func:`violated_keywords`' rule applied to the class's side of a disagreement: the
+    name a reader categorises by has to be the one the engine NAMES, because a category
+    read out of prose moves the next time the prose does -- and these messages are
+    pydantic's, which the project does not own.  ``check_accepts`` reads the same field for
+    ``model_refused_valid``.
+
+    The exception's CLASS NAME where there is no such field, which is the honest answer for
+    a class that raised something a consumer cannot catch as a validation error.
+    """
+    errors = getattr(e, "errors", None)
+    if not callable(errors):
+        return type(e).__name__
+    found = errors()
+    if not found or not isinstance(found[0], Mapping) or "type" not in found[0]:
+        return type(e).__name__
+    return f"{found[0]['type']} at {found[0].get('loc', ())}"
+
+
+@dataclass
+class AdmitsResult:
+    """What the class did with the values its DOCUMENT admits and the DRAW cannot produce.
+
+    Reading 1's first check over :func:`admitted_witnesses`, reported as its own result
+    rather than merged into :class:`AcceptsResult`, for the reason :data:`CHECKS` gives for
+    appending a column: ``accepts`` has always meant "the instance this run drew", its
+    census is read across runs, and folding a second witness class into it would renumber
+    that census while saying nothing new about the instances it ranges over.
+    """
+
+    #: ``(the witness as JSON, its kind, how it was derived, the class's own CAUSE, the
+    #: class's message)``, one row per witness the class REFUSED.  Capped by ``keep``;
+    #: :attr:`refused` is the count.
+    #:
+    #: **The CAUSE is its own field and is pydantic's own error ``type``**, which is what
+    #: makes the table self-categorising: a reader asking "how many of these are the URL
+    #: length cap and how many the datetime parser" greps ``url_too_long`` in the note
+    #: instead of re-deriving the whole census, and the note field is truncated to 400
+    #: characters so a cause read out of the MESSAGE is a cause that disappears behind a
+    #: 4,096-character witness.  Measured: on the first table written with this column, 345
+    #: of 444 rows had their error type cut off.
+    rows: tuple[tuple[str, str, str, str, str], ...] = ()
+    #: Every distinct cause this pair's refusals carry, sorted -- the pair's own category,
+    #: read off pydantic and never off a sentence.
+    causes: tuple[str, ...] = ()
+    #: How many witnesses the class refused, which is ``len(rows)`` until the cap bites.
+    refused: int = 0
+    #: How many witnesses the DOCUMENT admitted and the class was therefore asked about.
+    #: Zero with ``no_witness``: every candidate the derivation made, the document refused.
+    offered: int = 0
+    #: Whether the instance carried more string leaves than :data:`WITNESS_LEAVES`, so a
+    #: ``pass`` here is a pass over the leaves reached and not over the whole instance.
+    capped: bool = False
+    #: pass | model_refused_admitted | no_witness | unrun
+    outcome: str = "unrun"
+    detail: str = ""
+
+
+def check_admits(
+    schema: dict,
+    accept: Callable[[Any], Any],
+    instance: Any,
+    *,
+    validator_cls: Any = None,
+    keep: int = 3,
+    length: int = WITNESS_LENGTH,
+    leaves: int = WITNESS_LEAVES,
+) -> AdmitsResult:
+    """Reading 1 check 1, over a witness the DOCUMENT states and the DRAW cannot reach.
+
+    ``docs/plan/final-state.md`` reading 1: "every class accepts every value its document
+    admits".  :func:`check_accepts` puts that to the instances a run DREW, and
+    :func:`admitted_witnesses` says why that is not the reading at a formatted position --
+    the generator honours the format, so every drawn instance lands inside the narrow type
+    and the check passes without the document's own wider value ever being offered.
+
+    **``accept`` and not the constructor, which is the opposite of
+    :func:`check_refuses`' rule and for the same reason.**  That check must bypass the
+    schema half, because a value the DOCUMENT refuses offered to ``strict_validate``
+    measures ``jsonschema``.  Here the value is one the document ADMITS -- screened, by the
+    document, before it is offered -- so the schema half answers "yes" and the constructor
+    runs; this is the entry point reading 1 check 1 names, and asking the constructor
+    directly would grade a path no consumer takes.
+
+    **THE DUMP IS NOT RUN HERE, and that is a boundary rather than an omission.**  Reading
+    1's second check is the round trip, and :func:`check_accepts`'s ``body`` already puts
+    every graded instance through it.  A witness carried through the dump as well would
+    report ``model_dropped_a_fact`` for a value whose own acceptance is the finding, so one
+    cause would arrive wearing two names and the re-grade could not be attributed.  The
+    dump over these witnesses is its own reading and is filed as one.
+
+    **EARLY, at ``keep`` refusals, because the verdict needs one.**  A pair narrower than
+    its document is narrower at every leaf carrying the same format -- 27 witnesses in one
+    document, measured -- and the verdict, the cause and the value are all carried by the
+    first few.  The cap is on the ROWS and not on the derivation, so ``offered`` still
+    counts every witness the document admitted up to that point.
+
+    ``no_witness`` where the document admitted none of the candidates, which is a fact
+    about the DOCUMENT (no string leaf, or every perturbation of every leaf refused) and
+    reads ``absent`` in the table rather than ``pass``.  ``unrun`` where the accepts check
+    produced no instance to perturb, which is a fact about the DRAW.
+    """
+    res = AdmitsResult()
+    cls = validator_cls or validator_for(schema)
+    res.capped = sum(1 for _ in itertools.islice(_string_leaves(instance), leaves + 1)) > leaves
+    rows: list[tuple[str, str, str, str, str]] = []
+    causes: list[str] = []
+    for witness, kind, how in admitted_witnesses(
+        schema, instance, validator_cls=cls, length=length, leaves=leaves
+    ):
+        res.offered += 1
+        try:
+            accept(witness)
+        except Exception as e:  # noqa: BLE001 -- any refusal is the finding
+            res.refused += 1
+            #: **The CAUSE is pydantic's own error ``type`` and never a substring of the
+            #: message**, which is :func:`violated_keywords`' rule in the other direction:
+            #: the keyword a reader categorises by is the one the engine NAMES, and a
+            #: category read out of prose moves when the prose does.  ``check_accepts``
+            #: reads the same field for ``model_refused_valid``.  A non-``ValidationError``
+            #: carries its class name, which is the honest answer for a class that raised
+            #: something a consumer cannot catch.
+            cause = _refusal_cause(e)
+            if cause not in causes:
+                causes.append(cause)
+            if len(rows) < keep:
+                rows.append((_dump(witness), kind, how, cause, f"{e}"[:200]))
+            if len(rows) >= keep:
+                break
+    res.rows = tuple(rows)
+    res.causes = tuple(sorted(causes))
+    if not res.offered:
+        res.outcome = "no_witness"
+        res.detail = (
+            "the document admits none of the candidates this derivation makes from the "
+            "accepted instance, so the class was never asked"
+        )
+        return res
+    if res.refused:
+        res.outcome = "model_refused_admitted"
+        res.detail = (
+            f"the class is NARROWER than its document: it refused {res.refused} of "
+            f"{res.offered} values the document admits, on {', '.join(res.causes)}"
+        )
+        return res
+    res.outcome = "pass"
+    return res
 
 
 def _constructor(model: Any) -> Callable[[Any], Any]:
@@ -6300,6 +6693,17 @@ class PairReport:
     #: then tell "the check was never put to this pair" -- no accepted instance to reduce
     #: -- from "the check ran and the class refused everything the document refuses".
     undeclared: RefusesResult | None = None
+    #: **Reading 1's FIRST CHECK over a witness the draw cannot make**
+    #: (:func:`check_admits`, ``adcp-client-python-87ll``).  A separate field from
+    #: :attr:`accepts` because the two grade the same check over two witness classes and
+    #: one of them was empty: the generator honours a ``format``, so every drawn instance
+    #: landed inside the pydantic type substituted for that format and the check could not
+    #: fail at 404 pairs of 2,587.
+    #:
+    #: ``None`` and not an empty result, for :attr:`widening`'s reason: ``outcome`` can
+    #: then tell "the check was never put to this pair" -- no accepted instance to perturb,
+    #: or a budget spent -- from "the class admitted every value the document admits".
+    admits: AdmitsResult | None = None
     missing_formats: list[str] = field(default_factory=list)
     #: The DOCUMENT's own format-beside-pattern positions a draw CANNOT REACH, each
     #: measured by drawing that node alone (:func:`undrawable_formats`).  Filled by
@@ -6398,6 +6802,30 @@ class PairReport:
         # the model.  Every other accepts outcome is a verdict and still wins.
         if self.accepts.outcome not in ("pass", "strategy_error"):
             return "accepts:" + self.accepts.outcome
+        #: **Reading 1's first check over the witness the draw cannot make, ranked
+        #: IMMEDIATELY BELOW the drawn one because it is the SAME check**
+        #: (``adcp-client-python-87ll``).  A class that refuses a value its own document
+        #: admits is the one thing reading 1 forbids outright, and ranking it anywhere
+        #: below the reading-2 columns would say a declaration's proof outranks the
+        #: correctness the declarations are exceptions TO.
+        #:
+        #: **AND IT IS RANKED AT ALL, which is the whole of this row.**  The witnesses
+        #: existed as a probe in a scratch directory and the table said nothing, so 404
+        #: pairs read ``verdict=pass`` on a check that could not fail at them.  A check
+        #: whose result reaches no verdict is the defect ``adcp-client-python-x63t``
+        #: names one column over.
+        #:
+        #: ``no_witness`` and ``unrun`` are exempt for :func:`_admits_verdict`'s reason:
+        #: both say the class was never asked, which is a fact about the document or about
+        #: the draw, and the cell beside this says which.  A CAPPED pass is exempt here
+        #: too and reads ``absent`` in its own cell, exactly as an unreached conditional
+        #: does: the ranking carries verdicts about the class.
+        if self.admits is not None and self.admits.outcome not in (
+            "pass",
+            "no_witness",
+            "unrun",
+        ):
+            return "admits:" + self.admits.outcome
         if self.liveness is None:
             return "liveness:unrun"
         if self.liveness.outcome not in ("pass", "no_payload"):
@@ -7363,6 +7791,30 @@ def check_pair(
         if accepted
         else LivenessResult(outcome="no_payload", detail="the accepts check drew no instance")
     )
+    #: **READING 1's FIRST CHECK OVER THE WITNESS THE DRAW CANNOT MAKE**
+    #: (``adcp-client-python-87ll``).  ``_validating``'s own docstring already recorded why
+    #: the drawn instance cannot decide this check at a formatted position --
+    #: "hypothesis_jsonschema HONOURS a format it knows when generating ... so every drawn
+    #: instance landed inside the narrow type and the draw was green on a model that
+    #: refused every other shape the format admits" -- and that sentence was written about
+    #: the format checker being ABSENT.  The checker is present; the sentence is still true
+    #: about the DRAW, so 404 pairs of 2,587 passed reading 1 check 1 without the
+    #: document's own wider value ever being offered.
+    #:
+    #: **IT COSTS NO DRAW.**  :func:`admitted_witnesses` is a REDUCTION of the same
+    #: ``accepted[0]`` the two lines around it already reuse -- one ``conforms`` per
+    #: candidate, plus one cached ``from_regex`` per distinct pattern of the bundle -- and
+    #: never ``from_schema``, which is 74.9% of a pair.  Measured over the whole graded
+    #: population in one process: 16.0 s.
+    #:
+    #: ``drawn_from`` and not ``pair.schema``, which is every instance check's rule here:
+    #: the witness is screened against the node the instance was drawn from, so a position
+    #: the resolution inlined is screened too.
+    rep.admits = (
+        check_admits(drawn_from, pair.accept, accepted[0])
+        if accepted
+        else AdmitsResult(outcome="unrun", detail="the accepts check drew no instance")
+    )
     #: **READING 2's UNDECLARED DIRECTION, and the obstruction this line removes was the
     #: INSTANCE** (``adcp-client-python-x63t``).  ``check_refuses``' own docstring recorded
     #: the gap: "WHAT IS NOT HERE.  The sweep over the whole graded population, and the
@@ -7505,7 +7957,19 @@ ABSENT = "absent"
 #: ``widening`` at the positions they have always had, and the new one arrives at the end
 #: of the row where a diff against the previous run shows it as an addition rather than as
 #: four columns changing meaning.
-CHECKS: tuple[str, ...] = ("accepts", "refuses", "dump", "widening", "undeclared")
+#:
+#: **``admits`` IS A SIXTH COLUMN AND IT IS APPENDED FOR THE RULE ABOVE**
+#: (``adcp-client-python-87ll``).  It grades the SAME obligation ``accepts`` does --
+#: reading 1's "every class accepts every value its document admits" -- over the witness
+#: class the draw cannot produce, and it is its own column rather than folded into
+#: ``accepts`` for two reasons.  The census of ``accepts`` is read ACROSS RUNS and ranges
+#: over the instances a run drew; folding a second witness class into it would renumber
+#: that census while saying nothing new about those instances.  And the two have different
+#: REPAIRS: an ``accepts`` failure is a class that refused a value its generator produced,
+#: and an ``admits`` failure is a pydantic type substituted for a document's ``format``
+#: whose own rules are narrower -- which is a decision in ``codegen/lower/scalars.py`` and
+#: not a defect at the pair.
+CHECKS: tuple[str, ...] = ("accepts", "refuses", "dump", "widening", "undeclared", "admits")
 
 
 @dataclass(frozen=True)
@@ -7671,6 +8135,36 @@ def _undeclared_verdict(r: RefusesResult | None) -> Verdict:
     return Verdict(FAIL, r.outcome)
 
 
+def _admits_verdict(r: AdmitsResult | None) -> Verdict:
+    """Is the class NARROWER than its document at a value the draw cannot produce.
+
+    Reading 1's first check over :func:`admitted_witnesses`, and the three states are the
+    three the column beside it already uses.
+
+    ``no_witness`` is ABSENT and not a pass, for :func:`_undeclared_verdict`'s reason: the
+    document admitted none of the candidates this derivation makes, so the class was never
+    asked, and a pass would make a pair that offered NOTHING read identically to one that
+    was offered every witness and admitted each.  That is the shape this whole column
+    exists to remove one level down.
+
+    **AND A PASS OVER A CAPPED INSTANCE IS ``absent``**, which is ``_dump_verdict``'s
+    ``stopped_after_N_of_M`` rule applied to :data:`WITNESS_LEAVES`.  An instance carrying
+    more string leaves than the budget reaches was probed over a prefix of them, so "the
+    class admitted every value the document admits" is a claim about the prefix; 18 of
+    2,582 instances are in that case.  A REFUSAL still wins -- a narrowing found is a
+    verdict about the class, and an unprobed leaf is a fact about the budget.
+    """
+    if r is None:
+        return Verdict(ABSENT, "unrun")
+    if r.outcome == "pass":
+        if r.capped:
+            return Verdict(ABSENT, f"stopped_after_{WITNESS_LEAVES}_leaves")
+        return Verdict(PASS)
+    if r.outcome in ("no_witness", "unrun"):
+        return Verdict(ABSENT, r.outcome)
+    return Verdict(FAIL, r.outcome)
+
+
 def verdicts(report: PairReport | None, *, error: str = "") -> dict[str, Verdict]:
     """This pair's verdict per check, or one ABSENT verdict per check with the cause.
 
@@ -7690,6 +8184,7 @@ def verdicts(report: PairReport | None, *, error: str = "") -> dict[str, Verdict
         "dump": _dump_verdict(report.accepts),
         "widening": _widening_verdict(report.widening),
         "undeclared": _undeclared_verdict(report.undeclared),
+        "admits": _admits_verdict(report.admits),
     }
 
 
@@ -7805,6 +8300,48 @@ def verdict_row(
             notes.append(f"counterexample {a.counterexample}")
         if a.dump_exempt:
             notes.append(f"dump exempt at {', '.join(a.dump_exempt)}")
+    #: **THE NARROWING'S OWN VALUE, for the reason the note above carries one**: a row
+    #: saying a class is narrower than its document and nothing else leaves the reader to
+    #: rebuild the witness before they can act, and reading 1 is about values.  The
+    #: witness, how it was DERIVED -- which is the half that says the value is the
+    #: document's and not the instrument's invention -- and the class's own error, so the
+    #: two reasons can be compared without re-running anything.
+    #:
+    #: ONE row and not two, because the witness text is up to :data:`WITNESS_LENGTH`
+    #: characters and the whole note field is truncated to 400: a second would push the
+    #: first one's reason past the cut, which is the failure mode ``check_accepts``' own
+    #: "the CAUSE goes first" comment names.  The count travels with it.
+    #:
+    #: **PLACED HERE, IN THE ORDER :attr:`PairReport.outcome` RANKS THE CHECKS**, and
+    #: measured rather than tidy: written last it sat behind ``undeclared``'s unreached
+    #: conditionals, whose sentence quotes the document's own ``if`` region, and on
+    #: ``aao/agent-publishers.json#/definitions/PublisherEntry`` that pushed this pair's
+    #: whole cause past the 400-character cut.  A note field whose order disagrees with
+    #: the verdict's order loses exactly the reason the verdict names.
+    if report is not None and report.admits is not None:
+        m = report.admits
+        #: ``refusal`` and NOT ``error``, which is the function's own parameter: bound here
+        #: it shadowed it, and ``_pair_verdict(report, error)`` below then read the CLASS's
+        #: ValidationError as "this pair reached no check at all" -- so every one of the
+        #: 444 narrowings read ``verdict=absent:<pydantic's message>`` where the cell
+        #: beside it read ``admits=fail:model_refused_admitted``.  ``absent`` and ``fail``
+        #: are the one distinction this artifact exists to make, and a row that spells a
+        #: verdict about the CLASS as a fact about the INSTRUMENT is the defect
+        #: :data:`ABSENT` carries its whole comment about.
+        #: **THE CAUSE GOES FIRST**, which is ``check_accepts``' own rule about this field:
+        #: the note is truncated to 400 characters and a witness is up to
+        #: :data:`WITNESS_LENGTH`, so a cause written after the value is a cause nothing
+        #: can read.  Measured on the first table that carried this column: 345 of 444
+        #: rows had their error type cut off.
+        for witness, kind, how, cause, refusal in m.rows[:1]:
+            notes.append(
+                f"narrower than its document [{cause}] on {kind}: {how}; the class "
+                f"refused it with {refusal[:120]}; the document admits {witness[:120]}"
+            )
+        if m.refused > 1:
+            notes.append(f"and {m.refused - 1} more admitted values refused")
+        if m.detail and m.outcome != "pass":
+            notes.append(m.detail)
     if report is not None and report.missing_formats:
         notes.append(f"no strategy for format {', '.join(report.missing_formats)}")
     if report is not None and report.liveness is not None and report.liveness.detail:
