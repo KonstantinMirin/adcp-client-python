@@ -1968,7 +1968,7 @@ __all__ = [
 #:
 #: `docs/plan/final-state.md` reading 10, amended 2026-11-06: **"already resolves" is
 #: measured at the SPELLING A CONSUMER WRITES, never at the module that declares it.**  A
-#: name upstream carries at `adcp.types.<domain>.<Name>` that we also declare there is not
+#: name upstream carries at a DOMAIN module of ours, under that exact word, is not
 #: thereby reachable, because the import an application has already written is
 #: `from adcp.types import <Name>`.  So these owe a FLAT alias exactly as a relocated name
 #: does -- and they owe NOTHING here, because at this module they would be a second path to
