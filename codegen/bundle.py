@@ -1847,6 +1847,148 @@ def stored(record: dict, origins: Origins | None = None) -> dict:
     return answer
 
 
+def compact(node: object) -> int:
+    """``node``'s own bytes with no whitespace a dumper chose.
+
+    The one spelling of "how big is this", read by :func:`resolves` and
+    :func:`references_at_each_occurrence` below so that the two terms of one inequality
+    cannot be measured in two units.  Format-neutral on purpose: ``emit`` writes the
+    record at ``indent=2`` and a reading about duplication must not become a reading about
+    indentation.
+    """
+    return len(json.dumps(node, separators=(",", ":"), sort_keys=True, default=str))
+
+
+def storage_bookkeeping(record: dict) -> int:
+    """THE BYTES ``record`` SPENDS ON BEING A STORAGE AT ALL: the entry each stored
+    subtree is held under, and the reference naming it at every occurrence.
+
+    **Reading 5's own first sentence, counted.**  ``docs/plan/final-state.md`` reading 5
+    asks for three things in one sentence -- that the record store "each distinct subtree
+    ONCE", that it store it "UNDER ITS OWN ``definitions``", and that it "REFERENCE IT AT
+    EVERY OCCURRENCE" -- and the last two are not free.  Hoisting a subtree reached ``k``
+    times writes a name for it and ``k`` references to that name, so a size bound that
+    charged those against the source document would be red ON THE STORAGE ITSELF, and
+    reddest on exactly the records where the storage does the most work.  That is a decider
+    arguing with the sentence above it.
+
+    So this is the ALLOWANCE term of reading 5's inequality, and it is UNGAMEABLE in the
+    direction that matters: every byte it allows is a byte the record spent, so writing a
+    reference neither helps nor hurts, while the SUBTREE a reference stands in place of is
+    the whole of what the inequality is about.  Subtract it and the reading is exact: *the
+    record, not counting the bookkeeping its own storage requires, is no bigger than its
+    source plus the subtrees it copied in.*
+
+    It is the STORAGE's own names alone -- ``_base.is_a_store_entry``, the one predicate
+    for "did the storage write this", which ``bundle.expanded`` and
+    ``_base.through_the_store`` are the other two readers of.  A DOCUMENT's own local
+    ``$ref`` and a document's own section entry are charged nothing, because the record
+    leaves both exactly as written (§4): they are source bytes that stayed source bytes.
+    """
+    head = f"#/{_base.STORE_SECTION}/"
+    spent = 0
+    for _, node in nodes(record):
+        uri = node.get("$ref")
+        if isinstance(uri, str) and uri.startswith(head) and _base.is_a_store_entry(uri[len(head) :]):
+            spent += compact(node)
+    section = record.get(_base.STORE_SECTION)
+    if isinstance(section, dict):
+        # The entry's NAME and the separators holding it, never the subtree under it: the
+        # subtree is the one copy reading 5 grants and is charged as source or as a
+        # resolved reference like any other.
+        spent += sum(
+            compact(key) + 2 for key in section if _base.is_a_store_entry(key)
+        )
+    return spent
+
+
+def resolves(bundle_dir: Path, document: str, known: Collection[str]) -> int:
+    """THE BYTES THE REFERENCES ``document``'S RECORD RESOLVES ADD TO IT, charged once per
+    distinct subtree the record has to hold.
+
+    ``docs/plan/final-state.md`` reading 5's decider is "no record exceeds its source
+    document by more than the references it resolves", and this is the right-hand term.
+    It is derived from the RAW BUNDLE and never from the record, which is the whole of
+    what makes it decide anything: charged per ``$ref`` OCCURRENCE the bound would be met
+    by a record that re-copies one target down every path through the reference graph,
+    which is precisely the state reading 5 was written against -- 5,363,667 bytes of
+    source became 365,030,691 bytes of record, with one subtree placed 1,957 times.
+
+    **WHAT A DISTINCT SUBTREE IS HERE: a stating site together with what the referring
+    node states BESIDE the reference.**  §4 keeps the referrer's own keys beside the copy
+    (:func:`_beside`), so two references to one target that differ in a ``description``
+    resolve to two nodes that differ in a ``description`` -- two distinct subtrees, each
+    owed one copy, which is what reading 5's "each distinct subtree once" grants.  Two
+    references that state the same thing beside the same site resolve to ONE node and are
+    charged once however many paths reach them.  Measured over the 3.2 bundle, every key
+    ever found beside a ``$ref`` is an annotation (:func:`_beside` carries the census), so
+    the sibling set is the whole of what can distinguish two copies of one site.
+
+    Each such subtree is charged the target's own bytes IN ITS HOME DOCUMENT.  That
+    OVER-charges wherever one charged site sits inside another -- the inner text is counted
+    at both -- so the bound errs towards admitting a record, which is the direction a
+    violation cannot be manufactured from.
+
+    A LOCAL reference of ``document`` itself is charged nothing, because the record leaves
+    it exactly as written (§4) and no byte arrives for it.  A local reference inside a
+    COPY is charged, because that copy is leaving its own root scope and the reference is
+    inlined there.  A reference naming no document of the bundle, or no node of one, is
+    charged nothing: the record is a :class:`Refusal` and has no size to grade.
+    """
+    roots: dict[str, dict] = {}
+
+    def root_of(name: str) -> dict:
+        if name not in roots:
+            roots[name] = read(bundle_dir, name)
+        return roots[name]
+
+    #: Per distinct ``(home, pointer, what the referrer states beside it)``, one copy.
+    copies: set[tuple[str, str, tuple[tuple[str, str], ...]]] = set()
+    #: ``(home, pointer, whether this is the record's own document)`` already scanned.
+    #: The flag is in the key because it decides whether a LOCAL reference is followed.
+    scanned: set[tuple[str, str, bool]] = set()
+    unread = [(document, "", True)]
+    while unread:
+        home, at, own = unread.pop()
+        if (home, at, own) in scanned:
+            continue
+        scanned.add((home, at, own))
+        try:
+            held = node_at(root_of(home), at)
+        except (KeyError, IndexError, TypeError, ValueError):
+            continue
+        for _, node, _ in nodes_at(held):
+            uri = node.get("$ref")
+            if not isinstance(uri, str):
+                continue
+            head, into = split_ref(uri)
+            if not head:
+                if own:
+                    continue  # left as written: §4's third rule
+                reached = home
+            else:
+                found = document_for(head, known)
+                if found is None:
+                    continue  # the record refuses; there is nothing to charge
+                reached = found
+            beside = tuple(
+                sorted(
+                    (key, json.dumps(value, separators=(",", ":"), default=str))
+                    for key, value in node.items()
+                    if key != "$ref"
+                )
+            )
+            copies.add((reached, into, beside))
+            unread.append((reached, into, False))
+    charged = 0
+    for reached, into, _ in copies:
+        try:
+            charged += compact(node_at(root_of(reached), into))
+        except (KeyError, IndexError, TypeError, ValueError):
+            continue
+    return charged
+
+
 def expanded(node: object, root: object) -> object:
     """``node`` with the record's own STORAGE put back: :func:`stored`'s inverse.
 
