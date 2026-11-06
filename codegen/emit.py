@@ -1782,8 +1782,14 @@ def emit(
     #: is a dependency order over the whole bundle and ``Admitted`` memoises every document
     #: it has read, so collections sharing one of each read the bundle once between them.
     #: ``standing`` is bound above, where L0 takes it.
+    #:
+    #: **AND THE THREE OBJECT-LAYER SOURCES ARE COLLECTED IN THE ORDER THEIR READINGS
+    #: DEPEND ON AND MERGED IN THE OPPOSITE ONE, which is the thing a reader has to keep
+    #: apart.**  L2A reads which types L2C NAMED, and L2 screens the positions L2A
+    #: collected (``catalogue.collect_shapes`` derives that screen itself, so nothing here
+    #: hands it over); the TABLE is then merged L2, L2C, L2A, so the reading of a position
+    #: the document applies a named type at is the one that stands.
     admitted = catalogue.Admitted(bundle_dir)
-    l2 = catalogue.collect_shapes(admitted, "L2", standing)
     #: **§3a's CATALOGUE, layer L1: the CONSTRAINED SCALARS**, read off the same bundle,
     #: keyed on the CONSTRAINT SET -- which is that layer's own identity, and is the fourth
     #: of reading 4's four to be collected.  It is this layer that replaced the content
@@ -1803,13 +1809,9 @@ def emit(
     #: (``compiler.Module.constrained``).  One table for every document of the run,
     #: because the layer is a reading of the bundle and not of the run.
     constrained = l1.table()
-    #: document -> pointer -> the L2 entry that position RESTATES
-    #: (``compiler.Module.objects``).  36 positions over 17 documents for this bundle's 17
-    #: named object types.
-    restating_objects = l2.restating()
     #: **§3a's catalogue, layer L2C: the object type a node states through its CONJUNCTS**,
     #: read off the same bundle under the same key (``catalogue.Admitted``) and merged into
-    #: the table above, because the walk's question at such a position is the one
+    #: the table below, because the walk's question at such a position is the one
     #: ``compiler.lower_node`` already asks of every pointer -- "is this position a
     #: REFERENCE to a catalogue entry".
     #:
@@ -1822,7 +1824,33 @@ def emit(
     #: layer, is supplied for four structures by ``patches/8735``, and is what makes an
     #: override reach an emitted class rather than only a document's text.
     l2c = catalogue.collect_shapes(admitted, "L2C", standing)
+    #: **§3a's catalogue, layer L2A: the object type the DOCUMENT APPLIES at a position
+    #: whose own text states only part of it**, read off the same bundle under the same key
+    #: and merged into the table below for the same reason the layer before it is -- the
+    #: walk's question at such a position is the one ``compiler.lower_node`` already asks of
+    #: every pointer, "is this position a REFERENCE to a catalogue entry".
+    #:
+    #: **AFTER L2C, because it reads L2C's own entries** (``catalogue.collect_applied``): a
+    #: position joins only a group the bundle NAMES, and the home is
+    #: ``catalogue.shape_declared_at``'s re-decided over the union, so there is one home
+    #: rule across the four sources and not one per source.  It is applied LAST of the
+    #: object-layer sources and therefore wins where L2 bound the same pointer to the
+    #: narrowing conjunct's own home: L2 keys on the node's own text, which at such a
+    #: position is the narrowing ALONE, and this layer keys on the type the document applies
+    #: there -- one position, and the document's reading is the one that decides which other
+    #: position declares the type already.
+    l2a = catalogue.collect_applied(admitted, l2c, standing)
+    #: document -> pointer -> the L2 entry that position RESTATES
+    #: (``compiler.Module.objects``).  36 positions over 17 documents for this bundle's 17
+    #: named object types.  **Collected LAST and merged FIRST**: this layer's own screen is
+    #: L2A's collected positions and ``catalogue.collect_shapes`` derives it, so the call
+    #: reads the same whatever order it is written in; the three tables are then merged L2,
+    #: L2C, L2A, so the reading of a position the document applies a named type at stands.
+    l2 = catalogue.collect_shapes(admitted, "L2", standing)
+    restating_objects = l2.restating()
     for document, row in l2c.restating().items():
+        restating_objects.setdefault(document, {}).update(row)
+    for document, row in l2a.restating().items():
         restating_objects.setdefault(document, {}).update(row)
     #: **§3a's catalogue, the layer ABOVE L3: a REPEATED DOCUMENT**, as the one row it adds
     #: to the table above -- the non-home member's ROOT restates the home's root.
@@ -2550,6 +2578,10 @@ def emit(
             *((entry.naming, entry.title) for entry in l0.entries.values()),
             *((entry.at, entry.title) for entry in l2.entries.values()),
             *((entry.at, entry.title) for entry in l2c.entries.values()),
+            # L2A LAST, for the merge order's own reason: where an applied position became
+            # the entry's home, the title belongs at THAT pointer and this layer's reading
+            # of the home is the later one.
+            *((entry.at, entry.title) for entry in l2a.entries.values()),
         ]
         titled: dict[str, str] = {}
         for at, entry_title in homes:
