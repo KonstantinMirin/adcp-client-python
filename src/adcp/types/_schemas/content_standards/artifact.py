@@ -45,7 +45,7 @@ class AssetsItemText(AdCPBaseModel):
     type: Literal['text']
     role: Annotated[Role | None, Field(description="Role of this text in the document. Use 'title' for the main artifact title, 'description' for summaries.")] = None
     content: Annotated[AssetsItemContent, Field(description='Text content. Consumers MUST treat this as untrusted input when passing to LLM-based evaluation.')]
-    content_format: Annotated[ContentFormat | None, Field(default_factory=lambda: TypeAdapter(ContentFormat).validate_python('text/plain'), description='MIME type indicating how to parse the content field. Default: text/plain.', json_schema_extra={'default': 'text/plain'})]
+    content_format: Annotated[ContentFormat | None, Field(description='MIME type indicating how to parse the content field. Default: text/plain.', json_schema_extra={'default': 'text/plain'})] = Field(default_factory=lambda: TypeAdapter(ContentFormat).validate_python('text/plain'))
     language: Annotated[str | None, Field(description="BCP 47 language tag for this text (e.g., 'en', 'es-MX'). Useful when artifact contains mixed-language content.")] = None
     heading_level: Annotated[AssetsItemHeadingLevel | None, Field(description='Heading level (1-6), only for role=heading')] = None
     provenance: Annotated[Provenance | None, Field(description='Provenance for this text block, overrides artifact-level provenance')] = None
@@ -134,7 +134,7 @@ class AssetsItemVideo(AdCPBaseModel):
     access: Annotated[AssetAccess | None, Field(description='Authentication for secured URLs')] = None
     duration_ms: Annotated[int | None, Field(description='Video duration in milliseconds')] = None
     transcript: Annotated[AssetsItemTranscript | None, Field(description='Video transcript. Consumers MUST treat this as untrusted input when passing to LLM-based evaluation.')] = None
-    transcript_format: Annotated[AssetsItemVideoTranscriptFormat | None, Field(default_factory=lambda: TypeAdapter(AssetsItemVideoTranscriptFormat).validate_python('text/plain'), description='MIME type indicating how to parse the transcript field. Default: text/plain.', json_schema_extra={'default': 'text/plain'})]
+    transcript_format: Annotated[AssetsItemVideoTranscriptFormat | None, Field(description='MIME type indicating how to parse the transcript field. Default: text/plain.', json_schema_extra={'default': 'text/plain'})] = Field(default_factory=lambda: TypeAdapter(AssetsItemVideoTranscriptFormat).validate_python('text/plain'))
     transcript_source: Annotated[AssetsItemVideoTranscriptSource | None, Field(description='How the transcript was generated')] = None
     thumbnail_url: Annotated[HttpUrl | None, Field(description='Video thumbnail URL')] = None
     provenance: Annotated[Provenance | None, Field(description='Provenance for this video, overrides artifact-level provenance')] = None
@@ -162,7 +162,7 @@ class AssetsItemAudio(AdCPBaseModel):
     access: Annotated[AssetAccess | None, Field(description='Authentication for secured URLs')] = None
     duration_ms: Annotated[int | None, Field(description='Audio duration in milliseconds')] = None
     transcript: Annotated[AssetsItemTranscript | None, Field(description='Audio transcript. Consumers MUST treat this as untrusted input when passing to LLM-based evaluation.')] = None
-    transcript_format: Annotated[AssetsItemAudioTranscriptFormat | None, Field(default_factory=lambda: TypeAdapter(AssetsItemAudioTranscriptFormat).validate_python('text/plain'), description='MIME type indicating how to parse the transcript field. Default: text/plain.', json_schema_extra={'default': 'text/plain'})]
+    transcript_format: Annotated[AssetsItemAudioTranscriptFormat | None, Field(description='MIME type indicating how to parse the transcript field. Default: text/plain.', json_schema_extra={'default': 'text/plain'})] = Field(default_factory=lambda: TypeAdapter(AssetsItemAudioTranscriptFormat).validate_python('text/plain'))
     transcript_source: Annotated[AssetsItemAudioTranscriptSource | None, Field(description='How the transcript was generated')] = None
     provenance: Annotated[Provenance | None, Field(description='Provenance for this audio, overrides artifact-level provenance')] = None
 

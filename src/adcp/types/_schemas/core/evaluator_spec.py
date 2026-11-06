@@ -30,7 +30,7 @@ class RankByItem(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/evaluator-spec.json', pointer='#/properties/rank_by/items')
     feature_id: Annotated[str, Field(description='Creative feature to order by (discovered via get_adcp_capabilities; the same feature_id space the chosen evaluator form returns in eval.features[]).')]
-    direction: Annotated[Direction | None, Field(default_factory=lambda: TypeAdapter(Direction).validate_python('maximize'), description='Sort direction for this feature: `maximize` ranks higher feature values first (e.g. creative_quality_score), `minimize` ranks lower values first (e.g. predicted_cpa).', json_schema_extra={'default': 'maximize'})]
+    direction: Annotated[Direction | None, Field(description='Sort direction for this feature: `maximize` ranks higher feature values first (e.g. creative_quality_score), `minimize` ranks lower values first (e.g. predicted_cpa).', json_schema_extra={'default': 'maximize'})] = Field(default_factory=lambda: TypeAdapter(Direction).validate_python('maximize'))
 
 
 class EvalBudget(AdCPBaseModel):

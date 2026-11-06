@@ -18,7 +18,7 @@ class CanonicalMediaBuyFeatures(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/canonical-media-buy-features.json', pointer='#')
-    __pydantic_extra__: dict[str, bool]
+    __pydantic_extra__: dict[str, bool] = Field(init=False)
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='core/canonical-media-buy-features.json', pointer='#', keyword='additionalProperties', kind='WIDENED', rung='CONTAINER', fact={'type': 'boolean'}, attribution='docs/plan/rebuild-plan.md §5 objects/additionalProperties'),
     )

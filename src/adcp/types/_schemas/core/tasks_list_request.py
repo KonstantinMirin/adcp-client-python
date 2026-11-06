@@ -61,8 +61,8 @@ class Sort(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/tasks-list-request.json', pointer='#/properties/sort')
-    field: Annotated[SortField | None, Field(default_factory=lambda: TypeAdapter(SortField).validate_python('created_at'), description='Field to sort by', json_schema_extra={'default': 'created_at'})]
-    direction: Annotated[SortDirection | None, Field(default_factory=lambda: TypeAdapter(SortDirection).validate_python('desc'), description='Sort direction', json_schema_extra={'default': 'desc'})]
+    field: Annotated[SortField | None, Field(description='Field to sort by', json_schema_extra={'default': 'created_at'})] = Field(default_factory=lambda: TypeAdapter(SortField).validate_python('created_at'))
+    direction: Annotated[SortDirection | None, Field(description='Sort direction', json_schema_extra={'default': 'desc'})] = Field(default_factory=lambda: TypeAdapter(SortDirection).validate_python('desc'))
 
 
 class TasksListRequest(AdCPVersionEnvelope):

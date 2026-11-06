@@ -35,7 +35,7 @@ class Region(AdCPBaseModel):
     y: NonNegativeFloat
     width: FloatGt0
     height: FloatGt0
-    unit: Annotated[Unit | None, Field(default_factory=lambda: TypeAdapter(Unit).validate_python('px'), json_schema_extra={'default': 'px'})]
+    unit: Annotated[Unit | None, Field(json_schema_extra={'default': 'px'})] = Field(default_factory=lambda: TypeAdapter(Unit).validate_python('px'))
 
 
 class CanvasConstraint(AdCPBaseModel):

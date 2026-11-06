@@ -78,7 +78,7 @@ class VASTTrackerConstraints(AdCPBaseModel):
         Approximation(document='core/vast-tracker-constraints.json', pointer='#/allOf/10', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'vast_event': {'const': 'closeLinear'}}, 'required': ['vast_event']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     vast_event: VastEvent | None = None
-    target: Annotated[VastTarget | None, Field(default_factory=lambda: TypeAdapter(VastTarget).validate_python('linear'), json_schema_extra={'default': 'linear'})]
+    target: Annotated[VastTarget | None, Field(json_schema_extra={'default': 'linear'})] = Field(default_factory=lambda: TypeAdapter(VastTarget).validate_python('linear'))
     offset: VastOffset | None = None
     vast_versions: VastVersions | None = None
 

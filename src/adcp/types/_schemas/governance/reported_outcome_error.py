@@ -50,7 +50,7 @@ class ReportedOutcomeError(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/reported-outcome-error.json', pointer='#')
-    __pydantic_extra__: dict[StrMaxLen128, BoundedValue]
+    __pydantic_extra__: dict[StrMaxLen128, BoundedValue] = Field(init=False)
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         PropertyCount(minimum=None, maximum=16),
     )

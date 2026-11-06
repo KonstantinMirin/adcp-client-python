@@ -21,8 +21,8 @@ class DeliveryBreakdownControls(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/delivery-breakdown-controls.json', pointer='#')
     limit: Annotated[IntMin1 | None, Field(description='Maximum number of rows to return. Defaults to 25.')] = 25
-    sort_by: Annotated[SortMetric | None, Field(default_factory=lambda: TypeAdapter(SortMetric).validate_python('spend'), description='Metric used to order rows. Falls back to spend when unavailable at this row grain; on fallback sort_direction resets to desc. Rows lacking a value for the applied sort metric order last regardless of direction.', json_schema_extra={'default': 'spend'})]
-    sort_direction: Annotated[SortDirection | None, Field(default_factory=lambda: TypeAdapter(SortDirection).validate_python('desc'), description='Direction for sort_by ordering. Sellers MUST apply the requested direction to the applied sort metric; direction has no availability fallback.', json_schema_extra={'default': 'desc'})]
+    sort_by: Annotated[SortMetric | None, Field(description='Metric used to order rows. Falls back to spend when unavailable at this row grain; on fallback sort_direction resets to desc. Rows lacking a value for the applied sort metric order last regardless of direction.', json_schema_extra={'default': 'spend'})] = Field(default_factory=lambda: TypeAdapter(SortMetric).validate_python('spend'))
+    sort_direction: Annotated[SortDirection | None, Field(description='Direction for sort_by ordering. Sellers MUST apply the requested direction to the applied sort metric; direction has no availability fallback.', json_schema_extra={'default': 'desc'})] = Field(default_factory=lambda: TypeAdapter(SortDirection).validate_python('desc'))
 
 
 __all__ = ["DeliveryBreakdownControls"]

@@ -38,7 +38,7 @@ class Metrics(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/forecast-point.json', pointer='#/properties/metrics')
-    __pydantic_extra__: dict[str, ForecastRange]
+    __pydantic_extra__: dict[str, ForecastRange] = Field(init=False)
     audience_size: ForecastRange | None = None
     reach: ForecastRange | None = None
     frequency: ForecastRange | None = None
