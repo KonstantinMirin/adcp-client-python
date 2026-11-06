@@ -37,6 +37,7 @@ from pathlib import Path
 from typing import Any
 from unittest import mock
 
+import fresh
 import populations
 import pydantic
 import pytest
@@ -88,7 +89,16 @@ ROOT_POPULATIONS = (
 EMITTED_OVER_THIS_POPULATION_FLOOR = 607
 
 REPO = Path(__file__).resolve().parents[1]
-BUNDLE = REPO / "schemas" / "cache" / "3.2"
+#: **The bundle a run reads, taken from the ONE declaration of it**
+#: (``adcp-client-python-lzzj.11.1``).  This module held its own PUBLISHED literal while
+#: every class it grades was emitted from the PATCHED bundle, so its two halves ranged over
+#: two different document sets.  Measured against ``fresh.PUBLISHED``: the published
+#: directory is portable over 1,054 documents and the run's over 1,059, the five only the
+#: patched one holds are documents ``patches/8525`` ADDS, and of the 1,054 they share 211
+#: differ -- 200 of those beyond ``$schema``/``title``/``description``.  So the published
+#: path is ``adcp-client-python-fr4r``'s lookup error waiting at whichever clause names a
+#: document first, and a quietly different answer at each of the others.
+BUNDLE = fresh.BUNDLE
 #: Every reference in this bundle is spelled against this base; ``document_for``
 #: derives the document from the bundle's own file set, so the probe uses the
 #: same spelling rather than a shorter one that would resolve by accident.
