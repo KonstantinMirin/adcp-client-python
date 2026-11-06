@@ -42,14 +42,19 @@ REPO = Path(__file__).resolve().parents[1]
 #: of assuming.  This module's subject is the ENTRY POINT: it runs ``python -m codegen
 #: --bundle <this>`` and reads the verdict table off that run's stdout.  ``--bundle`` is
 #: D9's ARGUMENT and ``codegen/__main__.py`` applies ``patch.for_build`` to whatever it is
-#: handed, so the run writes a tree from the PATCHED bundle either way and handing it the
-#: patched directory applies the table TWICE:
+#: handed, so the run writes a tree from the PATCHED bundle either way and the published
+#: directory is what the argument MEANS.  Handing it the patched one used to apply the table
+#: TWICE:
 #:
 #:     ValueError: core/currency-code.json: the published bundle already holds it
 #:
-#: So the second bundle is not an oversight here, it is the command's input, and the
-#: declaration this module needs is ``fresh.PUBLISHED`` rather than a literal of its own.
-#: Named in :data:`tests.test_the_bundle_a_module_reads.BY_DESIGN` for that reason.
+#: **That sentence was the EXPIRY rule's**, which means an override's defect is gone
+#: upstream, and it was indistinguishable from a double application -- the defect
+#: ``adcp-client-python-ywff`` names.  It is gone: the patched directory carries a record of
+#: what was applied, so a second application of the same sets is a no-op that says so and a
+#: partial one is refused by a message about the double application.  The argument's MEANING
+#: is unchanged, so this module still reads ``fresh.PUBLISHED`` rather than a literal of its
+#: own.  Named in :data:`tests.test_the_bundle_a_module_reads.BY_DESIGN` for that reason.
 BUNDLE = fresh.PUBLISHED
 
 #: One document with one pair, a committed corpus entry and no declaration, so the

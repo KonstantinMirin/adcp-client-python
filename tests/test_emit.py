@@ -6738,8 +6738,28 @@ def test_the_output_is_a_function_of_its_inputs_and_of_nothing_else() -> None:
     quotes it (``adcp-client-python-42v``).  The tree was identical at every one of
     them, so the tree comparison could not see it.  Both halves are compared here
     rather than in two tests because they are one property of one pair of runs.
+
+    **AND THE CHILD'S EXIT STATUS IS READ, which is the defect that made this a NAME
+    with no cause for a whole inventory** (``adcp-client-python-qzx.17``).  A run that
+    refused everything and a run that emitted nothing were the same observation to this
+    clause: it collected the tree off a directory and compared two of them, and the
+    ``trees[0] and`` guard was the only thing standing between two empty dicts and a
+    pass.  Both children had in fact died on the first line of the build, and the
+    comparison was over nothing.  A clause that shells a child and never reads its
+    status is a check that cannot fail.
+
+    **The bundle is the PUBLISHED one, because ``--bundle`` is D9's ARGUMENT and the
+    patch set is part of the BUILD** -- ``codegen/__main__.py`` applies
+    ``patch.for_build`` to whatever it is handed, so the child reads the patched bundle
+    either way and ``population()``, taken from the patched bundle here, is the right
+    set for it.  This is the declaration
+    ``tests/test_the_run_writes_its_verdicts.py`` already reaches for, and the reason it
+    is not ``BUNDLE``: handing the command the patched directory used to apply the table
+    twice.  It is now a no-op that says so, which is why this clause can grade the exit
+    status at all -- but the published bundle is still what the argument means, and a
+    report with one fewer line about its own input is the one a reader of two runs wants.
     """
-    cmd = [sys.executable, "-m", "codegen", "--bundle", str(BUNDLE), "--tree"]
+    cmd = [sys.executable, "-m", "codegen", "--bundle", str(fresh.PUBLISHED), "--tree"]
     trees = []
     reports = []
     progress = []
@@ -6748,6 +6768,11 @@ def test_the_output_is_a_function_of_its_inputs_and_of_nothing_else() -> None:
         env = {**os.environ, "PYTHONHASHSEED": seed, "PYTHONPATH": SUBPROCESS_PATH}
         done = subprocess.run(
             [*cmd, str(into), *population()], check=False, cwd=REPO, env=env, capture_output=True
+        )
+        assert done.returncode == 0, (
+            f"the run exited {done.returncode} at PYTHONHASHSEED={seed}, so the tree and "
+            "the report compared below are whatever it managed before dying:\n"
+            f"{done.stdout.decode()[-2000:]}\n{done.stderr.decode()[-4000:]}"
         )
         trees.append({str(p.relative_to(into)): p.read_text() for p in sorted(into.rglob("*.py"))})
         reports.append(done.stdout.decode())

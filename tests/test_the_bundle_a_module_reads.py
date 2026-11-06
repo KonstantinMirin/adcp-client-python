@@ -109,15 +109,19 @@ BY_DESIGN = {
     "test_the_run_writes_its_verdicts": (
         "its subject is the ENTRY POINT: it runs `python -m codegen --bundle <this>`, and "
         "--bundle is D9's ARGUMENT -- codegen/__main__.py applies patch.for_build to "
-        "whatever it is handed, so the published directory is the command's input and the "
-        "patched one applies the table twice (ValueError: core/currency-code.json: the "
-        "published bundle already holds it).  Measured by adcp-client-python-lzzj.11.1, "
-        "which moved it to fresh.BUNDLE and reddened it"
+        "whatever it is handed, so the published directory is what the command's argument "
+        "MEANS.  Measured by adcp-client-python-lzzj.11.1, which moved it to fresh.BUNDLE "
+        "and reddened it: the patched directory applied the table twice and raised the "
+        "EXPIRY sentence.  That raise is gone -- a second application is now a no-op the "
+        "record beside the directory answers for (adcp-client-python-ywff) -- and the "
+        "published bundle is still the argument's meaning, which is why this entry stays"
     ),
     "test_a_bundle_states_which_upstream_it_is": (
-        "every PUBLISHED bundle is its subject -- BUNDLES is provenance.bundles(), and what "
-        "it grades is that each one states which upstream it came from.  A patched "
-        "materialisation has no provenance file of its own and is not a delivery"
+        "every PUBLISHED bundle is its subject -- BUNDLES is provenance.bundles(), which "
+        "walks schemas/cache/, and what it grades is that each one states which upstream it "
+        "came from.  The patched materialisation now carries a record of the same form "
+        "(codegen.patch.for_build, adcp-client-python-ywff) and is still not a delivery: it "
+        "is not under schemas/cache/ and this gate does not reach it"
     ),
     "test_a_record_states_one_id": (
         "a stated $id IS its subject, and fresh.SECOND (3.3) is the only committed bundle "
