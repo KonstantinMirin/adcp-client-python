@@ -2643,7 +2643,22 @@ def _far_side(facts: Mapping[str, Any], instance: Any) -> Iterator[tuple[Any, st
                 over[f"{_ALIEN_KEY}{len(over)}"] = 1
             yield over, "maxProperties", f"{len(over)} keys, one past maxProperties {high}"
         for keyword in ("additionalProperties", "propertyNames", "patternProperties"):
-            if keyword in facts:
+            # **``true`` IS THE IDENTITY AND STATES NO BOUNDARY, so it yields no witness**
+            # (``adcp-client-python-szfx``).  The value below is screened by the whole
+            # document, so an identity keyword still produced a candidate wherever some
+            # OTHER keyword refused the undeclared key -- and the candidate then carried
+            # this keyword's name, which is the name ``check_refuses`` compares against the
+            # declared set.  Two pairs were reported undeclared on a keyword that refused
+            # nothing: ``core/creative-assets.json#``, whose ``patternProperties`` is
+            # DECLARED and whose ``additionalProperties`` is ``true``, and
+            # ``core/catalog-item-availability-error.json#``, where ``core/error.json``
+            # states ``true`` and the refusal is a conditional arm's
+            # ``additionalProperties: false`` one level in.  This module already reads the
+            # keyword that way where the answer is an accepted SET (:func:`_silent_about_extras`:
+            # "the two spellings accept and refuse identical instances"); a boundary
+            # derivation is the same reading, and the keyword that does refuse keeps the
+            # witness instead.
+            if keyword in facts and facts[keyword] is not True:
                 yield ({**instance, _ALIEN_KEY: 1}, keyword,
                        f"adds the undeclared key {_ALIEN_KEY!r}")
         depends = facts.get("dependencies")
@@ -5054,6 +5069,81 @@ def declarations_of(subject: Any) -> tuple[Approximation, ...]:
     return tuple(found)
 
 
+def composed_declarations(subject: Any) -> tuple[Approximation, ...]:
+    """:func:`declarations_of`, plus every declaration an INLINED document states.
+
+    **§8 sentence 2's other half, and it is the half that had no reader**
+    (``adcp-client-python-wvod``, ``-szfx``).  ``emit.declared_once`` states the rule in
+    full: "An approximation's identity is ``(stating document, stating pointer,
+    keyword)``, and every inlined occurrence resolves to it -- **which is a reader's job
+    and not a declaration per occurrence**."  :func:`declarations_of` is the reader and it
+    did only the first part: it reads what the class's own module declared, and a fact the
+    pair's COMPOSED document states because a ``$ref`` inlined it was declared once, in
+    the target's module, where nothing at this pair could see it.
+
+    Measured over the 37 pairs the undeclared check reddened: 11 of them are exactly that
+    shape.  ``core/assets/url-asset.json#/properties/macro_declarations/items`` is
+    ``MacroDeclarationsItem(MacroDeclaration)``, its node is
+    ``{"allOf": [{"$ref": ".../core/macro-declaration.json"}, {...}]}``, and the 15
+    conditionals its grade is put to are ``core/macro-declaration.json``'s -- declared
+    there, at ``#/allOf/4`` and its siblings, and unknown here.  The class admitted
+    ``{"encoding": {"depth": 0}, "required": true, ...}``, which the document refuses at
+    ``allOf/0/allOf/4/then/properties/required/const``: the fact IS declared, and the pair
+    could not read the declaration.
+
+    **A BASE IN ANOTHER DOCUMENT IS AN INLINED OCCURRENCE, and a base in the SAME
+    document is not.**  That is the whole of the gate, and it is what keeps
+    :func:`declarations_of`'s own rule intact: a union branch subclasses a base at ``#``
+    of its own document, so "read through ``getattr`` a branch would claim its base's
+    declarations" -- and ``render.declared_at``'s containment rule has already carried
+    every one of those onto the branch that can reach it, by a prefix test on the pointer.
+    Nothing here adds to that.  What it adds is the hop containment CANNOT make: across a
+    document boundary, where a prefix test on a pointer means nothing because the two
+    pointers are in different spaces.
+
+    **The keywords and NOT the obligation.**  ``check_pair`` hands :func:`check_refuses`
+    the KEYWORDS of this set, because §2's rule in that direction is a comparison of
+    keywords; it hands :func:`check_widening` ``pair.declared`` -- the pair's own -- and
+    must keep doing so, because that obligation walks the declaration's pointer FROM this
+    pair's node, and a pointer in another document's space describes no location it can
+    reach.  One set per question, which is the division those two functions already are.
+    """
+    out = list(declarations_of(subject))
+    #: ``vars`` on both sides, for :func:`declarations_of`'s reason read about the OTHER
+    #: class attribute: an inherited ``__adcp_schema__`` is the base's node and not this
+    #: class's, so a subject with none of its own has no document to compare against and
+    #: takes the empty answer rather than its base's.  ``graded()`` draws the same line.
+    document = getattr(vars(subject).get("__adcp_schema__"), "document", None)
+    if document is None:
+        return tuple(out)
+    #: **A UNION BASE REACHES THE INLINED DOCUMENT THROUGH ITS BRANCHES**, so the branches
+    #: are walked beside the MRO.  §5's DISTRIBUTION clause is why: where the ``$ref``
+    #: target is a union ROOT, the node "is a union whose branches each take one of the
+    #: target's branches as a base and add the node's own fields" -- so the base class
+    #: subclasses nothing of the target and its cross-document hop is one level down.
+    #: Measured at ``adagents.json#/oneOf/1/properties/formats/items``: the base is
+    #: ``FormatsItem(BranchDispatchMixin, AdCPBaseModel)``, the 16 branches each subclass a
+    #: class of ``core/product-format-declaration.json``, and the three conditionals its
+    #: grade is put to are that document's own ``#/allOf/{0,2,5}``.  §4 makes the base's
+    #: instance one of its branches, so a fact every branch's document states is a fact at
+    #: the base's node.
+    #: ``vars`` for the branch list too, and for the reason the recursion found: a branch
+    #: INHERITS ``_branch_models`` from the base it subclasses, so ``getattr`` on a branch
+    #: answers with the base's tuple -- which contains that branch -- and a walk of it is
+    #: a cycle.  A base declares its own (``render``'s ``UnionInstall``), so ``vars`` is
+    #: the reading that answers "whose branches are these".
+    branches = vars(subject).get("_branch_models", ())
+    reach = [*getattr(subject, "__mro__", ())[1:]]
+    for branch in branches:
+        reach += [*getattr(branch, "__mro__", ())]
+    for base in reach:
+        there = vars(base).get("__adcp_schema__")
+        if there is None or there.document == document:
+            continue
+        out += [one for one in declarations_of(base) if one not in out]
+    return tuple(out)
+
+
 
 
 def _silent_about_extras(node: Any) -> Any:
@@ -7149,10 +7239,15 @@ def check_pair(
     #: §8 deleted.  :func:`_constructor` is the reading of "the constructor" that answers
     #: for a class and for D2's root-scalar ALIAS alike.
     #:
-    #: ``declared`` is this pair's own declarations by KEYWORD, which is ``pair.declared``
-    #: read as ``render.declared_at`` already composed it (at or inside this node).  §2's
-    #: rule is then a comparison and not an allowlist: an admission is a ``pass`` where a
-    #: declaration names its keyword and ``widened_undeclared`` where none does.
+    #: ``declared`` is the COMPOSED document's declarations by KEYWORD, which is
+    #: ``pair.declared`` -- ``render.declared_at``'s containment rule, at or inside this
+    #: node -- plus the declarations of every document a ``$ref`` inlined at it
+    #: (:func:`composed_declarations`, which carries the measurement).  §2's rule is then
+    #: a comparison and not an allowlist: an admission is a ``pass`` where a declaration
+    #: names its keyword and ``widened_undeclared`` where none does.  The WIDENING check
+    #: above keeps ``pair.declared`` and must: its obligation walks a declaration's
+    #: pointer from this pair's node, and a pointer in another document's space describes
+    #: no location it can reach.
     #:
     #: With no accepted instance there is nothing to reduce, and ``unrun`` says so rather
     #: than a pass: the table reads ``undeclared=absent:unrun``, which is a fact about the
@@ -7162,7 +7257,10 @@ def check_pair(
             drawn_from,
             _constructor(pair.model),
             accepted[0],
-            declared=tuple(one.keyword for one in pair.declared),
+            declared=tuple(
+                one.keyword
+                for one in (*pair.declared, *composed_declarations(pair.model))
+            ),
         )
         if accepted
         else RefusesResult(outcome="unrun", detail="the accepts check drew no instance")

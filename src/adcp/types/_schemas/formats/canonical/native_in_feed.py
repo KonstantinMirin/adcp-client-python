@@ -108,6 +108,7 @@ class CanonicalFormatNativeInFeed(CanonicalFormatBase):
         UniqueItems('activation_methods'),
     )
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='formats/canonical/native_in_feed.json', pointer='#/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['ctv_ad_experience']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
         Approximation(document='formats/canonical/native_in_feed.json', pointer='#/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'anyOf': [{'required': ['menu_placement']}, {'required': ['focus_behavior']}]}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     experimental: Annotated[bool | None, Field(description='Stable at 3.1 GA. Shape mirrors IAB OpenRTB Native 1.2 — the renderer contract is well-established across in-feed native and content-recommendation adopters.')] = False

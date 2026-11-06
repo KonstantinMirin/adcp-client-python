@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule
 from adcp.types.constraints import AccountChangeRecordedWebhookSubscriberId
 
@@ -27,6 +27,19 @@ class WholesaleFeedWebhook(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ConditionalRequired((Match('notification_type', True, ('product.created', 'product.updated', 'product.priced', 'product.removed')),), require=('product_payload_view',), forbid=()),
         NegatedConditional((Match('notification_type', True, ('product.created', 'product.updated', 'product.priced', 'product.removed')),), require=(), forbid=('product_payload_view',)),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/wholesale-feed-webhook.json', pointer='#/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'notification_type': {'const': 'product.created'}}, 'required': ['notification_type']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/wholesale-feed-webhook.json', pointer='#/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'notification_type': {'const': 'product.updated'}}, 'required': ['notification_type']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/wholesale-feed-webhook.json', pointer='#/allOf/3', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'notification_type': {'const': 'product.priced'}}, 'required': ['notification_type']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/wholesale-feed-webhook.json', pointer='#/allOf/4', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'notification_type': {'const': 'product.removed'}}, 'required': ['notification_type']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/wholesale-feed-webhook.json', pointer='#/allOf/5', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'notification_type': {'const': 'signal.created'}}, 'required': ['notification_type']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/wholesale-feed-webhook.json', pointer='#/allOf/6', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'notification_type': {'const': 'signal.updated'}}, 'required': ['notification_type']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/wholesale-feed-webhook.json', pointer='#/allOf/7', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'notification_type': {'const': 'signal.priced'}}, 'required': ['notification_type']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/wholesale-feed-webhook.json', pointer='#/allOf/8', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'notification_type': {'const': 'signal.removed'}}, 'required': ['notification_type']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/wholesale-feed-webhook.json', pointer='#/allOf/9', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'notification_type': {'const': 'wholesale_feed.bulk_change'}}, 'required': ['notification_type']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/wholesale-feed-webhook.json', pointer='#/allOf/10', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'cache_scope': {'const': 'public'}}, 'required': ['cache_scope']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/wholesale-feed-webhook.json', pointer='#/allOf/11', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'cache_scope': {'const': 'account'}}, 'required': ['cache_scope']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     idempotency_key: Annotated[IdempotencyKey, Field(description='Sender-generated key stable across retries of the same webhook fire. Receivers MUST dedupe by this key, scoped to the authenticated sender identity.')]
     notification_id: Annotated[str, Field(description='Stable identifier for this logical wholesale feed event. MUST equal event.event_id. Re-emissions of the same logical event reuse this value under a new idempotency_key.', json_schema_extra={'format': 'uuid'})]

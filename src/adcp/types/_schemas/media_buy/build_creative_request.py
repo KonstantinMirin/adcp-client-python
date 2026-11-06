@@ -142,7 +142,9 @@ class BuildCreativeRequest(AdCPVersionEnvelope):
         ConditionalRequired((Match('representation_selection_strategy', True, ('highest_compatible_vast',)),), require=('representation_destination',), forbid=()),
     )
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='media-buy/build-creative-request.json', pointer='#/allOf/7', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['creative_representation_set']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
         Approximation(document='media-buy/build-creative-request.json', pointer='#/allOf/8', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'anyOf': [{'required': ['representation_destination']}, {'required': ['representation_selection_strategy']}]}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='media-buy/build-creative-request.json', pointer='#/allOf/9', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'representation_selection_strategy': {'const': 'highest_compatible_vast'}}, 'required': ['representation_selection_strategy']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     governance_context: Annotated[GovernanceContext | None, Field(description='Opaque intent authorization when this creative execution incurs vendor cost.')] = None
     message: Annotated[str | None, Field(description='Natural language instructions for the transformation or generation. For pure generation, this is the creative brief. For transformation, this provides guidance on how to adapt the creative. For refinement, this describes the desired changes.')] = None

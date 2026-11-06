@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AfterValidator, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, NotValue, Rule, UniqueItems
 from adcp.types.constraints import HttpUrl, StrMinLen1
 
@@ -46,6 +46,12 @@ class MacroProcessingCapability(AdCPBaseModel):
         ConditionalRequired((Match('dialect', True, ('adcp',)),), require=('universal_semantic',), forbid=()),
         ConditionalRequired((Match('operation', True, ('resolve_value',)),), require=('supported_encodings',), forbid=('translation_target',)),
         ConditionalRequired((Match('operation', True, ('translate_to_native',)),), require=('translation_target',), forbid=('supported_encodings',)),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/macro-resolution-capability.json', pointer='#/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'dialect': {'const': 'unknown'}}, 'required': ['dialect']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/macro-resolution-capability.json', pointer='#/allOf/4', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'dialect': {'const': 'adcp'}}, 'required': ['dialect']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/macro-resolution-capability.json', pointer='#/allOf/5', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'universal_semantic': {'enum': ['CATALOG_ID', 'SKU', 'GTIN', 'OFFERING_ID', 'JOB_ID', 'HOTEL_ID', 'FLIGHT_ID', 'VEHICLE_ID', 'LISTING_ID', 'STORE_ID', 'PROGRAM_ID', 'DESTINATION_ID', 'ITEM_NAME', 'ITEM_DESCRIPTION', 'ITEM_TAGLINE', 'ITEM_PRICE', 'ITEM_PRICE_CURRENCY']}}, 'required': ['universal_semantic']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/macro-resolution-capability.json', pointer='#/allOf/7', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'dialect': {'enum': ['iab_vast', 'iab_daast']}, 'operation': {'const': 'resolve_value'}}, 'required': ['dialect', 'operation']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     dialect: MacroDialectFamily
     dialect_namespace: HttpUrl | None = None

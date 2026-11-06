@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, NegatedConditional, Rule, UniqueItems
 from adcp.types.constraints import CanonicalFormatBaseMigrationTargetVersion, FloatGt0, IntMin1
 
@@ -68,6 +68,9 @@ class SlotsItem(AdCPBaseModel):
         ConditionalRequired((Match('required_pixel_ratios', True, None),), require=('pixel_ratios',), forbid=()),
         ConditionalRequired((Match('asset_type', True, ('url', 'catalog', 'published_post', 'html', 'css', 'javascript', 'webhook', 'daast', 'vast', 'display_tag', 'card', 'object', 'pixel_tracker', 'vast_tracker', 'daast_tracker')),), require=(), forbid=('max_chars', 'max_size_kb')),
     )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='formats/canonical/_base.json', pointer='#/properties/slots/items/allOf/4', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['required_pixel_ratios']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
     asset_group_id: Annotated[str, Field(description='Canonical asset_group_id from /schemas/core/asset-group-vocabulary.json. Non-canonical IDs are valid but trigger soft warnings.')]
     asset_type: Annotated[AssetType, Field(description='Discriminator selecting the asset schema this slot accepts. SDK codegen uses this to type the slot value. `display_tag` is the atomic third-party display representation (URL, inline markup, or paired redirect). `published_post` is an existing-post reference asset. `pixel_tracker` / `vast_tracker` / `daast_tracker` are renderer-fired tracker primitives. `object` is a last-resort fallback.')]
     required: Annotated[bool | None, Field(description='Whether this slot is required for a valid manifest.')] = False
@@ -102,6 +105,9 @@ class CanonicalFormatBase(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='formats/canonical/_base.json', pointer='#')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('macro_resolution_capabilities',),)),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='formats/canonical/_base.json', pointer='#/properties/slots/items/allOf/4', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['required_pixel_ratios']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     experimental: Annotated[bool | None, Field(description='When true, this canonical or seller narrowing may not work as declared. Adopters SHOULD preflight it with validate_input or in a sandbox and SHOULD NOT route production budget without testing; experimental status never makes the deprecated v1 path preferable. Drivers include unsettled spec shape, an adopter runtime gap, and custom shapes awaiting promotion. This replaces the earlier status plus runtime_status axes. Sellers SHOULD set experimental whenever a canonical or declaration is not production-ready.')] = False
     deprecated: Annotated[bool | None, Field(description="When true, this canonical (or a seller's specific narrowing of it) is going away. Existing adopters are supported through the deprecation cycle; new adoption is discouraged. Pair with `migration_target_version` to indicate when the canonical is expected to be removed. Distinct from `experimental`: an experimental canonical may stabilize and stop being experimental; a deprecated canonical is on a sunset path.")] = False

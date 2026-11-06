@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, RequiredGroups, Rule
 from adcp.types.constraints import FloatGt0, IntMin1, StrMinLen1
 
@@ -30,6 +30,9 @@ class CanonicalOptimizationGoal(BranchDispatchMixin, AdCPBaseModel):
     @classmethod
     def _branch_combinator(cls) -> str:
         return "oneOf"
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/canonical-optimization-goal.json', pointer='#/oneOf/0/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'metric': {'const': 'viewable_rate'}}, 'required': ['metric']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
 
 
 class Metric(StrEnum):
@@ -75,6 +78,9 @@ class CanonicalOptimizationGoalMetric(CanonicalOptimizationGoal):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ConditionalRequired((Match('metric', True, ('viewable_rate',)),), require=('standard',), forbid=()),
         NegatedConditional((Match('metric', True, ('viewable_rate', 'viewed_seconds')),), require=(), forbid=('standard', 'vendor')),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/canonical-optimization-goal.json', pointer='#/oneOf/0/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'metric': {'const': 'viewable_rate'}}, 'required': ['metric']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     kind: Literal['metric']
     metric: Metric

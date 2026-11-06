@@ -6,7 +6,7 @@ from typing import ClassVar
 
 from pydantic import ConfigDict, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 
 
 class Kind(StrEnum):
@@ -23,6 +23,11 @@ class MacroEncoding(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/macro-encoding.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/macro-encoding.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'kind': {'const': 'none'}}, 'required': ['kind']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/macro-encoding.json', pointer='#/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'kind': {'const': 'rfc3986'}}, 'required': ['kind']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/macro-encoding.json', pointer='#/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'kind': {'const': 'iab_vast_uri'}}, 'required': ['kind']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
     kind: Kind
     depth: NonNegativeInt
 

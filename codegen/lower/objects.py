@@ -373,6 +373,48 @@ def _a_property_count_rides(
     )
 
 
+#: The scalar words whose pydantic type ADMITS A VALUE OF ANOTHER JSON TYPE, so that a
+#: class carrying the word is still wider than the document that states it.  Each is
+#: measured rather than read off a doc page, and each measurement is in the pair below:
+#:
+#: * ``boolean`` -> ``bool`` admits ``1`` and ``"true"``, which ``{"type": "boolean"}``
+#:   refuses.  3 extras stores of this bundle state it.
+#: * ``integer`` -> ``int`` admits ``True``, which ``{"type": "integer"}`` refuses.
+#: * ``number`` -> ``float`` admits ``True`` and ``"1.5"``, which ``{"type": "number"}``
+#:   refuses.
+#:
+#: ``string`` is NOT here, and that is the measurement that makes this a derivation rather
+#: than a list: pydantic's lax ``str`` refuses every non-string, so ``dict[str, str]`` is
+#: EXACT and the bundle's 8 such stores declare nothing.  ``object`` and ``array`` are not
+#: here either -- the store's value is then a class or a list and the type carries itself.
+#:
+#: **AND WHY THIS IS A DECLARATION AND NOT A CARRY, which is the sentence
+#: ``docs/plan/rebuild-plan.md`` §5's ``type`` row owns and this module does not.**  The
+#: exact carrier is a STRICT scalar, and strict is exact for exactly one of these three:
+#: ``StrictBool`` admits what ``{"type": "boolean"}`` admits and nothing else, while
+#: ``StrictInt`` refuses ``1.0`` and ``StrictFloat`` refuses ``1`` -- both of which
+#: draft-07 ADMITS for ``integer`` and ``number``, so making the scalar strict there is
+#: the one direction reading 1 forbids outright.  "Make the scalar strict" is therefore
+#: not one rule but a per-word one, and §5's row reads "a scalar word -> ``str`` / ``int``
+#: / ``float`` / ``bool``" for all four.  Changing that row is the owner's; declaring the
+#: difference meanwhile is §2's own instruction for a widening the design has not closed.
+_LAX_ACROSS_A_TYPE = frozenset({"boolean", "integer", "number"})
+
+
+def _lax_across_a_type(extra: Any) -> bool:
+    """Does this ``additionalProperties`` state a value type the class carries LOOSELY?
+
+    True only for a SCHEMA-valued ``additionalProperties`` whose value is one scalar word
+    in :data:`_LAX_ACROSS_A_TYPE`.  A list of words, a word with an ``enum`` or a ``const``
+    beside it, and every non-scalar word are all False: the first two are a different fact
+    with a different carrier, and the §8 witness that would prove either is not the
+    undeclared-key one this declaration answers for.
+    """
+    if not isinstance(extra, Mapping):
+        return False
+    return extra.get("type") in _LAX_ACROSS_A_TYPE
+
+
 def declare_object(
     node: nodes.Base,
     pointer: str,
@@ -385,7 +427,7 @@ def declare_object(
     bases: tuple[ir.TypeRef, ...] = (),
     branches: tuple[ir.TypeRef, ...] | None = None,
     rule_nodes: Sequence[Mapping[str, Any]] = (),
-    rule_sites: Sequence[str] = (),
+    rule_sites: Sequence[str | None] = (),
     description: str | None = None,
     root_required: tuple[str, ...] | None = None,
     discriminator: str | None = None,
@@ -490,6 +532,26 @@ def declare_object(
         if isinstance(store, Refusal):
             return store
         extra_type = store.type
+        if _lax_across_a_type(ap):
+            # **§2's declared widening for the one thing the store's TYPE does not
+            # carry: the document's refusal of every OTHER JSON type**
+            # (``adcp-client-python-szfx``, sub-cause A1).  ``dict[str, bool]`` states
+            # the word the document states and pydantic's lax mode still admits a
+            # value of another type for it, so the class is wider than
+            # ``additionalProperties: {"type": "boolean"}`` at the one position §8 can
+            # witness: an extra key has no FIELD, so the undeclared-key witness lands
+            # on it directly.  Measured at ``core/media-buy-features.json#``:
+            # ``MediaBuyFeatures.model_validate({"<an undeclared key>": 1})`` returns
+            # ``{"<an undeclared key>": True}`` and the document refuses that value at
+            # ``additionalProperties/type``.
+            #
+            # Rung CONTAINER, the cell's own answer, and the KEYWORD is
+            # ``additionalProperties`` because that is the keyword the document writes
+            # at this pointer -- the same pair ``lower.containers`` already mints for a
+            # typed value beside a ``patternProperties``.
+            from codegen.lower import approximate
+
+            approximate.declare(mod, pointer, "additionalProperties", position, ap)
     #: What the DOCUMENT gives this class for ``extra``, read where the document-side
     #: fold puts the fact: this node's own ``additionalProperties`` first, and the value
     #: its BASES resolved where the node states none (:attr:`Shape.extra`, which carries the

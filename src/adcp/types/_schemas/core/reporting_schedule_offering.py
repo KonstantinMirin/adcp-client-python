@@ -45,7 +45,7 @@ class ReportingScheduleOffering(AdCPBaseModel):
         ConditionalRequired((Match('alignment', True, ('billing_cycle',)),), require=('period_anchor_policy',), forbid=()),
     )
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='core/reporting-schedule-offering.json', pointer='#/allOf/0', keyword='else', kind='WIDENED', rung='KEYWORD', fact={'if': {'properties': {'alignment': {'const': 'source_timezone'}}, 'required': ['alignment']}, 'then': {'required': ['period_timezone_policy'], 'not': {'anyOf': [{'required': ['period_anchor_policy']}, {'required': ['period_anchor']}]}, 'allOf': [{'if': {'properties': {'period_timezone_policy': {'const': 'fixed'}}, 'required': ['period_timezone_policy']}, 'then': {'required': ['period_timezone']}, 'else': {'not': {'required': ['period_timezone']}}}]}, 'else': {'not': {'anyOf': [{'required': ['period_anchor_policy']}, {'required': ['period_timezone_policy']}, {'required': ['period_anchor']}, {'required': ['period_timezone']}]}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/else'),
+        Approximation(document='core/reporting-schedule-offering.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'alignment': {'const': 'billing_cycle'}}, 'required': ['alignment']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     period_duration: PeriodDuration
     alignment: ReportingScheduleAlignment

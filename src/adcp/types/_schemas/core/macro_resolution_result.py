@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule
 from adcp.types.constraints import AssetPath, HttpUrl, StrMinLen1
 
@@ -45,6 +45,17 @@ class MacroResolutionResult(AdCPBaseModel):
         ConditionalRequired((Match('dialect', True, ('unknown',)),), require=(), forbid=('performed_by', 'universal_semantic')),
         ConditionalRequired((Match('operation', True, ('preserve',)),), require=(), forbid=('performed_by',)),
         ConditionalRequired((Match('status', True, ('preserved_for_downstream',)),), require=(), forbid=('performed_by',)),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/macro-resolution-result.json', pointer='#/allOf/4', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'dialect': {'enum': ['iab_vast', 'iab_daast']}, 'operation': {'const': 'resolve_value'}}, 'required': ['dialect', 'operation']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/macro-resolution-result.json', pointer='#/allOf/5', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'dialect': {'const': 'adcp'}}, 'required': ['dialect']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/macro-resolution-result.json', pointer='#/allOf/6', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'dialect': {'const': 'unknown'}}, 'required': ['dialect']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/macro-resolution-result.json', pointer='#/allOf/7', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'operation': {'const': 'preserve'}}, 'required': ['operation']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/macro-resolution-result.json', pointer='#/allOf/8', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'required': {'const': True}}, 'required': ['required']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/macro-resolution-result.json', pointer='#/allOf/9', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'status': {'const': 'resolvable'}}, 'required': ['status']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/macro-resolution-result.json', pointer='#/allOf/10', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'status': {'const': 'preserved_for_downstream'}}, 'required': ['status']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/macro-resolution-result.json', pointer='#/allOf/11', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'status': {'const': 'unsupported'}}, 'required': ['status']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/macro-resolution-result.json', pointer='#/allOf/12', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'status': {'const': 'ambiguous'}}, 'required': ['status']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     declaration_id: StrMinLen1
     asset_path: Annotated[AssetPath, Field(description='JSON Pointer to the asset carrying the declaration.')]

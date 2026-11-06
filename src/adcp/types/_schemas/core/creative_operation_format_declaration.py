@@ -5,7 +5,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, NegatedConditional, Rule, UniqueItems
 
 from ..enums.channels import MediaChannel
@@ -32,6 +32,10 @@ class CreativeOperationFormatDeclaration(AdCPBaseModel):
         NegatedConditional((Match('format_kind', True, ('custom',)),), require=(), forbid=('format_shape', 'format_schema')),
         ForbiddenGroups((('capability_id',),)),
         ConditionalRequired((Match('locale_policy', True, None),), require=('canonical_formats_only',), forbid=()),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/creative-operation-format-declaration.json', pointer='#/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'format_kind': {'const': 'custom'}}, 'required': ['format_kind']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/creative-operation-format-declaration.json', pointer='#/allOf/5', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['locale_policy']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     format_option_id: Annotated[str | None, Field(description='Stable publisher- or product-declaration identity that this creative operation can satisfy. When publisher_domain is present, this field is required.')] = None
     publisher_domain: Annotated[DomainName | None, Field(description='Publisher namespace for format_option_id when this operation claims compatibility with a publisher declaration.')] = None

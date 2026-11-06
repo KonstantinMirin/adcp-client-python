@@ -68,6 +68,7 @@ class DemographicTargetingResolution(AdCPBaseModel):
     )
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='core/demographic-targeting-resolution.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'requested': {'properties': {'age': {'required': ['accepted_bases']}}}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/demographic-targeting-resolution.json', pointer='#/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['applied_verification_methods']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
         Approximation(document='core/demographic-targeting-resolution.json', pointer='#/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'applied_bases': {'contains': {'const': 'verified'}}}, 'required': ['applied_bases']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     requested: Annotated[DemographicTargetingIntent, Field(description='Canonical demographic predicate and determination constraints requested by the buyer.')]

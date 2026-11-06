@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeFloat, NonNegativeInt, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Dependencies, Match, Rule
 from adcp.types.constraints import FloatGt0, FloatMin0Max1, MeasurementSource, OohMetricsIlluminatedHours
 
@@ -236,6 +236,10 @@ class Viewability(AdCPBaseModel):
         Dependencies('viewed_seconds_histogram', ('viewed_seconds', 'measurable_impressions')),
         Dependencies('viewed_seconds_percentiles', ('viewed_seconds', 'measurable_impressions')),
     )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/delivery-metrics.json', pointer='#/properties/viewability/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['viewed_seconds_percentiles']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/delivery-metrics.json', pointer='#/properties/viewability/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['viewed_seconds_histogram']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
     vendor: Annotated[BrandReference | None, Field(description="Vendor that produced these viewability values. Optional but RECOMMENDED so the row is self-describing — buyer agents reading delivery in isolation can attribute the numbers without joining back to `package.committed_metrics` or `package.performance_standards`. The vendor's `brand.json` `agents[type='measurement']` is the discovery anchor; the metric definitions live on the agent's `get_adcp_capabilities.measurement.metrics[]` block. Same shape as `vendor_metric_value.vendor` for symmetry across vendor-attested surfaces.")] = None
     measurable_impressions: Annotated[NonNegativeFloat | None, Field(description='Impressions where viewability could be measured. Excludes environments without measurement capability (e.g., non-Intersection Observer browsers, certain app environments). Coverage denominator for `viewable_rate`, `viewed_seconds`, and both viewed-seconds distributions — every duration statistic is computed over this same measurable population.')] = None
     viewable_impressions: Annotated[NonNegativeFloat | None, Field(description='Impressions that met the viewability threshold defined by the measurement standard.')] = None
@@ -267,6 +271,10 @@ class DeliveryMetrics(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/delivery-metrics.json', pointer='#')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         Dependencies('reach', ('reach_unit',)),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/delivery-metrics.json', pointer='#/properties/viewability/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['viewed_seconds_percentiles']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/delivery-metrics.json', pointer='#/properties/viewability/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['viewed_seconds_histogram']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     impressions: Annotated[NonNegativeFloat | None, Field(description='Impressions delivered')] = None
     spend: Annotated[NonNegativeFloat | None, Field(description='Amount spent')] = None

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types.constraints import FloatMin0Max1, IntMin1, StrMinLen1, ZipAssetDigest
 
 from ..enums.audience_evidence_methodology import AudienceEvidenceMethodology
@@ -93,6 +93,11 @@ class AudienceEvidence(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/audience-evidence.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/audience-evidence.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'relationship': {'const': 'composition'}}, 'required': ['relationship']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/audience-evidence.json', pointer='#/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'relationship': {'const': 'index'}}, 'required': ['relationship']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/audience-evidence.json', pointer='#/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'relationship': {'const': 'reach_estimate'}}, 'required': ['relationship']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
     evidence_id: Annotated[StrMinLen1, Field(description='Stable provider-scoped identifier for the logical evidence series across versions.')]
     snapshot_id: Annotated[StrMinLen1, Field(description='Seller-scoped immutable snapshot identifier. It MUST never be reused for different content.')]
     version: Annotated[StrMinLen1, Field(description='Provider version of this evidence snapshot.')]

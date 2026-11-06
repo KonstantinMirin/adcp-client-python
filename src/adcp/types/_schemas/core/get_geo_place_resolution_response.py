@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types.constraints import StrMinLen1
 
 from .geo_place_catalog_entry import GeographicPlaceCatalogEntry
@@ -21,6 +21,9 @@ class GetGeographicPlaceResolutionResponse(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/get-geo-place-resolution-response.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/get-geo-place-resolution-response.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'system': {'enum': ['geonames', 'google_ads', 'microsoft_ads']}}, 'required': ['system']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
     request: Annotated[GetGeographicPlaceResolutionRequest, Field(description='Exact normalized request represented by this page. Pagination responses repeat the original query fields and may carry the page cursor.')]
     system: GeographicPlaceIdentifierSystem
     system_version: StrMinLen1

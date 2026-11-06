@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, PropertyCount, RequiredGroups, Rule, UniqueItems
 
 from ..enums.browser_family import BrowserFamily
@@ -63,6 +63,9 @@ class DaypartRequirementTimezoneModes(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('timezone_modes'),
         UniqueItems('iana_timezones'),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/targeting-overlay-requirements.json', pointer='#/definitions/daypartRequirement/anyOf/1/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['iana_timezones']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     timezone_modes: Annotated[list[DaypartTimezoneMode], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
     iana_timezones: Annotated[list[IANATimezoneIdentifier] | None, Field(description='Exact concrete IANA timezone identifiers that must remain selectable after discovery. Valid only when timezone_modes includes iana.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None

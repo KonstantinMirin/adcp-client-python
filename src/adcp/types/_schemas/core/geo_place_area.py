@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import StrMinLen1
 
@@ -25,6 +25,9 @@ class GeographicPlaceArea(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/geo-place-area.json', pointer='#')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('values'),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/geo-place-area.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'system': {'enum': ['geonames', 'google_ads', 'microsoft_ads']}}, 'required': ['system']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     country: Annotated[CountryCode, Field(description='ISO 3166-1 alpha-2 country code containing the place.')]
     system: GeographicPlaceIdentifierSystem

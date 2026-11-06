@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import IntMin1Max200
 
@@ -74,6 +74,9 @@ class ListCreativesRequest(AdCPVersionEnvelope):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ConditionalRequired((Match('include_pricing', True, (True,)),), require=('account',), forbid=()),
         ConditionalRequired((Match('assignment_projection', True, ('matching',)),), require=('filters',), forbid=()),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='creative/list-creatives-request.json', pointer='#/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'assignment_projection': {'const': 'matching'}}, 'required': ['assignment_projection']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     filters: CreativeFilters | None = None
     sort: Annotated[Sort | None, Field(description='Sorting parameters')] = None

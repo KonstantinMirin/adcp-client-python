@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 
 from ..core.macro_resolution_result import MacroResolutionResult
@@ -24,6 +24,9 @@ class Target(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/validate-input-result.json', pointer='#/properties/target')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='creative/validate-input-result.json', pointer='#/properties/target/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'kind': {'const': 'capability'}}, 'required': ['kind']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
     kind: Kind
     id: Annotated[str, Field(description="Canonical format name (e.g., 'image'), product_id, URI-form third-party format identifier, or agent-local creative capability_id.")]
 
@@ -79,6 +82,9 @@ class ValidateInputResult(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ConditionalRequired((Match('result_kind', True, ('validated_pass',)),), require=(), forbid=('violations',)),
         ConditionalRequired((Match('result_kind', True, ('unvalidatable_nondeterministic',)),), require=(), forbid=('violations',)),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='creative/validate-input-result.json', pointer='#/properties/target/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'kind': {'const': 'capability'}}, 'required': ['kind']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     target: Target
     result_kind: Annotated[ResultKind, Field(description="Discriminator for the validation outcome. See schema description for the three states. Replaces the earlier boolean `ok` to distinguish 'failed validation' from 'platform is nondeterministic, can't pre-validate'.")]

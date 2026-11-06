@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeInt, TypeAdapter
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import Approximation, SchemaRef
 from adcp.types.constraints import CanonicalFormatImageAspectRatio, IntMin1
 
 from ...common._vocabularies import _VALUES_ACCEPTED_REJECTED
@@ -63,6 +63,9 @@ class CanonicalFormatHostedVideo(CanonicalFormatBase):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='formats/canonical/video_hosted.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='formats/canonical/video_hosted.json', pointer='#/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['ctv_ad_experience']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
     slots: Annotated[list[SlotsItem] | None, Field(default_factory=lambda: TypeAdapter(list[SlotsItem]).validate_python([{'asset_group_id': 'video_main', 'asset_type': 'video', 'required': True}, {'asset_group_id': 'headline', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'primary_text', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'cta', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'brand_name', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'companion_banner', 'asset_type': 'image', 'required': False}, {'asset_group_id': 'landing_page_url', 'asset_type': 'url', 'required': False}]), description='Default slots for video_hosted canonical. Buyer ships a video asset (file or hosted URL); optional headline, primary text (long-form caption), CTA (typically constrained via `cta_values`), brand_name (typical for vertical short-form), companion_banner (typical for horizontal instream), and clickthrough URL. Products MAY override or extend the default — e.g., remove `companion_banner` for short-form vertical, narrow `cta` to a value enum, mark `landing_page_url` as required.', json_schema_extra={'default': [{'asset_group_id': 'video_main', 'asset_type': 'video', 'required': True}, {'asset_group_id': 'headline', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'primary_text', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'cta', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'brand_name', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'companion_banner', 'asset_type': 'image', 'required': False}, {'asset_group_id': 'landing_page_url', 'asset_type': 'url', 'required': False}]})]
     orientation: Annotated[Orientation | None, Field(description='Video orientation. Vertical = 9:16 (Reels, Stories, Shorts). Horizontal = 16:9 (instream, CTV). Square = 1:1 (in-feed).')] = None
     aspect_ratio: Annotated[CanonicalFormatImageAspectRatio | None, Field(description='Aspect ratio. Inferred from orientation if omitted.')] = None

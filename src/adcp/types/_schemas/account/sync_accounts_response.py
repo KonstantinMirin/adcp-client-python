@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Dependencies, ForbiddenGroups, Match, NegatedConditional, Rule
 from adcp.types.constraints import IntMin1, StrMinLen1
 from adcp.types.envelopes import FailedResponse
@@ -47,6 +47,9 @@ class SyncAccountsResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnv
     @classmethod
     def _branch_combinator(cls) -> str:
         return "oneOf"
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='account/sync-accounts-response.json', pointer='#/oneOf/0/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'dry_run': {'const': True}}, 'required': ['dry_run']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
 
 
 class Action(StrEnum):
@@ -111,6 +114,9 @@ class SyncAccountsSuccess(SyncAccountsResponse):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='account/sync-accounts-response.json', pointer='#/oneOf/0')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('errors',),)),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='account/sync-accounts-response.json', pointer='#/oneOf/0/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'dry_run': {'const': True}}, 'required': ['dry_run']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     dry_run: Annotated[bool | None, Field(description='Whether this was a dry run (no actual changes made)')] = None
     accounts: Annotated[list[AccountsItem], Field(description='Results for each account processed')]

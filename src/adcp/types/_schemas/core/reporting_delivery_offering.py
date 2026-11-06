@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Dependencies, Match, Rule, UniqueItems
 from adcp.types.constraints import (
     AgentReportingDestinationFileTransferDestinationTransport,
@@ -129,6 +129,10 @@ class ReportingDeliveryOffering(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('supported_finality'),
         ConditionalRequired((Match('reconciliation_mode', True, ('consumer_receipt',)),), require=('method',), forbid=()),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/reporting-delivery-offering.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'feed_purpose': {'const': 'billing'}}, 'required': ['feed_purpose']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/reporting-delivery-offering.json', pointer='#/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'reconciliation_mode': {'const': 'consumer_receipt'}}, 'required': ['reconciliation_mode']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     offering_id: ReportingCanonicalizationContractGoldenVectorsAdditionalItemName
     feed_purpose: ReportingFeedPurpose

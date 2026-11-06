@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, NegatedConditional, Rule, UniqueItems
 
 from ..enums.channels import MediaChannel
@@ -70,6 +70,11 @@ class ProductFormatDeclaration(BranchDispatchMixin, AdCPBaseModel):
         NegatedConditional((Match('format_kind', True, ('custom',)),), require=(), forbid=('format_shape', 'format_schema')),
         ForbiddenGroups((('capability_id',),)),
         ConditionalRequired((Match('locale_policy', True, None),), require=('canonical_formats_only',), forbid=()),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/product-format-declaration.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['tracker_execution_contract']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/product-format-declaration.json', pointer='#/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'format_kind': {'const': 'custom'}}, 'required': ['format_kind']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/product-format-declaration.json', pointer='#/allOf/5', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['locale_policy']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     format_option_id: Annotated[str | None, Field(description="Stable identifier for this declaration within its namespace. REQUIRED when a product contains multiple declarations with the same format_kind and SHOULD be set on every entry. Publisher-backed options pair it with publisher_domain; product-local options omit publisher_domain. When a single declaration has a unique format_kind and no ID, buyers author canonically with format_kind plus params; they MUST NOT fall back to deprecated format_ids merely because this optional ID is absent. Examples: 'display_image_300x250', 'responsive_search', 'daily_pulse_homepage_image'.")] = None
     publisher_domain: Annotated[DomainName | None, Field(description="Namespace for `format_option_id` when this declaration references or narrows a publisher-declared format option from that publisher's adagents.json top-level `formats[]`. Product-local options omit this field and are selected by `format_option_id` within the target product.")] = None
