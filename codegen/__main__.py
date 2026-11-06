@@ -53,7 +53,7 @@ import time
 from pathlib import Path
 
 from adcp.types._base import KINDS, SchemaRef, schema_at
-from codegen import catalogue, harness, held, keywords, patch, refusal
+from codegen import bundle, catalogue, harness, held, keywords, patch, refusal
 from codegen.emit import PACKAGE, TREE, emit, write
 
 #: Where the run writes §10's per-pair verdict table, relative to the tree it wrote.
@@ -129,6 +129,33 @@ def grade(tree: Path, package: Path | None, bundle_dir: Path) -> tuple[str, int]
         bundle_dir, stated=harness.stated_instances
     )
     formats = harness.FORMAT_STRATEGIES
+
+    def identity_of(document: str, pointer: str) -> dict:
+        """The pair's static identity -- the one thing the accepts store is keyed on."""
+        return {"document": document, "pointer": pointer, "admits": identities[document]}
+
+    #: **WHICH TREE a fixture's node is read from, per document.**  ``schema_at`` resolves a
+    #: record through the module the class was emitted into, and a fixture is a node of some
+    #: OTHER document than the pair's -- so the mapping has to exist, and it is
+    #: ``harness.pairs``' own answer rather than an inference from a path.  A document with
+    #: no pair of its own (nothing emitted for it) falls back to the imported package, which
+    #: is the only tree such a caller has named.
+    module_of = {p.ref.document: p.module for p in found}
+    #: §8's FIXTURES FOR THE RUN, the same object and the same three readers the suite's
+    #: grading pass builds (``tests/test_emit.fixtures``).  Without it the run's draw pays
+    #: the unsubstituted node at every referring position -- ``adcp-client-python-gbw``:
+    #: "the fixture derivation is in codegen/harness.py and the suite passes fixtures
+    #: through it, but codegen/__main__.py was not wired to harness.Fixtures".
+    fixtures = harness.Fixtures(
+        read=lambda document: bundle.read(bundle_dir, document),
+        node=lambda document, pointer: schema_at(
+            SchemaRef(document, pointer), module=module_of.get(document)
+        ),
+        identity=identity_of,
+        documents=frozenset(bundle.portable(bundle_dir)),
+        corpus=held.STORE,
+        custom_formats=formats,
+    )
     rows = [
         #: A row for a module that did not import, so the table has no HOLE where its
         #: pairs would have been.  ``harness.pairs`` records them rather than raising,
@@ -172,11 +199,10 @@ def grade(tree: Path, package: Path | None, bundle_dir: Path) -> tuple[str, int]
                 document=schema_at(SchemaRef(p.ref.document, "#"), module=p.module),
                 ref=p.ref,
                 declared=harness.declarations_of(holder),
-                identity={
-                    "document": p.ref.document,
-                    "pointer": p.ref.pointer,
-                    "admits": identities[p.ref.document],
-                },
+                #: ONE derivation of the identity, shared with the fixture reader above:
+                #: the store's key and a fixture's key are the same key, and two spellings
+                #: of it is a divergence waiting to happen.
+                identity=identity_of(p.ref.document, p.ref.pointer),
             )
         except Exception as e:  # a row with a cause, never a lost pair
             rows.append(
@@ -185,34 +211,36 @@ def grade(tree: Path, package: Path | None, bundle_dir: Path) -> tuple[str, int]
                 )
             )
             continue
-        #: **THE RUN REPLAYS AND DOES NOT DRAW, and a pair with no held instance is a ROW
-        #: and not a draw.**  The accepts key is computable without grading anything
-        #: (``harness.corpus_key`` over the pair's static identity), so the run can see
-        #: the miss before it costs anything -- and a miss costs, by design: "an absent
-        #: corpus is one full cold run."
+        #: **THE RUN DRAWS WHERE THE STORE IS SHORT, AND THE STORE IS A SAVING RATHER THAN
+        #: THE INSTRUMENT.**  What stood here skipped a pair the store held nothing for and
+        #: wrote ``absent:no held instance for this pair``, on the division "the SUITE draws
+        #: and the RUN reports".  That division made the table a function of the STORE, and
+        #: ``docs/plan/final-state.md`` reading 1 forbids exactly it: "BOTH CHECKS ARE A
+        #: FUNCTION OF (class, document) AND OF NOTHING ELSE", and "A PAIR THAT CAN ONLY BE
+        #: GRADED FROM A STORE IS NOT VERIFIED, IT IS REMEMBERED."  A pair whose only
+        #: obstruction is a missing cache entry read the same ``absent`` as a pair whose
+        #: node admits nothing, so the artifact could not tell a saving apart from a defect.
         #:
-        #: Measured, which is why this line exists rather than a comment about it: the
-        #: committed floor is short 98 of the 2,793 pairs
-        #: (``adcp-client-python-3be.26``), 15 of them at or above 8 MB of resolved node,
-        #: and the two largest -- ``core/async-response-data.json#`` and
-        #: ``core/mcp-webhook-payload.json#`` at 44 MB -- ran 2 h 57 m at 32 GB of RSS
-        #: without finishing.  A run that drew them would never write the table at all,
-        #: and a table nobody can obtain is the terminal figure this artifact replaces.
+        #: MEASURED over the 28 pairs the floor was short at ``00092b521``
+        #: (``adcp-client-python-gbw``): 23 draw and PASS in 0.0-0.2 s each, under one
+        #: second for all 23 together; 2 report ``no_instrument`` by a named cause
+        #: (``core/reference-renderer.json#`` and its ``#/properties/provenance``); 2 report
+        #: ``accepts:strategy_error`` in 0.0 s because the node admits nothing
+        #: (``adcp-client-python-qzx.5``'s dead union branch); and 1 is cut
+        #: (``core/signal-coverage-forecast.json#``, ``adcp-client-python-qzx.8``).  So the
+        #: skip was hiding 23 passes behind the same word as 5 real findings.
         #:
-        #: **So the division is: the SUITE draws and the RUN reports.**  The drawn corpus
-        #: is committed precisely so that "a cold checkout pays zero draws", and the
-        #: shortfall has its own instrument
-        #: (``test_every_graded_pair_has_a_committed_entry_under_the_current_key``).  What
-        #: this adds is the shortfall PER PAIR, in the artifact, as ``absent`` -- which is
-        #: strictly more than a hang and strictly more than a count.
-        key = harness.corpus_key(pair.identity, custom_formats=formats)
-        if held.STORE.get(key) is None:
-            rows.append(
-                harness.verdict_row(
-                    p.ref, None, model=model, error="no held instance for this pair"
-                )
-            )
-            continue
+        #: **The cost the skip was defending against is bounded by :data:`BUDGET` already,
+        #: and is now bounded for the draw too** -- a pair that cannot be drawn inside it
+        #: reads ``absent`` with the budget in the cause, which NAMES the draw instead of
+        #: naming the cache.  ``adcp-client-python-3be.26``'s 2 h 57 m pairs are reached by
+        #: that clause and not by this one.
+        #:
+        #: **And the draw is FIXTURED**, which is the other half the run was missing: §8's
+        #: rule ("a referenced document is graded by its own pair, so at a referring
+        #: position it is a fixture and not a draw") was wired into the suite's grading pass
+        #: and not into the run's, so a drawing run would have paid the unsubstituted node.
+        #: ``_fixtures`` is the same object the suite builds, from the same three readers.
         #: **A BACKSTOP ON THE WALL CLOCK, because §8's obligation draws from a key space
         #: nothing can precompute.**  ``check_widening`` derives its draws from the
         #: declared pointer -- a value class, an intermediate node, the node conjoined
@@ -234,6 +262,7 @@ def grade(tree: Path, package: Path | None, bundle_dir: Path) -> tuple[str, int]
                     custom_formats=formats,
                     corpus=held.STORE,
                     widening_corpus=held.WIDENING_STORE,
+                    fixtures=fixtures,
                 )
         except harness.OverBudget:
             rows.append(
