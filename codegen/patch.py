@@ -692,12 +692,30 @@ def differing(published: Path, patched: Path) -> Iterator[Difference]:
     in_published = set(bundle.portable(published))
     in_patched = set(bundle.portable(patched))
     for document in sorted(in_published):
-        before = bundle.record(published, document, in_published)
-        after = bundle.record(patched, document, in_patched)
-        if isinstance(before, Mapping):
-            before = bundle.expanded(before, before)
-        if isinstance(after, Mapping):
-            after = bundle.expanded(after, after)
+        # THE EXPANSION IS BOUND TO ITS OWN NAME and does not overwrite the record's.
+        # ``bundle.record`` answers ``dict | Refusal`` and ``bundle.expanded`` answers
+        # ``object`` -- an HONEST return type for a generic recursive walk and not an
+        # imprecision to suppress, because the walk dereferences THROUGH the storage, so
+        # what comes back at a storage reference is whatever that root's own section holds,
+        # and the walk carries no table of which keys hold a subschema.  Writing the
+        # expansion back onto the narrowed name would claim the narrowing survived a call
+        # that does not promise it.  So the record is read under ``stored_*`` -- which is
+        # the form it arrives in -- the expansion is declared at the type ``expanded``
+        # actually states, and the screen below is what establishes mapping-ness from here.
+        # That screen is the one the rest of this loop relies on and it CAN still fail: a
+        # refused record reaches it and is reported as a difference, unexpanded.
+        stored_before = bundle.record(published, document, in_published)
+        stored_after = bundle.record(patched, document, in_patched)
+        before: object = (
+            bundle.expanded(stored_before, stored_before)
+            if isinstance(stored_before, Mapping)
+            else stored_before
+        )
+        after: object = (
+            bundle.expanded(stored_after, stored_after)
+            if isinstance(stored_after, Mapping)
+            else stored_after
+        )
         if not isinstance(before, Mapping) or not isinstance(after, Mapping):
             if type(before) is not type(after) or before != after:
                 yield Difference(
