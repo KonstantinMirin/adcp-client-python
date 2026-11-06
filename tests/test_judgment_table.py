@@ -301,14 +301,22 @@ def test_an_addition_fails_the_day_the_node_carries_the_keyword(tmp_path: Path) 
         patch.additions(held, PUBLISHED)
 
 
-def test_an_addition_may_only_add_an_annotation(tmp_path: Path) -> None:
+def test_an_addition_declaring_no_direction_may_only_add_an_annotation(tmp_path: Path) -> None:
     """The second refusal, and the predicate is the record check's own.
 
-    An addition's admissibility line is ``seen_by_a_validator`` and not byte-identity, and
-    that line is only available for a keyword a validator does not act on.  So a manifest
-    asking for one that does is refused at LOAD rather than reported after apply -- the
-    difference being that a patched bundle nobody looked at the report of would have forked
-    the protocol.
+    An addition that declares NO direction -- no ``narrows`` value -- has
+    ``seen_by_a_validator`` and not byte-identity as its admissibility line, and that line
+    is only available for a keyword a validator does not act on.  So a manifest asking for
+    one that does is refused at LOAD rather than reported after apply -- the difference
+    being that a patched bundle nobody looked at the report of would have forked the
+    protocol.
+
+    **AND THE REFUSAL IS NOW CONDITIONAL ON THE ENTRY'S DECLARED KIND AND NOT ON THE
+    KEYWORD'S** (``docs/plan/rebuild-plan.md`` §8, "AN OVERRIDE MAY ASSERT, AND WHAT MAKES
+    IT ADMISSIBLE IS THE DIRECTION"), which is why this test's name gained a clause.  An
+    entry that means to assert declares a proving value and is graded on direction instead;
+    that path is graded in ``tests/test_an_asserting_override_may_only_narrow.py``, and this
+    one holds the sentence for the kind that still cannot.
 
     The keyword is drawn from ``codegen.keywords`` rather than named here, so a keyword
     whose cell changes what it decides changes this test's input by its own cell.

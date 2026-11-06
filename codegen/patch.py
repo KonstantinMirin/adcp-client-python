@@ -60,12 +60,31 @@ because it has no document of its own for :func:`load`'s refusal to range over:
   override that silently won over a published value is the one form of this mechanism that
   could outlive its cause invisibly, and it would do so while looking like success.
 
-**AND AN ADDITION MAY ONLY ADD AN ANNOTATION**, by the same predicate the record check
-reads.  §1's admissibility line is byte-identity and an addition moves the record by exactly
-the annotation it adds, so what holds for it is the condition byte-identity was reached for
-(:func:`seen_by_a_validator`) -- and that condition is only available where the keyword
-decides no acceptance.  A manifest asking for a ``minItems`` would be a fork of the protocol
-wearing a patch's clothes, so it is refused at load rather than reported after apply.
+**AN ADDITION THAT ADDS AN ANNOTATION IS ADMISSIBLE BECAUSE ITS PROOF IS FREE**, by the
+same predicate the record check reads.  §1's admissibility line is byte-identity and an
+addition moves the record by exactly the annotation it adds, so what holds for it is the
+condition byte-identity was reached for (:func:`seen_by_a_validator`) -- and for an
+annotation that condition is empty BY CONSTRUCTION, because the keyword decides no
+acceptance anywhere.  That path is unchanged and it keeps its cheaper proof.
+
+**AND AN ADDITION MAY ALSO ASSERT, IN WHICH CASE THE EVIDENCE IS DIRECTION AND NOT
+IDENTITY** (``docs/plan/rebuild-plan.md`` §8, "AN OVERRIDE MAY ASSERT, AND WHAT MAKES IT
+ADMISSIBLE IS THE DIRECTION").  An asserting entry changes what the document accepts, which
+is the whole reason to write one, so byte-identity of the validator's view is not available
+to it and the refusal that used to read *"this keyword decides acceptance, so adding it
+forks the protocol"* was refusing the kind rather than the direction.  What replaces it:
+
+* **it may only NARROW**, and the set it removes must be one the emitted class already
+  refuses, so the patch closes the gap in the DOCUMENT's favour;
+* **the proof is a VALUE** the entry carries (``narrows``), admitted by the published
+  document and refused by the patched one -- *"an asserting entry is a schema defect written
+  down with a value attached, and the value is what distinguishes it from an opinion"*;
+* **a widening assertion is refused outright** and the refusal names the value that proves
+  it widens (:func:`_direction`), because a compiler that cannot represent a constraint
+  could otherwise delete the constraint and report agreement.
+
+The expiry clause is untouched by all of it: the published node already stating the keyword
+is an entry to DELETE and never a value to overwrite.
 """
 
 from __future__ import annotations
@@ -75,9 +94,9 @@ import hashlib
 import json
 import os
 import shutil
-from collections.abc import Collection, Iterable, Iterator, Mapping, Sequence
+from collections.abc import Callable, Collection, Iterable, Iterator, Mapping, Sequence
 from pathlib import Path
-from typing import NamedTuple
+from typing import Any, NamedTuple
 
 from codegen import bundle, keywords, store
 
@@ -634,8 +653,10 @@ class Addition(NamedTuple):
     document: str
     #: JSON Pointer naming the node; ``""`` is the document's root.
     pointer: str
-    #: The keyword added there.  An ANNOTATION, by ``bundle.is_an_annotation`` at that
-    #: node's position, and refused otherwise.
+    #: The keyword added there.  Either an ANNOTATION by ``bundle.is_an_annotation`` at
+    #: that node's position -- whose proof is :func:`seen_by_a_validator` being empty by
+    #: construction -- or an ASSERTION, whose proof is :attr:`narrows` and whose direction
+    #: is checked by :func:`_direction`.
     keyword: str
     #: Its value.
     value: object
@@ -643,6 +664,504 @@ class Addition(NamedTuple):
     defect: str
     #: **Where we said so**: the ask filed against the defect.
     ask: str
+    #: **THE PROVING VALUE OF AN ASSERTING ENTRY**, and ``None`` for an annotation.
+    #:
+    #: A value the PUBLISHED document admits and the PATCHED document refuses, stated at
+    #: the node's own pointer.  :func:`additions` checks both halves against a draft-07
+    #: validator before the entry is returned, so this is a measurement the manifest
+    #: carries rather than a claim it makes.  The third half -- *the emitted class refuses
+    #: it too* -- is the grader's, because this module is the SOURCE layer and has no class
+    #: to ask.
+    narrows: object = None
+    #: **Does this entry change what the document accepts?**
+    #:
+    #: A STATED field and not a read off :attr:`narrows`, because a manifest stating
+    #: ``"narrows": null`` is a proving value of JSON null and absence is not: one sentinel
+    #: standing for both is how a kind comes to be decided by a value's spelling.  It is
+    #: also not a read off the keyword -- the keyword's kind is exactly what the refusal
+    #: this replaced mistook for the question -- so the manifest DECLARES which of the two
+    #: proofs it offers and :func:`additions` refuses a mismatch in either direction.
+    asserts: bool = False
+
+
+#: The property key and the string filler :func:`_carriers` and :func:`_an_instance` reach
+#: for where a document leaves them free.
+#:
+#: Spelled to collide with nothing a schema author writes, for ``harness._ALIEN_KEY``'s
+#: reason: a probe key that happened to BE a declared property would be screened by the
+#: document as that property and the carrier would stop reaching the pointer.
+_PROBE_KEY = "__adcp_direction_probe__"
+
+#: How deep :func:`_an_instance` descends a node's own ``properties`` and ``items``.
+#:
+#: **A BUDGET, and it is the only place this search can fail to terminate.**  A document
+#: whose ``properties`` cycle through a ``$ref`` is not reached at all (see
+#: :func:`_carriers`' limits), but a deeply nested object is, and filling its ``required``
+#: keys is recursive.  Past the budget the fill is ``None`` -- a carrier the published
+#: document then refuses, which costs a finding and can never manufacture one, because
+#: every candidate is screened against BOTH documents and a widening needs the published
+#: one to refuse while the patched one admits.
+_FILL_DEPTH = 6
+
+#: How many (carrier, candidate) pairs :func:`_direction` screens for one entry.
+#:
+#: Reported in the refusal when it is reached, so an entry admitted after the budget ran
+#: out is not read as an entry proved inside it.  Measured on the two shapes the suite
+#: builds: a widening under a ``not`` is found at pair 2 of 14 and a narrowing at a
+#: ``properties`` leaf is proved at pair 1 of 11, so the budget is far above the shapes and
+#: is not tuned to them.
+_DIRECTION_BUDGET = 4000
+
+
+def _screen() -> tuple[Callable[..., bool | None], Any]:
+    """The run's own reading of *"the document admits this value"*, and its witnesses.
+
+    ``harness.conforms`` and ``harness.refused_witnesses``, reached by a FUNCTION-LOCAL
+    import, which is a layering statement and not a saved millisecond.  A patch is an
+    INPUT (§1), so this module sits in the SOURCE layer beside :mod:`codegen.bundle` and
+    nothing in the compile path may depend on the grader at module scope.  What the
+    direction test needs, though, is exactly the grader's reading: ``conforms`` runs the
+    draft the document declares WITH that draft's own format checker
+    (``harness._validating``), which is the same screen ``check_accepts`` puts every
+    instance through.  A second validator spelled here would be a second answer to *"does
+    the document admit it"*, and this epic has already paid for one of those.
+    """
+    from codegen import harness
+
+    return harness.conforms, harness
+
+
+def _an_instance(node: object, depth: int = 0) -> object:
+    """A value ``node`` plausibly admits, built from the node's own keywords.
+
+    **Plausibly, and the word is load-bearing**: nothing here claims the document admits
+    the result.  The claim is made by ``conforms`` in :func:`_direction`, which is
+    ``harness.refused_witnesses``' own split -- *"a keyword whose far side this cannot
+    build contributes no witness and costs no verdict"*.  A fill this gets wrong produces a
+    carrier the published document refuses, and a carrier the published document refuses
+    cannot produce a false widening: a widening needs the published document to refuse and
+    the patched one to ADMIT, and the patched document refuses everything the published one
+    does except at the node this entry touches.
+
+    The node's own statements come first -- a ``const``, an ``enum`` member, a ``default``,
+    an ``examples`` entry -- because those are values the AUTHOR says the node admits.  A
+    ``format`` takes the first of ``harness.FORMAT_SHAPES``' shapes for it and a ``pattern``
+    is drawn from with ``harness.matching_a_pattern``, so neither is a witness written down
+    here: this module states no value per format and no value per regex.
+    """
+    if not isinstance(node, Mapping):
+        return 0
+    if "const" in node:
+        return copy.deepcopy(node["const"])
+    for key in ("enum", "examples"):
+        stated = node.get(key)
+        if isinstance(stated, list) and stated:
+            return copy.deepcopy(stated[0])
+    if "default" in node:
+        return copy.deepcopy(node["default"])
+    word = node.get("type")
+    if isinstance(word, list):
+        word = next((w for w in word if isinstance(w, str)), None)
+    if word is None:
+        word = _implied_word(node)
+    if word == "boolean":
+        return True
+    if word == "null":
+        return None
+    if word in ("integer", "number"):
+        return _a_number(node, word)
+    if word == "array":
+        return _a_list(node, depth)
+    if word == "object":
+        return _an_object(node, depth)
+    if word == "string":
+        return _a_string(node)
+    return 0
+
+
+def _implied_word(node: Mapping) -> str | None:
+    """The ``type`` word a typeless node's own constraint keywords imply, or ``None``.
+
+    A node stating ``maxLength`` and no ``type`` admits an instance of every type, so any
+    word is a correct answer to "build a value this admits"; the STRING word is the useful
+    one, because it is the only type the stated keyword can be crossed on.  This is a
+    reading of §5's typeless row from the other side and it decides nothing about
+    acceptance -- ``conforms`` still does that.
+    """
+    for keyword, implied in (
+        ("minLength", "string"),
+        ("maxLength", "string"),
+        ("pattern", "string"),
+        ("format", "string"),
+        ("properties", "object"),
+        ("required", "object"),
+        ("minProperties", "object"),
+        ("maxProperties", "object"),
+        ("items", "array"),
+        ("minItems", "array"),
+        ("maxItems", "array"),
+        ("minimum", "number"),
+        ("maximum", "number"),
+    ):
+        if keyword in node:
+            return implied
+    return None
+
+
+def _a_string(node: Mapping) -> str:
+    """A string the node's ``format``, ``pattern`` and length bounds point at."""
+    _, harness = _screen()
+    fmt = node.get("format")
+    shapes = harness.FORMAT_SHAPES.get(fmt) if isinstance(fmt, str) else None
+    if shapes:
+        return str(shapes[0][1])
+    pattern = node.get("pattern")
+    if isinstance(pattern, str):
+        drawn = harness.matching_a_pattern(pattern, 1)
+        if drawn:
+            return str(drawn[0])
+    least = node.get("minLength")
+    length = int(least) if isinstance(least, int) else 1
+    most = node.get("maxLength")
+    if isinstance(most, int):
+        length = min(length, most)
+    return "a" * max(length, 1)
+
+
+def _a_number(node: Mapping, word: str) -> int | float:
+    """A number inside whatever bounds the node states."""
+    low = node.get("minimum", node.get("exclusiveMinimum"))
+    high = node.get("maximum", node.get("exclusiveMaximum"))
+    value: int | float = 0
+    if isinstance(low, (int, float)) and not isinstance(low, bool):
+        value = low + 1 if "exclusiveMinimum" in node else low
+    if isinstance(high, (int, float)) and not isinstance(high, bool) and value > high:
+        value = high - 1 if "exclusiveMaximum" in node else high
+    factor = node.get("multipleOf")
+    if isinstance(factor, (int, float)) and not isinstance(factor, bool) and factor:
+        value = factor * max(round(value / factor), 1)
+    return int(value) if word == "integer" else float(value)
+
+
+def _a_list(node: Mapping, depth: int) -> list:
+    """A list of the node's ``minItems`` elements, each built from its ``items`` node."""
+    least = node.get("minItems")
+    want = max(int(least) if isinstance(least, int) else 1, 1)
+    items = node.get("items")
+    if isinstance(items, list):
+        return [_an_instance(one, depth + 1) for one in items[:want]] or [0]
+    one = _an_instance(items if isinstance(items, Mapping) else {}, depth + 1)
+    return [copy.deepcopy(one) for _ in range(want)]
+
+
+def _an_object(node: Mapping, depth: int) -> dict:
+    """An object carrying every key the node REQUIRES and nothing else.
+
+    Nothing else, because an undeclared key is what an ``additionalProperties: false``
+    refuses -- the carrier has to be the object the document is least likely to refuse for
+    a reason this entry says nothing about.
+    """
+    return _required_fill(node, depth)
+
+
+def _required_fill(node: Mapping, depth: int, *, besides: str | None = None) -> dict:
+    """``node``'s ``required`` keys, each filled from its own declaration."""
+    if depth >= _FILL_DEPTH:
+        return {}
+    declared = node.get("properties") if isinstance(node.get("properties"), Mapping) else {}
+    out: dict[str, object] = {}
+    for key in node.get("required") or []:
+        if not isinstance(key, str) or key == besides:
+            continue
+        out[key] = _an_instance(declared.get(key, {}), depth + 1)
+    return out
+
+
+def _route(root: Mapping, pointer: str) -> tuple[tuple[tuple[str, str, Mapping], ...], Mapping] | None:
+    """Each ``(keyword, suffix, parent)`` step from ``root`` down to ``pointer``, and the node.
+
+    A DESCENT and never a parse of the pointer's text, which is :func:`_position_of`'s own
+    rule read one level further: ``bundle.subschemas`` is what says that ``/properties/x``
+    is a step through ``properties`` at all, and it is the function :func:`added_at` and
+    :func:`rewritten` descend by -- so the direction test and the rewrite cannot disagree
+    about which node a pointer names.
+
+    ``None`` where the pointer names no node, which :func:`additions` already refuses on.
+    """
+    steps: list[tuple[str, str, Mapping]] = []
+    node: object = root
+    rest = pointer
+    while rest:
+        if not isinstance(node, Mapping):
+            return None
+        for keyword, suffix, sub, _ in bundle.subschemas(node):
+            if rest == suffix or rest.startswith(f"{suffix}/"):
+                steps.append((keyword, suffix, node))
+                node, rest = sub, rest[len(suffix) :]
+                break
+        else:
+            return None
+    if not isinstance(node, Mapping):
+        return None
+    return tuple(steps), node
+
+
+def _carriers(root: Mapping, pointer: str) -> tuple[tuple[str, Callable[[object], object]], ...]:
+    """Ways to build an instance of the WHOLE document that reaches ``pointer``.
+
+    **THE DIRECTION TEST IS AT THE DOCUMENT AND NOT AT THE NODE, and this function is why
+    that distinction is the whole test rather than a nicety.**  Adding a keyword to a
+    schema OBJECT cannot widen that object: draft-07 holds every keyword of a node against
+    the same instance, so the node's keywords are a conjunction and one more conjunct
+    refuses a subset of what the node refused before.  A direction test asked at the node
+    would therefore pass every entry ever written -- *a test that cannot find a widening is
+    not a test*.  What CAN widen is the DOCUMENT, because the node may sit in a position
+    draft-07 reads negatively:
+
+    * under a ``not``, where refusing more at the node admits more at the document;
+    * as the ``if`` of a conditional with an ``else``, where moving the condition moves
+      which arm an instance is held to;
+    * as a branch of a ``oneOf``, which asserts that EXACTLY one branch matches -- so a
+      narrowed branch can take an instance from two matches to one and the document comes
+      to admit it.
+
+    All three are reachable only by validating a whole instance against both documents,
+    which is what this builds the instance for.
+
+    **ITS LIMITS, because a search that does not state them is a declaration.**  Each is a
+    lost finding and never a false pass, since every candidate is screened against both
+    documents and a widening needs the published one to REFUSE:
+
+    * **a pointer reached only through a ``$ref``** -- anything under ``definitions`` or
+      ``$defs`` -- has no carrier at all, because the instance that reaches it is the
+      REFERRER's and this walks one document's own structure.  :func:`_direction` refuses
+      such an entry as unprovable rather than admitting it unchecked;
+    * **a ``patternProperties`` key is drawn from the regex** (``harness.matching_a_pattern``)
+      and a regex it cannot draw from loses the step;
+    * **a ``propertyNames`` step is reached only by a string candidate**, since the
+      candidate IS the key there;
+    * **the fill is per-node and not a solver** (:func:`_an_instance`): a document whose
+      acceptance couples two properties -- an ``if``/``then`` across them, a
+      ``dependencies`` -- may refuse every carrier this builds, and the entry is then
+      unprovable and refused.
+
+    Two variants per route and not one: with every level's ``required`` keys filled and
+    with none of them, because a level stating ``additionalProperties: false`` beside a
+    ``required`` it does not declare in ``properties`` is refused with the fill and admitted
+    without it, and neither variant is right for both.
+    """
+    routed = _route(root, pointer)
+    if routed is None:
+        return ()
+    steps, _ = routed
+    return tuple(
+        (f"required {'filled' if fill else 'left out'}", _placing(steps, fill=fill))
+        for fill in (True, False)
+    )
+
+
+def _placing(
+    steps: Sequence[tuple[str, str, Mapping]], *, fill: bool
+) -> Callable[[object], object]:
+    """One carrier: the composition of :func:`_wrapped` over ``steps``, innermost first.
+
+    Answers :data:`_UNREACHED` for a candidate no step of this route can carry -- a
+    ``definitions`` step, which carries nothing at all, or a ``propertyNames`` step handed
+    a candidate that is not a string.  The decision is PER CANDIDATE and not per route
+    because the second of those depends on the candidate: a route pre-tested with one value
+    would discard every ``propertyNames`` pointer in the bundle.
+    """
+
+    def place(value: object) -> object:
+        carried = value
+        for keyword, suffix, parent in reversed(steps):
+            if carried is _UNREACHED:
+                return _UNREACHED
+            carried = _wrapped(keyword, suffix, parent, carried, fill=fill)
+        return carried
+
+    return place
+
+
+#: What :func:`_wrapped` answers where a step has no instance form at all.  A sentinel and
+#: not ``None``, because ``None`` IS an instance -- a ``type: null`` node's only one -- and
+#: a carrier that read the JSON null as "unreachable" would silently skip every pointer
+#: under one.
+_UNREACHED: Any = object()
+
+
+def _wrapped(
+    keyword: str, suffix: str, parent: Mapping, child: object, *, fill: bool
+) -> Any:
+    """``child`` as the instance its PARENT sees, for one step of a pointer.
+
+    Draft-07's applicator-to-instance relation, which is the one thing the keyword table
+    does not state: it says where a keyword holds a subschema and at what POSITION, and
+    this says what an instance of that subschema is an instance OF.  Six of the twelve
+    cases are the identity, because a combinator's branch describes the same instance the
+    combinator does -- which is §8's own union-branch pairing rule arriving here.
+    """
+    segments = [bundle.unescape_key(s) for s in suffix.split("/")[1:]]
+    tail = segments[1] if len(segments) > 1 else None
+    if keyword in ("allOf", "anyOf", "oneOf", "not", "if", "then", "else"):
+        return child
+    if keyword == "properties" and tail is not None:
+        return {tail: child, **(_required_fill(parent, 0, besides=tail) if fill else {})}
+    if keyword == "additionalProperties":
+        return {_PROBE_KEY: child, **(_required_fill(parent, 0) if fill else {})}
+    if keyword == "patternProperties" and tail is not None:
+        _, harness = _screen()
+        drawn = harness.matching_a_pattern(tail, 1)
+        if not drawn:
+            return _UNREACHED
+        return {drawn[0]: child, **(_required_fill(parent, 0) if fill else {})}
+    if keyword == "propertyNames":
+        return {child: 1} if isinstance(child, str) else _UNREACHED
+    if keyword == "dependencies" and tail is not None:
+        return {**child, tail: 1} if isinstance(child, dict) else _UNREACHED
+    if keyword == "contains":
+        return [child]
+    if keyword == "items":
+        held = parent.get("items")
+        if isinstance(held, list) and tail is not None and tail.isdigit():
+            index = int(tail)
+            return [*(_an_instance(one, 1) for one in held[:index]), child]
+        return [child]
+    if keyword == "additionalItems":
+        held = parent.get("items")
+        prefix = [_an_instance(one, 1) for one in held] if isinstance(held, list) else []
+        return [*prefix, child]
+    return _UNREACHED
+
+
+def _candidates(published: Mapping, patched: Mapping, witness: object) -> tuple[object, ...]:
+    """The values :func:`_direction` offers at the pointer, nearest cause first.
+
+    **Derived from the two nodes and from the entry, and nothing is listed per keyword
+    here.**  ``harness.refused_witnesses`` is §8's own witness derivation -- *"both sides
+    of each bound and the bound itself, every member of an enum, the value no enum member
+    is"* -- and it is asked TWICE, once of each node, because the two directions want
+    opposite halves:
+
+    * the values the PATCHED node refuses are the ones a narrowing removes, so they are
+      where the entry's own proof lives and, under a ``not``, where a widening does;
+    * the values the PUBLISHED node refuses are the complement, and a widening is by
+      definition one of them -- the search is for one the patched document then admits.
+
+    Each is a perturbation of :func:`_an_instance`'s value for the node, which is the same
+    *"reduce an instance the node admits"* shape ``refused_witnesses`` is built on, so no
+    value here is written down per format or per regex.  The entry's declared ``narrows``
+    goes first because it is the value a reader of a refusal is owed.
+    """
+    _, harness = _screen()
+    base = _an_instance(published)
+    seen: list[object] = []
+    for candidate in (
+        witness,
+        base,
+        *(v for v, _, _ in harness.refused_witnesses(dict(patched), base)),
+        *(v for v, _, _ in harness.refused_witnesses(dict(published), base)),
+        *(v for v, _, _ in harness.refused_witnesses(dict(patched), _an_instance(patched))),
+    ):
+        if not any(_same(candidate, held) for held in seen):
+            seen.append(candidate)
+    return tuple(seen)
+
+
+def _same(one: object, other: object) -> bool:
+    """Two candidates that are the same JSON value, compared as text."""
+    try:
+        return _canonical(one) == _canonical(other)
+    except TypeError:
+        return one is other
+
+
+class Widening(NamedTuple):
+    """A value proving a patched document admits what the published one refuses."""
+
+    #: The value at the entry's own pointer.
+    value: object
+    #: The whole instance it was offered inside.
+    instance: object
+    #: How the carrier reached the pointer.
+    how: str
+
+
+def _direction(
+    at: str, root: Mapping, pointer: str, keyword: str, value: object, witness: object, ask: str
+) -> None:
+    """**THE ADMISSIBILITY OF AN ASSERTING ENTRY: it may only NARROW, proved by value.**
+
+    ``docs/plan/rebuild-plan.md`` §8: *"``load`` refuses an entry whose patched node admits
+    any value the published node refuses, and the refusal names the value."*  Three
+    refusals, and each one is a property of the mechanism rather than input validation:
+
+    * **the pointer is unreachable**, so no value can prove anything about it.  An asserting
+      entry nothing can place is an opinion with a pointer on it, and :func:`_carriers`
+      names which pointers those are;
+    * **the entry WIDENS**, named by the value -- the one refusal §8 calls the back door
+      this ordering exists to close: *"a compiler that cannot represent a constraint could
+      otherwise delete the constraint and report agreement"*;
+    * **the entry's own value does not narrow**, i.e. the published document does not admit
+      it or the patched one does not refuse it.  That is the stale-declaration rule from
+      §9 arriving for a patch: a proof the measurement cannot reproduce is deleted rather
+      than carried.
+
+    The search is :func:`_carriers` crossed with :func:`_candidates`, every pair screened
+    against BOTH documents by ``harness.conforms``, and it is bounded by
+    :data:`_DIRECTION_BUDGET`.  What it cannot find is stated at :func:`_carriers`; what it
+    cannot do at all is decide the THIRD half of §8's proof -- *the emitted class refuses
+    the value too* -- because that half needs a class and this module is the source layer.
+    The grader owns it and
+    ``tests/test_an_asserting_override_may_only_narrow.py`` is where it is read.
+    """
+    conforms, _ = _screen()
+    patched_root = added_at(dict(root), pointer, keyword, value)
+    routed = _route(root, pointer)
+    published_node = routed[1] if routed else {}
+    patched_node = {**published_node, keyword: value}
+    carriers = _carriers(root, pointer)
+    candidates = _candidates(published_node, patched_node, witness)
+    widening: Widening | None = None
+    proved = False
+    screened = 0
+    for how, place in carriers:
+        for candidate in candidates:
+            if screened >= _DIRECTION_BUDGET:
+                break
+            instance = place(copy.deepcopy(candidate))
+            if instance is _UNREACHED:
+                continue
+            screened += 1
+            before = conforms(dict(root), instance)
+            after = conforms(patched_root, instance)
+            if after is True and before is False and widening is None:
+                widening = Widening(candidate, instance, how)
+            if before is True and after is False and _same(candidate, witness):
+                proved = True
+    if not screened:
+        raise ValueError(
+            f"{at}: {keyword!r} ASSERTS, so its evidence is a value -- and no instance of "
+            f"this document reaches {pointer or '/'}, so no value can prove the direction. "
+            f"An asserting entry nothing can place is an opinion with a pointer on it ({ask})"
+        )
+    if widening is not None:
+        raise ValueError(
+            f"{at}: adding {keyword!r} here WIDENS the document, so it is refused outright "
+            f"-- the published document REFUSES {_canonical(widening.value)} at "
+            f"{pointer or '/'} and the patched one ADMITS it, inside "
+            f"{_canonical(widening.instance)} ({widening.how}). An override may only "
+            f"narrow: a widening would let a class be called faithful by loosening the "
+            f"schema under it ({ask})"
+        )
+    if not proved:
+        raise ValueError(
+            f"{at}: the entry's own 'narrows' value {_canonical(witness)} does not prove a "
+            f"narrowing -- the published document must ADMIT it at {pointer or '/'} and the "
+            f"patched document must REFUSE it, and over {screened} screened candidates it "
+            f"does not. A proof the measurement cannot reproduce is deleted, not carried "
+            f"({ask})"
+        )
 
 
 def additions(patch_set: Path, published: Path) -> tuple[Addition, ...]:
@@ -657,15 +1176,25 @@ def additions(patch_set: Path, published: Path) -> tuple[Addition, ...]:
       arriving at the node.  The instruction is then to DELETE the entry -- never to prefer
       our value to the protocol's, which is the one way an override here could outlive its
       cause while looking like success;
-    * **the keyword decides acceptance at that position.**  By
-      :func:`codegen.bundle.is_an_annotation`, the predicate ``record`` itself reads, so
-      there is no second list of which keyword matters.  An addition moves the record by
-      exactly what it adds, so the only admissibility line left to it is
-      :func:`seen_by_a_validator`, and that line is unreachable for a keyword a validator
-      acts on;
+    * **the entry's declared kind and its keyword's kind disagree.**  An ANNOTATION entry
+      (no ``narrows`` key) whose keyword decides acceptance at that position is the old
+      refusal, unweakened: by :func:`codegen.bundle.is_an_annotation`, the predicate
+      ``record`` itself reads, so there is no second list of which keyword matters, and
+      such an entry's only available admissibility line is :func:`seen_by_a_validator` --
+      which is unreachable for a keyword a validator acts on.  An ASSERTING entry (a
+      ``narrows`` key) whose keyword is an annotation EVERYWHERE is refused the other way
+      round: it is claiming a direction nothing can move, so the value it carries proves
+      nothing and the cheaper proof is the one it should be taking;
+    * **the entry WIDENS, or its own value does not narrow** (:func:`_direction`), which is
+      the whole of an asserting entry's admissibility;
     * **the document or the pointer names nothing**, which for this kind is the published
       bundle's own document set and not the patch set's;
     * **the entry names no defect or no ask** (:func:`_judged`).
+
+    **WHAT THE REFUSAL IS NOW CONDITIONAL ON IS THE DIRECTION AND NO LONGER THE KEYWORD'S
+    KIND**, which is ``docs/plan/rebuild-plan.md`` §8's new subsection and the one change
+    here.  The annotation path is byte-for-byte what it was, because it has a cheaper proof
+    and should keep using it.
     """
     manifest = json.loads((patch_set / MANIFEST).read_text())
     held = set(bundle.portable(published))
@@ -677,7 +1206,8 @@ def additions(patch_set: Path, published: Path) -> tuple[Addition, ...]:
         defect, ask = _judged(entry, at)
         if document not in held:
             raise ValueError(f"{document}: the published bundle holds no such document")
-        node = bundle.node_at(bundle.read(published, document), pointer)
+        root = bundle.read(published, document)
+        node = bundle.node_at(root, pointer)
         if not isinstance(node, dict):
             raise ValueError(f"{at} names no schema node")
         if keyword in node:
@@ -686,13 +1216,32 @@ def additions(patch_set: Path, published: Path) -> tuple[Addition, ...]:
                 f"defect is gone -- delete it rather than overwrite {node[keyword]!r} "
                 f"({ask})"
             )
-        position = _position_of(bundle.read(published, document), pointer)
-        if position is None or not bundle.is_an_annotation(keyword, position):
+        asserts = "narrows" in entry
+        position = _position_of(root, pointer)
+        annotates = position is not None and bundle.is_an_annotation(keyword, position)
+        if not asserts and not annotates:
             raise ValueError(
                 f"{at}: {keyword!r} decides acceptance at a {position} position, so adding "
-                "it forks the protocol rather than annotating it"
+                "it forks the protocol rather than annotating it -- an entry that means to "
+                "fork it ON PURPOSE declares a 'narrows' value and is graded by direction "
+                f"instead ({ask})"
             )
-        out.append(Addition(document, pointer, keyword, entry["value"], defect, ask))
+        if asserts and all(
+            bundle.is_an_annotation(keyword, every) for every in keywords.Position
+        ):
+            raise ValueError(
+                f"{at}: {keyword!r} states nothing about acceptance at any position, so "
+                f"this entry's 'narrows' value cannot be the thing that proves it -- drop "
+                f"the key and take the annotation's own proof ({ask})"
+            )
+        if asserts:
+            _direction(at, root, pointer, keyword, entry["value"], entry["narrows"], ask)
+        out.append(
+            Addition(
+                document, pointer, keyword, entry["value"], defect, ask,
+                entry.get("narrows"), asserts,
+            )
+        )
     return tuple(out)
 
 
