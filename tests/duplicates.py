@@ -360,7 +360,7 @@ DECIDED: tuple[Decided, ...] = (
                     "#/oneOf/0/properties/macro_declarations/items",
                 ),
                 (
-                    "core/assets/daast-tracker-asset.json",
+                    "core/assets/url-asset.json",
                     "#/properties/macro_declarations/items",
                 ),
             }
@@ -374,13 +374,25 @@ DECIDED: tuple[Decided, ...] = (
         ask="adcp-client-python-e4z (ours: a stating position read as the node the DOCUMENT "
         "APPLIES there rather than as the node's own text)",
         names_the_subject=(
-            "core/assets/daast-tracker-asset.json",
+            "core/assets/url-asset.json",
             "#/properties/macro_declarations/items",
             "URL Macro Declaration",
         ),
         note="the title is patches/8735's own, at the five composed positions, and it is "
         "deliberately NOT extended to this branch: the node's own text says nothing about a "
-        "macro declaration, so titling it would be a claim the node does not support",
+        "macro declaration, so titling it would be a claim the node does not support.  "
+        "**THE SECOND POSITION IS THE L2C ENTRY'S HOME AND THE HOME MOVED, which is why "
+        "this key is RE-KEYED and not a new decision.**  It read "
+        "`core/assets/daast-tracker-asset.json` until `adcp-client-python-82m`'s merge: the "
+        "row was written on a lane (1885929fe) that is NEITHER an ancestor NOR a descendant "
+        "of the lane that made a catalogue entry's home the earliest document in a "
+        "reference-only order (abc48492a), the two merged independently, and a textual "
+        "merge cannot see that the home of the five composed `macro_declarations` positions "
+        "moved to `core/assets/url-asset.json`.  The GROUP is the same group -- one "
+        "branch-narrowing position against the composed entry's home -- the defect is the "
+        "same defect and the ask is the same ask; what moved is which position is the home.  "
+        "A row keyed on schema nodes is therefore re-keyed by a home move, and that is the "
+        "cost of the key being the group rather than a count",
     ),
 )
 
