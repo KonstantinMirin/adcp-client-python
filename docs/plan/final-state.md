@@ -291,6 +291,13 @@ the set of flat spellings appearing in upstream's own examples, scripts and docu
 from an environment holding only the installed wheel. A bucket that explains why a row needs no
 alias is only sound if the spelling it refers to is the one a caller uses.
 
+**Decided by** the spellings consumer code actually writes — not our table's rows — each resolving
+from an environment holding only the installed wheel or carrying a **declared verdict** saying why it
+should not exist; by `is` holding across every spelling of one subject, since an alias is a NAME and
+a second object would be a second type; and by reading 6 still holding with the aliases counted.
+**A table complete against itself proves nothing here**, because the thing being claimed is about
+an import someone else already wrote.
+
 **A NAME WITH NO SCHEMA SUBJECT GETS A MIGRATION NOTE AND NEVER A CLASS.** Where upstream's flat
 namespace carries something no document states — a hand-written ergonomic, eager, legacy or
 registry layer — an alias has nothing to point at, and **minting a nodeless class to satisfy an
