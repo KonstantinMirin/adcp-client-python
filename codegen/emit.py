@@ -616,8 +616,8 @@ def exported(
     Nothing raised, because Python does not consult ``__all__`` on import; the
     disagreement was about what the module says it offers.
 
-    **A symbol crosses a module boundary in exactly two ways, and this list is the union
-    of both.**  That is what makes it closed by CONSTRUCTION rather than by today's
+    **A symbol crosses a module boundary in exactly three ways, and this list is the union
+    of them.**  That is what makes it closed by CONSTRUCTION rather than by today's
     population, and the second way was found by salesagent-j3k2l.36 landing while the
     first was being fixed:
 
@@ -635,12 +635,24 @@ def exported(
        declares a second ``...SlotsItem`` at a pointer the subclass's document does not
        have -- so the import is the plan's answer and the export has to match it.
 
-    ``composed`` is the pointers some document's root ``allOf`` names in this one,
-    ``#`` for a bare conjunct (257 of the bundle's 258) and the fragment for the one that
-    carries one.  A Target is minted for the root or a named node and for nothing else,
-    so no OTHER class's fields can cross, and ONE restatement is as deep as it goes: a
-    subclass restates a key the base declares, and a field of a nested item is not a key
-    of the subclass.
+    3. **A composing subclass re-uses the decided field of a NESTED class of its base.**
+       §2's intersection recurses into ``properties``, so a restatement that narrows a
+       property and says nothing about that property's own nested keys carries the base's
+       nested declarations VERBATIM -- and re-uses the base's nested decided fields rather
+       than deciding them again at a pointer this document does not have
+       (:attr:`compiler.Shape.nested`, ``adcp-client-python-8212``).
+       ``core/forecast-point.json``'s ``CoverageRate`` is the measured one: it crosses into
+       ``core/signal-coverage-forecast.json`` with no ``$ref`` naming it and no field of
+       the composed ROOT carrying it.  "ONE restatement is as deep as it goes" is the
+       sentence that stood here, and it was a statement about what the walk could then
+       express rather than about the rule.
+
+    ``composed`` is ``bundle.composed``: the pointers of this document whose decided
+    FIELDS a composing subclass in another module re-uses.  A bare conjunct of a root
+    ``allOf`` names the root (257 of the bundle's 258) and the one that carries a
+    fragment names that node; a composition at ANY depth names the nodes its own
+    RESTATED keys sit at, which is crossing 3.  A Target is minted for the root or a named
+    node and for nothing else, so no OTHER class's fields can cross.
 
     **Every declared symbol would be wider than the demand and wrong about why.**
     Measured on the committed tree: the rule above is 717 names with 24 of 677 modules
@@ -1106,6 +1118,13 @@ def _bound_shape(shape: compiler.Shape, symbols: Mapping[str, str]) -> compiler.
         decided={
             key: dataclasses_replace(f, type=lower_names.resolved(f.type, symbols))
             for key, f in shape.decided.items()
+        },
+        # **:attr:`compiler.Shape.nested` binds by the SAME table and by recursion**, and
+        # not by a second reading: a nested class's decided fields are recorded by the
+        # same walk at their own pointers, so one symbol table binds every depth and a
+        # re-user one level down reads a symbol exactly as a re-user at the top does.
+        nested={
+            key: _bound_shape(inner, symbols) for key, inner in shape.nested.items()
         },
     )
 

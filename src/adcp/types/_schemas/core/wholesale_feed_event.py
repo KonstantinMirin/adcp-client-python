@@ -19,7 +19,7 @@ from .pricing_option import PricingOption
 from .product import Product
 from .signal_coverage_forecast import SignalCoverageForecast
 from .signal_id import SignalID
-from .signal_listing import ObjMinMax, SignalListing
+from .signal_listing import SignalListing
 from .signal_ref import SignalRef
 from .vendor_pricing_option import VendorPricingOption
 
@@ -232,8 +232,6 @@ class Signal(SignalListing):
     name: Annotated[StrMinLen1, Field(description='Human-readable signal name')]
     description: Annotated[StrMinLen1, Field(description='Detailed signal description')]
     value_type: SignalValueType | None = None
-    categories: Annotated[list[str] | None, Field(description="Valid values for categorical signals. Present when value_type is 'categorical'.", min_length=1)] = None
-    range: Annotated[ObjMinMax | None, Field(description="Valid range for numeric signals. Present when value_type is 'numeric'.")] = None
     signal_type: SignalAvailabilityType
     data_provider: StrMinLen1 | None = None
     coverage_percentage: Annotated[FloatMin0Max100 | None, Field(description='DEPRECATED for detailed planning. Optional legacy scalar percentage of audience coverage retained only as a fallback for clients that do not consume coverage_forecast. When coverage_forecast is present, coverage_forecast is authoritative for signal-level discovery and coverage_percentage is fallback-only.')] = None

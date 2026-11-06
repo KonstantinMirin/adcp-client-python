@@ -803,43 +803,73 @@ def _carries_nothing(word: str, position: Position) -> bool:
     return answer is not None and answer.effect is keywords.Effect.NOTHING
 
 
-def states_nothing_but_a_reference(
+def declares_nothing_its_base_does_not(
     node: nodes.Base,
     *,
+    decided: Sequence[ir.Field],
     conjunct_bases: Sequence[ir.TypeRef],
     bases: Sequence[ir.TypeRef],
     union: compiler.UnionBase | None,
     inherits: compiler.Shape | None,
     base_if_none_composes: ir.TypeRef | None,
-    local: Mapping[str, Any],
-    required: AbstractSet[str],
-    conjunct_rules: Sequence[Mapping[str, Any]],
+    distributing: object | None,
+    rules: Sequence[object],
+    dropped: Sequence[object],
+    distinct: Sequence[str],
     conjunct_values: Sequence[object],
     conjoined: Sequence[object],
     contains: Any | None,
     facts: Mapping[str, Any],
 ) -> bool:
-    """Whether this node composes ONE class base and says nothing else about an instance.
+    """Whether this node composes ONE class base and declares nothing that base does not.
 
     ``docs/plan/final-state.md`` reading 4: *"a type stated at more than one position is
     written once and referenced, never restated"*, and reading 4's own test for which of
     the two a position is -- *"whether the bundle REFERENCES one node from the others or
     RESTATES it is the question that tells our defect from the schema's own duplication"*.
-    A node whose whole content is ``{"allOf": [{"$ref": X}]}`` is the bundle REFERENCING,
-    so a class declared at it is a second declaration of X's type under a second name, and
-    that is ours.
+    A node that composes X and adds nothing to it IS X, so a class declared at it is a
+    second declaration of X's type under a second name, and that is ours.
 
-    **EVERY ARGUMENT IS A WAY FOR THIS NODE TO SAY SOMETHING**, and the predicate is the
-    conjunction that there is none -- which is why they are parameters rather than a
-    re-reading of the node.  ``local`` and ``required`` are what the node and its inline
-    conjuncts declare about keys; ``conjunct_rules``, ``conjunct_values``, ``contains`` and
-    ``facts`` are §5's "the other conjuncts and the ``allOf``'s siblings constrain it", one
-    carrier each; ``conjoined`` is a second ``$ref`` whose target is not a class; ``bases``,
-    ``inherits``, ``union`` and ``base_if_none_composes`` are the CALLER's contributions,
-    and a union root or a union branch arrives with one, so none of them is in this row.
-    The node's own three are read off :class:`nodes.Base`: ``declares`` holds every key it
-    states about an instance, ``annotations`` every admitted key it carries without
-    constraining, and ``rules`` its own rule sources.
+    **IT ASKED "DECLARES NOTHING" AND THE QUESTION IS "DECLARES NOTHING ITS BASE DOES NOT
+    ALREADY DECLARE IDENTICALLY"** (``adcp-client-python-nlkz``, and the widening
+    ``adcp-client-python-y4j`` left for the first node to need it).  The narrow form read
+    the NODE -- ``set(node.declares) <= {"allOf"}``, ``not local``, ``not required`` -- so
+    it saw only the bundle's own literal spelling ``{"allOf": [{"$ref": X}]}``.  A node
+    that RESTATES what its base already states reaches the same place by a different
+    route: ``core/rights-constraint.json`` at
+    ``/properties/attestation_refs/items/allOf/1/properties/issuer`` declares ``type`` and
+    ``brand``, both byte for byte what ``core/attestation-issuer.json#/oneOf/0`` declares,
+    and the class for it was ``class ObjTypeBrand(AttestationBrandIssuer): pass`` -- two
+    declarations of one type under two names, which is the defect and not the spelling.
+
+    **SO THE READING IS THE DECIDED CLASS AND NOT THE NODE'S TEXT**, which is why this is
+    asked after §2's intersection has run and the field list is in hand: whether a
+    restatement adds anything is exactly what the merge decides, key by key, and the
+    answer is :attr:`codegen.lower.inherited.Merged.own` already folded into ``decided``.
+    ``decided`` empty is "this class declares no field of its own" -- a key the merge left
+    INHERITED contributes none, a key it narrowed or re-used contributes one, and a
+    ``required`` name no view declares contributes an ``Any`` field -- so the three clauses
+    the node-level form spelled separately are one reading of what was built.
+
+    **EVERY OTHER ARGUMENT IS A WAY FOR THIS NODE TO SAY SOMETHING**, and the predicate is
+    the conjunction that there is none.  ``rules``, ``dropped`` and ``distinct`` are the
+    three things D6's rule reading produces over the node's own sources and its conjuncts'
+    together; ``conjunct_values``, ``contains`` and ``facts`` are §5's "the other conjuncts
+    and the ``allOf``'s siblings constrain it", one carrier each; ``conjoined`` is a second
+    ``$ref`` whose target is not a class; ``bases``, ``inherits``, ``union``,
+    ``base_if_none_composes`` and ``distributing`` are the CALLER's contributions and a
+    union root, a union branch or a distributed target arrives with one, so none of them is
+    in this row.
+
+    **``dropped`` IS IN THE CONJUNCTION BECAUSE A DROPPED FACT IS DECLARED ON THE CLASS,
+    and leaving it out silently retired four declared widenings.**  §2 permits a model
+    looser than its document only as a WIDENING declared at its own pointer, and
+    :func:`declare_object` is the funnel that writes one -- so a node whose rule reading
+    dropped a fact says something no base says, and the class is the thing that says it.
+    Measured: without this clause the four ``if``/``then`` conjuncts
+    ``tests/duplicates.py`` records as dropped-conjunct groups stopped declaring, and
+    ``./check`` read ``approximated 379 facts in 145 documents`` against 383 in 148 -- a
+    fact the document states and the package no longer attributes anywhere.
 
     **``annotations`` IS IN THE CONJUNCTION BY ITS EFFECT AND NOT BY A LIST OF NAMES, and
     ``description`` is why there is a screen at all.**  §6's description-authority rule
@@ -849,7 +879,10 @@ def states_nothing_but_a_reference(
     annotations are the ones :data:`keywords.Effect.NOTHING` names: read off the TABLE at
     this node's own position, which is §3's rule that a keyword's answer is the cell's.
     ``x-adcp-schema-uri`` is NOTHING at PROP and ``description`` is ANNOTATION, which is
-    the whole of the difference between the 7 nodes below and the 50 beside them.
+    the whole of the difference between the 7 literal nodes below and the 50 beside them.
+    ``extra`` and ``extras`` stay as the node's own: §5's ``additionalProperties`` row has
+    a class DECLARE the ``extra`` the document gives it, so a node stating one states
+    something, and a node silent about it resolves its base's.
 
     Measured over the 1,054 portable documents: **235 nodes state an ``allOf`` of exactly
     one ``$ref``**, 108 of them at a document root; of the 127 at a non-root position
@@ -865,6 +898,9 @@ def states_nothing_but_a_reference(
     other arm.  The 3 that reach here compose ``core/push-notification-config.json``, which
     IS a class, and are the group ``tests/test_one_node_is_one_declaration.py`` reports as
     four declarations of one type: the root's own and three empty subclasses of it.
+
+    **ROOT is excluded and that is §1 and D5 rather than a caution**; the call site carries
+    the sentence, beside the return it guards.
     """
     return (
         node.position is not Position.ROOT
@@ -873,14 +909,14 @@ def states_nothing_but_a_reference(
         and union is None
         and inherits is None
         and base_if_none_composes is None
-        and set(node.declares) <= {"allOf"}
+        and distributing is None
+        and not decided
         and all(_carries_nothing(word, node.position) for word in node.annotations)
-        and not node.rules
+        and not rules
+        and not dropped
+        and not distinct
         and node.extra is None
         and getattr(node, "extras", None) is None
-        and not local
-        and not required
-        and not conjunct_rules
         and not conjunct_values
         and not conjoined
         and contains is None
@@ -1176,6 +1212,10 @@ def lower_composition(
     #: the field rather than re-deciding the node; :attr:`Shape.decided` says why.
     inherited_fields: dict[str, ir.Field] = {}
     inherited_from: dict[str, compiler.Target] = {}
+    #: :attr:`Shape.nested` from the same bases, read by the one arm that needs a base's
+    #: field set ONE LEVEL DOWN: a restatement that narrows a property and is SILENT about
+    #: that property's own nested keys (``adcp-client-python-8212``).
+    inherited_nested: dict[str, compiler.Shape] = {}
     if inherits is not None:
         # §4's "a branch composes its own with them", seeded before the conjunct list:
         # the caller's own ``bases`` already declare these keys, so they are INHERITED
@@ -1185,6 +1225,7 @@ def lower_composition(
         # the base is in this module, so there is nothing to import (:func:`_reused`).
         inherited.update(inherits.properties)
         inherited_fields.update(inherits.decided)
+        inherited_nested.update(inherits.nested)
         inherited_required |= inherits.required
         if inherited_extra is None:
             inherited_extra = inherits.extra
@@ -1457,6 +1498,7 @@ def lower_composition(
             conjunct_bases.append(ir.TypeRef(target.symbol, local=True))
             inherited.update(target.declares.properties)
             inherited_fields.update(target.declares.decided)
+            inherited_nested.update(target.declares.nested)
             inherited_from.update(dict.fromkeys(target.declares.properties, target))
             inherited_required |= target.declares.required
             if inherited_extra is None:
@@ -1764,41 +1806,6 @@ def lower_composition(
     if sibling is not None:
         return sibling
 
-    if states_nothing_but_a_reference(
-        node,
-        conjunct_bases=conjunct_bases,
-        bases=bases,
-        union=union,
-        inherits=inherits,
-        base_if_none_composes=base_if_none_composes,
-        local=local,
-        required=required,
-        conjunct_rules=conjunct_rules,
-        conjunct_values=conjunct_values,
-        conjoined=conjoined,
-        contains=contains,
-        facts=facts,
-    ):
-        # **A SUBCLASS THAT ADDS NOTHING IS NOT A BASE, IT IS A SECOND NAME FOR ONE
-        # TYPE**, which is ``docs/plan/final-state.md`` reading 4 read at this row's own
-        # limit: "a type stated at more than one position is written once and referenced,
-        # never restated".  §5's ``$ref`` row at CONJ gives "a BASE where the target is a
-        # class DECLARING FIELDS", and the clause the predicate above holds the compiler
-        # to is the one §5 states for the row's other arm -- "at a node that declares no
-        # fields of its own" -- which is a property of THIS node and not of the target's
-        # kind.  Where it holds and the target is a class, the base would supply every
-        # field, every rule, every ``extra`` and the description, and the subclass would
-        # state nothing: so the target is this node's own TYPE here exactly as it is where
-        # the target is a scalar, and the answer is one return rather than a second shape.
-        #
-        # **ROOT is excluded and that is §1 and D5 rather than a caution.**
-        # ``lower.references._root`` already decided the same question for a bare ``$ref``
-        # at a document root and answered SUBCLASS: "binding this module's symbol to
-        # another module's class would be a second way to reach one class, against §1",
-        # and D5 fixes a root's symbol so the module must declare one.  A non-root
-        # position declares no symbol of its own -- the field's annotation is the imported
-        # name -- so there is nothing for a second reach to be.
-        return ir.Decided(conjunct_bases[0])
 
     #: §5's DISTRIBUTION clause, where the row above answered with the target's BRANCHES:
     #: the conjunct's own pointer, the branches, and the node each branch class is
@@ -1915,7 +1922,11 @@ def lower_composition(
         required=required,
         inherited_required=inherited_required,
         inherited_fields=inherited_fields,
+        inherited_nested=inherited_nested,
         inherited_from=inherited_from,
+        # The classes this one inherits FIELDS from, counted: ``base_if_none_composes`` is
+        # the model base and declares none, so it is not one of them.
+        bases=len(bases) + len(conjunct_bases),
         mod=mod,
     )
     if isinstance(merged, Refusal):
@@ -2022,6 +2033,43 @@ def lower_composition(
     )
     if isinstance(decided, Refusal):
         return decided
+    if declares_nothing_its_base_does_not(
+        node,
+        decided=decided,
+        conjunct_bases=conjunct_bases,
+        bases=bases,
+        union=union,
+        inherits=inherits,
+        base_if_none_composes=base_if_none_composes,
+        distributing=distributing,
+        rules=stated.rules,
+        dropped=stated.dropped,
+        distinct=stated.distinct,
+        conjunct_values=conjunct_values,
+        conjoined=conjoined,
+        contains=contains,
+        facts=facts,
+    ):
+        # **A SUBCLASS THAT ADDS NOTHING IS NOT A BASE, IT IS A SECOND NAME FOR ONE
+        # TYPE**, which is ``docs/plan/final-state.md`` reading 4 read at this row's own
+        # limit: "a type stated at more than one position is written once and referenced,
+        # never restated".  §5's ``$ref`` row at CONJ gives "a BASE where the target is a
+        # class DECLARING FIELDS", and the clause the predicate above holds the compiler
+        # to is the one §5 states for the row's other arm -- "at a node that declares no
+        # fields of its own" -- which is a property of THIS node and not of the target's
+        # kind.  Where it holds and the target is a class, the base would supply every
+        # field, every rule, every ``extra`` and the description, and the subclass would
+        # state nothing: so the target is this node's own TYPE here exactly as it is where
+        # the target is a scalar, and the answer is one return rather than a second shape.
+        #
+        # **ROOT is excluded and that is §1 and D5 rather than a caution.**
+        # ``lower.references._root`` already decided the same question for a bare ``$ref``
+        # at a document root and answered SUBCLASS: "binding this module's symbol to
+        # another module's class would be a second way to reach one class, against §1",
+        # and D5 fixes a root's symbol so the module must declare one.  A non-root
+        # position declares no symbol of its own -- the field's annotation is the imported
+        # name -- so there is nothing for a second reach to be.
+        return ir.Decided(conjunct_bases[0])
     declared = objects.declare_object(
         node,
         pointer,
@@ -2035,10 +2083,14 @@ def lower_composition(
             {**inherited, **own},
             frozenset(required | inherited_required),
             decided=inherited_fields,
+            nested=inherited_nested,
             extra=inherited_extra,
         ),
         position,
         extras=getattr(node, "extras", None),
+        # The same map ``fields`` read above: a key a CONJUNCT declared sits at the
+        # conjunct's own pointer, which is where its child shape was recorded.
+        declared_at=at,
         # The model base only where NOTHING composes; see ``base_if_none_composes``.
         bases=(
             (*bases, *conjunct_bases)

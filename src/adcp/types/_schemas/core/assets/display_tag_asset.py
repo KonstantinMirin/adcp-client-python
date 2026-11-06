@@ -47,7 +47,6 @@ class TagURL(DisplayTagAsset):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('markup',), ('ad_request_url',), ('clickthrough_url',))),
     )
-    asset_type: Annotated[Literal['display_tag'], Field(description='Discriminator identifying an atomic third-party display-tag representation.')]
     macro_declarations: Annotated[list[TagURLMacroDeclarationsItem] | None, Field(description='Exact macro tokens present anywhere in this representation. Tokens remain byte-preserved until the resolver named by each declaration substitutes them.', min_length=1)] = None
     provenance: Provenance | None = None
     delivery_type: Literal['tag_url']
@@ -92,7 +91,6 @@ class InlineMarkup(DisplayTagAsset):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('url',), ('ad_request_url',), ('clickthrough_url',))),
     )
-    asset_type: Annotated[Literal['display_tag'], Field(description='Discriminator identifying an atomic third-party display-tag representation.')]
     macro_declarations: Annotated[list[InlineMarkupMacroDeclarationsItem] | None, Field(description='Exact macro tokens present anywhere in this representation. Tokens remain byte-preserved until the resolver named by each declaration substitutes them.', min_length=1)] = None
     provenance: Provenance | None = None
     delivery_type: Literal['inline_markup']
@@ -137,7 +135,6 @@ class PairedRedirect(DisplayTagAsset):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('url',), ('markup',))),
     )
-    asset_type: Annotated[Literal['display_tag'], Field(description='Discriminator identifying an atomic third-party display-tag representation.')]
     macro_declarations: Annotated[list[PairedRedirectMacroDeclarationsItem] | None, Field(description='Exact macro tokens present anywhere in this representation. Tokens remain byte-preserved until the resolver named by each declaration substitutes them.', min_length=1)] = None
     provenance: Provenance | None = None
     delivery_type: Literal['paired_redirect']

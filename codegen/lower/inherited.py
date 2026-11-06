@@ -35,6 +35,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from collections.abc import Set as AbstractSet
 from dataclasses import dataclass, field
+from typing import Any
 
 from codegen import compiler, intersect, ir
 from codegen.keywords import Position
@@ -84,7 +85,9 @@ def merge(
     required: AbstractSet[str],
     inherited_required: AbstractSet[str],
     inherited_fields: Mapping[str, ir.Field],
+    inherited_nested: Mapping[str, compiler.Shape],
     inherited_from: Mapping[str, compiler.Target],
+    bases: int,
     mod: compiler.Module,
 ) -> Merged | Refusal:
     """§2's intersection per key: what each of ``local``'s declarations makes of the field.
@@ -98,6 +101,20 @@ def merge(
 
     The arms are the four in this module's docstring, in the order the predicates settle
     them, and the first is the cheap one: a key no base declares has nothing to merge.
+
+    ``inherited_nested`` is :attr:`compiler.Shape.nested` from the same bases and is read
+    by :func:`_silent_nested` alone, which is the SAME question one level down.
+
+    ``bases`` is HOW MANY classes this one will inherit fields from, and the one arm that
+    reads it is the one that can leave a key undeclared: with two bases, WHICH base's
+    field stands on the class is pydantic's MRO and not this compiler's reading of what it
+    inherited, so a key the subclass does not state is decided by the base ORDER.  That is
+    the same hazard :attr:`compiler.Shape.extra` records for ``model_config``, read at a
+    field.  Measured on ``core/format.json``: its 20 ``Individual*Asset`` branches compose
+    a union base declaring ``item_type`` with no description AND
+    ``#/definitions/BaseIndividualAsset`` declaring it WITH one, ``inherited_fields``
+    resolves to the second and the MRO to the first, so leaving the key undeclared dropped
+    a description the document states at 20 pointers.
     """
     out = Merged()
     for key, stating in local.items():
@@ -105,6 +122,9 @@ def merge(
             out.own[key] = stating
             continue
         verdict = intersect.restatement(stating, inherited[key], mod.resolve_node)
+        #: §2's intersection of the two declarations, which is what BOTH surviving arms
+        #: decide the field from -- so it is computed once here rather than at each.
+        composed = intersect.intersection(stating, inherited[key], mod.resolve_node)
         if verdict is None:
             # **THE KIND IS THE CELL'S AND NOT THIS SITE'S** (architecture §3, "a
             # refusal's kind is derived from the cell and never chosen at a raise
@@ -214,7 +234,7 @@ def merge(
             # took ``Any``.  The asymmetry is the proof: the two sibling branches that
             # state no ``required`` reached the arm below and kept the base's type and
             # bound.
-            out.own[key] = intersect.intersection(stating, inherited[key], mod.resolve_node)
+            out.own[key] = composed
             if not intersect.constraining(stating) or intersect.constraining(out.own[key]) == intersect.constraining(
                 intersect.dereferenced(inherited[key], mod.resolve_node)
             ):
@@ -242,12 +262,53 @@ def merge(
                 stating
             ).get("uniqueItems"):
                 out.distinct.add(key)
-        elif intersect.annotates_differently(stating, inherited[key]):
+        elif intersect.annotates_differently(stating, inherited[key]) and (
+            bases != 1 or _renders_a_different_field(composed, inherited_fields.get(key))
+        ):
             # **It states the same thing about the INSTANCE and a different thing to the
             # READER**, so the subclass states the field: a document's own declaration
             # governs the annotation at its own pointer (the description-authority rule,
             # ``docs/plan/rebuild-plan.md`` §6), and a base's must not stand where the
             # document declares one itself.
+            #
+            # **AND A SECOND CLAUSE, because the first one's own rule counts a SILENCE as
+            # a difference** (``adcp-client-python-nlkz``).
+            # :func:`intersect.annotates_differently` rules that "an annotation the child
+            # does not state counts as a difference", so a restatement silent about a
+            # description the base states takes this arm -- and then the line below sets
+            # the field's declaration to the INTERSECTION, which §6 clause 3 gap-fills the
+            # base's description back into.  The field the subclass renders is then byte
+            # for byte the base's own, reached by a route that called it different: the
+            # measured one is ``core/rights-constraint.json`` at
+            # ``/properties/attestation_refs/items/allOf/1/properties/issuer``, whose whole
+            # class body was one restated ``type`` identical to
+            # ``AttestationBrandIssuer``'s.
+            #
+            # So the first clause stays what it is -- the child's declaration differs from
+            # the base's -- and the second asks what the arm is FOR: whether the FIELD this
+            # class renders differs from the one the base rendered.  Both, because the
+            # refinement may only ever make this arm fire LESS: a key the first clause
+            # already leaves inherited is inherited for its own reason and this one has
+            # nothing to say about it.
+            #
+            # **AND AGAINST THE BASE'S OWN FIELD, which is the only thing that IS "the
+            # field the base rendered".**  Compared against the base's DECLARATION instead,
+            # two different readings of one key disagree: the base's field was decided from
+            # its own node by its own module, where a resolution, a union base's
+            # contribution or a dropped annotation may have stood between the declaration
+            # and the line.  Measured on ``core/format.json``, whose 20
+            # ``Individual*Asset`` branches restate ``item_type`` with the description the
+            # document states and whose base's field carries NONE: the declarations agreed,
+            # the fields did not, and inheriting dropped a description the document states
+            # at 20 pointers.  :attr:`compiler.Shape.decided` is the base's own record of
+            # what it rendered, and it is already here for the re-use arm below.
+            #
+            # **The 15 pairs below are unmoved, and they are unmoved by §6 clause 2 rather
+            # than by an exception.**  Their child is a bare ``$ref``, whose own node
+            # RESOLVES to a description of its own -- so :func:`intersect.intersection`
+            # does not gap-fill the base's over it, the intersection states no description
+            # where the base's declaration states one, and the two still annotate
+            # differently.  The separator is the resolution, which both functions read.
             #
             # ``restatement`` returned False here, so the restatement's own
             # constraining content is either EQUAL to the base's or EMPTY, and the two
@@ -297,7 +358,7 @@ def merge(
             # to make unspellable.  The intersection is the base's content wearing this
             # document's annotations, and it is the same expression the EMPTY case used,
             # so there is one answer for both.
-            out.own[key] = intersect.intersection(stating, inherited[key], mod.resolve_node)
+            out.own[key] = composed
             if not intersect.constraining(stating):
                 # The node has no type of ITS OWN, so the field is the base's DECIDED
                 # field: re-deciding declares the nested classes again, in this module,
@@ -324,7 +385,23 @@ def merge(
                     return held
                 out.reuse[key] = held
         # Otherwise it adds nothing and the field is INHERITED: no line, no shadow.
-
+        if key in out.own and key not in out.reuse:
+            # **THE SAME QUESTION ONE LEVEL DOWN, and it is asked exactly where the merged
+            # node is about to be LOWERED.**  The two arms above that leave
+            # ``out.own[key]`` as the intersection hand a node to ``parse`` and let the
+            # field builder decide it; the arm that re-uses, and the silent arm that
+            # writes nothing, do not -- and the two that do are the two that can carry a
+            # nested declaration of the base's into this module.
+            silent = _silent_nested(
+                stating,
+                inherited[key],
+                inherited_nested.get(key),
+                inherited_from.get(key),
+                at.get(key, f"{pointer}/properties/{key}"),
+                mod,
+            )
+            if isinstance(silent, Refusal):
+                return silent
 
     # **SECTION 2's REQUIREDNESS OVERLAY: the composition makes an inherited field
     # required and nothing else, so the subclass redeclares that field with the base's
@@ -379,6 +456,103 @@ def merge(
         out.reuse[key] = overlaid
         out.own[key] = dict(inherited[key])
     return out
+
+
+def _renders_a_different_field(composed: Mapping[str, Any], held: ir.Field | None) -> bool:
+    """Would the field this class renders differ from the one its BASE rendered?
+
+    :data:`intersect.RENDERED` names the two annotations a field carries -- the
+    ``description`` and the ``default`` -- and this asks about exactly those two, over the
+    declaration the field will be decided from (``composed``, §2's intersection) and the
+    field the base already decided (``held``, :attr:`compiler.Shape.decided`).
+
+    **``held`` ABSENT is a difference**, and that is the honest answer rather than a
+    default: a key the base declares and recorded NO decided field for has no rendered
+    field to be the same as, so this class is the one that must state it.  §5's
+    ``properties`` row drops a declaration that admits nothing from the fields, which is
+    the one shape that reaches here.
+
+    **A SILENCE IS NOT COMPARED AGAINST THE DECLARATION BUT AGAINST WHAT IT RESOLVES TO.**
+    ``composed`` carries the base's annotation back wherever the restatement is silent and
+    the restatement resolves to nothing of its own (:func:`intersect.intersection`, §6
+    clause 3) -- so a child silent about a description the base states agrees here, and a
+    child that is a bare ``$ref`` to something with a description of its own does not,
+    because the gap-fill declines for it.  That is the whole of why this is asked of the
+    intersection and not of the restatement (``adcp-client-python-nlkz``).
+    """
+    if held is None:
+        return True
+    return (
+        composed.get("description") != held.description
+        or composed.get("default", ir.MISSING) != held.default
+    )
+
+
+def _silent_nested(
+    stating: dict,
+    inherited: dict,
+    nested: compiler.Shape | None,
+    source: compiler.Target | None,
+    pointer: str,
+    mod: compiler.Module,
+) -> Refusal | None:
+    """Record the base's own fields for the nested keys this restatement never mentions.
+
+    **§2's intersection RECURSES into ``properties``** -- ``intersect.HOLDS`` declares the
+    keyword ``Holds.PER_KEY`` and :func:`intersect.intersection` composes it per key --
+    and a key only the BASE declares is carried into the merged declaration exactly as the
+    base wrote it.  So the merged node holds, at ``<pointer>/properties/<nested key>``, a
+    declaration of the BASE's that this document does not state anywhere: deciding it is
+    the second declaration :attr:`compiler.Shape.decided` exists to stop, one level deeper
+    than that map can see.  The answer is the same answer -- the base's DECIDED field --
+    and the carrier is :attr:`compiler.Module.reuses`, because the row that reads it is
+    the one entered for the nested node and not this one.
+
+    **It is the base's SHAPE one level down and never a re-reading of the base's node**,
+    which is the whole of why :attr:`compiler.Shape.nested` exists: the base decided these
+    fields at its own pointers, in its own module, and what crosses is that decision.
+
+    ``nested`` is ``None`` wherever the base's own declaration of this key lowered to no
+    class -- a scalar, an enumeration, an array, a bare ``$ref`` -- and then there is no
+    field set one level down and nothing to say.  A nested key the base recorded no
+    DECIDED field for is skipped for the same reason and not refused: the base declared
+    nothing there either (§5's ``properties`` row drops a declaration that admits nothing
+    from the fields), so there is no second declaration to stop.
+
+    **Measured over the 1,054 portable documents**: 20 restatements are silent about at
+    least one nested key, 15 of them NARROWING (so the merged node is lowered rather than
+    re-used wholesale); exactly ONE of those nested keys had a class of the base's behind
+    it -- ``core/forecast-point.json``'s ``metrics.coverage_rate``, whose inline ``allOf``
+    was minted a second time as ``core/signal-coverage-forecast.json``'s own
+    ``CoverageRate`` at a pointer the published document does not state
+    (``adcp-client-python-8212``).
+    """
+    if nested is None:
+        return None
+    base = intersect.constraining(intersect.dereferenced(inherited, mod.resolve_node)).get(
+        "properties"
+    )
+    if not isinstance(base, dict):
+        return None
+    restated = intersect.constraining(stating).get("properties")
+    restated = restated if isinstance(restated, dict) else {}
+    held: dict[str, ir.Field] = {}
+    for key in sorted(set(base) - set(restated)):
+        if nested.decided.get(key) is None:
+            continue
+        field_ = _reused(
+            key,
+            nested.decided,
+            {} if source is None else {key: source},
+            f"{pointer}/properties/{key}",
+            mod,
+        )
+        if isinstance(field_, Refusal):
+            return field_
+        held[key] = field_
+    if held:
+        mod.reuses[pointer] = held
+    return None
 
 
 def _reused(

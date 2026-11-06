@@ -108,4 +108,4 @@ class ForecastPoint(AdCPBaseModel):
     vendor_metric_values: Annotated[list[ForecastVendorMetricValue] | None, Field(description="Forecasted values for vendor-defined metrics that the product's reporting_capabilities.vendor_metrics declared. Mirrors delivery-metrics.vendor_metric_values, but value and measurable_impressions use ForecastRange. These forecasted measurement values are independent of pricing_options.")] = None
 
 
-__all__ = ["ForecastPoint"]
+__all__ = ["CoverageRate", "ForecastPoint"]
