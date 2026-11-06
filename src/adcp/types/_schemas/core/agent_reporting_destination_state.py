@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import AccountChangeRecordedWebhookSubscriberId, HttpUrl, StrMinLen1MaxLen255
 
@@ -46,6 +46,10 @@ class AgentReportingDestinationState(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('prior_destination_refs'),
         ConditionalRequired((Match('state', True, ('action_required',)),), require=('setup',), forbid=()),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/agent-reporting-destination-state.json', pointer='#/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'state': {'const': 'inactive'}}, 'required': ['state']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/agent-reporting-destination-state.json', pointer='#/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'configuration': {'properties': {'active': {'const': False}}, 'required': ['active']}}, 'required': ['configuration']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     destination_id: Annotated[AccountChangeRecordedWebhookSubscriberId, Field(description='Caller-selected key echoed from the desired configuration.')]
     destination_ref: Annotated[StrMinLen1MaxLen255, Field(description='Seller-issued opaque immutable destination-generation reference bound to the stable authenticated principal and destination_id. Exact replays preserve it; a proof-bound coordinate or delivery-contract change creates a new reference. Possession does not authorize account access, and sellers MUST NOT resolve it across callers.')]

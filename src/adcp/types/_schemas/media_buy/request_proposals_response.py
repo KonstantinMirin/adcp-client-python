@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import AtLeastOne, ForbiddenGroups, Rule, UniqueItems
 from adcp.types.constraints import StrMaxLen2000, StrMinLen1, StrMinLen16
 
@@ -90,6 +90,9 @@ class PurchaseContinuationLegacyCreate(AdCPBaseModel):
         UniqueItems('product_ids'),
         UniqueItems('losses'),
     )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='media-buy/request-proposals-response.json', pointer='#/properties/purchase_continuation/oneOf/1/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'source_adcp_version': {'const': '2.5'}}, 'required': ['source_adcp_version']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
     kind: Literal['legacy_create']
     continuation_token: Annotated[StrMinLen16, Field(description='Opaque, short-lived coordinator token bound to the caller principal, account, and complete observed product/pricing payload. It is not a seller-issued feed fence.')]
     continuation_expires_at: Annotated[AwareDatetime, Field(description='Absolute expiry of the single-use compatibility continuation.')]
@@ -115,6 +118,10 @@ class RequestProposalsResponse(BranchDispatchMixin, AdCPBaseModel):
         return "anyOf"
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('refinement_applied',), ('pagination',), ('unchanged',), ('wholesale_feed_version',))),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='media-buy/request-proposals-response.json', pointer='#/properties/purchase_continuation/oneOf/1/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'source_adcp_version': {'const': '2.5'}}, 'required': ['source_adcp_version']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='media-buy/request-proposals-response.json', pointer='#/anyOf/1/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'purchase_continuation': {'properties': {'kind': {'const': 'listed_purchase'}}, 'required': ['kind']}}, 'required': ['purchase_continuation']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     adcp_version: AdcpVersion | None = None
     outcome: Outcome | None = None
@@ -156,6 +163,9 @@ class RequestProposalsResponseProductsAvailableCompleted(RequestProposalsRespons
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('proposals',), ('reason',), ('suggestions',), ('task_id',))),
     )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='media-buy/request-proposals-response.json', pointer='#/anyOf/1/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'purchase_continuation': {'properties': {'kind': {'const': 'listed_purchase'}}, 'required': ['kind']}}, 'required': ['purchase_continuation']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
     outcome: Literal[Outcome.PRODUCTS_AVAILABLE]
     status: Literal['completed'] | None = None
     products: Annotated[list[CanonicalProduct], Field(min_length=1)]
@@ -180,7 +190,7 @@ class RequestProposalsResponseSubmitted(RequestProposalsResponse, CompactTaskSub
     Bounded submitted envelope shared by the compact lifecycle tools.
     """
     model_config = ConfigDict(
-        extra='allow',
+        extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/request-proposals-response.json', pointer='#/anyOf/3')
     task_id: Annotated[StrMinLen1, Field(description='Unique identifier for tracking asynchronous operations. Present when a task requires extended processing time. Used to query task status and retrieve results when complete.')]

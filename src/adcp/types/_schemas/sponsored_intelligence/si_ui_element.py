@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 
 
 class SIUIElementType(StrEnum):
@@ -31,6 +31,16 @@ class SIUIElement(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-ui-element.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='sponsored-intelligence/si-ui-element.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'type': {'const': 'text'}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='sponsored-intelligence/si-ui-element.json', pointer='#/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'type': {'const': 'link'}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='sponsored-intelligence/si-ui-element.json', pointer='#/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'type': {'const': 'image'}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='sponsored-intelligence/si-ui-element.json', pointer='#/allOf/3', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'type': {'const': 'product_card'}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='sponsored-intelligence/si-ui-element.json', pointer='#/allOf/4', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'type': {'const': 'carousel'}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='sponsored-intelligence/si-ui-element.json', pointer='#/allOf/5', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'type': {'const': 'action_button'}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='sponsored-intelligence/si-ui-element.json', pointer='#/allOf/6', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'type': {'const': 'app_handoff'}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='sponsored-intelligence/si-ui-element.json', pointer='#/allOf/7', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'type': {'const': 'integration_actions'}}}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
     type: Annotated[SIUIElementType, Field(description='Component type')]
     data: Annotated[dict[str, Any] | None, Field(description='Component-specific data')] = None
 

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule
 from adcp.types.constraints import StrMinLen1MaxLen255
 
@@ -44,6 +44,12 @@ class CatalogItemAvailabilityUpdateResult(AdCPBaseModel):
         ConditionalRequired((Match('status', True, ('failed',)),), require=('errors',), forbid=('applied_at', 'availability', 'overlay_revision', 'expires_at')),
         NegatedConditional((Match('status', True, ('failed',)),), require=('availability', 'overlay_revision'), forbid=('errors',)),
         ConditionalRequired((Match('status', True, ('applied',)),), require=('applied_at',), forbid=('errors',)),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/catalog-item-availability-update-result.json', pointer='#/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'errors': {'contains': {'properties': {'code': {'const': 'REFERENCE_NOT_FOUND'}}, 'required': ['code']}}}, 'required': ['errors']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/catalog-item-availability-update-result.json', pointer='#/allOf/3', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['expires_at']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/catalog-item-availability-update-result.json', pointer='#/allOf/4', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'action': {'const': 'suppress'}, 'status': {'enum': ['applied', 'unchanged']}}, 'required': ['action', 'status']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/catalog-item-availability-update-result.json', pointer='#/allOf/5', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'action': {'const': 'restore'}, 'status': {'enum': ['applied', 'unchanged']}}, 'required': ['action', 'status']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     request_index: Annotated[NonNegativeInt, Field(description='Zero-based index of the corresponding item_availability_updates entry.')]
     catalog_id: Annotated[str, Field(description='Catalog ID from the request.')]

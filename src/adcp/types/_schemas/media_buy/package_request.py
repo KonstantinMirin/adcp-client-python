@@ -5,7 +5,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import Dependencies, ForbiddenGroups, NotValue, Rule
 from adcp.types.constraints import StrMaxLen100
 
@@ -82,6 +82,10 @@ class PackageRequest(AdCPVersionEnvelope):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         Dependencies('params', ('format_kind',)),
         ForbiddenGroups((('capability_ids',), ('bidding', 'bid_price'), ('budget_cap_timezone',))),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='media-buy/package-request.json', pointer='#/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['bidding']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='media-buy/package-request.json', pointer='#/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'format_kind': {'const': 'image'}}, 'required': ['format_kind', 'params']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     product_id: Annotated[str, Field(description="Opaque configured product ID returned by get_products. Selecting it accepts the product's disclosed targeting_resolution, pricing, forecast assumptions, and terms. Sellers MUST echo this value on every response package object that represents this requested package.")]
     format_ids: Annotated[list[FormatReferenceStructuredObject] | None, Field(description='Deprecated in AdCP 3.2; removed in AdCP 4.0. Legacy named-format selector retained for older 3.x peers. New buyers MUST NOT emit this field. Sellers MUST normalize every entry through the canonical mapping path before product satisfaction checks; an entry that cannot be normalized is rejected with `UNSUPPORTED_FEATURE` before any equivalence check. When this field coexists with `format_option_refs` or `format_kind` plus `params`, sellers MUST compare the product option sets selected by each resolved route. Legacy parameter compatibility follows the asymmetric v2-narrows-v1 relation defined by canonical formats, not raw object equality. Different format shapes, selected option sets, or incompatible dimensions are rejected with `CONFLICTING_SELECTORS`; sellers MUST NOT silently ignore the legacy projection. Equivalent dual emission remains valid during the 3.x compatibility window. If omitted and no canonical selector is present, all formats supported by the product are active.', min_length=1)] = None

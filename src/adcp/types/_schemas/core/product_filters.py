@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Presence, PresenceGroups, RequiredGroups, Rule, UniqueItems
 from adcp.types.constraints import FloatMinNeg90Max90, FloatMinNeg180Max180, HttpUrl, IntMin1, RegionsItem, StrMinLen1
 
@@ -150,6 +150,10 @@ class RequiredGeoTargetingItem(AdCPBaseModel):
         ConditionalRequired((Match('level', True, ('country', 'region')),), require=(), forbid=('country', 'system')),
         ConditionalRequired((Match('level', True, ('metro',)),), require=(), forbid=('country',)),
     )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/product-filters.json', pointer='#/properties/required_geo_targeting/items/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'level': {'const': 'metro'}}, 'required': ['level']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/product-filters.json', pointer='#/properties/required_geo_targeting/items/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'level': {'const': 'postal_area'}}, 'required': ['level']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
     level: Annotated[GeographicTargetingLevel, Field(description='Geographic targeting level (country, region, metro, postal_area)')]
     country: Annotated[CountryCode | None, Field(description='ISO 3166-1 alpha-2 country code. Required for native postal_area system filters; not applicable to country, region, or metro filters.')] = None
     system: Annotated[str | None, Field(description="Optional classification system within the level. Use for a specific metro system (e.g., 'nielsen_dma'), native postal_area system (e.g., 'zip' with country 'US'), or deprecated legacy postal alias (e.g., 'us_zip'). Not applicable for country/region which use ISO standards.")] = None
@@ -171,7 +175,7 @@ class SignalTargetingItem(BranchDispatchMixin, AdCPBaseModel):
     @classmethod
     def _branch_combinator(cls) -> str:
         return "oneOf"
-    targeting_mode: Annotated[TargetingMode | None, Field(default_factory=lambda: TypeAdapter(TargetingMode).validate_python('include'), description="Desired use of this signal on the product. 'include' requires the product option to allow use in an any group. 'exclude' requires the product option to allow use in a none group.", json_schema_extra={'default': 'include'})]
+    targeting_mode: Annotated[TargetingMode | None, Field(description="Desired use of this signal on the product. 'include' requires the product option to allow use in an any group. 'exclude' requires the product option to allow use in a none group.", json_schema_extra={'default': 'include'})] = Field(default_factory=lambda: TypeAdapter(TargetingMode).validate_python('include'))
 
 
 class SignalTargetingItemBinary(SignalTargetingItem, SignalTargetingBinary):
@@ -243,7 +247,7 @@ class KeywordsItem(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-filters.json', pointer='#/properties/keywords/items')
     keyword: Annotated[StrMinLen1, Field(description='The keyword to target')]
-    match_type: Annotated[MatchType | None, Field(default_factory=lambda: TypeAdapter(MatchType).validate_python('broad'), json_schema_extra={'default': 'broad'})]
+    match_type: Annotated[MatchType | None, Field(json_schema_extra={'default': 'broad'})] = Field(default_factory=lambda: TypeAdapter(MatchType).validate_python('broad'))
 
 
 class ProductFilters(AdCPBaseModel):
@@ -265,6 +269,10 @@ class ProductFilters(AdCPBaseModel):
         UniqueItems('social_placement_surfaces'),
         UniqueItems('audience_activation_methods'),
         UniqueItems('required_metrics'),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/product-filters.json', pointer='#/properties/required_geo_targeting/items/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'level': {'const': 'metro'}}, 'required': ['level']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/product-filters.json', pointer='#/properties/required_geo_targeting/items/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'level': {'const': 'postal_area'}}, 'required': ['level']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     delivery_type: DeliveryType | None = None
     exclusivity: Annotated[Exclusivity | None, Field(description="Filter by exclusivity level. Returns products matching the specified exclusivity (e.g., 'exclusive' returns only sole-sponsorship products).")] = None

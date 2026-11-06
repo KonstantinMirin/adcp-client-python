@@ -73,6 +73,7 @@ class CanonicalProduct(AdCPBaseModel):
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='core/canonical-product.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'overlay_support': {'required': ['collection_list']}}, 'required': ['overlay_support']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
         Approximation(document='core/canonical-product.json', pointer='#/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'execution_requirements': {'contains': {'properties': {'kind': {'const': 'catalog'}}, 'required': ['kind']}}}, 'required': ['execution_requirements']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/canonical-product.json', pointer='#/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'identity': {'properties': {'persistent_identifier': {'const': False}}, 'required': ['persistent_identifier']}}, 'required': ['identity']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     product_id: StrMinLen1
     name: StrMinLen1

@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import Approximation, SchemaRef
 from adcp.types._runtime import Dependencies, Rule
 from adcp.types.constraints import IntMin1Max100, StrMinLen1, StrMinLen1MaxLen4096
 
@@ -36,6 +36,9 @@ class ListProductsRequest(AdCPVersionEnvelope):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/list-products-request.json', pointer='#')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         Dependencies('if_pricing_version', ('if_feed_version',)),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='media-buy/list-products-request.json', pointer='#/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'criteria': {'required': ['catalog']}}, 'required': ['criteria']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     adcp_version: AdcpVersion | None = None
     adcp_major_version: AdcpMajorVersion | None = None

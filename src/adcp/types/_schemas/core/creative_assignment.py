@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import FloatMin0Max100, IntMin1, StrMinLen1
 
@@ -35,6 +35,9 @@ class CreativeAssignment(AdCPBaseModel):
         ConditionalRequired((Match('rotation_mode', True, ('sequential',)),), require=('sequence_position',), forbid=()),
         ConditionalRequired((Match('sequence_position', True, None),), require=('rotation_mode',), forbid=()),
         ConditionalRequired((Match('rotation_mode', True, ('even', 'sequential', 'random')),), require=(), forbid=('weight',)),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/creative-assignment.json', pointer='#/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['sequence_position']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     creative_id: Annotated[str, Field(description='Unique identifier for the creative')]
     weight: Annotated[FloatMin0Max100 | None, Field(description="Relative delivery weight for this creative (0–100). Valid when the package's effective rotation_mode is weighted, including the backward-compatible default when rotation_mode is omitted. Weights determine impression distribution proportionally — a creative with weight 2 gets twice the delivery of weight 1. When omitted, the creative receives equal weight with other unweighted creatives. A weight of 0 means the creative is assigned but paused (receives no delivery).")] = None

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule
 from adcp.types.constraints import (
     CanonicalProposalTermsDigest,
@@ -70,6 +70,9 @@ class CanonicalProposal(AdCPBaseModel):
         ConditionalRequired((Match('proposal_kind', True, ('media_buy_update', 'media_buy_cancellation')),), require=('parent_proposal_id', 'media_buy_id', 'base_media_buy_revision'), forbid=()),
         ConditionalRequired((Match('proposal_status', True, ('accepted',)),), require=('media_buy_id', 'accepted_at'), forbid=()),
         ConditionalRequired((Match('proposal_status', True, ('committed',)),), require=('expires_at',), forbid=()),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/canonical-proposal.json', pointer='#/allOf/3', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'proposal_kind': {'const': 'media_buy_cancellation'}}, 'required': ['proposal_kind']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     proposal_id: StrMinLen1MaxLen255
     proposal_kind: ProposalKind

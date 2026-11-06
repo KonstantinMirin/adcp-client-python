@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule, UniqueItems
 from adcp.types.constraints import IntMin1, MediaBuyName, StrMaxLen2000, StrMinLen1
 from adcp.types.envelopes import FailedResponse
@@ -44,6 +44,9 @@ class CreateMediaBuyResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolE
     @classmethod
     def _branch_combinator(cls) -> str:
         return "oneOf"
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='media-buy/create-media-buy-response.json', pointer='#/oneOf/0/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'confirmed_at': {'type': 'null'}}, 'required': ['confirmed_at']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
 
 
 class Bidding(BiddingPolicy):
@@ -68,6 +71,9 @@ class CreateMediaBuySuccess(CreateMediaBuyResponse):
         ForbiddenGroups((('errors',),)),
         UniqueItems('available_actions'),
         UniqueItems('warnings'),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='media-buy/create-media-buy-response.json', pointer='#/oneOf/0/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'confirmed_at': {'type': 'null'}}, 'required': ['confirmed_at']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     proposal_id: Annotated[StrMinLen1 | None, Field(description='The immutable committed proposal executed by this media buy, echoed when proposal_id was supplied in the request.')] = None
     media_buy_id: Annotated[str, Field(description="Seller's unique identifier for the created media buy")]

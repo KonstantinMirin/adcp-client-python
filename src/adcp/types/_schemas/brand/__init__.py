@@ -324,7 +324,7 @@ class Colors(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/colors')
-    __pydantic_extra__: dict[str, ColorValue]
+    __pydantic_extra__: dict[str, ColorValue] = Field(init=False)
     primary: ColorValue | None = None
     secondary: ColorValue | None = None
     accent: ColorValue | None = None
@@ -387,7 +387,7 @@ class Fonts(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/fonts')
-    __pydantic_extra__: dict[str, BrandDiscoveryFontRole]
+    __pydantic_extra__: dict[str, BrandDiscoveryFontRole] = Field(init=False)
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         PropertyCount(minimum=None, maximum=20),
     )
@@ -473,7 +473,7 @@ class BrandDiscoveryProperty(AdCPBaseModel):
     store: Annotated[Store | None, Field(description='App store for mobile/CTV apps')] = None
     region: Annotated[PropertyRegion | None, Field(description="ISO 3166-1 alpha-2 country code or 'global'")] = None
     primary: Annotated[bool | None, Field(description='Whether this is the primary property for the brand')] = False
-    relationship: Annotated[Relationship | None, Field(default_factory=lambda: TypeAdapter(Relationship).validate_python('owned'), description="How this brand relates to the property. 'owned': the brand owns and operates this property (default) and has no adagents.json delegation_type counterpart. 'direct': the brand is the direct sales path for this property, even if a third party operates the software (e.g., a publisher's in-house ad team using a vendor's tech). 'delegated': the brand manages monetization for this property — they are in charge of ad sales (e.g., Mediavine managing a food blog). 'ad_network': the brand sells this property's inventory as part of a network or exchange — they are a path to the inventory, not the path (e.g., PubMatic as an SSP). For non-owned properties, the publisher confirms the relationship by setting the matching delegation_type on the agent's authorization in their adagents.json.", json_schema_extra={'default': 'owned'})]
+    relationship: Annotated[Relationship | None, Field(description="How this brand relates to the property. 'owned': the brand owns and operates this property (default) and has no adagents.json delegation_type counterpart. 'direct': the brand is the direct sales path for this property, even if a third party operates the software (e.g., a publisher's in-house ad team using a vendor's tech). 'delegated': the brand manages monetization for this property — they are in charge of ad sales (e.g., Mediavine managing a food blog). 'ad_network': the brand sells this property's inventory as part of a network or exchange — they are a path to the inventory, not the path (e.g., PubMatic as an SSP). For non-owned properties, the publisher confirms the relationship by setting the matching delegation_type on the agent's authorization in their adagents.json.", json_schema_extra={'default': 'owned'})] = Field(default_factory=lambda: TypeAdapter(Relationship).validate_python('owned'))
 
 
 class AgenticCheckout(AdCPBaseModel):
@@ -895,7 +895,7 @@ class BorderRadius(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/border_radius')
-    __pydantic_extra__: dict[str, str]
+    __pydantic_extra__: dict[str, str] = Field(init=False)
     none: Annotated[str | None, Field(description="Explicitly sharp corners (e.g., '0')")] = None
     default: Annotated[str | None, Field(description="Default border radius for UI components (e.g., '8px', '12px', '0'). For graphic/illustration elements, see graphic_style.corner_radius.")] = None
     small: Annotated[str | None, Field(description="Small border radius for compact elements (e.g., '4px')")] = None
@@ -911,7 +911,7 @@ class Elevation(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/elevation')
-    __pydantic_extra__: dict[str, str]
+    __pydantic_extra__: dict[str, str] = Field(init=False)
     none: Annotated[str | None, Field(description="No shadow (e.g., 'none')")] = None
     subtle: Annotated[str | None, Field(description="Subtle shadow for slight lift (e.g., '0 1px 2px rgba(0,0,0,0.05)')")] = None
     card: Annotated[str | None, Field(description="Card-level shadow (e.g., '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)')")] = None
@@ -926,7 +926,7 @@ class Scale(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/spacing/properties/scale')
-    __pydantic_extra__: dict[str, str]
+    __pydantic_extra__: dict[str, str] = Field(init=False)
     xs: Annotated[str | None, Field(description="Extra small spacing (e.g., '4px')")] = None
     sm: Annotated[str | None, Field(description="Small spacing (e.g., '8px')")] = None
     md: Annotated[str | None, Field(description="Medium spacing (e.g., '16px')")] = None
@@ -1370,7 +1370,7 @@ class TypeScale(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/visual_guidelines/properties/type_scale')
-    __pydantic_extra__: dict[str, TypeScaleEntry]
+    __pydantic_extra__: dict[str, TypeScaleEntry] = Field(init=False)
     base_width: Annotated[str | None, Field(description="Reference canvas width these sizes were designed for (e.g., '1080px'). Generative systems should scale proportionally for other canvas sizes.")] = None
     heading: TypeScaleEntry | None = None
     subheading: TypeScaleEntry | None = None
@@ -1584,7 +1584,7 @@ class HousePortfolio(BrandDiscovery):
     )
     schema_: Annotated[str | None, Field(alias='$schema')] = None
     version: str | None = None
-    default_language: Annotated[LanguageTag | None, Field(default_factory=lambda: TypeAdapter(LanguageTag).validate_python('en'), json_schema_extra={'default': 'en'})]
+    default_language: Annotated[LanguageTag | None, Field(json_schema_extra={'default': 'en'})] = Field(default_factory=lambda: TypeAdapter(LanguageTag).validate_python('en'))
     house: House
     brands: Annotated[list[Brand] | None, Field(description='Inline brands owned by this house (parent-owned data). Use for sub-brands without their own canonical document — typically those without a dedicated domain or that the holdco wants to manage centrally. A brand_id MUST NOT appear in both brands[] and brand_refs[].', min_length=1)] = None
     brand_refs: Annotated[list[PortfolioEntry] | None, Field(description="Portfolio entries for brands owned by this house that publish their own canonical brand.json elsewhere (child-owned data). Each entry asserts ownership plus where the child's document lives. Mutual-assertion trust: the pointed-to document's house_domain must equal this house's domain. Invariants: a brand_id MUST NOT appear in both brands[] and brand_refs[]; brand_id and domain MUST each be unique within brand_refs[]. See docs/brand-protocol/brand-json.mdx", min_length=1)] = None
@@ -1607,7 +1607,7 @@ class BrandCanonicalDocument(BrandDiscovery, Brand):
     )
     schema_: Annotated[str | None, Field(alias='$schema')] = None
     version: str | None = None
-    default_language: Annotated[LanguageTag | None, Field(default_factory=lambda: TypeAdapter(LanguageTag).validate_python('en'), json_schema_extra={'default': 'en'})]
+    default_language: Annotated[LanguageTag | None, Field(json_schema_extra={'default': 'en'})] = Field(default_factory=lambda: TypeAdapter(LanguageTag).validate_python('en'))
     house_domain: Annotated[DomainName | None, Field(description="Optional pointer to the corporate house this brand belongs to. The named house's brand_refs[] MUST reciprocate for mutual-assertion trust. Single-hop only — a brand cannot itself declare brand_refs[]. Omit for standalone brands (no house).")] = None
     last_updated: AwareDatetime | None = None
 

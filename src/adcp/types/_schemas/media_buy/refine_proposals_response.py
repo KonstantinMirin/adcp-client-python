@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule, UniqueItems
 from adcp.types.constraints import StrMaxLen2000, StrMinLen1, StrMinLen1MaxLen255
 
@@ -42,6 +42,9 @@ class ResultsItem(BranchDispatchMixin, AdCPBaseModel):
         return "oneOf"
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('unsatisfied_constraints'),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='media-buy/refine-proposals-response.json', pointer='#/properties/results/items/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'reason_code': {'const': 'constraint_unsatisfiable'}}, 'required': ['reason_code']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     source_proposal_id: StrMinLen1
     outcome: Outcome
@@ -160,6 +163,9 @@ class RefineProposalsResponse(BranchDispatchMixin, AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('proposals',), ('refinement_applied',), ('pagination',))),
     )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='media-buy/refine-proposals-response.json', pointer='#/properties/results/items/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'reason_code': {'const': 'constraint_unsatisfiable'}}, 'required': ['reason_code']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
     adcp_version: AdcpVersion | None = None
     results: Annotated[list[ResultsItem] | None, Field(description="Ordered results. If any result is finalized, every result MUST be finalized; a finalize batch either creates every requested hold or none. Every returned proposal carries parent_proposal_id equal to the result's source_proposal_id, making negotiation lineage reconstructible from the proposals alone.", min_length=1)] = None
     products: Annotated[list[CanonicalProduct] | None, Field(description="Canonical products needed to evaluate the resulting terms. For revised or partial results whose effective criteria contain property or collection lists, each affected product MUST carry fresh list_applications receipts from the revision's product reevaluation. Finalization changes no terms and MAY repeat the receipts already bound to the source proposal rather than reevaluating them.")] = None
@@ -190,7 +196,7 @@ class RefineProposalsResponseSubmitted(RefineProposalsResponse, CompactTaskSubmi
     Bounded submitted envelope shared by the compact lifecycle tools.
     """
     model_config = ConfigDict(
-        extra='allow',
+        extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/refine-proposals-response.json', pointer='#/anyOf/1')
     task_id: Annotated[StrMinLen1, Field(description='Unique identifier for tracking asynchronous operations. Present when a task requires extended processing time. Used to query task status and retrieve results when complete.')]

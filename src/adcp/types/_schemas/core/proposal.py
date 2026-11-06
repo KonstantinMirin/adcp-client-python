@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types.constraints import StrMaxLen255, StrMaxLen500, StrMaxLen2000
 
 from ..enums.pacing import Pacing
@@ -40,6 +40,10 @@ class Proposal(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/proposal.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/proposal.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'budget_allocation': {'properties': {'mode': {'const': 'seller_optimized'}}, 'required': ['mode']}}, 'required': ['budget_allocation']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/proposal.json', pointer='#/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'proposal_status': {'const': 'committed'}}, 'required': ['proposal_status']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
     proposal_id: Annotated[StrMaxLen255, Field(description='Unique identifier for this proposal. Used to finalize a draft proposal and to execute a committed proposal via create_media_buy.')]
     name: Annotated[StrMaxLen500, Field(description='Human-readable name for this media plan proposal')]
     description: Annotated[StrMaxLen2000 | None, Field(description='Explanation of the proposal strategy and what it achieves')] = None

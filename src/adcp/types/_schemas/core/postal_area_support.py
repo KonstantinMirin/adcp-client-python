@@ -28,7 +28,7 @@ class PostalAreaSupport(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/postal-area-support.json', pointer='#')
-    __pydantic_extra__: dict[StrCountryCode | CountryFusedPostalCodeSystem, Annotated[NonEmptyList[PostalAreaSupportValueItem], Field(json_schema_extra={'uniqueItems': True}), AfterValidator(Distinct())]]
+    __pydantic_extra__: dict[StrCountryCode | CountryFusedPostalCodeSystem, Annotated[NonEmptyList[PostalAreaSupportValueItem], Field(json_schema_extra={'uniqueItems': True}), AfterValidator(Distinct())]] = Field(init=False)
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('US'),
         UniqueItems('GB'),

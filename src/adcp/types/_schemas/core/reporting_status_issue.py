@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
@@ -84,6 +84,9 @@ class ReportingStatusIssue(AdCPBaseModel):
         UniqueItems('package_ids'),
         ConditionalRequired((Match('code', True, ('CONSUMER_STATUS_MISMATCH',)),), require=('opened_at', 'reporting_status_id'), forbid=()),
         ConditionalRequired((Match('code', True, ('REVISION_UNREADABLE',)),), require=('reporting_obligation_id', 'reporting_revision_id'), forbid=()),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/reporting-status-issue.json', pointer='#/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'code': {'const': 'REVISION_UNREADABLE'}}, 'required': ['code']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     issue_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId, Field(description='Seller-issued stable identifier for this logical issue: re-emissions and later polls of the same unresolved condition reuse it, and resolution retires it, so consumers can project AdCP reporting issues into durable work items. A recurrence after resolution receives a new id.')]
     code: Code

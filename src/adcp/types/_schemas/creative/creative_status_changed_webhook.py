@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
@@ -39,6 +39,12 @@ class Transition(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/creative-status-changed-webhook.json', pointer='#/properties/transition')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='creative/creative-status-changed-webhook.json', pointer='#/properties/transition/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'from': {'enum': ['processing']}}, 'required': ['from']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='creative/creative-status-changed-webhook.json', pointer='#/properties/transition/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'from': {'enum': ['pending_review']}}, 'required': ['from']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='creative/creative-status-changed-webhook.json', pointer='#/properties/transition/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'from': {'enum': ['approved']}}, 'required': ['from']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='creative/creative-status-changed-webhook.json', pointer='#/properties/transition/allOf/3', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'from': {'enum': ['suspended']}}, 'required': ['from']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
     from_: Annotated[From, Field(alias='from', description='Prior status — restricted to the states from which a seller/system-initiated transition can fire. For initial review outcomes the prior status is `pending_review`; for processing outcomes it is `processing`; for seller re-review, post-approval revocation, recoverable suspension, and seller-initiated archive it is `approved`; for recovery from a dependency/authorization outage or terminal escalation after a suspension it is `suspended`.')]
     to: Annotated[CreativeStatus, Field(description='New status.')]
     observed_at: Annotated[AwareDatetime, Field(description="ISO 8601 timestamp when the seller observed the transition. Distinct from `fired_at` — `fired_at` reflects when the webhook was emitted, which may lag `observed_at` by up to the seller's coalescence window. **Ordering with `media-buy.impairment`:** when a creative transition also causes a media-buy impairment (e.g., `approved → suspended` or `approved → rejected` while assignments exist), the `creative.status_changed` and `impairment` fires are not ordered — buyers MUST NOT assume one arrives before the other. Reconcile via the snapshot (`list_creatives` and `get_media_buys`) when the two fires reference the same `creative_id`.")]
@@ -52,6 +58,12 @@ class CreativeStatusChangedWebhook(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/creative-status-changed-webhook.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='creative/creative-status-changed-webhook.json', pointer='#/properties/transition/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'from': {'enum': ['processing']}}, 'required': ['from']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='creative/creative-status-changed-webhook.json', pointer='#/properties/transition/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'from': {'enum': ['pending_review']}}, 'required': ['from']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='creative/creative-status-changed-webhook.json', pointer='#/properties/transition/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'from': {'enum': ['approved']}}, 'required': ['from']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='creative/creative-status-changed-webhook.json', pointer='#/properties/transition/allOf/3', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'from': {'enum': ['suspended']}}, 'required': ['from']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
     idempotency_key: Annotated[IdempotencyKey, Field(description='Sender-generated key stable across retries of the same fire. Sellers MUST generate a cryptographically random value (UUID v4 recommended) per distinct fire and reuse it on every retry of the same fire. Receivers MUST dedupe by this key, scoped to the authenticated sender identity. Distinct from `notification_id` — same `notification_id` under two different `idempotency_key` values is a re-emission signal (snapshot-and-log Rule 1).')]
     notification_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId, Field(description="Stable identifier for this logical transition event, used by buyers to correlate fires to current snapshot state. Stable across re-emissions of the same transition (e.g., the seller re-fires after the buyer's endpoint was unreachable); a fresh transition on the same creative receives a new id. Charset matches `idempotency_key` so the value is safe to log, embed in dashboard URLs, and pass into LLM prompts without escaping.")]
     notification_type: Annotated[Literal['creative.status_changed'], Field(description="Fixed notification type discriminator. Matches the value registered on the subscriber's `event_types`.")]

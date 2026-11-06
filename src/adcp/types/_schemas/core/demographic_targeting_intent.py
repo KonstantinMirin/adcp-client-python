@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 
 from ..enums.age_determination_basis import AgeDeterminationBasis
@@ -26,6 +26,9 @@ class Age(DemographicAgeRange):
         UniqueItems('accepted_verification_methods'),
         ConditionalRequired((Match('accepted_verification_methods', True, None),), require=('accepted_bases',), forbid=()),
     )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/demographic-targeting-intent.json', pointer='#/properties/age/allOf/1/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['accepted_verification_methods']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
     accepted_bases: Annotated[list[AgeDeterminationBasis] | None, Field(description='User-level age determination bases the buyer permits for this predicate. Sellers MUST use only these bases or reject the request; they MUST NOT silently fall back to another basis. When omitted, the buyer imposes no determination-basis constraint beyond product capability and any age_restriction. population_estimate is structurally unavailable because aggregate evidence cannot identify an eligible user.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     accepted_verification_methods: Annotated[list[AgeVerificationMethod] | None, Field(description='Verification methods acceptable when verified is an accepted basis. This field narrows verified demographic execution; age_restriction.accepted_methods independently governs legal eligibility and the two sets are intersected when both are present.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
 
@@ -38,6 +41,9 @@ class DemographicTargetingIntent(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/demographic-targeting-intent.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/demographic-targeting-intent.json', pointer='#/properties/age/allOf/1/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['accepted_verification_methods']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
     age: Age
 
 

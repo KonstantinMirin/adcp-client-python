@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 
 from ..common._vocabularies import _VALUES_ACCEPTED_REJECTED
@@ -72,6 +72,12 @@ class SISponsoredContextReceipt(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-sponsored-context-receipt.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='sponsored-intelligence/si-sponsored-context-receipt.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'sponsored_context': {'properties': {'context_use': {'const': 'presentation_only'}}, 'required': ['context_use']}, 'host_receipt': {'properties': {'status': {'const': 'accepted'}}, 'required': ['status']}}, 'required': ['sponsored_context', 'host_receipt']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='sponsored-intelligence/si-sponsored-context-receipt.json', pointer='#/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'sponsored_context': {'properties': {'context_use': {'const': 'comparison_set'}}, 'required': ['context_use']}, 'host_receipt': {'properties': {'status': {'const': 'accepted'}}, 'required': ['status']}}, 'required': ['sponsored_context', 'host_receipt']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='sponsored-intelligence/si-sponsored-context-receipt.json', pointer='#/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'sponsored_context': {'properties': {'context_use': {'const': 'reasoning_context'}}, 'required': ['context_use']}, 'host_receipt': {'properties': {'status': {'const': 'accepted'}}, 'required': ['status']}}, 'required': ['sponsored_context', 'host_receipt']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='sponsored-intelligence/si-sponsored-context-receipt.json', pointer='#/allOf/3', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'sponsored_context': {'properties': {'disclosure_obligation': {'properties': {'required': {'const': True}}, 'required': ['required']}}, 'required': ['disclosure_obligation']}, 'host_receipt': {'properties': {'status': {'const': 'accepted'}}, 'required': ['status']}}, 'required': ['sponsored_context', 'host_receipt']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
     sponsored_context: Annotated[SISponsoredContext, Field(description='The sponsored-context declaration the host received and is accepting or rejecting.')]
     host_receipt: Annotated[HostReceipt, Field(description='Receiving-surface accountability fact: the use mode the host accepted and committed to honor for this sponsored context.')]
     ext: ExtensionObject | None = None

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule
 from adcp.types.constraints import StrMinLen1MaxLen255
 
@@ -41,6 +41,10 @@ class CatalogItemAvailabilityState(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ConditionalRequired((Match('status', True, ('found',)),), require=('availability', 'overlay_revision', 'updated_at'), forbid=('errors',)),
         NegatedConditional((Match('status', True, ('found',)),), require=('errors',), forbid=('availability', 'overlay_revision', 'expires_at', 'updated_at')),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/catalog-item-availability-state.json', pointer='#/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['expires_at']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/catalog-item-availability-state.json', pointer='#/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'errors': {'contains': {'properties': {'code': {'const': 'REFERENCE_NOT_FOUND'}}, 'required': ['code']}}}, 'required': ['errors']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     request_index: Annotated[NonNegativeInt, Field(description='Zero-based index of the corresponding item_availability_queries entry.')]
     catalog_id: StrMinLen1MaxLen255

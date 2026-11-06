@@ -130,6 +130,59 @@ OWED = (
 )
 
 
+#: **A MODULE THAT RESTATES UPSTREAM'S WORDS IS NOT A SUBJECT OF OURS.**  The alias layer
+#: (`survey/alias_surface.py`, `adcp.types.compat`) binds upstream's spellings to classes
+#: this tree already declares, so counting its names here would make this partition read
+#: every aliased name as "a name we carry" and stop owing it a migration note -- on the
+#: evidence of a file derived FROM this partition's own sibling.  The module declares its
+#: nature in `__adcp_restates_upstream__` and this reads the declaration, so the rule lives
+#: in one place and a second alias module needs nothing edited here.
+RESTATES = "__adcp_restates_upstream__"
+
+#: `restatement`'s three answers.  **THREE AND NOT TWO, AND THE MISSING THIRD COST A
+#: DIAGNOSIS.**  The first form of this predicate answered a BOOLEAN and caught every
+#: exception into `False`, so a module that does not IMPORT read as "not an alias layer" --
+#: and when `adcp.types.compat` was merged against a surface that had dropped one of its
+#: targets, the gate reported "does not declare `__adcp_restates_upstream__`" about a module
+#: whose line 1012 declares exactly that.  A reader is then sent after a missing marker
+#: instead of after the `ImportError` that is the actual cause.
+#:
+#: The dangerous direction is the other one and it is why the state is reported rather than
+#: raised: "cannot tell" silently spelled "no" would, for a module that DOES import with its
+#: marker renamed, feed our own aliases back into the partition as our surface.
+RESTATES_ANSWERS = ("restates", "ours", "unimportable")
+
+
+def restatement(mod_name: str) -> tuple[str, str]:
+    """`(answer, detail)` -- which of :data:`RESTATES_ANSWERS` `mod_name` is, and why.
+
+    * `("restates", <the marker's value>)` -- an alias layer, to be skipped by any reading
+      of OUR surface;
+    * `("ours", "")` -- a module of ours, to be read;
+    * `("unimportable", "<ExceptionType>: <message>")` -- **neither answer is available**,
+      which is a finding and never a skip reached by accident.
+    """
+    import importlib
+
+    try:
+        mod = importlib.import_module(mod_name)
+    except BaseException as exc:  # noqa: BLE001 -- the payload is the report
+        return ("unimportable", f"{type(exc).__name__}: {str(exc).splitlines()[0][:200]}")
+    if hasattr(mod, RESTATES):
+        return ("restates", str(getattr(mod, RESTATES)))
+    return ("ours", "")
+
+
+def restates_upstream(mod_name: str) -> bool:
+    """Whether `mod_name` is an alias layer rather than a surface of ours.
+
+    **`False` here means "a module of ours" and nothing else.**  A caller that must not
+    confuse that with "could not be read" asks :func:`restatement` for the third answer --
+    which every caller in this file now does, so the skip is reported with its reason.
+    """
+    return restatement(mod_name)[0] == "restates"
+
+
 def ident_key(kind: str, members) -> str:
     """One hashable spelling of an identity, so the two phases join on equality."""
     return json.dumps([kind, sorted(members)])
@@ -159,12 +212,26 @@ def walk(root_name: str) -> list[str]:
 
 
 def dump_ours(out_path: Path) -> None:
-    """identity -> every (name, import path, document) of ours that holds it."""
+    """identity -> every (name, import path, document) of ours that holds it.
+
+    **EVERY MODULE THIS DECLINES TO READ IS RECORDED WITH ITS REASON**, under `skipped` in
+    the dump and printed at the end.  A silent `except Exception: continue` is what made a
+    broken alias module indistinguishable from a deliberately excluded one: the surface read
+    the same either way, so a dump taken over a tree whose `adcp.types.compat` raised was
+    reported as a complete reading of ours.  The three reasons are different facts --
+    `restates upstream` is a decision, `does not import` is a defect, `private tree` is the
+    rule -- and `tests/test_the_alias_layer_is_names.py` grades that they stay distinct.
+    """
     table: dict[str, list[dict[str, str | None]]] = collections.defaultdict(list)
     names: dict[str, list[dict[str, str | None]]] = {}
     exported: dict[int, str] = {}
+    skipped: dict[str, str] = {}
     for mod_name in walk("adcp.types"):
         if "._schemas" in mod_name:
+            continue
+        answer, detail = restatement(mod_name)
+        if answer != "ours":
+            skipped[mod_name] = f"{answer}: {detail}" if detail else answer
             continue
         try:
             mod = importlib.import_module(mod_name)
@@ -179,6 +246,8 @@ def dump_ours(out_path: Path) -> None:
                 continue
     seen: set[tuple[str, str]] = set()
     for mod_name in walk("adcp.types"):
+        if restatement(mod_name)[0] != "ours":
+            continue  # already recorded with its reason by the loop above
         try:
             mod = importlib.import_module(mod_name)
         except Exception:
@@ -226,12 +295,17 @@ def dump_ours(out_path: Path) -> None:
     # reader needs recorded is which `adcp/types` the identities were read off.
     where = importlib.import_module("adcp.types").__path__[0]
     out_path.write_text(
-        json.dumps({"ours": where, "identities": table, "names": names}, indent=1)
+        json.dumps(
+            {"ours": where, "identities": table, "names": names, "skipped": skipped},
+            indent=1,
+        )
     )
     print(
         f"{len(table)} distinct identities and {len(names)} names read off {where}, "
         f"written to {out_path}"
     )
+    for mod_name, why in sorted(skipped.items()):
+        print(f"  not read: {mod_name} -- {why}")
 
 
 # --------------------------------------------------------------------------- phase 2

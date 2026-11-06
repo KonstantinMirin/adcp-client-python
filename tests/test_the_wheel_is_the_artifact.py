@@ -76,6 +76,7 @@ pair of lines is the measurement of what this file adds.
 from __future__ import annotations
 
 import atexit
+import csv
 import functools
 import json
 import os
@@ -254,6 +255,100 @@ for module_name, names in exported.items():
 out["failed"] = failed
 out["documents"] = sorted(documents)
 out["undocumented"] = sorted(undocumented)
+
+# **READING 10's FLAT NAMESPACE, as the import an application has already written.**  The
+# loop above asks every name at the module it is DECLARED at; this asks the same names at
+# ``adcp.types`` itself, which is the spelling reading 10 calls "the compatibility
+# surface" and the one the word drop-in is defined by.  A real import statement per name
+# for the same reason, and ``is`` beside it: a flat surface built by COPYING would resolve
+# every name here and hand a consumer an object whose ``isinstance`` is false against
+# every instance the runtime builds.
+# THE OWED SET IS THE ALIAS MODULE'S OWN TWO STATEMENTS OF IT, not a list here: ``__all__``
+# is what that module DECLARES, and ``__adcp_flat_only__`` names the ``PRESENT`` rows, which
+# owe the flat spelling and owe no path there (reading 10, amended 2026-11-06).  Their
+# declaring module is the mapping's value and their name of ours is the upstream word
+# itself, which is what ``PRESENT`` means.
+_compat = importlib.import_module("adcp.types.compat")
+flat_only = dict(_compat.__adcp_flat_only__)
+flat_owed = sorted(set(exported.get("compat", [])) | set(flat_only))
+flat_resolved = []
+flat_failed = {}
+flat_not_identical = {}
+for one in flat_owed:
+    namespace = {}
+    try:
+        exec(f"from adcp.types import {one}", namespace)
+    except BaseException as error:  # noqa: BLE001 -- the payload is the report
+        flat_failed[one] = f"{type(error).__name__}: {error}"
+        continue
+    where = flat_only.get(one, "adcp.types.compat")
+    declared = {}
+    try:
+        exec(f"from {where} import {one}", declared)
+    except BaseException as error:  # noqa: BLE001
+        flat_not_identical[one] = f"{where}.{one} does not import: {type(error).__name__}: {error}"
+        continue
+    if namespace[one] is not declared[one]:
+        flat_not_identical[one] = f"adcp.types.{one} is not {where}.{one}"
+        continue
+    flat_resolved.append(one)
+out["flat_owed"] = flat_owed
+out["flat_only"] = sorted(flat_only)
+out["flat_resolved"] = sorted(flat_resolved)
+out["flat_failed"] = flat_failed
+out["flat_not_identical"] = flat_not_identical
+# **A ``PRESENT`` NAME MUST NOT GAIN A PATH AT THE ALIAS MODULE**, which is the other half of
+# the amendment: it owes the ONE namespace an application imports from and not a second
+# canonical module.
+out["flat_only_also_at_compat"] = sorted(one for one in flat_only if hasattr(_compat, one))
+
+# ``isinstance`` across the three spellings, for the models among them.  Asked of the
+# INSTALLED tree because that is the artifact: a consumer's ``isinstance`` is what the
+# word drop-in means operationally, and a source-tree run cannot see packaging.
+#
+# THE THIRD SPELLING is the domain one, and only the alias module's own ``from
+# adcp.types.<domain> import <OurName> as <UpstreamName>`` statement says which name that
+# is -- a D2 alias reports ``__module__`` as ``typing``, so the re-export statement is the
+# installed artifact's own record of it.  Read here rather than taken from the survey
+# table, because what is being graded is the artifact.
+spellings = {}
+for node in ast.parse(Path(_compat.__file__).read_text()).body:
+    if isinstance(node, ast.ImportFrom):
+        for alias in node.names:
+            spellings[alias.asname or alias.name] = (node.module, alias.name)
+for one, where in flat_only.items():
+    spellings[one] = (where, one)
+
+flat_isinstance = {}
+flat_isinstance_checked = []
+flat_three_spellings = {}
+for one in sorted(flat_resolved):
+    at_flat = getattr(adcp.types, one)
+    where, ours = spellings.get(one, (None, None))
+    if where is not None:
+        at_domain = getattr(importlib.import_module(where), ours)
+        if at_flat is not at_domain:
+            flat_isinstance[one] = f"adcp.types.{one} is not {where}.{ours}"
+            continue
+        flat_three_spellings[one] = f"{where}.{ours}"
+    if not (isinstance(at_flat, type) and hasattr(at_flat, "model_construct")):
+        continue
+    fields = getattr(at_flat, "model_fields", {}) or {}
+    try:
+        held = at_flat.model_construct(root=None) if "root" in fields else at_flat.model_construct()
+    except BaseException as error:  # noqa: BLE001
+        flat_isinstance[one] = f"could not construct: {type(error).__name__}: {error}"
+        continue
+    if not isinstance(held, at_flat):
+        flat_isinstance[one] = "an instance built through the flat name is not one of it"
+        continue
+    if where is not None and not isinstance(held, at_domain):
+        flat_isinstance[one] = f"an instance built through adcp.types.{one} is not a {where}.{ours}"
+        continue
+    flat_isinstance_checked.append(one)
+out["flat_isinstance"] = flat_isinstance
+out["flat_isinstance_checked"] = sorted(flat_isinstance_checked)
+out["flat_three_spellings"] = len(flat_three_spellings)
 
 # Every record the wheel actually packages, found through ``importlib.resources`` -- the
 # same resolver ``_base._document`` uses -- so the right-hand side of the equality below is
@@ -463,6 +558,164 @@ def test_every_name_the_installed_wheel_exports_imports_from_it() -> None:
     )
 
 
+def test_every_upstream_spelling_is_on_the_installed_surface() -> None:
+    """**Reading 10, asked of the artifact**: the alias layer SHIPS, or it does not exist.
+
+    ``final-state.md`` reading 10 is "decided by installing the wheel into an environment
+    that has never seen this repository and resolving every name in the cross-check's
+    present, renamed and relocated sets" -- which is reading 8's own environment, so the
+    question is asked here, of the install :func:`_built` already made, rather than in a
+    second venv built by a second file.
+
+    **The population is ``survey/alias-surface-9.6.1.tsv``**, written by
+    ``survey/alias_surface.py`` from upstream's own 9.6.1 wheel and ours, and committed --
+    the generator and its output both, because the readings this layer was briefed from
+    lived under ``.adcp-cache/`` and three of their four files are already gone.
+    ``tests/test_the_alias_layer_is_names.py`` asks the behavioural half of the same table
+    (``is`` and ``isinstance``) against the source tree; this asks whether the names are on
+    the surface the INSTALLED wheel states, which packaging decides and a source-tree run
+    cannot see.
+
+    An alias that resolves only from the source tree is not shipped.  The set difference is
+    both ways, because a name in the table that the wheel does not export is an unshipped
+    alias and a name the wheel exports under this module that the table does not decide is
+    a surface nothing derived.
+    """
+    out = _built()
+    lines = [
+        line
+        for line in (ROOT / "survey" / "alias-surface-9.6.1.tsv").read_text().splitlines(True)
+        if not line.startswith("#")
+    ]
+    owed = {
+        (row["declared_at"], row["name"])
+        for row in csv.DictReader(lines, delimiter="\t")
+        if row["bucket"] in ("PRESENT", "RELOCATED", "RENAMED")
+    }
+    claimed("the upstream spellings the alias surface declares", owed)
+    installed = {
+        (f"adcp.types.{module}", one)
+        for module, exports in out["exported"].items()
+        for one in exports
+    }
+    unshipped = owed - installed
+    assert unshipped == set(), (
+        f"{len(unshipped)} of {len(owed)} upstream spellings are not on the installed "
+        f"wheel's own surface, so they are not shipped:\n"
+        + "\n".join(f"  {where}.{name}" for where, name in sorted(unshipped))
+    )
+    undecided = {
+        (where, name) for where, name in installed if where == "adcp.types.compat"
+    } - owed
+    assert undecided == set(), (
+        f"{sorted(undecided)} are exported by the installed adcp.types.compat and are "
+        "decided by no row of the table, so nothing derived them"
+    )
+
+
+def test_every_upstream_spelling_imports_from_the_flat_namespace() -> None:
+    """**Reading 10's own spelling of the compatibility surface, asked of the artifact.**
+
+    ``final-state.md`` reading 10 names three layers and the third is
+    "``adcp.types`` flat -- the compatibility surface: **an alias for every name an
+    application actually imports today**, pointing at the generated class", and the
+    standing goal calls the layer a DROP-IN for the v9.6 classes.  A drop-in is defined by
+    the import an application has already written, so the question
+    :func:`test_every_upstream_spelling_is_on_the_installed_surface` asks of
+    ``adcp.types.compat`` is asked here of ``adcp.types`` itself.
+
+    **THIS IS THE EXPERIMENT adcp-client-python-2m5.6 ASKS FOR AND NOT A SETTLED
+    OBLIGATION.**  The row states three options -- MOVE the aliases here, RE-EXPORT them
+    here, or amend reading 10 to name ``compat`` as the surface -- and the decision is the
+    owner's.  What this grades is option (b): the aliases stay declared at ``compat`` and
+    ``adcp.types.__getattr__`` reaches them, measured from an environment that has never
+    seen this repository, with ``is`` beside the import so that a flat surface built by
+    copying cannot read green.
+    """
+    out = _built()
+    owed = claimed("the upstream spellings the flat namespace owes", set(out["flat_owed"]))
+    claimed("the PRESENT rows the flat namespace alone carries", set(out["flat_only"]))
+    assert out["flat_failed"] == {}, (
+        f"{len(out['flat_failed'])} of {len(owed)} upstream spellings do not import from "
+        f"the installed adcp.types, so `from adcp.types import <Name>` is not a drop-in:\n"
+        + "\n".join(f"  {k}: {v}" for k, v in sorted(out["flat_failed"].items()))
+    )
+    assert out["flat_not_identical"] == {}, {
+        "a second object wearing the flat spelling": out["flat_not_identical"],
+    }
+    assert out["flat_isinstance"] == {}, {
+        "isinstance does not hold through the flat spelling": out["flat_isinstance"],
+    }
+    assert sorted(out["flat_resolved"]) == sorted(owed), {
+        "resolved": len(out["flat_resolved"]),
+        "owed": len(owed),
+    }
+
+
+def test_every_flat_spelling_consumer_code_writes_resolves_or_carries_a_verdict() -> None:
+    """**Reading 10's denominator: what consumer code WRITES, not what the table decides.**
+
+    ``final-state.md`` reading 10, amended 2026-11-06: "**the clause is graded over what
+    consumer code actually writes, not over the table's own rows.**  A table can be
+    complete against itself and leave the written import failing -- so the measurement is
+    the set of flat spellings appearing in upstream's own examples, scripts and
+    documentation, resolved from an environment holding only the installed wheel."
+
+    **THIS IS THE CLAUSE THAT WAS MISSING, AND THE STATE IT WOULD HAVE CAUGHT IS TRUNK'S**:
+    959 of 959 aliases resolving at ``adcp.types.compat`` from a clean venv, and 0 of the
+    written flat imports resolving.  It is the same shape as the
+    ``DAASTTrackerConstraintsDaastTarget`` defect one layer out -- a derivation complete
+    against itself while an import fails -- which is why it is a standing gate and not a
+    one-off measurement in a bead.
+
+    **THE POPULATION IS COMMITTED** (``survey/consumer-flat-spellings-9.2.0.tsv``, written
+    by ``survey/consumer_imports.py --flat-table``), because a gate reading upstream's
+    checkout out of ``/srv/ws`` is a dangling pointer the moment that directory moves --
+    the lesson ``survey/alias-surface-9.6.1.tsv`` is already in the repository for.
+
+    **AND BOTH VERSIONS ARE NAMED, because they are not the same release**: the corpus is
+    upstream's 9.2.0 checkout, the alias surface is derived against 9.6.1, and the two
+    verdicts that exist only because of that gap -- ``NOT-ON-UPSTREAM`` and
+    ``NOT-DELIBERATE-UPSTREAM`` -- say which name each covers rather than being folded into
+    "absent".
+    """
+    out = _built()
+    lines = [
+        line
+        for line in (ROOT / "survey" / "consumer-flat-spellings-9.2.0.tsv").read_text().splitlines(True)
+        if not line.startswith("#")
+    ]
+    rows = list(csv.DictReader(lines, delimiter="\t"))
+    written = claimed(
+        "flat spellings upstream's own consumer code writes", {row["name"] for row in rows}
+    )
+    owed = {row["name"] for row in rows if row["verdict"] in ("PRESENT", "RELOCATED", "RENAMED")}
+    refused = {row["name"]: row["verdict"] for row in rows if row["name"] not in owed}
+    claimed("the flat spellings this layer owes a consumer", owed)
+    resolved = set(out["flat_resolved"])
+    unmet = sorted(owed - resolved)
+    assert unmet == [], (
+        f"{len(unmet)} of {len(owed)} flat spellings upstream's own consumer code writes do "
+        f"not resolve from the installed wheel, out of {len(written)} written:\n"
+        + "\n".join(f"  from adcp.types import {name}" for name in unmet)
+    )
+    # **A REFUSAL WITH NO REASON IS AN OVERSIGHT WEARING A VERDICT'S CLOTHES**, so every
+    # name this layer does NOT resolve carries one of the declared buckets and a sentence.
+    unexplained = sorted(
+        row["name"] for row in rows if row["name"] in refused and not row["why"].strip()
+    )
+    assert unexplained == [], {"refused with no reason given": unexplained}
+    # Asserted NON-EMPTY in both directions, the discipline the rest of this file uses: a
+    # census where nothing is owed grades nothing, and one where nothing is refused means
+    # the buckets above have gone stale rather than that the work is done.
+    assert owed, "no flat spelling is owed, so this gate ranges over nothing"
+    assert refused, (
+        "every flat spelling consumer code writes now resolves, so the refusal buckets in "
+        "survey/consumer_imports.py's FLAT_VERDICTS are dead: assert the equality "
+        "owed == written and delete this sentence"
+    )
+
+
 def test_every_document_an_exported_name_names_is_a_record_the_wheel_packages() -> None:
     """**Packaging decides which files a wheel contains**, and these are the files.
 
@@ -623,9 +876,36 @@ def test_what_this_file_does_not_grade() -> None:
     """
     out = _built()
     without = sorted(m for m, how in out["how"].items() if how != "__all__")
-    assert out["flat_all"] == [], (
-        "adcp.types exports a name of its own, and `adcp.types.__init__` says it must "
-        f"not: a `from adcp.types import X` is the second path §1 forbids. {out['flat_all']}"
+    # **THIS CLAUSE USED TO ASSERT ``out["flat_all"] == []`` AND THAT WAS READING 10's
+    # THIRD LAYER ASSERTED AWAY** (adcp-client-python-2m5.6).  It was written off
+    # ``adcp/types/__init__.py``'s own sentence "this module exports no type: a `from
+    # adcp.types import PaginationRequest` would be the second path §1 forbids" -- true of
+    # the SCHEMA-DERIVED surface, which is what §1 ranges over, and false of reading 10,
+    # whose third layer is "``adcp.types`` flat -- the compatibility surface: an alias for
+    # every name an application actually imports today".  Two readings, one namespace, and
+    # the gate carried only the first, so the flat namespace was green while the drop-in
+    # clause was unmet at 959 names.
+    #
+    # What it asserts instead is the thing that distinguishes the two: the flat namespace
+    # declares NO name of its own and carries exactly the alias layer's, so a generated
+    # class never acquires a second path while the import an application has already
+    # written resolves.  ``test_every_upstream_spelling_imports_from_the_flat_namespace``
+    # is the obligation; this is the boundary on it.
+    flat = set(out["flat_all"])
+    owed = set(out["flat_owed"])
+    assert flat - owed == set(), (
+        "adcp.types exports a name the alias layer does not decide, so it is a second "
+        f"path to a generated class and not reading 10's alias: {sorted(flat - owed)}"
+    )
+    assert owed - flat == set(), (
+        "the flat namespace does not carry every spelling the alias layer decides, so "
+        f"`from adcp.types import <Name>` raises for {len(owed - flat)} of them: "
+        f"{sorted(owed - flat)[:10]}"
+    )
+    assert out["flat_only_also_at_compat"] == [], (
+        "a PRESENT name has gained a path at adcp.types.compat as well as the flat one, "
+        "which is the second path to an already-resolving name reading 10 refuses: "
+        f"{out['flat_only_also_at_compat']}"
     )
     assert without, (
         "every public module now declares __all__, so this docstring's measurement is "

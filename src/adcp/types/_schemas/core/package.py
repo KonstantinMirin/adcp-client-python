@@ -67,6 +67,7 @@ class Package(AdCPBaseModel):
         ForbiddenGroups((('bidding', 'bid_price'),)),
     )
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/package.json', pointer='#/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['bidding']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
         Approximation(document='core/package.json', pointer='#/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'anyOf': [{'properties': {'formats_to_provide': {'contains': {'required': ['tracker_execution_contract']}}}, 'required': ['formats_to_provide']}, {'properties': {'formats_pending': {'contains': {'required': ['tracker_execution_contract']}}}, 'required': ['formats_pending']}]}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     package_id: Annotated[str, Field(description="Seller's unique identifier for the package")]

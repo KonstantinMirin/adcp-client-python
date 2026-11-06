@@ -2081,13 +2081,13 @@ def lower_union(
                     # merge decides what the document should** (§5's
                     # ``additionalProperties`` row, 2026-10-29).  This branch states no
                     # ``additionalProperties`` of its own, so what it DECLARES is what
-                    # the composed document states at its pointer -- the TARGET's first
-                    # and the union base's after, which is the order the three lines
-                    # above give a shared property ("the target wins a shared key") and
-                    # the order ``harness._composed`` gap-fills in.  Measured on
-                    # ``media-buy/decline-proposals-response.json#/anyOf/1``, whose root
-                    # forbids and whose target admits: read the other way the branch
-                    # REFUSES keys the document admits.
+                    # the composed document states at its pointer -- which for this one
+                    # keyword is the CONJUNCTION and not the gap-fill, because a root's
+                    # ``additionalProperties: false`` is a sibling of the ``anyOf`` and
+                    # draft-07 applies it to the whole instance beside the branch's own
+                    # (:func:`compiler.stated_extra`, whose docstring carries the
+                    # measurement at ``media-buy/decline-proposals-response.json#/anyOf/1``
+                    # and the ``jsonschema`` reading that retired the opposite one).
                     extra=compiler.stated_extra(
                         plan.inherits.shape.extra, base_shape.extra
                     ),

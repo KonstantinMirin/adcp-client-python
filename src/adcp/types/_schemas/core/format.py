@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import AfterValidator, ConfigDict, Field, NonNegativeInt, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule, UniqueItems
 from adcp.types.constraints import FloatGt0, FormatRendersItemDimensionsAspectRatio, HttpUrl, IntMin1
 
@@ -535,7 +535,7 @@ class RepeatableGroupAsset(AdCPBaseModel):
     required: Annotated[bool, Field(description='Whether this asset group is required. If true, at least min_count repetitions must be provided.')]
     min_count: Annotated[NonNegativeInt, Field(description='Minimum number of repetitions required (if group is required) or allowed (if optional)')]
     max_count: Annotated[IntMin1, Field(description='Maximum number of repetitions allowed')]
-    selection_mode: Annotated[SelectionMode | None, Field(default_factory=lambda: TypeAdapter(SelectionMode).validate_python('sequential'), description="How the platform uses repetitions of this group. 'sequential' means all items display in order (carousels, playlists). 'optimize' means the platform selects the best-performing combination from alternatives (asset group optimization like Meta Advantage+ or Google Pmax).", json_schema_extra={'default': 'sequential'})]
+    selection_mode: Annotated[SelectionMode | None, Field(description="How the platform uses repetitions of this group. 'sequential' means all items display in order (carousels, playlists). 'optimize' means the platform selects the best-performing combination from alternatives (asset group optimization like Meta Advantage+ or Google Pmax).", json_schema_extra={'default': 'sequential'})] = Field(default_factory=lambda: TypeAdapter(SelectionMode).validate_python('sequential'))
     assets: Annotated[list[GroupImageAsset | GroupVideoAsset | GroupAudioAsset | GroupTextAsset | GroupMarkdownAsset | GroupHtmlAsset | GroupCssAsset | GroupJavaScriptAsset | GroupZipAsset | GroupVastAsset | GroupDaastAsset | GroupUrlAsset | GroupWebhookAsset | GroupBriefAsset | GroupCatalogAsset | GroupDisplayTagAsset | GroupPublishedPostAsset | GroupCardAsset | GroupPixelTrackerAsset | GroupVastTrackerAsset | GroupDaastTrackerAsset], Field(description='Assets within each repetition of this group')]
 
 
@@ -597,6 +597,9 @@ class Format(AdCPBaseModel):
         UniqueItems('supported_disclosure_positions'),
         UniqueItems('reported_metrics'),
         ConditionalRequired((Match('canonical_parameters', True, None),), require=('canonical',), forbid=()),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/format.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['canonical_parameters']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     format_id: Annotated[FormatReferenceStructuredObject, Field(description="This format's own identifier — a structured object {agent_url, id}, not a string. See /schemas/core/format-id.json for the full shape.")]
     name: Annotated[str, Field(description='Human-readable format name')]

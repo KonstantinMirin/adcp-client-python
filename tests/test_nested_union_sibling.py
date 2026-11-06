@@ -75,6 +75,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+import fresh
 from compiled import compiled
 from nodeset import claimed, partitions
 
@@ -85,7 +86,16 @@ from codegen.schema import nodes
 from codegen.schema import parse as schema_parse
 
 REPO = Path(__file__).resolve().parents[1]
-BUNDLE = REPO / "schemas" / "cache" / "3.2"
+#: **The bundle a run reads, taken from the ONE declaration of it**
+#: (``adcp-client-python-lzzj.11.1``).  This module held its own PUBLISHED literal while
+#: every class it grades was emitted from the PATCHED bundle, so its two halves ranged over
+#: two different document sets.  Measured against ``fresh.PUBLISHED``: the published
+#: directory is portable over 1,054 documents and the run's over 1,059, the five only the
+#: patched one holds are documents ``patches/8525`` ADDS, and of the 1,054 they share 211
+#: differ -- 200 of those beyond ``$schema``/``title``/``description``.  So the published
+#: path is ``adcp-client-python-fr4r``'s lookup error waiting at whichever clause names a
+#: document first, and a quietly different answer at each of the others.
+BUNDLE = fresh.BUNDLE
 DRAFT = "http://json-schema.org/draft-07/schema#"
 
 #: The two union keywords, read off the module under test rather than retyped.

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeFloat, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import Dependencies, Rule
 from adcp.types.constraints import AccountAuthorizationAllowedTasksItem, FloatGt0
 
@@ -28,11 +28,14 @@ class Region(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/canvas-constraint.json', pointer='#/properties/region')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/canvas-constraint.json', pointer='#/properties/region/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'unit': {'const': 'percent'}}, 'required': ['unit']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
     x: NonNegativeFloat
     y: NonNegativeFloat
     width: FloatGt0
     height: FloatGt0
-    unit: Annotated[Unit | None, Field(default_factory=lambda: TypeAdapter(Unit).validate_python('px'), json_schema_extra={'default': 'px'})]
+    unit: Annotated[Unit | None, Field(json_schema_extra={'default': 'px'})] = Field(default_factory=lambda: TypeAdapter(Unit).validate_python('px'))
 
 
 class CanvasConstraint(AdCPBaseModel):
@@ -45,6 +48,9 @@ class CanvasConstraint(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/canvas-constraint.json', pointer='#')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         Dependencies('breakpoint_id', ('state_id',)),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/canvas-constraint.json', pointer='#/properties/region/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'unit': {'const': 'percent'}}, 'required': ['unit']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     constraint: Constraint
     state_id: AccountAuthorizationAllowedTasksItem | None = None

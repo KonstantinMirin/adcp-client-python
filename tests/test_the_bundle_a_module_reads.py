@@ -106,6 +106,14 @@ BY_DESIGN = {
         "two bundles are its subject: _bundles() is {published 3.2, patch.for_build(it)} and "
         "a property read over one of them would be the census the file exists not to be"
     ),
+    "test_the_run_writes_its_verdicts": (
+        "its subject is the ENTRY POINT: it runs `python -m codegen --bundle <this>`, and "
+        "--bundle is D9's ARGUMENT -- codegen/__main__.py applies patch.for_build to "
+        "whatever it is handed, so the published directory is the command's input and the "
+        "patched one applies the table twice (ValueError: core/currency-code.json: the "
+        "published bundle already holds it).  Measured by adcp-client-python-lzzj.11.1, "
+        "which moved it to fresh.BUNDLE and reddened it"
+    ),
     "test_a_bundle_states_which_upstream_it_is": (
         "every PUBLISHED bundle is its subject -- BUNDLES is provenance.bundles(), and what "
         "it grades is that each one states which upstream it came from.  A patched "
@@ -114,45 +122,28 @@ BY_DESIGN = {
 }
 
 #: **THE OWED SET: modules still ranging over the published 3.2 bundle while the tree they
-#: grade came from the patched one.**  ``adcp-client-python-lzzj.11`` owns the move and
-#: states its price -- each is a one-line change that moves the input of every test in the
-#: module, so each wants its own run.
+#: grade came from the patched one.  IT IS EMPTY.**
 #:
-#: **It may only SHRINK**, and it is graded in both directions like :data:`BY_DESIGN`: a
-#: module that joins it reddens by NAME, and a module that has moved and is still listed
-#: reddens by name too, so the set cannot be left behind by the work.
+#: It held 25 modules when ``adcp-client-python-lzzj.11`` derived it and it holds none;
+#: ``adcp-client-python-lzzj.11.1`` moved 24 of them onto ``fresh.BUNDLE``, one module at a
+#: time with that module's own JUnit counts before and after, and the twenty-fifth --
+#: ``test_the_run_writes_its_verdicts`` -- turned out to want the published bundle and is in
+#: :data:`BY_DESIGN` above with the measurement that says so.
 #:
-#: The cost each entry carries is reported with it rather than argued: the documents
-#: ``fresh.population()`` names that the module's own bundle does not carry.
-OWED = frozenset(
-    {
-        "cells",
-        "test_a_property_that_admits_nothing",
-        "test_applied_schema",
-        "test_approximation",
-        "test_catalogue",
-        "test_conj_rule_beside_a_type",
-        "test_decision_set",
-        "test_dump_exemptions",
-        "test_emit_product",
-        "test_envelope_base",
-        "test_immaterial_presence",
-        "test_import_rule",
-        "test_inner_facts",
-        "test_nested_union_sibling",
-        "test_ref_branch_union",
-        "test_refuses_check",
-        "test_reported_drop",
-        "test_required_with_no_declaration",
-        "test_the_declared_backlog",
-        "test_the_export_census_store",
-        "test_the_run_writes_its_verdicts",
-        "test_the_tree_imports",
-        "test_union_disjointness",
-        "test_union_dispatch",
-        "test_vocabularies",
-    }
-)
+#: **It may only SHRINK, and an empty set is still graded in both directions**: the clause
+#: below reads ``BY_DESIGN | OWED``, so a module that starts reading a second bundle reddens
+#: by NAME against this empty set and cannot be added back without a reason beside it.
+#: Emptying it was worth doing rather than deferring, because one of the 25 was holding a
+#: READING open: ``tests/test_approximation.py`` is ``docs/plan/final-state.md`` reading 9's
+#: gate, and its published literal made
+#: ``test_no_declaration_the_tree_carries_is_one_its_pair_cannot_put_to_a_draw`` ask that
+#: directory for ``core/country-code.json``, which only the patched bundle holds.
+#:
+#: The cost each entry carried was reported with it rather than argued: the documents
+#: ``fresh.population()`` names that the module's own bundle does not carry.  Kept as a
+#: NAME and not deleted, for ``BY_DESIGN``'s reason -- the clause that grades it is the one
+#: that stops the next module answering the question for itself.
+OWED: frozenset[str] = frozenset()
 
 
 def bundle_of(value: Any) -> Path | None:

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import AtLeastOne, Rule, UniqueItems
 from adcp.types.constraints import FloatMin0Max1
 
@@ -40,7 +40,7 @@ class Metrics(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-coverage-forecast.json', pointer='#/properties/points/items/allOf/1/properties/metrics')
-    __pydantic_extra__: dict[str, ForecastRange]
+    __pydantic_extra__: dict[str, ForecastRange] = Field(init=False)
     audience_size: ForecastRange | None = None
     reach: ForecastRange | None = None
     frequency: ForecastRange | None = None
@@ -126,6 +126,9 @@ class SignalCoverageForecast(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-coverage-forecast.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/signal-coverage-forecast.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'scope': {'type': 'object', 'properties': {'kind': {'const': 'product'}}, 'required': ['kind']}}, 'required': ['scope']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
     points: Annotated[list[PointsItem], Field(description='Coverage or availability points. Each point reuses the standard ForecastPoint shape, MUST include a signal dimension, and MUST include metrics.coverage_rate. Use metrics.impressions for count denominators and metrics.coverage_rate for the fraction of the declared scope represented by the point.', min_length=1)]
     forecast_range_unit: Annotated[Literal['availability'], Field(description="How to interpret the points array. Signal coverage forecasts always use 'availability' because the points describe available inventory or population coverage, not spend curves or temporal pacing.")]
     method: Annotated[ForecastMethod, Field(description='Method used to produce this coverage forecast.')]

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import StrMinLen1, StrMinLen1MaxLen255, StrMinLen1MaxLen1000, ZipAssetDigest
 
@@ -59,6 +59,12 @@ class ReportPlanAdjustmentRequest(AdCPVersionEnvelope):
         ConditionalRequired((Match('action', True, ('report',)),), require=('outcome_id', 'seller_reference', 'seller_adjustment_id', 'adjustment_type', 'amount', 'reason', 'effective_at', 'evidence'), forbid=()),
         ConditionalRequired((Match('action', True, ('review',)),), require=('adjustment_id', 'decision'), forbid=()),
         ConditionalRequired((Match('action', True, ('review',)),Match('decision', True, ('dispute',)),), require=('reason',), forbid=()),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='governance/report-plan-adjustment-request.json', pointer='#/allOf/4', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'adjustment_type': {'const': 'decommitment'}}, 'required': ['adjustment_type']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='governance/report-plan-adjustment-request.json', pointer='#/allOf/5', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'adjustment_type': {'const': 'refund'}}, 'required': ['adjustment_type']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='governance/report-plan-adjustment-request.json', pointer='#/allOf/6', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'adjustment_type': {'const': 'credit'}}, 'required': ['adjustment_type']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='governance/report-plan-adjustment-request.json', pointer='#/allOf/7', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'adjustment_type': {'const': 'makegood'}}, 'required': ['adjustment_type']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     action: Annotated[Action, Field(description='report is seller-authenticated and creates a non-authoritative record; review is plan-owner-authenticated and accepts or disputes it.')]
     plan_id: Annotated[StrMinLen1, Field(description='Plan containing the source outcome.')]

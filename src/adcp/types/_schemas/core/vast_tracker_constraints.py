@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AfterValidator, Field, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Distinct, Match, NegatedConditional, Rule
 from adcp.types.constraints import DAASTTrackerAssetOffset
 
@@ -65,8 +65,20 @@ class VASTTrackerConstraints(AdCPBaseModel):
         ConditionalRequired((Match('vast_event', True, ('progress',)),), require=('offset',), forbid=()),
         NegatedConditional((Match('vast_event', True, ('progress',)),), require=(), forbid=('offset',)),
     )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/vast-tracker-constraints.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'anyOf': [{'not': {'required': ['target']}}, {'properties': {'target': {'const': 'linear'}}, 'required': ['target']}]}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/vast-tracker-constraints.json', pointer='#/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'target': {'const': 'non_linear'}}, 'required': ['target']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/vast-tracker-constraints.json', pointer='#/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'target': {'const': 'companion'}}, 'required': ['target']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/vast-tracker-constraints.json', pointer='#/allOf/4', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'vast_event': {'enum': ['skip', 'progress']}}, 'required': ['vast_event']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/vast-tracker-constraints.json', pointer='#/allOf/5', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'vast_event': {'const': 'fullscreen'}}, 'required': ['vast_event']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/vast-tracker-constraints.json', pointer='#/allOf/6', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'vast_event': {'const': 'exitFullscreen'}}, 'required': ['vast_event']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/vast-tracker-constraints.json', pointer='#/allOf/7', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'vast_event': {'enum': ['playerExpand', 'playerCollapse', 'adExpand', 'adCollapse', 'minimize', 'overlayViewDuration', 'otherAdInteraction']}}, 'required': ['vast_event']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/vast-tracker-constraints.json', pointer='#/allOf/8', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'vast_event': {'const': 'loaded'}}, 'required': ['vast_event']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/vast-tracker-constraints.json', pointer='#/allOf/9', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'vast_event': {'const': 'interactiveStart'}}, 'required': ['vast_event']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/vast-tracker-constraints.json', pointer='#/allOf/10', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'vast_event': {'const': 'closeLinear'}}, 'required': ['vast_event']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
     vast_event: VastEvent | None = None
-    target: Annotated[VastTarget | None, Field(default_factory=lambda: TypeAdapter(VastTarget).validate_python('linear'), json_schema_extra={'default': 'linear'})]
+    target: Annotated[VastTarget | None, Field(json_schema_extra={'default': 'linear'})] = Field(default_factory=lambda: TypeAdapter(VastTarget).validate_python('linear'))
     offset: VastOffset | None = None
     vast_versions: VastVersions | None = None
 

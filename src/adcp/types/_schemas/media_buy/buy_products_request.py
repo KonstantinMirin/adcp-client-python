@@ -41,6 +41,9 @@ class Opportunity(OpportunityContext):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/buy-products-request.json', pointer='#/properties/opportunity')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='media-buy/buy-products-request.json', pointer='#/properties/opportunity/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'status': {'const': 'closed'}}, 'required': ['status']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
     status: Annotated[Literal['closed'] | None, Field(description='Whether the planning cycle remains open. On calls after initial creation, omission means no status update and MUST NOT reopen or close the opportunity implicitly, except that successful create_media_buy proposal execution explicitly infers accepted closure.')] = None
 
 
@@ -63,6 +66,7 @@ class BuyProductsRequest(BranchDispatchMixin, AdCPVersionEnvelope):
     )
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='media-buy/buy-products-request.json', pointer='#/anyOf', keyword='anyOf', kind='UNDERDETERMINED', rung='JOIN', fact=({'required': ['brand']}, {'properties': {'account': {'required': ['brand', 'operator']}}}), attribution='docs/plan/rebuild-plan.md §5 combinators/anyOf'),
+        Approximation(document='media-buy/buy-products-request.json', pointer='#/properties/opportunity/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'status': {'const': 'closed'}}, 'required': ['status']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     adcp_version: AdcpVersion | None = None
     adcp_major_version: AdcpMajorVersion | None = None

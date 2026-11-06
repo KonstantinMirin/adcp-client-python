@@ -5,7 +5,7 @@ from typing import ClassVar, Literal
 
 from pydantic import ConfigDict
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule
 from adcp.types.constraints import HttpUrl, StrMinLen1
 
@@ -30,6 +30,12 @@ class MacroTranslationTarget(AdCPBaseModel):
         ConditionalRequired((Match('mapping_status', True, ('verified_universal',)),), require=('universal_semantic',), forbid=()),
         NegatedConditional((Match('mapping_status', True, ('verified_universal',)),), require=(), forbid=('universal_semantic',)),
         ConditionalRequired((Match('dialect', True, ('adcp',)),), require=('universal_semantic',), forbid=()),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/macro-translation-target.json', pointer='#/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'dialect': {'const': 'unknown'}}, 'required': ['dialect']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/macro-translation-target.json', pointer='#/allOf/4', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'dialect': {'enum': ['iab_vast', 'iab_daast']}}, 'required': ['dialect']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/macro-translation-target.json', pointer='#/allOf/5', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'dialect': {'const': 'adcp'}}, 'required': ['dialect']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/macro-translation-target.json', pointer='#/allOf/6', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'universal_semantic': {'enum': ['CATALOG_ID', 'SKU', 'GTIN', 'OFFERING_ID', 'JOB_ID', 'HOTEL_ID', 'FLIGHT_ID', 'VEHICLE_ID', 'LISTING_ID', 'STORE_ID', 'PROGRAM_ID', 'DESTINATION_ID', 'ITEM_NAME', 'ITEM_DESCRIPTION', 'ITEM_TAGLINE', 'ITEM_PRICE', 'ITEM_PRICE_CURRENCY']}}, 'required': ['universal_semantic']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     token: StrMinLen1
     dialect: MacroDialectFamily

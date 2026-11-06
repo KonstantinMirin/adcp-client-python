@@ -30,6 +30,7 @@ import importlib
 import pathlib
 from typing import Any, ClassVar
 
+import fresh
 import pytest
 from jsonschema import Draft7Validator
 from pydantic import Field
@@ -44,7 +45,7 @@ from adcp.types._base import (
     SchemaRef,
     schema_at,
 )
-from codegen import attribution, bundle, compiler, emit, harness, ir, keywords, render
+from codegen import attribution, bundle, compiler, emit, harness, ir, keywords, patch, render
 from codegen.keywords import Effect, Position, Rung
 from codegen.lower.approximate import approximate, attribution_for, declare, rung_for
 from codegen.refusal import BuildFailure
@@ -53,9 +54,19 @@ from tests.nodeset import claimed
 
 DOC = "core/probe.json"
 
-#: The pinned bundle the population below is read over, which is the one every other
-#: census in ``tests/`` is taken against.
-BUNDLE = pathlib.Path("schemas/cache/3.2")
+#: **The bundle a run reads, taken from the ONE declaration of it**
+#: (``adcp-client-python-lzzj.11.1``).  This module held its own PUBLISHED literal while
+#: the pairs it grades come from ``tests/compared.pairs()`` -- the tree a fresh run emits
+#: from the PATCHED bundle -- so the two halves of
+#: :func:`test_no_declaration_the_tree_carries_is_one_its_pair_cannot_put_to_a_draw` came
+#: from two different document sets: ``patches/8525`` ADDS ``core/country-code.json``, the
+#: tree carries a pair for it, and ``bundle.read`` under the published directory raised
+#: ``FileNotFoundError: schemas/cache/3.2/core/country-code.json``.  That clause is
+#: ``docs/plan/final-state.md`` reading 9's gate, so the literal was holding a reading
+#: open.
+BUNDLE = fresh.BUNDLE
+#: ``docs/plan/architecture.md``'s "A CHECK THAT DIES IN ITS OWN SETUP ... is
+#: bundle they were emitted from or the two range over different inputs.
 
 
 def _ref(pointer: str = "#") -> SchemaRef:
@@ -519,7 +530,7 @@ def test_no_declaration_the_tree_carries_is_one_its_pair_cannot_put_to_a_draw() 
             owners.setdefault(harness.site_of(one), set()).add(name)
             if one.kind == UNDERDETERMINED:
                 continue  # §2: no draw can see one, so the obligation claims none
-            if harness._steps(_relative(ref, one.pointer), node) is None:
+            if harness._steps(_relative(ref, one.pointer), node, _stated(ref)) is None:
                 unreachable.add((name, harness.site_of(one)))
         for site, one in stated.get(ref.document, {}).items():
             if render.declared_at((one,), ref) and not render.declared_at((one,), ref, entries):
@@ -538,10 +549,9 @@ def test_no_declaration_the_tree_carries_is_one_its_pair_cannot_put_to_a_draw() 
                 one = stated[ref.document][site]
                 if one.kind == UNDERDETERMINED:
                     continue
-                assert harness._steps(_relative(ref, one.pointer), schema_at(ref)) is not None, (
-                    owner,
-                    site,
-                )
+                assert harness._steps(
+                    _relative(ref, one.pointer), schema_at(ref), _stated(ref)
+                ) is not None, (owner, site)
 
 
 def _relative(ref: SchemaRef, pointer: str) -> str:
@@ -551,6 +561,20 @@ def _relative(ref: SchemaRef, pointer: str) -> str:
     the obligation asks it and not a second spelling of it.
     """
     return "" if pointer == ref.pointer else pointer[len(ref.pointer.rstrip("/")) :]
+
+
+def _stated(ref: SchemaRef) -> Any:
+    """``ref``'s node AS THE DOCUMENT STATES IT, through the obligation's own derivation.
+
+    The second half of the sentence above: a leading ``allOf`` index in a declaration's
+    pointer is an index into the list the DOCUMENT states, and ``applied_schema`` splices
+    the enclosing node's conjuncts in front of it at a union branch
+    (``harness.node_as_stated``).  Asked here through that function and not re-derived, so
+    this census ranges over the set the grade acts in -- which is
+    ``docs/plan/architecture.md``'s "A READER DERIVES ITS KEY FROM THE ACCESSOR THE GRADE
+    READS THROUGH" applied to the reader that decides whether the grade can reach a site.
+    """
+    return harness.node_as_stated(schema_at(SchemaRef(ref.document, "#")), ref.pointer)
 
 
 def test_a_fact_is_declared_once_at_the_node_the_document_states_it() -> None:

@@ -1375,6 +1375,54 @@ class AdCPBaseModel(SchemaBound):
 
     model_config = ConfigDict(extra="ignore", regex_engine=REGEX_ENGINE)
 
+    @classmethod
+    def __pydantic_init_subclass__(cls, **kwargs: Any) -> None:
+        """Take the typed extras store's ``init=False`` specifier back off the class.
+
+        **A subclass declaring a TYPED extras store has to say two things that cannot be
+        said in one place**, and this is the second of them.  A document's
+        ``additionalProperties`` schema reaches pydantic as
+        ``__pydantic_extra__: dict[K, V]`` in the class body -- pydantic reads the
+        ANNOTATION and nothing else (``_internal/_fields.py`` collects it off
+        ``get_model_type_hints`` after ``is_valid_field_name`` has refused the dunder as a
+        field).  A consumer's type checker reads the other half: ``BaseModel`` declares the
+        same name as ``NoInitField(init=False)``, one of pydantic's own
+        ``dataclass_transform(field_specifiers=…)``, so a bare re-declaration in a subclass
+        puts the dunder BACK into the synthesised ``__init__`` as a required keyword-only
+        argument -- and it is a dunder ``__init__`` must never be handed, so the class has
+        no correct constructor call at all (``adcp-client-python-82m.53``, measured as 5
+        public exports a consumer could not construct).  So the emitter writes
+        ``= Field(init=False)``, which is that specifier in its public spelling.
+
+        **The assignment then has to go, or the runtime moves.**  Pydantic plays exactly
+        this trick for itself and undoes it in its metaclass -- ``ModelMetaclass.__new__``
+        pops ``__pydantic_fields_set__``, ``__pydantic_extra__`` and
+        ``__pydantic_private__`` out of the namespace, but only on the branch that builds
+        ``BaseModel`` itself, so a subclass must do its own.  Left in place, the class
+        attribute SHADOWS ``BaseModel``'s slot descriptor for the name: the store is then
+        set through ``object.__setattr__`` into the instance ``__dict__``, beside the field
+        values, instead of into its slot.  Measured on pydantic 2.13.5 against a bare
+        declaration -- ``model_dump``, ``model_dump_json``, ``repr``, ``==``,
+        ``model_fields_set``, ``deepcopy``, ``model_construct``, ``model_json_schema`` and
+        the refusal of a wrong-typed extra are all identical either way; ``instance.__dict__``
+        is the one read that is not.  ``tests/test_emit.py`` makes that read
+        (``set(held.model_dump()) == set(held.__dict__)`` on a union base) and would NOT
+        catch this today -- 0 of the 141 union bases declares a typed store -- which is the
+        reason to take the attribute off rather than to leave it and wait: the store would
+        be in the field dictionary on every one of these classes, and the first union base
+        to declare one would redden a check about something else entirely.
+
+        Here and not in :class:`SchemaBound`, because a typed extras store is a CLASS's and
+        pydantic refuses ``extra`` on a ``RootModel`` at all -- the same split
+        ``model_config`` above is on.  Called by pydantic for every proper subclass after
+        the fields and the core schema are built, so nothing that reads the annotation has
+        run after it; a class that declares no store has nothing in its own ``__dict__``
+        under the name and this is one failed lookup.
+        """
+        super().__pydantic_init_subclass__(**kwargs)
+        if "__pydantic_extra__" in cls.__dict__:
+            delattr(cls, "__pydantic_extra__")
+
 
 class AdCPRootModel(SchemaBound, RootModel[Any]):
     """§4's third root shape: a root that is neither a class nor an alias.

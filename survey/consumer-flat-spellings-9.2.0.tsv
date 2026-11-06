@@ -1,0 +1,77 @@
+# Flat spellings consumer code writes: `from adcp.types import <Name>`.
+# Corpus: upstream adcp 9.2.0, 72 names over 47 fragments of examples/, skills/, README.md, llms.txt, MIGRATION*.md and docs/**.md fences.
+# Verdicts joined against the alias surface derived for adcp 9.6.1.
+# ABSENT=10  ABSENT-SUBJECT-NO-WORD=12  MEANING-DIFFERS=5  NOT-A-TYPE=3  NOT-DELIBERATE-UPSTREAM=1  NOT-ON-UPSTREAM=1  PRESENT=12  RELOCATED=23  RENAMED=5
+name	fragments	verdict	why	first_fragment
+Account	1	RELOCATED	upstream spells it at adcp.decisioning, adcp.decisioning.account_mode, adcp.decisioning.accounts	examples/v3_reference_seller/tests/test_smoke_broadening.py
+AccountReference	1	RELOCATED	upstream spells it at adcp, adcp.accounts, adcp.feed_mirror	docs/extending-types.md#fence1
+AccountReferenceById	1	ABSENT-SUBJECT-NO-WORD	identity equal under a word the bundle does not give	docs/extending-types.md#fence0
+AdcpVersionEnvelope	2	RENAMED	ours is AdCPVersionEnvelope	docs/extending-types.md#fence5
+AgentConfig	3	ABSENT	no word, document or identity of ours	examples/basic_usage.py
+AudioContent	1	ABSENT-SUBJECT-NO-WORD	identity equal under a word the bundle does not give	examples/hello_seller_creative.py
+BrandIdentity	1	ABSENT	no word, document or identity of ours	MIGRATION_v7_to_v8.md#fence1
+BuildCreativeSuccessResponse	1	NOT-ON-UPSTREAM	not a public name of adcp 9.6.1 at all	MIGRATION_v3_to_v4.md#fence13
+BusinessEntity	1	RELOCATED	upstream spells it at adcp.types, adcp.types.domains.core, adcp.types.domains.core.business_entity	examples/v3_reference_seller/src/platform.py
+CanonicalFormatImage	1	RELOCATED	upstream spells it at adcp.types, adcp.types.aliases, adcp.types.domains.formats	MIGRATION_v5_to_v6.md#fence4
+CanonicalFormatKind	2	RELOCATED	upstream spells it at adcp.types, adcp.types.aliases, adcp.types.domains.core	MIGRATION_v5_to_v6.md#fence4
+CanonicalFormatKindStr	1	ABSENT	no word, document or identity of ours	docs/canonical-format-kinds-migration.md#fence1
+ContextObject	1	RELOCATED	upstream spells it at adcp, adcp.types, adcp.types.domains.core	MIGRATION_v3_to_v4.md#fence18
+CpmPricingOption	2	RENAMED	ours is CPMPricingOption	examples/minimal_sales_agent.py
+CreateMediaBuyErrorResponse	1	ABSENT-SUBJECT-NO-WORD	identity equal under a word the bundle does not give	examples/minimal_sales_agent.py
+CreateMediaBuyRequest	3	PRESENT	resolves at adcp.types.media_buy.CreateMediaBuyRequest against our wheel already	docs/type-surface.md#fence0
+CreateMediaBuySuccessResponse	5	ABSENT-SUBJECT-NO-WORD	identity equal under a word the bundle does not give	MIGRATION_v3_to_v4.md#fence13
+CreativeManifest	1	MEANING-DIFFERS	we carry the word; the identities are not equal, so it is another subject	examples/hello_seller_creative.py
+DeliveryMeasurement	2	ABSENT	no word, document or identity of ours	examples/minimal_sales_agent.py
+DeliveryType	2	RELOCATED	upstream spells it at adcp.types, adcp.types.domains.enums, adcp.types.domains.enums.delivery_type	examples/minimal_sales_agent.py
+Error	1	RELOCATED	upstream spells it at adcp, adcp.reporting.receipts.handler, adcp.server.base	examples/minimal_sales_agent.py
+FlatRatePricingOption	1	RELOCATED	upstream spells it at adcp, adcp.types, adcp.types.buyer	examples/minimal_sales_agent.py
+Format	1	MEANING-DIFFERS	we carry the word; the identities are not equal, so it is another subject	examples/v3_reference_seller/src/platform.py
+FormatId	2	RENAMED	ours is FormatReferenceStructuredObject	examples/minimal_sales_agent.py
+GeneratedTaskStatus	1	ABSENT-SUBJECT-NO-WORD	identity equal under a word the bundle does not give	skills/build-seller-agent/SKILL.md#fence3
+GeoCountry	1	ABSENT	no word, document or identity of ours	docs/extending-types.md#fence12
+GetAdcpCapabilitiesRequest	1	RENAMED	ours is GetAdCPCapabilitiesRequest	examples/reporting_status_notifications.py
+GetAdcpCapabilitiesResponse	2	RENAMED	ours is GetAdCPCapabilitiesResponse	examples/minimal_sales_agent.py
+GetMediaBuyDeliveryRequest	3	PRESENT	resolves at adcp.types.media_buy.GetMediaBuyDeliveryRequest against our wheel already	examples/reporting_status_notifications.py
+GetMediaBuyDeliveryResponse	1	PRESENT	resolves at adcp.types.media_buy.GetMediaBuyDeliveryResponse against our wheel already	examples/v3_reference_seller/src/platform.py
+GetMediaBuysRequest	3	PRESENT	resolves at adcp.types.media_buy.GetMediaBuysRequest against our wheel already	docs/validation-contract.md#fence1
+GetMediaBuysResponse	1	PRESENT	resolves at adcp.types.media_buy.GetMediaBuysResponse against our wheel already	examples/v3_reference_seller/src/platform.py
+GetProductsRequest	9	RELOCATED	upstream spells it at adcp, adcp.client, adcp.feed_mirror	docs/account-lifecycle.md#fence0
+GetProductsResponse	6	RELOCATED	upstream spells it at adcp, adcp.client, adcp.feed_mirror	docs/extending-types.md#fence4
+ImageAsset	1	RELOCATED	upstream spells it at adcp.types.domains.brand_discovery, adcp.types.domains.core.assets.asset_union, adcp.types.domains.core.assets.image_asset	MIGRATION_v3_to_v4.md#fence14
+ImageContent	1	ABSENT-SUBJECT-NO-WORD	identity equal under a word the bundle does not give	MIGRATION_v3_to_v4.md#fence15
+LegacyListCreativeFormatsRequest	1	ABSENT-SUBJECT-NO-WORD	identity equal under a word the bundle does not give	examples/v3_reference_seller/tests/test_smoke_broadening.py
+ListCreativeFormatsRequest	2	RELOCATED	upstream spells it at adcp.client, adcp.server.base, adcp.simple	examples/fetch_preview_urls.py
+ListCreativesCreative	4	ABSENT	no word, document or identity of ours	docs/extending-types.md#fence11
+ListCreativesRequest	2	PRESENT	resolves at adcp.types.creative.ListCreativesRequest against our wheel already	examples/v3_reference_seller/src/platform.py
+ListCreativesResponse	1	PRESENT	resolves at adcp.types.creative.ListCreativesResponse against our wheel already	docs/extending-types.md#fence11
+ListProductsRequest	4	PRESENT	resolves at adcp.types.media_buy.ListProductsRequest against our wheel already	MIGRATION_ADCP_3.1_TO_3.2.md#fence4
+ListProductsResponse	1	PRESENT	resolves at adcp.types.media_buy.ListProductsResponse against our wheel already	examples/v3_reference_seller/src/platform.py
+MediaBuyStatus	1	RELOCATED	upstream spells it at adcp, adcp.types, adcp.types.domains.enums	examples/v3_reference_seller/src/platform.py
+Package	1	MEANING-DIFFERS	we carry the word; the identities are not equal, so it is another subject	examples/minimal_sales_agent.py
+PackageUpdate	1	PRESENT	resolves at adcp.types.media_buy.PackageUpdate against our wheel already	docs/extending-types.md#fence9
+Product	7	MEANING-DIFFERS	we carry the word; the identities are not equal, so it is another subject	docs/handler-authoring.md#fence5
+ProductFormatDeclaration	1	MEANING-DIFFERS	we carry the word; the identities are not equal, so it is another subject	docs/types-9-migration.md#fence4
+Protocol	3	ABSENT	no word, document or identity of ours	examples/basic_usage.py
+ProtocolEnvelope	3	RELOCATED	upstream spells it at adcp.types, adcp.types.domains.account.list_account_changes_response, adcp.types.domains.account.list_accounts_response	docs/extending-types.md#fence4
+ProvidePerformanceFeedbackRequest	2	RELOCATED	upstream spells it at adcp, adcp.client, adcp.server.base	examples/v3_reference_seller/src/platform.py
+ProvidePerformanceFeedbackSuccessResponse	1	ABSENT-SUBJECT-NO-WORD	identity equal under a word the bundle does not give	examples/v3_reference_seller/src/platform.py
+PublisherPropertiesAll	3	ABSENT-SUBJECT-NO-WORD	identity equal under a word the bundle does not give	examples/minimal_sales_agent.py
+ReportingDeliveryCapabilities	1	RELOCATED	upstream spells it at adcp.types, adcp.types.domains.core, adcp.types.domains.core.reporting_delivery_capabilities	examples/reporting_status_notifications.py
+ReportingWebhook	1	RELOCATED	upstream spells it at adcp.types, adcp.types.domains.core, adcp.types.domains.core.reporting_webhook	docs/webhooks/reporting-operation-id-3.2.md#fence0
+SchemaVariant	1	ABSENT	no word, document or identity of ours	docs/extending-types.md#fence12
+SyncAccountsRequest	2	RELOCATED	upstream spells it at adcp, adcp.accounts, adcp.client	examples/reporting_status_notifications.py
+SyncCreativeResult	1	ABSENT	no word, document or identity of ours	examples/v3_reference_seller/src/platform.py
+SyncCreativesRequest	2	PRESENT	resolves at adcp.types.creative.SyncCreativesRequest against our wheel already	examples/v3_reference_seller/src/platform.py
+SyncCreativesSuccessResponse	1	ABSENT-SUBJECT-NO-WORD	identity equal under a word the bundle does not give	examples/v3_reference_seller/src/platform.py
+SyncReportingStatusRequest	1	RELOCATED	upstream spells it at adcp.client, adcp.reporting.production.handler, adcp.server.base	examples/reporting_status_notifications.py
+TargetingOverlay	1	RELOCATED	upstream spells it at adcp, adcp.types, adcp.types.buyer	MIGRATION_v3_to_v4.md#fence18
+TargetingOverlayInput	1	RELOCATED	upstream spells it at adcp, adcp.types, adcp.types.buyer	docs/extending-types.md#fence9
+UpdateMediaBuyRequest	2	PRESENT	resolves at adcp.types.media_buy.UpdateMediaBuyRequest against our wheel already	examples/v3_reference_seller/src/platform.py
+UpdateMediaBuySuccessResponse	2	ABSENT-SUBJECT-NO-WORD	identity equal under a word the bundle does not give	examples/v3_reference_seller/src/platform.py
+UrlAsset	1	NOT-DELIBERATE-UPSTREAM	adcp 9.6.1 exposes it only where no __all__ is declared	MIGRATION_v3_to_v4.md#fence14
+UrlContent	1	ABSENT-SUBJECT-NO-WORD	identity equal under a word the bundle does not give	MIGRATION_v3_to_v4.md#fence15
+VendorPricingOption	1	RELOCATED	upstream spells it at adcp.types, adcp.types.aliases, adcp.types.domains.core	docs/types-9-migration.md#fence2
+VendorPricingOptionUnion	1	ABSENT	no word, document or identity of ours	docs/types-9-migration.md#fence2
+is_canonical_format_kind	1	NOT-A-TYPE	upstream's object is a function, and only a type gets an alias	docs/types-9-migration.md#fence14
+require_canonical_format_kind	1	NOT-A-TYPE	upstream's object is a function, and only a type gets an alias	docs/canonical-format-kinds-migration.md#fence2
+validate_union	1	NOT-A-TYPE	upstream's object is a function, and only a type gets an alias	docs/types-9-migration.md#fence2

@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import Presence, PresenceGroups, Rule, UniqueItems
 from adcp.types.constraints import IntMin1
 
@@ -24,6 +24,9 @@ class FrequencyCapIntervalConstraints(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         PresenceGroups((Presence(require=(('allowed_intervals',),), forbid=(('minimum_interval',), ('maximum_interval',))), Presence(require=(('minimum_interval', 'maximum_interval'),), forbid=(('allowed_intervals',),))), 'oneOf'),
         UniqueItems('allowed_intervals'),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/frequency-cap-interval-constraints.json', pointer='#', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'unit': {'const': 'campaign'}}, 'required': ['unit']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     unit: FrequencyCapDurationUnit
     minimum_interval: IntMin1 | None = None

@@ -5,7 +5,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types.constraints import StrMinLen1MaxLen2000
 
 from ..enums.warning_code import WarningCode
@@ -21,6 +21,10 @@ class Warning(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/warning.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/warning.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'code': {'enum': ['inventory_shortfall_forecast', 'flight_change_creates_pacing_risk']}}, 'required': ['code']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/warning.json', pointer='#/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'code': {'const': 'fields_ignored_due_to_precedence'}}, 'required': ['code']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
     code: WarningCode
     message: Annotated[StrMinLen1MaxLen2000, Field(description='Short human-readable explanation. Treat as untrusted seller text and do not require buyers to parse it for routing.')]
     affected_resource: Annotated[WarningAffectedResource, Field(description='Resource or relationship affected by this warning. Required so multi-package and multi-creative responses remain machine-joinable.')]

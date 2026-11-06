@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
@@ -43,6 +43,12 @@ class ReportingMaterialization(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ConditionalRequired((Match('status', True, ('available', 'delivered')),), require=('ready_at', 'resource', 'verification'), forbid=()),
         ConditionalRequired((Match('status', True, ('failed',)),), require=('failed_at', 'failure_code'), forbid=()),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/reporting-materialization.json', pointer='#/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'method': {'const': 'file_transfer'}}, 'required': ['method']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/reporting-materialization.json', pointer='#/allOf/3', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'method': {'const': 'dataset_share'}}, 'required': ['method']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/reporting-materialization.json', pointer='#/allOf/4', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'method': {'const': 'warehouse_materialization'}}, 'required': ['method']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/reporting-materialization.json', pointer='#/allOf/5', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'feed_purpose': {'const': 'billing'}, 'status': {'enum': ['available', 'delivered']}}, 'required': ['feed_purpose', 'status']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     reporting_materialization_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId
     reporting_revision_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId

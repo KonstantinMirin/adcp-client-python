@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule
 from adcp.types.constraints import (
     ConsultationContext,
@@ -130,6 +130,9 @@ class CheckGovernanceResponse(AdCPVersionEnvelope):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/check-governance-response.json', pointer='#')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ConditionalRequired((Match('runtime_attestation_evaluations', True, None),), require=('runtime_attestation_binding_digest',), forbid=()),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='governance/check-governance-response.json', pointer='#/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['check_type']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     check_id: Annotated[str, Field(description='Unique identifier for this governance check record. Use in report_plan_outcome to link outcomes to the check that authorized them.')]
     verdict: Annotated[GovernanceDecision, Field(description='Governance verdict: approved | denied | conditions. Renamed from `status` in 3.1 to free the top-level `status` key for the envelope task-status (TaskStatus) under MCP flat-on-the-wire serialization. The enum values are unchanged; only the property name moved.')]

@@ -408,6 +408,27 @@ CARRIERS = frozenset(
 #: those two come apart.
 TYPE_ADAPTER = ("pydantic", "TypeAdapter")
 
+#: ``pydantic.Field``, as the ``(module, name)`` pair, for the two lines this module writes
+#: a ``Field(...)`` CALL into itself rather than handing keywords to the model layer.
+#:
+#: **Both exist because PEP 681 reads a field specifier off the ASSIGNED VALUE and nowhere
+#: else**, which is the whole of ``adcp-client-python-82m.52`` and ``.53``: a consumer's
+#: checker synthesises ``__init__`` from ``dataclass_transform`` on pydantic's metaclass
+#: (``field_specifiers=(Field, PrivateAttr, NoInitField)``) and reads ``default``,
+#: ``default_factory`` and ``init`` only from what the declaration is ASSIGNED.  Pydantic
+#: reads them from an ``Annotated`` extra as happily, so the two spellings are identical at
+#: runtime and only one of them is true to a consumer.
+#:
+#: The pair, and resolved through the model layer at the point of use, for
+#: :data:`TYPE_ADAPTER`'s reason: the spelling is the model layer's and the import is this
+#: module's, and two spellings of one symbol is how those come apart.
+FIELD = ("pydantic", "Field")
+
+
+def _field_symbol() -> str:
+    """``pydantic.Field``'s spelling in the emitted module, off the model layer."""
+    return _TYPES.get_data_type_from_full_path(".".join(FIELD), is_custom_type=False).type_hint
+
 
 def _constructed_default(decided: ir.Field) -> PythonCode | None:
     """§5's constructed ``default`` as a ``default_factory`` expression, or ``None``.
@@ -492,11 +513,39 @@ def _field(decided: ir.Field) -> DataModelField:
     }
     kwargs: dict[str, Any] = {}
     if constructed is not None:
-        # The factory is the model layer's ``default_factory`` extra, which is the slot
-        # that makes the template write no ``= <literal>`` line at all
-        # (``has_default_factory_in_field``).  So the two arms are EXCLUSIVE by
-        # construction: a constructed default has no literal beside it to disagree with.
-        extras["default_factory"] = constructed
+        # **THE FACTORY IS THE FIELD'S ASSIGNED VALUE, and that is the whole of
+        # ``adcp-client-python-82m.52``.**  It rode the model layer's ``default_factory``
+        # EXTRA before, which put it inside ``Annotated[...]`` and made the template write
+        # no ``= …`` line at all (``has_default_factory_in_field``).  Pydantic finds a
+        # ``default_factory`` wherever it sits, so the field was optional at runtime --
+        # and **PEP 681 does not look there.**  A consumer's checker reads
+        # ``default``/``default_factory`` off the ASSIGNED VALUE alone, so 90 of the 1,459
+        # public model exports told a consumer that a field the DOCUMENT gives a default
+        # was required, and only a checker outside this package could see it (our own
+        # ``[tool.mypy]`` excludes the emitted tree by name, and the source tree reads the
+        # same with or without a marker).  Measured on pydantic 2.13.5 against mypy:
+        # ``a: Annotated[int, Field(default_factory=…)]`` reports ``Missing named
+        # argument``; ``a: Annotated[int, Field(description=…)] = Field(default_factory=…)``
+        # is clean; both construct the same value and render the same
+        # ``model_json_schema()``.  Pydantic MERGES the two ``FieldInfo``s -- the
+        # annotation's keywords and the assignment's -- so ``description`` and
+        # ``json_schema_extra`` keep arriving through the ``Annotated`` extra above.
+        #
+        # ``PythonCode`` is the model layer's own carrier for a default that is an
+        # EXPRESSION rather than a literal (``represent_python_value`` renders it
+        # unquoted), which is the same channel :func:`_bound_to_the_type` uses.
+        #
+        # **THE ASSIGNMENT IS NOW THE ONLY PLACE THE FACTORY LIVES, and the template
+        # writes it only for a field that is not ``required``** -- so this arm depends on
+        # §5's other rule, which is that a ``default`` on a property its object REQUIRES is
+        # DROPPED (``codegen.lower.objects``, recorded in ``Emitted.drops`` and graded by
+        # ``tests/test_inner_facts.py``'s two default clauses).  A required field therefore
+        # reaches here with ``default is MISSING`` and constructs nothing, which is why no
+        # ``use_default_with_required`` is asked for: the 98 constructed defaults in the
+        # tree all carry ``| None``, i.e. all 98 are optional, and a required one would be
+        # a drop the run reports rather than a line this writes.
+        kwargs["default"] = PythonCode(f"{_field_symbol()}(default_factory={constructed.code})")
+        kwargs["has_default"] = True
     elif decided.default is not MISSING:
         # ``has_default`` is what the template reads; the value alone is not
         # enough, because ``None`` is a legitimate default.
@@ -505,27 +554,19 @@ def _field(decided: ir.Field) -> DataModelField:
     if decided.wire != decided.name:
         kwargs["alias"] = decided.wire
         kwargs["original_name"] = decided.wire
+    # **The ``| None`` an optional field carries is the MODEL LAYER'S again**, and it is
+    # not stated here, because the arrangement that took it away is gone.  Measured on the
+    # pinned generator: ``DataModelFieldBase._type_hint_from_data_type`` returns the bare
+    # hint as soon as ``has_default_factory`` is true -- which is
+    # ``"default_factory" in extras`` and nothing else -- so while the factory rode the
+    # ``Annotated`` extra, ``slots`` rendered ``list[SlotsItem]`` where every other
+    # optional field rendered ``list[SlotsItem] | None``, the class REFUSED the ``None``
+    # the document admits, and the schema read ``{"type": "array"}`` where it had read an
+    # ``anyOf`` with ``null``.  The factory is now the ASSIGNED value (above), ``extras``
+    # carries none, and the layer derives the union from ``required=False`` exactly as it
+    # does for the 6,900 fields whose default is a literal.  One derivation, so a
+    # constructed default and a literal one cannot come to render two shapes of optional.
     annotation = _data_type(decided.type)
-    if constructed is not None and not decided.required:
-        # **The ``| None`` an optional field's annotation carries is stated HERE when the
-        # default is constructed, because the model layer stops deriving it.**  Measured
-        # on the pinned generator: ``DataModelFieldBase._type_hint_from_data_type``
-        # returns the bare hint as soon as ``has_default_factory`` is true, which is its
-        # own ``use_default_factory_for_optional_nested_models`` feature's intent and not
-        # ours -- so ``slots`` rendered ``list[SlotsItem]`` where every other optional
-        # field renders ``list[SlotsItem] | None``, and the class then REFUSED the
-        # ``None`` the document admits and rendered ``{"type": "array"}`` where it had
-        # rendered an ``anyOf`` with ``null``.  Both are changes to the accepted set, and
-        # neither belongs to a row about the default's TYPE.
-        #
-        # Stated as the type it is -- a union with the ``None`` arm -- rather than by
-        # reaching past the model layer, so the annotation is composed the one way this
-        # module composes a union (:func:`_data_type`'s ``union`` arm) and the hint is
-        # still the model layer's own text.  The ADAPTER keeps the non-optional type: the
-        # document states a non-null default, so that is what it must validate against.
-        annotation = _TYPES.data_type(
-            data_types=[annotation, _data_type(ir.TypeRef(path="None"))]
-        )
     return DataModelField(
         name=decided.name,
         data_type=annotation,
@@ -869,6 +910,30 @@ def klass(decl: ir.ClassDecl, declared: Sequence[Approximation] = ()) -> Rendere
         # -- read off a ``DataModelField`` like every other type hint here -- so a
         # mapping's rendering and an extras store's cannot come to be two spellings of
         # one decision.  Only the ``name: hint`` line is ours.
+        #
+        # **AND IT CARRIES THE ``init=False`` SPECIFIER THE BASE CARRIES, which is
+        # ``adcp-client-python-82m.53``.**  The sentence above is right about pydantic and
+        # was silent about PEP 681.  ``BaseModel`` declares this same name as
+        # ``NoInitField(init=False)``, a member of pydantic's own
+        # ``dataclass_transform(field_specifiers=…)`` tuple, so a checker leaves it out of
+        # the synthesised ``__init__`` -- and **a subclass re-declaring it with no assigned
+        # value PUTS IT BACK**, as a required keyword-only parameter naming a dunder
+        # pydantic's ``__init__`` must never be handed.  Measured: the 5 public exports
+        # that declare a typed store had NO correct consumer call at all -- naming the
+        # dunder is wrong and omitting it was reported.  ``Field(init=False)`` is the
+        # PUBLIC spelling of the same specifier (``pydantic.Field`` is the first member of
+        # that tuple), so the emitted text imports nothing private.
+        #
+        # The assignment is removed again at class creation by
+        # ``AdCPBaseModel.__pydantic_init_subclass__``, which is pydantic's own trick for
+        # the same three dunders -- its metaclass pops them out of ``BaseModel``'s
+        # namespace -- and is what keeps the runtime IDENTICAL rather than nearly so: left
+        # in place, the class attribute shadows ``BaseModel``'s slot descriptor and the
+        # extras store lands in the instance ``__dict__`` beside the field values instead
+        # of in its slot.  Every public read (``model_dump``, ``model_dump_json``,
+        # ``repr``, ``==``, ``model_fields_set``, the JSON schema, the refusal of a
+        # wrong-typed extra) is the same either way; ``instance.__dict__`` is not -- see
+        # that method for the measurement and for why it is taken off rather than left.
         extra_field = _field(
             ir.Field(
                 name="__pydantic_extra__",
@@ -877,7 +942,7 @@ def klass(decl: ir.ClassDecl, declared: Sequence[Approximation] = ()) -> Rendere
                 required=True,
             )
         )
-        body.append(f"__pydantic_extra__: {extra_field.type_hint}")
+        body.append(f"__pydantic_extra__: {extra_field.type_hint} = {_field_symbol()}(init=False)")
     rule_lines, rule_imports = _rule_lines(decl.rules)
     approximation_lines = _approximation_lines(declared)
     class_body = (*body, *_union_base_lines(decl), *rule_lines, *approximation_lines)
@@ -921,6 +986,16 @@ def klass(decl: ir.ClassDecl, declared: Sequence[Approximation] = ()) -> Rendere
         for imp in extra_field.imports:
             if imp.from_ and imp.import_ and imp.import_ in used:
                 out.imports.add((imp.from_, imp.import_))
+        # ``Field`` is named by the ``init=False`` SPECIFIER this module writes beside the
+        # hint, which is not part of the hint -- so the filter above cannot report it and
+        # the model layer does not either (the store is not one of the model's fields).
+        # Stated unconditionally rather than off the text for the reason the filter is
+        # filtered: a class whose only ``Field(`` is this one would otherwise raise
+        # ``NameError`` at import, and the one class in that state today
+        # (``core/canonical-media-buy-features.json``) happens to carry a described field
+        # as well, which is exactly the shape of latency the ``ConfigDict`` rule below
+        # records being bitten by.
+        out.imports.add(FIELD)
     # ``ConfigDict`` is kept exactly when the rendered text uses the name, read
     # off the text rather than off what we asked for.  The generator reports the import
     # for a model whose rendering MIGHT need one, and it also renders a config

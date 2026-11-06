@@ -245,18 +245,34 @@ def test_no_widening_is_declared_where_the_complement_lowers() -> None:
     describe a difference no payload can reach, which §8 deletes rather than counts.  The
     reading is over the stating document's own module, which is where §8 sentence 2 puts
     a fact's declaration.
+
+    **READ AT THE SITES AND NOT OVER THE WHOLE DOCUMENT, which is what the sentence above
+    says and what this check now does** (``adcp-client-python-wvod``).  It asserted that a
+    document stating a negated condition ANYWHERE declares no conditional at all, which is
+    a claim about every other conditional that document happens to state -- and
+    ``formats/canonical/_base.json`` states six at ``/properties/slots/items/allOf``, of
+    which ``allOf/4`` is ``{"if": {"required": ["required_pixel_ratios"]}, "then":
+    {"properties": {"asset_type": {"const": "image"}}, "required": ["pixel_ratios"]}}``: a
+    POSITIVE condition whose consequent narrows a value the class does not carry, so
+    reading 2 owes a declaration there and this check forbade it.  The population claimed
+    below is unchanged and the rule is unchanged; what moved is that the pointer the rule
+    is about is the pointer it is read at.
     """
     from compiled import compiled
 
-    stating = {document for document, _ in _negated_conditions()}
+    sites = _negated_conditions()
+    stating = {document for document, _ in sites}
     claimed("documents stating a negated condition", stating, inside=bundle.portable(BUNDLE))
+    at = claimed("negated conditions the bundle states", set(sites))
 
     out = compiled(BUNDLE, fresh.population())
+    pointers = {(document, f"#{pointer}") for document, pointer in at}
     declared = {
         f"{a.document}{a.pointer} on {a.keyword}"
         for document in stating
         for a in out.approximations.get(document, ())
         if a.keyword in {"if", "then", "else", "not"}
+        and (a.document, a.pointer) in pointers
     }
     assert declared == set(), {
         "conditions declared at a site the complement lowers": sorted(declared)

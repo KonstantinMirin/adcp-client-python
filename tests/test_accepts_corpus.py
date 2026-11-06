@@ -538,6 +538,172 @@ def test_an_annotation_the_target_gains_moves_no_identity(tmp_path: Path) -> Non
     assert _identities(spaced) == before
 
 
+def test_an_extraction_the_patch_makes_moves_no_identity(tmp_path: Path) -> None:
+    """**THE SECOND ACCEPTANCE-PRESERVING DIRECTION, and the one that stranded the floor.**
+
+    The test above covers a target that GAINS AN ANNOTATION.  This is the other rewrite
+    ``patch.for_build`` actually makes (``patches/8525``): a scalar several documents state
+    INLINE is extracted into its own document and every site that stated it is rewritten to
+    ``$ref`` it.  ``patch.seen_by_a_validator`` is zero over the whole difference -- no
+    instance anywhere is admitted or refused differently -- so by
+    ``docs/plan/final-state.md`` reading 1 it must move no key, and it moved 434 of 1,054
+    (``adcp-client-python-82m.56``).  Both halves of the digest were wrong and each is
+    asserted here:
+
+    * the ADMITS half kept ``$ref`` as a member of the key, so the reference and the inline
+      spelling of what it names were two keys although no instance tells them apart.
+      :class:`catalogue.Resolved` is the repair;
+    * the STATED half digested a closure of document NAMES, so the extraction moved the
+      referrer twice -- the ``examples`` left its own text and a new name joined its
+      closure.  ``catalogue.Admitted.stating`` is the repair, and the ``examples`` below is
+      what makes this test range over it: without one, the first half alone would pass.
+
+    A SYNTHETIC bundle for ``_bundle_of``'s reason -- the claim is a property of the
+    closure, not of bundle 3.2 -- and the real pair of bundles is graded by
+    :func:`test_an_acceptance_preserving_patch_moves_no_admitted_identity`.
+    """
+    scalar = {"type": "string", "pattern": "^[A-Z]{3}$", "examples": ["USD", "EUR"]}
+    inline: dict[str, Any] = {
+        "referrer.json": {"type": "object", "properties": {"ccy": dict(scalar)}},
+        "other.json": {"type": "object", "properties": {"paid": dict(scalar)}},
+    }
+    extracted: dict[str, Any] = {
+        "referrer.json": {"type": "object", "properties": {"ccy": {"$ref": "scalar.json"}}},
+        "other.json": {"type": "object", "properties": {"paid": {"$ref": "scalar.json"}}},
+        #: The extracted document carries the ``examples`` WITH it, which is what makes
+        #: this an acceptance- AND witness-preserving rewrite.  ``patches/8525`` does not,
+        #: and that is why 21 of the 1,054 move for a reason the function below demands.
+        "scalar.json": {"title": "Ccy", **scalar},
+    }
+    before = _identities(_bundle_of(tmp_path / "inline", inline))
+    after = _identities(_bundle_of(tmp_path / "extracted", extracted))
+    moved = [d for d in sorted(before) if after[d] != before[d]]
+    assert moved == [], moved
+
+    # The control, so the gate cannot pass by both readings answering "unchanged": the
+    # rewrite reaches the documents, and a key over their BYTES moves for every one.
+    for name in sorted(inline):
+        written = (tmp_path / "extracted" / name).read_bytes()
+        assert written != (tmp_path / "inline" / name).read_bytes(), name
+    # And the extracted document is new, so nothing could have matched it by accident.
+    assert set(after) - set(before) == {"scalar.json"}
+
+
+def test_a_reference_states_no_sibling_this_key_would_carry() -> None:
+    """``catalogue.Resolved`` drops a ``$ref``'s siblings, and the bundle states none.
+
+    Draft-07 IGNORES every keyword beside a ``$ref``
+    (``test_every_portable_document_states_one_dialect`` is what pins the dialect), so
+    splicing the target's key in place of the node asserts nothing the validator does not
+    already -- but that is an argument, and this is the reading: of every node in the
+    bundle a run reads that states a ``$ref``, NONE also states a keyword this key would
+    have carried.  So the drop is not even reachable, and a bundle that made it reachable
+    would redden here rather than re-key the population silently.
+
+    Both bundles, because the published one is the control the two invariance gates
+    compare against and a sibling appearing in either would matter.
+    """
+    kept = 0
+    for root in (fresh.PUBLISHED, BUNDLE):
+        documents = claimed(f"portable documents of {root.name}", bundle.portable(root))
+        beside = []
+        for name in sorted(documents):
+            for pointer, node in bundle.nodes(bundle.read(root, name)):
+                if "$ref" not in node:
+                    continue
+                kept += 1
+                rest = sorted(
+                    word
+                    for word in node
+                    if word != "$ref"
+                    and word not in catalogue.ANNOTATIONS
+                    and not word.startswith("x-")
+                    and word not in catalogue.SECTIONS
+                )
+                if rest:
+                    beside.append((name, pointer, rest))
+        assert beside == [], beside[:5]
+    assert kept > 4000, f"only {kept} nodes state a $ref; the walk is not reaching them"
+
+
+def test_an_acceptance_preserving_patch_moves_no_admitted_identity() -> None:
+    """**THE GATE THAT WOULD HAVE REDDENED AT THE MERGE THAT STRANDED THE FLOOR.**
+
+    ``adcp-client-python-82m.56``: six merges and then four more landed between the commit
+    that re-keyed the committed accepts floor and the commit that noticed 1,727 of 2,589
+    graded pairs no longer had an entry under it.  Nothing asked, at any of them, whether
+    the key still addressed the floor -- and the reason it had stopped is this one
+    sentence, which ``codegen/held.py`` and ``catalogue.admitted_identities`` both state and
+    neither graded: *an acceptance-preserving rewrite of the bundle moves no key.*
+
+    So it is graded, over the two bundles the repository actually holds: the PUBLISHED 3.2
+    bundle and the one ``patch.for_build`` hands a run.  ``patch.seen_by_a_validator`` is
+    zero over their whole difference, so every identity that moves between them is owed an
+    explanation, and the explanation is DERIVED rather than listed:
+
+    1. the ADMITS half moves for NO document.  No exemption, because nothing a validator
+       cannot see may reach it;
+    2. a document whose full identity moved has a changed STATED-INSTANCE reading -- the
+       ``examples`` a node states and admits, which ``check_accepts`` offers before it
+       draws, so a change there is a changed witness and a key that is owed its move.
+       ``patches/8525`` drops the ``examples`` its inline sites stated, which is what the
+       21 are: named by a reading of the two bundles, never by a literal here.
+
+    **Cheap enough to run at every merge, which is the whole point**: two identity passes
+    over the raw bundles and no draw, ~21 s, against the 70 s the floor's own gate costs
+    and the 3,185 s a cold redraw of the population costs.
+    """
+    published, built = _identities(fresh.PUBLISHED), _identities(BUNDLE)
+    shared = claimed("documents both bundles hold", set(published) & set(built))
+    assert len(shared) > 1000, f"only {len(shared)} shared documents; the comparison is empty"
+
+    #: The ADMITS half on its own, which is the half that may not move at all.
+    admits = {
+        root: catalogue.Resolved(root) for root in (fresh.PUBLISHED, BUNDLE)
+    }
+    moved_admits = sorted(
+        d
+        for d in shared
+        if admits[fresh.PUBLISHED].key(d, admits[fresh.PUBLISHED].document(d))
+        != admits[BUNDLE].key(d, admits[BUNDLE].document(d))
+    )
+    assert moved_admits == [], (
+        f"{len(moved_admits)} documents ADMIT the same instances in both bundles and key "
+        f"differently: the accepts floor is addressed by the old spelling and every pair of "
+        f"these documents is stranded.  {moved_admits[:5]}"
+    )
+
+    #: And the stated half, where a move is allowed and must be shown.
+    def states(root: Path) -> dict[str, dict[str, Any]]:
+        reader = admits[root]
+        out: dict[str, dict[str, Any]] = {}
+        for name in shared:
+            said = {}
+            for pointer, node in reader.stating(name, reader.document(name)):
+                if "examples" not in node:
+                    continue
+                found = harness.stated_instances(catalogue.unreferenced(node))
+                if found:
+                    said[pointer] = found
+            out[name] = said
+        return out
+
+    said_published, said_built = states(fresh.PUBLISHED), states(BUNDLE)
+    moved = {d for d in shared if published[d] != built[d]}
+    unexplained = sorted(d for d in moved if said_published[d] == said_built[d])
+    assert unexplained == [], (
+        f"{len(unexplained)} documents moved their admitted identity between the published "
+        f"bundle and the one the run reads, and nothing a draw reads is different: the key "
+        f"moved for a rewrite no validator and no witness can see.  {unexplained[:5]}"
+    )
+    #: The other direction, so the clause above is not green because nothing moved at all:
+    #: a changed witness MUST move the key, and ``patches/8525``'s dropped ``examples`` is
+    #: the population that says so.
+    witness = sorted(d for d in shared if said_published[d] != said_built[d])
+    assert witness, "no document's stated instances differ; this gate is asserting nothing"
+    assert set(witness) <= moved, sorted(set(witness) - moved)
+
+
 #: The documents the inliner perturbation below is measured over.  A SAMPLE and it says so:
 #: what it has to cover is the two SHAPES the perturbation can meet -- a document whose
 #: record differs from its raw document, which is what an inlining change moves, and one

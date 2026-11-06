@@ -58,7 +58,7 @@ class ParameterMappingsItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='registries/v1-canonical-mapping.json', pointer='#/properties/mappings/items/properties/v2/properties/parameter_mappings/items')
     source_field: Annotated[StrMinLen1, Field(description='Field read from the matched v1 format_id object.')]
     target_parameter: Annotated[StrMinLen1, Field(description='Field written into the projected v2 params object.')]
-    transform: Annotated[Transform | None, Field(default_factory=lambda: TypeAdapter(Transform).validate_python('identity'), description='Value transform applied during forwarding. identity copies the value; singleton_array wraps it in a one-element array.', json_schema_extra={'default': 'identity'})]
+    transform: Annotated[Transform | None, Field(description='Value transform applied during forwarding. identity copies the value; singleton_array wraps it in a one-element array.', json_schema_extra={'default': 'identity'})] = Field(default_factory=lambda: TypeAdapter(Transform).validate_python('identity'))
 
 
 class V2(AdCPBaseModel):

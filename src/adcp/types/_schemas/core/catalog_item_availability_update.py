@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import StrMinLen1MaxLen255, StrMinLen1MaxLen1000
 
@@ -40,6 +40,10 @@ class CatalogItemAvailabilityUpdate(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/catalog-item-availability-update.json', pointer='#')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ConditionalRequired((Match('reason', True, ('other',)),), require=('reason_detail',), forbid=()),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/catalog-item-availability-update.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'action': {'const': 'suppress'}}, 'required': ['action']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/catalog-item-availability-update.json', pointer='#/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['expires_at']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     catalog_id: Annotated[StrMinLen1MaxLen255, Field(description='Buyer-assigned ID of the buyer-managed catalog containing the item.')]
     catalog_generation: Annotated[StrMinLen1MaxLen255, Field(description='Opaque seller-issued token for the catalog incarnation. Obtain it from sync_catalogs discovery or mutation results. A generation mismatch is treated as REFERENCE_NOT_FOUND, preventing a delayed update from affecting a deleted-and-recreated catalog.')]

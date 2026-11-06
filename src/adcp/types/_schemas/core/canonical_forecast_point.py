@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import ClassVar
 
-from pydantic import ConfigDict, NonNegativeFloat
+from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Presence, PresenceGroups, Rule
@@ -23,7 +23,7 @@ class Metrics(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/canonical-forecast-point.json', pointer='#/properties/metrics')
-    __pydantic_extra__: dict[str, ForecastRange]
+    __pydantic_extra__: dict[str, ForecastRange] = Field(init=False)
     coverage_rate: ForecastRateRange | None = None
 
 

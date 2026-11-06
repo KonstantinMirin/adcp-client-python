@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import HttpUrl, StrMaxLen500
 
@@ -42,6 +42,9 @@ class SignalDefinitionEnrichment(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-definition-enrichment.json', pointer='#')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ConditionalRequired((Match('demographic_predicate', True, None),), require=('restricted_attributes',), forbid=()),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/signal-definition-enrichment.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['demographic_predicate']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     restricted_attributes: Annotated[list[RestrictedAttribute] | None, Field(description='Restricted attribute categories this signal touches.', min_length=1)] = None
     demographic_predicate: Annotated[DemographicPredicate | None, Field(description="Projected authoritative demographic meaning for the signal. When projected from another provider, this MUST match the provider's definition exactly. Signal names alone never establish demographic semantics.")] = None

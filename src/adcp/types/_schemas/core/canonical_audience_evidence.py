@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import FloatMin0Max1, IntMin1, StrMinLen1, ZipAssetDigest
 
@@ -30,6 +30,11 @@ class CanonicalAudienceEvidence(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/canonical-audience-evidence.json', pointer='#')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('attestation_digests'),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/canonical-audience-evidence.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'relationship': {'const': 'composition'}}, 'required': ['relationship']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/canonical-audience-evidence.json', pointer='#/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'relationship': {'const': 'index'}}, 'required': ['relationship']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='core/canonical-audience-evidence.json', pointer='#/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'relationship': {'const': 'reach_estimate'}}, 'required': ['relationship']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     evidence_id: StrMinLen1
     snapshot_id: StrMinLen1

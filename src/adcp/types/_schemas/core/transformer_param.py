@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import IntMin1
 
@@ -53,6 +53,9 @@ class TransformerParam(AdCPBaseModel):
         ConditionalRequired((Match('value_source', True, ('inline',)),), require=('allowed_values',), forbid=()),
         ConditionalRequired((Match('value_source', True, ('range',)),), require=('minimum', 'maximum'), forbid=()),
         ConditionalRequired((Match('value_source', True, ('free_text',)),), require=(), forbid=('allowed_values', 'minimum', 'maximum', 'options', 'options_cursor')),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/transformer-param.json', pointer='#/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'value_source': {'const': 'free_text'}}, 'required': ['value_source']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     field: Annotated[str, Field(description='The config key. Buyers set the value under this exact key in build_creative `config`.')]
     type: Annotated[TransformerParamType, Field(description='JSON type of the value the buyer supplies for this field.')]

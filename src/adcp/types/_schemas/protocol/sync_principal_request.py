@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, PropertyCount, Rule
 from adcp.types.constraints import StrMinLen1MaxLen255
 
@@ -27,6 +27,9 @@ class NotificationConfigsItem(AgentNotificationConfig):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/sync-principal-request.json', pointer='#/properties/configuration/properties/notification_configs/items')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='protocol/sync-principal-request.json', pointer='#/properties/configuration/properties/notification_configs/items/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['authentication']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
 
 
 class Configuration(AdCPBaseModel):
@@ -39,6 +42,9 @@ class Configuration(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/sync-principal-request.json', pointer='#/properties/configuration')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         PropertyCount(minimum=1, maximum=None),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='protocol/sync-principal-request.json', pointer='#/properties/configuration/properties/notification_configs/items/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['authentication']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     notification_configs: Annotated[list[NotificationConfigsItem] | None, Field(description='Complete desired agent-level subscriber set. The same caller-scoping, proof-of-control, secret handling, and replacement rules as sync_agent_notification_configs apply.', max_length=16)] = None
     reporting_destinations: Annotated[list[AgentReportingDestination] | None, Field(description='Complete desired reusable reporting destination set. Omitting a previously present destination_id revokes it, and [] revokes every destination: the seller halts new deliveries to all of its generations within the advertised suspension_interval_seconds and retains it as a retired generation for reporting history. Revocation does not delete caller-owned data already delivered. destination_id values MUST be unique.', max_length=64)] = None
@@ -55,6 +61,9 @@ class SyncPrincipalRequest(AdCPVersionEnvelope):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/sync-principal-request.json', pointer='#')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('buyer_agent_url',), ('agent_url',), ('principal_id',), ('connection_id',))),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='protocol/sync-principal-request.json', pointer='#/properties/configuration/properties/notification_configs/items/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['authentication']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     idempotency_key: Annotated[IdempotencyKey, Field(description='Client-generated key for at-most-once execution, at least 16 characters; a fresh UUID v4 per logical operation is recommended. Retries MUST reuse the same key with the same body.')]
     expected_configuration_version: Annotated[StrMinLen1MaxLen255 | None, Field(description='Optional optimistic-concurrency fence returned by a previous successful sync. When present and stale, the seller rejects the whole request without mutation. Compare only for equality.')] = None

@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import Dependencies, Rule
 from adcp.types.constraints import (
     CanonicalProposalTermsDigest,
@@ -66,13 +66,16 @@ class MediaBuy(AdCPBaseModel):
         Dependencies('accepted_proposal_id', ('accepted_proposal_terms_digest',)),
         Dependencies('accepted_proposal_terms_digest', ('accepted_proposal_id',)),
     )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/media-buy.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'confirmed_at': {'type': 'null'}}, 'required': ['confirmed_at']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+    )
     media_buy_id: Annotated[str, Field(description="Seller's unique identifier for the media buy")]
     name: Annotated[MediaBuyName | None, Field(description='Human-readable name for this media buy, shared by buyer and seller for trafficking UI display and operational communication. Sellers MUST include the persisted name on read surfaces such as get_media_buys when the media buy was created through AdCP with name. Sellers MAY omit name for media buys created outside AdCP or created without name. This display label is not an identifier or financial reference.')] = None
     accepted_proposal_id: Annotated[StrMinLen1MaxLen255 | None, Field(description='Current accepted commercial snapshot. Compact-lifecycle buyers pass this ID to refine_proposals after restart or handoff. Updated atomically when an amendment or negotiated cancellation is accepted.')] = None
     accepted_proposal_terms_digest: Annotated[CanonicalProposalTermsDigest | None, Field(description='Digest of the current accepted proposal commercial_terms, allowing buyers and governance agents to verify the recovered snapshot.')] = None
     account: Annotated[Account | None, Field(description='Account billed for this media buy')] = None
     status: MediaBuyStatus
-    health: Annotated[MediaBuyHealth | None, Field(default_factory=lambda: TypeAdapter(MediaBuyHealth).validate_python('ok'), description="Aggregate health based on open impairments[]. Orthogonal to status — a paused, pending, or active buy can each be impaired. Defaults to 'ok' when impairments[] is empty.", json_schema_extra={'default': 'ok'})]
+    health: Annotated[MediaBuyHealth | None, Field(description="Aggregate health based on open impairments[]. Orthogonal to status — a paused, pending, or active buy can each be impaired. Defaults to 'ok' when impairments[] is empty.", json_schema_extra={'default': 'ok'})] = Field(default_factory=lambda: TypeAdapter(MediaBuyHealth).validate_python('ok'))
     impairments: Annotated[list[Impairment] | None, Field(description="Open impairments — upstream dependency state changes that affect delivery for at least one package on this buy. Empty when health is 'ok'. Sellers MUST add an entry on next sync/poll response after a referenced resource transitions to an offline state, and MUST remove the entry (flipping health to 'ok' when the array empties) when the resource returns to a serviceable state. Staleness budget: the snapshot MUST reflect the impairment within 5 minutes of impairment.observed_at regardless of buyer poll cadence — sellers cannot rely on rare buyer polls to defer write propagation. See impairment.coherence assertion for the cross-resource invariant.")] = None
     rejection_reason: Annotated[str | None, Field(description="Reason provided by the seller when status is 'rejected'. Present only when status is 'rejected'.")] = None
     confirmed_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp when the seller committed to this media buy. May be null until seller commitment occurs in deferred/manual approval flows. Once populated, remains stable through later pause, resume, activation, completion, cancellation, and reporting transitions.')]
