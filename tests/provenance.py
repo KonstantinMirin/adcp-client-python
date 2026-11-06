@@ -47,6 +47,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from codegen import patch
+
 REPO = Path(__file__).resolve().parents[1]
 
 #: Where the bundles live.  A directory here is a bundle and must have a record.
@@ -68,8 +70,21 @@ def bundles() -> list[Path]:
 
 
 def record_path(bundle: Path) -> Path:
-    """The record that stands beside ``bundle``: ``<bundle>.provenance.json``."""
-    return bundle.with_name(f"{bundle.name}.provenance.json")
+    """The record that stands beside ``bundle``: ``<bundle>.provenance.json``.
+
+    **SPELLED ONCE, IN ``codegen.patch``**, which is the module that now writes one of these
+    too: the patched directory ``patch.for_build`` materialises carries a record of the same
+    form beside it, naming the sets applied and carrying this record's upstream state
+    forward (``docs/plan/architecture.md``, "AND A BUNDLE DIRECTORY MUST SAY WHETHER IT IS
+    PATCHED, BECAUSE A CALLER CANNOT TELL").  A convention spelled in two places is tested by
+    how many readers obey it, which is a count that only ever goes down -- and the two
+    readers here would have been a reader and a WRITER, which is worse.
+
+    The module docstring's reason for this file not living under ``codegen/`` is untouched by
+    the import: what costs every lane a cold compile is a module ADDED to
+    ``store.compiler_digest``'s walk, and ``codegen/patch.py`` is already in it.
+    """
+    return patch.record_path(bundle)
 
 
 def read(bundle: Path) -> dict[str, Any]:

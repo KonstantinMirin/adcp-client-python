@@ -289,6 +289,22 @@ def main(argv: list[str] | None = None) -> int:
     # on bundle 3.3 today for an entry whose defect upstream has already fixed
     # (``adcp-client-python-82m.60``).  The report is a fact about the input, so it arrives
     # whether or not the run that reads it gets any further.
+    #
+    # **AND A BUNDLE THAT IS ALREADY PATCHED SAYS SO, BEFORE ANYTHING ELSE IS REPORTED**
+    # (``docs/plan/architecture.md``, "AND A BUNDLE DIRECTORY MUST SAY WHETHER IT IS
+    # PATCHED, BECAUSE A CALLER CANNOT TELL").  ``for_build`` makes the second application a
+    # no-op rather than a raise, and the rule is that the no-op SAYS SO: a run whose
+    # ``--bundle`` already holds the table is reading the same input as one handed the
+    # published directory, and a reader comparing two runs' reports needs that in the report
+    # rather than inferred from the absence of a refusal.  It is printed off the VALUE -- the
+    # record beside the directory -- which is the whole of the repair; before it, this line
+    # could only have been a guess about what the caller meant.
+    already = patch.sets_applied(ns.bundle)
+    if already is not None:
+        print(
+            f"already patched: {ns.bundle} holds {', '.join(already) or '(nothing)'} by the "
+            "record beside it, so the build applies nothing further"
+        )
     for dissent in patch.bases(ns.bundle).dissenting:
         print(f"dissenting base URI in {dissent}")
     bundle_dir = patch.for_build(ns.bundle)
