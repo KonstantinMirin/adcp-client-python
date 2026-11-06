@@ -185,7 +185,13 @@ pointers readers spell do not change** — the storage is a DAG, the pointer lan
 the corpus key hashes the pointer and a respelling discards every held value.
 
 **Decided by** the record's own size: no record exceeds its source document by more than the
-references it resolves.
+references it resolves **plus the bookkeeping the sentence above mandates** — the entry names and
+the occurrence references that storing once requires.
+
+**THE ALLOWANCE IS NOT A CONCESSION, IT IS ARITHMETIC.** A stored reference costs more bytes than
+the shortest subtrees in the bundle contain, so storing those once makes the record LARGER. Without
+the term, the decider reddens for obeying its own first sentence — and a decider that punishes the
+thing it mandates is measuring the wrong quantity, not finding a defect.
 
 ## 6. Every class is importable at exactly one path
 
