@@ -347,6 +347,43 @@ def _underdetermined(base: type) -> bool:
     )
 
 
+def _answering_pointer(base: type, got: type) -> str:
+    """The pointer the class that ANSWERED a dispatch carries, as a document pointer.
+
+    Read off the class's own ``__adcp_schema__`` and not off the branch list's index,
+    because the answering class may be a branch OF a branch (``adcp-client-python-1bj``)
+    and its pointer is then nested.  ``base`` is unused and kept so that a caller holding
+    both reads as asking a question about the pair.
+    """
+    del base
+    ref = got.__dict__.get("__adcp_schema__") or got.__adcp_schema__
+    return "#" + ref.pointer.lstrip("#")
+
+
+def _widened_one_document_away(got: type) -> bool:
+    """Does the class that answered inherit a ROOT that DECLARES itself wider than its
+    document?
+
+    Reading 2's declaration, read off the class a consumer holds exactly as
+    :func:`_underdetermined` reads the combinator's -- and read over the MRO, because that
+    is the whole of the relation: a branch that is a bare ``$ref`` has the target
+    document's root as its base, the widening is declared at that root's own pointer, and
+    the branch class re-declares nothing.  Measured on this bundle:
+    ``AdCPAsyncResponseDataGetProductsResponse`` carries only the base's
+    ``('UNDERDETERMINED', '#/anyOf')`` while ``GetProductsResponse`` -- its base, in
+    ``media-buy/get-products-response.json`` -- carries ``('WIDENED', '#')``.
+
+    **A ROOT pointer and not any pointer**, because the fact that reaches a dispatch is
+    the one about the WHOLE instance: a widening declared at an inner property widens a
+    field and cannot make a branch admit an instance its own ``required`` refuses.
+    """
+    for cls in type.mro(got):
+        for a in cls.__dict__.get("__adcp_approximations__", ()):
+            if a.kind == "WIDENED" and a.pointer.lstrip("#").strip("/") == "":
+                return True
+    return False
+
+
 def test_a_payload_the_document_admits_dispatches_to_the_branch_it_was_drawn_from() -> None:
     """Reading 3's SENTENCE, graded on behaviour: offer a payload, read the class back.
 
@@ -421,7 +458,8 @@ def test_a_payload_the_document_admits_dispatches_to_the_branch_it_was_drawn_fro
     admitted: set[tuple[str, str]] = set()
     refused_by_the_document: set[tuple[str, str]] = set()
     reached_its_branch: set[tuple[str, str]] = set()
-    elsewhere_under_a_declaration: set[tuple[str, str]] = set()
+    elsewhere_the_document_also_admits: set[tuple[str, str]] = set()
+    elsewhere_through_a_declared_widening: set[tuple[str, str]] = set()
     wrong: dict[str, tuple[str, str, str, str]] = {}
     for name in sorted(graded_bases):
         base = bases[name]
@@ -469,8 +507,46 @@ def test_a_payload_the_document_admits_dispatches_to_the_branch_it_was_drawn_fro
                     "outside the base's own branch list",
                     repr(payload)[:200],
                 )
+            elif not _admits(root, _answering_pointer(base, got), payload):
+                # The branches OVERLAP in the document, which is the case the
+                # UNDERDETERMINED declaration at the combinator describes in its own words:
+                # "WHICH branch an overlapping payload becomes is the fact dropped".
+                elsewhere_the_document_also_admits.add(site)
+            elif _widened_one_document_away(got):
+                # **AND THIS IS THE OTHER CASE, WHICH THE DECLARATION AT THE COMBINATOR
+                # DOES NOT DESCRIBE** (``adcp-client-python-84a9``).  The document names
+                # exactly ONE admissible branch for this payload and it is not the one that
+                # answered, so the fact dropped is not the one UNDERDETERMINED names.  What
+                # reaches the dispatch is a WIDENING declared in a document this root's
+                # consumer never reads: the answering branch is a bare ``$ref``, so its
+                # class inherits a root that declares ``WIDENED`` at ``#``, and the
+                # dispatch SELECTS with ``model_validate`` -- the wide verdict -- over a
+                # structural first match (``_BRANCH_DISCRIMINATOR`` is ``""``).
+                #
+                # **The two verdicts and the two reasons, measured over this bundle's four:
+                # the CLASS AGREES WITH ITS DOCUMENT and the DISPATCH does not.**  The
+                # document refuses the payload at the answering branch on ``'errors' is a
+                # required property`` (three) or ``'products' is a required property``
+                # (one), and ``strict_validate`` on that very class refuses it with THAT
+                # SAME reason; only ``model_validate`` admits.  The drawn branch admits on
+                # both sides.  So this is not ``adcp-client-python-1bj``, where the other
+                # branch REFUSED and the hop was the only admissible answer.
+                #
+                # It is held apart from the overlap above rather than narrowed to red
+                # because the repair is a DECLARATION AT THE BRANCH, which 84a9 records as
+                # the owner's reading to make: measured, the answering class carries only
+                # the base's ``('UNDERDETERMINED', '#/anyOf')`` and no widening of its own.
+                # Separating the two parts is what makes a FIFTH visible, and an off-branch
+                # landing the document refuses with no widening behind it now reddens.
+                elsewhere_through_a_declared_widening.add(site)
             else:
-                elsewhere_under_a_declaration.add(site)
+                wrong[where] = (
+                    ref.document,
+                    ref.pointer,
+                    "the document refuses the answering branch and no widening is declared "
+                    "one document away from it",
+                    repr(payload)[:200],
+                )
     assert wrong == {}, wrong
     claimed("branch positions a union base names", positions)
     claimed("branch positions the committed accepts floor answers for", offered)
@@ -480,7 +556,8 @@ def test_a_payload_the_document_admits_dispatches_to_the_branch_it_was_drawn_fro
     partitions(
         admitted,
         reached_its_branch=reached_its_branch,
-        elsewhere_under_a_declaration=elsewhere_under_a_declaration,
+        elsewhere_the_document_also_admits=elsewhere_the_document_also_admits,
+        elsewhere_through_a_declared_widening=elsewhere_through_a_declared_widening,
     )
     claimed("branch payloads that reached their own branch", reached_its_branch)
 

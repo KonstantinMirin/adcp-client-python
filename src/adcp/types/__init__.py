@@ -39,10 +39,18 @@ name list is ``adcp.types.compat.__all__`` read at that moment rather than a sec
 of it written here.
 
 **AND IT IS A NAME AND NEVER A SECOND TYPE.**  ``getattr`` over the alias module returns
-the object the alias module itself re-exported, so
-``adcp.types.X is adcp.types.compat.X is adcp.types.<domain>.<OurName>`` and ``isinstance``
-holds across all three spellings.  Nothing is declared here, so reading 6's count of
-declarations does not move.
+the object the alias module itself re-exported, so the flat spelling, the alias module's
+and the domain module's own are ONE object --
+``adcp.types.BrandRef is adcp.types.compat.BrandRef is adcp.types.core.BrandReference`` --
+and ``isinstance`` holds across all three spellings.  Nothing is declared here, so reading
+6's count of declarations does not move.
+
+**The example is a NAMED triple and not a template, which is the sentence obeying its own
+clause**: a path a consumer can type is a claim about the artifact, so only a path that
+RESOLVES can be checked, and a ``<placeholder>`` segment is the one spelling no import can
+grade (``tests/test_prose_resolves.py``).  ``BrandRef`` is the case worth stating, too --
+it is a name upstream spells differently from ours, so the triple shows the flat surface
+carrying upstream's word onto our class rather than restating one name three times.
 
 **The re-export is the class, not a copy of it.**  A domain module binds
 ``from ._schemas... import X as X``, so the object a consumer imports IS the one the
@@ -98,7 +106,7 @@ def __getattr__(name: str) -> object:
     WRITES, never at the module that declares it ... a name counted present because its
     domain path matches owes a flat alias exactly as a relocated one does."  So a name the
     alias module declines to bind -- because ours already carries it at
-    ``adcp.types.<domain>`` under upstream's own word -- is resolved HERE through
+    its own DOMAIN module under upstream's own word -- is resolved HERE through
     ``compat.__adcp_flat_only__``, which names that module.  It gains the one path a
     consumer writes and no path at ``compat``.
 

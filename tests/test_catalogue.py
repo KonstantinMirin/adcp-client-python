@@ -569,30 +569,146 @@ def test_no_object_structure_emits_more_than_one_definition(l2: catalogue.Shapes
     out = compiled(BUNDLE, sorted(bundle.portable(BUNDLE)))
     claimed("modules a fresh run emits", out.files)
     declaring: dict[tuple[str, str], list[str]] = {}
+    #: ``(document, pointer)`` -> the FIELDS the class statement there annotates, as source
+    #: text.  Read in the same pass as :data:`declaring` because the clause on an entry no
+    #: position of which declares a class is about the annotation a position arrives at, and
+    #: the annotation is the only thing in the tree that still names the type there.
+    annotated: dict[tuple[str, str], dict[str, str]] = {}
     for text in out.files.values():
         for node in ast.parse(text).body:
             if not isinstance(node, ast.ClassDef):
                 continue
+            at: tuple[str, str] | None = None
+            fields: dict[str, str] = {}
             for statement in node.body:
                 if not (
                     isinstance(statement, ast.AnnAssign)
-                    and getattr(statement.target, "id", None) == "__adcp_schema__"
-                    and isinstance(statement.value, ast.Call)
+                    and isinstance(statement.target, ast.Name)
                 ):
+                    continue
+                if statement.target.id != "__adcp_schema__":
+                    if not statement.target.id.startswith("_"):
+                        fields[statement.target.id] = ast.unparse(statement.annotation)
+                    continue
+                if not isinstance(statement.value, ast.Call):
                     continue
                 said = {k.arg: k.value for k in statement.value.keywords}
                 document, pointer = said.get("document"), said.get("pointer")
                 if isinstance(document, ast.Constant) and isinstance(pointer, ast.Constant):
-                    key = (document.value, pointer.value.lstrip("#"))
-                    declaring.setdefault(key, []).append(node.name)
+                    at = (document.value, pointer.value.lstrip("#"))
+            if at is not None:
+                declaring.setdefault(at, []).append(node.name)
+                annotated.setdefault(at, {}).update(fields)
+
+    def arrives_as(document: str, pointer: str) -> str | None:
+        """The annotation the TREE writes at one position, through its nearest declaring
+        ancestor.
+
+        A position whose own class was collapsed away still arrives somewhere: it is a
+        PROPERTY of an enclosing object, and the field that property becomes carries the
+        type.  So the ancestor walk is up the pointer until a position that declares is
+        reached, which is what skips a ``allOf/<n>`` conjunct -- a conjunct declares no
+        class and its properties are fields of the node COMPOSING it, which is §2's own
+        reading and not a second one written here.
+        """
+        head, _, field = pointer.rpartition("/properties/")
+        if not field:
+            return None
+        parts = [p for p in head.split("/") if p]
+        while True:
+            ancestor = "/" + "/".join(parts) if parts else ""
+            for name, written in annotated.get((document, ancestor), {}).items():
+                # ``emit`` suffixes a field colliding with a python keyword or a pydantic
+                # member, so the schema's own word is the stem.
+                if name.rstrip("_") == field:
+                    return written
+            if not parts:
+                return None
+            parts.pop()
 
     entries = claimed("L2 entries this layer collects", l2.entries.values())
+    #: entry -> the positions of it a fresh run DECLARES a class at.  **The two arms below
+    #: are the two cases this map has, and splitting them is this clause's own repair**
+    #: (``adcp-client-python-nuit``).
+    at_a_class = {
+        entry.spelled: tuple(
+            p for p in entry.positions if declaring.get((p.document, p.pointer))
+        )
+        for entry in entries
+    }
     homeless = {
         entry.spelled: f"{entry.at.document}{entry.at.pointer or ' /'}"
         for entry in entries
-        if not declaring.get((entry.at.document, entry.at.pointer))
+        if at_a_class[entry.spelled]
+        and not declaring.get((entry.at.document, entry.at.pointer))
     }
     assert not homeless, json.dumps(homeless, indent=2)
+
+    # ----------------------------------------------------------------------------- #
+    # An entry NO POSITION OF WHICH declares a class, which is the OTHER case and not a
+    # homeless home.  ``adcp-client-python-nlkz``'s collapse -- "a non-root node that
+    # declares nothing its base does not already declare identically declares no class" --
+    # lands at EVERY position of such a group at once, onto a class in a document the L2
+    # key cannot reach: ``core/rights-constraint.json`` and
+    # ``core/rights-attestation-evaluation.json`` each state the brand branch of
+    # ``core/attestation-issuer.json`` INLINE, so the two narrowings share L2's key with
+    # each other and with neither the branch nor the class.  There is no second definition
+    # at either position to remove and nothing for the layer to collapse.
+    #
+    # **IT IS NOT A SCREEN THE LAYER COULD CARRY, MEASURED.**  The reading is §2's
+    # intersection of the position with the sibling ``$ref`` conjunct, which the catalogue
+    # is built before anything can perform.  Its nearest STRUCTURAL approximation -- a
+    # narrowing under a sibling ``$ref`` conjunct that applies a schema at the same
+    # property -- matches 11 L2 positions in 4 entries over this bundle, and the homes of
+    # THREE of the four declare a class (``Location``, ``ObjTypeResourceType``,
+    # ``ObjType``).  A screen that took those out would delete three live entries, so the
+    # approximation is refuted and the case is decided HERE, where the build's own answer
+    # is in hand.
+    #
+    # **AND THE OBLIGATION IS KEPT RATHER THAN EXEMPTED, which is the whole of why this is
+    # two clauses and not an allowlist.**  Reading 4 asks that the structure be ONE type;
+    # with no class at any position, what carries the type is the ANNOTATION each position
+    # arrives at, so that is what is compared -- one spelling across every position of the
+    # entry, and a class the tree declares. Measured: both positions of ``ObjTypeBrand``
+    # arrive at ``AttestationBrandIssuer``, declared once at
+    # ``core/attestation-issuer.json#/oneOf/0``.  Two different spellings would be the
+    # split this gate exists to catch, and a spelling naming nothing would be the broken
+    # reference a homeless home threatens.
+    collapsed = {
+        entry.spelled: {
+            f"{p.document}{p.pointer}": arrives_as(p.document, p.pointer)
+            for p in entry.positions
+        }
+        for entry in entries
+        if not at_a_class[entry.spelled]
+    }
+    partitions(
+        {entry.spelled for entry in entries},
+        at_a_class={spelled for spelled, got in at_a_class.items() if got},
+        no_position_declares=set(collapsed),
+    )
+    split = {
+        spelled: row
+        for spelled, row in collapsed.items()
+        if len({got for got in row.values()}) != 1 or None in row.values()
+    }
+    assert not split, json.dumps(split, indent=2)
+    #: And the entry mints NO name of its own: a spelling in a module with no class behind
+    #: it is an import of something nobody wrote, which is the one consumer-visible failure
+    #: a home the build does not honour can cause.
+    minted = {
+        spelled: sorted(name for name, text in out.files.items() if spelled in text)
+        for spelled in collapsed
+        if any(spelled in text for text in out.files.values())
+    }
+    assert not minted, json.dumps(minted, indent=2)
+    dangling = {
+        spelled: row
+        for spelled, row in collapsed.items()
+        for got in row.values()
+        if got is not None and not any(got in names for names in declaring.values())
+    }
+    assert not dangling, json.dumps(dangling, indent=2)
 
     restated = {
         f"{entry.spelled} @ {p.document}{p.pointer}": declaring[(p.document, p.pointer)]
