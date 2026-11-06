@@ -7,14 +7,32 @@ many copies of one answer the store holds, and for how long -- so neither of the
 compile and neither can move a verdict.
 
 **1. ONE BUNDLE IS HELD UNDER ONE KEY.**  ``adcp-client-python-q3a`` measured two.  The
-key carried the bundle path AS THE CALLER SPELLED IT, and the two entry points spell it
-differently -- ``./check`` says ``Path("schemas/cache/3.2")`` and every module under
-``tests/`` says ``REPO / "schemas" / "cache" / "3.2"`` -- so at trunk ``3f757728`` the same
-bundle, the same 1,054 documents and the same compiler gave ``fc2222b39088cb00...`` and
+key carried the bundle path AS THE CALLER SPELLED IT, and the two entry points spelled it
+differently -- one relative, one absolute -- so at trunk ``3f757728`` the same bundle, the
+same 1,054 documents and the same compiler gave ``fc2222b39088cb00...`` and
 ``b7e473ca16f94ddc...``: two keys, two 842 MB pickles, and the one of them the store
 actually held was the fast loop's.  A lane that warmed the store with ``./check`` had not
 warmed the entry the gate reads, which is a reading of the loop ``./check`` exists to BE,
 so the claim is graded at the entry points' own values and not at a copy of their literals.
+
+**AND "ONE BUNDLE" IS THE DIRECTORY A RUN READS, WHICH IS NOT THE PUBLISHED ONE**
+(``adcp-client-python-2mli``).  This check used to assert that every spelling resolved to
+``schemas/cache/3.2``, and ``codegen.patch.for_build`` made that false: both live entry
+points now read the published bundle with ``patch.BUILD`` applied, materialised under
+``<cache>/patched-bundle/<digest>``.  **The published and the patched directory are two
+BUNDLES and not two spellings of one** -- measured, the patched one is portable over 1,059
+documents against the published one's 1,054, and the five that only it holds
+(``core/country-code.json``, ``core/currency-code.json``, ``core/domain-name.json``,
+``core/https-url.json``, ``core/idempotency-key.json``) are documents ``patches/8525``
+ADDS.  So a normalisation that mapped the patched directory back to a published identity
+would hand a compile of one document set to a caller asking for the other, and would drop
+the patch table's own digest out of the key: an edit to ``patches/8735`` would then move no
+key, which is exactly the staleness ``_compiler_digest`` exists to prevent one layer in.
+``adcp-client-python-fr4r`` is the same arithmetic from the other side -- a module naming
+the published path asked for ``core/country-code.json`` and got ``KeyError``.
+
+The spellings are therefore DERIVED FROM THE BUNDLES ``tests/fresh.py`` DECLARES and this
+module names no bundle path of its own (``adcp-client-python-lzzj.11``).
 
 **2. AN ENTRY NOTHING HAS ASKED FOR IS DROPPED, AND BY THE RUN THAT ASKS.**  The store had
 no prune at all: 103 entries of 842,068,270 bytes each, 55 GB, on a root filesystem at 96%
@@ -46,7 +64,11 @@ from nodeset import claimed
 from codegen import bundle
 
 REPO = Path(__file__).resolve().parents[1]
-BUNDLE = REPO / "schemas" / "cache" / "3.2"
+
+#: **The bundle a run reads, taken from the ONE declaration of it.**  Not a literal: the
+#: directory this names is the patched materialisation and its name carries a digest, so a
+#: second spelling of it is not merely a duplicate but an unwritable one.
+BUNDLE = fresh.BUNDLE
 
 #: One portable document, because what the wiring check grades is the STORE and not a
 #: compile: a whole-population entry is 842,068,270 bytes and 97 s, and this one is 7,381
@@ -87,45 +109,97 @@ def _as_check_spells_it() -> Path:
     return module.BUNDLE
 
 
+def _spellings_of(directory: Path) -> dict[str, Path]:
+    """One bundle written three ways, every one of them DERIVED from ``directory``.
+
+    Not a list of literals, for the reason the module docstring gives: the bundle a run
+    reads is a materialisation named by a digest, so a copy of its path could not be
+    written down at all -- and a copy of the published path is what
+    ``adcp-client-python-2mli`` was.  So the variants are built out of the one value, and
+    each exercises a different half of :func:`compiled._bundle_name`:
+
+    * **as the declaration gives it** -- the resolved absolute path, the value both live
+      entry points hold;
+    * **out of the parent and back in**, which is a path carrying a ``..`` component that
+      only ``resolve()`` removes;
+    * **relative to the working directory**, which is the spelling ``./check`` used to
+      hold and the one that reached the store as a different key -- and for a bundle
+      INSIDE the checkout it is also the only spelling that reaches
+      ``_bundle_name``'s ``relative_to(REPO)`` branch rather than its absolute fallback.
+    """
+    return {
+        "as tests/fresh.py declares it": directory,
+        "out of the parent and back in": directory.parent / ".." / directory.parent.name / directory.name,
+        "relative to the working directory": Path(os.path.relpath(directory, Path.cwd())),
+    }
+
+
 def test_one_bundle_is_held_under_one_key_however_a_caller_spells_its_path() -> None:
     """The fast loop and the gate ask the store for ONE entry, which is q3a's finding.
 
-    The spellings are the two live entry points' own values plus one that is neither: a
-    path out of the suite's directory and back in, which is this bundle named a third way.
-    Every one of them is asserted to NAME this bundle first -- that is the check's
-    precondition and it is also what keeps the keys comparable, since a spelling pointing
-    somewhere else would be entitled to its own key.
+    Three clauses, and the first is the one q3a's defect actually consisted of.
 
-    The population is the whole portable set, read once and handed to every spelling, so
-    the only thing varying across the keys is how the path is written.  It is the whole set
-    rather than a cheap one because that is the entry the 842 MB is in and the one the two
-    lanes were each warming separately.
+    **1. The two live entry points name ONE bundle**, read at their own values -- ``./check``
+    by importing it, the suite by ``tests/fresh.py`` -- and compared to each other rather
+    than to a literal.  That is strictly what the defect was: "a lane that warmed the store
+    with ``./check`` had not warmed the entry the gate reads".  Compared to a literal it
+    was ALSO red for a reason that was not a defect at all, which is
+    ``adcp-client-python-2mli``: both entry points had moved to the patched bundle together
+    and the literal had not moved with them.
 
-    ``./check``'s spelling is RELATIVE, so this reads it with the checkout as the working
-    directory -- what ``./check`` itself requires of a caller, and what the suite already
-    requires of one (``tests/test_required_with_no_declaration.py``'s ``SOURCE`` is the
-    same relative literal).  The precondition
-    above is what reports a working directory that is not the checkout, rather than letting
-    it arrive as a difference between keys.
+    **2. However that bundle is SPELLED, the store holds one key** -- :func:`_spellings_of`,
+    over the whole portable set, read once and handed to every spelling so the only thing
+    varying across the keys is how the path is written.  The whole set rather than a cheap
+    one because that is the entry the 842 MB is in and the one the two lanes were each
+    warming separately.  Graded over BOTH bundles ``tests/fresh.py`` declares, because the
+    normalisation has two branches and the patched bundle reaches only one of them: it is
+    outside the checkout, so it keeps its absolute path, and ``SECOND`` is inside and is
+    named relative to it.
+
+    **3. And two bundles are NOT one.**  The same population under the same compiler, named
+    at two different directories, is two keys.  This is the clause that forbids the repair
+    ``2mli`` looked like it was asking for -- mapping a patched materialisation back to the
+    published directory it was derived from -- and it is the property
+    ``adcp-client-python-fr4r`` violated from the other side: the patched bundle is portable
+    over five documents the published one does not contain, so one key for the two would
+    serve a compile of one document set to a caller asking for the other.
     """
-    spellings = {
-        "./check": _as_check_spells_it(),
-        "tests/fresh.py": fresh.BUNDLE,
-        "out of the suite's directory and back": REPO / "tests" / ".." / "schemas" / "cache" / "3.2",
-    }
-    labels = claimed("spellings a caller reaches the store with", set(spellings))
-    assert {Path(path).resolve() for path in spellings.values()} == {BUNDLE}, (
-        f"a spelling here does not name {BUNDLE}, and the working directory is "
-        f"{Path.cwd()}: { {label: str(path) for label, path in spellings.items()} }"
+    entry_points = {"./check": _as_check_spells_it(), "tests/fresh.py": fresh.BUNDLE}
+    claimed("the live entry points", set(entry_points))
+    reached = {Path(path).resolve() for path in entry_points.values()}
+    assert len(reached) == 1, (
+        "the fast loop and the suite read two different bundles, so every figure ./check "
+        "prints is about an input the gate does not grade and each of them costs its own "
+        f"842 MB entry: { {label: str(path) for label, path in entry_points.items()} }"
     )
 
-    population = sorted(claimed("the bundle's portable documents", bundle.portable(BUNDLE)))
-    keys = {label: compiled.digest(spellings[label], population) for label in sorted(labels)}
-    held = claimed("keys this one compile would be held under", set(keys.values()))
-    assert len(held) == 1, (
-        "one bundle, one population and one compiler are held under more than one key, so "
-        "the store carries a copy of one 842 MB answer per spelling and a lane that warms "
-        f"it with ./check has not warmed the entry the suite reads: {keys}"
+    declared = {"PUBLISHED": fresh.PUBLISHED, "BUNDLE": BUNDLE, "SECOND": fresh.SECOND}
+    claimed("the bundles tests/fresh.py declares", set(declared))
+    one_key_each = {}
+    for name, directory in sorted(declared.items()):
+        spellings = _spellings_of(directory)
+        labels = claimed(f"spellings a caller reaches the store with for {name}", set(spellings))
+        assert {Path(path).resolve() for path in spellings.values()} == {directory.resolve()}, (
+            f"a spelling of {name} does not name {directory}, and the working directory is "
+            f"{Path.cwd()}: { {label: str(path) for label, path in spellings.items()} }"
+        )
+        population = sorted(claimed(f"{name}'s portable documents", bundle.portable(directory)))
+        keys = {label: compiled.digest(spellings[label], population) for label in sorted(labels)}
+        held = claimed(f"keys {name}'s compile would be held under", set(keys.values()))
+        assert len(held) == 1, (
+            "one bundle, one population and one compiler are held under more than one key, "
+            "so the store carries a copy of one 842 MB answer per spelling and a lane that "
+            f"warms it with ./check has not warmed the entry the suite reads: {keys}"
+        )
+        one_key_each[name] = (held.pop(), population)
+
+    shared = sorted(set.intersection(*(set(population) for _, population in one_key_each.values())))
+    claimed("documents every declared bundle carries", shared)
+    apart = {name: compiled.digest(declared[name], shared) for name in sorted(declared)}
+    assert len(set(apart.values())) == len(apart), (
+        "two bundles are held under ONE key, so the store can hand a compile of one "
+        "document set to a caller asking for the other -- which is what mapping a patched "
+        f"materialisation back to its published directory would do: {apart}"
     )
 
 

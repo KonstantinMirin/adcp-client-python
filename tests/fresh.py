@@ -70,16 +70,30 @@ from codegen import bundle, emit, patch
 
 REPO = Path(__file__).resolve().parents[1]
 
-#: **The bundle a run reads**: the published one with every patch set the BUILD applies
+#: **The PUBLISHED 3.2 bundle, as the repository ships it and with no patch set applied.**
+#:
+#: Declared here because it is a BUNDLE and this module is where a bundle is declared, and
+#: because the readers that legitimately want it are a real set rather than an oversight:
+#: an addition is REFUSED where the node already states the keyword
+#: (:func:`codegen.patch.additions`), so a check of the override table read against the
+#: patched bundle would refuse every entry in it and call that the defect being gone.
+#: ``tests/test_patch_8525.py``, ``tests/test_judgment_table.py`` and
+#: ``tests/test_a_patch_set_reaches_the_tree.py`` are those readers.
+#:
+#: **IT IS NOT THE BUNDLE A RUN READS AND IS NOT A SPELLING OF ONE**
+#: (``adcp-client-python-2mli``, ``adcp-client-python-fr4r``).  Measured: it is portable over
+#: 1,054 documents against :data:`BUNDLE`'s 1,059, and the five only the patched one holds --
+#: ``core/country-code.json``, ``core/currency-code.json``, ``core/domain-name.json``,
+#: ``core/https-url.json``, ``core/idempotency-key.json`` -- are documents ``patches/8525``
+#: ADDS.  A module that grades the fresh TREE while ranging over this name asks the tree for
+#: a document this bundle does not contain, which is ``fr4r``'s ``KeyError``.
+PUBLISHED = REPO / "schemas" / "cache" / "3.2"
+
+#: **The bundle a run reads**: :data:`PUBLISHED` with every patch set the BUILD applies
 #: (:data:`codegen.patch.BUILD`).  ``./check`` reads the same derivation, so the fast loop's
 #: figures and the gate's range over ONE input -- which they did not before this line, when
 #: the override table was applied in two test files and in no compile path.
-#:
-#: ``tests/test_patch_8525.py`` and ``tests/test_judgment_table.py`` keep their own
-#: ``PUBLISHED`` and must: an addition is REFUSED where the node already states the keyword,
-#: so a check of the override table read against the patched bundle would refuse every entry
-#: in it and call that the defect being gone.
-BUNDLE = patch.for_build(REPO / "schemas" / "cache" / "3.2")
+BUNDLE = patch.for_build(PUBLISHED)
 
 #: **The SECOND bundle the goal is verified against**, published and unpatched: the patch
 #: sets are written against 3.2's documents and :func:`codegen.patch.additions` refuses a
