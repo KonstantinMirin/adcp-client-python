@@ -2143,6 +2143,37 @@ def descends_at(position: Position) -> Mapping[str, Position]:
     return out
 
 
+def conditional() -> tuple[str, ...]:
+    """draft-07's CONDITIONAL, as the three keywords that spell it, in APPLICATION order.
+
+    **Here because which keywords spell a conditional is a keyword decision, and §3 makes
+    this module the one place one lives.**  Two readers need the same answer and neither
+    may restate it: ``harness.own_facts`` declines to fold a conjunct's conditional into a
+    node's own facts, and ``harness.conditionals`` collects the triples whole.  Written in
+    either of those it is a literal keyword collection outside this module, which §3's
+    census (``survey/arch_audit.keyword_collections``) refuses by name.
+
+    **A TUPLE and not a frozenset, unlike :func:`owns_a_location`, because the ORDER is
+    part of the answer.**  The three are one TRIPLE whose members mean nothing apart --
+    draft-07 gives ``then`` and ``else`` no effect without an ``if`` -- so a reader
+    building the triple has to write its keys in a fixed order or two readings of one
+    document produce two differently-ordered mappings.  The order is the order draft-07
+    applies them in: the condition, then the arm it selects when satisfied, then the arm it
+    selects when it is not.
+
+    **NOT derived from the descent column, and the reason is a measurement of the table
+    rather than a preference.**  ``descends_at(Position.ROOT)`` answers ``RULE`` for
+    ``if``, ``then``, ``else`` AND for ``not`` -- §5 gives all four the same cell
+    (``Effect.RULE``, unrendered, descending to ``Position.RULE``) -- so the four are
+    indistinguishable by every column the grid has.  A derivation would therefore be the
+    descent set minus ``not``, which restates the decision while appearing to read it.
+    The grid's own text is what separates them: ``if``'s cell says "With ``then`` /
+    ``else`` -> a rule on the nearest class", and ``_COMBINATORS["else"]`` IS
+    ``_COMBINATORS["then"]``.
+    """
+    return ("if", "then", "else")
+
+
 def owns_a_location() -> frozenset[str]:
     """The keywords whose subschema OWNS the child instance location it descends to.
 

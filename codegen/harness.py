@@ -2456,10 +2456,13 @@ def own_facts(schema: Any, depth: int = 0) -> dict[str, Any]:
     return out
 
 
-#: draft-07's conditional, as the three keywords that spell it.  Named because two readers
-#: need the same answer to "is this keyword part of a conditional": :func:`own_facts`
-#: declines to fold one and :func:`conditionals` collects them whole.
-CONDITIONAL: frozenset[str] = frozenset({"if", "then", "else"})
+#: draft-07's conditional, read off the TABLE and never spelled here
+#: (:func:`codegen.keywords.conditional`).  Two readers need the same answer to "is this
+#: keyword part of a conditional" -- :func:`own_facts` declines to fold one and
+#: :func:`conditionals` collects them whole -- and §3 makes the table the one place a
+#: keyword decision lives, so this is a derived VIEW for :data:`_OWNS`' reason and not a
+#: second declaration.
+CONDITIONAL: frozenset[str] = frozenset(keywords.conditional())
 
 
 def conditionals(schema: Any, depth: int = 0) -> tuple[dict[str, Any], ...]:
@@ -2486,8 +2489,11 @@ def conditionals(schema: Any, depth: int = 0) -> tuple[dict[str, Any], ...]:
     if not isinstance(schema, dict) or depth > _OWN_DEPTH:
         return ()
     out: list[dict[str, Any]] = []
+    #: The keys in the table's own order, which is why :func:`keywords.conditional`
+    #: returns a tuple: a triple whose key order came from a set would differ between two
+    #: readings of one document, and this mapping is what a reader of a failure sees.
     if "if" in schema:
-        out.append({k: schema[k] for k in ("if", "then", "else") if k in schema})
+        out.append({k: schema[k] for k in keywords.conditional() if k in schema})
     conjuncts = schema.get("allOf")
     if isinstance(conjuncts, list):
         for conjunct in conjuncts:
