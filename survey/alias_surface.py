@@ -83,10 +83,17 @@ target before anything is written and refuses on a miss, so the failure arrives 
 GENERATION time naming the row rather than at import time as an `ImportError` that takes the
 whole reading-8 gate down with it.
 **AN ALIAS IS A NAME AND NEVER A SECOND TYPE.**  The module this writes contains nothing
-but `from ... import X as Y` statements and one `__all__`, so the object a consumer reaches
-through it IS the object the walk emitted: `isinstance` holds across every spelling and
-`compat.X is domain.X`.  `tests/test_the_alias_layer_is_names.py` grades that on behaviour,
-and `tests/test_the_wheel_is_the_artifact.py` grades it from the installed wheel.
+but `from ... import X as Y` statements, one `__all__` and one `__adcp_flat_only__` mapping,
+so the object a consumer reaches through it IS the object the walk emitted: `isinstance`
+holds across every spelling and `compat.X is domain.X`.
+`tests/test_the_alias_layer_is_names.py` grades that on behaviour, and
+`tests/test_the_wheel_is_the_artifact.py` grades it from the installed wheel.
+
+**AND THE FLAT SURFACE IS 79 NAMES LARGER THAN `__all__`** (reading 10, amended 2026-11-06).
+`__all__` is what THIS module declares; `__adcp_flat_only__` names the `PRESENT` rows, which
+owe the flat spelling and owe no path here.  `adcp.types.__getattr__` is the one reader of
+both, so the flat namespace carries PRESENT + RELOCATED + RENAMED and this module carries
+RELOCATED + RENAMED.
 
 THREE PHASES, because the two trees cannot be imported into one interpreter -- installing
 both wheels interleaves `adcp/` at file granularity and `pip check` calls the wreckage
@@ -109,6 +116,16 @@ compatible (`.adcp-cache/readings/dropin-crosscheck.md` measured it):
         --ours $T/ours.json --upstream $T/up.json --deliberate-only \
         --module adcp.types.compat --write src/adcp/types/compat.py \
         --table survey/alias-surface-9.6.1.tsv --report $T/report.json
+
+    # phase 4, the DENOMINATOR: the flat spellings consumer code actually writes, with the
+    # verdict each one carries.  Reading 10 (amended 2026-11-06) grades the drop-in clause
+    # over this and not over the table, because "a table can be complete against itself and
+    # leave the written import failing".  Standard library only; the corpus is upstream's
+    # own checkout and the OUTPUT is what the gate reads.
+    ./.venv/bin/python survey/consumer_imports.py \
+        --flat-table survey/consumer-flat-spellings-9.2.0.tsv \
+        --corpus /path/to/upstream/checkout --corpus-version 9.2.0 \
+        --verdicts $T/report.json --upstream $T/up.json
 
 **WHICH UPSTREAM VERSION A FIGURE IS AGAINST IS RECORDED IN THE DUMP** and printed with
 every count, because the project has already carried a figure read off 9.2.0 beside one
@@ -538,8 +555,12 @@ break reading 6.  So every spelling that does not already resolve resolves HERE,
 caller porting an application changes one import line rather than every one.
 
 A name upstream spells that ALREADY resolves against our wheel -- same module, same word --
-is not bound here: it needs no alias and a second path for it would be the duplication this
-layer exists not to reintroduce.
+is not bound here: it needs no alias AT THIS MODULE and a second path for it would be the
+duplication this layer exists not to reintroduce.  **It still owes the FLAT spelling**, and
+`__adcp_flat_only__` below is where those 79 names are declared with the module that already
+carries them -- reading 10, amended 2026-11-06: "'already resolves' is measured at the
+SPELLING A CONSUMER WRITES, never at the module that declares it ... a name counted present
+because its domain path matches owes a flat alias exactly as a relocated one does."
 
 Names with no subject of ours are not here either, and they are not forgotten: they carry a
 verdict in `survey/migration_notes.py`'s partition and an entry in
@@ -548,6 +569,25 @@ verdict in `survey/migration_notes.py`'s partition and an entry in
 
 from __future__ import annotations
 
+'''
+
+FLAT_ONLY_HEADER = '''
+#: **THE FLAT SPELLINGS THIS MODULE DOES NOT DECLARE**: upstream name -> the module of ours
+#: that already carries it under that exact word (the `PRESENT` bucket).
+#:
+#: `docs/plan/final-state.md` reading 10, amended 2026-11-06: **"already resolves" is
+#: measured at the SPELLING A CONSUMER WRITES, never at the module that declares it.**  A
+#: name upstream carries at `adcp.types.<domain>.<Name>` that we also declare there is not
+#: thereby reachable, because the import an application has already written is
+#: `from adcp.types import <Name>`.  So these owe a FLAT alias exactly as a relocated name
+#: does -- and they owe NOTHING here, because at this module they would be a second path to
+#: a name that already resolves at the one the surface gives it.
+#:
+#: A MAPPING AND NOT RE-EXPORT STATEMENTS, which is the whole of why they are not in
+#: `__all__`: `adcp.types.__getattr__` resolves a flat name through this module, and a
+#: `from adcp.types.media_buy import X as X` here would hand these names a path at
+#: `adcp.types.compat` that reading 10 does not ask for and nothing imports.
+__adcp_flat_only__ = {
 '''
 
 MODULE_MARKER = '''
@@ -571,6 +611,10 @@ def write_module(
     The ORDER is our module and then the upstream name, so a diff of this file after a
     re-run shows which subjects moved rather than a reshuffle.
     """
+    # **`PRESENT` IS NOT GROUPED HERE AND THAT IS THE DIVISION OF LABOUR**: a statement for
+    # it would be a second path at this module to a name that already resolves at the one
+    # the surface gives it.  Those rows go to `__adcp_flat_only__` below, which gives them
+    # the ONE path reading 10's amendment says they owe -- the flat spelling.
     groups: dict[str, list[tuple[str, str]]] = collections.defaultdict(list)
     for name, got in sorted(decided.items()):
         if got["bucket"] not in ("RELOCATED", "RENAMED"):
@@ -606,11 +650,25 @@ def write_module(
     lines.append("\n__all__ = [\n")
     lines += [f'    "{n}",\n' for n in exported]
     lines.append("]\n")
+    flat_only = {
+        name: got["target"].rsplit(".", 1)[0]
+        for name, got in sorted(decided.items())
+        if got["bucket"] == "PRESENT"
+    }
+    lines.append(FLAT_ONLY_HEADER)
+    lines += [f'    "{name}": "{where}",\n' for name, where in sorted(flat_only.items())]
+    lines.append("}\n")
     path.write_text("".join(lines))
     report["module"] = module
     report["written"] = str(path)
     report["bound"] = len(exported)
-    print(f"{len(exported)} aliases over {len(groups)} modules of ours -> {path}")
+    report["flat_only"] = len(flat_only)
+    report["flat_owed"] = len(exported) + len(flat_only)
+    print(
+        f"{len(exported)} aliases over {len(groups)} modules of ours, plus "
+        f"{len(flat_only)} flat-only names -> {len(exported) + len(flat_only)} flat "
+        f"spellings -> {path}"
+    )
 
 
 #: The buckets the table carries a row for: the three this layer OWES, plus the two that
@@ -670,6 +728,12 @@ def write_table(path: Path, module: str, decided: dict[str, dict], report: dict,
     print(f"{len(lines) - 4} decided names -> {path}")
 
 
+#: The buckets whose target the generator imports before writing anything.  All three the
+#: layer owes: `RELOCATED` and `RENAMED` because this module binds them, and `PRESENT`
+#: because `__adcp_flat_only__` names the module its flat spelling is reached at.
+PROVED_BUCKETS = ("PRESENT", "RELOCATED", "RENAMED")
+
+
 def prove_the_targets(decided: dict[str, dict]) -> dict[str, str]:
     """Every target IMPORTED, in this interpreter, before anything is written.
 
@@ -690,17 +754,21 @@ def prove_the_targets(decided: dict[str, dict]) -> dict[str, str]:
     check from depending on the file it is about -- and is why it takes no `module`
     argument: a stale or broken alias module must not be able to make this pass OR fail.
 
+    **AND `PRESENT` IS PROVED TOO, SINCE READING 10's AMENDMENT OF 2026-11-06.**  Those 79
+    rows write no statement here, but `__adcp_flat_only__` names the module each one is
+    reached at and `adcp.types.__getattr__` resolves a flat spelling through it -- so a
+    `PRESENT` target the surface stops carrying is the same `DAASTTrackerConstraintsDaastTarget`
+    defect one layer further out, and arrives as an `AttributeError` from the flat namespace
+    rather than as an `ImportError` from this module.  Proving it here is what keeps the
+    repair at generation time.
+
     **AND BEING UNABLE TO IMPORT OURS AT ALL IS A REFUSAL, NOT A SKIP.**  Phase 3 is
     otherwise standard-library only; if `adcp.types` cannot be imported here the table cannot
     be proved, and a check that cannot run must say so rather than pass.
     """
     import importlib
 
-    targets = {
-        got["target"]
-        for got in decided.values()
-        if got["bucket"] in ("RELOCATED", "RENAMED")
-    }
+    targets = {got["target"] for got in decided.values() if got["bucket"] in PROVED_BUCKETS}
     if not targets:
         return {}
     try:
@@ -713,7 +781,7 @@ def prove_the_targets(decided: dict[str, dict]) -> dict[str, str]:
         ) from exc
     dangling: dict[str, str] = {}
     for name, got in sorted(decided.items()):
-        if got["bucket"] not in ("RELOCATED", "RENAMED"):
+        if got["bucket"] not in PROVED_BUCKETS:
             continue
         where, ours = got["target"].rsplit(".", 1)
         try:

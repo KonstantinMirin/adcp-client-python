@@ -134,7 +134,138 @@ def subpackage(defining: str | None) -> str:
     return parts[1] if len(parts) > 1 else "adcp (root)"
 
 
+#: The verdict buckets a flat spelling can carry, and what each one means for the gate.
+#:
+#: `docs/plan/final-state.md` reading 10, amended 2026-11-06: **"the clause is graded over
+#: what consumer code actually writes, not over the table's own rows"** -- "a table can be
+#: complete against itself and leave the written import failing".  So this census is the
+#: DENOMINATOR of the drop-in clause, and the three OWED buckets are the ones that must
+#: resolve at `from adcp.types import <Name>`.
+#:
+#: The five refusals are each a reason a reader can act on, and the last two are about the
+#: VERSION SKEW this census cannot wish away: the corpus on this box is upstream's 9.2.0
+#: checkout and the alias surface is derived against 9.6.1, so a name 9.2.0's examples write
+#: that 9.6.1 does not deliberately export is not a name we owe -- reading 10's "a name that
+#: raises on upstream's own wheel is not a name we owe", read one version later.
+FLAT_VERDICTS = {
+    "PRESENT": "owed flat; ours carries the word at adcp.types.<domain>",
+    "RELOCATED": "owed flat; ours carries the word at another module",
+    "RENAMED": "owed flat; a name of ours holds the subject under another word",
+    "MEANING-DIFFERS": "refused: we carry the word for a different subject",
+    "ABSENT-SUBJECT-NO-WORD": "refused: identity equal under a word the bundle never gives",
+    "ABSENT": "refused: no subject of ours; docs/migration-from-upstream.md owns it",
+    "NOT-A-TYPE": "refused: upstream's object is a function, module or constant",
+    "NOT-DELIBERATE-UPSTREAM": "refused: reachable on upstream only because a module declares no __all__",
+    "NOT-ON-UPSTREAM": "refused: the corpus's version spells it and the target version does not",
+}
+
+#: The three of those that must resolve at the flat namespace.
+FLAT_OWED = ("PRESENT", "RELOCATED", "RENAMED")
+
+
+def flat_spellings(root: Path) -> dict[str, set[str]]:
+    """Every `from adcp.types import <Name>` the consumer corpus writes -> the fragments.
+
+    `corpus` is the one declaration of what consumer-facing code IS and is reused rather
+    than restated, which is the whole reason this lives in this file: a second definition
+    of the corpus is a second denominator for the drop-in clause.
+    """
+    out: dict[str, set[str]] = {}
+    for label, src in corpus(root):
+        for mod, name, where in parse(label, src):
+            if mod == "adcp.types" and name:
+                out.setdefault(name, set()).add(where)
+    return out
+
+
+def write_flat_table(
+    out_path: Path,
+    root: Path,
+    verdicts: dict[str, dict],
+    upstream: dict,
+    corpus_version: str,
+    target_version: str,
+) -> None:
+    """The committed census: one row per flat spelling, with the verdict that explains it.
+
+    **COMMITTED, because a gate reading a path outside this repository is a dangling
+    pointer** -- the lesson `survey/alias-surface-9.6.1.tsv` is already in the repository
+    for. The corpus is upstream's own checkout and lives on whatever box derived this; the
+    gate reads this file and needs neither the checkout nor an upstream wheel.
+
+    **BOTH VERSIONS ARE IN THE HEADER AND ONE IS IN THE FILENAME.**  The corpus and the
+    alias surface are not the same release, and a census that did not say so would be the
+    error `adcp-client-python-2m5` corrected in itself.
+    """
+    found = flat_spellings(root)
+    rows = []
+    for name in sorted(found):
+        got = verdicts.get(name)
+        if got is not None:
+            verdict = got["bucket"]
+            why = got.get("why") or FLAT_VERDICTS[verdict]
+        elif name not in upstream["names"]:
+            verdict = "NOT-ON-UPSTREAM"
+            why = f"not a public name of adcp {target_version} at all"
+        elif not upstream["names"][name]["deliberate"]:
+            verdict = "NOT-DELIBERATE-UPSTREAM"
+            why = f"adcp {target_version} exposes it only where no __all__ is declared"
+        else:
+            raise SystemExit(
+                f"{name} is on {target_version}'s deliberate surface, is written by "
+                "consumer code, and the join gave it no verdict -- which is a gap in the "
+                "derivation and not a row to invent"
+            )
+        if verdict not in FLAT_VERDICTS:
+            raise SystemExit(f"{name}: {verdict} is not one of FLAT_VERDICTS")
+        rows.append((name, len(found[name]), verdict, why, min(found[name])))
+    fragments = len({f for s in found.values() for f in s})
+    counted = "  ".join(f"{v}={sum(1 for r in rows if r[2] == v)}" for v in sorted(FLAT_VERDICTS))
+    where = "examples/, skills/, README.md, llms.txt, MIGRATION*.md and docs/**.md fences"
+    corpus_line = (
+        f"# Corpus: upstream adcp {corpus_version}, {len(found)} names over "
+        f"{fragments} fragments of {where}.\n"
+    )
+    lines = [
+        "# Flat spellings consumer code writes: `from adcp.types import <Name>`.\n",
+        corpus_line,
+        f"# Verdicts joined against the alias surface derived for adcp {target_version}.\n",
+        f"# {counted}\n",
+        "name\tfragments\tverdict\twhy\tfirst_fragment\n",
+    ]
+    lines += [f"{n}\t{c}\t{v}\t{w}\t{f}\n" for n, c, v, w, f in rows]
+    out_path.write_text("".join(lines))
+    owed = sum(1 for r in rows if r[2] in FLAT_OWED)
+    print(f"{len(rows)} flat spellings, {owed} owed at adcp.types -> {out_path}")
+
+
 def main() -> None:
+    if "--flat-table" in sys.argv:
+        import argparse
+
+        parser = argparse.ArgumentParser(description="the flat-spelling census")
+        parser.add_argument("--flat-table", type=Path, required=True)
+        parser.add_argument("--corpus", type=Path, required=True, help="upstream's own checkout")
+        parser.add_argument("--corpus-version", required=True)
+        parser.add_argument(
+            "--verdicts",
+            type=Path,
+            required=True,
+            help="survey/alias_surface.py --report's output: every name's bucket",
+        )
+        parser.add_argument("--upstream", type=Path, required=True, help="--dump-upstream's output")
+        args = parser.parse_args(sys.argv[1:])
+        report = json.loads(args.verdicts.read_text())
+        up = json.loads(args.upstream.read_text())
+        write_flat_table(
+            args.flat_table,
+            args.corpus,
+            report["verdicts"],
+            up,
+            args.corpus_version,
+            up["version"],
+        )
+        return
     root = Path(sys.argv[1])
     frags = corpus(root)
     rows: list[tuple[str, str, str]] = []

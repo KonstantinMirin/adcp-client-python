@@ -17,8 +17,12 @@ break reading 6.  So every spelling that does not already resolve resolves HERE,
 caller porting an application changes one import line rather than every one.
 
 A name upstream spells that ALREADY resolves against our wheel -- same module, same word --
-is not bound here: it needs no alias and a second path for it would be the duplication this
-layer exists not to reintroduce.
+is not bound here: it needs no alias AT THIS MODULE and a second path for it would be the
+duplication this layer exists not to reintroduce.  **It still owes the FLAT spelling**, and
+`__adcp_flat_only__` below is where those 79 names are declared with the module that already
+carries them -- reading 10, amended 2026-11-06: "'already resolves' is measured at the
+SPELLING A CONSUMER WRITES, never at the module that declares it ... a name counted present
+because its domain path matches owes a flat alias exactly as a relocated one does."
 
 Names with no subject of ours are not here either, and they are not forgotten: they carry a
 verdict in `survey/migration_notes.py`'s partition and an entry in
@@ -1958,3 +1962,100 @@ __all__ = [
     "XEntityTypes",
     "ZipAsset",
 ]
+
+#: **THE FLAT SPELLINGS THIS MODULE DOES NOT DECLARE**: upstream name -> the module of ours
+#: that already carries it under that exact word (the `PRESENT` bucket).
+#:
+#: `docs/plan/final-state.md` reading 10, amended 2026-11-06: **"already resolves" is
+#: measured at the SPELLING A CONSUMER WRITES, never at the module that declares it.**  A
+#: name upstream carries at `adcp.types.<domain>.<Name>` that we also declare there is not
+#: thereby reachable, because the import an application has already written is
+#: `from adcp.types import <Name>`.  So these owe a FLAT alias exactly as a relocated name
+#: does -- and they owe NOTHING here, because at this module they would be a second path to
+#: a name that already resolves at the one the surface gives it.
+#:
+#: A MAPPING AND NOT RE-EXPORT STATEMENTS, which is the whole of why they are not in
+#: `__all__`: `adcp.types.__getattr__` resolves a flat name through this module, and a
+#: `from adcp.types.media_buy import X as X` here would hand these names a path at
+#: `adcp.types.compat` that reading 10 does not ask for and nothing imports.
+__adcp_flat_only__ = {
+    "AcceptProposalRequest": "adcp.types.media_buy",
+    "AcceptProposalResponse": "adcp.types.media_buy",
+    "AcceptanceContext": "adcp.types.media_buy",
+    "AcceptancePolicyCatalog": "adcp.types.media_buy",
+    "AcceptancePolicyProfile": "adcp.types.media_buy",
+    "AcceptancePolicyRequirement": "adcp.types.media_buy",
+    "AcceptancePolicyRule": "adcp.types.media_buy",
+    "AccessibilityViolationDetails": "adcp.types.error_details",
+    "AccountMovedDetails": "adcp.types.error_details",
+    "AccountSetupRequiredDetails": "adcp.types.error_details",
+    "ActionNotAllowedDetails": "adcp.types.error_details",
+    "ActivateSignalRequest": "adcp.types.signals",
+    "ActivateSignalResponse": "adcp.types.signals",
+    "AgentPermissionDeniedDetails": "adcp.types.error_details",
+    "AudienceTooSmallDetails": "adcp.types.error_details",
+    "AuthorizationRequiredDetails": "adcp.types.error_details",
+    "BillingNotPermittedForAgentDetails": "adcp.types.error_details",
+    "BillingNotSupportedDetails": "adcp.types.error_details",
+    "BudgetChangeConstraints": "adcp.types.media_buy",
+    "BudgetTooLowDetails": "adcp.types.error_details",
+    "BuyProductsRequest": "adcp.types.media_buy",
+    "BuyProductsResponse": "adcp.types.media_buy",
+    "CommercialTerms": "adcp.types.media_buy",
+    "CompatibilityPurchaseCoordinatorInput": "adcp.types.media_buy",
+    "ConflictDetails": "adcp.types.error_details",
+    "ControlMediaBuyRequest": "adcp.types.media_buy",
+    "ControlMediaBuyResponse": "adcp.types.media_buy",
+    "CreateMediaBuyRequest": "adcp.types.media_buy",
+    "CreateMediaBuyResponse": "adcp.types.media_buy",
+    "CreativeRejectedDetails": "adcp.types.error_details",
+    "CreativeRepresentationUnresolvedDetails": "adcp.types.error_details",
+    "CreativeRevisionContentMismatchDetails": "adcp.types.error_details",
+    "DeclineProposalsRequest": "adcp.types.media_buy",
+    "DeclineProposalsResponse": "adcp.types.media_buy",
+    "ExecutionRequirementUnmetDetails": "adcp.types.error_details",
+    "FailureKind": "adcp.types.error_details",
+    "FlightChangeConstraints": "adcp.types.media_buy",
+    "GetCreativeFeaturesRequest": "adcp.types.creative",
+    "GetCreativeFeaturesResponse": "adcp.types.creative",
+    "GetMediaBuyDeliveryRequest": "adcp.types.media_buy",
+    "GetMediaBuyDeliveryResponse": "adcp.types.media_buy",
+    "GetMediaBuysRequest": "adcp.types.media_buy",
+    "GetMediaBuysResponse": "adcp.types.media_buy",
+    "GetPrincipalRequest": "adcp.types.protocol",
+    "GetPrincipalResponse": "adcp.types.protocol",
+    "GetSignalsRequest": "adcp.types.signals",
+    "GetSignalsResponse": "adcp.types.signals",
+    "GetTaskStatusRequest": "adcp.types.protocol",
+    "GetTaskStatusResponse": "adcp.types.protocol",
+    "GovernanceAgentNotAcceptedDetails": "adcp.types.error_details",
+    "ListCreativesRequest": "adcp.types.creative",
+    "ListCreativesResponse": "adcp.types.creative",
+    "ListProductsRequest": "adcp.types.media_buy",
+    "ListProductsResponse": "adcp.types.media_buy",
+    "ListTasksRequest": "adcp.types.protocol",
+    "ListTasksResponse": "adcp.types.protocol",
+    "MacroResolutionFailedDetails": "adcp.types.error_details",
+    "MediaBuyChangeTerm": "adcp.types.media_buy",
+    "MediaBuyChangeTermConstraints": "adcp.types.media_buy",
+    "PackageUpdate": "adcp.types.media_buy",
+    "PolicyViolationDetails": "adcp.types.error_details",
+    "PreviewRender": "adcp.types.creative",
+    "RateLimitedDetails": "adcp.types.error_details",
+    "RefineProposalsRequest": "adcp.types.media_buy",
+    "RefineProposalsResponse": "adcp.types.media_buy",
+    "RegistryAcceptancePolicyProfileReference": "adcp.types.media_buy",
+    "RequestProposalsRequest": "adcp.types.media_buy",
+    "RequestProposalsResponse": "adcp.types.media_buy",
+    "RequoteRequiredDetails": "adcp.types.error_details",
+    "StaleResponseDetails": "adcp.types.error_details",
+    "SyncCreativesRequest": "adcp.types.creative",
+    "SyncCreativesResponse": "adcp.types.creative",
+    "SyncPrincipalRequest": "adcp.types.protocol",
+    "SyncPrincipalResponse": "adcp.types.protocol",
+    "UnsupportedRefinementDimensionDetails": "adcp.types.error_details",
+    "UpdateMediaBuyRequest": "adcp.types.media_buy",
+    "UpdateMediaBuyResponse": "adcp.types.media_buy",
+    "VendorErrorCodeRegistry": "adcp.types.error_details",
+    "VersionUnsupportedDetails": "adcp.types.error_details",
+}
