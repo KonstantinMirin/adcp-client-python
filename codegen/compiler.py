@@ -291,6 +291,24 @@ class Shape:
     #: ``key -> ir.Field``; see above.  Overlaid by :func:`declare_object` with the
     #: props it is handed, so every declaring row records it in one place.
     decided: Mapping[str, ir.Field] = field(default_factory=dict)
+    #: **:attr:`decided` ONE LEVEL DOWN: the shape of the class each property key's own
+    #: node declared, where it declared one.**  Written by :func:`declare_object` beside
+    #: :attr:`decided`, off the shapes the children already recorded, so a class that
+    #: itself holds nested classes carries theirs and the map is as deep as the tree.
+    #:
+    #: **It exists because §2's intersection RECURSES into ``properties``**
+    #: (``intersect.HOLDS``, ``Holds.PER_KEY``): a restatement that NARROWS a property can
+    #: be silent about that property's OWN nested keys, and the merged declaration then
+    #: carries the base's nested declarations verbatim.  Re-deciding one of those declares
+    #: the base's nested class AGAIN, in the restating module and at a pointer that
+    #: document does not have -- which is exactly what :attr:`decided` exists to stop at
+    #: depth 1 and could not reach at depth 2, because it is ``key -> ir.Field`` and a
+    #: field names a type rather than carrying the class's own field set.  Measured: the
+    #: one such class on this bundle is
+    #: ``core/signal-coverage-forecast.json#/properties/points/items/allOf/1/properties/metrics/properties/coverage_rate``,
+    #: a second ``CoverageRate`` for ``core/forecast-point.json``'s own node
+    #: (``adcp-client-python-8212``).
+    nested: Mapping[str, Shape] = field(default_factory=dict)
     #: The class's own ``description``, which is the description its NODE states.
     #: Written by :func:`declare_object` beside :attr:`decided`, for the reason that
     #: one exists: a subclass cannot read it off the base's node, because it does not
@@ -1181,6 +1199,26 @@ class Module:
     #: Keyed by POINTER and not by class name, because a name is not computed until
     #: ``lower/names.py`` runs (§7).
     shapes: dict[str, Shape] = field(default_factory=dict)
+    #: **JSON Pointer -> the fields a class declared THERE re-uses rather than decides**,
+    #: ``key -> ir.Field``.  The same answer :func:`codegen.lower.objects.fields`'
+    #: ``reuse`` argument carries at the composing node's OWN level, recorded for a node
+    #: one or more levels DOWN -- which is why it travels on the module and not in a
+    #: return value: the composing row decides it, and the row that reads it is the object
+    #: row entered for a node the composing row never sees.
+    #:
+    #: §6's "a child never reconstructs its parent, the enclosing handler passes it down",
+    #: in the shape the four other pointer-keyed facts of this class already have
+    #: (:attr:`hops`, :attr:`referred`, :attr:`described`, :attr:`objects`): the fact is
+    #: written at the pointer it is about and read by whoever arrives there.
+    #:
+    #: WHAT IT IS A FACT ABOUT: §2's intersection recurses into ``properties`` per key, so
+    #: a restatement that NARROWS a property can be silent about that property's own
+    #: nested keys -- and the merged declaration then carries the base's nested
+    #: declarations VERBATIM.  Deciding one of them again declares the base's nested class
+    #: a second time, in this module, at a pointer this document does not have.
+    #: ``adcp-client-python-8212`` is the row and ``core/signal-coverage-forecast.json``'s
+    #: second ``CoverageRate`` was the one such class on this bundle.
+    reuses: dict[str, dict[str, ir.Field]] = field(default_factory=dict)
     #: JSON Pointer -> the declaration made for the node at it.  Written by
     #: :meth:`declare`, which EVERY declaration passes through, so a fragment reference
     #: reads one map rather than a second record something could forget to write.  It is

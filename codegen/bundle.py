@@ -554,7 +554,9 @@ class Edge(NamedTuple):
     pointer string (§6), and :attr:`conjunct_of_root` is the same fact one hop up: the
     referring node is an entry of the DOCUMENT ROOT's ``allOf`` list, which
     :func:`subschemas` is what says.  A reader asking either from the spelling of
-    ``pointer`` would be the reading §6 removed.
+    ``pointer`` would be the reading §6 removed.  :attr:`restated` is one hop up too, and
+    SIDEWAYS: the property keys the composition this conjunct belongs to declares for
+    itself.
     """
 
     #: The referring document, bundle-relative.
@@ -575,6 +577,19 @@ class Edge(NamedTuple):
     into: str
     #: The referring node is an entry of the document ROOT's ``allOf`` list.
     conjunct_of_root: bool
+    #: **The property keys the COMPOSITION this conjunct belongs to restates**, in the
+    #: composition's own order, and empty where the referring node is not an ``allOf``
+    #: entry at all.  The composition is the node HOLDING the ``allOf`` -- draft-07
+    #: applies that node's own ``properties`` and every conjunct's to the same instance --
+    #: so the keys are the union of the holder's and each conjunct's, read off one hop of
+    #: :func:`subschemas` and never off a pointer.
+    #:
+    #: It exists for :func:`composed`, whose subject is which of a target's nodes have
+    #: their decided FIELDS re-used across a module boundary: a restatement that narrows
+    #: a property and is silent about that property's own nested keys re-uses the base's
+    #: NESTED decided fields (``adcp-client-python-8212``), so the node whose fields cross
+    #: is the target's ``<into>/properties/<restated key>`` and not its root.
+    restated: tuple[str, ...] = ()
 
 
 def edges(bundle_dir: Path) -> tuple[Edge, ...]:
@@ -596,6 +611,28 @@ def edges(bundle_dir: Path) -> tuple[Edge, ...]:
             for keyword, suffix, _, _ in subschemas(doc)
             if keyword == "allOf"
         }
+        # **And every ``allOf`` entry of the document beside the keys its own composition
+        # restates**, which is :attr:`Edge.restated`: the composition is the node HOLDING
+        # the ``allOf``, its keys are that node's ``properties`` and each conjunct's, and
+        # both hops are :func:`subschemas`'.  One walk, because this reading and the
+        # root's are both projections of the scan this function already is.
+        compositions: dict[str, tuple[str, ...]] = {}
+        for at, held, _ in nodes_at(doc):
+            entries = [
+                (f"{at}{suffix}", sub)
+                for keyword, suffix, sub, _ in subschemas(held)
+                if keyword == "allOf"
+            ]
+            if not entries:
+                continue
+            keys = dict.fromkeys(
+                key
+                for view in (held, *(sub for _, sub in entries))
+                if isinstance(view, dict) and isinstance(view.get("properties"), dict)
+                for key in view["properties"]
+            )
+            for where, _ in entries:
+                compositions[where] = tuple(keys)
         for pointer, uri, position in references(doc):
             head, into = split_ref(uri)
             out.append(
@@ -608,6 +645,7 @@ def edges(bundle_dir: Path) -> tuple[Edge, ...]:
                     target=document_for(head, known) if head else None,
                     into=into,
                     conjunct_of_root=pointer in conjuncts,
+                    restated=compositions.get(pointer, ()),
                 )
             )
     return tuple(out)
@@ -633,8 +671,8 @@ def named(found: Collection[Edge]) -> dict[str, frozenset[str]]:
 
 
 def composed(found: Collection[Edge]) -> dict[str, frozenset[str]]:
-    """For each document, the pointers of its nodes that another document's root
-    ``allOf`` COMPOSES.
+    """For each document, the pointers of its nodes whose decided FIELDS a composing
+    subclass in another module re-uses.
 
     The companion to :func:`named`, and the same kind of fact: a function of the BUNDLE
     and not of the run's document set, so a module's ``__all__`` does not depend on who
@@ -652,6 +690,19 @@ def composed(found: Collection[Edge]) -> dict[str, frozenset[str]]:
     that document's own entry -- the same reason :func:`named` keys a local reference
     against the referring document.
 
+    **AND A NESTED NODE OF THE TARGET IS THE SECOND KIND OF ENTRY**
+    (``adcp-client-python-8212``).  §2's intersection recurses into ``properties``, so a
+    restatement that NARROWS a property and says nothing about that property's own nested
+    keys re-uses the base's NESTED decided fields -- and the node whose fields cross is
+    then the target's ``<into>/properties/<restated key>``.  That reading is NOT a
+    property of the composing node's position, which is why it is taken at every
+    ``allOf`` and not at a root's: ``core/signal-coverage-forecast.json`` composes
+    ``core/forecast-point.json`` at ``/properties/points/items``, restates ``metrics``,
+    and imports the ``CoverageRate`` that base's ``metrics`` class declares -- a symbol no
+    ``$ref`` fragment names and no field of the composed ROOT carries.  It is the RESTATED
+    keys and not every key the target declares, because a key no composition restates is
+    inherited whole and nothing of it crosses.
+
     **It was ``emit._composed_nodes`` and §11 puts it here**, in the layer that knows
     "files, paths, ``$ref`` URIs, edges, the record".  It read every portable document a
     SECOND time, after the ``named_nodes`` pass -- ~2 s on the 3.2 bundle -- and the
@@ -665,11 +716,13 @@ def composed(found: Collection[Edge]) -> dict[str, frozenset[str]]:
     """
     out: dict[str, set[str]] = {}
     for edge in found:
-        if not edge.conjunct_of_root:
-            continue
         document = edge.document if edge.local else edge.target
-        if document is not None:
+        if document is None:
+            continue
+        if edge.conjunct_of_root:
             out.setdefault(document, set()).add(edge.into)
+        for key in edge.restated:
+            out.setdefault(document, set()).add(f"{edge.into}/properties/{escape_key(key)}")
     return {d: frozenset(p) for d, p in out.items()}
 
 

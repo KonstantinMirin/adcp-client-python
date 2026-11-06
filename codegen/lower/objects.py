@@ -426,6 +426,7 @@ def declare_object(
     extras: nodes.Node | None = None,
     bases: tuple[ir.TypeRef, ...] = (),
     branches: tuple[ir.TypeRef, ...] | None = None,
+    declared_at: Mapping[str, str] | None = None,
     rule_nodes: Sequence[Mapping[str, Any]] = (),
     rule_sites: Sequence[str | None] = (),
     description: str | None = None,
@@ -477,6 +478,13 @@ def declare_object(
     declaration, because the node is a node now and §6 makes silence the enclosing
     reading rather than a rewritten mapping (``lower_composition`` and the union's
     ``$ref`` branch, which is a composition of the union base and the target).
+
+    ``declared_at`` gives the pointer a property key was declared at where that is not
+    ``<pointer>/properties/<key>`` -- the same map :func:`fields` reads, passed by the one
+    caller that holds one -- and it is read for exactly one thing: finding the child SHAPE
+    each key's own node recorded, which is :attr:`compiler.Shape.nested`.  A key a
+    CONJUNCT declared sits at the conjunct's pointer, so deriving it from this node's
+    pointer would look for a shape where nothing declared one and record no nesting.
     """
     # D8's typed row: a property the class does not DECLARE is validated against
     # the document's own value schema, through pydantic's ``__pydantic_extra__``.
@@ -697,9 +705,30 @@ def declare_object(
     # class and ``emit.resolve`` is what declines to hand a union base's across, keyed
     # on :attr:`codegen.ir.ClassDecl.branches` -- the fact that says the instance is one
     # of the branches, read where the :class:`Target` is built.
+    # **:attr:`Shape.nested` is written beside :attr:`Shape.decided` and off the shapes
+    # the CHILDREN already recorded**, which is what makes it a lookup rather than a
+    # second derivation: ``fields`` lowered every property of this class before this line
+    # ran, so a property whose node declared a class has its shape in ``mod.shapes`` at
+    # that node's own pointer already.  Only this class's OWN properties are read -- an
+    # inherited key's nested shape is the BASE's and travels on the base's own shape,
+    # which is transitive for :attr:`decided`'s reason.
+    where = declared_at or {}
     mod.shapes[pointer] = replace(
         shape,
         decided={**shape.decided, **{p.wire: p for p in props}},
+        nested={
+            **shape.nested,
+            **{
+                p.wire: child
+                for p in props
+                if (
+                    child := mod.shapes.get(
+                        where.get(p.wire, f"{pointer}/properties/{p.wire}")
+                    )
+                )
+                is not None
+            },
+        },
         description=described,
         # TRANSITIVE for :attr:`Shape.decided`'s reason: a subclass of THIS class reads
         # one value rather than walking a chain of base documents to find who last
@@ -825,7 +854,21 @@ def lower_object(
     if "required" in node.faults:
         return Refusal("required", pointer, node.faults["required"], kind=Kind.VERDICT)
     required = node.required
-    built = fields(node.properties, required, pointer, mod, distinct=stated.distinct)
+    built = fields(
+        node.properties,
+        required,
+        pointer,
+        mod,
+        distinct=stated.distinct,
+        # **§2's intersection one level down, decided by the composing row and read
+        # here** (:attr:`compiler.Module.reuses`).  Empty at every pointer but the few a
+        # merged declaration was parsed at: a property a restatement NARROWS is lowered
+        # as the intersection, and the nested keys the restatement never mentions are the
+        # BASE's declarations verbatim -- so their field is the base's decided field and
+        # not a second decision of the base's node, which would declare the base's nested
+        # class again at a pointer this document does not have.
+        reuse=mod.reuses.get(pointer),
+    )
     if isinstance(built, Refusal):
         return built
     return declare_object(

@@ -795,7 +795,7 @@ def test_every_cross_document_duplicate_group_is_decided() -> None:
     ratchet(
         "cross-document duplicate groups the table answers locally",
         len(decided),
-        at_most=11,
+        at_most=10,
         because="the table's size IS the debt figure: a row names the ask that deletes it, "
         "so this falls to zero for a bundle that titles what it restates and a compiler "
         "that declares a type once.  A RISE is a new duplicate nobody decided, which is "

@@ -8,28 +8,14 @@ from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import AtLeastOne, Rule, UniqueItems
-from adcp.types.constraints import FloatMin0Max1
 
 from ..enums.forecast_method import ForecastMethod
 from .country_code import CountryCode
 from .date_range import DateRange
 from .ext import ExtensionObject
-from .forecast_point import ForecastPoint
+from .forecast_point import CoverageRate, ForecastPoint
 from .forecast_point_dimensions import ForecastPointDimensions
 from .forecast_range import ForecastRange
-
-
-class CoverageRate(ForecastRange):
-    """
-    Share of the declared forecast scope represented by this point. For signal coverage forecasts, this is the point's count divided by the coverage_forecast.scope denominator. Range 0.0 to 1.0.
-    """
-    model_config = ConfigDict(
-        extra='allow',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-coverage-forecast.json', pointer='#/properties/points/items/allOf/1/properties/metrics/properties/coverage_rate')
-    low: Annotated[FloatMin0Max1 | None, Field(description='Conservative (low-end) forecast value')] = None
-    mid: Annotated[FloatMin0Max1 | None, Field(description='Expected (most likely) forecast value')] = None
-    high: Annotated[FloatMin0Max1 | None, Field(description='Optimistic (high-end) forecast value')] = None
 
 
 class Metrics(AdCPBaseModel):

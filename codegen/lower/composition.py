@@ -1176,6 +1176,10 @@ def lower_composition(
     #: the field rather than re-deciding the node; :attr:`Shape.decided` says why.
     inherited_fields: dict[str, ir.Field] = {}
     inherited_from: dict[str, compiler.Target] = {}
+    #: :attr:`Shape.nested` from the same bases, read by the one arm that needs a base's
+    #: field set ONE LEVEL DOWN: a restatement that narrows a property and is SILENT about
+    #: that property's own nested keys (``adcp-client-python-8212``).
+    inherited_nested: dict[str, compiler.Shape] = {}
     if inherits is not None:
         # §4's "a branch composes its own with them", seeded before the conjunct list:
         # the caller's own ``bases`` already declare these keys, so they are INHERITED
@@ -1185,6 +1189,7 @@ def lower_composition(
         # the base is in this module, so there is nothing to import (:func:`_reused`).
         inherited.update(inherits.properties)
         inherited_fields.update(inherits.decided)
+        inherited_nested.update(inherits.nested)
         inherited_required |= inherits.required
         if inherited_extra is None:
             inherited_extra = inherits.extra
@@ -1457,6 +1462,7 @@ def lower_composition(
             conjunct_bases.append(ir.TypeRef(target.symbol, local=True))
             inherited.update(target.declares.properties)
             inherited_fields.update(target.declares.decided)
+            inherited_nested.update(target.declares.nested)
             inherited_from.update(dict.fromkeys(target.declares.properties, target))
             inherited_required |= target.declares.required
             if inherited_extra is None:
@@ -1800,6 +1806,7 @@ def lower_composition(
         # name -- so there is nothing for a second reach to be.
         return ir.Decided(conjunct_bases[0])
 
+
     #: §5's DISTRIBUTION clause, where the row above answered with the target's BRANCHES:
     #: the conjunct's own pointer, the branches, and the node each branch class is
     #: declared from.  ``None`` at every other node, which is what the tail below reads to
@@ -1915,6 +1922,7 @@ def lower_composition(
         required=required,
         inherited_required=inherited_required,
         inherited_fields=inherited_fields,
+        inherited_nested=inherited_nested,
         inherited_from=inherited_from,
         mod=mod,
     )
@@ -2035,10 +2043,14 @@ def lower_composition(
             {**inherited, **own},
             frozenset(required | inherited_required),
             decided=inherited_fields,
+            nested=inherited_nested,
             extra=inherited_extra,
         ),
         position,
         extras=getattr(node, "extras", None),
+        # The same map ``fields`` read above: a key a CONJUNCT declared sits at the
+        # conjunct's own pointer, which is where its child shape was recorded.
+        declared_at=at,
         # The model base only where NOTHING composes; see ``base_if_none_composes``.
         bases=(
             (*bases, *conjunct_bases)

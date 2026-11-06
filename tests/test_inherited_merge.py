@@ -31,7 +31,7 @@ neither matches nor narrows        a REFUSAL naming the keyword the two disagree
 
 from __future__ import annotations
 
-from codegen import ir
+from codegen import compiler, ir
 from codegen.lower import inherited as inherited_row
 from codegen.refusal import Refusal
 
@@ -44,7 +44,14 @@ class _NoReferences:
     :func:`codegen.intersect.dereferenced`'s "leave the declaration as written".  A stub
     and not a :class:`codegen.compiler.Module`, because needing one would mean the rule is
     not pure over its two declarations and this file's whole claim would be false.
+
+    ``reuses`` is the second member, and it is a RESULT rather than a context: the arm that
+    reaches a nested key the restatement never mentions records the base's field at that
+    key's own pointer, and a test reads it back off this stub.
     """
+
+    def __init__(self) -> None:
+        self.reuses: dict[str, dict[str, ir.Field]] = {}
 
     @staticmethod
     def resolve_node(_uri: str) -> dict | None:
@@ -64,6 +71,7 @@ def merge(local, inherited, **kw):
         required=kw.pop("required", frozenset()),
         inherited_required=kw.pop("inherited_required", frozenset()),
         inherited_fields=kw.pop("inherited_fields", {}),
+        inherited_nested=kw.pop("inherited_nested", {}),
         inherited_from=kw.pop("inherited_from", {}),
         mod=kw.pop("mod", MOD),
         **kw,
@@ -183,6 +191,66 @@ def test_a_restatement_that_only_annotates_reuses_the_bases_decided_field() -> N
     assert out.reuse == {"a": held}
     assert out.own["a"]["type"] == "string"
     assert out.own["a"]["description"] == "the document's own"
+
+
+def test_a_nested_key_the_narrowing_never_mentions_takes_the_bases_own_field() -> None:
+    """**THE SAME QUESTION ONE LEVEL DOWN**, and the arm ``adcp-client-python-8212`` is.
+
+    The restatement NARROWS -- it moves a nested requiredness -- so the field is decided
+    from the INTERSECTION, and §2's intersection recurses into ``properties``: every key
+    only the BASE declares is carried into the merged declaration exactly as the base
+    wrote it.  Deciding one of those again declares the base's nested class a second time,
+    in this module, at a pointer this document does not state.  So the answer is the one
+    the top level already gives -- the base's DECIDED field -- recorded at the nested key's
+    own pointer, where the row entered for that node reads it.
+
+    The DISCRIMINATION is the other assertion: ``mentioned`` IS restated, so it is this
+    document's to decide and must not be taken from the base.  Without that half the arm
+    would be "a narrowing re-uses everything", which is the shadow §2 forbids.
+    """
+    mod = _NoReferences()
+    base_nested = ir.Field(
+        name="silent", wire="silent", type=ir.TypeRef("Nested"), required=False
+    )
+    mentioned = ir.Field(
+        name="mentioned", wire="mentioned", type=ir.TypeRef("Other"), required=False
+    )
+    out = merge(
+        {"a": {"properties": {"mentioned": {"maximum": 1}}, "required": ["mentioned"]}},
+        {
+            "a": {
+                "type": "object",
+                "properties": {"silent": {"allOf": []}, "mentioned": {"type": "number"}},
+            }
+        },
+        inherited_nested={
+            "a": compiler.Shape(
+                {}, frozenset(), decided={"silent": base_nested, "mentioned": mentioned}
+            )
+        },
+        mod=mod,
+    )
+    assert not isinstance(out, Refusal), out
+    assert mod.reuses == {"/properties/a": {"silent": base_nested}}
+
+
+def test_a_restatement_that_mentions_no_nested_key_records_nothing() -> None:
+    """The arm's own empty case, and the reason it is not a precaution.
+
+    A base whose declaration of the key lowered to NO class has no field set one level
+    down -- ``inherited_nested`` has no entry -- so there is nothing to say and nothing is
+    recorded.  That is the overwhelming majority of restatements: measured over the 1,054
+    portable documents, 20 restatements are silent about at least one nested key and 15 of
+    those narrow.
+    """
+    mod = _NoReferences()
+    out = merge(
+        {"a": {"maximum": 1}},
+        {"a": {"type": "number", "properties": {"silent": {"type": "string"}}}},
+        mod=mod,
+    )
+    assert not isinstance(out, Refusal), out
+    assert mod.reuses == {}
 
 
 def test_a_requiredness_the_base_does_not_have_is_a_narrowing() -> None:

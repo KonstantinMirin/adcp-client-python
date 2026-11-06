@@ -35,6 +35,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from collections.abc import Set as AbstractSet
 from dataclasses import dataclass, field
+from typing import Any
 
 from codegen import compiler, intersect, ir
 from codegen.keywords import Position
@@ -84,6 +85,7 @@ def merge(
     required: AbstractSet[str],
     inherited_required: AbstractSet[str],
     inherited_fields: Mapping[str, ir.Field],
+    inherited_nested: Mapping[str, compiler.Shape],
     inherited_from: Mapping[str, compiler.Target],
     mod: compiler.Module,
 ) -> Merged | Refusal:
@@ -98,6 +100,10 @@ def merge(
 
     The arms are the four in this module's docstring, in the order the predicates settle
     them, and the first is the cheap one: a key no base declares has nothing to merge.
+
+    ``inherited_nested`` is :attr:`compiler.Shape.nested` from the same bases and is read
+    by :func:`_silent_nested` alone, which is the SAME question one level down.
+
     """
     out = Merged()
     for key, stating in local.items():
@@ -324,7 +330,23 @@ def merge(
                     return held
                 out.reuse[key] = held
         # Otherwise it adds nothing and the field is INHERITED: no line, no shadow.
-
+        if key in out.own and key not in out.reuse:
+            # **THE SAME QUESTION ONE LEVEL DOWN, and it is asked exactly where the merged
+            # node is about to be LOWERED.**  The two arms above that leave
+            # ``out.own[key]`` as the intersection hand a node to ``parse`` and let the
+            # field builder decide it; the arm that re-uses, and the silent arm that
+            # writes nothing, do not -- and the two that do are the two that can carry a
+            # nested declaration of the base's into this module.
+            silent = _silent_nested(
+                stating,
+                inherited[key],
+                inherited_nested.get(key),
+                inherited_from.get(key),
+                at.get(key, f"{pointer}/properties/{key}"),
+                mod,
+            )
+            if isinstance(silent, Refusal):
+                return silent
 
     # **SECTION 2's REQUIREDNESS OVERLAY: the composition makes an inherited field
     # required and nothing else, so the subclass redeclares that field with the base's
@@ -379,6 +401,73 @@ def merge(
         out.reuse[key] = overlaid
         out.own[key] = dict(inherited[key])
     return out
+
+
+def _silent_nested(
+    stating: dict,
+    inherited: dict,
+    nested: compiler.Shape | None,
+    source: compiler.Target | None,
+    pointer: str,
+    mod: compiler.Module,
+) -> Refusal | None:
+    """Record the base's own fields for the nested keys this restatement never mentions.
+
+    **§2's intersection RECURSES into ``properties``** -- ``intersect.HOLDS`` declares the
+    keyword ``Holds.PER_KEY`` and :func:`intersect.intersection` composes it per key --
+    and a key only the BASE declares is carried into the merged declaration exactly as the
+    base wrote it.  So the merged node holds, at ``<pointer>/properties/<nested key>``, a
+    declaration of the BASE's that this document does not state anywhere: deciding it is
+    the second declaration :attr:`compiler.Shape.decided` exists to stop, one level deeper
+    than that map can see.  The answer is the same answer -- the base's DECIDED field --
+    and the carrier is :attr:`compiler.Module.reuses`, because the row that reads it is
+    the one entered for the nested node and not this one.
+
+    **It is the base's SHAPE one level down and never a re-reading of the base's node**,
+    which is the whole of why :attr:`compiler.Shape.nested` exists: the base decided these
+    fields at its own pointers, in its own module, and what crosses is that decision.
+
+    ``nested`` is ``None`` wherever the base's own declaration of this key lowered to no
+    class -- a scalar, an enumeration, an array, a bare ``$ref`` -- and then there is no
+    field set one level down and nothing to say.  A nested key the base recorded no
+    DECIDED field for is skipped for the same reason and not refused: the base declared
+    nothing there either (§5's ``properties`` row drops a declaration that admits nothing
+    from the fields), so there is no second declaration to stop.
+
+    **Measured over the 1,054 portable documents**: 20 restatements are silent about at
+    least one nested key, 15 of them NARROWING (so the merged node is lowered rather than
+    re-used wholesale); exactly ONE of those nested keys had a class of the base's behind
+    it -- ``core/forecast-point.json``'s ``metrics.coverage_rate``, whose inline ``allOf``
+    was minted a second time as ``core/signal-coverage-forecast.json``'s own
+    ``CoverageRate`` at a pointer the published document does not state
+    (``adcp-client-python-8212``).
+    """
+    if nested is None:
+        return None
+    base = intersect.constraining(intersect.dereferenced(inherited, mod.resolve_node)).get(
+        "properties"
+    )
+    if not isinstance(base, dict):
+        return None
+    restated = intersect.constraining(stating).get("properties")
+    restated = restated if isinstance(restated, dict) else {}
+    held: dict[str, ir.Field] = {}
+    for key in sorted(set(base) - set(restated)):
+        if nested.decided.get(key) is None:
+            continue
+        field_ = _reused(
+            key,
+            nested.decided,
+            {} if source is None else {key: source},
+            f"{pointer}/properties/{key}",
+            mod,
+        )
+        if isinstance(field_, Refusal):
+            return field_
+        held[key] = field_
+    if held:
+        mod.reuses[pointer] = held
+    return None
 
 
 def _reused(

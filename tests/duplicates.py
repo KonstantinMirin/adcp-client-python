@@ -48,9 +48,16 @@ different evidence form and the gate grades it:
   every derived payload, which is exactly why ``adcp-client-python-y4j`` first read them as
   collapses, and they disagree with their own documents at once.
 
-**THE TABLE'S SIZE IS A DEBT FIGURE.**  11 rows over 25 declarations, and every one of them
-names the ask that deletes it.  For a bundle that titles what it restates and a compiler
-that declares a type once, this tuple is EMPTY.
+**THE TABLE'S SIZE IS A DEBT FIGURE AND IT RATCHETS DOWN.**  10 rows over 23 declarations,
+and every one of them names the ask that deletes it.  For a bundle that titles what it
+restates and a compiler that declares a type once, this tuple is EMPTY.
+
+**A ROW HAS BEEN DELETED BY ITS ASK LANDING, which is the mechanism working.**
+``adcp-client-python-8212`` was a COLLAPSE row whose defect was OURS and whose home the
+bundle's own references fixed, so the build applies the override now and the group does not
+form: a nested key a narrowing never mentions takes the base's own field instead of a second
+decision of the base's node.  The gate reddened with "a row whose group the tree no longer
+forms -- DELETE it", which is what retiring a row looks like.
 """
 
 from __future__ import annotations
@@ -323,34 +330,6 @@ DECIDED: tuple[Decided, ...] = (
         "`additionalProperties` against `oneOf` -- because the restating position's applied "
         "node is the whole attestation-issuer `oneOf`, which is the enclosing composition "
         "and not a difference in what either admits",
-    ),
-    Decided(
-        at=frozenset(
-            {
-                ("core/forecast-point.json", "#/properties/metrics/properties/coverage_rate"),
-                (
-                    "core/signal-coverage-forecast.json",
-                    "#/properties/points/items/allOf/1/properties/metrics/properties/coverage_rate",
-                ),
-            }
-        ),
-        outcome=COLLAPSE,
-        defect="the bundle restates core/forecast-rate-range.json's whole body -- "
-        "`allOf: [{$ref: core/forecast-range.json}, {low/mid/high maximum: 1}]` -- inline at "
-        "core/forecast-point.json's `coverage_rate` and `viewable_rate` instead of "
-        "referencing the document it titles; and the second declaration is OURS twice over, "
-        "because core/signal-coverage-forecast.json reaches forecast-point through a $ref, "
-        "§2's intersection inlines it, and the walk re-declares the target's nested class in "
-        "the REFERRING module at a pointer the published document does not state",
-        ask="adcp-client-python-8212 (ours: the re-declaration of an inlined $ref target's "
-        "nested class); adcontextprotocol/adcp#8735's inline-restatement family (upstream: a "
-        "$ref to core/forecast-rate-range.json at forecast-point's coverage_rate and "
-        "viewable_rate)",
-        names_the_subject=("core/forecast-rate-range.json", "#", "Forecast Rate Range"),
-        note="§3a's L2C layer holds all three in ONE key -- coverage_rate, viewable_rate and "
-        "forecast-rate-range's own root -- which is where the bundle's name is visible.  The "
-        "five-part key cannot see it: it keeps `description`, and the root's differs from the "
-        "two restatements', so the named member is in a different key group",
     ),
     Decided(
         at=frozenset(
