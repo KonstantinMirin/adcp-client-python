@@ -134,16 +134,11 @@ BY_DESIGN = {
 #: ``fresh.population()`` names that the module's own bundle does not carry.
 OWED = frozenset(
     {
-        "cells",
-        "test_applied_schema",
         "test_conj_rule_beside_a_type",
-        "test_decision_set",
         "test_dump_exemptions",
         "test_emit_product",
-        "test_nested_union_sibling",
         "test_ref_branch_union",
         "test_required_with_no_declaration",
-        "test_the_declared_backlog",
         "test_union_disjointness",
     }
 )
