@@ -622,10 +622,45 @@ def pair_of(g: Graded) -> Pair:
 PAGINATION = "core/pagination-request.json"
 
 #: ``Field`` kwargs that state no constraint: a name (``alias``), a presence
-#: default, and the two annotations the document carries and the compiler
-#: transcribes.  Everything else a ``Field`` can carry narrows a value, so a
-#: kwarg outside this set has to be one the document declares locally.
-ANNOTATION_KWARGS = frozenset({"alias", "default", "description", "json_schema_extra"})
+#: default in either of its two spellings, and the two annotations the document carries
+#: and the compiler transcribes.  Everything else a ``Field`` can carry narrows a value,
+#: so a kwarg outside this set has to be one the document declares locally.
+#:
+#: **``default_factory`` is the SECOND SPELLING of ``default`` and was missing**, which is
+#: ``adcp-client-python-qzx.1``'s undecided item "whether the factory is a document fact
+#: (a default of ``[]`` or ``{}``) -- then the pin is stale -- or whether ONE factory
+#: object is shared across two positions, which is a defect".  Measured on the tree a
+#: fresh run emits: 98 sites in 58 modules, every one of them
+#: ``default_factory=lambda: TypeAdapter(<T>).validate_python(<the document's own
+#: default>)`` -- the renderer's channel for a stated ``default`` whose value has to be
+#: parsed into the field's type, written beside a ``json_schema_extra={'default': ...}``
+#: carrying the document's own literal.  So it is the FORMER: a document fact, and a
+#: presence default states what a value is when absent rather than narrowing the set a
+#: present one may come from.  Not the latter either -- each site is its own ``lambda``,
+#: so no factory object is shared between two positions.  The witness that reddened the
+#: census is ``account/list-account-changes-request.json``'s ``starting_position``, whose
+#: document states ``"default": "earliest"``.
+#:
+#: **``init`` was missing too, and it is pydantic's spelling and not a document's**: 15
+#: sites in 10 modules, every one of them
+#: ``__pydantic_extra__: dict[str, <T>] = Field(init=False)`` -- the TYPED
+#: ``additionalProperties`` rendering, whose extra mapping is populated by validation
+#: rather than by a constructor argument.  First witness
+#: ``core/canonical-forecast-point.json``.
+#:
+#: **DERIVED, so the next member of this census is not met one invocation at a time.**
+#: Every ``Field`` keyword the tree a fresh run emits actually uses, counted over all
+#: 1,054 modules: ``description`` 8,207, ``min_length`` 1,056, ``json_schema_extra`` 627,
+#: ``max_length`` 144, ``default_factory`` 98, ``alias`` 19, ``init`` 15 -- and no
+#: ``default`` at all, a presence default being written as ``= None`` or as
+#: ``= Field(default_factory=...)``.  ``min_length`` and ``max_length`` are the only two
+#: that narrow, and they are exactly the two this set does NOT name: they have to be
+#: backed by a fact the document states locally, which is what ``_pydantic_names(local)``
+#: supplies.  ``default`` is kept here even with no site, because the kwarg states a
+#: presence default whichever spelling the renderer picks.
+ANNOTATION_KWARGS = frozenset(
+    {"alias", "default", "default_factory", "description", "init", "json_schema_extra"}
+)
 
 
 def pagination() -> Graded:
@@ -718,12 +753,36 @@ def test_the_population_is_the_one_the_step_is_stated_over() -> None:
     # leaf object nor a referencing one, so no document stops being named.
     assert not selectors["container_roots"] & (selectors["leaves"] | selectors["referencing"])
     assert selectors["object_rules"] == {
-        "core/budget-range.json",
         "core/demographic-age-range.json",
         "core/forecast-range.json",
         "core/webhook-challenge-response.json",
-        "media-buy/proposal-budget-constraint.json",
     }
+    # **AND THE TWO THIS SET LOST ARE NAMED WITH THEIR CAUSE, because a pin that is
+    # re-pasted smaller deletes the fact that it shrank.**  This clause pinned five, and
+    # ``populations.states_an_object_rule``'s docstring still said "5 documents before and
+    # after" after it had become three.  The two that left --
+    # ``core/budget-range.json`` and ``media-buy/proposal-budget-constraint.json`` -- did
+    # NOT stop stating a presence rule and did not leave ``population()``: the PATCH TABLE
+    # replaces each one's inline ``currency`` string with a ``$ref`` to
+    # ``core/currency-code.json``, and step 7's first clause excludes a document carrying
+    # a ``$ref`` anywhere, so each is step 2's ground now instead of step 7's.  Both halves
+    # are asserted, so neither the cause nor the consequence can drift unobserved: the
+    # PUBLISHED bundle still counts them, the PATCHED one reaches them through the
+    # referencing selector, and the denominator is unmoved either way.
+    # Read over :data:`BUNDLE` alone, so this module stays the one-bundle reader
+    # ``tests/test_the_bundle_a_module_reads.py`` requires: the cause is stated as the
+    # ``$ref`` being the ONLY clause that excludes each one -- its root still declares
+    # ``properties`` and a presence-only combinator, which is the rest of step 7's test.
+    for document in ("core/budget-range.json", "media-buy/proposal-budget-constraint.json"):
+        doc = bundle.read(BUNDLE, document)
+        assert not populations.states_an_object_rule(doc), document
+        assert "$ref" in bundle.schema_keywords(doc), document
+        assert doc["properties"]["currency"].keys() == {"$ref"}, document
+        assert "properties" in doc and doc.get("type") == "object", document
+        assert bundle.schema_keywords(doc) & {*bundle.CONDITIONAL, "oneOf", "anyOf"}, document
+        assert all(rules.presence_only(n) for _, n in bundle.nodes(doc)), document
+        assert document in selectors["referencing"], document
+        assert document in population(), document
 
 
 #: The six root populations, in the order their steps landed.  ``tests/populations.py``
@@ -2481,6 +2540,27 @@ def test_the_liveness_check_reaches_every_pair_the_document_refuses_anything_for
     assert all(r.liveness.violated for r in reports if r.liveness.outcome == "pass")
 
 
+def _combinator_parents(ref: SchemaRef) -> list[SchemaRef]:
+    """Every COMBINATOR node above ``ref`` in its own document, nearest first.
+
+    A union branch is at ``<parent>/anyOf/<i>`` or ``<parent>/oneOf/<i>``, and the
+    instance that satisfies the branch IS the instance that satisfies the parent -- so a
+    keyword applying to the whole instance is read off the parents as well as off the
+    branch.  Peeled from the TAIL and only while the tail is a combinator index, which is
+    the half that makes this a reading about one instance: ``#/anyOf/1`` is the root's own
+    instance and answers for the root, while ``#/anyOf/1/properties/account`` is a
+    PROPERTY of it and answers for nobody above -- a root forbidding additional keys says
+    nothing about the keys of a nested object.  A branch of a branch peels twice.
+    """
+    segments = ref.pointer.lstrip("#").strip("/").split("/") if ref.pointer.strip("#/") else []
+    out: list[SchemaRef] = []
+    while len(segments) >= 2 and segments[-2] in ("anyOf", "oneOf") and segments[-1].isdigit():
+        segments = segments[:-2]
+        above = "/".join(segments)
+        out.append(SchemaRef(ref.document, f"#/{above}" if above else "#"))
+    return out
+
+
 def test_extra_follows_the_schema_and_a_silent_document_takes_the_base_default() -> None:
     """D8, over the FOUR forms a document's ``additionalProperties`` can take here.
 
@@ -2543,6 +2623,27 @@ def test_extra_follows_the_schema_and_a_silent_document_takes_the_base_default()
             harness._normalize(schema_at(row.ref), root, declared_null=True),
             root,
         ).get("additionalProperties", "silent")
+        # **AND CONJOINED WITH WHAT APPLIES TO THE WHOLE INSTANCE, which a node's own
+        # value is not the whole of.**  A union BRANCH is satisfied together with the
+        # root, so the keyword that decides an undeclared key is the AND over the branch
+        # and every combinator parent above it -- and ``false`` wins over ``true``,
+        # because a key the root calls additional is refused there whatever the branch
+        # permits.  Read off the node's own value alone this clause said ``true`` and the
+        # class said ``forbid`` at three pointers --
+        # ``media-buy/decline-proposals-response.json#/anyOf/1``,
+        # ``media-buy/refine-proposals-response.json#/anyOf/1`` and
+        # ``media-buy/request-proposals-response.json#/anyOf/3`` -- each a branch
+        # stating ``additionalProperties: true`` under a root stating ``false``.  The
+        # CLASS is right in all three and the reading was the wider document, which is
+        # the direction ``adcp-client-python-82m.18`` reports for the RULE keywords at
+        # the same position.  Derived by walking the pointer's combinator parents rather
+        # than by naming the three, so a fourth branch is covered by construction.
+        for parent in _combinator_parents(row.ref):
+            above = _composed(
+                harness._normalize(schema_at(parent), root, declared_null=True), root
+            ).get("additionalProperties", "silent")
+            if above is False:
+                declared = False
         # The four forms, named: a schema here is the TYPED row, graded in full by
         # ``test_a_typed_additional_properties_is_a_typed_pydantic_extra``.  What D8
         # decides for it is the same as for ``true`` -- an additional property is part
@@ -2570,9 +2671,58 @@ def test_extra_follows_the_schema_and_a_silent_document_takes_the_base_default()
             # narrowing and still fails.  27 such classes at 64131600f, not 1:
             # the figure is over ``graded()`` and step 4's row brought the whole
             # ``core/async-response-refs/`` family into it.
-            assert row.model.model_config["extra"] == "allow", (row.ref, declared)
+            #
+            # **THAT WHOLE PARAGRAPH IS A READING OF A TREE THIS IS NO LONGER OVER, and
+            # the branch admitted ``allow`` ALONE on the strength of it.**  Re-measured
+            # here over the tree a fresh run emits: ``core/async-response-refs/`` is
+            # graded at ZERO pointers, so the 27 -- and the 1 before them -- have left
+            # this loop entirely, and the base stating ``additionalProperties: true``
+            # has no site at all.  The branch is reached 7 times and by two mechanisms,
+            # NEITHER of which is the one it was written for:
+            #
+            # * **6 classes inherit ``forbid`` from a base whose OWN document states
+            #   ``false``** -- ``AttestationResourceSubject`` at three pointers,
+            #   ``AttestationBrandIssuer``, ``BudgetAllocationFixed`` and
+            #   ``BudgetAllocationSellerOptimized``.  The old comment called an
+            #   inherited ``forbid`` "a narrowing"; it is not one, it is the base's own
+            #   statement composed faithfully, which is
+            #   ``adcp-client-python-qzx.1``'s recorded refutation of this clause.  So
+            #   the base's value goes through the SAME ``{False: forbid, True: allow}``
+            #   table the document's own value goes through, rather than one admitted
+            #   answer being spelled here.
+            # * **1 class states ``allow`` with NO base document to inherit from**:
+            #   ``core/provenance.json#/properties/disclosure/properties/jurisdictions/items/properties/render_guidance``,
+            #   whose base is ``AdCPBaseModel`` itself.  That is §8 sentence 4's second
+            #   consequence (``codegen/lower/objects.py``, decided 2026-11-03): *a count
+            #   keyword withheld from a class whose extra policy drops the keys it
+            #   counts is answered by the class KEEPING the keys the document counts*.
+            #   Graded as the BEHAVIOUR it exists for -- the class keeps an undeclared
+            #   key and its ``PropertyCount`` counts it, so a payload the document
+            #   admits on that key alone is admitted -- and not by re-reading the
+            #   production predicate that decides it.
             base = row.model.__mro__[1]
-            assert schema_at(base.__adcp_schema__)["additionalProperties"] is True, row.ref
+            stated_by_a_base = getattr(base, "__adcp_schema__", None)
+            inherited = (
+                schema_at(stated_by_a_base).get("additionalProperties", "silent")
+                if stated_by_a_base is not None
+                else "silent"
+            )
+            if inherited in (False, True):
+                want_base = {False: "forbid", True: "allow"}[inherited]
+                assert row.model.model_config["extra"] == want_base, (row.ref, inherited)
+                grouped[want_base].add(name)
+                continue
+            assert row.model.model_config["extra"] == "allow", (row.ref, declared)
+            counts = [r for r in row.model._adcp_rules if type(r).__name__ == "PropertyCount"]
+            assert counts, (row.ref, row.model._adcp_rules)
+            # The payload is ONE key the class does not declare, which satisfies the
+            # count only if the key SURVIVED.  Under ``ignore`` it would be dropped and
+            # the same rule would refuse an instance the document accepts, so this
+            # assertion is the reversal and not a restatement of it.
+            minimum = min(c.minimum for c in counts if c.minimum is not None)
+            payload = {f"undeclared_{i}": 1 for i in range(minimum)}
+            jsonschema.Draft7Validator(schema_at(row.ref)).validate(payload)
+            assert row.model.strict_validate(payload) is not None, (row.ref, payload)
             grouped["allow"].add(name)
             continue
         assert row.model.model_config["extra"] == want, (row.ref, declared)
@@ -5877,10 +6027,21 @@ def test_a_constraint_inside_a_container_is_named_and_nothing_is_left_refused() 
     out = compiled(BUNDLE, population())
 
     # Every document the earlier revisions named as refused HERE, now emitted.
+    #
+    # **THE DENOMINATOR IS THE BUNDLE'S PORTABLE SET AND NOT ``population()``, which is
+    # the narrower claim this clause could not make.**  ``population()`` is the union of
+    # the seven STEP selectors, and a document reached only through the reference closure
+    # is emitted without any selector naming it: ``brand/rights-terms.json`` is portable,
+    # is in ``out.emitted``, and is in none of the seven -- its one ``$ref`` sits deeper
+    # than a property's own schema or its items, so ``references_a_property`` is False
+    # too.  So the containment reddened on a document the list is RIGHT about, while the
+    # thing the list claims -- that each one emits -- was never reached.  The emission is
+    # the assertion below and it is kept separate from the denominator on purpose: one
+    # says the names are documents of this bundle, the other says what became of them.
     released = claimed(
         "documents once refused on a constraint inside a container",
         {d for names in _WAS_REFUSED_INSIDE_A_CONTAINER.values() for d in names},
-        inside=population(),
+        inside=set(bundle.portable(BUNDLE)),
     )
     assert released <= set(out.emitted), sorted(released - set(out.emitted))
 
