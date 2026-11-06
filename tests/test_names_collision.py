@@ -25,7 +25,7 @@ from pathlib import Path
 
 import fresh
 
-from codegen.lower import names
+from codegen.lower import names, union
 from codegen.refusal import Refusal
 from tests.nodeset import claimed, ratchet
 
@@ -883,3 +883,155 @@ def test_the_ref_target_rung_outranks_the_index_and_nothing_else() -> None:
     assert not isinstance(two, Refusal) and not isinstance(three, Refusal)
     assert {p: n for p, n in three.items() if p in two} == two, three
     assert three["/anyOf/2"] == "AssetRequirementsAudio", three
+
+
+def test_a_member_type_colliding_with_its_union_falls_to_what_it_requires_one_level_down() -> None:
+    """§4's LAST branch rung (:data:`codegen.lower.names.REQUIREMENT_IS_THE_FALL_OF_LAST_RESORT`).
+
+    **Bundle 3.3's own shape, and its only hard verdict** (``adcp-client-python-82m.59``).
+    ``core/targeting-overlay-requirements.json`` states
+    ``/definitions/daypartRequirement`` as ``anyOf: [{$ref: #/definitions/required},
+    {<object>}]`` and titles neither position, so the definitions ENTRY and the object
+    BRANCH both derive ``TargetingOverlayRequirementsDaypartRequirement``.  The branch is a
+    MEMBER TYPE -- a nested union's branch, which needs no name of its own, so the walk
+    records no index -- and with no title, no pin, no top-level ``required`` and no ``$ref``
+    its ladder was a chain of ONE.  Nothing to lengthen by and nothing to fall to is
+    ``names.spell``'s refusal, which the compiler reported as ``title`` VERDICT at that
+    pointer with five more documents chained behind it.
+
+    Bundle 3.2 states the same union with ``required: ["timezone_modes"]`` at the branch's
+    top level and never refused -- rung 3 named it ``DaypartRequirementTimezoneModes``.  3.3
+    added ``time_granularity`` and moved the requiredness into a nested
+    ``anyOf: [{required: [timezone_modes]}, {required: [time_granularity]}]``, so the rung
+    went silent on a node whose requiredness the document states as plainly as 3.2's did.
+
+    Both halves are asserted, because the second means nothing without the first: that the
+    two positions really do collide and that the ladder really is spent WITHOUT the rung,
+    and that WITH it the branch falls and the entry keeps the name it derives.
+    """
+    hops: dict[str, names.Hop] = {
+        "": names.Root("Targeting Overlay Requirements"),
+        "/definitions/daypartRequirement": names.Entry("daypartRequirement"),
+        "/definitions/daypartRequirement/anyOf/1": names.Branch(
+            parent="/definitions/daypartRequirement"
+        ),
+    }
+    silent = dict(hops)
+    silent["/definitions/daypartRequirement/anyOf/1"] = names.Branch(
+        parent="/definitions/daypartRequirement"
+    )
+    assert names.ladder("/definitions/daypartRequirement/anyOf/1", silent) == (
+        ("TargetingOverlayRequirements", "DaypartRequirement"),
+    ), "without the rung the member type has ONE chain, which is why this refused"
+    assert isinstance(names.spell_the_rungs(_ladders(silent)), Refusal), (
+        "the two positions must collide with the rung absent, or the fall below is not "
+        "what resolves them"
+    )
+
+    hops["/definitions/daypartRequirement/anyOf/1"] = names.Branch(
+        parent="/definitions/daypartRequirement",
+        requires_one_of=("timezone_modes", "time_granularity"),
+    )
+    ladders = _ladders(hops)
+    rungs = ladders["/definitions/daypartRequirement/anyOf/1"]
+    assert rungs[0] == ("TargetingOverlayRequirements", "DaypartRequirement"), rungs
+    assert rungs[-1] != rungs[0], "the requirement rung has to be a chain to FALL to"
+    spelled = names.spell_the_rungs(ladders)
+    assert not isinstance(spelled, Refusal), spelled
+    # The ENTRY keeps the name §4 derives for it and SHORTENS back to it, because once the
+    # branch has fallen nothing collides and a position whose short name collides with
+    # nothing keeps it -- which is the pair of names the run emits for bundle 3.3.
+    assert spelled == {
+        "": "TargetingOverlayRequirements",
+        "/definitions/daypartRequirement": "DaypartRequirement",
+        "/definitions/daypartRequirement/anyOf/1": (
+            "DaypartRequirementTimeGranularityTimezoneModes"
+        ),
+    }, spelled
+
+
+def test_requiredness_one_level_down_is_a_fall_and_never_the_name_a_branch_takes() -> None:
+    """The rung's PLACEMENT, which is the whole decision and not an implementation detail.
+
+    Read as a fifth IDENTITY rule the same fact renames classes that collide with nothing:
+    ``core/targeting-overlay-requirements.json#/properties/geo_proximity/anyOf/1`` is a
+    member type with the identical shape -- four properties and
+    ``anyOf: [{required: [radius]}, {required: [travel_time]}, {required: [geometry]},
+    {required: [transport_modes]}]`` -- and bundle 3.2 ships it as
+    ``TargetingOverlayRequirementsGeoProximity``.  §4's identity rules are a CLOSED list and
+    its answer for a branch none of them names is the union's own derived name, which is a
+    rule and not a gap; so a branch that collides with nothing keeps it, and the rung is a
+    name available only to one that cannot.
+    """
+    hops: dict[str, names.Hop] = {
+        "": names.Root("Targeting Overlay Requirements"),
+        "/properties/geo_proximity": names.Property("", "geo_proximity"),
+        "/properties/geo_proximity/anyOf/1": names.Branch(
+            parent="/properties/geo_proximity",
+            requires_one_of=("radius", "travel_time", "geometry", "transport_modes"),
+        ),
+    }
+    hop = hops["/properties/geo_proximity/anyOf/1"]
+    parent = ("TargetingOverlayRequirements", "GeoProximity")
+    assert hop.requires_one_of, "the fact must be present, or the claim below is vacuous"
+    assert names.branch_identity(hop, parent) is None, (
+        "the rung must not reach branch_identity: that is the name a branch TAKES"
+    )
+    assert names.branch_rungs(hop, parent) == ()
+    # The union at the PROPERTY declares nothing -- it decides to an annotation,
+    # ``Required | GeoProximity | None`` -- and ``names.assign`` asks for a ladder at the
+    # pointers that DECLARE, so that position is not one of them.  The ladders are built
+    # over the same two, because handing in a pointer the module never declares would
+    # invent a collision the run does not have.
+    ladders = _ladders(hops)
+    at = "/properties/geo_proximity/anyOf/1"
+    assert ladders[at][0] == ("TargetingOverlayRequirements", "GeoProximity"), (
+        "the FIRST rung is the union's own derived chain, which is what the branch is "
+        "named by -- the requirement rung is below it"
+    )
+    spelled = names.spell_the_rungs({p: ladders[p] for p in ("", at)})
+    assert not isinstance(spelled, Refusal), spelled
+    # Spelled at depth 1 because nothing in this table collides; the shipped module
+    # lengthens it to ``TargetingOverlayRequirementsGeoProximity`` for a collision outside
+    # these two positions, and the lengthening axis is not what this test is about.  What
+    # it is about is that the name comes off the chain above and never off the four keys.
+    assert spelled[at] == "GeoProximity", spelled
+    assert "Radius" not in spelled[at] and "TravelTime" not in spelled[at]
+
+
+def test_the_reading_of_requiredness_one_level_down_is_the_declarations_and_not_a_guess() -> None:
+    """``lower.union._requires_one_of``: what is read and what is refused.
+
+    Every clause of the narrowing is load-bearing and each is graded here, because each one
+    is what keeps the reading off a node that requires nothing of the sort.  A ``required``
+    inside an ``if`` is the ANTECEDENT of an implication -- bundle 3.3's own daypart branch
+    states ``allOf: [{if: {required: [iana_timezones]}, then: ...}]`` beside the ``anyOf``
+    this reads, and ``iana_timezones`` is not required at all.
+    """
+    properties = {"a": {}, "b": {}}
+    requires = union._requires_one_of
+    assert requires(
+        {"properties": properties, "anyOf": [{"required": ["a"]}, {"required": ["b"]}]}
+    ) == ("a", "b")
+    assert requires(
+        {"properties": properties, "oneOf": [{"required": ["a"]}, {"required": ["b"]}]}
+    ) == ("a", "b")
+    # A member that states anything beside ``required`` is a subschema in its own right.
+    assert requires(
+        {"properties": properties, "anyOf": [{"required": ["a"]}, {"required": ["b"], "type": "object"}]}
+    ) == ()
+    # EVERY member or none: a member requiring nothing makes the combinator require nothing.
+    assert requires({"properties": properties, "anyOf": [{"required": ["a"]}, {}]}) == ()
+    # A CONDITIONAL is never read, which the "required alone" clause is what refuses.
+    assert requires(
+        {"properties": properties, "allOf": [{"if": {"required": ["a"]}, "then": {"required": ["b"]}}]}
+    ) == ()
+    assert requires({"properties": properties, "not": {"required": ["a"]}}) == ()
+    # A key the branch declares no property for says nothing about the branch's own fields,
+    # and a node with no property map is not this shape at all.
+    assert requires({"properties": properties, "anyOf": [{"required": ["a"]}, {"required": ["z"]}]}) == ()
+    assert requires({"anyOf": [{"required": ["a"]}, {"required": ["b"]}]}) == ()
+    # Where the branch states ``required`` ITSELF, rung 3 answers and this reads nothing.
+    assert requires(
+        {"properties": properties, "required": ["a"], "anyOf": [{"required": ["a"]}, {"required": ["b"]}]}
+    ) == ()

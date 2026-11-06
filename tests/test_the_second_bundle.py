@@ -61,32 +61,41 @@ SECOND = fresh.SECOND
 
 #: Every document of bundle 3.3 the compiler refuses, and the row that owns each.
 #:
-#: **MEASURED at ``d4211eabb`` over the 1,138 portable documents of
-#: ``schemas/cache/3.3``**: 12 refusals, 5 primary over 5 keywords and 7 chained behind two
-#: of them.  Each primary is named by the keyword the compiler reports and the pointer it
-#: reports it at, so a reader can re-derive the row with ``./check --why``.
+#: **MEASURED over the 1,138 portable documents of ``schemas/cache/3.3``**: 6 refusals, 4
+#: primary over 4 keywords and 2 chained behind two of them.  Each primary is named by the
+#: keyword the compiler reports and the pointer it reports it at, so a reader can re-derive
+#: the row with ``./check --why``.
 #:
 #: **THIS SET MAY SHRINK AND MAY NOT GROW.**  It is a refusal INVENTORY and not a
 #: permission: a document leaving it is the work landing, and a document joining it is a
 #: regression this file exists to name.  A new refusal is therefore a failure here and not
 #: an edit to this constant.
 #:
+#: **SIX DOCUMENTS LEFT IT, and they are the whole of the bundle's VERDICT count**
+#: (``adcp-client-python-82m.59``).  3.3's only hard verdict was ``title`` at
+#: ``core/targeting-overlay-requirements.json#/definitions/daypartRequirement`` -- two
+#: positions of one union deriving ``TargetingOverlayRequirementsDaypartRequirement``, and
+#: a MEMBER TYPE has no rung to fall to -- with five documents chained behind it:
+#: ``media-buy/list-products-request.json``,
+#: ``media-buy/product-discovery-criteria.json``, ``media-buy/proposal-refinement.json``,
+#: ``media-buy/refine-proposals-request.json`` and
+#: ``media-buy/request-proposals-request.json``.  What closed all six is §4's LAST branch
+#: rung (``lower.names.REQUIREMENT_IS_THE_FALL_OF_LAST_RESORT``): the branch states one
+#: level down that it requires one of ``timezone_modes`` and ``time_granularity``, so it
+#: has a name to fall to and takes ``DaypartRequirementTimeGranularityTimezoneModes``.
+#: **The bundle's VERDICT count is now 0** -- every refusal below is DEFERRED, which is a
+#: row of ours that is not written rather than a defect of the bundle's.
+#:
 #: ``adcp-client-python-23cs`` is the row that measured the 192 and named the loop; the
-#: residue below is filed under ``adcp-client-python-23cs``'s own follow-up.
+#: residue below is filed under ``adcp-client-python-ps1h``.
 REFUSES = {
-    # PRIMARY, one per keyword.
+    # PRIMARY, one per keyword, and all four are DEFERRED.
     "compliance/comply-test-controller-request.json",  # required, deferred: no row lowers it
     "core/escalation-sla.json",  # pattern, deferred: a restatement that neither matches nor narrows
-    "core/targeting-overlay-requirements.json",  # title, VERDICT: two nodes derive one class name
     "media-buy/package-forecast-input.json",  # $ref, deferred: the target declares no symbol at /allOf/1
     "trust/v1/trust.json",  # allOf, deferred: a $ref at a conjunct to a non-field-set target
     # CHAINED, each through one of the two above it quotes.
     "media-buy/get-products-request.json",
-    "media-buy/list-products-request.json",
-    "media-buy/product-discovery-criteria.json",
-    "media-buy/proposal-refinement.json",
-    "media-buy/refine-proposals-request.json",
-    "media-buy/request-proposals-request.json",
     "trust/v1/trust-acknowledgements.json",
 }
 

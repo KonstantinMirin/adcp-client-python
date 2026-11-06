@@ -464,6 +464,13 @@ class Branch:
     pins: tuple[Any, ...] = ()
     #: Its ``required`` set, as the document lists it.
     required: tuple[str, ...] = ()
+    #: **The keys a nested ``anyOf``/``oneOf`` requires one of**, where the branch states
+    #: its requiredness one level down instead of at its top level
+    #: (``lower.union._requires_one_of``, which carries the reading).  §4's rung 3 reads
+    #: :attr:`required` and this is NOT a second spelling of it: it is the branch's LAST
+    #: rung and is reachable only by falling (:func:`_requirement_rung`, :func:`ladder`),
+    #: so no branch §4's four identity rules already name takes a name from it.
+    requires_one_of: tuple[str, ...] = ()
     #: **The SYMBOL a bare ``$ref`` branch's target declares** -- §4's fourth rung, which
     #: reads "where the branch is a bare ``$ref``, the TARGET's own derived name".  It is
     #: the one naming fact of a branch that no reading of the branch's own node can reach:
@@ -961,6 +968,53 @@ def segments(
     return parent if derived is None else derived
 
 
+#: §4's LAST branch rung, in the section's own terms.  QUOTED by the check that grades it
+#: (``tests/test_names_collision.py``), so the sentence the code states and the sentence a
+#: check reports against are one string.
+REQUIREMENT_IS_THE_FALL_OF_LAST_RESORT = (
+    "a branch stating its requiredness one level down -- anyOf: [{required: [x]}, "
+    "{required: [y]}] -- requires one of x and y as plainly as a top-level required set "
+    "states its own, so that key set is a name the branch has available; it is the LAST "
+    "rung and is reachable only by FALLING, because section 4's four identity rules are "
+    "closed and its answer for a branch none of them names is the union's own derived "
+    "name -- which is a rule and not a gap, so a branch that collides with nothing keeps "
+    "it.  What the rung serves is the one position in this pass that had a declared name "
+    "and no second name to fall to (section 4)"
+)
+
+
+def _requirement_rung(hop: Branch, parent: tuple[str, ...]) -> tuple[str, ...] | None:
+    """§4's LAST branch rung: the keys the branch requires ONE LEVEL DOWN, or ``None``.
+
+    :data:`REQUIREMENT_IS_THE_FALL_OF_LAST_RESORT` is the rule and
+    ``lower.union._requires_one_of`` is the reading.  Spelled exactly as rung 3 spells its
+    own set -- sorted, onto the parent's last segment -- because it is the same fact about
+    the same keys and a second spelling of "the branch's required set" is how the two would
+    come to disagree about one document.
+
+    **IT IS NOT AN IDENTITY RUNG, AND THE PLACEMENT IS THE DECISION.**
+    :func:`branch_identity` is what a branch is CALLED and §4's four identity rules are a
+    closed list; its answer for a branch none of them names is :func:`segments`' fallback,
+    the union's own derived name, and that is a rule rather than a gap.  **Measured, and
+    this is why the rung is a fall and not a fifth identity rule**: over bundle 3.2's 1,054
+    portable documents 21 nodes state requiredness this way and three of them are branch
+    positions, and as a fifth IDENTITY rule it renames two classes the bundle is shipped
+    with -- ``core/targeting-overlay-requirements.json#/properties/geo_proximity/anyOf/1``
+    and ``core/targeting-overlay-support.json``'s -- from
+    ``TargetingOverlayRequirementsGeoProximity`` to
+    ``TargetingOverlayRequirementsGeoProximityGeometryRadiusTransportModesTravelTime``.
+    Neither collides with anything, so neither needs a second name, and renaming a shipped
+    public symbol to close a refusal in another document is a cost with no buyer.  As a
+    FALL it reaches exactly the positions that cannot keep the name they derive.
+
+    ``parent`` is empty only under a mapping's KEY, which is :class:`Unnamed` and never a
+    branch, so the suffix always lands on a segment.
+    """
+    if not hop.requires_one_of:
+        return None
+    return _suffixed(parent, "".join(class_name(str(k)) for k in sorted(hop.requires_one_of)))
+
+
 def ladder(
     pointer: str, hops: Mapping[str, Any], seen: frozenset[str] = frozenset()
 ) -> tuple[tuple[str, ...], ...] | Refusal:
@@ -971,6 +1025,26 @@ def ladder(
     their name from one fact, and only a branch has a section-ordered ladder of facts to
     fall down (:func:`branch_rungs`).  So this is :func:`segments` with the branch arm
     widened, and :func:`segments` is its first rung.
+
+    **THE REQUIREMENT RUNG IS APPENDED HERE AND NOT IN :func:`branch_rungs`, which is what
+    makes it a fall** (:func:`_requirement_rung`,
+    :data:`REQUIREMENT_IS_THE_FALL_OF_LAST_RESORT`).  :func:`branch_identity` is
+    ``branch_rungs(...)[0]``, so a rung inside that function is the name a branch TAKES the
+    moment the rungs above it answer nothing -- and §4's identity list is closed.  Appended
+    to the LADDER it is a name available to a position that collides and nothing else, which
+    is the one circumstance in which a branch needs a name beyond the one §4 derives for it.
+
+    **It serves a MEMBER TYPE above all, and that position is why the rung exists.**  A
+    branch §4 names after the union's own derived name has a ladder of ONE -- no identity
+    rung answered and the walk recorded no index, because a member type needs no name of its
+    own -- so it has nothing to lengthen by and nothing to fall to, and two such positions
+    of one document are :func:`spell`'s refusal.  **MEASURED on bundle 3.3**:
+    ``core/targeting-overlay-requirements.json`` refuses on ``title`` at
+    ``/definitions/daypartRequirement`` because that entry and its
+    ``/anyOf/1`` both derive ``TargetingOverlayRequirementsDaypartRequirement``, and the
+    branch has no second name -- while the document states, one level down, that it requires
+    one of ``timezone_modes`` and ``time_granularity``.  Bundle 3.2 states the same union
+    with ``required: ["timezone_modes"]`` at the branch's top level and never refused.
 
     The PARENT chain a rung is suffixed onto is the parent's own FIRST rung, which is
     :func:`segments`' answer and the chain every other reading of the parent uses.  A
@@ -988,7 +1062,12 @@ def ladder(
     parent = segments(hop.parent, hops, seen | {pointer})
     if isinstance(parent, Refusal):
         return parent
-    return branch_rungs(hop, parent) or (parent,)
+    chains = branch_rungs(hop, parent) or (parent,)
+    last = _requirement_rung(hop, parent)
+    # A rung spelling a chain already in the ladder is not a rung to fall to, which is
+    # ``branch_rungs``' own rule at the other end -- a branch whose top-level ``required``
+    # and whose nested one name the same keys identifies itself no better the second time.
+    return chains if last is None or last in chains else (*chains, last)
 
 
 #: §4's collision rule, in the section's own words.  QUOTED by the checks that grade it
@@ -1104,12 +1183,28 @@ def spell(
     # that COLLIDED, the later of the two in declaration order, which is the pointer
     # ``Module.declare``'s symmetric check names as well.
     #
-    # **MEASURED UNREACHABLE over the 1,054 portable documents: 0 modules reach it**
-    # (``adcp-client-python-10l.78``), which is §4's own sentence -- "no document of
-    # bundle 3.2 refuses for a derivable name again: rung 4 always answers, because a
-    # branch always has an index".  It is kept because the positions that are NOT branches
-    # have one rung each and two of them could in principle spell alike with nothing to
-    # lengthen by, and §9 says a crash is not an outcome.
+    # **IT IS REACHABLE AND BUNDLE 3.3 REACHED IT, which is the correction to the
+    # measurement this comment used to carry.**  It read "MEASURED UNREACHABLE over the
+    # 1,054 portable documents: 0 modules reach it" (``adcp-client-python-10l.78``) and
+    # quoted §4's sentence that "rung 4 always answers, because a branch always has an
+    # index" -- and both halves were true of bundle 3.2 and of nothing wider.  A MEMBER
+    # TYPE has no index, because it needs no name of its own, so its ladder is a chain of
+    # one; ``core/targeting-overlay-requirements.json#/definitions/daypartRequirement`` on
+    # bundle 3.3 is two such positions deriving
+    # ``TargetingOverlayRequirementsDaypartRequirement``, and this arm answered them --
+    # one VERDICT, five more documents chained behind it, 6 of the bundle's 12 refusals.
+    # A measurement over one bundle is an observation and not a property, and the second
+    # bundle is what the goal grades (``tests/test_the_second_bundle.py``).
+    #
+    # **What closes that document is a rung and not this raise**
+    # (:data:`REQUIREMENT_IS_THE_FALL_OF_LAST_RESORT`, :func:`_requirement_rung`): the
+    # branch states, one level down, that it requires one of ``timezone_modes`` and
+    # ``time_granularity``, so it has a name available and falls to it.  **Measured over
+    # bundle 3.3's 1,138 portable documents with that rung in force: 0 modules reach this
+    # arm**, which is the same reading as before and now over both bundles rather than one.
+    # It is kept for the reason it always was: the positions that are NOT branches have one
+    # rung each, two of them could in principle spell alike with nothing to lengthen by,
+    # and §9 says a crash is not an outcome.
     #
     # **The kind is HAND-WRITTEN and this row did not derive it, deliberately.**  §9's
     # test makes it a VERDICT and not a deferral -- two positions of one document spelling
