@@ -55,7 +55,7 @@ class DAASTTrackerConstraints(AdCPBaseModel):
         Approximation(document='core/daast-tracker-constraints.json', pointer='#/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'target': {'const': 'companion'}}, 'required': ['target']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     daast_event: DaastEvent | None = None
-    target: Annotated[DaastTarget | None, Field(default_factory=lambda: TypeAdapter(DaastTarget).validate_python('linear'), json_schema_extra={'default': 'linear'})]
+    target: Annotated[DaastTarget | None, Field(json_schema_extra={'default': 'linear'})] = Field(default_factory=lambda: TypeAdapter(DaastTarget).validate_python('linear'))
     offset: DaastOffset | None = None
     daast_versions: DaastVersions | None = None
 

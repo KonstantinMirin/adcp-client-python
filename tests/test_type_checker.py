@@ -66,7 +66,7 @@ from typing import NamedTuple
 
 import pydantic
 import pytest
-from nodeset import claimed, ratchet
+from nodeset import claimed
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -621,22 +621,33 @@ def test_a_consumer_can_construct_every_public_model_the_wheel_exports(
     table of values per type -- the table that would go stale on the first constraint
     upstream changes.
 
-    Three directions, as the two clauses above, plus the one thing the first direction
-    does NOT come out clean on.  Two RATCHETS stand where it does not, each a measured
-    count with its own row, because the residue is a defect in the shipped annotations and
-    not a property of this check:
+    Three directions, as the two clauses above, and all three now hold with NOTHING
+    excused.  They did not when this clause was written: reading 7's first direction -- "a
+    consumer module using the package correctly checks clean" -- was FALSE for 95 of the
+    1,459 model exports with a field, and the 95 stood here as two ratchets because the
+    residue was a defect in the shipped annotations rather than a property of this check.
+    Both causes were OURS and both were spelling, which is why no consumer could see past
+    them and nothing of ours could see them at all:
 
-    * ``adcp-client-python-82m.52`` -- 90 fields whose constructed default sits inside
-      ``Annotated[...]``, which pydantic reads and PEP 681 does not, so a checker calls
-      them required;
+    * ``adcp-client-python-82m.52`` -- 90 fields whose constructed default sat inside
+      ``Annotated[Field(default_factory=...)]``, where pydantic reads it and **PEP 681 does
+      not**: a checker reads ``default``/``default_factory`` off the ASSIGNED value alone,
+      so it called a field the document gives a default REQUIRED.  ``codegen/render.py``
+      now writes the factory as the assignment (``= Field(default_factory=...)``), which is
+      the same value at runtime and the same ``model_json_schema()``;
     * ``adcp-client-python-82m.53`` -- 5 exports re-declaring ``__pydantic_extra__`` as a
-      bare annotation, which puts a dunder back into the synthesised ``__init__`` as a
-      required keyword-only argument.
+      bare annotation, which put a dunder back into the synthesised ``__init__`` as a
+      required keyword-only argument and left those 5 with NO correct consumer call at all.
+      The re-declaration now carries ``= Field(init=False)``, the public spelling of the
+      specifier ``BaseModel`` itself declares the name with, and
+      ``AdCPBaseModel.__pydantic_init_subclass__`` takes the assignment back off the class
+      so the extras store keeps its slot.
 
-    So reading 7's first direction -- "a consumer module using the package correctly checks
-    clean" -- is FALSE for 95 of the 1,459 model exports with a field, every one of them
-    for a reason only a consumer's checker can see.  Stated as a ceiling rather than left
-    in prose: the two rows drive it to zero and nothing may raise it.
+    So the counts below are EQUALITIES and not ceilings: zero errors on correct use, and
+    exactly one ``arg-type`` per misusable export with no residue beside it.  A new
+    constructed default emitted inside ``Annotated[...]``, or a new typed
+    ``additionalProperties`` emitted as a bare annotation, reddens the first of them --
+    which is the direction the two ratchets used to state.
     """
     surface = _public_models()
     claimed("public model exports of the domain surface with a field", surface)
@@ -658,31 +669,16 @@ def test_a_consumer_can_construct_every_public_model_the_wheel_exports(
     correct = tmp_path / "ctor_ok.py"
     correct.write_text("\n".join(lines) + "\n")
     reported = _consumer_errors(interpreter, correct)
-    # A SUBSET AND NOT AN EQUALITY, because the two rows below take this to the empty set
-    # and an equality against a count would then be the thing that fails.  Anything other
-    # than a missing argument is a different finding and is not ratcheted anywhere: an
-    # `Unexpected keyword argument` would say our own derivation named something that is
-    # not a parameter, and an `arg-type` would say `src.<field>` is not a value the field
-    # accepts -- neither is reading 7 being false, it is this check being wrong.
-    assert _codes(reported).keys() <= {"call-arg"}, _codes(reported)
-    assert all("Missing named argument" in line for line in reported), reported
-    dunder = [line for line in reported if "__pydantic_extra__" in line]
-    ratchet(
-        "exports demanding the __pydantic_extra__ dunder as an argument",
-        len(dunder),
-        at_most=5,
-        because="adcp-client-python-82m.53 re-declares it with the field specifier the "
-        "base carries, which takes this to zero; a new typed `additionalProperties` "
-        "emitted the present way would raise it",
-    )
-    ratchet(
-        "defaulted fields a consumer's checker reads as required",
-        len(reported) - len(dunder),
-        at_most=90,
-        because="adcp-client-python-82m.52 emits a constructed default as the field's "
-        "assigned value, which takes this to zero; a new one emitted inside "
-        "`Annotated[...]` would raise it",
-    )
+    # THE EMPTY SET, which is reading 7's first direction with nothing excused.  It was a
+    # subset of `{"call-arg"}` with two ratchets under it while 95 exports could not be
+    # constructed correctly; `adcp-client-python-82m.52` and `.53` closed both, so the
+    # reading is now an equality and the two rows' own regressions are what it catches.
+    # The error LINES and not just the codes, because this is the assertion that has to
+    # name what broke: an `Unexpected keyword argument` would say our own derivation named
+    # something that is not a parameter and a `Missing named argument` would say an
+    # annotation is lying about its optionality, and the two are repaired in different
+    # places.
+    assert reported == [], reported
 
     # Direction two, one misuse per export: a value of a type no annotation of ours admits,
     # for the first field that can refuse one.  EVERY OTHER FIELD IS NAMED CORRECTLY, so
@@ -701,17 +697,11 @@ def test_a_consumer_can_construct_every_public_model_the_wheel_exports(
     control = tmp_path / "ctor_bad.py"
     control.write_text("\n".join(lines) + "\n")
     reported = _consumer_errors(interpreter, control)
-    codes = _codes(reported)
-    assert codes["arg-type"] == len(misusable), codes
-    # The residue is `adcp-client-python-82m.53`'s again and nothing else: every field is
-    # named here, so a `Missing named argument` can only be the dunder that is not one.
-    assert codes.keys() <= {"arg-type", "call-arg"}, codes
-    ratchet(
-        "constructor misuses whose call also demands the __pydantic_extra__ dunder",
-        codes["call-arg"],
-        at_most=5,
-        because="adcp-client-python-82m.53 takes this to zero with the line above it",
-    )
+    # ONE ERROR PER MISUSE AND NOTHING BESIDE IT, as an equality over the whole counter.
+    # It admitted a `call-arg` residue while `adcp-client-python-82m.53`'s 5 exports
+    # demanded the dunder -- every field is named here, so a `Missing named argument` could
+    # only be the one that is not a field.  That row closed, so the counter is exact.
+    assert _codes(reported) == {"arg-type": len(misusable)}, _codes(reported)
 
     # And the marker: the one direction that says the two above are about an INSTALLED
     # package.  `arg-type` is gone, so every one of the misuses passes unreported.

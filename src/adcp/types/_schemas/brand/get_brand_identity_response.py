@@ -111,7 +111,7 @@ class Fonts(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/get-brand-identity-response.json', pointer='#/oneOf/0/properties/fonts')
-    __pydantic_extra__: dict[str, GetBrandIdentityResponseFontRole]
+    __pydantic_extra__: dict[str, GetBrandIdentityResponseFontRole] = Field(init=False)
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         PropertyCount(minimum=None, maximum=20),
     )
