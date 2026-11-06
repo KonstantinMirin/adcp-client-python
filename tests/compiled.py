@@ -7,7 +7,7 @@ bundle, which after ``adcp-client-python-10l.51`` took the graded pass to 39.6 s
 whole of a 22-minute warm run.  The bundle is pinned, the compiler is deterministic, and
 the output is identical at all 62 sites; so it is compiled once and read 62 times.
 
-**The key is the POPULATION and never nothing**, because there are two of them and they
+**The key is the POPULATION and never nothing**, because there are three of them and they
 do not agree:
 
 ================================================  =========  ================
@@ -15,17 +15,25 @@ population                                        documents  census
 ================================================  =========  ================
 ``sorted(bundle.portable(BUNDLE))``                   1,054  909 / 145
 ``tests.populations.population()``                      991  a different one
+``sorted(bundle.portable(fresh.SECOND))``             1,138  bundle 3.3's own
 ================================================  =========  ================
 
 A cache keyed on the bundle alone would hand one denominator's result to a caller asking
 for the other, silently, and every figure downstream would be wrong by 63 documents.  So
 the key carries the population as a tuple, and :func:`compiled` is the only way in.
 
+The first figure is read against the PUBLISHED 3.2 bundle and ``BUNDLE`` is the patched
+one, where ``bundle.portable`` answers 1,059; that staleness is
+``adcp-client-python-82m.33``'s and is left where its owner can see it.  The third row is
+the SECOND BUNDLE (``tests/fresh.py``'s ``SECOND``), whose one reader is
+``tests/test_the_second_bundle.py``: **72.0 s cold over its 1,138 portable documents**,
+measured on this box, and a stat warm.
+
 **Two layers, because one process is not the unit.**  ``functools.cache`` does not cross
 a process, so in-process alone every one of the ten xdist workers pays the compile for
-every population it touches -- measured at 280 s each on a loaded box, two populations, so
-about 9 minutes of wall clock.  So there is a second layer on disk and the first worker to
-want a population compiles it for all of them.
+every population it touches -- measured at 280 s each on a loaded box, over the two
+populations live when that was measured, so about 9 minutes of wall clock.  So there is a
+second layer on disk and the first worker to want a population compiles it for all of them.
 
 **THE DISK KEY COVERS THE COMPILER'S OWN SOURCE, and that is the whole correctness
 argument.**  The output is a function of three things -- the bundle, the population, and
