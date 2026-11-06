@@ -2208,9 +2208,15 @@ def test_the_regex_engine_is_the_documents_and_the_two_engines_do_not_agree() ->
     no_build: dict[str, int] = {}
     diverges: dict[str, int] = {}
     agrees: dict[str, int] = {}
-    #: pattern -> whether the witness match CONSUMED the trailing newline, which is
-    #: the mechanism and is what separates the two buckets (asserted below).
-    consumed: dict[str, bool] = {}
+    #: every pattern that drew at least one value the DOCUMENT admits, so no row of
+    #: either bucket is graded by a witness that never existed.
+    witnessed: set[str] = set()
+    #: how many admitting witnesses took the trailing newline INTO the match and how
+    #: many left it outside, over every pattern.  Counted so the implication asserted
+    #: per witness below cannot be green over a one-sided set.
+    took_it: dict[bool, int] = {True: 0, False: 0}
+    #: how many admitting witnesses the DEFAULT engine refused -- the finding itself.
+    refused_by_the_default = 0
     for pattern, sites in sorted(distinct.items()):
         if not _default_engine_builds(pattern):
             # It refuses to BUILD rather than mis-matching, which is the one
@@ -2228,8 +2234,20 @@ def test_the_regex_engine_is_the_documents_and_the_two_engines_do_not_agree() ->
             # the document admits it, so the engine the document is compiled with
             # must admit it, and that is the one this package uses
             assert _accepts(pattern, REGEX_ENGINE, value), (pattern, value)
-            consumed[pattern] = found.end() == len(value)
-            if not _accepts(pattern, None, value):
+            witnessed.add(pattern)
+            # **THE MECHANISM, ASSERTED PER VALUE AND NOT PER PATTERN**
+            # (``adcp-client-python-r8lk``).  A match that ran to the end of the
+            # haystack is the same match under both engines -- Rust's ``$`` matches
+            # there too -- so a value whose match TOOK the trailing newline cannot be
+            # one the default engine refuses.  That is the whole of the ``$``
+            # difference, it is a statement about the two engines, and it needs no
+            # census: it is graded on every witness, in both buckets.
+            took_the_newline = found.end() == len(value)
+            refused = not _accepts(pattern, None, value)
+            assert not (took_the_newline and refused), (pattern, value, found.span())
+            took_it[took_the_newline] += 1
+            if refused:
+                refused_by_the_default += 1
                 where = diverges
         where[pattern] = sites
 
@@ -2246,31 +2264,39 @@ def test_the_regex_engine_is_the_documents_and_the_two_engines_do_not_agree() ->
     assert sum(no_build.values()) + sum(diverges.values()) + sum(agrees.values()) == sum(
         distinct.values()
     ), (no_build, diverges, agrees)
-    # **Every pattern that diverges carries a `$`, and the 7 that agree do not
-    # contradict that.**  The previous revision said "the one that agrees is the one
-    # with no `$` to disagree about", which was a true statement about a population
-    # of one and is false now: 2 of the 7 DO carry a `$`.  Measured, the mechanism
-    # is sharper than the keyword, so it is asserted instead of the keyword -- a
-    # `$`-anchored pattern diverges only where Python's `$` had to match BEFORE the
-    # trailing newline, which is to say where the match did not consume it.  Both
-    # of the two agreeing `$` patterns end in a character class that admits `\n`
-    # (`[^/?#@]+$`, and `(?:\?[^#]*)?$`), so the newline is INSIDE the match, `$`
-    # sits at the end of the haystack, and Rust matches there too.
     # Every buildable pattern drew a value the document admits, so no row of either
     # bucket is graded by a witness that never existed.
-    assert set(consumed) == set(diverges) | set(agrees), (
-        sorted(set(diverges) | set(agrees) - set(consumed))
+    assert witnessed == set(diverges) | set(agrees), sorted(
+        (set(diverges) | set(agrees)) - witnessed
     )
+    # **Every pattern that diverges carries a `$`.**  A value the default engine
+    # refuses is one Python matched only by letting `$` land before the trailing
+    # newline, and a pattern with no `$` has no such position -- so this is the
+    # NECESSARY condition the mechanism forces, and it is the direction that holds
+    # whatever is drawn.
     assert all("$" in p for p in diverges), diverges
-    assert not any(consumed[p] for p in diverges), {p: consumed[p] for p in diverges}
-    # Within `agrees`, "carries a `$`" and "the match consumed the newline" are the
-    # SAME set of 2 -- which is the mechanism, not a coincidence of this tree.
-    assert sorted(p for p in agrees if "$" in p) == sorted(p for p in agrees if consumed[p]), (
-        sorted(agrees),
-        {p: consumed[p] for p in agrees},
+    # **AND THE CONVERSE IS NOT STATED, because it is false and the clause used to
+    # state it** (``adcp-client-python-r8lk``).  What stood here asserted that within
+    # `agrees`, "carries a `$`" and "the match consumed the newline" are the same set
+    # -- an equality between the pattern's TEXT and one witness's match -- and
+    # `^https?://...(?::[0-9]{1,5})?(?:[/?#]|$)` disproves it: its `$` is one branch
+    # of a final alternation, so a witness ending in `/` is matched identically by
+    # both engines while one ending at the host is matched only by Python's `$`.
+    # Whether that pattern's own draw reaches the `$` branch decides which bucket it
+    # joins, and the clause was measured RED at `-n 4` and green twice at `-n 0` on
+    # the same tree for exactly that reason -- a verdict reporting the draw.  The
+    # per-value implication in the loop is what that equality was standing in for,
+    # it is asserted on all of them rather than on the last draw per pattern, and it
+    # does not move with the bucket.
+    #
+    # The two guards that stop it going quiet: both polarities of "took the newline"
+    # occur among the witnesses, and at least one witness IS refused by the default
+    # engine -- which is the finding this whole clause exists to carry.
+    assert took_it[True] and took_it[False], took_it
+    assert refused_by_the_default, (
+        "no drawn value was refused by the default engine, so the two engines were "
+        "never shown to disagree and `python-re` has nothing holding it here"
     )
-    # ... and that set is non-empty, so the equality above is not two empty lists.
-    assert [p for p in agrees if "$" in p], sorted(agrees)
 
 
 def test_a_root_scalar_alias_is_compiled_with_the_same_engine_as_a_class() -> None:
@@ -2288,6 +2314,18 @@ def test_a_root_scalar_alias_is_compiled_with_the_same_engine_as_a_class() -> No
     showed it, with the admitting value DERIVED from each alias's own pattern,
     and with the document asked each time -- so this cannot pass by asserting
     what the model happens to do.
+
+
+    **THIS READS DRAW [0] AND IS GREEN BECAUSE IT DOES, WHICH IS A SECOND ROW**
+    (``adcp-client-python-SIBLING``).  ``_matching`` draws TWO witnesses and this
+    grades the first.  Measured: for ``core/https-url.json``'s ``^https://`` the
+    second witness is ``https://``, the document ADMITS ``"https://\n"`` -- its
+    ``format: uri`` checker takes it -- and the alias refuses it with
+    ``url_parsing: empty host``, which is ``adcp-client-python-rwng`` and not an
+    engine question.  So grading both witnesses turns this clause into a second
+    instrument for ``rwng``, and grading one makes its verdict a function of the
+    draw's ORDER.  It is left reading draw [0] until ``rwng`` is answered, and the
+    row carries this measurement so the choice is not re-made by accident.
     """
     aliases = claimed("aliases the tree carries", [g.ref for g in graded() if not isinstance(g.model, type)])
     with_pattern: set[SchemaRef] = set()
@@ -2359,6 +2397,23 @@ def _matching(pattern: str, examples: int = 2) -> list[str]:
     Written candidates for 11 patterns would be 11 guesses about what each one
     means, and a wrong guess shows up as a pattern graded only on misses -- which
     is why the two-engine check above requires both verdicts to appear.
+
+    **THE STREAM IS NOT A FUNCTION OF THE PATTERN, AND RE-SEEDING IT IS NOT FREE**
+    (``adcp-client-python-r8lk``).  ``derandomize=True`` seeds from
+    ``hypothesis.internal.reflection.function_digest`` of the DECORATED FUNCTION --
+    this closure, the same object for every pattern, digested from its source text
+    and from ``repr(test)`` (an address) where ``inspect.getsource`` cannot answer --
+    so the stream is a function of this file's text and of the process, never of the
+    pattern.  Re-seeding it from a digest of the pattern was MEASURED: it flips the
+    draws, and it reddens two clauses at once -- the two-engine check above lands
+    ``^https?://...(?:[/?#]|$)`` in ``agrees`` (which was its ``-n 4`` failure), and
+    the alias check below draws ``https://`` for ``core/https-url.json``, a value the
+    document admits and ``AnyUrl`` refuses, which is ``adcp-client-python-rwng`` and
+    not an engine question.  So a seed buys reproducibility and pays in two verdicts
+    that still report the draw.  **BOTH READERS ARE MADE DRAW-INDEPENDENT INSTEAD**:
+    the two-engine check asserts its mechanism per VALUE rather than per pattern, and
+    the alias check grades every witness the DOCUMENT admits rather than the first
+    one drawn.  Neither now has a verdict a different stream could move.
     """
     out: list[str] = []
 
@@ -3105,11 +3160,37 @@ def _source(document: str) -> str:
 def _symbol(document: str) -> str:
     """The name the emitted module binds the document's ROOT to.
 
-    Memoized because it RUNS THE EMITTER: at step 2's 43 documents the repeated
-    runs were affordable and at step 3's 282 they are not, and the two tests
-    below ask for the same target's symbol once per referencing property.  The
-    answer is a function of (bundle, document) alone, so the memo cannot hide a
-    change.
+    **READ OFF THE COMPILE THAT PRODUCED THE TREE EVERY CALLER IS GRADING, which is
+    ONE compile and not one per document** (``adcp-client-python-z0hk``).  This asked
+    ``compiled(BUNDLE, [document])`` -- a SINGLE-DOCUMENT compile per distinct target --
+    and the cost is not the only thing wrong with that.  Every caller here reads the
+    symbol against ``tests/fresh.py``'s ``TREE``, either as module TEXT (``_source``) or
+    as an imported attribute (``_module_of``), and that tree is
+    ``compiled(BUNDLE, tree_population())``: ``fresh._materialised`` writes exactly that
+    compile -- its own ``population()`` is this file's ``tree_population()``, the bundle's
+    portable set -- and binds it.  ``population()`` here is the union of the seven step
+    selectors and a PROPER PART of it, so it is not the one to read: 345 targets include
+    documents outside it (``content-standards/artifact-webhook-payload.json`` is the first
+    alphabetically) that the shipped tree emits and these clauses import.
+
+    **So the compile of the shipped population is the accessor the grade reads through,
+    and the symbol has to be derived from it** -- architecture §3a's "A READER DERIVES
+    ITS KEY FROM THE ACCESSOR THE GRADE READS THROUGH".  A single-document
+    compile answers truthfully about an artifact nobody here imports, and where the two
+    disagree -- a root bound by identity to another pointer's declaration lands in
+    ``adopted``, and which pointer got there first is a function of the POPULATION -- it
+    is the single-document answer that is wrong for these clauses, not merely expensive.
+
+    MEASURED, and the cost is why it was found: the 345 distinct ``$ref`` targets of
+    ``test_a_cross_document_reference_is_an_import_and_not_a_copy`` cost 345 compiles,
+    which did not terminate in 50 minutes against the suite's 900 s backstop -- green on
+    a warm store and red on a cold one, which is the one property an instrument may not
+    have.  ``tree_population()``'s compile is already paid by ``tests/conftest.py``'s
+    import of ``tests/fresh.py``, before collection, so every ask here is a dict lookup;
+    MEASURED after, the whole clause is 38.8 s.
+
+    Memoized still, for the dict lookup rather than for the compile.  The answer is a
+    function of (bundle, tree_population, document), and all three are the run's own.
 
     **RESOLVED BY THE PROVENANCE POINTER AND NEVER BY A POSITION IN A LIST.**  This
     read ``__all__[0]`` and the fact it stood on is retired: ``6cb95c568`` made the
@@ -3130,7 +3211,11 @@ def _symbol(document: str) -> str:
     # By the provenance pointer and never by position: ``__all__`` is sorted, so
     # index 0 is the root for only 1,023 of 1,054 modules.  ``declared``/``adopted``
     # at pointer ``""`` is the emitter's own record of what it bound there.
-    out = compiled(BUNDLE, [document])
+    out = compiled(BUNDLE, tree_population())
+    assert document in out.emitted, (
+        f"{document} is not in the tree this compile emitted, so no caller here can be "
+        "reading its module either"
+    )
     return {**out.adopted[document], **out.declared[document]}[""]
 
 
@@ -3173,6 +3258,7 @@ def test_a_cross_document_reference_is_an_import_and_not_a_copy() -> None:
     cross_document: set[tuple[str, str]] = set()
     graded_properties: set[tuple[str, str]] = set()
     fragment_refs: dict[tuple[str, str], str] = {}
+    conjoined_refs: dict[tuple[str, str], str] = {}
     for document in documents:
         doc = bundle.read(BUNDLE, document)
         # CROSS-document only, which is what P2 is about here: a LOCAL reference
@@ -3193,6 +3279,14 @@ def test_a_cross_document_reference_is_an_import_and_not_a_copy() -> None:
         }
         if not refd:
             continue
+        # **WHAT THE DOCUMENT APPLIES AT THE PROPERTY, not what the property's own node
+        # says alone** -- the same reading the ``additionalProperties`` clause above is
+        # already taken through ``_composed`` for, and the same correction.  ``allOf``
+        # conjoins, so a conjunct of the root that declares the SAME property narrows it,
+        # and ``_composed`` stashes that declaration as an ``allOf`` on the merged node.
+        # Asked only of a document that HAS a cross-document property reference, because
+        # folding a document is not free and 1,020 of them are graded here.
+        applied = _composed(doc, doc).get("properties", {})
         tree = ast.parse(_source(document))
         imported = {
             ("." * n.level + (n.module or ""), a.name)
@@ -3228,6 +3322,36 @@ def test_a_cross_document_reference_is_an_import_and_not_a_copy() -> None:
                 assert "#/" in uri, (document, key, uri)
                 fragment_refs[(document, key)] = uri
                 continue
+            stashed = {
+                k
+                for conjunct in applied.get(key, {}).get("allOf", [])
+                if isinstance(conjunct, dict)
+                for k in conjunct
+            }
+            if stashed - keywords.ANNOTATIONS:
+                # **A cross-document reference the DOCUMENT'S OWN COMPOSITION NARROWS,
+                # which is a fourth case and the one that was never reached.**  The
+                # property names another document AND a conjunct of this root declares
+                # facts at the same property, so what the document applies there is the
+                # INTERSECTION -- strictly less than the target admits -- and the symbol
+                # the target's module binds would accept a value this document refuses.
+                # An import is then the wrong answer and a local declaration is the
+                # right one: measured on ``formats/canonical/image.json``'s
+                # ``motion_level``, a ``$ref`` to ``enums/motion-level.json``'s three
+                # members beside ``allOf[3]`` stating ``enum: [static, limited_motion]``,
+                # which the emitter declares locally with exactly those two while
+                # ``formats/canonical/native-in-feed.json`` and
+                # ``formats/canonical/video-vast.json`` -- the same reference with no
+                # conjunct -- import ``CreativeMotionLevel``.  So the three readings
+                # agree and this clause's census was the one that did not.
+                #
+                # Counted and CHECKED rather than skipped, exactly as the fragment part
+                # above is: the stash has to carry a keyword that CONSTRAINS the
+                # instance -- one outside ``keywords.ANNOTATIONS``, the table's own
+                # reading of which keywords compile to nothing -- so a conjunct stating
+                # only a ``description`` cannot excuse a copy by landing here.
+                conjoined_refs[(document, key)] = uri
+                continue
             target = str(resolved)
             symbol = _symbol(target)
             module = emit.relative_module(document, target, bundle.package_roots(BUNDLE))
@@ -3254,9 +3378,10 @@ def test_a_cross_document_reference_is_an_import_and_not_a_copy() -> None:
             for kw in n.keywords
         }
         assert used <= _pydantic_names(local) | ANNOTATION_KWARGS, (document, sorted(used))
-    # The two halves PARTITION the cross-document property references, and both are
-    # NON-EMPTY, so neither the graded half nor the half handed to
-    # ``tests/test_fragment_ref.py`` can go quiet.
+    # The three parts PARTITION the cross-document property references, and each is
+    # NON-EMPTY, so neither the graded part nor the part handed to
+    # ``tests/test_fragment_ref.py`` nor the part the document's own composition narrows
+    # can go quiet.
     #
     # Asserted as sets and not as two totals, and this pin is the row that made the
     # case: it read ``graded_properties == 567`` while 586 was live on trunk and 606 on
@@ -3265,9 +3390,15 @@ def test_a_cross_document_reference_is_an_import_and_not_a_copy() -> None:
     # same place.  Re-pointing it was a deferral with a date.  The partition moves with
     # nobody: a reference joins one part or the other, and a reference that joins
     # NEITHER, or both, is the defect this is for.
-    partitions(cross_document, graded_here=graded_properties, handed_on=set(fragment_refs))
+    partitions(
+        cross_document,
+        graded_here=graded_properties,
+        handed_on=set(fragment_refs),
+        narrowed_by_a_conjunct=set(conjoined_refs),
+    )
     claimed("cross-document property references graded here", graded_properties)
     claimed("cross-document property references naming a fragment", fragment_refs)
+    claimed("cross-document property references a conjunct narrows", conjoined_refs)
 
 
 # --------------------------------------------------------------------------- #
