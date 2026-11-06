@@ -4270,7 +4270,7 @@ def _written_and_settled(node: Any, root: Any) -> tuple[Any, Any]:
 
 
 def _steps(
-    pointer: str, schema: Any
+    pointer: str, schema: Any, stated: Any = None
 ) -> tuple[list[tuple[Any, Any]], Any, Any] | None:
     """Each instance segment the pointer's location is made of, with the DOCUMENT's own
     subschema for the value at it -- the node the pointer itself names, and the node at
@@ -4297,6 +4297,33 @@ def _steps(
     walk was descending from had no ``allOf`` left to descend through.  90 of the bundle's
     103 provable declarations sit at such a pointer and every one of them reported "the
     document states no such keyword" with nothing drawn.
+
+    **AND A LEADING ``allOf`` INDEX IS AN INDEX INTO THE LIST THE DOCUMENT STATES, WHICH
+    IS NOT THE LIST ``schema`` CARRIES.**  ``schema`` is the node the ACCESSOR produced
+    (``adcp.types._base.applied_schema``), and at a union branch that accessor splices
+    what the enclosing node asserts about the same instance IN FRONT of the branch's own
+    conjuncts -- "the enclosing statements come FIRST and the node's own conjuncts after".
+    A declaration's pointer is the document's own spelling (``emit.stated_where_declared``
+    gates it against ``bundle.node_at``), so ``#/oneOf/0/allOf/0`` names the BRANCH's first
+    conjunct and index 0 of the applied node is the ROOT's.  ``stated`` is the starting
+    node as the document states it -- unspliced -- and a leading ``allOf`` hop is taken on
+    its own conjunct list, which is ``docs/plan/architecture.md``'s "A READER DERIVES ITS
+    KEY FROM THE ACCESSOR THE GRADE READS THROUGH" applied to the one segment where the
+    two readings of a pointer differ: a reader keyed on the other form "matches NOTHING,
+    and a check that matches nothing is green."
+
+    Measured over the 459 (pair, declaration) obligations of the bundle: **4 of them walk
+    to a different node with this reading and every other one walks to the same node**, and
+    those 4 -- ``account/sync-accounts-response.json#/oneOf/0``,
+    ``media-buy/create-media-buy-response.json#/oneOf/0``,
+    ``media-buy/request-proposals-response.json#/anyOf/1`` and
+    ``media-buy/sync-catalogs-response.json#/oneOf/1``, each at ``.../allOf/0`` on ``if``
+    -- are exactly the four ``docs/plan/unimplemented.md``'s A-9 names: a pointer the
+    document states and a strict segment-walk of the composed node could not reach.  Only
+    a LEADING hop, because the splice happens at the pointer the accessor was asked for and
+    nowhere below it: every node further in is reached by :func:`_written_and_settled` off
+    the document's own text.  ``None`` -- every caller that has no document -- walks
+    exactly as it did.
 
     **``host`` is the node at the last INSTANCE segment AS THE DOCUMENT WRITES IT, which
     is what a same-instance hop is a statement about, and ``None`` where the pointer ends
@@ -4357,9 +4384,25 @@ def _steps(
             # merged node, and a ``oneOf``/``anyOf`` hop is a branch list the fold never
             # touches, so the written half answers for ``allOf`` and the composed half for
             # the hops that were already reachable.
-            child = _down(written, word, segments[i + 1])
-            if child is None:
-                child = _down(node, word, segments[i + 1])
+            #
+            # **A LEADING ``allOf`` HOP IS TAKEN ON ``stated``, the starting node as the
+            # DOCUMENT states it**: the docstring carries why and what it measures.  It is
+            # AUTHORITATIVE and not a first guess -- where the document states a conjunct
+            # list at this node, the index the pointer spells is an index into THAT list,
+            # and an index outside it is a declaration at a pointer the document does not
+            # have, which walks to no node and is reported rather than resolved against a
+            # list the accessor assembled.
+            own = (
+                stated.get("allOf")
+                if word == "allOf" and not out and hops == 0 and isinstance(stated, Mapping)
+                else None
+            )
+            if isinstance(own, list):
+                child = _down(stated, word, segments[i + 1])
+            else:
+                child = _down(written, word, segments[i + 1])
+                if child is None:
+                    child = _down(node, word, segments[i + 1])
             written, node = _written_and_settled(child, schema)
             hops += 1
             i += 2
@@ -4378,6 +4421,7 @@ def _reached(
     instance: Any,
     custom_formats: Mapping[str, Any],
     draws: _Draws,
+    stated: Any = None,
 ) -> Any:
     """``instance`` with every node on the way to ``pointer``'s location PRESENT.
 
@@ -4412,8 +4456,13 @@ def _reached(
     declaration all name the same draw.  The index and not the instance path, because two
     declarations of one pair can reach one instance segment along different pointers and
     the node is then not the same node.
+
+    ``stated`` is :func:`_steps`' own argument passed straight through, for that function's
+    own reason: a path whose intermediate nodes are read by a different reading of the
+    pointer than the path itself is two walks that can disagree about which node a segment
+    names, and the caller's walk and this one must not be the two.
     """
-    walked = _steps(pointer, schema)
+    walked = _steps(pointer, schema, stated)
     if walked is None or not walked[0]:
         return instance
     steps = walked[0]
@@ -4660,6 +4709,41 @@ class WideningResult:
         return "pass"
 
 
+def node_as_stated(document: Any, at: str) -> Any:
+    """``document``'s own node at ``at`` -- the node as the DOCUMENT STATES it, or ``None``.
+
+    **A PLAIN POINTER WALK OF THE DOCUMENT AND NOT THE ACCESSOR, and that is the whole
+    point of it.**  ``adcp.types._base.applied_schema`` is the accessor the grade reads a
+    pair's node through, and at a union branch it splices what the enclosing node asserts
+    about the same instance IN FRONT of the branch's own ``allOf`` conjuncts.  A
+    declaration's pointer is the document's own spelling -- ``emit.stated_where_declared``
+    gates every one of them against ``bundle.node_at`` -- so the index that pointer spells
+    is an index into the list the DOCUMENT states here, and this is the one reading that
+    has it.  :func:`_steps`' ``stated`` argument carries what the difference costs and the
+    four pointers it reaches.
+
+    **ONE DERIVATION, because the obligation and the census that claims the obligation can
+    reach every site must ask the walk the SAME question.**
+    ``tests/test_approximation.py::test_no_declaration_the_tree_carries_is_one_its_pair_cannot_put_to_a_draw``
+    asks ``_steps`` whether a site is reachable, and a reading of this node there that is
+    not the reading :func:`check_widening` makes is a census over a different set from the
+    one the grade acts in.
+
+    ``None`` for a pointer the document does not hold and for no document at all, which is
+    the fail-safe direction: the walk then reads the accessor's node exactly as it did
+    before this argument existed.
+    """
+    if document is None:
+        return None
+    inside = at.lstrip("#").strip("/")
+    if not inside:
+        return document
+    try:
+        return bundle.node_at(document, inside)
+    except (KeyError, IndexError, TypeError, ValueError):
+        return None
+
+
 def check_widening(
     schema: dict,
     accept: Callable[[Any], Any],
@@ -4671,6 +4755,7 @@ def check_widening(
     corpus: Any = None,
     identity: Any = None,
     fixtures: "Fixtures | None" = None,
+    document: Any = None,
 ) -> WideningResult:
     """Section 8's accepts OBLIGATION, one declaration at a time.
 
@@ -4729,6 +4814,18 @@ def check_widening(
     :func:`check_accepts`' reason: the schema handed here is a rendering of a document and
     keying on it is the defect :func:`corpus_key` exists to close.  With no ``corpus`` this
     check draws exactly as it always did.
+
+    **``document`` IS WHAT MAKES A DECLARED POINTER'S ``allOf`` INDEX READABLE**, and it is
+    the same argument :class:`Pair` already carries for the same reason -- "the scope a
+    LOCAL ``$ref`` on the document side is relative to, which a nested pair's node does not
+    contain".  ``schema`` is the ACCESSOR's node, and at a union branch the accessor splices
+    the enclosing node's same-instance statements in front of the branch's own conjuncts; a
+    declaration's pointer is the document's own spelling, so the index it spells is an index
+    into the list the DOCUMENT states at this pointer.  :func:`_steps`' ``stated`` carries
+    the reading and the measurement -- 4 of the bundle's 459 obligations, each
+    ``docs/plan/unimplemented.md`` A-9's "a pointer a strict segment-walk of their own
+    document of record cannot reach".  ``None`` -- every caller in
+    ``tests/test_approximation.py`` -- walks exactly as it did.
     """
     if corpus is not None and identity is None:
         raise ValueError(
@@ -4741,6 +4838,13 @@ def check_widening(
     cf = dict(custom_formats)
     draws = _Draws(corpus=corpus, identity=identity, fixtures=fixtures)
     validator_cls = validator_for(schema)
+    #: The node under grade AS THE DOCUMENT STATES IT, read once per pair: a plain pointer
+    #: walk of the document and not the accessor, because what every walk below needs off
+    #: it is the one thing the accessor respells -- its own ``allOf`` list.  A pointer the
+    #: document does not hold leaves this ``None`` and the walks read ``schema`` exactly as
+    #: they did, which is the fail-safe direction and the behaviour of every caller that
+    #: supplies no document.
+    stated = node_as_stated(document, at)
     for one in declared:
         res.declarations += 1
         if one.kind == UNDERDETERMINED:
@@ -4754,7 +4858,7 @@ def check_widening(
         # **The node READ THE WAY THE DOCUMENT STATES IT** (:func:`_steps`): a local
         # ``$ref`` resolved and a conjunction folded at every depth, so the declaration
         # and the obligation that proves it agree about where the fact is.
-        walked = _steps(relative, schema)
+        walked = _steps(relative, schema, stated)
         if walked is None:
             res.unproved.append(
                 f"{one.pointer}/{one.keyword}: the pointer describes no instance "
@@ -4834,7 +4938,9 @@ def check_widening(
             payload = None
             refused = False
             for base in _bases(schema, path, instances, cf, demanded, draws):
-                attempt = _placed(_reached(schema, relative, base, cf, draws), path, value)
+                attempt = _placed(
+                    _reached(schema, relative, base, cf, draws, stated), path, value
+                )
                 if attempt is None:
                     continue
                 if conforms(schema, attempt, validator_cls=validator_cls) is False:
@@ -7289,6 +7395,15 @@ def check_pair(
             corpus=widening_corpus,
             identity=pair.identity,
             fixtures=fixtures,
+            #: **The scope a DECLARED POINTER's ``allOf`` index is read in**, and the same
+            #: object ``resolve`` above is handed for the neighbouring reason.  The
+            #: obligation walks a declaration's pointer from ``drawn_from``, which is the
+            #: ACCESSOR's node; at a union branch the accessor splices the enclosing node's
+            #: same-instance statements in front of the branch's own conjuncts, so the
+            #: index the document spells names one conjunct and the index into that node
+            #: names another.  :func:`check_widening`'s ``document`` and :func:`_steps`'
+            #: ``stated`` carry the reading and the four pointers it reaches.
+            document=pair.document,
         )
     return rep
 
