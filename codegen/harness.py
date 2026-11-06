@@ -6934,6 +6934,65 @@ def separates(
     return None
 
 
+def _branch_is_a_shape(applied: Any, branch: Mapping[str, Any]) -> bool:
+    """Does §4 lower this branch to a BRANCH CLASS whose declaration order can decide?
+
+    :func:`_inseparable`'s shape test, read once here because it has two answers and the
+    second one is not a special case of the first.
+
+    **A ``required``-ONLY BRANCH IS A SHAPE, AND THE WALK IS WHAT SAYS SO.**  The premise
+    :func:`_inseparable` was written on -- "a union whose branches are not all shapes
+    lowers to an alias over the union of their types, so there are no branch classes for a
+    declaration order to choose between" -- is true of the union whose EVERY branch is
+    ``required``-only, and that one leaves at the presence-only clause before this test is
+    reached.  It is FALSE of the MIXED union, measured at
+    ``media-buy/proposal-refinement.json#/oneOf/1/anyOf`` (``adcp-client-python-tsg``): 6
+    of its 7 branches expand through the store to ``{"required": [one name]}`` and the
+    seventh pins ``change_kind`` to ``cancellation``, and §4 lowers the node to a base plus
+    **seven** branch subclasses in the document's own branch order, dispatching on no key.
+
+    The payload ``{"proposal_id": "p-1", "action": "revise", "constraints":
+    {"impressions": {"min": 1000}}, "ask": "cheaper please"}`` is admitted by branches 0
+    AND 3 of that ``anyOf`` and becomes ``ProposalRefinementReviseConstraints``; the same
+    payload without ``constraints`` becomes ``ProposalRefinementReviseAsk``.  So which
+    class an overlapping payload becomes is a property of declaration order -- the whole of
+    what UNDERDETERMINED names -- the declaration at that site is EARNED, and this test was
+    the half of the equality that disagreed.
+
+    A branch stating only ``required`` constrains the very object instance the ROOT
+    describes, which is a shape in exactly the sense this question asks about: it owns a
+    class, it carries a field the base leaves optional, and its position in the branch list
+    is what an overlapping payload is resolved by.
+
+    Measured over the 1,059-document bundle: this answer admits ONE union, the one above;
+    the stale direction of the census goes 1 to 0 and its silent direction is unchanged at
+    the same 5 sites.
+    """
+    if branch.get("required") and set(branch) <= {"required"}:
+        return True
+    #: **EVERY VIEW OF THE BRANCH and not the branch node alone**, which is §8's third
+    #: pairing rule ("a node at a CONJUNCT of an ``allOf`` is paired with its node read AS
+    #: THE COMPOSITION") and the reading every other clause of this derivation already
+    #: makes (:func:`_views`, "``node`` and every node its ``allOf`` applies to the SAME
+    #: instance").
+    #:
+    #: Measured on ``core/async-response-data.json#/anyOf``: 3 of its 42 branches -- 6, 8
+    #: and 28 -- state their object-ness in an ``allOf`` conjunct and carry neither
+    #: ``type`` nor ``properties`` at their own top level, so the node-only test rejected
+    #: them and the 42-branch union was skipped whole.  With the composition read,
+    #: ``separates`` answers ``None`` for 846 of its 861 pairs.  The payload says the same
+    #: thing independently: the instance the accepts corpus holds for branch pair
+    #: ``#/anyOf/0`` -- ``{"cache_scope": "public", "status": "failed", "unchanged": true,
+    #: "wholesale_feed_version": ""}`` -- satisfies 17 of the 42 branches, so the union IS
+    #: overlapping, ``lower.union.overlapping`` is right, and the disagreement was this
+    #: gate.
+    return any(
+        (view.get("type") or applied) == "object"
+        or ((view.get("type") or applied) is None and view.get("properties"))
+        for view in _views(branch)
+    )
+
+
 def inseparable_unions(record: Mapping[str, Any]) -> tuple[str, ...]:
     """Every union POINTER of this record whose branches the derivation cannot separate.
 
@@ -7048,29 +7107,12 @@ def _inseparable(
             if all(set(b) <= {"required"} for b in branches):
                 continue
             applied = [b.get("type") or node.get("type") for b in branches]
-            #: **THE SHAPE TEST READS EVERY VIEW OF THE BRANCH and not the branch node
-            #: alone**, which is §8's third pairing rule ("a node at a CONJUNCT of an
-            #: ``allOf`` is paired with its node read AS THE COMPOSITION") and the reading
-            #: every other clause of this derivation already makes (:func:`_views`,
-            #: "``node`` and every node its ``allOf`` applies to the SAME instance").
-            #:
-            #: Measured on ``core/async-response-data.json#/anyOf``: 3 of its 42 branches --
-            #: 6, 8 and 28 -- state their object-ness in an ``allOf`` conjunct and carry
-            #: neither ``type`` nor ``properties`` at their own top level, so the node-only
-            #: test rejected them and the 42-branch union was skipped whole.  With the
-            #: composition read, ``separates`` answers ``None`` for 846 of its 861 pairs.
-            #: The payload says the same thing independently: the instance the accepts
-            #: corpus holds for branch pair ``#/anyOf/0`` --
-            #: ``{"cache_scope": "public", "status": "failed", "unchanged": true,
-            #: "wholesale_feed_version": ""}`` -- satisfies 17 of the 42 branches, so the
-            #: union IS overlapping, ``lower.union.overlapping`` is right, and the
-            #: disagreement was this gate.
+            #: **THE SHAPE TEST IS :func:`_branch_is_a_shape`**, which carries both of its
+            #: answers and the measurement behind each: the composed view of a branch that
+            #: states its object-ness in an ``allOf`` conjunct, and the ``required``-only
+            #: branch of a MIXED union, which §4 lowers to a branch class like any other.
             if not all(
-                any(
-                    (view.get("type") or t) == "object"
-                    or ((view.get("type") or t) is None and view.get("properties"))
-                    for view in _views(b)
-                )
+                _branch_is_a_shape(t, b)
                 for t, b in zip(applied, branches, strict=True)
             ):
                 continue

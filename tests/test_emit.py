@@ -83,6 +83,7 @@ from pydantic_core import PydanticCustomError
 
 from adcp.types._base import (
     REGEX_ENGINE,
+    UNDERDETERMINED,
     WIDENED,
     AdCPBaseModel,
     AdCPRootModel,
@@ -1500,6 +1501,178 @@ def test_every_class_passes_all_three_checks(row: Graded) -> None:
             _grades_a_cause(cause)
     else:
         assert rep.outcome == "pass", rep.outcome
+
+
+def test_every_declared_fact_holds_a_value_at_its_innermost_graded_carrier() -> None:
+    """**Reading 2's second conjunct, which no check of this suite owned**
+    (``adcp-client-python-82m.57``).
+
+    ``docs/plan/final-state.md`` reading 2: "every declaration holds a value that
+    demonstrates it.  A declaration with no value behind it is an allowlist wearing a
+    measurement" -- decided by "the store of proving values containing one for each FACT,
+    where an entry recording a budget cut is not a value, and where a count over carrying
+    positions is not the count this reading names".
+
+    :func:`test_every_class_passes_all_three_checks` asserts ``accepts``, ``liveness`` and
+    ``undeclared``, and says nothing about ``rep.widening``.  So the widening column was a
+    column nothing graded: six ``fail:unproved_widening`` cells sat in it and were found by
+    a lane reading the verdict table by hand rather than by a red.  A deciding conjunct
+    with no clause is one layer worse than a clause that passes when nothing happens --
+    there is nothing to pass -- and this is the clause that owns it.
+
+    **IT COUNTS FACTS AND NOT CARRIERS, which is the whole of why it is not one more
+    ``assert`` on the parametrised test above.**  A fact stated at a node is carried by
+    every pair whose own node contains it (``render.declared_at``) and the obligation walks
+    the declaration's pointer from the carrying pair's node, so one fact is owed once and
+    offered at several positions.  Measured over the tree this run emits: of the graded
+    pairs, 206 declare something and carry 488 (pair, declaration) obligations; 29 of those
+    are UNDERDETERMINED, which no draw can see and which §8's disjointness equality grades
+    instead (``tests/test_the_declared_backlog.py``); the 459 that remain are **360 facts**
+    plus 99 obligations at a carrier that is not the fact's innermost one.  A clause keyed
+    on obligations reddens on those 99 -- which is exactly the reading reading 2's
+    amendment removes, and how an ungated conjunct becomes an over-strict one on its first
+    implementation.
+
+    **SO THE CONDITION IS THE AMENDMENT'S OWN: the innermost carrier is itself GRADED AND
+    PASSING ON THAT FACT.**  "A carrying position inherits that proof; it does not owe a
+    second one" -- but "inheritance from an ungraded position proves nothing", so a cell
+    the pair budget cut cannot stand in for a value, and a non-pass cell is admitted only
+    where every entry in it is attributable to a fact this pair carries whose innermost
+    carrier is elsewhere.  Nothing is marked, nothing is skipped and no bound is lowered:
+    the division of labour is asserted rather than assumed, and it reddens the moment a
+    fact's own innermost carrier is the position that fails.
+
+    **THE TWO CUT CELLS ARE A RED WITH AN OWNER AND NOT AN EXEMPTION HERE.**
+    ``media-buy/refine-proposals-response.json#`` (``adcp-client-python-rs0m``) and
+    ``media-buy/get-media-buys-response.json#`` (:data:`PAIR_BUDGET`'s named residue)
+    exceed the budget, so their cells carry ``detail`` and read ``error``.  They fail under
+    their own names and this clause does not re-raise that; what it refuses is to let a cut
+    count as proof.  Both are required to carry no fact whose innermost carrier they are,
+    and a cell that did not grade for any reason OTHER than that budget is a red here with
+    no further argument available to it.
+
+    **The declaring pairs are DERIVED and the rest are not graded here.**  The obligation
+    is over the pairs that declare something; grading the other 2,383 costs the whole
+    population's pass and adds nothing this clause reads -- a pair that declares nothing
+    has no widening cell at all, which is the ``absent`` the verdict table prints and the
+    complement of the set named below.  Measured on this box with the two stores warm:
+    1,017 s for the 206, about 830 s of it in the three slowest pairs.
+    """
+    #: fact -> every declaring pair that carries it, as pair name -> that pair's pointer.
+    #: The pointer travels with the name because "innermost" is a question about it.
+    carried: dict[tuple[str, str, str], dict[str, str]] = {}
+    declaring: dict[str, Graded] = {}
+    obligations = 0
+    underdetermined = 0
+    for g in graded():
+        pair = pair_of(g)
+        if not pair.declared:
+            continue
+        name = f"{g.ref.document}{g.ref.pointer}"
+        declaring[name] = g
+        for one in pair.declared:
+            obligations += 1
+            if one.kind == UNDERDETERMINED:
+                # §2: "no draw or dump can see one", so this obligation claims none and
+                # ``check_widening`` does not count it either.
+                underdetermined += 1
+                continue
+            carried.setdefault(harness.site_of(one), {})[name] = g.ref.pointer
+    claimed("pairs that declare a fact", set(declaring))
+    facts = claimed("facts owed a proving value", set(carried))
+    # **The two readings are DIFFERENT over this tree, asserted and not asserted away.**
+    # This clause and an obligation-keyed one agree exactly when no fact is carried twice,
+    # and then the paragraph above is a distinction without a difference and the next
+    # reader should re-read it rather than trust it.
+    claimed(
+        "facts carried at a position that is not their innermost one",
+        {site for site, where in carried.items() if len(where) > 1},
+    )
+    # The arithmetic the paragraph above states, as an identity over the derived sets
+    # rather than as prose: an obligation this check claims is a fact at one of its
+    # carriers, so the obligations are the facts plus the carriers beyond the first.
+    assert obligations - underdetermined == len(facts) + sum(
+        len(where) - 1 for where in carried.values()
+    )
+
+    #: fact -> the one carrier no other carrier of that fact is contained by.  The carriers
+    #: of one fact are a CHAIN by construction -- ``render.declared_at`` carries a
+    #: declaration to every pair whose pointer is a prefix of the declaration's -- and that
+    #: is asserted rather than assumed, because "innermost" means nothing for two carriers
+    #: neither of which contains the other.
+    innermost: dict[tuple[str, str, str], str] = {}
+    unordered: list[Any] = []
+    for site, where in carried.items():
+        deepest = max(where, key=lambda name: len(where[name]))
+        if any(not where[deepest].startswith(pointer) for pointer in where.values()):
+            unordered.append({"fact": site, "carriers": sorted(where.values())})
+        innermost[site] = deepest
+    assert unordered == [], unordered
+
+    reports = {name: graded_report(g) for name, g in sorted(declaring.items())}
+    # A declaring pair with no widening cell at all: the check never ran on a pair that
+    # owes it, which is the ``absent`` cell of a pair that declares nothing appearing where
+    # a declaration is.
+    assert [name for name, r in reports.items() if r.widening is None] == []
+    column: dict[str, list[str]] = collections.defaultdict(list)
+    for name, r in reports.items():
+        column[r.widening.outcome].append(name)
+    # **THE COLUMN, PARTITIONED BY ITS OWN VERDICTS**, so an outcome this clause has no
+    # reading for is reported as a pair accounted for by no part instead of passing
+    # silently through an ``in`` test.
+    partitions(
+        declaring,
+        proved=column["pass"],
+        nothing_owed=column["no_declarations"],
+        unproved=column["unproved_widening"],
+        narrowing=column["narrowing_wearing_a_declaration"],
+        cut=column["error"],
+    )
+    # A narrowing wearing a declaration is reading 2's first half failing and there is no
+    # division of labour that admits one: the class refuses a value its document admits.
+    assert column["narrowing_wearing_a_declaration"] == []
+    # **A cell reading "nothing was owed" has to owe nothing**, derived from the same
+    # declarations rather than taken from the cell: these are exactly the pairs whose every
+    # declaration is UNDERDETERMINED, and §8's equality is where each of those is graded.
+    assert set(column["no_declarations"]) == {
+        name
+        for name, g in declaring.items()
+        if all(one.kind == UNDERDETERMINED for one in pair_of(g).declared)
+    }, sorted(column["no_declarations"])
+
+    #: Every FACT whose own innermost carrier does not prove it, by fact, carrier and the
+    #: carrier's own words.  ``check_widening`` heads each entry with
+    #: ``<pointer>/<keyword>: ``, so a cell's failures are attributable to the fact they are
+    #: about and a sibling fact's failure at the same pair is not read as this one's.
+    unproved: list[Any] = []
+    for site, name in sorted(innermost.items()):
+        cell = reports[name].widening
+        if cell.detail:
+            unproved.append(
+                {"fact": site, "innermost carrier": name, "did not grade": cell.detail}
+            )
+            continue
+        for entry in list(cell.unproved) + list(cell.narrowings):
+            if entry.startswith(f"{site[1]}/{site[2]}: "):
+                unproved.append({"fact": site, "innermost carrier": name, "says": entry})
+    assert unproved == [], unproved
+
+    #: Every non-pass cell, and the ONE argument available to it.  An entry has to name a
+    #: fact this pair carries -- otherwise the cell reports something this derivation does
+    #: not know about and the clause would be green on a failure it cannot see -- and a cell
+    #: that did not grade has to have been cut by the pair budget and by nothing else.
+    unaccounted: list[Any] = []
+    for name in sorted(column["unproved_widening"] + column["error"]):
+        cell = reports[name].widening
+        if cell.detail and not cell.detail.endswith(f"did not grade inside {PAIR_BUDGET} s"):
+            unaccounted.append({"pair": name, "did not grade, and not on the budget": cell.detail})
+        for entry in list(cell.unproved) + list(cell.narrowings):
+            if not any(
+                entry.startswith(f"{site[1]}/{site[2]}: ") and name in carried[site]
+                for site in facts
+            ):
+                unaccounted.append({"pair": name, "names no fact this pair carries": entry})
+    assert unaccounted == [], unaccounted
 
 
 #: The three pointer segments a conditional is spelled with.  A node under one is a
