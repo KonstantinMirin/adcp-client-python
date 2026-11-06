@@ -135,7 +135,6 @@ BY_DESIGN = {
 OWED = frozenset(
     {
         "test_emit_product",
-        "test_union_disjointness",
     }
 )
 
