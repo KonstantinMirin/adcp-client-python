@@ -1136,6 +1136,24 @@ subsection names the properties:
   because an exclusion that excludes nothing silently widens the patch the day its site moves, and
   the next site to *gain* the structure there is rewritten with nobody having read what it means.
 
+**AND A BUNDLE DIRECTORY MUST SAY WHETHER IT IS PATCHED, BECAUSE A CALLER CANNOT TELL.** A published
+bundle and the directory the patch materialises are both *a directory of documents*, and nothing in
+either distinguishes them. So applying the set twice raises on the first entry whose defect the
+first pass already fixed — and **that raise is indistinguishable from the expiry rule firing for
+real.** The mechanism is right; the ambiguity is the defect, and it converts a correct refusal into a
+message about the wrong thing.
+
+**A VALUE WHOSE STATE CANNOT BE READ FROM IT PUTS THE OBLIGATION ON EVERY CALLER, AND EVERY CALLER
+IS WHERE IT GETS DECIDED WRONG.** An argument that is sound only when the caller remembers which of
+two things it holds is not a contract, it is a convention — and a convention is tested by how many
+readers obey it, which is a count that only ever goes down.
+
+**SO THE PATCHED DIRECTORY CARRIES ITS OWN RECORD OF WHAT WAS APPLIED, AND APPLYING THE SAME SET
+AGAIN IS A NO-OP THAT SAYS SO.** Then a double application is answerable from the value instead of
+from the caller's memory, the expiry refusal means only what it says, and the reading that makes a
+bundle groundable — the record beside it naming its upstream state — is the same record doing both
+jobs.
+
 **AND EVERY ONE OF THOSE REFUSALS IS A COMPARISON AGAINST THE PUBLISHED BUNDLE, WHICH MAKES THE
 PUBLISHED BUNDLE PART OF THE OVERRIDE.** `load` raises where the published bundle *already* holds
 what the entry adds. "Already" is a comparison, and a comparison needs a second operand that is
