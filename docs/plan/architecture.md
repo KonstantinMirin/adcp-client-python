@@ -612,6 +612,31 @@ only a home outside every document module is that.
 one.** Where the home was a stating position it ranked them; now the rank is the dependency order
 the layers already state, which is a function of the bundle and not of a walk.
 
+**AND THE LAYER IS ONE MODULE PER ENTRY, BECAUSE A GROUPING BY LAYER OR BY NAMESPACE IS ACYCLIC ONLY
+BY MEASUREMENT.** The layering above reads as though L2 depends on L0 and L1 alone. It does not: a
+moving entry's node may itself contain a `$ref`, which is an import of a DOCUMENT class, so a
+catalogue module grouped with others can import a document module and be imported back by any
+document stating one of its entries. **The dependence is not incidental and it grows as the bundle
+improves** — extracting a repeated inline constraint replaces it with a reference, so the better
+schema raises it.
+
+**ONE MODULE PER ENTRY IS ACYCLIC BY DERIVATION, and the derivation is the reason to prefer it.**
+Render each at its group's earliest stating document in the reference order. With `idx` that order's
+index, `φ(D) = idx(D)` for a document module and `φ(C) = idx(home) − ½` for an entry's module, every
+edge strictly decreases `φ`: a reference out of the entry decreases because the bundle already
+states it; a document importing the entry decreases because its home is earliest; and two entries
+cannot nest mutually. **A cycle is then not avoided, it is unrepresentable** — which is the standard
+§3a set and the one a grouping cannot meet.
+
+**L1 IS THE PRECEDENT AND NOT THE PROBLEM.** A type derived from a CONSTRAINT belongs to no document
+and already lives outside every document module. What this rule extends to L0 and L2 is what L1
+states about itself.
+
+**AND THE COST IS READING 6'S SURFACE, NOT THE HOME RULE.** Relocating an entry moves where a class
+is DECLARED, so the export record, the binds and the domain surface move with it, and a public
+namespace with no document appears. That is the bulk of the work and it belongs to reading 6; the
+home rule decides only where the declaration goes.
+
 **AND ITS NAME LENGTHENS BY ITS HOME'S CHAIN, NEVER BY AN ARBITRARY STATING POSITION.** §4 lengthens
 a collision by the nearest ancestor segment, and an entry stated at six positions has six such
 segments — so without this sentence the name is a function of which position a walk happened to
