@@ -1821,8 +1821,19 @@ class BranchDispatchMixin(_MixedInto):
         **Asked of a KEYLESS base only.**  With a key, pydantic validates against the one
         branch the key names and the answer is the document's own function of the
         instance; there is nothing selected by order and nothing to screen.
+
+        **AND ASKED OF A MAPPING ONLY, which is measured and not a precaution.**  A
+        branch of an object union is an object class, so a WIRE payload reaching one is a
+        mapping -- but pydantic also validates a base-typed field from an already
+        constructed MODEL INSTANCE, and the document half grades JSON.  Without this
+        screen ``tests/test_emit.py::test_a_union_base_instance_and_a_branch_each_serialise_as_what_they_are``
+        refused ``A2UIBoundValueLiteralString(literalString='')`` with
+        ``is not of type 'object'`` -- the schema's verdict about a Python object, which is
+        a statement about the instrument and not about the payload.  An instance has
+        already been through this dispatch once, so there is nothing selected by order on
+        that path either.
         """
-        if cls._BRANCH_DISCRIMINATOR:
+        if cls._BRANCH_DISCRIMINATOR or not isinstance(value, Mapping):
             return None
         answered = type(got)
         ref = answered.__dict__.get("__adcp_schema__") or getattr(
