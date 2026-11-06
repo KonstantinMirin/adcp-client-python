@@ -56,7 +56,15 @@ from codegen.refusal import Refusal
 from tests.nodeset import claimed, partitions
 
 REPO = Path(__file__).resolve().parents[1]
-BUNDLE = REPO / "schemas" / "cache" / "3.2"
+
+#: **The bundle a run reads, taken from the ONE declaration of it**
+#: (``adcp-client-python-fr4r``).  This module held its own published literal while
+#: :data:`TREE` below is the tree a fresh run emits from the PATCHED bundle, so the two
+#: halves of every compare here came from two different document sets: ``patches/8525``
+#: ADDS ``core/country-code.json``, the tree carries a module for it, and
+#: ``bundle.portable`` over the published directory does not name it --
+#: ``inlined[ref.document]`` raised ``KeyError: 'core/country-code.json'``.
+BUNDLE = fresh.BUNDLE
 
 #: The tree a FRESH run emits, which is what every byte compare below is against
 #: (``docs/plan/architecture.md``, 2026-10-29).  ``tests/fresh.py`` owns it;
@@ -293,8 +301,8 @@ def test_a_local_reference_is_left_in_the_record_exactly_as_the_document_writes_
     survived: 3 of the 13 did, the ones whose chain is RECURSIVE and has no finite
     inlining.
 
-    Now all 13 keep every local reference they state, and that is the stronger claim,
-    because it is a property of the inliner rather than of what the library could
+    Now every one of them keeps every local reference it states, and that is the stronger
+    claim, because it is a property of the inliner rather than of what the library could
     manage.  ``harness._normalize`` resolves a local ``$ref`` against the whole
     resolved DOCUMENT, which is the reading architecture §9 keeps for exactly
     this; and ``bundle.undecidable_references`` counts none of them, because a
@@ -321,9 +329,17 @@ def test_a_local_reference_is_left_in_the_record_exactly_as_the_document_writes_
         and all(not bundle.split_ref(u)[0] for _, u, _ in rs)
     ]
     claimed("documents whose every reference is local", local, inside=bundle.portable(BUNDLE))
+    #: The hard cases, named so the population above cannot shrink to the easy ones
+    #: silently.  **Re-measured against the bundle a run reads** when
+    #: ``adcp-client-python-fr4r`` moved this module off the published path: ``patches/8525``
+    #: rewrites five of these thirteen documents to ``$ref`` a document it ADDS, so they
+    #: state a cross-document reference now and are graded by this module's cross-document
+    #: clauses instead -- the population is 8, and ``core/placement-presentation.json`` is
+    #: one of the five (``/definitions/image_decoration/properties/image_ref/properties/uri``
+    #: now points at ``core/https-url.json``).  A verdict that moves because the bundle moved
+    #: is re-derived and re-read, which is ``tests/test_judgment_table.py``'s rule.
     recursive = {
         "core/bidding-policy-capability.json",
-        "core/placement-presentation.json",
         "governance/reported-outcome-error.json",
     }
     assert recursive <= set(local), sorted(recursive - set(local))
