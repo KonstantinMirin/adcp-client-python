@@ -87,6 +87,20 @@ MANIFEST = "manifest.json"
 #: take in the bundle.
 DOCUMENTS = "documents"
 
+#: **THE SUFFIX OF THE RECORD THAT STANDS BESIDE A BUNDLE DIRECTORY**, published or patched.
+#:
+#: ``docs/plan/architecture.md``, under "AND A BUNDLE DIRECTORY MUST SAY WHETHER IT IS
+#: PATCHED, BECAUSE A CALLER CANNOT TELL": *the patched directory carries its own record of
+#: what was applied, and applying the same set again is a no-op that says so.*
+#:
+#: **BESIDE THE DIRECTORY AND NEVER INSIDE IT.**  ``bundle.portable`` enumerates
+#: ``bundle.rglob("*.json")``, so a record written under the bundle root would be a
+#: DOCUMENT -- compiled, graded and counted among the 1,625.  The published bundles already
+#: spell it this way (``schemas/cache/3.2.provenance.json``), and ``tests/provenance.py``
+#: takes this constant rather than restating it: a convention spelled twice is tested by how
+#: many readers obey it, which is a count that only ever goes down.
+RECORD_SUFFIX = ".provenance.json"
+
 #: **THE PATCH SETS THE BUILD APPLIES, in the order they are applied** -- paths relative to
 #: the checkout, which is where a patch set lives.
 #:
@@ -109,6 +123,132 @@ DOCUMENTS = "documents"
 #: none of them was in the bundle any run read: the whole point of the set -- "extraction
 #: gives the structure a document path, which IS its name" -- had never reached the tree.
 BUILD = ("patches/8525", "patches/8735")
+
+
+def record_path(bundle_dir: Path) -> Path:
+    """The record that stands beside ``bundle_dir``: ``<bundle_dir><RECORD_SUFFIX>``.
+
+    One spelling of the convention, for both kinds of bundle.  ``tests/provenance.py``
+    reads the published bundles' records through this function and :func:`for_build`
+    materialises the patched one's beside the directory it names.
+    """
+    return bundle_dir.with_name(f"{bundle_dir.name}{RECORD_SUFFIX}")
+
+
+def record_beside(bundle_dir: Path) -> dict | None:
+    """The record beside ``bundle_dir``, parsed, or ``None`` where there is none.
+
+    ``None`` and not a raise, because a bundle with no record is the ordinary case for
+    every bundle assembled in a test: the suite builds two-document directories in
+    ``tmp_path`` and patches them, and requiring a record of those would make this
+    mechanism a tax on every fixture rather than a reading of the two bundles that are
+    shipped.  What a missing record costs is stated at :func:`sets_applied`.
+    """
+    path = record_path(bundle_dir)
+    if not path.is_file():
+        return None
+    return json.loads(path.read_text())
+
+
+def sets_applied(bundle_dir: Path) -> tuple[str, ...] | None:
+    """**The patch sets ``bundle_dir`` ALREADY HOLDS, read off the record beside it**, or
+    ``None`` where no record says.
+
+    This is the reading the architecture rule exists for.  A published bundle and the
+    directory :func:`for_build` materialises are both *a directory of documents*: before
+    this function there was nothing to ask, so :func:`for_build` applied the table to
+    whatever it was handed and the second application raised :func:`load`'s *"the published
+    bundle already holds it"* -- **the expiry refusal, firing for a reason that is not
+    expiry.**  Three readers got that wrong in one day (``adcp-client-python-ywff``,
+    ``adcp-client-python-qzx.17``, and a re-emit of my own), which is an interface inviting
+    the error rather than three careless callers.
+
+    ``None`` is *"no record says"* and is treated as a published bundle, which is what it
+    was before this existed.  A published bundle's own record (``schemas/cache/3.2.
+    provenance.json``) states no ``applied`` key and reads ``None`` here too -- the key's
+    ABSENCE is the statement, so the two shipped records needed no edit and a bundle that
+    has been patched cannot be mistaken for one that has not.
+    """
+    record = record_beside(bundle_dir)
+    if record is None or "applied" not in record:
+        return None
+    return tuple(str(name) for name in record["applied"])
+
+
+def _ground_of(source: Path) -> dict | None:
+    """The PUBLISHED bundle's own record, as reached from ``source`` -- which may itself be a
+    patched step of the same build, in which case it already carries the answer forward.
+
+    ``None`` is *"not groundable"*: ``source`` is a bundle with no record of its own, or a
+    patched copy of one.  Said once here because both writers of a patched record need it and
+    the two must not disagree about what grounds a bundle.
+    """
+    beside = record_beside(source)
+    if sets_applied(source) is None:
+        return beside
+    beside = beside or {}
+    if not beside.get("grounded"):
+        return None
+    return {
+        "bundle": beside.get("published"),
+        "digest": beside.get("published_digest"),
+        "upstream": beside.get("upstream"),
+    }
+
+
+def _a_patched_record(ground: dict | None, applied: Sequence[str]) -> dict:
+    """What the record beside a patched directory says, as a function of its inputs alone.
+
+    **ONE RECORD, BOTH JOBS**, which is the rule's last clause: *"the reading that makes a
+    bundle groundable -- the record beside it naming its upstream state -- is the same
+    record doing both jobs."*  So this states what was applied AND carries the published
+    bundle's own upstream state forward, by REFERENCE to the record beside it rather than by
+    re-deriving it: the ``digest`` here is the digest that record states, and
+    ``tests/test_a_bundle_states_which_upstream_it_is.py`` is what keeps that claim a fact
+    about the bytes rather than a decoration.  Re-digesting 125 MB to copy a gated figure
+    would buy nothing and would be paid on every cold build.
+
+    **A FUNCTION OF ITS INPUTS AND NOT OF THE DIRECTORY IT SITS BESIDE**, which is what makes
+    it safe to rename: :func:`for_build` stages a patched bundle under a temporary name and
+    ``os.replace``\\ s it onto its key, and a record naming its own directory would be wrong
+    for half of that. The directory's name is already a digest of these same inputs, so
+    stating it here would be a second, staler copy of the answer.
+
+    **AND THE PUBLISHED BUNDLE IS NAMED THE WAY ITS OWN RECORD NAMES IT**, which is the
+    checkout-relative spelling ``store.key`` normalises to -- taken from the record rather
+    than re-derived, so the two cannot drift and this module needs no second normalisation
+    of a path.  ``grounded`` is false where the published bundle carries no record at all --
+    a patched copy of a fixture, which is groundable in nothing and says so rather than
+    reading as upstream-less.
+
+    **``applied`` IS CUMULATIVE, because the sets compose.**  ``apply`` is called once per set
+    over the output of the one before it, so each step's record states every set applied so
+    far and the LAST step's record is the whole BUILD's.  ``patch_set_digest`` ranges over
+    that cumulative list, which is exactly the digest :func:`for_build` keys the directory
+    on, so the record and the directory's name are a function of one thing.
+
+    **TWO WRITERS AND ONE DERIVATION**, which is why ``ground`` is an argument rather than a
+    path to read: :func:`apply` writes a step's record and :func:`for_build` writes a missing
+    one back beside a directory it finds already built, and the two reach the published
+    bundle differently (:func:`_ground_of`) while owing the same answer.
+    """
+    named = (ground or {}).get("bundle")
+    return {
+        "patched": True,
+        "applied": list(applied),
+        "patch_set_digest": _patch_set_digest([Path(name) for name in applied]),
+        "published": named,
+        "grounded": ground is not None,
+        "published_digest": (ground or {}).get("digest"),
+        "upstream": (ground or {}).get("upstream"),
+        "says": (
+            f"This directory is {named or 'a bundle carrying no provenance record'} with "
+            f"{', '.join(applied)} already applied. Applying the same sets again is a "
+            "no-op; applying one of them again is a DOUBLE APPLICATION and is refused "
+            "here, not by the expiry rule -- which means only that an override's defect "
+            "is gone."
+        ),
+    }
 
 
 def _patch_set_digest(sets: Sequence[Path]) -> str:
@@ -153,17 +293,56 @@ def for_build(published: Path, sets: Sequence[str] = BUILD) -> Path:
     patch is reading the published bundle, and copying it to say so would be 125 MB of
     answer to a question nobody asked.
 
+    **AND THE SAME SETS APPLIED TO AN ALREADY-PATCHED DIRECTORY IS A NO-OP THAT SAYS SO**
+    (``docs/plan/architecture.md``, "AND A BUNDLE DIRECTORY MUST SAY WHETHER IT IS PATCHED,
+    BECAUSE A CALLER CANNOT TELL"; ``adcp-client-python-ywff``, ``adcp-client-python-qzx.17``).
+    ``sets`` is part of the BUILD and the bundle is an ARGUMENT, so this function applied the
+    table to whatever it was handed -- and handed its own OUTPUT it applied the table twice
+    and raised :func:`load`'s *"the published bundle already holds it"*, which is the EXPIRY
+    rule's sentence about a defect upstream has fixed.  One refusal with two meanings means
+    neither, and three readers decided it wrong in one day.  So the question is now asked of
+    the VALUE: :func:`sets_applied` reads the record beside the directory, and a directory
+    that already holds exactly these sets is returned unchanged.
+
+    **A DIFFERENT set against a patched directory RAISES, and the message is about the
+    double application.**  There is no reading under which stacking a second table onto a
+    materialisation is what a caller meant -- ``sets`` composes HERE, in one derivation, so
+    a caller wanting both names both -- and a refusal that stays silent about the real cause
+    is how this defect lasted.
+
     Written to a staging directory and renamed, because two xdist workers race for the same
     key and a half-copied bundle read by a sibling would be a document set with holes rather
     than a miss.  A rename onto an existing directory is not atomic, so the loser of the
     race keeps its own copy and discards it -- the worst a race costs is 0.8 s and 125 MB,
     never a different answer.
+
+    **THE RECORD TRAVELS BEFORE THE DIRECTORY IT DESCRIBES**, which is the one ordering that
+    makes the reading above safe under that race: a sibling worker polls ``at.is_dir()``, so
+    a directory that arrived before its record would be read as PUBLISHED for as long as the
+    gap lasted, and that is the exact state this function exists to make unobservable.  The
+    record is a file, so ``os.replace`` of it IS atomic, and it is a function of the inputs
+    alone (:func:`_a_patched_record`) -- so the loser of the race overwrites the
+    winner's with identical bytes.
     """
     held = [Path(name) for name in sets]
+    done = sets_applied(published)
+    if done is not None:
+        if done == tuple(str(name) for name in sets):
+            return published
+        raise ValueError(
+            f"{published} is already a patched bundle: the record beside it says "
+            f"{', '.join(done) or '(nothing)'} was applied to "
+            f"{(record_beside(published) or {}).get('published')}, and this asks for "
+            f"{', '.join(str(name) for name in sets) or '(nothing)'}. Applying a set to a "
+            "patched directory is a DOUBLE APPLICATION, not an expiry -- name the PUBLISHED "
+            "bundle, which is what a --bundle argument is, and let one derivation apply the "
+            "whole BUILD"
+        )
     if not held:
         return published
     key = store.key(published, (_patch_set_digest(held),))
     at = store.CACHE_ROOT / "patched-bundle" / key
+    at.parent.mkdir(parents=True, exist_ok=True)
     if not at.is_dir():
         staged = at.with_name(f"{key}.{os.getpid()}.tmp")
         source = published
@@ -171,13 +350,27 @@ def for_build(published: Path, sets: Sequence[str] = BUILD) -> Path:
             step = staged if index == len(held) - 1 else Path(f"{staged}.{index}")
             apply(source, patch_set, step)
             source = step
-        at.parent.mkdir(parents=True, exist_ok=True)
+        os.replace(record_path(staged), record_path(at))
         try:
             os.replace(staged, at)
         except OSError:
             shutil.rmtree(staged, ignore_errors=True)
         for index in range(len(held) - 1):
             shutil.rmtree(f"{staged}.{index}", ignore_errors=True)
+            record_path(Path(f"{staged}.{index}")).unlink(missing_ok=True)
+    elif not record_path(at).is_file():
+        # **THE RECORD IS WRITTEN BACK RATHER THAN MISSED**, because the invariant this
+        # function now rests on is *"the directory exists, so the record does"* -- and a
+        # directory built here is the only thing that can be at this key, so what it holds is
+        # known without reading it.  Without this line a record deleted by hand would leave
+        # the directory indistinguishable from a published bundle again, which is one
+        # ``rm`` between here and the defect.  The derivation is the same one.
+        record_path(at).write_text(
+            json.dumps(
+                _a_patched_record(_ground_of(published), [str(name) for name in sets]), indent=2
+            )
+            + "\n"
+        )
     return at
 
 
@@ -706,11 +899,46 @@ def apply(published: Path, patch_set: Path, out: Path) -> tuple[Extraction, ...]
     which equates the set that moved by BYTES with the set that moved by CONTENT --
     ``test_the_measurement_8525_argues_from_is_reproducible`` compares parsed objects and is
     blind to this by construction.
+
+    **AND APPLYING A SET THIS DIRECTORY ALREADY HOLDS IS REFUSED HERE, BY A MESSAGE ABOUT THE
+    DOUBLE APPLICATION** (``docs/plan/architecture.md``, "AND A BUNDLE DIRECTORY MUST SAY
+    WHETHER IT IS PATCHED").  This is the exact line where the defect used to raise
+    :func:`load`'s *"the published bundle already holds it"* -- the EXPIRY sentence, which
+    means an override's defect is gone upstream and the entry should be deleted.  The
+    mechanism was right and the message was about the wrong thing, and the two readings carry
+    opposite instructions.  :func:`sets_applied` makes the state a property of the VALUE, so
+    the refusal arrives before :func:`load` is asked a question it would answer ambiguously.
+
+    **THE EXPIRY REFUSAL IS NOT WEAKENED BY IT, and must not be.**  This one ranges over
+    *"this set is in the record beside ``published``"* and nothing else: a set NOT in that
+    record still reaches :func:`load` and :func:`additions`, which still raise where the
+    published bundle already holds an extraction's document or already states an addition's
+    keyword.  That is how an override retires itself when upstream fixes the schema, and it
+    still fires -- against ``schemas/cache/3.3``'s ``brand.json#/definitions/
+    data_subject_contestation``, which upstream's own ``9c32fa997`` titled.
+
+    **The output carries a record of what it holds** (:func:`_a_patched_record`),
+    written beside the directory and never inside it -- ``bundle.portable`` enumerates
+    ``rglob("*.json")`` under the bundle root, so a record written there would be a 1,626th
+    document, compiled and graded like a schema.
     """
+    done = sets_applied(published)
+    if done is not None and str(patch_set) in done:
+        raise ValueError(
+            f"{patch_set} is already applied to {published}: the record beside it says "
+            f"{', '.join(done)}. This is a DOUBLE APPLICATION and NOT an expiry -- the "
+            "entry's defect is not gone upstream, the table has simply been applied twice, "
+            "so do not delete anything; hand the PUBLISHED bundle to one derivation "
+            "(`for_build`) instead"
+        )
     extractions = load(patch_set, published)
     grown = additions(patch_set, published)
     if out.exists():
         shutil.rmtree(out)
+        # The record goes with the directory it describes.  A record outliving its bundle
+        # would be read as a statement about whatever is written there next, which is the
+        # ambiguity this whole mechanism exists to remove, one level up.
+        record_path(out).unlink(missing_ok=True)
     shutil.copytree(published, out)
     for document in bundle.portable(published):
         before = bundle.read(published, document)
@@ -725,6 +953,13 @@ def apply(published: Path, patch_set: Path, out: Path) -> tuple[Extraction, ...]
         destination = out / held.document
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(patch_set / DOCUMENTS / held.document, destination)
+    record_path(out).write_text(
+        json.dumps(
+            _a_patched_record(_ground_of(published), [*(done or ()), str(patch_set)]),
+            indent=2,
+        )
+        + "\n"
+    )
     return extractions
 
 
