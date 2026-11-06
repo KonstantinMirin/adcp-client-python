@@ -129,7 +129,6 @@ OWED = frozenset(
         "cells",
         "test_a_property_that_admits_nothing",
         "test_applied_schema",
-        "test_approximation",
         "test_catalogue",
         "test_conj_rule_beside_a_type",
         "test_decision_set",

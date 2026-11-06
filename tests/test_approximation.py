@@ -30,6 +30,7 @@ import importlib
 import pathlib
 from typing import Any, ClassVar
 
+import fresh
 import pytest
 from jsonschema import Draft7Validator
 from pydantic import Field
@@ -53,9 +54,17 @@ from tests.nodeset import claimed
 
 DOC = "core/probe.json"
 
-#: The pinned bundle the population below is read over, which is the one every other
-#: census in ``tests/`` is taken against.
-BUNDLE = pathlib.Path("schemas/cache/3.2")
+#: **The bundle a run reads, taken from the ONE declaration of it**
+#: (``adcp-client-python-lzzj.11.1``).  This module held its own PUBLISHED literal while
+#: the pairs it grades come from ``tests/compared.pairs()`` -- the tree a fresh run emits
+#: from the PATCHED bundle -- so the two halves of
+#: :func:`test_no_declaration_the_tree_carries_is_one_its_pair_cannot_put_to_a_draw` came
+#: from two different document sets: ``patches/8525`` ADDS ``core/country-code.json``, the
+#: tree carries a pair for it, and ``bundle.read`` under the published directory raised
+#: ``FileNotFoundError: schemas/cache/3.2/core/country-code.json``.  That clause is
+#: ``docs/plan/final-state.md`` reading 9's gate, so the literal was holding a reading
+#: open.
+BUNDLE = fresh.BUNDLE
 
 
 def _ref(pointer: str = "#") -> SchemaRef:
