@@ -16,29 +16,50 @@
 # REQUIRES A CLEAN TREE: uncommitted work in any of them is destroyed. It refuses to
 # run otherwise, because that destruction happened once while this was being written.
 #
-# THE VERDICT IS KEYED ON PYTEST'S EXIT CODE AND NOT ON ITS OUTPUT, and that is the
-# correction this version carries. The first version matched "N failed". A malformed
-# perturbation left a SyntaxError, pytest reported "1 error", and the case scored
-# STAYED GREEN -- so a perturbation that never ran was recorded as a guard that cannot
-# redden, which is the exact opposite of what it measured. The second version matched
-# "failed|error", which closes that one case and NOT the shape: an INTERNALERROR prints
-# no count line at all, so a crash in a plugin or a conftest is again indistinguishable
-# from a pass. Any scraper that reads a run as green by failing to match a word has the
-# same hole.
+# THE VERDICT IS KEYED ON THE RUN'S OWN STRUCTURED REPORT AND NEVER ON ITS PROSE, and
+# that is the correction this version carries. It took two tries and the second was still
+# wrong, which is worth writing down because the defect is the same each time: a scraper
+# that cannot tell a run that never happened from a run that passed.
 #
-# The exit code does not have it. pytest's codes are a closed set and each means one
-# thing: 0 all passed, 1 tests failed, 2 interrupted, 3 internal error, 4 usage error,
-# 5 nothing collected. So this script reports REDDENS for 1 alone, STAYED GREEN for 0
-# alone, NOTHING COLLECTED for 5 -- which is a defect in the case's own `-k` and not
-# evidence about the guard -- and PYTEST rc=N for everything else. A case that does not
-# score REDDENS is never passed over as green, and the last two cases are the control:
-# the clean tree is green, and a SyntaxError scores rc=4 rather than either verdict.
+# * The first version matched "N failed". A malformed perturbation left a SyntaxError,
+#   pytest reported "1 error", and the case scored STAYED GREEN -- a perturbation that
+#   never ran recorded as a guard that cannot redden, which is the opposite of what it
+#   measured.
+# * The second matched "failed|error", which closes that one case and not the shape: an
+#   INTERNALERROR prints no count line at all, so a crash in a plugin or a conftest is
+#   again indistinguishable from a pass.
+# * The third keyed on pytest's EXIT CODE, on the argument that the codes are a closed set
+#   -- 0 passed, 1 failed, 2 interrupted, 3 internal error, 4 usage error, 5 nothing
+#   collected. MEASURED, that is false where it matters: the last case below writes a
+#   SyntaxError into the test file, nothing is collected and nothing runs, and pytest
+#   exits 1. The same code a real failure exits with. So the exit code alone scores a
+#   dead run as REDDENS.
+#
+# What does not have the hole is pytest's own junit report, which COUNTS the three
+# outcomes separately: a collection error is an `<error>`, a failed assertion is a
+# `<failure>`, and a run that produced no report at all left no file. So:
+#
+#   no report file       NOT RUN         (the process died before it could write one)
+#   errors > 0           NOT RUN         (collected nothing, or a fixture blew up)
+#   tests == 0           NOTHING COLLECTED (a defect in the case's own -k, not evidence)
+#   failures > 0         REDDENS
+#   otherwise            STAYED GREEN
+#
+# Only the fourth is evidence that a guard works, and no other outcome is reported as
+# green. The exit code is printed beside it rather than consulted, because a reader
+# comparing the two is how the third version's defect was found.
+#
+# The last two cases are the CONTROL and they are what make the rest readable: the clean
+# tree scores STAYED GREEN, and a SyntaxError in the test file scores NOT RUN -- which is
+# the case that scored STAYED GREEN under version one and REDDENS under version three.
 set -u
 cd "$(dirname "$0")" || exit 1
 
 E=codegen/dump_exemptions.py
 T=tests/test_dump_exemptions.py
 H=codegen/harness.py
+OUT=/tmp/perturb_dump_exemptions.out
+XML=/tmp/perturb_dump_exemptions.xml
 
 if [ -n "$(git status --porcelain -- "$E" "$T" "$H")" ]; then
   echo "refusing to run: $E, $T or $H has uncommitted changes, which this would destroy" >&2
@@ -49,17 +70,38 @@ fi
 # one-liners full of quotes and newlines, and `eval` re-splits them.
 py() { CCM_INDEX_BYPASS=1 env -u VIRTUAL_ENV uv run --no-sync python "$@"; }
 
+#: Reads the junit report and prints "<verdict>|<counts>".  A separate interpreter rather
+#: than `grep`, for the reason the header gives: the three outcomes are COUNTED in that
+#: file and are not recoverable from the summary line.
+read_report() {
+  py -c "
+import pathlib, sys, xml.etree.ElementTree as ET
+path = pathlib.Path('$XML')
+if not path.exists():
+    print('NOT RUN|no junit report: the run died before writing one'); raise SystemExit
+try:
+    suites = [s for s in ET.parse(path).iter('testsuite')]
+except ET.ParseError as exc:
+    print(f'NOT RUN|unparseable junit report: {exc}'); raise SystemExit
+n = {k: sum(int(s.get(k, 0)) for s in suites) for k in ('tests', 'failures', 'errors', 'skipped')}
+counts = ' '.join(f'{k}={v}' for k, v in n.items())
+if n['errors']:
+    print(f'NOT RUN|{counts}')
+elif not n['tests']:
+    print(f'NOTHING COLLECTED|{counts}')
+elif n['failures']:
+    print(f'REDDENS|{counts}')
+else:
+    print(f'STAYED GREEN|{counts}')
+"
+}
+
 run() {  # run <label> <-k expression selecting the ONE test it should redden>
-  py -m pytest "$T" -q -k "$2" >/tmp/perturb_dump_exemptions.out 2>&1
+  rm -f "$XML"
+  py -m pytest "$T" -q -k "$2" --junitxml="$XML" >"$OUT" 2>&1
   rc=$?
-  case $rc in
-    1) verdict=REDDENS ;;
-    0) verdict="STAYED GREEN" ;;
-    5) verdict="NOTHING COLLECTED" ;;
-    *) verdict="PYTEST rc=$rc" ;;
-  esac
-  printf '%-58s %-18s %s\n' "$1" "$verdict" \
-    "$(grep -oE '[0-9]+ (passed|failed|error)[a-z, ]*' /tmp/perturb_dump_exemptions.out | tail -1)"
+  read=$(read_report)
+  printf '%-58s %-18s rc=%-3s %s\n' "$1" "${read%%|*}" "$rc" "${read#*|}"
   git checkout -- "$E" "$T" "$H"
 }
 
@@ -150,4 +192,4 @@ run "the exemption applied but NOT reported" "check_pair_passes_the_exempt"
 run "the clean tree (expected: STAYED GREEN)" "dump_exemptions or strike or entry or pair"
 
 edit "import pathlib;p=pathlib.Path('$T');s=p.read_text();p.write_text('def (\n'+s)"
-run "a SyntaxError in the test file (expected: not a verdict)" "strike_explains"
+run "a SyntaxError in the test file (expected: NOT RUN)" "strike_explains"
