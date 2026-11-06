@@ -112,8 +112,22 @@ pointer in the emitted module, the declared set equals the set a run mints in bo
 **every declaration holds a value that demonstrates it**. A declaration with no value behind it is
 an allowlist wearing a measurement.
 
+**AND THE DEMAND IS OVER FACTS, PROVED AT THE INNERMOST POSITION THAT CARRIES ONE.** A fact stated
+at a node and re-declared at every position composing that node is **one** fact, and the value
+proving it is drawn where the value can compose. A carrying position inherits that proof; it does
+not owe a second one. **The condition is that the innermost carrier is itself graded and passing**
+— inheritance from an ungraded position proves nothing, and that is the only way this clause could
+be read as a weakening.
+
+**BECAUSE A PRESENCE-TRIGGERED CONDITIONAL AT A CARRYING POSITION ADMITS NO VALUE AT ALL.** The
+document there refuses the pair (value, its siblings) rather than the value, so no payload composes
+and the demand is not merely expensive but unsatisfiable. **A reading that asks for a value which
+cannot exist is not strict, it is wrong** — and its cost is paid in instruments that look like
+rigour while measuring nothing.
+
 **Decided by** the set equality in both directions, and by the store of proving values containing
-one for each declaration — where an entry recording a budget cut is not a value.
+one for each FACT — where an entry recording a budget cut is not a value, and where a count over
+carrying positions is not the count this reading names.
 
 ## 3. Every union root dispatches
 
