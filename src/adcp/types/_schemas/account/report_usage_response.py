@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import SchemaRef
+from adcp.types.envelopes import AdcpResponse
 
 from ..core.context import ContextObject
 from ..core.error import Error
@@ -14,7 +15,7 @@ from ..core.protocol_envelope import ProtocolEnvelope
 from ..core.version_envelope import AdCPVersionEnvelope
 
 
-class ReportUsageResponse(AdCPVersionEnvelope, ProtocolEnvelope):
+class ReportUsageResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Response from report_usage. Partial acceptance is valid — records that pass validation are stored even when others fail.
     """

@@ -8,6 +8,7 @@ from pydantic import ConfigDict, Field
 from adcp.types._base import SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import StrMinLen1, StrMinLen1MaxLen4096
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.context import ContextObject
 from ..core.idempotency_key import IdempotencyKey
@@ -17,7 +18,7 @@ from ..core.version_envelope import AdcpMajorVersion, AdcpVersion, AdCPVersionEn
 from .proposal_decline import ProposalDecline
 
 
-class DeclineProposalsRequest(AdCPVersionEnvelope):
+class DeclineProposalsRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Terminally decline one or more immutable proposals. Repeating an already-applied decline with a new idempotency key succeeds with outcome declined and preserves the first recorded reason and detail; the proposal cannot later be executed.
     """

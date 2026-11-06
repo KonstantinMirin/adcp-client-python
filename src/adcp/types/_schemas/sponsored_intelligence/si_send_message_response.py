@@ -7,6 +7,7 @@ from typing import Annotated, Any, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types.envelopes import AdcpResponse
 
 from ..a2ui.surface import A2UISurface
 from ..core.context import ContextObject
@@ -87,7 +88,7 @@ class Handoff(AdCPBaseModel):
     context_for_checkout: Annotated[ContextForCheckout | None, Field(description='Context to pass to ACP for seamless checkout')] = None
 
 
-class SISendMessageResponse(AdCPVersionEnvelope, ProtocolEnvelope):
+class SISendMessageResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Brand agent's response to a user message
     """

@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
+from adcp.types.envelopes import AdcpResponse
 
 from ..core.account_with_authorization import AccountWithAuthorization
 from ..core.context import ContextObject
@@ -16,7 +17,7 @@ from ..core.protocol_envelope import ProtocolEnvelope
 from ..core.version_envelope import AdCPVersionEnvelope
 
 
-class ListAccountsResponse(AdCPVersionEnvelope, ProtocolEnvelope):
+class ListAccountsResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Response payload for list_accounts task
     """

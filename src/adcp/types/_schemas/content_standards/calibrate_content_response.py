@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types.constraints import FloatMin0Max1
-from adcp.types.envelopes import FailedResponse
+from adcp.types.envelopes import AdcpResponse, FailedResponse
 
 from ..core.context import ContextObject
 from ..core.error import Error
@@ -18,7 +18,7 @@ from ..enums.binary_verdict import BinaryVerdict
 from ..enums.feature_check_status import FeatureCheckStatus
 
 
-class CalibrateContentResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope):
+class CalibrateContentResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Response payload with verdict and detailed explanations for collaborative calibration
     """

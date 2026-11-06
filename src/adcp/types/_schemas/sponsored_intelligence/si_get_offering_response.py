@@ -7,6 +7,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types.constraints import HttpUrl
+from adcp.types.envelopes import AdcpResponse
 
 from ..core.context import ContextObject
 from ..core.error import Error
@@ -51,7 +52,7 @@ class MatchingProductsItem(AdCPBaseModel):
     url: Annotated[HttpUrl | None, Field(description='Product detail page URL')] = None
 
 
-class SIGetOfferingResponse(AdCPVersionEnvelope, ProtocolEnvelope):
+class SIGetOfferingResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Offering details, availability status, and optionally matching products. Use the offering_token in si_initiate_session for correlation.
     """

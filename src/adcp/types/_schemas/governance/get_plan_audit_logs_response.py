@@ -16,6 +16,7 @@ from adcp.types.constraints import (
     StrMinLen1MaxLen255,
     ZipAssetDigest,
 )
+from adcp.types.envelopes import AdcpResponse
 
 from ..common._vocabularies import _VALUES_OPEN_CLOSED
 from ..core.attestation_evaluation import AttestationEvaluation
@@ -385,7 +386,7 @@ class PlansItem(AdCPBaseModel):
     governed_actions: Annotated[list[GovernedActionsItem], Field(description="Per-action breakdown joined by the governance agent's stable opaque action binding. governance_context is the original intent context exposed for correlation; lifecycle tokens may differ because each approval is freshly signed.")]
 
 
-class GetPlanAuditLogsResponse(AdCPVersionEnvelope, ProtocolEnvelope):
+class GetPlanAuditLogsResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Governance state and audit trail for one or more plans.
     """

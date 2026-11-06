@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types.envelopes import AdcpResponse
 
 from ..core.content_rating import ContentRating
 from ..core.context import ContextObject
@@ -35,7 +36,7 @@ class CollectionsItem(AdCPBaseModel):
     kind: CollectionKind | None = None
 
 
-class GetCollectionListResponse(AdCPVersionEnvelope, ProtocolEnvelope):
+class GetCollectionListResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Response payload for get_collection_list task. Returns resolved collection entries with identification and key metadata for matching. Consumers should cache the resolved collections and refresh based on cache_valid_until.
     """

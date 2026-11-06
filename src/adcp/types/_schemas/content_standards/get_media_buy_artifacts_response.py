@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
-from adcp.types.envelopes import FailedResponse
+from adcp.types.envelopes import AdcpResponse, FailedResponse
 
 from ..core.context import ContextObject
 from ..core.error import Error
@@ -18,7 +18,7 @@ from ..core.version_envelope import AdCPVersionEnvelope
 from .artifact import Artifact
 
 
-class GetMediaBuyArtifactsResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope):
+class GetMediaBuyArtifactsResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Response containing content artifacts from a media buy for validation
     """

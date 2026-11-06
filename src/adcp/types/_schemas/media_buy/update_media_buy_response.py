@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule, UniqueItems
 from adcp.types.constraints import IntMin1, MediaBuyName, StrMaxLen2000
-from adcp.types.envelopes import FailedResponse
+from adcp.types.envelopes import AdcpResponse, FailedResponse
 
 from ..core.bidding_policy import BiddingPolicy
 from ..core.budget_allocation import BudgetAllocation
@@ -28,7 +28,7 @@ from ..enums.media_buy_valid_action import MediaBuyValidAction
 from ..enums.pacing import Pacing
 
 
-class UpdateMediaBuyResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope):
+class UpdateMediaBuyResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Response payload for update_media_buy task. Exactly one of three shapes: (1) synchronous success — media_buy_id and updated state are issued in-line, and optional warnings[] reports non-blocking observations; (2) terminal failure — an errors array with no changes applied; (3) submitted task envelope — status 'submitted' with task_id when the update is queued for async processing (e.g., awaiting operator re-approval for mid-flight changes). The submitted branch MAY carry advisory errors for non-blocking warnings; terminal failures belong in the error branch. A continuing condition first surfaced as a synchronous success warning MUST also appear on its authoritative read surface. These three shapes are mutually exclusive — a response has exactly one.
     """

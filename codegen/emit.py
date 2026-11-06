@@ -124,6 +124,7 @@ from codegen.compiler import (
 from codegen.keywords import Position
 from codegen.lower import enum as lower_enum
 from codegen.lower import envelope as lower_envelope
+from codegen.lower import message as lower_message
 from codegen.lower import names as lower_names
 from codegen.refusal import BuildFailure, Kind, Refusal
 from codegen.schema import parse as schema
@@ -1709,6 +1710,12 @@ def emit(
     family = bundle.envelopes(bundle_dir)
     envelope_shape = bundle.envelope_shape(family, known)
     members = frozenset(site for site, _ in family)
+    # **The two MESSAGE bases' sets, read off the bundle's own task registry**
+    # (``codegen/lower/message.py``, ``bundle.REGISTRY_SCOPE``).  Beside the family above
+    # and for the same reason: a set derived from the run's document set would make one
+    # document's bases depend on who else was named, which is §9's own prohibition.  The
+    # registry NAMES a request, so unlike the envelope family nothing here reads a shape.
+    task_requests, task_responses = bundle.task_messages(bundle_dir)
     #: The reference sites of each document, in document order: every ``$ref`` the
     #: document states, including a LOCAL one.  A local reference is in the map so that
     #: the one caller that can meet one without going through ``nodes.Reference.head``
@@ -2698,6 +2705,12 @@ def emit(
         # declaration names, so this adds nothing that depends on which documents the run
         # includes (§9), and a module with no member is returned unchanged.
         bound = lower_envelope.adopt(bound, members)
+        # **The two message bases, given to the ROOT class of every document the task
+        # registry names** (``codegen/lower/message.py``).  The same pass and the same
+        # reason as the line above; the membership test is the document's path in the
+        # registry rather than a node's shape, and the two sets are disjoint, so no
+        # declaration takes both.
+        bound = lower_message.adopt(bound, task_requests, task_responses)
         lowered[document] = (mod, bound, doc)
         # The node each reference to this document names, for §2's intersection rule and
         # for nothing else.  Written when the document FINISHES, so a refused document
@@ -3085,6 +3098,13 @@ def _envelope_bases(bundle_dir: Path, shape: Sequence[bundle.Agreed]) -> str:
     a run intends, and an artifact that appears and disappears with the bundle's content
     is one more thing for a reader to account for.
     """
+    # **The two MESSAGE bases share this file**, which is the one artifact holding every
+    # base that belongs to no document (``lower/message.MODULE``).  They are a function of
+    # nothing -- they state no field -- so they are declared whatever the envelope family
+    # turned out to be, including when it is empty: a bundle with no envelope still has a
+    # task registry, and a base that appeared and disappeared with another row's family
+    # would be one more thing for a reader to account for.
+    message, message_imports = lower_message.bases()
     binding: dict[str, tuple[str, str]] = {}
     for one in shape:
         title = bundle.read(bundle_dir, one.target).get("title")
@@ -3097,9 +3117,9 @@ def _envelope_bases(bundle_dir: Path, shape: Sequence[bundle.Agreed]) -> str:
             )
         binding[one.target] = (module_name(one.target), symbol)
     if not shape:
-        return render.envelopes_module((), frozenset())
+        return render.envelopes_module(message, message_imports)
     declaration, imports = lower_envelope.base(shape, binding, render.RESERVED)
-    return render.envelopes_module([declaration], imports)
+    return render.envelopes_module([declaration, *message], imports | message_imports)
 
 
 def write(out: Emitted, tree: Path, package: Path | None = None) -> None:

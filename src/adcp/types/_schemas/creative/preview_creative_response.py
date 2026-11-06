@@ -7,6 +7,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types.constraints import HttpUrl, StrMaxLen2000
+from adcp.types.envelopes import AdcpResponse
 
 from ..core.context import ContextObject
 from ..core.creative_manifest import CreativeManifest
@@ -18,7 +19,7 @@ from ..enums.creative_quality import CreativeQuality
 from .preview_render import PreviewRender
 
 
-class PreviewCreativeResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope):
+class PreviewCreativeResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Response containing preview links for one or more creatives. Format matches the request: single preview response for single requests, batch results for batch requests, or an async submitted envelope only when the request explicitly set allow_async to true.
     """

@@ -18,6 +18,7 @@ from adcp.types.constraints import (
     StrMinLen1,
     StrMinLen16,
 )
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.account_ref import AccountReference
 from ..core.bidding_policy import BiddingPolicy
@@ -109,7 +110,7 @@ class ArtifactWebhook(AdCPBaseModel):
     sampling_rate: Annotated[FloatMin0Max1 | None, Field(description='Fraction of impressions to include (0-1). 1.0 = all impressions, 0.1 = 10% sample. Default: 1.0')] = None
 
 
-class CreateMediaBuyRequest(BranchDispatchMixin, AdCPVersionEnvelope):
+class CreateMediaBuyRequest(BranchDispatchMixin, AdCPVersionEnvelope, AdcpRequest):
     """
     Deprecated AdCP 3.x compatibility request for creating a MediaBuy. New 3.2 callers use buy_products for direct published-offer purchases or accept_proposal for proposal execution. Existing package and proposal payloads remain valid throughout 3.x.
     """

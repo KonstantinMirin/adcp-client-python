@@ -8,6 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule, UniqueItems
 from adcp.types.constraints import IntMin1, StrMaxLen2000, StrMinLen1
+from adcp.types.envelopes import AdcpResponse
 
 from ..core.canonical_media_buy_action import CanonicalMediaBuyAction
 from ..core.context import ContextObject
@@ -17,7 +18,7 @@ from ..core.warning import Warning
 from ..enums.media_buy_status import MediaBuyStatus
 
 
-class ControlMediaBuyResponse(BranchDispatchMixin, AdCPBaseModel):
+class ControlMediaBuyResponse(BranchDispatchMixin, AdCPBaseModel, AdcpResponse):
     """
     Result of applying operational controls without embedding the package or creative object graphs.
     """

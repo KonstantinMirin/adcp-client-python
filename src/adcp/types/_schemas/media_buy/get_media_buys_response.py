@@ -16,6 +16,7 @@ from adcp.types.constraints import (
     StrMinLen1,
     StrMinLen1MaxLen255,
 )
+from adcp.types.envelopes import AdcpResponse
 
 from ..core.account import Account
 from ..core.bidding_policy import BiddingPolicy
@@ -324,7 +325,7 @@ class MediaBuysItem(IndicatorBearingResourceState):
     indicators: Annotated[list[MediaBuysItemIndicatorsItem] | None, Field(description='Current seller assertions for the indicator types and publisher/placement coverage named by the sibling evaluation fields. Omitted means unknown or not evaluated. A present empty array means evaluated with no current assertion for indicator_types_evaluated in the evaluated scope.', json_schema_extra={'uniqueItems': True})] = None
 
 
-class GetMediaBuysResponse(AdCPVersionEnvelope, ProtocolEnvelope):
+class GetMediaBuysResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Response payload for get_media_buys task. Returns media buy configuration, creative approval state, current seller indicators at buy/package/assignment scope, and optional delivery snapshots.
     """

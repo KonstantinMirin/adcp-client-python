@@ -8,6 +8,7 @@ from pydantic import ConfigDict, Field
 from adcp.types._base import Approximation, SchemaRef
 from adcp.types._runtime import Dependencies, Rule
 from adcp.types.constraints import IntMin1Max100, StrMinLen1, StrMinLen1MaxLen4096
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.brand_key import BrandKey
 from ..core.canonical_account_ref import CanonicalAccountReference
@@ -26,7 +27,7 @@ class ListProductsRequestPushNotificationConfig(PushNotificationConfig):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/list-products-request.json', pointer='#/properties/push_notification_config')
 
 
-class ListProductsRequest(AdCPVersionEnvelope):
+class ListProductsRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Read seller offers with structured discovery criteria. When criteria includes catalog, provide exactly one brand source: top-level brand or a natural-key account containing brand and operator. Each invocation completes synchronously, while durable wholesale product-feed webhooks registered through sync_accounts keep buyer mirrors current without polling. list_products is the authoritative bootstrap and repair read for those subscriptions; proposal creation is handled by request_proposals.
     """

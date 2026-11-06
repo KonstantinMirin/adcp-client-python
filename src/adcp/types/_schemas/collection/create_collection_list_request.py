@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.account_ref import AccountReference
 from ..core.brand_ref import BrandReference
@@ -17,7 +18,7 @@ from .base_collection_source import BaseCollectionSource
 from .collection_list_filters import CollectionListFilters
 
 
-class CreateCollectionListRequest(AdCPVersionEnvelope):
+class CreateCollectionListRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Request parameters for creating a new collection list
     """

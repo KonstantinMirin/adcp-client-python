@@ -7,13 +7,14 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
 from adcp.types.constraints import ProductLimit
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
 from ..core.version_envelope import AdCPVersionEnvelope
 
 
-class SIGetOfferingRequest(AdCPVersionEnvelope):
+class SIGetOfferingRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Get offering details and availability before session handoff. Returns offering information, availability status, and optionally matching products based on context.
     """

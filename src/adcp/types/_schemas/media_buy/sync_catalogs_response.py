@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule
 from adcp.types.constraints import StrMaxLen2000, StrMinLen1MaxLen255
-from adcp.types.envelopes import FailedResponse
+from adcp.types.envelopes import AdcpResponse, FailedResponse
 
 from ..core.catalog_item_availability_state import CatalogItemAvailabilityState
 from ..core.catalog_item_availability_update_result import CatalogItemAvailabilityUpdateResult
@@ -21,7 +21,7 @@ from ..enums.catalog_action import CatalogAction
 from ..enums.catalog_item_status import CatalogItemStatus
 
 
-class SyncCatalogsResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope):
+class SyncCatalogsResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Response from catalog sync or item availability operation. Exactly one of three shapes: (1) synchronous success — per-catalog results, availability update acknowledgements, and/or current-state query results; (2) terminal failure — errors array with no resources processed; (3) submitted task envelope — status 'submitted' with task_id when a catalog-only operation is queued. The submitted branch MAY carry advisory errors for non-blocking warnings; terminal failures belong in the error branch. These three shapes are mutually exclusive — a response has exactly one.
     """

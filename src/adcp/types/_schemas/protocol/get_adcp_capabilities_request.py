@@ -7,6 +7,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
@@ -21,7 +22,7 @@ class ProtocolsItem(StrEnum):
     CREATIVE = 'creative'
 
 
-class GetAdCPCapabilitiesRequest(AdCPVersionEnvelope):
+class GetAdCPCapabilitiesRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Request payload for get_adcp_capabilities task. Protocol-level capability discovery that works across all AdCP protocols.
     """

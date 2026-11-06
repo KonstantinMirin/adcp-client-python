@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.account_ref import AccountReference
 from ..core.context import ContextObject
@@ -14,7 +15,7 @@ from ..core.pagination_request import PaginationRequest
 from ..core.version_envelope import AdCPVersionEnvelope
 
 
-class ListCollectionListsRequest(AdCPVersionEnvelope):
+class ListCollectionListsRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Request parameters for listing collection lists
     """

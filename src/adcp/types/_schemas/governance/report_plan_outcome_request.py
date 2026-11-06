@@ -8,6 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNega
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import GovernanceContext, StrMaxLen255, StrMinLen1MaxLen255, ZipAssetDigest
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.context import ContextObject
 from ..core.currency_code import CurrencyCode
@@ -68,7 +69,7 @@ class Delivery(AdCPBaseModel):
     impressions: NonNegativeInt | None = None
 
 
-class ReportPlanOutcomeRequest(AdCPVersionEnvelope):
+class ReportPlanOutcomeRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Report the outcome of an action to the governance agent. Called by the orchestrator (buyer-side agent) after a seller responds. The authenticated reporter must match the caller on the original approved intent, purchase_type must match that intent, and only one terminal settlement is allowed across all lifecycle checks sharing the opaque action binding. This is the 'after' half of the governance loop. Sellers do not call this task -- they report delivery data via check_governance with phase 'delivery'.
     """

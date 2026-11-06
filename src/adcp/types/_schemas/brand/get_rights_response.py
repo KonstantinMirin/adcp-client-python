@@ -8,7 +8,7 @@ from pydantic import ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import FloatMin0Max1, HttpUrl
-from adcp.types.envelopes import FailedResponse
+from adcp.types.envelopes import AdcpResponse, FailedResponse
 
 from ..core.context import ContextObject
 from ..core.country_code import CountryCode
@@ -21,7 +21,7 @@ from ..enums.right_use import RightUse
 from .rights_pricing_option import RightsPricingOption
 
 
-class GetRightsResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope):
+class GetRightsResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Licensable rights matching the search criteria, with pricing options. Each result is a complete snapshot of current availability (stateless, DDEX PIE pattern). Excluded results explain why they were filtered out.
     """

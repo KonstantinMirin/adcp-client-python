@@ -7,6 +7,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import Approximation, SchemaRef
 from adcp.types.constraints import GovernanceContext, IntMin1, MediaBuyName, StrMaxLen500, StrMinLen1
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.account_ref import AccountReference
 from ..core.bidding_policy import BiddingPolicy
@@ -26,7 +27,7 @@ from .package_request import PackageRequest
 from .package_update import PackageUpdate
 
 
-class UpdateMediaBuyRequest(AdCPVersionEnvelope):
+class UpdateMediaBuyRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Deprecated AdCP 3.x compatibility request for campaign, package, and creative mutation. New 3.2 callers use control_media_buy for operational controls, refine_proposals for commercial amendments or negotiated cancellation, and the dedicated creative lifecycle for creative changes.
     """

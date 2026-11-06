@@ -9,6 +9,7 @@ from pydantic import ConfigDict, Field, NonNegativeInt
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import GovernanceContext
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.account_ref import AccountReference
 from ..core.brand_ref import BrandReference
@@ -47,7 +48,7 @@ class Campaign(AdCPBaseModel):
     end_date: Annotated[date | None, Field(description='Campaign end date (ISO 8601). Brand agents MUST reject with INVALID_REQUEST (field: campaign.end_date) when end_date is in the past at the time of the request — acquiring rights for an elapsed window produces a zero-duration grant and is almost always a buyer-side bug.')] = None
 
 
-class AcquireRightsRequest(AdCPVersionEnvelope):
+class AcquireRightsRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Binding contractual request to acquire rights from a brand agent. Parallels create_media_buy — the buyer selects a pricing_option_id from a get_rights response and provides campaign details. The agent clears against existing contracts and returns terms, generation credentials, and disclosure requirements.
     """

@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
@@ -16,7 +17,7 @@ from .si_identity import SIIdentity
 from .si_sponsored_context_receipt import SISponsoredContextReceipt
 
 
-class SIInitiateSessionRequest(AdCPVersionEnvelope):
+class SIInitiateSessionRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Host initiates a session with a brand agent
     """

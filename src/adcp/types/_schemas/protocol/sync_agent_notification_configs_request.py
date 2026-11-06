@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import Approximation, SchemaRef
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.agent_notification_config import AgentNotificationConfig
 from ..core.context import ContextObject
@@ -27,7 +28,7 @@ class NotificationConfigsItem(AgentNotificationConfig):
     )
 
 
-class SyncAgentNotificationConfigsRequest(AdCPVersionEnvelope):
+class SyncAgentNotificationConfigsRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Register, replace, pause, or clear caller-scoped agent-level webhook subscribers. This task manages notifications whose lifecycle belongs to the seller agent itself rather than to an account or media buy. The initial use case is `capabilities.changed`, which invalidates cached `get_adcp_capabilities` responses. Declarative semantics match account-level `notification_configs[]`, but the replacement is scoped to the authenticated caller or registry identity: the submitted array is that caller's complete desired set, keyed by `subscriber_id`; persisted subscribers for that caller whose `subscriber_id` does not appear in the submitted array are removed; sending `[]` clears only that caller's set. Sellers MUST reject this task unless `get_adcp_capabilities.adcp.capability_changes.notifications.supported` is true.
     """

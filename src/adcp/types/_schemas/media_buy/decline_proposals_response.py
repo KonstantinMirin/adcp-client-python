@@ -9,6 +9,7 @@ from pydantic import ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import StrMaxLen2000, StrMinLen1
+from adcp.types.envelopes import AdcpResponse
 
 from ..core.compact_task_submitted import CompactTaskSubmitted
 from ..core.context import ContextObject
@@ -61,7 +62,7 @@ ResultsItem._branch_models = (ResultsItemDeclined, DeclineProposalsResponseResul
 ResultsItem.model_rebuild(force=True)
 
 
-class DeclineProposalsResponse(BranchDispatchMixin, AdCPBaseModel):
+class DeclineProposalsResponse(BranchDispatchMixin, AdCPBaseModel, AdcpResponse):
     """
     One ordered terminal result for each requested proposal decline.
     """

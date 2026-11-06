@@ -7,6 +7,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types.constraints import HttpUrl
+from adcp.types.envelopes import AdcpResponse
 
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
@@ -67,7 +68,7 @@ class AuthorizationSummary(AdCPBaseModel):
     unknown_impressions: Annotated[int, Field(description='Impressions from records where authorization could not be determined')]
 
 
-class ValidatePropertyDeliveryResponse(AdCPVersionEnvelope, ProtocolEnvelope):
+class ValidatePropertyDeliveryResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Response payload for validate_property_delivery task. Returns aggregate compliance statistics and per-record validation results.
     """

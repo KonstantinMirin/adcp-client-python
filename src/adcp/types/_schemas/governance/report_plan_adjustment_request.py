@@ -9,6 +9,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import StrMinLen1, StrMinLen1MaxLen255, StrMinLen1MaxLen1000, ZipAssetDigest
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
@@ -47,7 +48,7 @@ class Evidence(AdCPBaseModel):
     issued_at: AwareDatetime
 
 
-class ReportPlanAdjustmentRequest(AdCPVersionEnvelope):
+class ReportPlanAdjustmentRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Two-party append-only adjustment lifecycle. The authenticated seller reports commercial evidence; the authenticated plan owner later accepts or disputes that exact record. Reporting alone never changes net cost or headroom.
     """

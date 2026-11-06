@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
-from adcp.types.envelopes import FailedResponse
+from adcp.types.envelopes import AdcpResponse, FailedResponse
 
 from ..core.context import ContextObject
 from ..core.error import Error
@@ -17,7 +17,7 @@ from ..enums.binary_verdict import BinaryVerdict
 from .calibrate_content_response import FeaturesItem
 
 
-class ValidateContentDeliveryResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope):
+class ValidateContentDeliveryResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Response payload with per-record verdicts and optional feature breakdown
     """

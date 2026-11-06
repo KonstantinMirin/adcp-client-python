@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.account_ref import AccountReference
 from ..core.context import ContextObject
@@ -15,7 +16,7 @@ from ..core.tasks_list_request import Filters, Sort
 from ..core.version_envelope import AdCPVersionEnvelope
 
 
-class ListTasksRequest(AdCPVersionEnvelope):
+class ListTasksRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Request parameters for the list_tasks AdCP tool. This is a 3.x protocol-namespace alias for the legacy AdCP tasks/list reconciliation surface, not a transport-native MCP/A2A tasks/* method. It lists and filters AdCP application-layer async tasks for state reconciliation while preserving the legacy 3.x payload shape.
     """

@@ -8,6 +8,7 @@ from pydantic import ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.account_ref import AccountReference
 from ..core.canonical_format_kind import CanonicalFormatKind
@@ -28,7 +29,7 @@ class ExpandPaginationItem(AdCPBaseModel):
     options_cursor: Annotated[str, Field(description="Opaque cursor from that param's prior `params[].options_cursor`.")]
 
 
-class ListTransformersRequestCreativeAgent(AdCPVersionEnvelope):
+class ListTransformersRequestCreativeAgent(AdCPVersionEnvelope, AdcpRequest):
     """
     Request parameters for discovering account-scoped creative transformers offered by this creative agent. Brief-filterable and paginated. Transformers are the creative analog of media-buy products: agent-offered, account-scoped, selectable units of build capability. Use `expand_params` to additionally return account-scoped option VALUES (e.g. the buyer's configured voices) for named enumerable params.
     """

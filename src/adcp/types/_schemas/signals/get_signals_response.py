@@ -9,6 +9,7 @@ from pydantic import ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule
 from adcp.types.constraints import FloatMin0Max100
+from adcp.types.envelopes import AdcpResponse
 
 from ..core.context import ContextObject
 from ..core.deployment import Deployment
@@ -83,7 +84,7 @@ class IncompleteItem(AdCPBaseModel):
     estimated_wait: Annotated[EstimatedWait | None, Field(description='How much additional time would resolve this scope. Allows the caller to decide whether to retry with a larger time_budget.')] = None
 
 
-class GetSignalsResponse(AdCPVersionEnvelope, ProtocolEnvelope):
+class GetSignalsResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Response payload for get_signals task
     """

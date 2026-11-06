@@ -19,6 +19,7 @@ from adcp.types.constraints import (
     StrMinLen1MaxLen255,
     ZipAssetDigest,
 )
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.attestation_reference import AttestationReference
 from ..core.attestation_subject import AttestationResourceSubject
@@ -110,7 +111,7 @@ class RuntimeAttestationsItem(AttestationReference):
     subject: Subject
 
 
-class CheckGovernanceRequest(AdCPVersionEnvelope):
+class CheckGovernanceRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Universal governance check for campaign actions. The governance agent infers the check type from the fields present: tool+payload = intent check (proposed, orchestrator-side); planned_delivery or delivery_metrics with governance_context = execution or lifecycle check (committed, service-side). Proposal acceptance supplies the immutable proposal separately so governance can inspect its typed commercial terms while payload remains the exact downstream arguments. MediaBuy controls use buyer-proposed and seller-computed positive-delta ceilings. The first check is addressed by plan_id. Subsequent service-side checks use the opaque governance_context as the authoritative plan binding.
     """

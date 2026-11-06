@@ -8,6 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import MediaBuyName, StrMaxLen100, StrMinLen1, StrMinLen1MaxLen255, StrMinLen1MaxLen4096
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.bidding_policy import BiddingPolicy
 from ..core.brand_key import BrandKey
@@ -47,7 +48,7 @@ class Opportunity(OpportunityContext):
     status: Annotated[Literal['closed'] | None, Field(description='Whether the planning cycle remains open. On calls after initial creation, omission means no status update and MUST NOT reopen or close the opportunity implicitly, except that successful create_media_buy proposal execution explicitly infers accepted closure.')] = None
 
 
-class BuyProductsRequest(BranchDispatchMixin, AdCPVersionEnvelope):
+class BuyProductsRequest(BranchDispatchMixin, AdCPVersionEnvelope, AdcpRequest):
     """
     Create a MediaBuy directly from published product offers. Provide exactly one brand source: top-level brand when account is ID-only, or brand and operator inside a natural-key account. This buyer-composed path accepts published commercial terms, supports targeting and delivery controls, and never accepts inline creatives or creative assignments. The seller records an immutable accepted proposal snapshot so later commercial amendments can use refine_proposals.
     """

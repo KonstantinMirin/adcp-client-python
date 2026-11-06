@@ -8,7 +8,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule, UniqueItems
-from adcp.types.envelopes import FailedResponse
+from adcp.types.envelopes import AdcpResponse, FailedResponse
 
 from ..core.context import ContextObject
 from ..core.currency_code import CurrencyCode
@@ -24,7 +24,7 @@ from ..enums.event_type import EventType
 from .sync_audiences_response import Action
 
 
-class SyncEventSourcesResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope):
+class SyncEventSourcesResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Response from event source sync operation. Returns either per-source results OR operation-level errors.
     """

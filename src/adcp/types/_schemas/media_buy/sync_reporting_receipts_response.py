@@ -7,6 +7,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types.constraints import StrIdempotencyKey
+from adcp.types.envelopes import AdcpResponse
 
 from ..core.context import ContextObject
 from ..core.error import Error
@@ -91,7 +92,7 @@ class FailedReportingReceipt(AdCPBaseModel):
     errors: Annotated[list[Error], Field(max_length=16, min_length=1)]
 
 
-class SyncReportingReceiptsResponse(AdCPVersionEnvelope, ProtocolEnvelope):
+class SyncReportingReceiptsResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Per-receipt durable recording results for revisions and post-official adjustments. Successful readback lets a consumer prove the seller recorded its reconciliation outcome; failed results expose no cross-caller or cross-account resource metadata.
     """

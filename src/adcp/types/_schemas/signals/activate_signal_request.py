@@ -8,6 +8,7 @@ from pydantic import ConfigDict, Field, TypeAdapter
 
 from adcp.types._base import SchemaRef
 from adcp.types.constraints import GovernanceContext
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.account_ref import AccountReference
 from ..core.context import ContextObject
@@ -25,7 +26,7 @@ class Action(StrEnum):
     DEACTIVATE = 'deactivate'
 
 
-class ActivateSignalRequest(AdCPVersionEnvelope):
+class ActivateSignalRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Request parameters for activating or deactivating a signal on deployment targets
     """

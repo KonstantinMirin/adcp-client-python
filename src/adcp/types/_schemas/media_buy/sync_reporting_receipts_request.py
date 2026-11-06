@@ -7,6 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
 from adcp.types._runtime import ForbiddenGroups, RequiredGroups, Rule
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.canonical_account_ref import CanonicalAccountReference
 from ..core.context import ContextObject
@@ -43,7 +44,7 @@ class AdjustmentReceiptsItem(ReportingAdjustmentReceipt):
     )
 
 
-class SyncReportingReceiptsRequest(AdCPVersionEnvelope):
+class SyncReportingReceiptsRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Submit durable authenticated consumer reconciliation results for reporting materializations and post-official adjustments. This is a batched idempotent upsert, not an acknowledgement of mere webhook receipt. Identity comes from authenticated transport; the request MUST NOT assert a buyer or governance principal.
     """

@@ -9,7 +9,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, NegatedConditional, Rule
 from adcp.types.constraints import StrMaxLen500, StrMinLen1
-from adcp.types.envelopes import FailedResponse
+from adcp.types.envelopes import AdcpResponse, FailedResponse
 
 from ..core.context import ContextObject
 from ..core.error import Error
@@ -18,7 +18,7 @@ from ..core.protocol_envelope import ProtocolEnvelope
 from ..core.version_envelope import AdCPVersionEnvelope
 
 
-class ProvidePerformanceFeedbackResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope):
+class ProvidePerformanceFeedbackResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Response payload for provide_performance_feedback task. Returns either success confirmation OR error information, never both.
     """

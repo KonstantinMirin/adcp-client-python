@@ -15,6 +15,7 @@ from adcp.types.constraints import (
     StrMinLen1MaxLen255,
     StrMinLen1MaxLen4096,
 )
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.canonical_account_ref import CanonicalAccountReference
 from ..core.context import ContextObject
@@ -52,7 +53,7 @@ class Opportunity(OpportunityContext):
     status: Annotated[Literal['closed'] | None, Field(description='Whether the planning cycle remains open. On calls after initial creation, omission means no status update and MUST NOT reopen or close the opportunity implicitly, except that successful create_media_buy proposal execution explicitly infers accepted closure.')] = None
 
 
-class AcceptProposalRequest(AdCPVersionEnvelope):
+class AcceptProposalRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Accept one committed immutable proposal. Depending on proposal_kind, acceptance creates a MediaBuy, applies an amendment, or applies a negotiated cancellation. The proposal already contains the commercial terms, so callers do not repeat packages, dates, targeting, or creatives.
     """

@@ -7,6 +7,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
@@ -28,7 +29,7 @@ class BrandIdentityField(StrEnum):
     RIGHTS = 'rights'
 
 
-class GetBrandIdentityRequest(AdCPVersionEnvelope):
+class GetBrandIdentityRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Request brand identity data from a brand agent. Core identity (house, names, description, logos) is always public. Linked accounts get deeper data: high-res assets, voice configs, tone guidelines, and rights availability.
     """

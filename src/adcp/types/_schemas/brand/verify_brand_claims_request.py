@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.version_envelope import AdCPVersionEnvelope
 from .verify_brand_claim_request import (
@@ -18,7 +19,7 @@ from .verify_brand_claim_request import (
 ClaimEntry = Annotated[VerifySubsidiaryClaim | VerifyParentClaim | VerifyPropertyClaim | VerifyTrademarkClaim, Field(description='One verification claim. Shape mirrors the single-target `verify_brand_claim` request body (minus the version envelope, which lives on the batch).')]
 
 
-class VerifyBrandClaimsRequestBulk(AdCPVersionEnvelope):
+class VerifyBrandClaimsRequestBulk(AdCPVersionEnvelope, AdcpRequest):
     """
     Bulk variant of `verify_brand_claim` — ask a brand-agent to verify many claims in a single round-trip. Use when a caller (e.g., a crawler refreshing a brand portfolio, a creative-clearance pipeline batch, an inventory-onboarding scan) needs to verify 10s-100s of claims against one brand-agent and the per-call MCP overhead dominates. Each entry in `claims[]` carries the same `{ claim_type, claim }` shape as the single-target tool; the agent returns one result per claim in the same order (zip-by-index). Sibling to `verify_brand_claim`; the single-target tool remains the right choice for one-off verifications. Read-only; naturally idempotent — same per-claim dedup as the single-target tool (the brand's internal bookkeeping deduplicates per {caller_identity, claim_type, claim-target}).
     """

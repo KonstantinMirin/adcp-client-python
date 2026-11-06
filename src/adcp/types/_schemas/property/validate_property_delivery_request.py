@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.account_ref import AccountReference
 from ..core.context import ContextObject
@@ -14,7 +15,7 @@ from ..core.version_envelope import AdCPVersionEnvelope
 from .delivery_record import DeliveryRecord
 
 
-class ValidatePropertyDeliveryRequest(AdCPVersionEnvelope):
+class ValidatePropertyDeliveryRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Request payload for validate_property_delivery task. Validates delivery records against a property list to determine compliance.
     """

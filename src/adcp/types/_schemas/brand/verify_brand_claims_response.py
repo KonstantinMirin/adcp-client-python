@@ -8,7 +8,7 @@ from pydantic import ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import StrMaxLen500
-from adcp.types.envelopes import FailedResponse
+from adcp.types.envelopes import AdcpResponse, FailedResponse
 
 from ..core.context import ContextObject
 from ..core.error import Error
@@ -20,7 +20,7 @@ from .verification_status import VerificationStatus
 from .verify_brand_claim_response import ClaimType
 
 
-class VerifyBrandClaimsResponseBulk(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope):
+class VerifyBrandClaimsResponseBulk(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Bulk response for `verify_brand_claims`. `results[]` is positionally aligned with the request's `claims[]` (zip-by-index). Per-result success carries `claim_type` + `status` + per-claim-type `details`; per-result failure carries an `error` field on that single result without failing the batch. Top-level `errors[]` is reserved for batch-level failures (auth, rate-limit, malformed request) — in that case `results` is absent. Top-level `Cache-Control` represents the lowest-common max-age across the batch; individual results MAY carry their own staleness signals out-of-band.
     """

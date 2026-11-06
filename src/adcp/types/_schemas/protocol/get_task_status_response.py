@@ -6,6 +6,7 @@ from typing import Annotated, Any, ClassVar
 from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import Approximation, SchemaRef
+from adcp.types.envelopes import AdcpResponse
 
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
@@ -17,7 +18,7 @@ from ..enums.task_status import TaskStatus
 from ..enums.task_type import TaskType
 
 
-class GetTaskStatusResponse(AdCPVersionEnvelope, ProtocolEnvelope):
+class GetTaskStatusResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Response from the get_task_status AdCP tool, a 3.x protocol-namespace alias for legacy AdCP tasks/get. Contains AdCP application-layer task status, task metadata, and optional conversation history or terminal result payload; distinct from transport-native MCP/A2A task responses.
     """

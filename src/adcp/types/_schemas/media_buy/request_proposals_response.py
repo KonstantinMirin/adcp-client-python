@@ -9,6 +9,7 @@ from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import AtLeastOne, ForbiddenGroups, Rule, UniqueItems
 from adcp.types.constraints import StrMaxLen2000, StrMinLen1, StrMinLen16
+from adcp.types.envelopes import AdcpResponse
 
 from ..core.canonical_product import CanonicalProduct
 from ..core.canonical_proposal import CanonicalProposal
@@ -102,7 +103,7 @@ class PurchaseContinuationLegacyCreate(AdCPBaseModel):
     requires_explicit_acceptance: Literal[True]
 
 
-class RequestProposalsResponse(BranchDispatchMixin, AdCPBaseModel):
+class RequestProposalsResponse(BranchDispatchMixin, AdCPBaseModel, AdcpResponse):
     """
     One or more immutable draft media-plan proposals and compact canonical products referenced by their purchases. Products always carry product_id and name and never carry legacy named-format identifiers. During the AdCP 3.x compatibility window, an SDK projecting a valid products-only get_products brief result may instead return the deprecated products_available outcome with an explicit purchase continuation. Native 3.2 sellers MUST NOT use that compatibility outcome, and adapters MUST NOT fabricate a proposal, terms digest, or feed version.
     """

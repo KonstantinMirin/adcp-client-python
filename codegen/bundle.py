@@ -14,6 +14,7 @@ denominator in the plan's metric.
 from __future__ import annotations
 
 import copy
+import functools
 import hashlib
 import json
 from collections.abc import Callable, Collection, Iterator, Mapping
@@ -2376,3 +2377,95 @@ def envelope_shape(
         _agreed(key, [node["properties"][key] for _, node in members], documents)
         for key in next(iter(orders))
     )
+
+
+# --------------------------------------------------------------------------- #
+# the bundle's own TASK REGISTRY, which is what names a request and a response
+# --------------------------------------------------------------------------- #
+#: The registry file :func:`task_messages` reads, and the two slots it reads from it.
+#: ``manifest.json`` is already named in :data:`REGISTRY` -- "files describing the bundle,
+#: not a message" -- so it is excluded from :func:`portable` and emitted from no module,
+#: and this is the one reader of it.
+REGISTRY_FILE = "manifest.json"
+REQUEST_SLOT = "request_schema"
+RESPONSE_SLOT = "response_schema"
+
+#: **The stated reason the registry and not the path decides this**, quoted by the check
+#: that grades it so the sentence the code states and the sentence a check reads are one
+#: string.  ``lower/composition.py``'s D7 row wrote it before there was a reader: "a base
+#: is DERIVED from what the document composes, so there is no marker policy and no
+#: filename to classify ... which is also how ``AdcpRequest``/``AdcpResponse`` reach a
+#: task message -- through the task registry naming the document, never through its path."
+REGISTRY_SCOPE = (
+    "the bundle's own task registry and never a file name: manifest.json states a tools "
+    "map, manifest.schema.json REQUIRES request_schema and response_schema on every "
+    "entry, and a document is a request exactly when a tool names it in the request slot. "
+    "A name ending -request.json is a spelling and reaches 87 documents of bundle 3.2 "
+    "against the registry's 78, among them the pagination and package COMPONENTS no task "
+    "sends. A function of the BUNDLE and never of the run's document set (section 9's "
+    "ruling, the run is not the bundle), so a one-document emission and a whole-bundle "
+    "emission give one document the same bases"
+)
+
+
+@functools.cache
+def task_messages(bundle_dir: Path) -> tuple[frozenset[str], frozenset[str]]:
+    """``(requests, responses)``: the documents the bundle's task registry names in each
+    slot, as bundle-relative paths.
+
+    A function of the BUNDLE for :func:`envelopes`' reason and under §9's own ruling --
+    the RUN is not the BUNDLE -- so a one-document command and a whole-bundle emission
+    give one document the same bases.  ``lru_cache`` so a run pays the one read once.
+
+    **Both slots are read from one entry, which is what makes the two sets a PARTITION
+    rather than two independent derivations.**  Measured over bundle 3.2 and over 3.2.8:
+    78 tools, 78 distinct ``request_schema`` paths, 78 distinct ``response_schema``
+    paths, every one present on disk, and the intersection EMPTY -- so no document takes
+    both bases and the MRO question never arises.
+
+    **The 39 ``async_response_schemas`` are a third slot and are NOT read here.**  They
+    are task results rather than the answer to the call, 23 of the 39 are stated twice in
+    the bundle (once under ``core/async-response-refs/``), and a repeated document
+    re-EXPORTS the home's symbol rather than declaring a second class -- so a member set
+    reaching one would name a document with no declaration in its own module.  A slot
+    that needs the repeat rule resolved first is a separate row, not this one's.
+
+    A registry the bundle does not carry is a ``BuildFailure`` and not an empty answer:
+    the slots are REQUIRED by ``manifest.schema.json``, so a bundle without them is not a
+    bundle this compiler can derive a base from, and silently emitting no base would make
+    the hierarchy a function of whether a file was found.
+    """
+    path = bundle_dir / REGISTRY_FILE
+    if not path.is_file():
+        raise BuildFailure(
+            f"the bundle at {bundle_dir} carries no {REGISTRY_FILE}, so no task registry "
+            f"names which documents are requests and which are responses ({REGISTRY_SCOPE})"
+        )
+    tools = json.loads(path.read_text()).get("tools")
+    if not isinstance(tools, Mapping) or not tools:
+        raise BuildFailure(
+            f"{REGISTRY_FILE} states no tools map, so the task registry names no message"
+        )
+    slots: dict[str, set[str]] = {REQUEST_SLOT: set(), RESPONSE_SLOT: set()}
+    for task, entry in sorted(tools.items()):
+        for slot, out in slots.items():
+            named = entry.get(slot) if isinstance(entry, Mapping) else None
+            if not isinstance(named, str):
+                raise BuildFailure(
+                    f"the task {task!r} states no {slot}, which {REGISTRY_FILE}'s own "
+                    f"schema requires, so the registry does not name its {slot}"
+                )
+            if not (bundle_dir / named).is_file():
+                raise BuildFailure(
+                    f"the task {task!r} names {named!r} at {slot} and the bundle holds no "
+                    "such document, so the base would name a class no module declares"
+                )
+            out.add(named)
+    requests, responses = frozenset(slots[REQUEST_SLOT]), frozenset(slots[RESPONSE_SLOT])
+    if requests & responses:
+        raise BuildFailure(
+            "the registry names "
+            f"{sorted(requests & responses)} in BOTH slots, so one document would take "
+            "both message bases and the two sets are not a partition"
+        )
+    return requests, responses

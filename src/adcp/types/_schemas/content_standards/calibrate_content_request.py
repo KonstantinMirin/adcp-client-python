@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import Field
 
 from adcp.types._base import SchemaRef
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
@@ -14,7 +15,7 @@ from ..core.version_envelope import AdCPVersionEnvelope
 from .artifact import Artifact
 
 
-class CalibrateContentRequest(AdCPVersionEnvelope):
+class CalibrateContentRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Request parameters for evaluating content during calibration. Multi-turn dialogue is handled at the protocol layer via contextId.
     """

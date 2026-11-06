@@ -8,6 +8,7 @@ from pydantic import ConfigDict, Field
 from adcp.types._base import SchemaRef
 from adcp.types._runtime import RequiredGroups, Rule
 from adcp.types.constraints import GetCreativeDeliveryRequestEndDate, IntMin1
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.account_ref import AccountReference
 from ..core.context import ContextObject
@@ -16,7 +17,7 @@ from ..core.pagination_request import PaginationRequest
 from ..core.version_envelope import AdCPVersionEnvelope
 
 
-class GetCreativeDeliveryRequest(AdCPVersionEnvelope):
+class GetCreativeDeliveryRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Request parameters for retrieving creative delivery data including variant-level metrics from a creative agent. At least one scoping filter (media_buy_ids or creative_ids) is required.
     """

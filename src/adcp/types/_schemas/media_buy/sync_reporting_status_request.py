@@ -7,6 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.canonical_account_ref import CanonicalAccountReference
 from ..core.context import ContextObject
@@ -29,7 +30,7 @@ class StatusesItem(ReportingConsumerStatus):
     )
 
 
-class SyncReportingStatusRequest(AdCPVersionEnvelope):
+class SyncReportingStatusRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Submit the authenticated consumer's operational reporting status for expected configuration periods. This is a batched idempotent append-only sync over seller-hosted task transport, not a webhook registration, measurement-data feed, or billing receipt. Identity comes from authenticated transport; the request MUST NOT assert a buyer or consumer principal.
     """

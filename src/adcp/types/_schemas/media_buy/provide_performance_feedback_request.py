@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
@@ -14,7 +15,7 @@ from ..core.performance_feedback_assertion import PerformanceFeedbackAssertion
 from ..core.version_envelope import AdCPVersionEnvelope
 
 
-class ProvidePerformanceFeedbackRequest(AdCPVersionEnvelope, PerformanceFeedbackAssertion):
+class ProvidePerformanceFeedbackRequest(AdCPVersionEnvelope, PerformanceFeedbackAssertion, AdcpRequest):
     """
     Submits one compact optimizer-ready assertion. Measurement agents submit to a buyer-controlled orchestrator gateway through this task; the orchestrator validates, normalizes, and forwards feedback to sellers under the buyer's identity.
     """

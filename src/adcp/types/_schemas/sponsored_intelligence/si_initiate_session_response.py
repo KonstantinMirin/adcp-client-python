@@ -7,6 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types.constraints import IntMin1
+from adcp.types.envelopes import AdcpResponse
 
 from ..core.context import ContextObject
 from ..core.error import Error
@@ -31,7 +32,7 @@ class Response(AdCPBaseModel):
     ui_elements: Annotated[list[SIUIElement] | None, Field(description='Visual components to render')] = None
 
 
-class SIInitiateSessionResponse(AdCPVersionEnvelope, ProtocolEnvelope):
+class SIInitiateSessionResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Brand agent's response to session initiation
     """

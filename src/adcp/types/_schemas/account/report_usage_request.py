@@ -7,6 +7,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNega
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types.constraints import StrMaxLen50
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.account_ref import AccountReference
 from ..core.context import ContextObject
@@ -42,7 +43,7 @@ class UsageItem(AdCPBaseModel):
     measurement_window: Annotated[StrMaxLen50 | None, Field(description="Which measurement window this record represents, referencing a window_id from the product's reporting_capabilities.measurement_windows or from `measurement_terms.billing_measurement.measurement_window`. Examples: 'c7' for broadcast TV, 'post_sivt' for digital post-IVT, 'downloads_30d' for podcast. When absent, the record is not windowed (standard digital reporting). When the buy's `measurement_terms.billing_measurement.measurement_window` is set, reporters SHOULD include `measurement_window` so the receiver can reconcile against the correct stage.")] = None
 
 
-class ReportUsageRequest(AdCPVersionEnvelope):
+class ReportUsageRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Reports how a vendor's service was consumed after campaign delivery. Used by orchestrators (DSPs, storefronts) to inform vendor agents (signals, governance, creative, or — when the receiving agent is the seller of the media buy itself — a sales agent for buyer-attested or vendor-attested billing reconciliation) what was used so the receiver can track earned revenue and verify billing. Records can span multiple accounts and campaigns in a single request. When the buy's `measurement_terms.billing_measurement.vendor` names a party other than the seller's own ad server, that party (or the buyer on its behalf) pushes final measurements via this task; the seller invoices against those final records. See [Billing authority](/docs/media-buy/advanced-topics/billing-authority) for the end-to-end flow.
     """

@@ -13,6 +13,7 @@ from adcp.types.constraints import (
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
     StrMinLen1MaxLen2048,
 )
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.canonical_account_ref import CanonicalAccountReference
 from ..core.context import ContextObject
@@ -35,7 +36,7 @@ class ReportingStatusView(StrEnum):
     REVISION = 'revision'
 
 
-class GetReportingStatusRequest(AdCPVersionEnvelope):
+class GetReportingStatusRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Authoritative caller/account-isolated reporting reliability read. The authenticated caller identity comes only from transport authentication, never request fields. summary answers the operational question for independently selected delivery configurations/feeds; periods returns a cursor-paginated obligation ledger; revision resolves one exact retained revision and its materializations/resources. Unknown, unauthorized, cross-caller, and cross-account identifiers MUST be indistinguishable. Sellers implementing this task MUST advertise media_buy.reporting_delivery in experimental_features.
     """

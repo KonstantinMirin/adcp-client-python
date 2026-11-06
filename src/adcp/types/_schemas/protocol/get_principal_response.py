@@ -7,6 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types.constraints import StrMinLen1MaxLen255
+from adcp.types.envelopes import AdcpResponse
 
 from ..core.context import ContextObject
 from ..core.error import Error
@@ -56,7 +57,7 @@ class FailedPrincipalRead(AdCPBaseModel):
     errors: Annotated[list[Error], Field(max_length=16, min_length=1)]
 
 
-class GetPrincipalResponse(AdCPVersionEnvelope, ProtocolEnvelope):
+class GetPrincipalResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Result of reading the authenticated principal's identity and standing configuration. Current responses return a durable principal record with complete credential-free configuration and its version. Recognized responses return an existing durable principal identity before standing configuration exists. Unconfigured responses indicate that the stable authenticated caller has no durable principal record. Failed responses deliberately cannot carry principal identifiers, versions, or configuration state.
     """

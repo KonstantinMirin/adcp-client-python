@@ -7,6 +7,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types.constraints import IntMin1
+from adcp.types.envelopes import AdcpResponse
 
 from ..core.canonical_format_kind import CanonicalFormatKind
 from ..core.context import ContextObject
@@ -64,7 +65,7 @@ class Pagination(AdCPBaseModel):
     total: Annotated[NonNegativeInt | None, Field(description='**Deprecated** — use `total_count` instead. Retained as a legacy alias for 3.x backward compatibility; removed in AdCP 4.0. Sellers populating this field MUST also populate `total_count` with the same value.')] = None
 
 
-class GetCreativeDeliveryResponse(AdCPVersionEnvelope, ProtocolEnvelope):
+class GetCreativeDeliveryResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Response payload for get_creative_delivery task. Returns creative delivery data with variant-level breakdowns including manifests and metrics.
     """

@@ -7,6 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.account_ref import AccountReference
 from ..core.context import ContextObject
@@ -22,7 +23,7 @@ from ..enums.disclosure_position import DisclosurePosition
 from ..enums.wcag_level import WCAGLevel
 
 
-class ListCreativeFormatsRequest(AdCPVersionEnvelope):
+class ListCreativeFormatsRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     **DEPRECATED in 3.2.** Compatibility request for legacy named-format discovery. Sales agents expose purchasable canonical declarations on get_products `Product.format_options[]`; publisher acceptance comes from adagents.json `formats[]`; creative agents advertise build/validation/preview capabilities on get_adcp_capabilities `creative.supported_formats[]`.
     """

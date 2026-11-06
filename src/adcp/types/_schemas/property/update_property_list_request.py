@@ -7,6 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
 from adcp.types.constraints import HttpUrl
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.account_ref import AccountReference
 from ..core.brand_ref import BrandReference
@@ -18,7 +19,7 @@ from .base_property_source import BasePropertySource
 from .property_list_filters import PropertyListFilters
 
 
-class UpdatePropertyListRequest(AdCPVersionEnvelope):
+class UpdatePropertyListRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Request parameters for updating an existing property list
     """

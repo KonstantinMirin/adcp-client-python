@@ -17,6 +17,7 @@ from adcp.types.constraints import (
     StrMinLen1MaxLen2000,
     UpstreamTrafficSuccessRecordedCallsItemStatusCode,
 )
+from adcp.types.envelopes import AdcpResponse
 
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
@@ -26,7 +27,7 @@ from ..creative.audit_observation import CreativeAuditObservation
 from .comply_test_controller_request import Arm
 
 
-class ComplyTestControllerResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope):
+class ComplyTestControllerResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Response from the comply_test_controller tool. Shape varies by scenario type: list_scenarios returns available scenarios, force_* returns state transition results, simulate_* returns simulation results.
     """

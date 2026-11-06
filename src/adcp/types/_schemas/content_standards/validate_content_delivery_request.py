@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import AwareDatetime, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
@@ -25,7 +26,7 @@ class RecordsItem(AdCPBaseModel):
     brand_context: Annotated[ObjBrandIdSkuId | None, Field(description='Brand information for policy evaluation. Schema TBD - placeholder for brand identifiers.')] = None
 
 
-class ValidateContentDeliveryRequest(AdCPVersionEnvelope):
+class ValidateContentDeliveryRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Request parameters for batch validating delivery records against content safety policies
     """

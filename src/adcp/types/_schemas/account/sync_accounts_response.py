@@ -9,7 +9,7 @@ from pydantic import ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Dependencies, ForbiddenGroups, Match, NegatedConditional, Rule
 from adcp.types.constraints import IntMin1, StrMinLen1
-from adcp.types.envelopes import FailedResponse
+from adcp.types.envelopes import AdcpResponse, FailedResponse
 
 from ..core.account import CreditLimit, ObjUrlMessageExpiresAt
 from ..core.account_authorization import AccountAuthorization
@@ -33,7 +33,7 @@ from ..enums.billing_party import BillingParty
 from ..enums.payment_terms import PaymentTerms
 
 
-class SyncAccountsResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope):
+class SyncAccountsResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Response from account sync operation. Returns per-account results with status and billing, or operation-level errors on complete failure.
     """

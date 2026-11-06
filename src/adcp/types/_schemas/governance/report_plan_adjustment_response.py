@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types.envelopes import AdcpResponse
 
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
@@ -29,7 +30,7 @@ class PlanSummary(AdCPBaseModel):
     budget_remaining: float
 
 
-class ReportPlanAdjustmentResponse(AdCPVersionEnvelope):
+class ReportPlanAdjustmentResponse(AdCPVersionEnvelope, AdcpResponse):
     """
     Append-only adjustment lifecycle result and attributed plan accounting state.
     """

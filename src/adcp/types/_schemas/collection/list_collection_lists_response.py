@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
+from adcp.types.envelopes import AdcpResponse
 
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
@@ -15,7 +16,7 @@ from ..core.version_envelope import AdCPVersionEnvelope
 from .collection_list import CollectionList
 
 
-class ListCollectionListsResponse(AdCPVersionEnvelope, ProtocolEnvelope):
+class ListCollectionListsResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Response payload for list_collection_lists task
     """

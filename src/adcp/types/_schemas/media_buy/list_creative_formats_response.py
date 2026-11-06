@@ -7,6 +7,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
+from adcp.types.envelopes import AdcpResponse
 
 from ..core.context import ContextObject
 from ..core.error import Error
@@ -27,7 +28,7 @@ class Source(StrEnum):
     AGENT_DERIVED = 'agent_derived'
 
 
-class ListCreativeFormatsResponse(AdCPVersionEnvelope, ProtocolEnvelope):
+class ListCreativeFormatsResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     **DEPRECATED in 3.2.** Compatibility response containing legacy named-format definitions. It is not a sales-agent deliverability contract. Use Product.format_options, publisher adagents.json formats, or get_adcp_capabilities creative.supported_formats according to the question being answered.
     """

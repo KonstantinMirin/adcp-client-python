@@ -7,6 +7,7 @@ from typing import Annotated, Any, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
@@ -54,7 +55,7 @@ class TerminationContext(AdCPBaseModel):
     cause: Annotated[str | None, Field(description='For host_terminated - why host ended session')] = None
 
 
-class SITerminateSessionRequest(AdCPVersionEnvelope):
+class SITerminateSessionRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Request to terminate an SI session. Naturally idempotent — `session_id` is the dedup boundary, and terminating an already-terminated session is a no-op that returns the same terminal state. No `idempotency_key` is needed on this request.
     """

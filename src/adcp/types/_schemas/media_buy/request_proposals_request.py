@@ -7,6 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types.constraints import StrMinLen1, StrMinLen1MaxLen4096
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.brand_key import BrandKey
 from ..core.canonical_account_ref import (
@@ -33,7 +34,7 @@ class Opportunity(OpportunityContext):
     status: Annotated[Literal['open'] | None, Field(description='Whether the planning cycle remains open. On calls after initial creation, omission means no status update and MUST NOT reopen or close the opportunity implicitly, except that successful create_media_buy proposal execution explicitly infers accepted closure.')] = None
 
 
-class RequestProposalsRequest(BranchDispatchMixin, AdCPVersionEnvelope):
+class RequestProposalsRequest(BranchDispatchMixin, AdCPVersionEnvelope, AdcpRequest):
     """
     Ask a seller to create one or more indicative media-plan proposals from a brief. Provide exactly one brand source: either top-level brand or a natural-key account containing brand and operator. Each returned proposal_id identifies one immutable draft snapshot; revise or finalize it through refine_proposals, or decline it through decline_proposals.
     """

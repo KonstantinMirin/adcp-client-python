@@ -7,6 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types.constraints import StrMinLen32
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.account_ref import AccountReference
 from ..core.context import ContextObject
@@ -46,7 +47,7 @@ class AccountsItem(AdCPBaseModel):
     governance_agents: Annotated[list[GovernanceAgentsItem], Field(description="Governance agent endpoint for this account. Exactly one entry — the single agent that owns the account's full governance lifecycle. The seller calls this agent via check_governance during media buy lifecycle events. The array shape is preserved for wire compatibility with 3.0 senders; `maxItems: 1` is load-bearing and mirrors the singular `governance_context` on the protocol envelope.", max_length=1, min_length=1)]
 
 
-class SyncGovernanceRequest(AdCPVersionEnvelope):
+class SyncGovernanceRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Sync the governance agent endpoint against specific accounts. The service persists the governance agent and calls it for approval during governed lifecycle events via check_governance. Uses replace semantics: each call replaces any previously synced agent on the specified accounts. The service MUST verify that the authenticated agent has authority over each referenced account before persisting the governance agent.
 

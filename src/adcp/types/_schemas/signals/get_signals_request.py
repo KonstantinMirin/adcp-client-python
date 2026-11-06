@@ -9,6 +9,7 @@ from pydantic import ConfigDict, Field
 from adcp.types._base import Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Dependencies, Match, Rule, UniqueItems
 from adcp.types.constraints import IntMin1
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.account_ref import AccountReference
 from ..core.context import ContextObject
@@ -59,7 +60,7 @@ class FieldsItem(StrEnum):
     LAST_UPDATED = 'last_updated'
 
 
-class GetSignalsRequest(AdCPVersionEnvelope):
+class GetSignalsRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Request parameters for discovering and refining signals. Use signal_spec for natural language discovery, signal_refs for exact lookups, both together to refine previous results, or discovery_mode: 'wholesale' to enumerate the agent's full priced signals feed (symmetric with get_products buying_mode: 'wholesale'). The legacy signal_ids field is deprecated.
     """

@@ -7,6 +7,7 @@ from pydantic import ConfigDict, Field, TypeAdapter
 
 from adcp.types._base import SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.account_ref import AccountReference
 from ..core.catalog import Catalog
@@ -20,7 +21,7 @@ from ..core.version_envelope import AdCPVersionEnvelope
 from ..enums.validation_mode import ValidationMode
 
 
-class SyncCatalogsRequest(AdCPVersionEnvelope):
+class SyncCatalogsRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Request parameters for syncing buyer-managed catalog feeds, pushing immediate item availability overrides, and reading current availability state. Supports bulk operations across multiple catalog types. Existing catalogs matched by catalog_id are updated, new ones are created. When catalogs, item_availability_updates, and item_availability_queries are all omitted, the call is discovery-only.
     """

@@ -9,6 +9,7 @@ from pydantic import ConfigDict, Field, NonNegativeInt
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import StrMinLen1MaxLen1000, StrMinLen1MaxLen2000
+from adcp.types.envelopes import AdcpResponse
 
 from ..core.context import ContextObject
 from ..core.duration import Duration
@@ -140,7 +141,7 @@ class CacheScope(StrEnum):
     ACCOUNT = 'account'
 
 
-class GetProductsResponse(AdCPVersionEnvelope, ProtocolEnvelope):
+class GetProductsResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     """
     Canonical response contract for get_products, including completed results, terminal failures, wholesale unchanged responses, and the structured GetProductsRejected business outcome.
     """

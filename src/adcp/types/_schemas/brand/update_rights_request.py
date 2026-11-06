@@ -8,6 +8,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
 from adcp.types.constraints import GovernanceContext, IntMin1
+from adcp.types.envelopes import AdcpRequest
 
 from ..core.account_ref import AccountReference
 from ..core.context import ContextObject
@@ -17,7 +18,7 @@ from ..core.push_notification_config import PushNotificationConfig
 from ..core.version_envelope import AdCPVersionEnvelope
 
 
-class UpdateRightsRequest(AdCPVersionEnvelope):
+class UpdateRightsRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Modify an existing rights grant — extend dates, adjust impression caps, change pricing, or pause/resume. Parallels update_media_buy. Only the fields provided are updated; omitted fields remain unchanged.
     """
