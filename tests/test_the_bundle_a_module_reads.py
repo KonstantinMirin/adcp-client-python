@@ -127,9 +127,7 @@ BY_DESIGN = {
 OWED = frozenset(
     {
         "cells",
-        "test_a_property_that_admits_nothing",
         "test_applied_schema",
-        "test_catalogue",
         "test_conj_rule_beside_a_type",
         "test_decision_set",
         "test_dump_exemptions",
@@ -137,19 +135,15 @@ OWED = frozenset(
         "test_envelope_base",
         "test_immaterial_presence",
         "test_import_rule",
-        "test_inner_facts",
         "test_nested_union_sibling",
         "test_ref_branch_union",
-        "test_refuses_check",
         "test_reported_drop",
         "test_required_with_no_declaration",
         "test_the_declared_backlog",
         "test_the_export_census_store",
         "test_the_run_writes_its_verdicts",
-        "test_the_tree_imports",
         "test_union_disjointness",
         "test_union_dispatch",
-        "test_vocabularies",
     }
 )
 
