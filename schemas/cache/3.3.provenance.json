@@ -1,0 +1,43 @@
+{
+  "bundle": "schemas/cache/3.3",
+  "documents": 1141,
+  "digest": "sha256:b8fd8d0629a16dee7096368d8a59e5040232c596ffdc94b3a69707ae3193ee82",
+  "digest_over": "Every regular file under `bundle`, in ascending order of its bundle-relative POSIX path compared as UTF-8 bytes, as the lines `<sha256 hex of the file's bytes>  <path>\\n`, themselves hashed with sha256. The sort is explicit so the answer does not depend on the order a filesystem walk returns; the path is in the digest beside the content so a rename moves it; the hex digest is fixed-width and the separator is literal, so a rename and an edit cannot cancel. Reproducible without this repository's code: `cd <bundle> && find . -type f | sed 's|^\\./||' | LC_ALL=C sort | tr '\\n' '\\0' | xargs -0 sha256sum | sha256sum`.",
+  "upstream": {
+    "repository": "https://github.com/KonstantinMirin/adcp.git",
+    "upstream_of_record": "https://github.com/adcontextprotocol/adcp",
+    "commit": "9c32fa997f598be7fe53e927e6a73f5835393196",
+    "commit_subject": "schemas(brand): title data_subject_contestation (#8735)",
+    "artifact": "dist/schemas/3.3.0-beta.0",
+    "artifact_is_committed": false
+  },
+  "build_command": "NODE_PATH=/srv/ws/.adcp-scratch/schemabuild/node_modules node scripts/build-schemas.cjs --release",
+  "build_checkout": "The upstream checkout is SPARSE and that is part of the input, not an accident of the box: `git sparse-checkout list` reads `.changeset`, `scripts`, `static/schemas/source`. `manifest.json` is built by reading `static/compliance/source/specialisms/*/`, so a checkout that HAS that directory emits a `specialisms` array on 32 tools and one that does not emits none. Measured both ways at this commit: with it, `manifest.json` differs from this bundle in the specialisms blocks; without it, `manifest.json` differs in `generated_at` alone.",
+  "vendor_command": "cd <upstream>/dist/schemas/3.3.0-beta.0 && find . -type f -name '*.json' -not -path './bundled/*' -not -path './mcp/*' -print0 | tar -cf - --null -T - | tar -xf - -C <repo>/schemas/cache/3.3",
+  "vendor_transform": "A byte copy. Unlike `schemas/cache/3.2`, nothing is re-serialised: every `$id` the build stamps is present (1,140 of 1,141 documents carry one; `manifest.json` is the one that does not), 361 of 1,141 hold bytes outside ASCII, and 1,138 of 1,141 end in a newline. `bundled/` (124 documents) and `mcp/` (494) are excluded, which is why this bundle holds 1,141 where the artifact holds 1,759 -- and `codegen.bundle.PROJECTIONS` names those same two prefixes, so they are outside the portable population either way.",
+  "reproduction": {
+    "measured": "2026-11-06",
+    "documents_byte_identical": 1137,
+    "of": 1141,
+    "exceptions": [
+      {
+        "document": "index.json",
+        "reason": "`lastUpdated` is the build's wall-clock DATE (2026-11-05 here, 2026-11-06 on re-run). Every other byte equal."
+      },
+      {
+        "document": "creative/asset-types/index.json",
+        "reason": "`lastUpdated` is the build's wall-clock DATE. Every other byte equal."
+      },
+      {
+        "document": "extensions/index.json",
+        "reason": "`_generatedAt` is a wall-clock timestamp (2026-11-05T21:32:41.103Z here). Every other byte equal."
+      },
+      {
+        "document": "manifest.json",
+        "reason": "`generated_at` is a wall-clock timestamp, equal to the one in `extensions/index.json` -- the two are written in one pass. With the sparse cone `build_checkout` names, that field is the ONLY difference; with `static/compliance/` also checked out, the specialisms blocks differ as well."
+      }
+    ],
+    "nearest_rejected_candidates": "A `--release` build at 1b84881e3 -- the commit the session transcript named, and the HEAD of /srv/ws/adcp-upstream -- reproduces 1,125 of 1,141. The 16 it misses are the four `title` strings that commit adds and the files derived from them. The reflog settles it: 1b84881e3 was committed at 22:44:33 +0100 and HEAD moved off 9c32fa997 at 22:40:44, while this bundle's `generated_at` reads 21:32:41Z = 22:32:41 +0100. The bundle was built BEFORE either move. A build at c34931a08 (`main`) reproduces 1,136 of 1,141: it misses only `brand.json`'s `title: \"Data Subject Contestation\"`, which is exactly what 9c32fa997 adds."
+  },
+  "entanglement_with_the_patch_set": "`codegen.patch.BUILD` is `(\"patches/8525\", \"patches/8735\")` and `patches/8735` carries 13 additions, each adding a `title` the published bundle does not state. Counted against three upstream states: 0 of 13 are already stated by `schemas/cache/3.2`; 1 of 13 by this bundle (`brand.json#/definitions/data_subject_contestation`, which is what 9c32fa997 lands); 11 of 13 by a build at 1b84881e3, which is a SIBLING of 9c32fa997 and not a descendant, so it lands the other eleven and not this one. `codegen.patch.load` raises where the published bundle already states what an addition adds -- so the same patch set is unexpired, one-thirteenth expired, or eleven-thirteenths expired depending on which upstream the bundle is, and before this record nothing in the tree said which."
+}
