@@ -410,7 +410,7 @@ def test_a_payload_the_document_admits_dispatches_to_the_branch_it_was_drawn_fro
     it holds vacuously``.
     """
     bases = _declaring_bases()
-    population = claimed("emitted union bases declaring a branch list", bases)
+    graded_bases = claimed("emitted union bases declaring a branch list", bases)
     records = _records()
     identities = catalogue.admitted_identities(BUNDLE, stated=harness.stated_instances)
     floor = held.Store(held.COMMITTED)
@@ -423,7 +423,7 @@ def test_a_payload_the_document_admits_dispatches_to_the_branch_it_was_drawn_fro
     reached_its_branch: set[tuple[str, str]] = set()
     elsewhere_under_a_declaration: set[tuple[str, str]] = set()
     wrong: dict[str, tuple[str, str, str, str]] = {}
-    for name in sorted(population):
+    for name in sorted(graded_bases):
         base = bases[name]
         for branch in base.__dict__["_branch_models"]:
             ref = branch.__dict__["__adcp_schema__"]
