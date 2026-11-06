@@ -160,16 +160,57 @@ def emitted(at: Path, out: emit.Emitted, module: str) -> Iterator[object]:
     ``adcp-client-python-ir3l``), which is what makes ``strict_validate`` here read THIS
     record rather than the committed tree's.  Undone on the way out, with the modules it
     bound dropped, so no later test inherits the binding.
+
+    **THE BINDING REACHES EVERY PACKAGE LEVEL, NOT ONLY THE ROOT, and that is
+    ``adcp-client-python-ca70``.**  Binding ``at`` on the records package alone decides
+    ``core.outer`` only while ``adcp.types._schemas.core`` is UNBOUND: once any earlier
+    reader has imported the real subpackage it sits in ``sys.modules`` with the real
+    tree's ``__path__``, ``core.outer`` is looked up along that list alone, and the module
+    just written is unreachable -- ``ModuleNotFoundError``.  Measured: green alone and
+    beside ``tests/test_the_second_bundle.py``, red beside ``tests/test_approximation.py``,
+    ``tests/test_the_domain_surface.py`` and ``tests/test_the_alias_layer_is_names.py``,
+    at ``-n 0``, deterministically.  **So the clause was green by arriving first**, which
+    is the one way a gate reports the schedule rather than the tree.
+
+    Each level of ``module``'s dotted name therefore gets the matching subdirectory of
+    ``at`` in FRONT of its own ``__path__``, whether that level is already bound or is
+    loaded here, and each insertion is undone in reverse on the way out.
+
+    **AND THE TREE THE LEAF CAME FROM IS ASSERTED**, for ``tests/fresh.py``'s reason at
+    its own ``_bound()``: a binding that reaches nothing does not disagree with the checks
+    below, it hands them the COMMITTED record and they pass against an artifact this
+    bundle did not produce.  A reader that cannot fail is green, so the read is graded
+    here rather than hoped for.
     """
     emit.write(out, at, None)
     package = importlib.import_module(_base.PACKAGE)
     before = set(sys.modules)
-    package.__path__.insert(0, str(at))
-    importlib.invalidate_caches()
+    parts = module.split(".")
+    bound: list[tuple[object, str]] = []
     try:
-        yield importlib.import_module(f"{_base.PACKAGE}.{module}")
+        for level in range(len(parts)):
+            # ``level`` 0 is the records package itself; each later one is the subpackage
+            # that holds the next name, imported through the binding already in place so
+            # a level written into ``at`` resolves there.
+            here = at.joinpath(*parts[:level])
+            at_level = (
+                package
+                if level == 0
+                else importlib.import_module(f"{_base.PACKAGE}." + ".".join(parts[:level]))
+            )
+            at_level.__path__.insert(0, str(here))
+            bound.append((at_level, str(here)))
+            importlib.invalidate_caches()
+        leaf = importlib.import_module(f"{_base.PACKAGE}.{module}")
+        assert str(getattr(leaf, "__file__", "")).startswith(str(at)), (
+            f"{leaf.__name__} resolved to {getattr(leaf, '__file__', None)}, which is not "
+            f"under the tree this check wrote ({at}): the binding did not reach the module "
+            "and every assertion below would have graded another tree's record"
+        )
+        yield leaf
     finally:
-        package.__path__.remove(str(at))
+        for at_level, here in reversed(bound):
+            at_level.__path__.remove(here)
         for name in sorted(set(sys.modules) - before):
             del sys.modules[name]
         importlib.invalidate_caches()
