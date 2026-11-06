@@ -1,6 +1,6 @@
 # The alias surface, upstream adcp 9.6.1 against adcp_emit 0.0.0 (installed wheel).
 # Population: deliberate -- 5299 names over 14737 spellings.
-# ABSENT=2289  ABSENT-SUBJECT-NO-WORD=1214  MEANING-DIFFERS=35  NOT-A-TYPE=685  PRESENT=79  RELOCATED=845  RENAMED=114  UNRESOLVABLE-UPSTREAM=38
+# ABSENT=2289  ABSENT-SUBJECT-NO-WORD=1212  MEANING-DIFFERS=35  NOT-A-TYPE=685  PRESENT=79  RELOCATED=845  RENAMED=116  UNRESOLVABLE-UPSTREAM=38
 name	bucket	declared_at	ours	key	corroborated	why
 A2UiBoundValue	RENAMED	adcp.types.compat	adcp.types.a2ui.A2UIBoundValue	word-recased	none	ours is A2UIBoundValue
 A2UiBoundValue1	ABSENT-SUBJECT-NO-WORD					identity equal under a word the bundle does not give
@@ -1192,9 +1192,9 @@ ListTasksRequest	PRESENT	adcp.types.protocol	adcp.types.protocol.ListTasksReques
 ListTasksRequestBase	ABSENT-SUBJECT-NO-WORD					identity equal under a word the bundle does not give
 ListTasksResponse	PRESENT	adcp.types.protocol	adcp.types.protocol.ListTasksResponse	word	identity	resolves at adcp.types.protocol.ListTasksResponse against our wheel already
 ListTasksResponseBase	ABSENT-SUBJECT-NO-WORD					identity equal under a word the bundle does not give
-ListTransformersRequest	ABSENT-SUBJECT-NO-WORD					identity equal under a word the bundle does not give
+ListTransformersRequest	RENAMED	adcp.types.compat	adcp.types.creative.ListTransformersRequestCreativeAgent	document	identity	ours is ListTransformersRequestCreativeAgent
 ListTransformersRequestCreativeAgent	RELOCATED	adcp.types.compat	adcp.types.creative.ListTransformersRequestCreativeAgent	word	identity	upstream spells it at adcp.types.domains.creative, adcp.types.domains.creative.list_transformers_request
-ListTransformersResponse	ABSENT-SUBJECT-NO-WORD					identity equal under a word the bundle does not give
+ListTransformersResponse	RENAMED	adcp.types.compat	adcp.types.creative.ListTransformersResponseCreativeAgent	document	identity	ours is ListTransformersResponseCreativeAgent
 ListTransformersResponseBase	ABSENT-SUBJECT-NO-WORD					identity equal under a word the bundle does not give
 ListTransformersResponseCreativeAgent	RELOCATED	adcp.types.compat	adcp.types.creative.ListTransformersResponseCreativeAgent	word	identity	upstream spells it at adcp.types.domains.creative, adcp.types.domains.creative.list_transformers_response
 LocaleTag	RENAMED	adcp.types.compat	adcp.types.core.LanguageTag	document	none	ours is LanguageTag

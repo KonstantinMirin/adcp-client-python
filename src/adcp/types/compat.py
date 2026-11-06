@@ -582,7 +582,9 @@ from adcp.types.creative import GetCreativeFeaturesSubmitted as GetCreativeFeatu
 from adcp.types.creative import GetCreativeFeaturesSuccess as GetCreativeFeaturesSuccess
 from adcp.types.creative import ListCreativeFormatsRequestCreativeAgent as ListCreativeFormatsRequestCreativeAgent
 from adcp.types.creative import ListCreativeFormatsResponseCreativeAgent as ListCreativeFormatsResponseCreativeAgent
+from adcp.types.creative import ListTransformersRequestCreativeAgent as ListTransformersRequest
 from adcp.types.creative import ListTransformersRequestCreativeAgent as ListTransformersRequestCreativeAgent
+from adcp.types.creative import ListTransformersResponseCreativeAgent as ListTransformersResponse
 from adcp.types.creative import ListTransformersResponseCreativeAgent as ListTransformersResponseCreativeAgent
 from adcp.types.creative import PreviewCreativeRequest as PreviewCreativeRequest
 from adcp.types.creative import PreviewCreativeResponse as PreviewCreativeResponse
@@ -1509,7 +1511,9 @@ __all__ = [
     "ListCreativeFormatsResponseCreativeAgent",
     "ListPropertyListsRequest",
     "ListPropertyListsResponse",
+    "ListTransformersRequest",
     "ListTransformersRequestCreativeAgent",
+    "ListTransformersResponse",
     "ListTransformersResponseCreativeAgent",
     "LocaleTag",
     "LocalizedCreativeAsset",
@@ -1968,7 +1972,7 @@ __all__ = [
 #:
 #: `docs/plan/final-state.md` reading 10, amended 2026-11-06: **"already resolves" is
 #: measured at the SPELLING A CONSUMER WRITES, never at the module that declares it.**  A
-#: name upstream carries at a DOMAIN module of ours, under that exact word, is not
+#: name upstream carries at `adcp.types.<domain>.<Name>` that we also declare there is not
 #: thereby reachable, because the import an application has already written is
 #: `from adcp.types import <Name>`.  So these owe a FLAT alias exactly as a relocated name
 #: does -- and they owe NOTHING here, because at this module they would be a second path to
