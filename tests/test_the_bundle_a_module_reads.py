@@ -101,6 +101,11 @@ BY_DESIGN = {
         "the goal is verified against a SECOND bundle (fresh.SECOND, 3.3), which has no "
         "patched derivation: the patch sets are written against 3.2's documents"
     ),
+    "test_catalogue_homes": (
+        "§3a's home rule is graded as a CONSTRUCTION that must hold for ANY bundle, so the "
+        "two bundles are its subject: _bundles() is {published 3.2, patch.for_build(it)} and "
+        "a property read over one of them would be the census the file exists not to be"
+    ),
     "test_a_bundle_states_which_upstream_it_is": (
         "every PUBLISHED bundle is its subject -- BUNDLES is provenance.bundles(), and what "
         "it grades is that each one states which upstream it came from.  A patched "
