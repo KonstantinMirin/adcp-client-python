@@ -135,8 +135,24 @@ A payload offered to a union base resolves to its branch, for every payload the 
 The dispatch key is one that **determines** the branch, which requires the document to guarantee
 its presence in every instance it admits — pinning a key is not determining it.
 
+**AND WHERE THE DOCUMENT DETERMINES NO BRANCH, THE DISPATCH REFUSES AND SAYS SO.** A union whose
+document states no discriminator and whose branches overlap admits one payload at many branches at
+once — so there is no branch to resolve to, and a structural first match is a **guess wearing a
+type**. The honest answer is a refusal naming the branch it would have chosen, the absent
+discriminator, and the document's own sentence.
+
+**THAT REFUSAL IS NOT A NARROWING, AND READING 1 IS NOT IN TENSION WITH IT.** Reading 1 forbids a
+class tighter than its document over the values a pair admits. A union root with overlapping
+branches and no key **has no determined pair** — the document admits the value and names no type
+for it — so declining to answer is not refusing a value the pair accepts. **A quiet wrong object is
+worse than a loud refusal**, because the caller discovers it at the far end of their own code, and
+the ambiguity is the schema's to resolve rather than ours to guess past. It is an upstream ask in
+every instance, and the ask is usually one word.
+
 **Decided by** constructing every union base's dispatch over the whole tree and requiring that none
-raises, plus: no union dispatches on a key its document lets an instance omit.
+raises, plus: no union dispatches on a key its document lets an instance omit; and **where the
+document admits exactly one branch, the dispatch may not refuse** — which is what keeps the clause
+above from becoming a licence to refuse anything hard.
 
 ## 4. Each distinct TYPE is one type, at every layer the catalogue has
 
