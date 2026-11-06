@@ -119,6 +119,12 @@ BY_DESIGN = {
         "it grades is that each one states which upstream it came from.  A patched "
         "materialisation has no provenance file of its own and is not a delivery"
     ),
+    "test_a_record_states_one_id": (
+        "a stated $id IS its subject, and fresh.SECOND (3.3) is the only committed bundle "
+        "that states one: schemas/cache/3.2's were removed by the vendor transform, at 0 of "
+        "1,625 documents, so the rule 'a record states one $id, its own' has no site to be "
+        "read at on the run's own bundle.  adcp-client-python-bfqk"
+    ),
 }
 
 #: **THE OWED SET: modules still ranging over the published 3.2 bundle while the tree they

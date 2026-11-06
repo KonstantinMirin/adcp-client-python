@@ -1143,6 +1143,15 @@ def recorded(
       the copy would otherwise be read against the REFERRING document's root, where it
       names a different node or none.
 
+    **AND A FIFTH, WHICH IS THE SAME SENTENCE READ FROM THE OTHER END**
+    (``adcp-client-python-bfqk``): a copy leaving D's root scope does not take D's
+    ``$id`` with it, so **a record states one ``$id`` -- the one of the document it IS**.
+    :func:`one_id` is the rule and carries its measurement: draft-07 reads a ``$id`` at a
+    schema position as a new base URI for everything under it, and a hoisted
+    ``#/definitions/SharedN`` written under an inlined copy's identifier resolved against
+    the copy rather than against the root holding the section, which cost 54 of 2,589
+    graded pairs on a faithful 3.2 and 43 on bundle 3.3.
+
     **Two shapes make the record undefined and return a** :class:`Refusal` **(VERDICT)
     rather than a mapping**, which is §4's own answer: a reference whose target is not a
     bundle document -- or is, and names no node of it -- and a cross-document cycle.
@@ -1216,6 +1225,58 @@ def recorded(
 
     def refuse(pointer: str, detail: str) -> Refusal:
         return Refusal("$ref", pointer, detail, kind=Kind.VERDICT)
+
+    def one_id(built: dict, home: str, stated: str) -> dict:
+        """``built`` with a ``$id`` that is not THIS RECORD'S OWN dropped.
+
+        **A RECORD STATES ONE ``$id`` -- the one of the document it IS**
+        (``adcp-client-python-bfqk``).  An ``$id`` names where a document LIVES.  An
+        inlined copy does not live there: it is text this record quotes out of another
+        document, so a copy carrying its source's identifier makes the record say it is
+        two documents at once.  The record root is where the identifier is TRUE, and it
+        is the one position that keeps it.
+
+        **AND THE FALSEHOOD HAS A COST THE SHIPPED HALF PAYS.**  draft-07 reads a ``$id``
+        at a schema position as a new BASE URI for everything under it, and
+        :func:`stored` hoists each repeated subtree to the root's own section with a
+        local reference at every occurrence -- so an occurrence lying under an inlined
+        copy's ``$id`` resolved against THAT COPY instead of against the record root
+        holding the section, and ``strict_validate`` answered
+
+            PointerToNowhere: '/definitions/Shared2' does not exist within
+            {'$id': '.../core/frequency-cap-impression-constraints.json', ...}
+
+        for every payload.  Measured in both directions.  A faithful 3.2 -- upstream
+        ``c34931a08``'s untransformed ``dist/schemas/3.2.4`` -- graded 849 pass -> 800
+        pass over the same 2,589 pairs, and **54 of the 55 pairs that moved were this**,
+        over 33 distinct documents of the 1,059 portable and 20 distinct printed scopes;
+        bundle 3.3 lost 43 pairs to it; and ONE added line on one committed 3.2 document
+        reproduces it exactly (``core/frequency-cap-constraints.json#``, ``pass`` ->
+        ``fail:accepts:model_error``).  Before this, **730 of bundle 3.3's 733
+        cross-document-referencing records stated a ``$id`` below their root**, every one
+        of them another document's.
+
+        **NOT EXPANDED AT THE VALIDATOR INSTEAD**, which was the other candidate repair:
+        :func:`adcp.types._base.store_expanded` is applied at the accessor and its
+        docstring says what expansion costs, so calling it from ``_refuse_at`` would pay
+        that on every validation a consumer runs -- and would leave the record still
+        stating the falsehood for every other reader of it.
+
+        **BY POSITION AND NEVER BY THE KEY'S SPELLING.**  This is reached once per node
+        at a SCHEMA position, because the descent above is :func:`subschemas` -- the
+        table's own column -- so it drops a ``$id`` a node STATES and never one a node is
+        KEYED by.  ``adcp-client-python-xvk3`` is the measurement for why that distinction
+        is load-bearing: ``extensions/extension-meta.json`` states a ``properties`` ENTRY
+        named ``$id``, because the document is the schema for an extension FILE and such a
+        file declares its own id.  A strip keying on the spelling deletes that entry and
+        leaves the document ``required``-ing a property it declares no schema for.
+
+        Inert where no bundle states one: ``schemas/cache/3.2`` states ``$id`` at 0 of
+        1,625 documents, so no record of it moves a byte.
+        """
+        if "$id" not in built or (home == document and not stated):
+            return built
+        return {key: value for key, value in built.items() if key != "$id"}
 
     def placed(
         uri: str,
@@ -1404,7 +1465,14 @@ def recorded(
                 # resolves to -- the referrer's own pointer would make one stating site
                 # own as many identities as it has referrers, which is the counting §8
                 # forbids.
-                beside = _beside(copied.node, node, position)
+                # :func:`one_id` runs on the merged mapping and not on either half,
+                # because ``_beside`` is where an identifier can arrive from EITHER: the
+                # target's own (it is a copy of another document's root, 1,054 of them in
+                # bundle 3.3) and the referrer's (``$id`` is an annotation by
+                # :func:`is_an_annotation`, so a referring node stating one keeps it).
+                # Dropped BEFORE the origin is keyed, so the object this returns is the
+                # one the map answers for.
+                beside = one_id(_beside(copied.node, node, position), home, stated)
                 site = origins.get(id(copied.node))
                 if site is not None:
                     origins[id(beside)] = site
@@ -1429,10 +1497,14 @@ def recorded(
             done[suffix] = answer.node
             documents |= answer.documents
             anchors |= answer.anchors
-        built = {
-            key: rebuilt(key, value, done) if key in DESCENDS else value
-            for key, value in node.items()
-        }
+        built = one_id(
+            {
+                key: rebuilt(key, value, done) if key in DESCENDS else value
+                for key, value in node.items()
+            },
+            home,
+            stated,
+        )
         origins[id(built)] = (home, stated)
         return _Reached(built, documents, anchors)
 
