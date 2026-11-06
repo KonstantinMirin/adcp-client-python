@@ -101,6 +101,11 @@ BY_DESIGN = {
         "the goal is verified against a SECOND bundle (fresh.SECOND, 3.3), which has no "
         "patched derivation: the patch sets are written against 3.2's documents"
     ),
+    "test_a_bundle_states_which_upstream_it_is": (
+        "every PUBLISHED bundle is its subject -- BUNDLES is provenance.bundles(), and what "
+        "it grades is that each one states which upstream it came from.  A patched "
+        "materialisation has no provenance file of its own and is not a delivery"
+    ),
 }
 
 #: **THE OWED SET: modules still ranging over the published 3.2 bundle while the tree they
@@ -168,15 +173,20 @@ def bundle_of(value: Any) -> Path | None:
     return None
 
 
-def bundles_held(namespace: dict[str, Any]) -> dict[str, str]:
+def bundles_held(namespace: dict[str, Any]) -> dict[str, list[str]]:
     """Every bundle an imported module's own namespace reaches, by the name holding it.
 
     One level into a tuple, list, set or dict, because a bundle path inside a container is
     still a bundle the module reads -- ``tests/test_readme_executes.py``'s ``BASES`` is a
     pair and would otherwise be invisible.  Dunders are skipped: ``__file__`` and
     ``__path__`` are the import system's answers and not the module's.
+
+    **ALL of them per name and not the last one**, which is a container holding two bundles
+    (``tests/test_a_bundle_states_which_upstream_it_is.py``'s ``BUNDLES`` is
+    ``provenance.bundles()``, both published versions) and a reading that kept one would
+    report half of what the module reaches.
     """
-    found: dict[str, str] = {}
+    found: dict[str, set[str]] = {}
     for name, value in namespace.items():
         if name.startswith("__"):
             continue
@@ -189,8 +199,8 @@ def bundles_held(namespace: dict[str, Any]) -> dict[str, str]:
         for member in members:
             held = bundle_of(member)
             if held is not None:
-                found[name] = str(held)
-    return found
+                found.setdefault(name, set()).add(str(held))
+    return {name: sorted(paths) for name, paths in found.items()}
 
 
 #: What the child does: import ``tests/conftest.py`` first -- which is the binding that
@@ -216,7 +226,7 @@ print(json.dumps(out))
 """
 
 
-def census() -> dict[str, dict[str, str]]:
+def census() -> dict[str, dict[str, list[str]]]:
     """Every module under ``tests/`` that reaches a bundle, and which bundle, from a child.
 
     The child's return code is the first reading: a module that cannot be imported at all
@@ -256,12 +266,16 @@ def test_every_bundle_a_test_module_reads_is_one_tests_fresh_declares() -> None:
     """
     held = census()
     reached = claimed("modules under tests/ that reach a bundle", set(held))
-    declared = claimed("the bundles tests/fresh.py declares", set(bundles_held(vars(fresh)).values()))
+    declared = claimed(
+        "the bundles tests/fresh.py declares",
+        {path for paths in bundles_held(vars(fresh)).values() for path in paths},
+    )
 
     foreign = sorted(
         (module, name, path)
         for module in reached
-        for name, path in held[module].items()
+        for name, paths in held[module].items()
+        for path in paths
         if path not in declared
     )
     assert not foreign, (
@@ -292,7 +306,8 @@ def test_a_module_reading_a_bundle_other_than_the_run_s_is_named_with_its_reason
     elsewhere = {
         module: paths
         for module, paths in held.items()
-        if module != "fresh" and any(path != run_s_bundle for path in paths.values())
+        if module != "fresh"
+        and any(path != run_s_bundle for held_paths in paths.values() for path in held_paths)
     }
 
     unnamed = sorted(set(elsewhere) - named)
@@ -314,7 +329,7 @@ def test_a_module_reading_a_bundle_other_than_the_run_s_is_named_with_its_reason
     short = {
         module: sorted(population - set(bundle.portable(Path(path))))[:8]
         for module in sorted(OWED & set(elsewhere))
-        for path in set(elsewhere[module].values()) - {run_s_bundle}
+        for path in {p for ps in elsewhere[module].values() for p in ps} - {run_s_bundle}
     }
     assert all(short.values()), (
         "a module in OWED reads a bundle that carries every document the run's population "
@@ -350,8 +365,9 @@ def test_the_reading_reddens_on_a_module_that_names_its_own_bundle(tmp_path: Pat
         held = reading.bundles_held(vars(__import__({module.stem!r})))
         print("HELD", sorted(held.items()))
         assert held, "the reading did not see the constructed bundle at all"
-        declared = set(reading.bundles_held(vars(__import__("fresh"))).values())
-        foreign = sorted(set(held.values()) - declared)
+        declared = {{p for ps in reading.bundles_held(vars(__import__("fresh"))).values() for p in ps}}
+        reached = {{p for ps in held.values() for p in ps}}
+        foreign = sorted(reached - declared)
         assert foreign == [{str(constructed)!r}], foreign
         print("REDDENED")
     """)
