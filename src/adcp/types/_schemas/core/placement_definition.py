@@ -12,10 +12,10 @@ from adcp.types.constraints import IntMin1
 from ..enums.audio_distribution_type import AudioDistributionType
 from ..enums.channels import MediaChannel
 from ..enums.dooh_motion_type import DOOHMotionType
+from ..enums.identifier_types import PropertyIdentifierTypes
 from ..enums.social_placement_surface import SocialPlacementSurface
 from ..enums.sponsored_placement_type import SponsoredPlacementType
 from ..enums.video_placement_type import VideoPlacementType
-from .canonical_placement import IdentifiersItem
 from .creative_locale_policy import CreativeLocalePolicy
 from .ext import ExtensionObject
 from .presentation_ref import PlacementPresentationReference
@@ -35,6 +35,15 @@ class FormatOptionsItemFormatOptionId(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/placement-definition.json', pointer='#/properties/format_options/items/anyOf/0')
     format_option_id: Annotated[str, Field(description="Matches a `format_option_id` in the file's top-level `formats[]`.")]
     locale_policy: Annotated[CreativeLocalePolicy | None, Field(description='Optional placement-local locale policy. When the resolved top-level format declares a policy, every placement range must be contained by one of its ranges; otherwise this introduces a narrowing of the unconstrained format. The resolved effective route remains canonical-only.')] = None
+
+
+class IdentifiersItem(AdCPBaseModel):
+    model_config = ConfigDict(
+        extra='allow',
+    )
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/placement-definition.json', pointer='#/properties/identifiers/items')
+    type: PropertyIdentifierTypes
+    value: Annotated[str, Field(description='Identifier value, optionally authority-prefixed for externally governed IDs (e.g., space:1234931339).')]
 
 
 class PublisherDoohScreenResolution(AdCPBaseModel):

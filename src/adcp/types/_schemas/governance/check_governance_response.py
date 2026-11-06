@@ -21,7 +21,7 @@ from ..core.attestation_evaluation import AttestationEvaluation
 from ..core.context import ContextObject
 from ..core.currency_code import CurrencyCode
 from ..core.ext import ExtensionObject
-from ..core.reporting_reliability_statistics import ObjStartEnd
+from ..core.reporting_adjustment import ObjStartEnd
 from ..core.version_envelope import AdCPVersionEnvelope
 from ..enums.escalation_severity import EscalationSeverity
 from ..enums.governance_decision import GovernanceDecision

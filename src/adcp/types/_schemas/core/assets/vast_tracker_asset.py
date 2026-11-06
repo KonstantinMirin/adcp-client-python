@@ -14,7 +14,7 @@ from ...enums.vast_tracking_event import VASTTrackingEvent
 from .._vocabularies import _VALUES_LINEAR_NON_LINEAR_COMPANION
 from ..macro_bearing_url import MacroBearingURL
 from ..provenance import Provenance
-from .daast_tracker_asset import MacroDeclarationsItem
+from .url_asset import MacroDeclarationsItem
 
 
 class Target(StrEnum):

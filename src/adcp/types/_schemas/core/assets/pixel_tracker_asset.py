@@ -12,7 +12,7 @@ from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, 
 from ...enums.pixel_tracking_event import PixelTrackingEvent
 from ..macro_bearing_url import MacroBearingURL
 from ..provenance import Provenance
-from .daast_tracker_asset import MacroDeclarationsItem
+from .url_asset import MacroDeclarationsItem
 
 
 class Method(StrEnum):

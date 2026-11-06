@@ -10,6 +10,7 @@ from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import PropertyCount, RequiredGroups, Rule, UniqueItems
 
 from ..enums.outcome_target_cost_strength import OutcomeTargetCostStrength
+from .bidding_policy import RoasStrength
 
 
 class ModesItem(StrEnum):
@@ -30,11 +31,6 @@ class MaxBidWithCostPer(AdCPBaseModel):
     )
     kind: Literal['max_bid_with_cost_per']
     cost_per_strengths: Annotated[list[OutcomeTargetCostStrength], Field(description='cost_per strengths supported when combined with max_bid.', json_schema_extra={'uniqueItems': True}, min_length=1)]
-
-
-class RoasStrength(StrEnum):
-    FLOOR = 'floor'
-    TARGET = 'target'
 
 
 class MaxBidWithRoas(AdCPBaseModel):

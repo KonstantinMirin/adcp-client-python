@@ -12,21 +12,7 @@ from adcp.types.constraints import NonEmptyList, StrCountryCode
 
 from ..enums.legacy_postal_system import CountryFusedPostalCodeSystem
 from ._vocabularies import _VALUES_POSTAL_CODE_CUSTOM
-
-
-class USPostalCodeSystem(StrEnum):
-    ZIP = 'zip'
-    ZIP_PLUS_FOUR = 'zip_plus_four'
-
-
-class GBPostalCodeSystem(StrEnum):
-    OUTWARD = 'outward'
-    FULL = 'full'
-
-
-class CaPostalCodeSystem(StrEnum):
-    FSA = 'fsa'
-    FULL = 'full'
+from .postal_country_system import CaPostalCodeSystem, GBPostalCodeSystem, USPostalCodeSystem
 
 
 class PostalAreaSupportValueItem(StrEnum):
@@ -80,4 +66,4 @@ class PostalAreaSupport(AdCPBaseModel):
     at_plz: bool | None = None
 
 
-__all__ = ["CaPostalCodeSystem", "GBPostalCodeSystem", "PostalAreaSupport", "USPostalCodeSystem"]
+__all__ = ["PostalAreaSupport"]

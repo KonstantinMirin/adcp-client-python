@@ -10,13 +10,13 @@ from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Neg
 
 from ..enums.channels import MediaChannel
 from .canonical_format_kind import CanonicalFormatKind
-from .canonical_format_option import SellerPreference
 from .creative_locale_policy import CreativeLocalePolicy
 from .domain_name import DomainName
 from .format_id import FormatReferenceStructuredObject
 from .https_url import HTTPSURL
 from .macro_resolution_capability import MacroProcessingCapability
 from .platform_extension_ref import PlatformExtensionReference
+from .product_format_declaration import SellerPreference
 
 
 class CreativeOperationFormatDeclaration(AdCPBaseModel):

@@ -13,7 +13,7 @@ from ..core.brand_ref import BrandReference
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
 from ..core.idempotency_key import IdempotencyKey
-from ..core.reporting_reliability_statistics import ObjStartEnd
+from ..core.reporting_adjustment import ObjStartEnd
 from ..core.version_envelope import AdCPVersionEnvelope
 from ..enums.channels import MediaChannel
 from ..enums.delegation_authority import DelegationAuthority

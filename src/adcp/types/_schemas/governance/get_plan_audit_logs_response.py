@@ -24,7 +24,7 @@ from ..core.context import ContextObject
 from ..core.currency_code import CurrencyCode
 from ..core.ext import ExtensionObject
 from ..core.protocol_envelope import ProtocolEnvelope
-from ..core.reporting_reliability_statistics import ObjStartEnd
+from ..core.reporting_adjustment import ObjStartEnd
 from ..core.version_envelope import AdCPVersionEnvelope
 from ..enums.governance_decision import GovernanceDecision
 from ..enums.governance_mode import GovernanceMode

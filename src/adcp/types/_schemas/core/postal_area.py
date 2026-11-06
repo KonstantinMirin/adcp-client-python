@@ -13,9 +13,10 @@ from ..enums.legacy_postal_system import CountryFusedPostalCodeSystem
 from ..enums.postal_system import PostalCodeSystem
 from ._vocabularies import _VALUES_POSTAL_CODE_CUSTOM
 from .country_code import CountryCode
-from .postal_area_support import CaPostalCodeSystem, GBPostalCodeSystem, USPostalCodeSystem
 from .postal_country_system import (
+    CaPostalCodeSystem,
     Country,
+    GBPostalCodeSystem,
     PostalCountrySystemAUPostcode,
     PostalCountrySystemBranch9,
     PostalCountrySystemBRCep,
@@ -26,6 +27,7 @@ from .postal_country_system import (
     PostalCountrySystemPlz,
     PostalCountrySystemUS,
     PostalCountrySystemZAPostalCode,
+    USPostalCodeSystem,
 )
 
 

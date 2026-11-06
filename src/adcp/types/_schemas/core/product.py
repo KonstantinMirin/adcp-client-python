@@ -49,7 +49,7 @@ from .audience_evidence import AudienceEvidence
 from .audience_evidence_selection import AudienceEvidenceSelection
 from .brand_ref import BrandReference
 from .cancellation_policy import CancellationPolicy
-from .collection_selector import CollectionSelector
+from .collection_selection import CollectionsItem
 from .country_code import CountryCode
 from .creative_policy import CreativePolicy
 from .data_provider_signal_selector import DataProviderSignalSelector
@@ -186,17 +186,6 @@ class ProductCardDetailed(AdCPBaseModel):
     price_label: Annotated[str | None, Field(description='Formatted price or pricing summary.')] = None
     cta_label: Annotated[str | None, Field(description='Call-to-action button label.')] = None
     reference_assets: Annotated[list[ProductCardReferenceAsset] | None, Field(description='Typed seller collateral for buyer planning — coverage maps, sample renders, environment photos, media kits. Distinct from hero_image/carousel_images, which are display-oriented.')] = None
-
-
-class CollectionsItem(CollectionSelector):
-    """
-    References collections declared in an adagents.json. Buyers resolve full collection objects by fetching the adagents.json at the given domain and matching collection_ids against its collections array. When collection_ids is omitted, the selector references every collection declared in that adagents.json — the bulk-grant form for authorization scoping (e.g., a host authorizing a channel owner's sales agent for all of the owner's collections without tracking owner-assigned IDs).
-    """
-    model_config = ConfigDict(
-        extra='allow',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product.json', pointer='#/properties/collections/items')
-    collection_ids: Annotated[list[str], Field(description='Collection IDs from the adagents.json collections array. Each ID must match a collection_id declared in that file. Omit to reference all collections declared in that file.', min_length=1)]
 
 
 class ProvidersItem(AdCPBaseModel):

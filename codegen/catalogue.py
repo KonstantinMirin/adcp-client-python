@@ -313,6 +313,26 @@ class Entry:
         drops is one §4 either already merged or deliberately kept apart.  Reaching into
         a module to merge two of its own declarations is a change to that rule and not to
         this one.
+
+        **AND A POSITION THE WALK LOWERS NOTHING FROM IS NOT AMONG THEM**
+        (:attr:`Stated.reached`), which is :attr:`ShapeEntry.restating`'s sixth exclusion
+        read one layer down and in that one's own words: "a position that declares nothing
+        is not one minting a second definition".  :func:`declared_at` already refuses such
+        a position as a HOME -- a home that declares no class leaves the entry with nothing
+        to reference -- and the two halves must agree, because this list is what
+        ``emit.needs`` turns into an ORDERING EDGE.
+
+        **The asymmetry was measurable and it was not theoretical.**  One position of this
+        bundle is unreached -- ``a2ui/si-catalog.json#/definitions/IntegrationAction``,
+        which nothing references -- and it carried a catalogue edge from
+        ``a2ui/si-catalog.json`` (standing index 2) to
+        ``protocol/get-adcp-capabilities-response.json`` (index 1,012) for
+        *Protocol Transport Type*.  No import is emitted at a pointer the walk never
+        reaches, so the edge constrained the run's order and corresponded to nothing in any
+        module -- an over-approximation that can close a reference cycle no module could
+        have, which is ``adcp-client-python-6qi7``'s hazard with no symbol behind it.
+        ``tests/test_catalogue_homes.py`` is what found it, by the potential and not by a
+        refusal.
         """
         home = (self.naming.document, self.naming.pointer)
         return tuple(
@@ -320,6 +340,7 @@ class Entry:
             for p in self.positions
             if (p.document, p.pointer) != home
             and not p.is_a_root
+            and p.reached
             and p.document != self.naming.document
         )
 
@@ -662,86 +683,87 @@ def ranked(position: Stated, title: str | None) -> tuple[object, ...]:
     )
 
 
-def beneath(bundle_dir: Path) -> dict[str, frozenset[str]]:
-    """document -> every document it reaches through a ``$ref``, transitively.
-
-    A reading of the BUNDLE and not of the run, which is §9's rule and the same one
-    :func:`collect` is permitted by: the answer is the same for a one-document command and
-    for a whole-population emission.
-    """
-    direct: dict[str, set[str]] = {}
-    for edge in bundle.edges(bundle_dir):
-        if edge.target is not None and edge.target != edge.document:
-            direct.setdefault(edge.document, set()).add(edge.target)
-    out: dict[str, frozenset[str]] = {}
-    for document in direct:
-        seen: set[str] = set()
-        unread = [document]
-        while unread:
-            for target in direct.get(unread.pop(), ()):
-                if target not in seen:
-                    seen.add(target)
-                    unread.append(target)
-        out[document] = frozenset(seen)
-    return out
-
-
-def declared_at(
-    positions: Collection[Stated], title: str | None, reaches: Mapping[str, frozenset[str]]
-) -> Stated:
+def declared_at(positions: Collection[Stated], standing: Mapping[str, int]) -> Stated:
     """The position a vocabulary's ONE class is declared at (:attr:`Entry.naming`).
 
-    A TITLE or a ROOT answers it outright and :func:`ranked` is that order.  **What is left
-    is a vocabulary the bundle names at no position and states at no root**, and there §3a
-    says both where the entry belongs and why the obvious answer is wrong:
+    **A ROOT, then the STANDING ORDER, and the bundle's own order to break a tie** --
+    which is :func:`shape_ranked`'s order at L2, read here one layer down, and the two
+    layers now state ONE home rule rather than two.  §1 is what puts the roots first
+    ("every portable document contributes a symbol", so a root cannot become a reference
+    to another module's class); §3a is what puts the standing order next --
+    ``emit.standing_order`` is a topological index of the bundle's REFERENCE graph, the
+    home is the group's earliest document in it, so the edge this layer adds runs
+    backwards along an order of all the reference edges.
 
-        "An entry lives in the NARROWEST namespace that contains every position
-        referencing it ... **But a cycle is only possible if the shared type lives INSIDE a
-        document module.**  Put the catalogue in its own layer beneath every document
-        module and the dependency arrows point one way, so a cycle is not avoided by care
-        -- it is unrepresentable."
+    **A ``title`` DOES NOT ENTER THIS ORDER, and the measurement that forced the
+    separation at L2 forces it here.**  :func:`shape_ranked`: "a rule that let the first
+    decide the second put the home wherever the bundle -- or an override -- happened to
+    write the word", measured as *emitted 896 / refused 163*.  The hazard is not L2's: at
+    either layer a titled position can sit in a document that references the restating
+    one, and then the catalogue edge closes a cycle.  So the title answers *what is this
+    entry CALLED* (:attr:`Entry.title`, ``emit.judged``) and this answers *which document
+    may declare it*, and nothing here branches on the first.
 
-    **That layer is not built here and the reason is a question §3a does not settle: the
-    NAME.**  An entry in a module with no document has no position for §4 to derive a name
-    at, and §4's collision rule lengthens a colliding name "by its own nearest ancestor
-    segment" -- which an entry stated at six positions has six of.  Measured over this
-    bundle under §3a's own namespace rule, 8 of the 95 untitled entries collide inside the
-    namespace it sends them to: six distinct value lists derive ``Reason`` in the shared
-    one, ``Mode`` and ``Unit`` collide in ``core`` and ``Status`` in ``media_buy``.  Until
-    that sentence exists an entry is declared at a POSITION, where §4 names it and §1's
-    domain-scope rule resolves it, and nothing is minted.
+    **WHAT THIS REPLACED, and why it was a census rather than a rule.**  The home was
+    "the stating document the other stating documents ALREADY REACH" -- ranked by how many
+    of the group's own documents reach the position, over a transitive ``$ref`` closure
+    this module computed itself.  Its own docstring said plainly that the order was
+    *"measured cycle-free and not cycle-free by construction"*, and
+    ``adcp-client-python-6qi7`` is what a census costs: ``emit.needs`` unions the reference
+    graph with the catalogue's homes, so a home inside a document that references the
+    restating one closes a cycle ``emit.order`` must read as a VERDICT.  A reach COUNT is
+    not a linear extension of anything -- two entries over one pair of documents answer in
+    opposite directions, because their groups differ and so do their counts -- so the
+    property could only ever be checked after the fact.
 
-    **So the home is the stating document the other stating documents ALREADY REACH**, and
-    the arrow a restatement adds then runs the way the bundle's own references already run.
-    Measured over this bundle, against two other orders that are equally functions of it:
+    **AND IT IS NOW ACYCLIC BY CONSTRUCTION, over BOTH catalogue layers at once.**  With
+    ``idx`` the standing order's index, take ``φ(D) = idx(D)``.  A ``$ref`` edge
+    ``D -> D'`` decreases ``φ`` because ``idx`` is a topological index of exactly those
+    edges.  A catalogue edge ``D -> home`` decreases it because the home is the group's
+    EARLIEST stating document: ``idx(home) <= idx(D)`` for every stating ``D``, and
+    strictly for the ``D`` that are not the home itself -- which are the only ones that
+    carry an edge (:attr:`Entry.restating` drops the home's own document).  Every edge of
+    the unioned graph strictly decreases ``φ``, so a cycle is **unrepresentable** rather
+    than absent.  That is §3a's ask held by a derivation, and
+    ``tests/test_catalogue_homes.py`` is the gate on it.
 
-    ======================================================  ==========================
-    the home is                                             reference cycles the
-                                                            catalogue edge closes
-    ======================================================  ==========================
-    the first stating position in bundle order                                       4
-    the last                                                                         5
-    **the document the most other stating documents reach**                      **0**
-    ======================================================  ==========================
+    **THE ONE EDGE THE DERIVATION DOES NOT COVER IS A ROOT'S, and §1 is why it stands.**
+    A root sorts ahead of the standing order, so a rooted home need not be the group's
+    earliest document and ``idx(home) > idx(D)`` is possible there.  §1 forbids the
+    alternative -- a root that declared nothing would leave its own document with no
+    exported name -- so the clause is not a weakening this function chose.  What makes it
+    safe is strictly weaker than a construction and is MEASURED per entry rather than
+    counted: a rooted home must not REACH a restating document through the reference
+    graph.  The gate states that half separately and names the pair when it fires.
 
-    A cycle is a VERDICT for every document on it (``emit.order``), so the two rejected
-    orders do not emit a wrong answer -- they refuse 9 documents.  **This order is
-    measured cycle-free and not cycle-free by construction**, which is exactly the
-    difference §3a's layer buys and is why this function names it.
+    ``standing`` is ``emit.standing_order``'s and is handed IN, which is §3a's own rule --
+    "a derived reading of the bundle is an argument, not something a callee recomputes" --
+    and is what :func:`collect` takes it positionally for.
+
+    **AND THERE IS NO ``title`` PARAMETER, which is the separation held by the signature
+    rather than by a sentence.**  :func:`shape_ranked` keeps one and says it is unused;
+    here the argument is simply gone, so a future reader cannot reintroduce the branch
+    without changing every caller -- and the title is read where the NAME is decided
+    (``emit.judged``, :attr:`Entry.title`) and nowhere else.
     """
-    best = min(positions, key=lambda p: ranked(p, title))
-    if (best.title == title and title is not None) or best.is_a_root:
-        return best
-    documents = {p.document for p in positions}
+    return min(positions, key=lambda p: _home_order(p, standing))
 
-    def already_beneath(position: Stated) -> tuple[object, ...]:
-        others = documents - {position.document}
-        under = sum(1 for other in others if position.document in reaches.get(other, ()))
-        # ``reached`` first, for :attr:`Stated.reached`'s own reason: a home the walk
-        # lowers nothing from declares no class for anything to reference.
-        return (not position.reached, -under, position.document, position.pointer)
 
-    return min(positions, key=already_beneath)
+def _home_order(position: Stated, standing: Mapping[str, int]) -> tuple[object, ...]:
+    """:func:`declared_at`'s order over the positions of one entry, best first.
+
+    ``reached`` first, for :attr:`Stated.reached`'s own reason: a home the walk lowers
+    nothing from declares no class for anything to reference.  Then §1's roots, then §3a's
+    standing order, then the bundle's own order so the answer is a function of the bundle
+    and not of an iteration.
+    """
+    return (
+        not position.reached,
+        not position.is_a_root,
+        standing.get(position.document, len(standing)),
+        position.document,
+        position.pointer,
+    )
 
 
 def the_name(positions: Collection[Stated], stated: Collection[str]) -> str | None:
@@ -2523,7 +2545,11 @@ def _separated(
 BASE_WORD = {"string": "Str", "integer": "Int", "number": "Float"}
 
 
-def collect(bundle_dir: Path, documents: Collection[str] | None = None) -> Catalogue:
+def collect(
+    bundle_dir: Path,
+    standing: Mapping[str, int],
+    documents: Collection[str] | None = None,
+) -> Catalogue:
     """Layer L0 over the bundle: one pass, before naming (§3a).
 
     The four groups are a PARTITION of the VALUE LISTS stated at more than one position,
@@ -2536,8 +2562,11 @@ def collect(bundle_dir: Path, documents: Collection[str] | None = None) -> Catal
     **Keyed on the VALUE LIST and not on §3a's structural identity** --
     :func:`value_list` carries the measurement that makes the two interchangeable here and
     the one case the coarser key reaches that the finer one cannot.
+
+    ``standing`` is §3a's home rule's input (``emit.standing_order``) and
+    :func:`declared_at` is the rule.  It is POSITIONAL for ``collect_shapes``' own reason:
+    a caller cannot forget it and read a different collection than the run does.
     """
-    reaches = beneath(bundle_dir)
     grouped: dict[Vocabulary, list[Stated]] = {}
     every: list[Stated] = []
     for position in states(bundle_dir, documents):
@@ -2587,7 +2616,7 @@ def collect(bundle_dir: Path, documents: Collection[str] | None = None) -> Catal
                 if vocabularies.separate(key):
                     more_than_one_type(key, group, ())
                 continue
-            at = declared_at(group, None, reaches)
+            at = declared_at(group, standing)
             entries[key] = Entry(
                 vocabulary=key,
                 members=at.members,
@@ -2612,7 +2641,7 @@ def collect(bundle_dir: Path, documents: Collection[str] | None = None) -> Catal
         # The entry's member order is the NAMING position's: §3a derives the name from the
         # bundle, so the document that names the concept is the one whose spelling of it
         # the entry carries.
-        naming = declared_at(group, title, reaches)
+        naming = declared_at(group, standing)
         entries[key] = Entry(
             vocabulary=key,
             members=naming.members,

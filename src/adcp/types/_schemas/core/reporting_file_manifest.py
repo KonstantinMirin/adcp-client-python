@@ -9,11 +9,11 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import ComplyTestControllerRequestParamsReceivedReportingRevisionId
 
+from .reporting_consumer_status import ObjStartEndSourceTimezone
 from .reporting_control_total import ReportingControlTotal
 from .reporting_delivery_method import FileFormat
 from .reporting_file_compression import ReportingFileCompression
 from .reporting_file_entry import ReportingFileEntry
-from .reporting_revision import ObjStartEndSourceTimezone
 
 
 class ReportingFileManifest(AdCPBaseModel):

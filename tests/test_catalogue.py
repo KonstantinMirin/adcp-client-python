@@ -61,10 +61,11 @@ CHILD = Path(__file__).resolve().parent / "_vocabularies_in_a_tree.py"
 def l0() -> catalogue.Catalogue:
     """Layer L0 over the whole bundle, collected once for this module.
 
-    The bundle and nothing else, which is §9's rule held by the call: a collection handed
-    the RUN's document set would be the census §9 forbids.
+    The bundle and §3a's home-rule order and nothing else, which is §9's rule held by the
+    call: a collection handed the RUN's document set would be the census §9 forbids.  The
+    order is ``emit.standing_order``'s, which is itself a reading of the bundle alone.
     """
-    return catalogue.collect(BUNDLE)
+    return catalogue.collect(BUNDLE, emit.standing_order(BUNDLE))
 
 
 def test_the_collection_partitions_every_vocabulary_stated_more_than_once(

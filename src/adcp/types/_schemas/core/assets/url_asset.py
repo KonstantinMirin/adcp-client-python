@@ -3,14 +3,36 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 
+from ...enums.macro_value_context import MacroValueContext
 from ...enums.url_asset_type import URLAssetType
 from ..macro_bearing_url import MacroBearingURL
+from ..macro_declaration import MacroDeclaration
 from ..provenance import Provenance
-from .daast_tracker_asset import MacroDeclarationsItem
+
+
+class Location(AdCPBaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/url-asset.json', pointer='#/properties/macro_declarations/items/allOf/1/properties/location')
+    field: Annotated[Literal['url'], Field(description='Asset field containing this occurrence.')]
+    occurrence: Annotated[NonNegativeInt, Field(description='Zero-based occurrence of this exact token within the named field.')]
+    context: MacroValueContext
+
+
+class MacroDeclarationsItem(MacroDeclaration):
+    """
+    The source-faithful contract for one occurrence of one macro token. It identifies the current dialect, verified mapping status, exact asset-field occurrence, next processing operation, actor, and encoding. Translation and concrete value resolution are separate operations: a translator emits the declared native token and replaces this declaration with the target declaration. Unknown tokens are always byte-preserved.
+    """
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/url-asset.json', pointer='#/properties/macro_declarations/items')
+    location: Location
 
 
 class URLAsset(AdCPBaseModel):

@@ -19,7 +19,6 @@ from ..core.product import Product
 from ..core.proposal import Proposal
 from ..core.protocol_envelope import ProtocolEnvelope
 from ..core.version_envelope import AdCPVersionEnvelope
-from ..core.wholesale_feed_webhook import CacheScope
 from .get_products_targeting_resolution import ProductDiscoveryTargetingResolution
 
 
@@ -131,6 +130,14 @@ class FilterDiagnostics(AdCPBaseModel):
     semantics: Annotated[Semantics | None, Field(description="How `excluded_by[*].count` values are computed across multiple filters. `only`: counts products that would have been included if not for THIS filter alone (deterministic; the right value for 'which filter killed my result set' triage — recommended when feasible). `any`: counts products excluded by ANY filter (so multiple filters' counts may overlap and sum to more than `total_candidates`). `approximate`: sellers SHOULD use this when their pipeline can't cleanly attribute exclusions to a single filter. Buyers SHOULD inspect `semantics` before doing arithmetic on counts.")] = None
     total_candidates: Annotated[NonNegativeInt | None, Field(description='Number of products the seller considered before applying `filters`. Baseline for interpreting per-filter exclusion counts. Approximate — sellers MAY return a sampled or capped count when their candidate pool is large. Optional; sellers whose baseline candidate set size is sensitive (revealing market posture or competitive density) MAY omit this while still emitting `excluded_by`.')] = None
     excluded_by: Annotated[dict[str, ExcludedByValue] | None, Field(description="Per-filter exclusion counts, keyed by the filter property name as it appears in the request's `filters` object (e.g., `pricing_currencies`, `required_metrics`, `required_vendor_metrics`, `required_geo_targeting`, `budget_range`). Values are objects carrying `count` and optional filter-specific detail. Only filters that actually narrowed the set need appear here; absence of a key means that filter did not exclude anything (or was not in the request).")] = None
+
+
+class CacheScope(StrEnum):
+    """
+    Declares whether the wholesale_feed_version and pricing_version on this response describe a universal layer or an account-specific overlay. REQUIRED on every 3.1+ response (the 3.1 schema enforces this — the safety property of the two-layer cache model depends on it). 'public': this response describes the seller's published rate card; the buyer MAY dedupe under (agent, buying_mode, filters, targeting_overlay, media_buy_frequency_cap, required_overlay_support, required_media_buy_support, deprecated property_list, catalog) without scoping by account. 'account': this response includes account-specific overrides; the buyer MUST cache the version under that tuple plus account_id. When the request did NOT include `account`, the seller MUST return `cache_scope: 'public'`. When the request included `account`, the seller MUST return either: 'public' (this account prices off the public rate card — buyer dedupes) or 'account' (account-specific overrides exist — buyer caches under the account key). Sellers MAY return 'public' on an account-scoped request that previously had overrides — buyers SHOULD interpret this as a downgrade and drop their account-overlay. Without schema-required cache_scope, a seller silently omitting the field on an account-scoped response would cause buyers to mis-key the cache and serve account-overlay payloads to other accounts. **Backward-compatibility note for 3.1 validators:** SDKs that validate strictly against the 3.1 schema MUST select the validator based on the server-declared `adcp_version` (release-precision version negotiation, 3.1). For responses with `adcp_version` starting `3.0`, the 3.1 cache_scope-required constraint MUST be relaxed.
+    """
+    PUBLIC = 'public'
+    ACCOUNT = 'account'
 
 
 class GetProductsResponse(AdCPVersionEnvelope, ProtocolEnvelope):

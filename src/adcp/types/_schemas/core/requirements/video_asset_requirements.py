@@ -14,6 +14,7 @@ from ...enums.frame_rate_type import FrameRateType
 from ...enums.gop_type import GOPType
 from ...enums.moov_atom_position import MoovAtomPosition
 from ...enums.scan_type import ScanType
+from ...formats.canonical.video_hosted import VideoCodec
 
 
 class ContainersItem(StrEnum):
@@ -22,15 +23,6 @@ class ContainersItem(StrEnum):
     MOV = 'mov'
     AVI = 'avi'
     MKV = 'mkv'
-
-
-class VideoCodec(StrEnum):
-    H264 = 'h264'
-    H265 = 'h265'
-    VP8 = 'vp8'
-    VP9 = 'vp9'
-    AV1 = 'av1'
-    PRORES = 'prores'
 
 
 class AudioCodecsItem(StrEnum):

@@ -10,10 +10,9 @@ from adcp.types._base import SchemaRef
 from adcp.types.constraints import CanonicalFormatImageAspectRatio, IntMin1
 
 from ...common._vocabularies import _VALUES_ACCEPTED_REJECTED
-from ...core.canonical_projection_ref import AssetSource
-from ...core.requirements.video_asset_requirements import VideoCodec
 from ...enums.ctv_ad_experience import CTVAdExperience
 from ._base import CanonicalFormatBase, SlotsItem
+from .audio_hosted import AssetSource
 from .seller_rendered_stateful_display import ContainersItem
 
 
@@ -24,6 +23,15 @@ class Orientation(StrEnum):
     VERTICAL = 'vertical'
     HORIZONTAL = 'horizontal'
     SQUARE = 'square'
+
+
+class VideoCodec(StrEnum):
+    H264 = 'h264'
+    H265 = 'h265'
+    VP8 = 'vp8'
+    VP9 = 'vp9'
+    AV1 = 'av1'
+    PRORES = 'prores'
 
 
 class AudioCodecsItem(StrEnum):

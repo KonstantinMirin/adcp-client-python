@@ -14,7 +14,7 @@ from ..core.canonical_product import CanonicalProduct
 from ..core.context import ContextObject
 from ..core.duration import Duration
 from ..core.ext import ExtensionObject
-from ..core.wholesale_feed_webhook import CacheScope
+from .get_products_response import CacheScope
 
 
 class Outcome(StrEnum):

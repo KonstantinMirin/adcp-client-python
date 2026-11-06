@@ -13,8 +13,7 @@ from ..enums.audience_evidence_methodology import AudienceEvidenceMethodology
 from ..enums.audience_resolution_method import AudienceResolutionMethod
 from ..enums.audience_subject_type import AudienceSubjectType
 from .audience_characteristic import AudienceCharacteristic
-from .audience_evidence import Baseline, Relationship, Unit
-from .audience_evidence_requirements import EvidenceType
+from .audience_evidence import Baseline, EvidenceType, Relationship, Unit
 from .brand_key import BrandKey
 from .date_range import DateRange
 from .ext import ExtensionObject

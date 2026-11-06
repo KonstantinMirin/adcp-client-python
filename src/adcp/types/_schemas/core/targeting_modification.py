@@ -39,7 +39,7 @@ class ReplaceTargetingValue(TargetingModification):
     ext: ExtensionObject | None = None
 
 
-class Path(StrEnum):
+class RemoveTargetingSetValuesPath(StrEnum):
     """
     Supported targeting field with string-set semantics. Postal-area paths identify their group with selector; direct top-level sets omit selector.
     """
@@ -83,7 +83,7 @@ class RemoveTargetingSetValues(TargetingModification):
         NegatedConditional((Match('path', True, ('/geo_postal_areas', '/geo_postal_areas_exclude')),), require=(), forbid=('selector',)),
     )
     operation: Literal['remove_values']
-    path: Annotated[Path, Field(description='Supported targeting field with string-set semantics. Postal-area paths identify their group with selector; direct top-level sets omit selector.')]
+    path: Annotated[RemoveTargetingSetValuesPath, Field(description='Supported targeting field with string-set semantics. Postal-area paths identify their group with selector; direct top-level sets omit selector.')]
     selector: Annotated[Selector | None, Field(description='Stable identity of exactly one postal-area group in the requested array. Required only for postal-area paths. Zero or multiple matches make the modification invalid.')] = None
     values: Annotated[list[str], Field(description='Values removed from the requested set. Values absent from that set are invalid rather than no-ops.', json_schema_extra={'uniqueItems': True}, min_length=1)]
     reason: StrMinLen1
