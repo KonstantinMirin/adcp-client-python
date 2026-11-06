@@ -1071,6 +1071,27 @@ there to prove the effect lands. A reader whose matched set is empty passes ever
 CONTAINS.** The same defect one layer out: a census answering "is in the package" over every
 document, where the tree grades a subset, is an equality between two different questions.
 
+### A CHANGE IS VERIFIED AGAINST WHAT IT CAN BREAK, NEVER AGAINST WHAT IT ADDED
+
+**A GATE SET CHOSEN FROM THE WORK'S OWN DELIVERABLE CANNOT SEE THE WORK'S DAMAGE.** The gate a
+change ships is by construction the one its author was thinking about, which makes it the least
+likely to catch what they were not. So the set a merge runs is derived from **what the change
+touches**, never from what it contributed.
+
+**AND THE DERIVATION IS MECHANICAL, WHICH IS WHAT MAKES IT REQUIRABLE RATHER THAN ADVISORY.** An
+edit to the compiler moves what the tree contains, so every gate keyed on a CONTENT digest is in the
+set. An edit to the bundle moves every key derived from it. **An edit that REMOVES A PUBLIC NAME is
+read by every reader of the surface — including readers that are not in the tree being merged into**,
+so a removal is the one change whose blast radius is invisible from the destination and must be
+grepped across the work in flight.
+
+**A STORE'S GATE BELONGS TO THE COMPILER'S VERIFICATION SET AND NOT TO THE STORE'S OWN.** A floor, a
+corpus, a memo — anything answering from a remembered key — is stranded *silently* by an edit to
+whatever that key digests, and it reports nothing at all until something asks it. **THE ABSENCE OF A
+COMPLAINT FROM A STORE IS NOT EVIDENCE THAT THE STORE STILL ANSWERS**, and a run that reads the
+store without counting how much of it answered has measured the store's opinion of a subset it chose
+for itself.
+
 ### AN OVERRIDE THE BUILD DOES NOT APPLY IS A LIE, AND THE GATE IS ON THE ARTIFACT
 
 **A PATCH SET THAT NO COMPILE PATH READS MUST FAIL.** A test that proves the function transforms a
