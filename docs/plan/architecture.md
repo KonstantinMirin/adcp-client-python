@@ -1026,6 +1026,23 @@ a complete catalogue, the machinery that generated duplicates and the machinery 
 afterwards are both dead code — not refactored, removed. **A change implementing this order that
 adds more lines than it deletes has misread it.**
 
+### A READER DERIVES ITS KEY FROM THE ACCESSOR THE GRADE READS THROUGH
+
+**THE RECORD CARRIES EACH SUBSCHEMA IN TWO FORMS** — the text it is **stored** as, and the node the
+document **applies** — and `adcp.types._base.schema_at` is the one crossing between them.
+
+**ANY READER THAT SELECTS, KEYS OR MEMOISES BY POSITION OR BY CONTENT DERIVES ITS KEY FROM THAT
+ACCESSOR, NEVER FROM THE TEXT THAT PRODUCED IT.** A reader keyed on the other form does not
+*disagree* with the grade — **it matches NOTHING, and a check that matches nothing is green.**
+
+**SO THE TEST FOR SUCH A READER IS NEVER "DOES IT FIND THE RIGHT THING" BUT "CAN IT FAIL AT ALL".**
+Assert the match is **non-empty** at a position where the two forms differ, and **inject** an entry
+there to prove the effect lands. A reader whose matched set is empty passes every assertion over it.
+
+**AND A DERIVED EQUALITY RANGES OVER THE SET THE GRADE ACTS IN, NEVER THE SET THE ARTIFACT
+CONTAINS.** The same defect one layer out: a census answering "is in the package" over every
+document, where the tree grades a subset, is an equality between two different questions.
+
 ### AN OVERRIDE THE BUILD DOES NOT APPLY IS A LIE, AND THE GATE IS ON THE ARTIFACT
 
 **A PATCH SET THAT NO COMPILE PATH READS MUST FAIL.** A test that proves the function transforms a
