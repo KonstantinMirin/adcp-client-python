@@ -76,6 +76,7 @@ pair of lines is the measurement of what this file adds.
 from __future__ import annotations
 
 import atexit
+import csv
 import functools
 import json
 import os
@@ -460,6 +461,61 @@ def test_every_name_the_installed_wheel_exports_imports_from_it() -> None:
         f"{sorted(failed)} do not import from the installed wheel, out of "
         f"{len(names)} the wheel itself says it exports:\n"
         + "\n".join(f"  {k}: {v}" for k, v in sorted(failed.items()))
+    )
+
+
+def test_every_upstream_spelling_is_on_the_installed_surface() -> None:
+    """**Reading 10, asked of the artifact**: the alias layer SHIPS, or it does not exist.
+
+    ``final-state.md`` reading 10 is "decided by installing the wheel into an environment
+    that has never seen this repository and resolving every name in the cross-check's
+    present, renamed and relocated sets" -- which is reading 8's own environment, so the
+    question is asked here, of the install :func:`_built` already made, rather than in a
+    second venv built by a second file.
+
+    **The population is ``survey/alias-surface-9.6.1.tsv``**, written by
+    ``survey/alias_surface.py`` from upstream's own 9.6.1 wheel and ours, and committed --
+    the generator and its output both, because the readings this layer was briefed from
+    lived under ``.adcp-cache/`` and three of their four files are already gone.
+    ``tests/test_the_alias_layer_is_names.py`` asks the behavioural half of the same table
+    (``is`` and ``isinstance``) against the source tree; this asks whether the names are on
+    the surface the INSTALLED wheel states, which packaging decides and a source-tree run
+    cannot see.
+
+    An alias that resolves only from the source tree is not shipped.  The set difference is
+    both ways, because a name in the table that the wheel does not export is an unshipped
+    alias and a name the wheel exports under this module that the table does not decide is
+    a surface nothing derived.
+    """
+    out = _built()
+    lines = [
+        line
+        for line in (ROOT / "survey" / "alias-surface-9.6.1.tsv").read_text().splitlines(True)
+        if not line.startswith("#")
+    ]
+    owed = {
+        (row["declared_at"], row["name"])
+        for row in csv.DictReader(lines, delimiter="\t")
+        if row["bucket"] in ("PRESENT", "RELOCATED", "RENAMED")
+    }
+    claimed("the upstream spellings the alias surface declares", owed)
+    installed = {
+        (f"adcp.types.{module}", one)
+        for module, exports in out["exported"].items()
+        for one in exports
+    }
+    unshipped = owed - installed
+    assert unshipped == set(), (
+        f"{len(unshipped)} of {len(owed)} upstream spellings are not on the installed "
+        f"wheel's own surface, so they are not shipped:\n"
+        + "\n".join(f"  {where}.{name}" for where, name in sorted(unshipped))
+    )
+    undecided = {
+        (where, name) for where, name in installed if where == "adcp.types.compat"
+    } - owed
+    assert undecided == set(), (
+        f"{sorted(undecided)} are exported by the installed adcp.types.compat and are "
+        "decided by no row of the table, so nothing derived them"
     )
 
 
