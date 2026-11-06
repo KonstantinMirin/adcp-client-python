@@ -98,6 +98,7 @@ from codegen import constraints as constraints_module
 from codegen import refusal as refusal_module
 from codegen.harness import (
     AcceptsResult,
+    AdmitsResult,
     LivenessResult,
     Pair,
     PairReport,
@@ -1410,6 +1411,12 @@ def graded_report(g: Graded) -> PairReport:
             #: ``no_witness``: the budget was spent, which is not the document having
             #: nothing to refuse.
             undeclared=RefusesResult(outcome="over_budget", detail=why),
+            #: **And reading 1's witness-derived half, for the same reason again: ALL of
+            #: them and not only the accepts one** (``adcp-client-python-87ll``).  Left
+            #: ``None`` this reads ``unrun`` to :attr:`PairReport.outcome` -- "the accepts
+            #: check drew no instance" -- which is a statement about the DRAW and not
+            #: about a budget that was spent, and the cell beside it would say so.
+            admits=AdmitsResult(outcome="over_budget", detail=why),
         )
 
 
