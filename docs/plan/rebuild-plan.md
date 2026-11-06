@@ -2359,6 +2359,32 @@ Annotation COVERAGE is its own obligation, graded with §5's ergonomic rows and 
 three: every description the document states reaches some emitted class. A check that mixes
 acceptance with ergonomics reports a defect in one as a defect in the other.
 
+### AN OVERRIDE MAY ASSERT, AND WHAT MAKES IT ADMISSIBLE IS THE DIRECTION
+
+An annotation override is admissible because `seen_by_a_validator` is empty for it **by
+construction** — it cannot change what a payload is accepted as, so byte-identity of the validator's
+view is available as evidence. **An override that adds an ASSERTION gives that up: it changes
+acceptance, which is the whole reason to add it.** So it needs its own admissibility, and the
+evidence is not identity but **direction**.
+
+**AN ASSERTING OVERRIDE MAY ONLY NARROW, AND THE SET IT REMOVES MUST BE ONE THE EMITTED CLASS
+ALREADY REFUSES.** Then the override closes a gap between the document and the class **in the
+document's favour**, which is the only direction that can be right: the schema was admitting what
+nothing should accept, the class already said so, and the patch makes the document say it too. The
+proof is a value — one the published node admits, the patched node refuses, and the class refuses —
+with the class's reason named beside the document's.
+
+**AND A WIDENING ASSERTION IS REFUSED OUTRIGHT, because it would let a class be called faithful by
+loosening the schema under it.** That is the back door this whole ordering exists to close: a
+compiler that cannot represent a constraint could otherwise delete the constraint and report
+agreement. `load` refuses an entry whose patched node admits any value the published node refuses,
+and the refusal names the value.
+
+**THE ENTRY STILL DECLARES ITS DEFECT AND STILL FAILS WHEN THE DEFECT IS GONE.** Nothing about
+asserting relaxes that: the published node already stating the keyword is an expired entry to
+delete, not a conflict to overwrite. **An asserting entry is a schema defect written down with a
+value attached, and the value is what distinguishes it from an opinion.**
+
 A check is exhaustive over the set of nodes it claims, or it does not exist. A check that
 enumerates a subset reports on that subset only, and says so.
 
