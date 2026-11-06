@@ -598,13 +598,19 @@ record permits now that it is keyed on the module. The module sits in the namesp
 scope rule names — the domain's where every reference is within one domain, the shared one
 otherwise — and is re-exported from the matching consumer namespace like any other.
 
-**ITS HOME IS THE STATING POSITION THE OTHER STATING POSITIONS REACH THROUGH A REFERENCE.** Three
-orders over the stating positions are equally functions of the bundle, and this is the one that
-closes no reference cycle: first-in-bundle-order and last-in-bundle-order each close one. §3a asks
-that a cycle be **unrepresentable rather than avoided by care**, and a home chosen this way is
-cycle-free by derivation. Where a future bundle breaks the property the failure is a refusal and a
-red report, never a wrong answer — which is the only acceptable failure mode for a rule that cannot
-be proved for all future inputs.
+**ITS HOME IS THE CATALOGUE'S OWN LAYER AND NEVER A STATING POSITION INSIDE A DOCUMENT.** A home
+chosen among the stating positions is a home inside a document module, and a shared type inside a
+document module is the one arrangement that makes a reference cycle possible at all — which the
+catalogue's layering exists to forbid. **No order over the stating positions is sound, including the
+one that closes no cycle on the bundle in front of it**: it is cycle-free by inspection of this
+input and not by derivation, so it cannot be proved for the next one, and the escape clause such a
+rule needs — refuse and report rather than answer wrongly — is a schema improvement costing a
+hundred-odd refusals. §3a asks that a cycle be **unrepresentable rather than avoided by care**, and
+only a home outside every document module is that.
+
+**AND THE ORDER THE ENTRY'S NAME LENGTHENS BY IS STILL DERIVED, because the home no longer supplies
+one.** Where the home was a stating position it ranked them; now the rank is the dependency order
+the layers already state, which is a function of the bundle and not of a walk.
 
 **AND ITS NAME LENGTHENS BY ITS HOME'S CHAIN, NEVER BY AN ARBITRARY STATING POSITION.** §4 lengthens
 a collision by the nearest ancestor segment, and an entry stated at six positions has six such
