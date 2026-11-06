@@ -7,11 +7,9 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
-from adcp.types.constraints import (
-    AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain,
-    AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem,
-    HttpUrl,
-)
+from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, HttpUrl
+
+from .domain_name import DomainName
 
 
 class SignalRef(BranchDispatchMixin, AdCPBaseModel):
@@ -54,7 +52,7 @@ class SignalRefDataProvider(SignalRef):
         ForbiddenGroups((('agent_url',), ('signal_source_url',), ('source',), ('id',))),
     )
     scope: Annotated[Literal['data_provider'], Field(description="Discriminator indicating the signal resolves through a data provider's published adagents.json signals[].")]
-    data_provider_domain: Annotated[AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, Field(description='Domain that publishes the signal definition in its adagents.json signals[].')]
+    data_provider_domain: Annotated[DomainName, Field(description='Domain that publishes the signal definition in its adagents.json signals[].')]
     signal_id: Annotated[AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, Field(description="Signal identifier within the data provider's published adagents.json signals[].")]
 
 

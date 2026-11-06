@@ -172,6 +172,53 @@ def test_every_site_the_patch_rewrites_is_a_reference_and_nothing_else_moves(
         assert same is (document not in moved), document
 
 
+#: Every patch set the repository holds, READ OFF the directory and never written down --
+#: the same rule the checks above take over ``bundle.portable``.  The clause below is a
+#: property of ``patch.apply`` and not of one manifest, so a second patch set arriving
+#: without this check ranging over it is the gap the derivation closes.
+PATCH_SETS = sorted(p.name for p in Path("patches").iterdir() if p.is_dir())
+
+
+@pytest.mark.parametrize("patch_set", PATCH_SETS)
+def test_a_document_the_patch_leaves_alone_keeps_the_published_bytes(
+    patch_set: str, tmp_path: Path
+) -> None:
+    """The documents whose BYTES the patch moves are exactly those whose CONTENT it moves.
+
+    The clause ``test_every_site_the_patch_rewrites_is_a_reference_and_nothing_else_moves``
+    cannot state, because it reads ``bundle.read`` on both sides and a parsed object is
+    blind to the one byte at issue: ``apply`` used to re-serialise EVERY portable document,
+    rewritten or not, so a document the patch says nothing about came back differing from
+    the published one by a trailing newline.
+
+    **That is not cosmetic, and the figure is the reason this check exists.**  Over the
+    build's two sets together: 854 of the 1,054 portable documents differed by the newline
+    alone and 200 in content -- and ``bundle.source_identities`` digests a document's raw
+    bytes AND its reference closure's, so all 854 moved their own key and dragged every
+    referrer's with it.  Source identity moved for 1,054 of 1,054, every committed
+    accepts-corpus entry missed, and the entire graded population drew cold.  With the
+    write skipped, 873 of 2,598 pairs keep their committed floor entry.
+
+    Two derivations over one population and an equality between them: one reads bytes, one
+    reads parsed documents, and neither is a list of names.  The non-vacuity clause is the
+    content set -- a patch set that rewrites nothing would make the equality hold for the
+    wrong reason.
+    """
+    out = tmp_path / "bundle"
+    patch.apply(PUBLISHED, Path("patches") / patch_set, out)
+    portable = claimed("the portable documents", bundle.portable(PUBLISHED))
+    by_content = claimed(
+        f"documents {patch_set} rewrites",
+        [d for d in portable if bundle.read(PUBLISHED, d) != bundle.read(out, d)],
+        inside=portable,
+    )
+    by_bytes = {d for d in portable if (PUBLISHED / d).read_bytes() != (out / d).read_bytes()}
+    assert by_bytes == by_content, (
+        f"{len(by_bytes - by_content)} documents the patch leaves alone came back with "
+        f"different bytes: {sorted(by_bytes - by_content)[:10]}"
+    )
+
+
 def test_no_record_difference_is_seen_by_a_validator(
     differences: list[patch.Difference],
 ) -> None:

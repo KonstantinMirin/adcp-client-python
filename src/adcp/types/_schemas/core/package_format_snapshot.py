@@ -7,15 +7,11 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule, UniqueItems
-from adcp.types.constraints import (
-    AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain,
-    StrMinLen1,
-    ZipAssetDigest,
-)
+from adcp.types.constraints import StrMinLen1, ZipAssetDigest
 
 from ..enums.daast_version import DAASTVersion
 from ..enums.vast_version import VASTVersion
-from .placement_ref import PlacementReference
+from .placement_selection import PublisherPlacementReference
 from .product_format_declaration import (
     AgentPlacementFormatDeclaration,
     CoordinatedPlacementsFormatDeclaration,
@@ -34,17 +30,6 @@ from .product_format_declaration import (
     VASTAudioFormatDeclaration,
     VASTVideoFormatDeclaration,
 )
-
-
-class PlacementRefsItem(PlacementReference):
-    """
-    Legacy-compatible product-context reference to a placement. For publisher-catalog placements, publisher_domain plus placement_id resolves the declaration in that publisher's adagents.json. For seller-inline placements, the enclosing seller and product supply scope. When publisher_domain is omitted on legacy inputs, receivers MAY interpret the ID relative to the enclosing single-publisher product. Use placement-identity.json when a self-contained cross-document identity is required.
-    """
-    model_config = ConfigDict(
-        extra='allow',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/package-format-snapshot.json', pointer='#/properties/placement_refs/items')
-    publisher_domain: Annotated[AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, Field(description='Domain where the adagents.json declaring a publisher-catalog placement is hosted, or the inventory publisher associated with an inline placement. Omitted only for legacy single-publisher product-context references.')]
 
 
 class PackageFormatSnapshot(BranchDispatchMixin, AdCPBaseModel):
@@ -68,7 +53,7 @@ class PackageFormatSnapshot(BranchDispatchMixin, AdCPBaseModel):
         ConditionalRequired((Match('product_snapshot_digest', True, None),), require=('product_id',), forbid=()),
     )
     product_id: Annotated[StrMinLen1 | None, Field(description='Product whose effective selected format was snapshotted. Required whenever tracker_execution_contract is present.')] = None
-    placement_refs: Annotated[list[PlacementRefsItem] | None, Field(description='Nonempty, duplicate-free effective placement set, sorted by publisher_domain then placement_id using ascending UTF-8 bytes without Unicode normalization. Omission binds the product-wide common effective contract; it never means an inferred list of all current placements.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    placement_refs: Annotated[list[PublisherPlacementReference] | None, Field(description='Nonempty, duplicate-free effective placement set, sorted by publisher_domain then placement_id using ascending UTF-8 bytes without Unicode normalization. Omission binds the product-wide common effective contract; it never means an inferred list of all current placements.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     execution_vast_version: Annotated[VASTVersion | None, Field(description='Exact VAST execution version selected for first-class VAST tracker matching when no sibling delivery document supplies one. The value is immutable for the package.')] = None
     execution_daast_version: Annotated[DAASTVersion | None, Field(description='Exact DAAST execution version selected for first-class DAAST tracker matching when no sibling delivery document supplies one. The value is immutable for the package.')] = None
     tracker_execution_contract_digest: Annotated[ZipAssetDigest | None, Field(description='SHA-256 of RFC 8785 canonical JSON for tracker_execution_contract alone. Required if and only if the snapshot contains that contract.')] = None

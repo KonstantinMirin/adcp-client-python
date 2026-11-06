@@ -83,7 +83,10 @@
       ]
     },
     "Shared11": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "ISO 4217 alphabetic currency code. Extracted unchanged from the 83 sites that stated it inline; see adcontextprotocol/adcp#8525.",
       "pattern": "^[A-Z]{3}$",
+      "title": "Currency Code",
       "type": "string"
     },
     "Shared110": {
@@ -642,7 +645,10 @@
       "type": "string"
     },
     "Shared27": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "ISO 3166-1 alpha-2 country code. Extracted unchanged from the 65 sites that stated it inline; see adcontextprotocol/adcp#8525.",
       "pattern": "^[A-Z]{2}$",
+      "title": "Country Code",
       "type": "string"
     },
     "Shared28": {
@@ -780,8 +786,10 @@
               "description": "Valid country-local postal system pairing. Registered countries only accept their registered local systems; countries without a registered local system use postal_code or custom.",
               "properties": {
                 "country": {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "description": "ISO 3166-1 alpha-2 country code.",
                   "pattern": "^[A-Z]{2}$",
+                  "title": "Country Code",
                   "type": "string"
                 },
                 "system": {
@@ -826,8 +834,10 @@
           ],
           "properties": {
             "country": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
               "description": "ISO 3166-1 alpha-2 country code for the postal values.",
               "pattern": "^[A-Z]{2}$",
+              "title": "Country Code",
               "type": "string"
             },
             "system": {
@@ -1191,8 +1201,10 @@
       "description": "A catalog-backed named place target. Values are stable identifiers in the declared system. Entries within geo_places form a union; different geographic inclusion dimensions intersect. value_labels are diagnostic only and MUST NOT be used to resolve targeting.",
       "properties": {
         "country": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
           "description": "ISO 3166-1 alpha-2 country code containing the place.",
           "pattern": "^[A-Z]{2}$",
+          "title": "Country Code",
           "type": "string"
         },
         "ext": {
@@ -1492,8 +1504,10 @@
           "uniqueItems": true
         },
         "domain": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
           "description": "Domain that hosts /.well-known/brand.json or is registered for the brand.",
           "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+          "title": "Domain Name",
           "type": "string"
         }
       },
@@ -1761,8 +1775,11 @@
       "const": true
     },
     "Shared77": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "A URL whose scheme is https. Extracted unchanged from the 46 sites that stated it inline; see adcontextprotocol/adcp#8525. This is the shape adcontextprotocol/adcp#8398 asks the other seven uri patterns to reduce to.",
       "format": "uri",
       "pattern": "^https://",
+      "title": "HTTPS URL",
       "type": "string"
     },
     "Shared78": {
@@ -1819,8 +1836,10 @@
           "description": "Data-provider signal - references a signal from a data provider's published adagents.json signals[]. Buyers can verify authorization by checking the data provider's adagents.json.",
           "properties": {
             "data_provider_domain": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
               "description": "Domain of the data provider that owns this signal (e.g., 'pinnacle-data.example'). The signal definition is published at this domain's /.well-known/adagents.json",
               "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+              "title": "Domain Name",
               "type": "string"
             },
             "id": {
@@ -2141,8 +2160,10 @@
       },
       "properties": {
         "data_provider_domain": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
           "description": "Domain that publishes the signal definition in its adagents.json signals[].",
           "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+          "title": "Domain Name",
           "type": "string"
         },
         "scope": {
@@ -2243,10 +2264,12 @@
       "type": "string"
     },
     "idempotency_key": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "description": "Client-generated key required for retry-safe proposal refinement.",
       "maxLength": 255,
       "minLength": 16,
       "pattern": "^[A-Za-z0-9_.:-]{16,255}$",
+      "title": "Idempotency Key",
       "type": "string"
     },
     "push_notification_config": {
@@ -3466,8 +3489,10 @@
                               "type": "string"
                             },
                             "publisher_domain": {
+                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "description": "Publisher domain where the adagents.json declaring this format option is hosted.",
                               "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                              "title": "Domain Name",
                               "type": "string"
                             },
                             "scope": {
@@ -4093,8 +4118,10 @@
                             "type": "number"
                           },
                           "currency": {
+                            "$schema": "http://json-schema.org/draft-07/schema#",
                             "description": "ISO 4217 currency of amount. BiddingPolicy.cost_per has no currency because it inherits the media-buy currency, and no media buy exists at request time, so the request states it. It becomes the answer's currency: every answering proposal's purchases[].pricing.currency (which bidding amounts use) and forecast.currency MUST equal it, as MUST commercial_terms.total_budget.currency and total_budget_guidance.currency when present; sellers MUST NOT convert currency. It MUST equal offer_filters.budget_range.currency when present. The seller plans within budget_range.max when present, else at or above budget_range.min, and total_budget MUST NOT exceed max or fall below min. A seller rejects a conflict with budget_range, pricing_currencies, the account currency, or the requested products' pricing currencies with INVALID_REQUEST naming criteria.outcome_target.cost_per.",
                             "pattern": "^[A-Z]{3}$",
+                            "title": "Currency Code",
                             "type": "string"
                           },
                           "strength": {
@@ -4866,8 +4893,10 @@
                                       "type": "array"
                                     },
                                     "publisher_domain": {
+                                      "$schema": "http://json-schema.org/draft-07/schema#",
                                       "description": "Domain where the adagents.json declaring these collections is hosted (e.g., 'mrbeast.com'). The collections array in that file contains the authoritative collection definitions.",
                                       "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                                      "title": "Domain Name",
                                       "type": "string"
                                     }
                                   },
@@ -4882,7 +4911,8 @@
                                     "collection_ids"
                                   ]
                                 }
-                              ]
+                              ],
+                              "title": "Explicit Collection Selector"
                             },
                             "minItems": 1,
                             "type": "array",
@@ -5430,8 +5460,10 @@
                                           "x-entity": "placement"
                                         },
                                         "publisher_domain": {
+                                          "$schema": "http://json-schema.org/draft-07/schema#",
                                           "description": "Domain where the adagents.json declaring a publisher-catalog placement is hosted, or the inventory publisher associated with an inline placement. Omitted only for legacy single-publisher product-context references.",
                                           "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                                          "title": "Domain Name",
                                           "type": "string"
                                         }
                                       },
@@ -5446,7 +5478,8 @@
                                         "publisher_domain"
                                       ]
                                     }
-                                  ]
+                                  ],
+                                  "title": "Publisher Placement Reference"
                                 },
                                 {
                                   "$schema": "http://json-schema.org/draft-07/schema#",
@@ -5465,8 +5498,10 @@
                                           "x-entity": "placement"
                                         },
                                         "publisher_domain": {
+                                          "$schema": "http://json-schema.org/draft-07/schema#",
                                           "description": "Domain whose adagents.json declares placement_id.",
                                           "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                                          "title": "Domain Name",
                                           "type": "string"
                                         }
                                       },

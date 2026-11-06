@@ -995,69 +995,33 @@ class _Reached(NamedTuple):
     anchors: frozenset[tuple[str, str]]
 
 
-def source_identities(bundle_dir: Path) -> dict[str, str]:
-    """Per portable document, the digest of the BUNDLE TEXT its record is built from:
-    its own raw bytes and the raw bytes of every document it transitively references.
-
-    **The static half of :func:`record`, and it is here so the two can be told apart.**
-    ``record`` is OUR RENDERING of a document -- it inlines, and what it inlines where
-    is this package's decision, so its bytes move whenever that decision does.  This is
-    the same document's UPSTREAM identity: nothing of the inliner reaches it, so it moves
-    only when the bundle does.  A reader who needs "is this the same document" asks here,
-    and a reader who needs "what does the self-contained form say" asks ``record``.
-
-    **The one caller that needs the distinction is the held accepts corpus.**
-    ``harness.corpus_key`` is the content address of the instances a pair's draw
-    produced, and keyed on the rendering it misses every entry whenever the inliner
-    changes -- for the share of the bundle whose record differs from its raw document at
-    all, which is read by comparing ``record(bundle_dir, d)`` against
-    ``read(bundle_dir, d)`` over :func:`portable` and is most of it.  The schema is
-    static; the rendering is not; the key belongs on the static fact.  What makes that
-    safe rather than looser is ``harness.corpus_defect``, which re-offers every held
-    instance to the document on every read.
-
-    **THE CLOSURE IS IN THE DIGEST, which is what the record's self-containment used to
-    buy.**  Hashing the inlined record covered a dependency BY CONSTRUCTION -- the
-    dependency's text is literally inside the dependent -- and dropping to the raw
-    document alone would lose that: an upstream edit to a referenced document would leave
-    the referrer's own bytes untouched and its key would hit.  So the closure is taken
-    here instead, over :func:`edges` -- the reference graph read off the RAW mappings by
-    the descent column -- and the member documents' bytes are hashed with it.  That is
-    the same answer from the same upstream facts, and it is still not an edge list
-    anybody maintains: the graph is derived from the ``$ref`` strings the documents
-    themselves write.
-
-    A member contributes its bundle-relative NAME, its length and its bytes, so no two
-    different closures can agree by a concatenation accident and no absolute path enters
-    the digest -- which is what keeps a key computed in one checkout equal to the same
-    key computed in another (``tests/corpus.py``'s shared store).
-
-    A reference naming no document of this bundle contributes nothing, exactly as
-    ``emit.closure`` treats one: the site refuses where the pointer that carried it is,
-    and a refusing document has no instances to hold.
-    """
-    documents = sorted(portable(bundle_dir))
-    text = {d: (bundle_dir / d).read_bytes() for d in documents}
-    targets: dict[str, set[str]] = {d: set() for d in documents}
-    for edge in edges(bundle_dir):
-        if edge.target is not None:
-            targets[edge.document].add(edge.target)
-    out: dict[str, str] = {}
-    for document in documents:
-        reached: set[str] = set()
-        unread = [document]
-        while unread:
-            one = unread.pop()
-            if one in reached:
-                continue
-            reached.add(one)
-            unread += [t for t in targets.get(one, ()) if t not in reached]
-        digest = hashlib.sha256()
-        for member in sorted(reached):
-            digest.update(f"{member}\0{len(text[member])}\0".encode())
-            digest.update(text[member])
-        out[document] = digest.hexdigest()
-    return out
+#: **THERE IS NO ``source_identities`` HERE ANY MORE, AND ITS ABSENCE IS THE ANSWER TO ONE
+#: CRITICISM** (``adcp-client-python-lzzj.8``).
+#:
+#: It digested, per portable document, that document's own RAW BYTES and the raw bytes of
+#: its whole reference closure -- the static half of :func:`record`, so that a compiler edit
+#: could not invalidate a held value.  That half was right and survives.  What was wrong is
+#: that BYTES were the thing digested: an acceptance-preserving rewrite of the bundle moved
+#: every key, so "we change the schema and the class structure suddenly becomes unemittable
+#: even though we assume that our changes to the schema are for the better" was true of the
+#: instrument.  Measured over the published bundle against the patched one: 22,338
+#: differences, ``patch.seen_by_a_validator`` **zero** -- every difference a gained
+#: ``$schema``, ``title`` or ``description`` -- and all 1,054 identities moved, 854 of them
+#: by a TRAILING NEWLINE alone.
+#:
+#: ``catalogue.admitted_identities`` is the replacement and moves 0 of 1,054 over that same
+#: pair of bundles.  It keeps every property this function had -- a reading of the RAW
+#: bundle, the closure taken over :func:`edges` and over the ``$ref`` strings the documents
+#: write, no edge list anybody maintains, no absolute path in the digest -- and keys on what
+#: the document ADMITS plus the instances it STATES.  ``docs/plan/final-state.md`` reading 1
+#: is the sentence: "A stored value, a key over a document's bytes, or any artifact that
+#: must be re-derived when the bundle moves makes an improvement to the schema cost exactly
+#: as much as a regression."
+#:
+#: It is recorded here rather than deleted silently because this is the layer a reader comes
+#: to for "is this the same document", and the answer is now "that is the wrong question --
+#: ask what it admits".
+NO_IDENTITY_OVER_BYTES = "catalogue.admitted_identities"
 
 
 #: **A node of a record, keyed BY IDENTITY, to the site that STATES it**: ``id(node) ->

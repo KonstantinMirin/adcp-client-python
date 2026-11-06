@@ -106,90 +106,35 @@ caller can read both and the decision is the owner's.
 
 from __future__ import annotations
 
+import hashlib
 import json
 from collections.abc import Callable, Collection, Iterator, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 from codegen import bundle, keywords, vocabularies
 from codegen.lower import names
 
-#: The EFFECTS a keyword can have without changing what a node ADMITS: a symbol
-#: (``NAME``), a fact a lowering carries (``ANNOTATION``), a fact the enclosing FIELD
-#: carries, or nothing at all.  The complement is :data:`keywords.LOWERED` -- "the
-#: effects the NODE'S OWN handler has to write code for" -- which is exactly the set that
-#: compiles to a TYPE or a RULE and therefore narrows an instance.
+#: :data:`keywords.CARRIED` and :data:`keywords.ANNOTATIONS`, under the names this module
+#: has always exported them by.
 #:
-#: ``FIELD`` is here on §2's own sentence about the one keyword that reaches it: a
-#: ``default`` "neither widens nor narrows what the class accepts".
-CARRIED = frozenset(
-    {
-        keywords.Effect.NAME,
-        keywords.Effect.ANNOTATION,
-        keywords.Effect.FIELD,
-        keywords.Effect.NOTHING,
-    }
-)
-
-
-def _carried() -> frozenset[str]:
-    """Every keyword the TABLE gives no admitting effect at any position (§3a).
-
-    §3a: "Identity here is STRUCTURAL and ignores annotations ... because an annotation
-    does not change what a node admits."  **DERIVED from ``codegen/keywords.py`` and not
-    listed**, which is the one declaration §9 gives this question: "a keyword handled in
-    code but named in none of §5, §6 or §7 is an invented rule", and a hand-written list
-    beside the table is how the two come to disagree -- the list said ``default`` was an
-    annotation while the table says its cell is FIELD at PROP, and said
-    ``discriminator`` while the table says NOTHING.  It also hid the collection from
-    ``tests/test_keywords.py``'s census, which reads literal keyword collections and
-    cannot read a derivation it has no reason to doubt.
-
-    Two screens beside the effect, and both are about what a key IS rather than what it
-    asserts:
-
-    * a keyword the descent column DESCENDS into is a SECTION or a subschema holder, so
-      two nodes differing in one differ in a node below -- it is not an annotation of
-      this node whatever its own cell says;
-    * a keyword admitted by the ``x-`` PREFIX is admitted by prefix at the point of use
-      (:func:`identity`), for the reason §6 admits it that way: "The ``x-`` namespace is
-      admitted by prefix AND listed by name", and a prefix test cannot be a set member.
-
-    Measured over this bundle: the derived set and the list it replaces produce the same
-    15 entries, the same 124 untitled groups, the same 3 conflicts, the same 23
-    same-document restatements and the same 22 restating positions.  What it adds is the
-    21 document-level metadata keys (``version``, ``lastUpdated``, ``baseUrl``, ...) and
-    ``errorMessage``, every one of which the table already says asserts nothing -- so
-    the derivation is wider than the list in exactly the direction §3a's sentence is.
-    """
-    descends = frozenset(
-        word for position in keywords.Position for word in keywords.descends_at(position)
-    )
-    return frozenset(
-        word
-        for word, _ in keywords.TABLE.items()
-        if (
-            effects := {
-                answer.effect
-                for position in keywords.Position
-                if (answer := keywords.cell(word, position)) is not None
-            }
-        )
-        and effects <= CARRIED
-        and word not in descends
-        and not keywords.admitted_by_prefix(word)
-    )
-
-
-#: The keys whose value does not change what a node ADMITS, so two nodes differing only in
-#: one of them are one vocabulary (§3a): :func:`_carried`'s derivation, and beside it the
-#: two keys the TABLE does not list at all.
+#: **THEY LIVE IN ``codegen/keywords.py`` NOW, AND THEY WERE ALWAYS A READING OF THE
+#: TABLE AND OF NOTHING ELSE.**  ``_carried``'s own argument -- "DERIVED from
+#: ``codegen/keywords.py`` and not listed" -- is the argument for its HOME: the derivation
+#: reads ``TABLE``, ``cell``, ``descends_at`` and ``admitted_by_prefix``, and this module
+#: contributed the question rather than any of the facts.
 #:
-#: ``$id`` and ``example`` are a document's own declaration of where it lives and the
-#: bundle's singular spelling of ``examples``.  Neither has a row, so neither has a cell
-#: to derive an effect from, and both are stated here -- which is the residue a
-#: derivation cannot reach and is why it is two names and not fourteen.
-ANNOTATIONS = _carried() | frozenset({"$id", "example"})
+#: What moved it is a SECOND reader.  ``harness._content_key`` keys §8's fixture memo, and
+#: ``adcp-client-python-lzzj.8`` is the measurement for why it has to key on admission:
+#: keyed on raw text, an annotation-only edit re-buckets the memo and a different value
+#: gets pinned, which is how two pairs flipped verdict on a node BYTE-IDENTICAL between
+#: two bundles.  The verifier may not import this module (§9 names its import set and
+#: ``codegen.catalogue`` is not in it) and it does import ``codegen.keywords``, so the one
+#: declaration had to sit where both readers can reach it.  Restated in the verifier it
+#: would have been the hand-written list ``_carried`` exists to have deleted.
+CARRIED = keywords.CARRIED
+ANNOTATIONS = keywords.ANNOTATIONS
 
 #: The shared namespace, which is ONE place and not one per layer (§3a).  A consumer who
 #: does not know which domain a type belongs to has exactly one module to look in.
@@ -1014,6 +959,164 @@ class Admitted:
         return repr(self.of(document, node))
 
 
+def unreferenced(node: Any) -> Any:
+    """``node`` with every ``$ref`` struck, recursively: what it asserts BY ITSELF.
+
+    **The screen in :func:`admitted_identities` runs OFFLINE, and that is not a
+    preference.**  ``harness.conforms`` builds a validator on the node it is handed, and
+    ``jsonschema`` 4.26 answers an unresolvable remote reference by **fetching it over the
+    network** (``validators._warn_for_remote_retrieve`` -> ``urllib.request.urlopen``).
+    Measured on one raw bundle document, ``account/get-account-financials-response.json``:
+    three ``examples`` members screened against the raw root took **21.7 seconds, 21.67 of
+    it in six ``urlopen`` calls**, and over the bundle that is minutes of a key nobody can
+    afford to compute.  The records the draw screens against carry no remote reference --
+    the inliner has already copied them in -- so the cost appears only where a reader
+    screens the RAW bundle, which is here.
+
+    **Struck and not resolved, because the direction is what matters.**  ``$ref`` ignores
+    its siblings in draft-07, so a struck reference leaves a node that asserts a SUBSET of
+    what the real one asserts: the screened list can therefore only be too LONG, never too
+    short, and a key that carries one witness too many costs a redraw where a key that
+    missed one would hold a witness the draw no longer produces.  The one position that
+    inverts is a reference under ``not`` -- ``{"not": {"$ref": X}}`` becomes
+    ``{"not": {}}``, which admits nothing -- and ``not`` is a keyword both halves of
+    ``strict_validate`` already refuse, so no graded pair states one.
+
+    The keys a node's own assertions are made of are untouched, which is what keeps the
+    measured case exact: 64 of the 115 pairs whose node states ``examples`` admit no member
+    of it, because the bundle's ``{"description", "data"}`` wrapper is refused by a root
+    that ``required``s its own keys -- and ``required`` is the root's own word, not
+    something a reference carried in.
+    """
+    if isinstance(node, list):
+        return [unreferenced(member) for member in node]
+    if not isinstance(node, Mapping):
+        return node
+    return {word: unreferenced(value) for word, value in node.items() if word != "$ref"}
+
+
+def admitted_identities(
+    bundle_dir: Path, *, stated: Callable[[Any], list[Any]]
+) -> dict[str, str]:
+    """Per portable document, the digest of what it ADMITS and of the instances it STATES.
+
+    **``harness.corpus_key``'s argument, and the answer to the criticism that an
+    improvement to the schema costs exactly as much as a regression**
+    (``adcp-client-python-lzzj.8``).  ``docs/plan/final-state.md`` reading 1 states the
+    rule this function exists to satisfy:
+
+        "**BOTH CHECKS ARE A FUNCTION OF (class, document) AND OF NOTHING ELSE.** Point
+        them at another bundle and they answer for that bundle, because there is nothing
+        to carry over and nothing to expire. **A stored value, a key over a document's
+        bytes, or any artifact that must be re-derived when the bundle moves makes an
+        improvement to the schema cost exactly as much as a regression** -- and it makes
+        the instrument answer for the bundle it was built against instead of for the
+        compiler."
+
+    **WHAT IT REPLACES AND WHAT WAS MEASURED.**  ``bundle.source_identities`` digested a
+    document's RAW BYTES and the raw bytes of its reference closure.  So an
+    ACCEPTANCE-PRESERVING rewrite of the bundle moved every key: measured over the
+    published bundle against a patched one, 22,338 differences, ``patch.seen_by_a_validator``
+    **zero** -- nothing lost, nothing changed, every difference a gained
+    ``$schema``/``title``/``description`` -- and all 1,054 document identities moved
+    anyway, of which 854 differed by a TRAILING NEWLINE alone.  Keyed on what a document
+    admits, every one of those is invisible and the held corpus is still the corpus.
+
+    **The half that must survive, and it does** (``codegen/held.py``): *a compiler edit
+    moves no key.*  That is why the key was taken off ``bundle.record`` in the first place
+    -- the record is OUR inlining of a document, so keying on it redrew the population
+    whenever the inliner moved and no document had.  Nothing here reads the record:
+    :class:`Admitted` reads the raw bundle, resolves a ``$ref`` to what it names, and the
+    ``stated`` screen is applied to the document's own text.  A compiler edit moves
+    nothing; an acceptance-preserving bundle rewrite moves nothing; a changed CONSTRAINT
+    moves the documents it changes.
+
+    **:class:`Admitted` IS NOT SUFFICIENT ALONE, AND BOTH GAPS ARE DROPPED ANNOTATIONS
+    THAT DECIDE WHICH VALUE IS DRAWN.**  The class drops :data:`ANNOTATIONS`, which is
+    right for a layer's identity and wrong for a draw's:
+
+    * **``examples`` IS IN ``ANNOTATIONS`` AND IS A SOURCE OF INSTANCES.**
+      ``harness.check_accepts`` answers in the order "THE STORE, THEN THE DOCUMENT'S OWN
+      ``examples``, THEN THE DRAW" (the owner's decision, 2026-11-04), and
+      ``harness.Fixtures._stated`` reads a REFERENCED document's ``examples`` to pin a
+      fixture position.  So a node whose ``examples`` changed would keep an
+      admission-only key and change its witness.  The ``stated`` half closes it -- **and
+      it carries the SCREENED list and never the raw keyword**, because a member the node
+      REFUSES is not a witness: 64 of the 115 pairs whose node states ``examples`` have
+      none the node admits (the bundle's ``{"description", "data"}`` wrapper), and
+      counting those would move the key for a member that can never be drawn.  The screen
+      is ``harness.stated_instances`` itself, handed in, so the key's reading of "which
+      instances does this node state" is the DRAW's reading and not a second one -- applied
+      to :func:`unreferenced`, which says why the screen runs offline and in which
+      direction it errs.
+    * **``$schema`` IS IN ``ANNOTATIONS`` AND DECIDES THE DIALECT**, and it is absent from
+      this key on purpose.  Carrying the string would be wrong in the direction this
+      function exists to fix: the measured patch ADDS ``$schema: draft-07`` to documents
+      that stated none, which changes no keyword's meaning and would move every one of
+      those keys.  What must not happen is a document in ANOTHER dialect keying the same
+      as a draft-07 one while every keyword in it means something else -- and that is a
+      question about the whole bundle rather than about one key, so it is asserted over
+      the bundle instead of digested per document:
+      ``tests/test_accepts_corpus.py::test_every_portable_document_states_one_dialect``
+      reads ``harness.validator_for``'s own answer for every portable document and is red
+      on the first one that selects a different validator.  A dialect change is then a
+      NAMED RED with a decision attached, not a silently re-keyed population.
+
+    **THE CLOSURE IS STILL IN THE DIGEST, by two different routes.**  :class:`Admitted`
+    resolves every ``$ref`` into the document it names, so a referenced document's
+    CONSTRAINTS are inside this document's admitted key already -- there is no separate
+    closure walk for them and no edge list anybody maintains.  The ``stated`` half needs
+    one, because ``Fixtures._stated`` draws a fixture from the REFERENCED document's
+    ``examples`` and that text is not in the admitted key: so the stated digests are taken
+    over the reference closure (:func:`bundle.edges`), each member contributing its
+    bundle-relative NAME, which keeps no absolute path in the digest and lets a key
+    computed in one checkout equal the same key computed in another.
+
+    ``stated`` is the caller's, which is the seam §9 draws for every reader the verifier
+    needs: ``harness.stated_instances`` is the verifier's function and this module may not
+    import the verifier, so the reading is handed in exactly as ``harness.Fixtures`` takes
+    its three readers.  Both callers -- ``codegen/__main__.py`` and
+    ``tests/test_emit.identity_of`` -- hand in that one function, so there is one screen.
+    """
+    admitted = Admitted(bundle_dir)
+    documents = sorted(admitted.documents)
+    targets: dict[str, set[str]] = {d: set() for d in documents}
+    for edge in bundle.edges(bundle_dir):
+        if edge.target is not None:
+            targets[edge.document].add(edge.target)
+
+    def states(document: str) -> str:
+        """Every instance ``document`` STATES and ADMITS, by the pointer that states it."""
+        held: list[tuple[str, str]] = []
+        for pointer, node in bundle.nodes(admitted.document(document)):
+            if "examples" not in node:
+                continue
+            found = stated(unreferenced(node))
+            if found:
+                held.append((pointer, json.dumps(found, sort_keys=True, default=repr)))
+        return json.dumps(sorted(held))
+
+    says = {document: states(document) for document in documents}
+    out: dict[str, str] = {}
+    for document in documents:
+        reached: set[str] = set()
+        unread = [document]
+        while unread:
+            one = unread.pop()
+            if one in reached:
+                continue
+            reached.add(one)
+            unread += [t for t in targets.get(one, ()) if t not in reached]
+        digest = hashlib.sha256()
+        digest.update(b"admits\0")
+        digest.update(admitted.key(document, admitted.document(document)).encode())
+        for member in sorted(reached):
+            digest.update(f"\0states\0{member}\0".encode())
+            digest.update(says.get(member, "").encode())
+        out[document] = digest.hexdigest()
+    return out
+
+
 @dataclass(frozen=True)
 class Shaped:
     """One position that STATES an object type (L2) or an array type (L3).
@@ -1344,9 +1447,12 @@ class Shapes:
     #: document, and named either by the one title the bundle gives it or -- where the
     #: bundle titles it at no position -- by §4's steps 2 and 3 from the structure itself.
     entries: Mapping[str, ShapeEntry]
-    #: The structures stated in more than one document with NO title anywhere, at a layer
-    #: that COLLECTS NOTHING, which is L3's by the derivation in the class docstring.
-    #: Empty at L2, where the same structures are :attr:`entries` named from themselves.
+    #: The structures stated in more than one document that this layer declines to collect
+    #: FOR WANT OF A TITLE.  Empty at L2, where the same structures are :attr:`entries`
+    #: named from themselves; at L3 it is every untitled group, by the derivation in the
+    #: class docstring; at L2C it is every group the bundle does not title at EVERY stating
+    #: position, which is that layer's evidence rule (:func:`shape_states`) and is why the
+    #: part is not "no title anywhere" any more.
     untitled: tuple[tuple[Shaped, ...], ...]
     #: §3a's conflict case, for the owner.
     conflicting: tuple[ShapeConflict, ...]
@@ -1404,6 +1510,39 @@ def shape_states(
     and is the population the 42 row's split was asked of.  **L3 is a node whose ``items``
     is a schema**, which is what an array type is.
 
+    **AND L2C IS THE OBJECT TYPE A NODE STATES THROUGH ITS CONJUNCTS AND NOT THROUGH ITS
+    OWN ``properties``** -- a node holding a non-empty ``allOf`` and no ``properties`` of
+    its own, which over this bundle is 256 positions, 114 of them in 32 groups that state
+    one structure in more than one document.  ``{"allOf": [{"$ref": X}, {<a narrowing>}]}``
+    is an object type exactly as much as an inline ``properties`` bag is -- the compiler
+    declares a class at it, and reading 4 ranges over every class the tree declares -- but
+    L2's predicate reads the node's OWN ``properties`` and a composed object states none,
+    so the whole population was invisible to the one layer whose job is to stop a second
+    declaration.  **Measured over the tree: 22 of its 40 duplicate declarations sit at such
+    a position, in 10 of its 15 duplicate groups** -- which is the larger half of reading
+    4's remaining object-layer question, and the half no layer was reading.
+
+    **IT IS A LAYER OF ITS OWN AND NOT A WIDENING OF L2, because the evidence for a shared
+    subject is not the same at the two.**  §3a's own argument for the array layer transfers
+    verbatim: *"what tells a shared subject from a coincidental overlap is that an object's
+    key holds the property NAMES, while an array's key over a scalar element holds no name
+    at all -- which is why the object layer can collapse on identity and the array layer
+    must not."*  A composed node's key holds the key of its ``$ref``'s TARGET, which every
+    member of a group shares by construction, plus a narrowing conjunct that is typically a
+    bare ``required`` or a ``not`` and carries no name of anything.  So identity here is
+    evidence of a shared BASE, never of a shared subject -- measured, and the measurement
+    is the reason this layer collects nothing untitled: collapsing the 32 groups on identity
+    alone would make one type of ``core/rights-attestation-evaluation.json``'s ``reference``
+    and ``core/rights-constraint.json``'s ``attestation_refs`` items, of
+    ``core/format.json``'s ``canonical_parameters`` and ``core/transformer.json``'s
+    ``input_formats`` items, and of ``media-buy/request-proposals-response.json``'s
+    ``losses`` and ``legacy-purchase-continuation-input.json``'s ``accepted_losses`` --
+    pairs whose two positions name two subjects and which the owner's reading of
+    ``adcp-client-python-s44.1`` records as correct splits.  **What tells them apart is a
+    ``title``, and the bundle states one at no position of any of the 32** -- which is the
+    whole of ``adcontextprotocol/adcp#8735``'s ask read at this layer, and
+    :func:`collect_shapes` is where the rule is.
+
     **A RULE POSITION MINTS NO TYPE and is not a stating position.**  §3's RULE position is
     where ``if``, ``then``, ``else`` and ``not`` hold their subschemas, and a conditional's
     subschema compiles to a RULE rather than to a type -- so a node holding ``properties``
@@ -1446,6 +1585,13 @@ def shape_states(
                 held = node.get("properties")
                 if not isinstance(held, dict) or not held:
                     continue
+            elif layer == "L2C":
+                held = node.get("properties")
+                if isinstance(held, dict) and held:
+                    continue
+                conjuncts = node.get("allOf")
+                if not isinstance(conjuncts, list) or not conjuncts:
+                    continue
             elif not isinstance(node.get("items"), dict):
                 continue
             title = node.get("title")
@@ -1477,27 +1623,48 @@ def shape_states(
             )
 
 
-def shape_ranked(position: Shaped, title: str | None) -> tuple[object, ...]:
+def shape_ranked(
+    position: Shaped, title: str | None, standing: Mapping[str, int] | None = None
+) -> tuple[object, ...]:
     """:attr:`ShapeEntry.at`'s order over the positions of one entry, best first.
 
-    :func:`ranked` is L0's and this is the same order: a root carrying the entry's own
-    title, then any position carrying it, then any root, then the bundle's own order.  §1
-    is what puts the roots first -- "every portable document contributes a symbol", so a
-    root cannot become a reference to another module's class and is the one position of its
-    group that MUST declare.
+    **A ROOT, then the STANDING ORDER, and a position inside a rule last.**  §1 is what puts
+    the roots first -- "every portable document contributes a symbol", so a root cannot
+    become a reference to another module's class and is the one position of its group that
+    MUST declare.  §3a is what puts the standing order next: "THE HOME IS THE GROUP'S
+    EARLIEST DOCUMENT IN THE DEPENDENCY ORDER THAT ALREADY EXISTS", so the arrow a
+    restatement adds runs backwards along a topological order of all the other arrows and
+    "a cycle is not avoided by care -- it is unrepresentable".  A position inside a rule
+    sorts last because the home is where the structure is DECLARED and a subschema inside a
+    rule declares nothing -- a home chosen there would leave the entry homeless.
 
-    ``title`` is ``None`` for a structure the bundle titles nowhere, and the order then
-    reads as :attr:`Entry.naming`'s own untitled arm does: every position's title equals
-    the entry's, so the first two terms separate nothing and what decides is a ROOT where
-    the group has one and the bundle's ORDER where it does not.  **A position INSIDE a
-    rule sorts last**, because the home is where the structure is DECLARED and a subschema
-    inside a rule declares nothing -- a home chosen there would leave the entry homeless.
+    **A ``title`` DOES NOT ENTER THIS ORDER, and separating the two questions is what the
+    first run of the override table paid for.**  :attr:`ShapeEntry.title` answers *what is
+    this entry CALLED* and :attr:`ShapeEntry.at` answers *which document may declare it*,
+    and a rule that let the first decide the second put the home wherever the bundle -- or
+    an override -- happened to write the word.  Measured the first time
+    ``patch.apply`` reached a compile path at all: the override table's one row titles
+    ``brand.json#/definitions/data_subject_contestation``, the titled position therefore
+    outranked every other, ``core/brand-ref.json`` came to import from ``brand.json``,
+    ``brand.json`` already referenced ``core/brand-ref.json``, and the run read **emitted
+    891 / refused 163** -- 2 primary on one reference cycle and 161 chained behind them.
+
+    That is exactly the failure §3a forbids a home rule to be capable of: "a rule whose
+    soundness has to be MEASURED for cycles is the wrong rule; the right one cannot produce
+    them."  The title-first order could, this one cannot, and the entry is named by its title
+    either way because the NAME is read off :attr:`ShapeEntry.title` and never off the home.
+
+    ``standing`` is ``emit.standing_order``'s and is handed IN (§3a: "a derived reading of
+    the bundle is an argument, not something a callee recomputes").  ``None`` is for a caller
+    comparing positions of ONE document, where the term separates nothing; the pointer below
+    it is then what decides.  ``title`` is unused and kept in the signature because every
+    caller holds one and a caller that stopped passing it would read as though the name had
+    stopped mattering.
     """
     return (
         position.declares_no_class,
-        not (position.is_a_root and position.title == title),
-        position.title != title,
         not position.is_a_root,
+        0 if standing is None else standing.get(position.document, len(standing)),
         position.document,
         position.pointer,
     )
@@ -1632,23 +1799,12 @@ def shape_declared_at(
     edges are not reference edges and do not run the reference graph's way, so an
     extension of the references alone has L0's arrows pointing against it.
     """
-    best = min(positions, key=lambda p: shape_ranked(p, title))
-    if (best.title == title and title is not None) or best.is_a_root:
-        return best
-
-    def already_beneath(position: Shaped) -> tuple[object, ...]:
-        # A position INSIDE a rule sorts last for :attr:`Stated.reached`'s own reason: a
-        # home that declares nothing leaves the entry with no class to reference.  A
-        # document the standing order does not name sorts after every one it does, which
-        # is what a document reaching nothing and reached by nothing is.
-        return (
-            position.declares_no_class,
-            standing.get(position.document, len(standing)),
-            position.document,
-            position.pointer,
-        )
-
-    return min(positions, key=already_beneath)
+    # **ONE ORDER AND NOT TWO ARMS**, which is :func:`shape_ranked`'s own correction: this
+    # function held a TITLED arm that fell through to the document's name and an untitled arm
+    # that ranked by the standing order, and a title therefore decided WHERE the entry was
+    # declared as well as what it was called.  §3a states one home rule and
+    # :func:`shape_ranked` is now it, so there is nothing left here to branch on.
+    return min(positions, key=lambda p: shape_ranked(p, title, standing))
 
 
 def collect_shapes(
@@ -1715,6 +1871,19 @@ def collect_shapes(
             continue
         stated = frozenset(p.title for p in group if p.title is not None)
         title: str | None = None
+        if layer == "L2C" and any(p.title is None for p in group):
+            # **AT L2C THE TITLE MUST BE AT EVERY STATING POSITION, which is stricter than
+            # the clause below and is the layer's own evidence rule** (:func:`shape_states`:
+            # identity at a composed position is evidence of a shared BASE and never of a
+            # shared subject).  One title among several untitled positions is enough at L2,
+            # where the key carries the property names and the positions are known to be
+            # one subject before any title is read; here it would let a word written once
+            # decide for positions that say nothing, and the measurement in
+            # :func:`shape_states` is what two of those positions turn out to be.  The
+            # judgment table states the same test as its own evidence: "the bundle names
+            # EVERY one of the N positions".
+            untitled.append(tuple(group))
+            continue
         if len(stated) == 1:
             title = next(iter(stated))
         elif len(stated) > 1:

@@ -7,7 +7,6 @@ from pydantic import ConfigDict, Field, TypeAdapter
 
 from adcp.types._base import SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
-from adcp.types.constraints import SyncAccountsRequestIdempotencyKey
 
 from ..core.account_ref import AccountReference
 from ..core.catalog import Catalog
@@ -15,6 +14,7 @@ from ..core.catalog_item_availability_ref import CatalogItemAvailabilityReferenc
 from ..core.catalog_item_availability_update import CatalogItemAvailabilityUpdate
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
+from ..core.idempotency_key import IdempotencyKey
 from ..core.push_notification_config import PushNotificationConfig
 from ..core.version_envelope import AdCPVersionEnvelope
 from ..enums.validation_mode import ValidationMode
@@ -31,7 +31,7 @@ class SyncCatalogsRequest(AdCPVersionEnvelope):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ConditionalRequired((Match('delete_missing', True, (True,)),), require=('catalogs',), forbid=()),
     )
-    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Client-generated unique key for at-most-once execution. Catalog upserts and item availability transitions can emit audit events or trigger platform work — this key prevents those side effects from firing twice on retry. Also serves as a request ID on discovery-only calls. MUST be unique per (seller, request) pair. Use a fresh UUID v4 for each request.')]
+    idempotency_key: Annotated[IdempotencyKey, Field(description='Client-generated unique key for at-most-once execution. Catalog upserts and item availability transitions can emit audit events or trigger platform work — this key prevents those side effects from firing twice on retry. Also serves as a request ID on discovery-only calls. MUST be unique per (seller, request) pair. Use a fresh UUID v4 for each request.')]
     account: Annotated[AccountReference, Field(description='Seller account containing these buyer-managed catalogs.')]
     catalogs: Annotated[list[Catalog] | None, Field(description='Array of catalog feeds to sync (create or update). When omitted together with item_availability_updates and item_availability_queries, the call is discovery-only and returns all existing catalogs on the account without modification.', max_length=50, min_length=1)] = None
     item_availability_updates: Annotated[list[CatalogItemAvailabilityUpdate] | None, Field(description='Immediate suppress or restore operations for items in buyer-managed catalogs. Sellers declaring media_buy.features.catalog_item_availability_updates MUST process these updates synchronously and MUST NOT silently ignore them or return a submitted task. A seller that does not declare the capability MUST reject the request with UNSUPPORTED_FEATURE before lookup or mutation and MUST NOT interpret it as discovery. The combined number of item_availability_updates and item_availability_queries MUST NOT exceed 1,000; excess entries are an operation-level INVALID_REQUEST before lookup or mutation. Each (catalog_id, catalog_generation, item_id) tuple MUST appear at most once in updates; a duplicate is an operation-level INVALID_REQUEST before mutation in every validation mode. For mixed catalog/update requests, the seller MUST validate and stage the entire request against the post-upsert candidate state, then commit catalog and availability changes atomically. It MUST reject before any mutation if synchronous atomic commit is unavailable. A successful suppress acknowledgement means the seller MUST stop selecting or rendering the item and every cached or pre-generated creative it materialized from the item. Seller-internal generation lineage MUST retain resolved_account_id, catalog_id, catalog_generation, and item_id. If the seller cannot enforce that guarantee, it MUST return a failed per-item result. Suppression persists across scheduled feed fetches and catalog upserts until explicit restore, expires_at, or deletion of the containing catalog. Restore removes only an existing buyer-authored overlay or tombstone in the same catalog generation and cannot override seller rejection, withdrawal, policy, rights, or inventory controls. A restore for an absent item without such prior state fails with REFERENCE_NOT_FOUND.', max_length=1000, min_length=1)] = None

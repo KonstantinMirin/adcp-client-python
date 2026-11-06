@@ -7,12 +7,13 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, PropertyCount, Rule
-from adcp.types.constraints import StrMinLen1MaxLen255, SyncAccountsRequestIdempotencyKey
+from adcp.types.constraints import StrMinLen1MaxLen255
 
 from ..core.agent_notification_config import AgentNotificationConfig
 from ..core.agent_reporting_destination import AgentReportingDestination
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
+from ..core.idempotency_key import IdempotencyKey
 from ..core.principal_declarations import AgentDeclarations
 from ..core.version_envelope import AdCPVersionEnvelope
 from ..enums.principal_kind import PrincipalKind
@@ -64,7 +65,7 @@ class SyncPrincipalRequest(AdCPVersionEnvelope):
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='protocol/sync-principal-request.json', pointer='#/properties/configuration/properties/notification_configs/items/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['authentication']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
-    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Client-generated key for at-most-once execution, at least 16 characters; a fresh UUID v4 per logical operation is recommended. Retries MUST reuse the same key with the same body.')]
+    idempotency_key: Annotated[IdempotencyKey, Field(description='Client-generated key for at-most-once execution, at least 16 characters; a fresh UUID v4 per logical operation is recommended. Retries MUST reuse the same key with the same body.')]
     expected_configuration_version: Annotated[StrMinLen1MaxLen255 | None, Field(description='Optional optimistic-concurrency fence returned by a previous successful sync. When present and stale, the seller rejects the whole request without mutation. Compare only for equality.')] = None
     expected_principal_kind: Annotated[PrincipalKind | None, Field(description='Optional assertion fence, not identity input: the caller states which party kind it believes it is authenticating as. When present and different from the seller-resolved principal_kind, the seller rejects the whole request with CONFLICT before mutation. The field never influences resolution.')] = None
     configuration: Annotated[Configuration, Field(description='Sections to replace atomically. At least one section is required. A present array is complete desired state for that section; [] clears it; omission leaves it unchanged.')]

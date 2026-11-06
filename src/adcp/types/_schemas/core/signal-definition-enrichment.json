@@ -54,12 +54,18 @@
       "type": "string"
     },
     "Shared5": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "ISO 3166-1 alpha-2 country code. Extracted unchanged from the 65 sites that stated it inline; see adcontextprotocol/adcp#8525.",
       "pattern": "^[A-Z]{2}$",
+      "title": "Country Code",
       "type": "string"
     },
     "Shared6": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "A URL whose scheme is https. Extracted unchanged from the 46 sites that stated it inline; see adcontextprotocol/adcp#8525. This is the shape adcontextprotocol/adcp#8398 asks the other seven uri patterns to reduce to.",
       "format": "uri",
       "pattern": "^https://",
+      "title": "HTTPS URL",
       "type": "string"
     },
     "Shared7": {
@@ -357,8 +363,10 @@
                     "type": "string"
                   },
                   "country": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
                     "description": "ISO 3166-1 alpha-2 country code.",
                     "pattern": "^[A-Z]{2}$",
+                    "title": "Country Code",
                     "type": "string"
                   },
                   "disclosure_text": {

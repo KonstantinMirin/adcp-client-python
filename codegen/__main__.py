@@ -53,8 +53,7 @@ import time
 from pathlib import Path
 
 from adcp.types._base import KINDS, SchemaRef, schema_at
-from codegen import bundle as bundle_module
-from codegen import harness, held, keywords, refusal
+from codegen import catalogue, harness, held, keywords, patch, refusal
 from codegen.emit import PACKAGE, TREE, emit, write
 
 #: Where the run writes §10's per-pair verdict table, relative to the tree it wrote.
@@ -116,7 +115,19 @@ def grade(tree: Path, package: Path | None, bundle_dir: Path) -> tuple[str, int]
         adcp.types.__path__.insert(0, str(package.resolve()))
     schemas.__path__.insert(0, str(tree.resolve()))
     found, unimportable = harness.pairs(schemas, path=[str(tree.resolve())])
-    identities = bundle_module.source_identities(bundle_dir)
+    #: **WHAT A HELD VALUE IS KEYED ON: what the document ADMITS, never its bytes**
+    #: (``adcp-client-python-lzzj.8``; ``catalogue.admitted_identities`` carries the
+    #: measurement).  ``bundle.source_identities`` digested a document's raw bytes and its
+    #: raw closure's, so an acceptance-preserving rewrite of the bundle moved every key and
+    #: an improvement to the schema cost exactly as much as a regression -- measured at
+    #: 1,054 of 1,054 identities moved by a patch whose every difference is a gained
+    #: annotation, 854 of them by a trailing newline alone.  Over the same pair of bundles
+    #: this reading moves 0 of 1,054.  ``harness.stated_instances`` is handed in because
+    #: ``examples`` is a SOURCE OF INSTANCES and an admitted key alone would drop it; §9
+    #: forbids the catalogue to the verifier, so the screen travels as an argument.
+    identities = catalogue.admitted_identities(
+        bundle_dir, stated=harness.stated_instances
+    )
     formats = harness.FORMAT_STRATEGIES
     rows = [
         #: A row for a module that did not import, so the table has no HOLE where its
@@ -142,18 +153,29 @@ def grade(tree: Path, package: Path | None, bundle_dir: Path) -> tuple[str, int]
             holder = (
                 p.model if isinstance(p.model, type) else importlib.import_module(p.module)
             )
+            #: **``module=`` IS WHICH TREE, and without it this run graded the tree it
+            #: wrote against the records that were INSTALLED** (``adcp-client-python-ir3l``).
+            #: ``schemas.__path__`` is bound to ``tree`` above so the MODULES come from
+            #: this run's output, but ``schema_at`` resolved its records through the
+            #: imported package, which answers from wherever ``_schemas/__init__.py`` was
+            #: loaded.  Measured over bundle 3.3: 1,806 pairs, 0 pass, 1,806 absent -- 107
+            #: ``FileNotFoundError`` for a 3.3-only document the committed tree has no
+            #: record for, 28 ``KeyError``/``IndexError`` at a pointer that is not 3.3's,
+            #: and every shared document served the 3.2 text with no error at all.
+            #: ``harness.pairs`` already records which module each pair was taken from, so
+            #: the tree is not inferred here -- it is the one the class came out of.
             pair = harness.Pair(
                 name=name,
-                schema=schema_at(p.ref),
+                schema=schema_at(p.ref, module=p.module),
                 model=p.model,
                 accept=p.accept,
-                document=schema_at(SchemaRef(p.ref.document, "#")),
+                document=schema_at(SchemaRef(p.ref.document, "#"), module=p.module),
                 ref=p.ref,
                 declared=harness.declarations_of(holder),
                 identity={
                     "document": p.ref.document,
                     "pointer": p.ref.pointer,
-                    "source": identities[p.ref.document],
+                    "admits": identities[p.ref.document],
                 },
             )
         except Exception as e:  # a row with a cause, never a lost pair
@@ -245,7 +267,16 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("document", nargs="+", help="bundle-relative document paths")
     ns = ap.parse_args(argv)
 
-    out = emit(ns.bundle, ns.document)
+    # **THE PATCH SET IS PART OF THE BUILD** (``patch.BUILD``, ``patch.for_build``).  The
+    # bundle stays an ARGUMENT, which is D9 -- no version lives in ``codegen/`` -- and what
+    # this line adds is that whatever bundle is named is read through the override table
+    # rather than raw.  Measured before it existed: ``grep 'patch.apply\|patch.additions'
+    # codegen/*.py`` matched nothing, so the table was written and reviewed and the emitter
+    # never saw it.  The GRADE reads the same directory: a harness validating an instance
+    # against the published document while the model was compiled from the patched one would
+    # be §8's comparison asked of two different schemas.
+    bundle_dir = patch.for_build(ns.bundle)
+    out = emit(bundle_dir, ns.document)
     write(out, ns.tree, ns.package)
     if ns.package is None:
         print(
@@ -347,7 +378,7 @@ def main(argv: list[str] | None = None) -> int:
     # LAST, after every line above, because grading imports the tree this run wrote and a
     # tree that does not import must not cost the report its numbers.
     started = time.time()
-    table, written = grade(ns.tree, ns.package, ns.bundle)
+    table, written = grade(ns.tree, ns.package, bundle_dir)
     path = ns.tree.parent / VERDICTS
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(table)

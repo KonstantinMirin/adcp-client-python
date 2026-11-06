@@ -2254,6 +2254,85 @@ def admitted_by_prefix(keyword: str) -> bool:
     return keyword.startswith(NAMESPACE)
 
 
+#: The EFFECTS a keyword can have without changing what a node ADMITS: a symbol
+#: (``NAME``), a fact a lowering carries (``ANNOTATION``), a fact the enclosing FIELD
+#: carries, or nothing at all.  The complement is :data:`LOWERED` -- "the effects the
+#: NODE'S OWN handler has to write code for" -- which is exactly the set that compiles to
+#: a TYPE or a RULE and therefore narrows an instance.
+#:
+#: ``FIELD`` is here on §2's own sentence about the one keyword that reaches it: a
+#: ``default`` "neither widens nor narrows what the class accepts".
+CARRIED = frozenset({Effect.NAME, Effect.ANNOTATION, Effect.FIELD, Effect.NOTHING})
+
+
+def _carried() -> frozenset[str]:
+    """Every keyword this TABLE gives no admitting effect at any position (§3a).
+
+    §3a: "Identity here is STRUCTURAL and ignores annotations ... because an annotation
+    does not change what a node admits."  **DERIVED from this table and not listed**,
+    which is the one declaration §9 gives this question: "a keyword handled in code but
+    named in none of §5, §6 or §7 is an invented rule", and a hand-written list beside the
+    table is how the two come to disagree -- the list said ``default`` was an annotation
+    while the table says its cell is FIELD at PROP, and said ``discriminator`` while the
+    table says NOTHING.  It also hid the collection from ``tests/test_keywords.py``'s
+    census, which reads literal keyword collections and cannot read a derivation it has no
+    reason to doubt.
+
+    Two screens beside the effect, and both are about what a key IS rather than what it
+    asserts:
+
+    * a keyword the descent column DESCENDS into is a SECTION or a subschema holder, so
+      two nodes differing in one differ in a node below -- it is not an annotation of
+      this node whatever its own cell says;
+    * a keyword admitted by the ``x-`` PREFIX is admitted by prefix at the point of use
+      (``catalogue.identity``, ``catalogue.Admitted``, ``harness._content_key``), for the
+      reason §6 admits it that way: "The ``x-`` namespace is admitted by prefix AND listed
+      by name", and a prefix test cannot be a set member.
+
+    Measured over this bundle: the derived set and the list it replaces produce the same
+    15 entries, the same 124 untitled groups, the same 3 conflicts, the same 23
+    same-document restatements and the same 22 restating positions.  What it adds is the
+    21 document-level metadata keys (``version``, ``lastUpdated``, ``baseUrl``, ...) and
+    ``errorMessage``, every one of which the table already says asserts nothing -- so
+    the derivation is wider than the list in exactly the direction §3a's sentence is.
+    """
+    descends = frozenset(word for position in Position for word in descends_at(position))
+    return frozenset(
+        word
+        for word, _ in TABLE.items()
+        if (
+            effects := {
+                answer.effect
+                for position in Position
+                if (answer := cell(word, position)) is not None
+            }
+        )
+        and effects <= CARRIED
+        and word not in descends
+        and not admitted_by_prefix(word)
+    )
+
+
+#: The keys whose value does not change what a node ADMITS, so two nodes differing only in
+#: one of them admit the same instances (§3a): :func:`_carried`'s derivation, and beside it
+#: the two keys the TABLE does not list at all.
+#:
+#: ``$id`` and ``example`` are a document's own declaration of where it lives and the
+#: bundle's singular spelling of ``examples``.  Neither has a row, so neither has a cell
+#: to derive an effect from, and both are stated here -- which is the residue a
+#: derivation cannot reach and is why it is two names and not fourteen.
+#:
+#: **IT IS HERE AND NOT IN ``codegen/catalogue.py``, WHICH IS WHERE IT WAS, BECAUSE THERE
+#: ARE TWO READERS ACROSS §9's BOUNDARY** (``adcp-client-python-lzzj.8``).  The catalogue
+#: keys a layer's identity on it (``catalogue.Admitted``) and the verifier keys §8's
+#: fixture memo on it (``harness._content_key``) -- and §9's import set does not let the
+#: verifier read the catalogue, so a set declared there would have had to be restated in
+#: the verifier.  :func:`_carried`'s own argument is that a list beside this table is how
+#: the list and the table come to disagree; two derivations of one set is the same defect
+#: one step further out.  ``catalogue.ANNOTATIONS`` is now this name.
+ANNOTATIONS = _carried() | frozenset({"$id", "example"})
+
+
 def unlisted_extension(keyword: str) -> bool:
     """A key in the namespace with no row: admitted, and REPORTED.
 

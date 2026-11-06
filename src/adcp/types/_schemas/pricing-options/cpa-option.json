@@ -24,6 +24,7 @@
   "description": "Cost Per Acquisition pricing. Advertiser pays a fixed price when a specified conversion event occurs. The event_type field declares which event triggers billing (e.g., purchase, lead, app_install).",
   "properties": {
     "currency": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "description": "ISO 4217 currency code",
       "examples": [
         "USD",
@@ -32,6 +33,7 @@
         "JPY"
       ],
       "pattern": "^[A-Z]{3}$",
+      "title": "Currency Code",
       "type": "string"
     },
     "custom_event_name": {

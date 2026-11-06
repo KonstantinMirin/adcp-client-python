@@ -7,8 +7,8 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain
 
+from .domain_name import DomainName
 from .ext import ExtensionObject
 from .placement_identity import PlacementIdentity
 from .placement_ref import PlacementReference
@@ -27,7 +27,7 @@ class PlacementSelection(BranchDispatchMixin, AdCPBaseModel):
         return "oneOf"
 
 
-class PlacementRefsItem(PlacementReference):
+class PublisherPlacementReference(PlacementReference):
     """
     Legacy-compatible product-context reference to a placement. For publisher-catalog placements, publisher_domain plus placement_id resolves the declaration in that publisher's adagents.json. For seller-inline placements, the enclosing seller and product supply scope. When publisher_domain is omitted on legacy inputs, receivers MAY interpret the ID relative to the enclosing single-publisher product. Use placement-identity.json when a self-contained cross-document identity is required.
     """
@@ -35,7 +35,7 @@ class PlacementRefsItem(PlacementReference):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/placement-selection.json', pointer='#/oneOf/0/properties/placement_refs/items/anyOf/0')
-    publisher_domain: Annotated[AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, Field(description='Domain where the adagents.json declaring a publisher-catalog placement is hosted, or the inventory publisher associated with an inline placement. Omitted only for legacy single-publisher product-context references.')]
+    publisher_domain: Annotated[DomainName, Field(description='Domain where the adagents.json declaring a publisher-catalog placement is hosted, or the inventory publisher associated with an inline placement. Omitted only for legacy single-publisher product-context references.')]
 
 
 class SelectedPlacements(PlacementSelection):
@@ -47,7 +47,7 @@ class SelectedPlacements(PlacementSelection):
         UniqueItems('placement_refs'),
     )
     mode: Literal['selected']
-    placement_refs: Annotated[list[PlacementRefsItem | PlacementIdentity], Field(description="Complete required placement set. A reference normally identifies a mode targetable placement. It MAY identify a mode included placement only when the set exactly equals the product's complete fixed included set, which is an inherent match rather than independent selection. Legacy publisher refs use {publisher_domain, placement_id}; authority-discriminated 3.2 identities use placement-identity.json so seller-inline inventory is selected by {seller_agent, placement_id}. An item that exactly matches placement-identity uses that canonical identity; otherwise a released-compatible item with publisher_domain and placement_id uses legacy product-context matching, and tolerated product metadata such as kind, name, or mode has no selection effect.", json_schema_extra={'uniqueItems': True}, min_length=1)]
+    placement_refs: Annotated[list[PublisherPlacementReference | PlacementIdentity], Field(description="Complete required placement set. A reference normally identifies a mode targetable placement. It MAY identify a mode included placement only when the set exactly equals the product's complete fixed included set, which is an inherent match rather than independent selection. Legacy publisher refs use {publisher_domain, placement_id}; authority-discriminated 3.2 identities use placement-identity.json so seller-inline inventory is selected by {seller_agent, placement_id}. An item that exactly matches placement-identity uses that canonical identity; otherwise a released-compatible item with publisher_domain and placement_id uses legacy product-context matching, and tolerated product metadata such as kind, name, or mode has no selection effect.", json_schema_extra={'uniqueItems': True}, min_length=1)]
     ext: ExtensionObject | None = None
 
 

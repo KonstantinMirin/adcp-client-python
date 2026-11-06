@@ -8,7 +8,6 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types.constraints import (
-    AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem,
     AddressPostalCode,
     BankBic,
     BankIban,
@@ -20,6 +19,7 @@ from adcp.types.constraints import (
     VatId,
 )
 
+from .country_code import CountryCode
 from .ext import ExtensionObject
 
 
@@ -35,7 +35,7 @@ class Address(AdCPBaseModel):
     city: StrMaxLen100
     postal_code: AddressPostalCode
     region: Annotated[StrMaxLen100 | None, Field(description='State, province, or region')] = None
-    country: Annotated[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, Field(description='ISO 3166-1 alpha-2 country code')]
+    country: Annotated[CountryCode, Field(description='ISO 3166-1 alpha-2 country code')]
 
 
 class Role(StrEnum):

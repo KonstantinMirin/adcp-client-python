@@ -11,7 +11,6 @@ from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import (
     FloatGt0,
     FloatMin0Max1,
-    GetAccountFinancialsResponseSuccessCurrency,
     HttpUrl,
     PlansItemEntriesItemPlanHash,
     StrMinLen1MaxLen255,
@@ -22,6 +21,7 @@ from ..common._vocabularies import _VALUES_OPEN_CLOSED
 from ..core.attestation_evaluation import AttestationEvaluation
 from ..core.attestation_reference import AttestationReference
 from ..core.context import ContextObject
+from ..core.currency_code import CurrencyCode
 from ..core.ext import ExtensionObject
 from ..core.protocol_envelope import ProtocolEnvelope
 from ..core.reporting_reliability_statistics import ObjStartEnd
@@ -195,7 +195,7 @@ class Amount(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/get-plan-audit-logs-response.json', pointer='#/properties/plans/items/properties/entries/items/properties/amount')
     amount: FloatGt0
-    currency: GetAccountFinancialsResponseSuccessCurrency
+    currency: CurrencyCode
 
 
 class Source(StrEnum):
@@ -221,7 +221,7 @@ class Delivery(AdCPBaseModel):
     seller_statement_digest: Annotated[ZipAssetDigest | None, Field(description='Digest received with the seller statement. Governance compares it to the seller-authenticated canonical digest.')] = None
     reporting_period: Annotated[ObjStartEnd | None, Field(description='Start and end timestamps for the reporting window.')] = None
     cumulative_spend: Annotated[NonNegativeFloat | None, Field(description='Buyer-attributed cumulative spend for the governed action.')] = None
-    currency: GetAccountFinancialsResponseSuccessCurrency | None = None
+    currency: CurrencyCode | None = None
     period_closed: Annotated[bool | None, Field(description='Buyer-declared operational closure of this governance reporting period. When true, governance freezes the period after recording this observation. An unresolved mismatch becomes closed_unresolved and no longer blocks later governance. Closure is not final billing or commercial settlement.')] = False
     impressions: NonNegativeInt | None = None
 

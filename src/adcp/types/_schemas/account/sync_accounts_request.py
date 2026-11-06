@@ -7,19 +7,16 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import Dependencies, ForbiddenGroups, Rule
-from adcp.types.constraints import (
-    AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain,
-    GetAccountFinancialsResponseSuccessCurrency,
-    IntMin1,
-    StrMinLen1,
-    SyncAccountsRequestIdempotencyKey,
-)
+from adcp.types.constraints import IntMin1, StrMinLen1
 
 from ..core.account_ref import AccountReference
 from ..core.brand_ref import BrandReference
 from ..core.business_entity import BusinessEntity
 from ..core.context import ContextObject
+from ..core.currency_code import CurrencyCode
+from ..core.domain_name import DomainName
 from ..core.ext import ExtensionObject
+from ..core.idempotency_key import IdempotencyKey
 from ..core.notification_config import NotificationConfig
 from ..core.operator_identity import OperatorIdentity
 from ..core.operator_unit import OperatorUnit
@@ -70,9 +67,9 @@ class AccountsItem(BranchDispatchMixin, AdCPBaseModel):
     operator_identity: Annotated[OperatorIdentity | None, Field(description='Complete desired operator identity for settings-update mode. Omit this field to leave operator identity unchanged. When present, omission of operator_unit within the object removes the existing unit. Changing only operator_unit.name updates display metadata; changing operator_unit.id or adding/removing a unit rekeys the same account within the current operator. Changing operator requests an inter-entity handoff and MUST enter pending_approval until the seller verifies the current account authority, verified brand authorization, destination-operator acceptance, and any operator-scoped billing and grant transition. The seller MUST preserve account_id and account-scoped historical resources, MUST reject collisions without merging, and MUST apply no identity change if continuity cannot be preserved. MUST be accompanied by revision and MUST be absent in provisioning mode.')] = None
     destination_billing_entity: Annotated[BusinessEntity | None, Field(description="Complete staged billing identity for the requested destination operator during an operator-domain handoff on an account whose billing party is operator. This value is write-only while approval is pending and MUST NOT replace or be echoed as the account's canonical billing_entity until the handoff applies atomically. Required by the protocol when an operator-billed account changes operator; otherwise MUST be absent. Requires operator_identity and revision and MUST be absent in provisioning mode.")] = None
     brand: Annotated[BrandReference | None, Field(description='Brand reference identifying the advertiser. Required for **provisioning mode**; MUST be absent in settings-update mode. Only the BrandKey projection — `domain`, `brand_id`, and the canonicalized `countries[]` set — participates in account identity. Mutable or per-call BrandRef fields such as `industries`, `data_subject_contestation`, and `brand_kit_override` MUST NOT affect lookup, idempotency, or account creation. New 3.2 producers SHOULD send only the BrandKey fields; the broader BrandRef remains accepted on this existing 3.x task for compatibility.')] = None
-    operator: Annotated[AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain | None, Field(description="Domain of the entity operating on the brand's behalf (e.g., 'pinnacle-media.com'). When the brand operates directly, this is the brand's domain. Verified against the brand's authorized_operators in brand.json. Required for **provisioning mode**; MUST be absent in settings-update mode.")] = None
+    operator: Annotated[DomainName | None, Field(description="Domain of the entity operating on the brand's behalf (e.g., 'pinnacle-media.com'). When the brand operates directly, this is the brand's domain. Verified against the brand's authorized_operators in brand.json. Required for **provisioning mode**; MUST be absent in settings-update mode.")] = None
     operator_unit: Annotated[OperatorUnit | None, Field(description='Optional operator-owned business unit, agency seat, or platform account for provisioning mode. operator_unit.id participates in the natural key; name is mapping/display metadata. MUST be absent in settings-update mode.')] = None
-    currency: Annotated[GetAccountFinancialsResponseSuccessCurrency | None, Field(description='Optional immutable ISO 4217 transaction currency for a currency-bound advertiser object. Consult `account.supported_account_currency_modes` before provisioning. When supplied, it participates in the natural key and all media buys on the account use it. Omit for per-media-buy currency selection. MUST be absent in settings-update mode.')] = None
+    currency: Annotated[CurrencyCode | None, Field(description='Optional immutable ISO 4217 transaction currency for a currency-bound advertiser object. Consult `account.supported_account_currency_modes` before provisioning. When supplied, it participates in the natural key and all media buys on the account use it. Omit for per-media-buy currency selection. MUST be absent in settings-update mode.')] = None
     timezone: Annotated[StrMinLen1 | None, Field(description='Immutable operational timezone selected for an account_fixed advertiser object. Required in provisioning mode when get_adcp_capabilities.account.timezone declares account_selection: buyer_selected, and the value MUST be one of supported_timezones. Omit for seller_fixed or seller_assigned modes. When supplied, it participates in the natural key. MUST be absent in settings-update mode.')] = None
     billing: Annotated[BillingParty | None, Field(description='Who the seller invoices for this buyer–storefront account relationship. Required for **provisioning mode**; MUST be absent in settings-update mode (the invoiced party is fixed at provisioning time and cannot be changed via settings-update). This field does not select a payment rail, clearing intermediary, or per-media-buy settlement route.')] = None
     billing_entity: Annotated[BusinessEntity | None, Field(description='Business entity details for the party responsible for payment. The agent provides this so the seller has the legal name, tax IDs, address, and bank details needed for formal B2B invoicing. Permitted in both modes — sellers MAY accept refinements in settings-update mode (e.g., updated bank details).')] = None
@@ -99,7 +96,7 @@ class ProvisioningMode(AccountsItem):
     )
     billing: Annotated[BillingParty, Field(description='Who the seller invoices for this buyer–storefront account relationship. Required for **provisioning mode**; MUST be absent in settings-update mode (the invoiced party is fixed at provisioning time and cannot be changed via settings-update). This field does not select a payment rail, clearing intermediary, or per-media-buy settlement route.')]
     brand: Annotated[BrandReference, Field(description='Brand reference identifying the advertiser. Required for **provisioning mode**; MUST be absent in settings-update mode. Only the BrandKey projection — `domain`, `brand_id`, and the canonicalized `countries[]` set — participates in account identity. Mutable or per-call BrandRef fields such as `industries`, `data_subject_contestation`, and `brand_kit_override` MUST NOT affect lookup, idempotency, or account creation. New 3.2 producers SHOULD send only the BrandKey fields; the broader BrandRef remains accepted on this existing 3.x task for compatibility.')]
-    operator: Annotated[AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, Field(description="Domain of the entity operating on the brand's behalf (e.g., 'pinnacle-media.com'). When the brand operates directly, this is the brand's domain. Verified against the brand's authorized_operators in brand.json. Required for **provisioning mode**; MUST be absent in settings-update mode.")]
+    operator: Annotated[DomainName, Field(description="Domain of the entity operating on the brand's behalf (e.g., 'pinnacle-media.com'). When the brand operates directly, this is the brand's domain. Verified against the brand's authorized_operators in brand.json. Required for **provisioning mode**; MUST be absent in settings-update mode.")]
 
 
 class SettingsUpdateMode(AccountsItem):
@@ -142,7 +139,7 @@ class SyncAccountsRequest(AdCPVersionEnvelope):
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='account/sync-accounts-request.json', pointer='#/properties/accounts/items/properties/notification_configs/items/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['authentication']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
-    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Client-generated unique key for at-most-once execution. Natural per-account upsert keys handle resource-level dedup, but the envelope triggers onboarding webhooks, billing setup, and audit events — this key prevents those side effects from firing twice on retry. MUST be unique per (seller, request) pair. Use a fresh UUID v4 for each request.')]
+    idempotency_key: Annotated[IdempotencyKey, Field(description='Client-generated unique key for at-most-once execution. Natural per-account upsert keys handle resource-level dedup, but the envelope triggers onboarding webhooks, billing setup, and audit events — this key prevents those side effects from firing twice on retry. MUST be unique per (seller, request) pair. Use a fresh UUID v4 for each request.')]
     accounts: Annotated[list[AccountsItem], Field(description='Per-account sync entries. Each entry uses one of two key shapes: the `account` field (AccountRef) for settings-update mode, or the flat `brand` + `operator` + `billing` trio for provisioning mode. An operator_identity settings update MUST carry the latest account revision.', max_length=1000)]
     delete_missing: Annotated[bool | None, Field(description='When true, accounts previously synced by this agent but not included in this request will be deactivated. Scoped to the authenticated agent — does not affect accounts managed by other agents. Use with caution.')] = False
     dry_run: Annotated[bool | None, Field(description='When true, preview what would change without applying. Returns what would be created/updated/deactivated.')] = False

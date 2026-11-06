@@ -17,8 +17,10 @@
       "type": "string"
     },
     "Shared11": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "description": "Domain where /.well-known/brand.json is hosted, or the brand's operating domain",
       "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+      "title": "Domain Name",
       "type": "string"
     },
     "Shared12": {
@@ -39,7 +41,10 @@
     "Shared13": {
       "description": "Canonical set of ISO 3166-1 alpha-2 countries for this advertiser identity. Omit for a global/default identity. Array order is not meaningful; producers MUST sort codes lexicographically before computing keys or signatures. This qualifies account identity and is not delivery targeting.",
       "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "ISO 3166-1 alpha-2 country code. Extracted unchanged from the 65 sites that stated it inline; see adcontextprotocol/adcp#8525.",
         "pattern": "^[A-Z]{2}$",
+        "title": "Country Code",
         "type": "string"
       },
       "minItems": 1,
@@ -80,8 +85,11 @@
           "type": "array"
         },
         "url": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "A URL whose scheme is https. Extracted unchanged from the 46 sites that stated it inline; see adcontextprotocol/adcp#8525. This is the shape adcontextprotocol/adcp#8398 asks the other seven uri patterns to reduce to.",
           "format": "uri",
           "pattern": "^https://",
+          "title": "HTTPS URL",
           "type": "string"
         }
       },
@@ -397,9 +405,11 @@
                         "description": "Buyer's representation that this embedding can be verified by a governance agent on the seller's `creative_policy.accepted_verifiers` list. The `agent_url` MUST match (canonicalized) one of the seller's published `accepted_verifiers[].agent_url` entries; sellers reject `sync_creatives` submissions whose `verify_agent.agent_url` is off-list with `PROVENANCE_VERIFIER_NOT_ACCEPTED`. This is buyer-supplied evidence, not buyer-driven routing \u2014 the seller is the verifier-of-record and the seller controls which agent it actually calls (the seller MAY use a different on-list agent if it determines this is more appropriate; the seller does not call buyer-asserted endpoints outside its allowlist). MAY be omitted for self-verifiable embeddings (e.g., a C2PA text manifest with a public key the seller already trusts).",
                         "properties": {
                           "agent_url": {
+                            "$schema": "http://json-schema.org/draft-07/schema#",
                             "description": "URL of the governance agent the buyer represents was used to embed/verify this layer. MUST use the `https://` scheme and MUST appear in the seller's `creative_policy.accepted_verifiers[].agent_url` list (canonicalized per /docs/reference/url-canonicalization: lowercase scheme and host, strip default port, normalize path dot-segments). Sellers MUST NOT call this URL until the canonicalized match is confirmed.",
                             "format": "uri",
                             "pattern": "^https://",
+                            "title": "HTTPS URL",
                             "type": "string"
                           },
                           "feature_id": {
@@ -541,9 +551,11 @@
                         "description": "Buyer's representation that this watermark can be detected by a governance agent on the seller's `creative_policy.accepted_verifiers` list. The `agent_url` MUST match (canonicalized) one of the seller's published `accepted_verifiers[].agent_url` entries; sellers reject `sync_creatives` submissions whose `verify_agent.agent_url` is off-list with `PROVENANCE_VERIFIER_NOT_ACCEPTED`. This is buyer-supplied evidence, not buyer-driven routing \u2014 the seller is the verifier-of-record and the seller controls which agent it actually calls (the seller MAY use a different on-list agent if it determines this is more appropriate; the seller does not call buyer-asserted endpoints outside its allowlist).",
                         "properties": {
                           "agent_url": {
+                            "$schema": "http://json-schema.org/draft-07/schema#",
                             "description": "URL of the governance agent the buyer represents was used to apply/detect this watermark. MUST use the `https://` scheme and MUST appear in the seller's `creative_policy.accepted_verifiers[].agent_url` list (canonicalized per /docs/reference/url-canonicalization: lowercase scheme and host, strip default port, normalize path dot-segments). Sellers MUST NOT call this URL until the canonicalized match is confirmed.",
                             "format": "uri",
                             "pattern": "^https://",
+                            "title": "HTTPS URL",
                             "type": "string"
                           },
                           "feature_id": {
@@ -1978,9 +1990,11 @@
       "type": "object"
     },
     "currency": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "deprecated": true,
       "description": "Deprecated in AdCP 3.2 and removed in AdCP 4.0. Optional legacy report-wide ISO 4217 currency code. It may be used only when every monetary value in the report has that denomination. A report can contain media buys with different currencies, so buyers MUST NOT interpret this field as an aggregation currency or evidence of currency conversion. Prefer media_buy_deliveries[].currency when present and package-level currency otherwise.",
       "pattern": "^[A-Z]{3}$",
+      "title": "Currency Code",
       "type": "string"
     },
     "errors": {
@@ -2176,8 +2190,10 @@
                   "additionalProperties": true,
                   "properties": {
                     "currency": {
+                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "description": "ISO 4217 currency code for this package's spend and currency-denominated pricing rate. The rate for revenue_share is a dimensionless commission fraction, but attributed monetary values still use this currency. When the enclosing media_buy_deliveries[].currency is present, this value MUST equal it. For AdCP-authored buys both values MUST equal the media-buy currency. A different package currency is permitted only for a legacy or externally created mixed-currency buy whose row currency and row-level monetary totals are omitted. When both row and deprecated response-wide currency are absent, a package with monetary values MUST include this field. AdCP does not perform currency conversion.",
                       "pattern": "^[A-Z]{3}$",
+                      "title": "Currency Code",
                       "type": "string"
                     },
                     "delivery_status": {
@@ -2562,8 +2578,10 @@
             "type": "array"
           },
           "currency": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
             "description": "ISO 4217 denomination for monetary values in this media-buy delivery row, including totals, package spend, and currency-denominated package rates. Sellers SHOULD populate this field whenever all monetary values in the row share one currency. For AdCP-authored buys it MUST equal the media-buy currency, and every by_package[].currency MUST equal it. For a legacy or externally created mixed-currency buy, omit this field and all monetary or money-derived values from row totals; report those values only at package level with each package's own currency. AdCP does not perform currency conversion.",
             "pattern": "^[A-Z]{3}$",
+            "title": "Currency Code",
             "type": "string"
           },
           "expected_availability": {

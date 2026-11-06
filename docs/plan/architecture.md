@@ -1112,6 +1112,30 @@ subsection names the properties:
   because an exclusion that excludes nothing silently widens the patch the day its site moves, and
   the next site to *gain* the structure there is rewritten with nobody having read what it means.
 
+**AND EVERY ONE OF THOSE REFUSALS IS A COMPARISON AGAINST THE PUBLISHED BUNDLE, WHICH MAKES THE
+PUBLISHED BUNDLE PART OF THE OVERRIDE.** `load` raises where the published bundle *already* holds
+what the entry adds. "Already" is a comparison, and a comparison needs a second operand that is
+**stated**. A directory of documents carrying no record of the upstream state it came from is not
+that operand — it is whatever was last copied into it. Against such a directory the failure clause
+cannot tell the fix having landed from the copy being old, and those two readings carry **opposite
+instructions**: delete the entry, or refresh the bundle. **AN OVERRIDE WHOSE EXPIRY CANNOT FIRE IS
+INDISTINGUISHABLE FROM ONE THAT HAS NOT EXPIRED**, and the indistinguishability is the defect —
+not the staleness, which is ordinary and expected.
+
+So the mechanism above has a precondition the mechanism itself cannot supply:
+
+**A BUNDLE GROUNDS US ONLY WHILE ITS UPSTREAM STATE IS RECORDED BESIDE IT** — the upstream commit,
+the command that built it, and a digest over the document set. The digest is not redundant with the
+commit: a commit identifier nothing checks is a decoration, and the comparison between digest and
+documents is what turns the record from a claim into a fact. Upstream grounds us and never corrects
+us; **a bundle that cannot say which upstream it is does neither.**
+
+**AND THE SAME ARGUMENT APPLIES TO A SECOND BUNDLE, WHERE IT IS SHARPER.** Verifying one bundle
+against another is the one task where "which upstream is this?" is the whole question, so two
+unpinned directories do not make a comparison — they make two unlabelled readings that happen to
+differ. The difference is then attributable to the compiler, to the protocol, or to the copy, with
+nothing in the tree choosing between them.
+
 **AND EXTRACTION IS WORTH MORE THAN A TITLE, WHICH IS WHY IT IS THE DEFAULT FORM.** Naming a node
 in place tells the catalogue what to call one entry. Extracting it gives the structure **a document
 path, which IS its name**, and turns every site into a reference — so the entries collapse **by the

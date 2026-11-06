@@ -2,8 +2,10 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "definitions": {
     "Shared0": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "description": "Domain where publisher's adagents.json is hosted (e.g., 'cnn.com'). XOR with `publisher_domains` \u2014 exactly one MUST be present on each `publisher_properties[]` entry; both-present and neither-present both fail validation.",
       "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+      "title": "Domain Name",
       "type": "string"
     },
     "Shared1": {
@@ -29,7 +31,10 @@
       ]
     },
     "Shared3": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "A lowercase DNS domain name, dot-separated LDH labels. Extracted unchanged from the 54 sites that stated it inline; see adcontextprotocol/adcp#8525.",
       "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+      "title": "Domain Name",
       "type": "string"
     }
   },
@@ -97,8 +102,10 @@
           "type": "array"
         },
         "publisher_domain": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
           "description": "Domain where publisher's adagents.json is hosted (e.g., 'cnn.com').",
           "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+          "title": "Domain Name",
           "type": "string"
         },
         "selection_type": {

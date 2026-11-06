@@ -6,7 +6,6 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain
 
 from ..enums.collection_cadence import CollectionCadence
 from ..enums.collection_kind import CollectionKind
@@ -16,6 +15,7 @@ from ..enums.production_quality import ProductionQuality
 from .collection_distribution import CollectionDistribution
 from .content_rating import ContentRating
 from .deadline_policy import DeadlinePolicy
+from .domain_name import DomainName
 from .ext import ExtensionObject
 from .limited_series import LimitedSeries
 from .special import Special
@@ -39,7 +39,7 @@ class Collection(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/collection.json', pointer='#')
-    publisher_domain: Annotated[AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain | None, Field(description="Publisher namespace that owns this collection. Required for supply-path verification when the declaration is read from a cross-origin authoritative document; it must match the publisher whose origin delegated retrieval. A pointer alone cannot claim another publisher's collection. May be omitted for a publisher-origin document, where that origin supplies the namespace.")] = None
+    publisher_domain: Annotated[DomainName | None, Field(description="Publisher namespace that owns this collection. Required for supply-path verification when the declaration is read from a cross-origin authoritative document; it must match the publisher whose origin delegated retrieval. A pointer alone cannot claim another publisher's collection. May be omitted for a publisher-origin document, where that origin supplies the namespace.")] = None
     collection_id: Annotated[str, Field(description="Publisher-assigned identifier for this collection. Declared in the publisher's adagents.json collections array. Products reference collections via collection selectors with publisher_domain and collection_ids. Use distribution identifiers for cross-seller matching across publishers.")]
     name: Annotated[str, Field(description='Human-readable collection name')]
     kind: Annotated[CollectionKind | None, Field(description="What kind of content program this is. Helps agents interpret installments correctly. A channel collection represents the persistent programmed stream; its installments, when present, are scheduled airings or programming blocks. Defaults to 'series' when absent.")] = None

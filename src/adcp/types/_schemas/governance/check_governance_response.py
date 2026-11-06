@@ -11,7 +11,6 @@ from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule
 from adcp.types.constraints import (
     ConsultationContext,
     FloatMin0Max1,
-    GetAccountFinancialsResponseSuccessCurrency,
     GovernanceContext,
     IntMin1,
     StrMinLen1MaxLen1024,
@@ -20,6 +19,7 @@ from adcp.types.constraints import (
 
 from ..core.attestation_evaluation import AttestationEvaluation
 from ..core.context import ContextObject
+from ..core.currency_code import CurrencyCode
 from ..core.ext import ExtensionObject
 from ..core.reporting_reliability_statistics import ObjStartEnd
 from ..core.version_envelope import AdCPVersionEnvelope
@@ -89,7 +89,7 @@ class DeliveryStatement(AdCPBaseModel):
     seller_reference: str
     reporting_period: ObjStartEnd
     cumulative_spend: NonNegativeFloat
-    currency: GetAccountFinancialsResponseSuccessCurrency
+    currency: CurrencyCode
     canonical_payload: Annotated[CanonicalPayload, Field(description='Exact retained digest-bearing payload. To verify statement_digest, apply RFC 8785 JCS after removing delivery_metrics.statement_digest.')]
 
 

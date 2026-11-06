@@ -6,14 +6,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import Approximation, SchemaRef
-from adcp.types.constraints import (
-    GovernanceContext,
-    IntMin1,
-    MediaBuyName,
-    StrMaxLen500,
-    StrMinLen1,
-    SyncAccountsRequestIdempotencyKey,
-)
+from adcp.types.constraints import GovernanceContext, IntMin1, MediaBuyName, StrMaxLen500, StrMinLen1
 
 from ..core.account_ref import AccountReference
 from ..core.bidding_policy import BiddingPolicy
@@ -21,6 +14,7 @@ from ..core.budget_allocation import BudgetAllocation
 from ..core.business_entity import BusinessEntity
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
+from ..core.idempotency_key import IdempotencyKey
 from ..core.media_buy_frequency_cap import MediaBuyFrequencyCap
 from ..core.push_notification_config import PushNotificationConfig
 from ..core.reporting_webhook import ReportingWebhook
@@ -66,7 +60,7 @@ class UpdateMediaBuyRequest(AdCPVersionEnvelope):
     new_packages: Annotated[list[PackageRequest] | None, Field(description='New packages to add to this media buy. Uses the same schema as create_media_buy packages. When budget_allocation is omitted or fixed, every new package MUST carry budget and MUST NOT carry min_spend_target. To add a package without a hard cap to an existing seller-optimized buy, include its resulting seller_optimized budget_allocation block in the update so the allocation context is schema-visible. Repeating an unchanged allocation block does not itself switch modes. Sellers that support mid-flight package additions advertise `add_packages` in both `valid_actions[]` (deprecated) and as an entry in `available_actions[]` (authoritative). Sellers that do not support this MUST reject with ACTION_NOT_ALLOWED (preferred) or UNSUPPORTED_FEATURE (legacy). If the buy has a root frequency_cap, every added product must support that exact aggregate cap; otherwise the seller rejects atomically with UNSUPPORTED_FEATURE, leaving the whole update unapplied and preserving the buy and its counter history.', min_length=1)] = None
     reporting_webhook: Annotated[ReportingWebhook | None, Field(description='Optional webhook configuration for automated reporting delivery. Updates the reporting configuration for this media buy.')] = None
     push_notification_config: Annotated[PushNotificationConfig | None, Field(description='Optional webhook configuration for async update notifications. Publisher will send webhook when update completes if operation takes longer than immediate response time. This is separate from reporting_webhook which configures ongoing campaign reporting.')] = None
-    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Client-generated idempotency key for safe retries. If an update fails without a response, resending with the same idempotency_key guarantees the update is applied at most once. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.')]
+    idempotency_key: Annotated[IdempotencyKey, Field(description='Client-generated idempotency key for safe retries. If an update fails without a response, resending with the same idempotency_key guarantees the update is applied at most once. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.')]
     context: ContextObject | None = None
     ext: ExtensionObject | None = None
 

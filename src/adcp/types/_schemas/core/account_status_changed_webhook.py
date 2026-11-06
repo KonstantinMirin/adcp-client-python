@@ -11,11 +11,11 @@ from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
     StrMaxLen500,
-    SyncAccountsRequestIdempotencyKey,
 )
 
 from ..enums.account_status import AccountStatus
 from .ext import ExtensionObject
+from .idempotency_key import IdempotencyKey
 
 
 class ReasonCode(StrEnum):
@@ -57,7 +57,7 @@ class AccountStatusChangedWebhook(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/account-status-changed-webhook.json', pointer='#')
-    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Sender-generated key stable across retries of the same fire. Sellers MUST generate a cryptographically random value (UUID v4 recommended) per distinct fire and reuse it on every retry of the same fire. Receivers MUST dedupe by this key, scoped to the authenticated sender identity.')]
+    idempotency_key: Annotated[IdempotencyKey, Field(description='Sender-generated key stable across retries of the same fire. Sellers MUST generate a cryptographically random value (UUID v4 recommended) per distinct fire and reuse it on every retry of the same fire. Receivers MUST dedupe by this key, scoped to the authenticated sender identity.')]
     notification_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId, Field(description='Stable identifier for this logical account status transition. Stability key is (account_id, previous_status, status, observed_at): retries and re-emissions of the same transition reuse the id under a new idempotency_key, while a later transition cycle receives a new id.')]
     notification_type: Annotated[Literal['account.status_changed'], Field(description="Fixed notification type discriminator. Matches the value registered on the subscriber's event_types.")]
     fired_at: Annotated[AwareDatetime, Field(description='ISO 8601 timestamp when the seller initiated this fire. Distinct from observed_at, which is when the seller recorded the account transition.')]

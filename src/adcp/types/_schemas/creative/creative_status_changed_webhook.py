@@ -11,11 +11,11 @@ from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
     StrMaxLen500,
-    SyncAccountsRequestIdempotencyKey,
 )
 
 from ..core.creative_revision_id import CreativeRevisionID
 from ..core.ext import ExtensionObject
+from ..core.idempotency_key import IdempotencyKey
 from ..enums.creative_event_reason_code import CreativeEventReasonCode
 from ..enums.creative_status import CreativeStatus
 from .creative_purged_webhook import Initiator
@@ -64,7 +64,7 @@ class CreativeStatusChangedWebhook(AdCPBaseModel):
         Approximation(document='creative/creative-status-changed-webhook.json', pointer='#/properties/transition/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'from': {'enum': ['approved']}}, 'required': ['from']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
         Approximation(document='creative/creative-status-changed-webhook.json', pointer='#/properties/transition/allOf/3', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'from': {'enum': ['suspended']}}, 'required': ['from']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
-    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Sender-generated key stable across retries of the same fire. Sellers MUST generate a cryptographically random value (UUID v4 recommended) per distinct fire and reuse it on every retry of the same fire. Receivers MUST dedupe by this key, scoped to the authenticated sender identity. Distinct from `notification_id` — same `notification_id` under two different `idempotency_key` values is a re-emission signal (snapshot-and-log Rule 1).')]
+    idempotency_key: Annotated[IdempotencyKey, Field(description='Sender-generated key stable across retries of the same fire. Sellers MUST generate a cryptographically random value (UUID v4 recommended) per distinct fire and reuse it on every retry of the same fire. Receivers MUST dedupe by this key, scoped to the authenticated sender identity. Distinct from `notification_id` — same `notification_id` under two different `idempotency_key` values is a re-emission signal (snapshot-and-log Rule 1).')]
     notification_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId, Field(description="Stable identifier for this logical transition event, used by buyers to correlate fires to current snapshot state. Stable across re-emissions of the same transition (e.g., the seller re-fires after the buyer's endpoint was unreachable); a fresh transition on the same creative receives a new id. Charset matches `idempotency_key` so the value is safe to log, embed in dashboard URLs, and pass into LLM prompts without escaping.")]
     notification_type: Annotated[Literal['creative.status_changed'], Field(description="Fixed notification type discriminator. Matches the value registered on the subscriber's `event_types`.")]
     fired_at: Annotated[AwareDatetime, Field(description="ISO 8601 timestamp when the seller initiated this fire. Distinct from when the transition was observed (`transition.observed_at`) — fires MAY be coalesced or delayed up to the seller's declared coalescence window for `creative.status_changed`.")]

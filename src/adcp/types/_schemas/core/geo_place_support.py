@@ -7,7 +7,7 @@ from pydantic import AfterValidator, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Distinct
-from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, NonEmptyList
+from adcp.types.constraints import NonEmptyList, StrCountryCode
 
 from .geo_place_catalog_capability import GeographicPlaceCatalogCapability
 from .geo_place_type import GeographicPlaceType
@@ -21,7 +21,7 @@ class GeographicPlaceSystemSupport(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/geo-place-support.json', pointer='#')
-    countries: Annotated[dict[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, Annotated[NonEmptyList[GeographicPlaceType], Field(json_schema_extra={'uniqueItems': True}), AfterValidator(Distinct())]], Field(description='Supported place types keyed by ISO 3166-1 alpha-2 country. Only explicitly listed country/type pairs are supported.', min_length=1)]
+    countries: Annotated[dict[StrCountryCode, Annotated[NonEmptyList[GeographicPlaceType], Field(json_schema_extra={'uniqueItems': True}), AfterValidator(Distinct())]], Field(description='Supported place types keyed by ISO 3166-1 alpha-2 country. Only explicitly listed country/type pairs are supported.', min_length=1)]
     catalog: GeographicPlaceCatalogCapability
 
 

@@ -7,18 +7,14 @@ from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule, UniqueItems
-from adcp.types.constraints import (
-    CommissionRate,
-    GetAccountFinancialsResponseSuccessCurrency,
-    StrMinLen1,
-    StrMinLen1MaxLen1000,
-)
+from adcp.types.constraints import CommissionRate, StrMinLen1, StrMinLen1MaxLen1000
 
 from ..enums.adjustment_kind import PriceAdjustmentKind
 from ..enums.event_type import EventType
 from ..enums.pricing_model import PricingModel
 from ..pricing_options.price_breakdown import PriceBreakdown
 from ..pricing_options.price_guidance import PriceGuidance
+from .currency_code import CurrencyCode
 
 
 class CanonicalPricingOption(AdCPBaseModel):
@@ -39,7 +35,7 @@ class CanonicalPricingOption(AdCPBaseModel):
     )
     pricing_option_id: StrMinLen1
     pricing_model: PricingModel
-    currency: GetAccountFinancialsResponseSuccessCurrency
+    currency: CurrencyCode
     fixed_price: NonNegativeFloat | None = None
     floor_price: NonNegativeFloat | None = None
     price_guidance: PriceGuidance | None = None

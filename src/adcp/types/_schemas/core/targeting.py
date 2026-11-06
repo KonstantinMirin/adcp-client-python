@@ -7,13 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Presence, PresenceGroups, Rule, UniqueItems
-from adcp.types.constraints import (
-    AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem,
-    AgeRestrictionMin,
-    FloatMinNeg90Max90,
-    FloatMinNeg180Max180,
-    GeoForecastDimensionCode,
-)
+from adcp.types.constraints import AgeRestrictionMin, FloatMinNeg90Max90, FloatMinNeg180Max180, GeoForecastDimensionCode
 
 from ..enums.age_verification_method import AgeVerificationMethod
 from ..enums.browser_family import BrowserFamily
@@ -23,6 +17,7 @@ from ..enums.transport_mode import TransportMode
 from .catchment import ObjTypeCoordinates, Radius, TravelTime
 from .collection_list_ref import CollectionListReference
 from .collection_selection import CollectionSelection
+from .country_code import CountryCode
 from .daypart_target import DaypartTarget
 from .demographic_targeting_intent import DemographicTargetingIntent
 from .ext import ExtensionObject
@@ -38,10 +33,10 @@ from .postal_area import PostalArea
 from .property_list_ref import PropertyListReference
 from .signal_targeting import SignalTargeting
 
-GeoCountries = Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem], Field(description="Restrict delivery to specific countries. ISO 3166-1 alpha-2 codes (e.g., 'US', 'GB', 'DE').", min_length=1)]
+GeoCountries = Annotated[list[CountryCode], Field(description="Restrict delivery to specific countries. ISO 3166-1 alpha-2 codes (e.g., 'US', 'GB', 'DE').", min_length=1)]
 
 
-GeoCountriesExclude = Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem], Field(description="Exclude specific countries from delivery. ISO 3166-1 alpha-2 codes (e.g., 'US', 'GB', 'DE').", min_length=1)]
+GeoCountriesExclude = Annotated[list[CountryCode], Field(description="Exclude specific countries from delivery. ISO 3166-1 alpha-2 codes (e.g., 'US', 'GB', 'DE').", min_length=1)]
 
 
 GeoRegions = Annotated[list[GeoForecastDimensionCode], Field(description='Restrict delivery to exact canonical ISO 3166-2 subdivisions (states, provinces, regions, departments, or other subdivision categories). Unknown identifiers are invalid. At create or update, sellers MUST reject unsupported identifiers and MUST NOT silently widen, drop, or partially apply the list. During get_products, a seller may instead return a sparse, buyer-reviewable targeting_resolution modification for a valid but unsupported requested outcome. Exact internal translation preserves accepted identifiers in package readback.', min_length=1)]

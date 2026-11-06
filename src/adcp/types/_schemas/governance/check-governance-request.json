@@ -377,7 +377,10 @@
       ]
     },
     "Shared10": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "ISO 4217 alphabetic currency code. Extracted unchanged from the 83 sites that stated it inline; see adcontextprotocol/adcp#8525.",
       "pattern": "^[A-Z]{3}$",
+      "title": "Currency Code",
       "type": "string"
     },
     "Shared100": {
@@ -674,8 +677,11 @@
       ]
     },
     "Shared122": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "A URL whose scheme is https. Extracted unchanged from the 46 sites that stated it inline; see adcontextprotocol/adcp#8525. This is the shape adcontextprotocol/adcp#8398 asks the other seven uri patterns to reduce to.",
       "format": "uri",
       "pattern": "^https://",
+      "title": "HTTPS URL",
       "type": "string"
     },
     "Shared123": {
@@ -965,8 +971,10 @@
       "x-entity": "signal"
     },
     "Shared137": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "description": "Domain where the adagents.json declaring a publisher-catalog placement is hosted, or the inventory publisher associated with an inline placement. Omitted only for legacy single-publisher product-context references.",
       "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+      "title": "Domain Name",
       "type": "string"
     },
     "Shared138": {
@@ -975,8 +983,10 @@
       "x-entity": "placement"
     },
     "Shared139": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "description": "ISO 3166-1 alpha-2 country code.",
       "pattern": "^[A-Z]{2}$",
+      "title": "Country Code",
       "type": "string"
     },
     "Shared14": {
@@ -1072,8 +1082,10 @@
           "$ref": "#/definitions/Shared26"
         },
         "country": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
           "description": "ISO 3166-1 alpha-2 country code",
           "pattern": "^[A-Z]{2}$",
+          "title": "Country Code",
           "type": "string"
         },
         "postal_code": {
@@ -1222,8 +1234,10 @@
           "uniqueItems": true
         },
         "domain": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
           "description": "Domain that hosts /.well-known/brand.json or is registered for the brand.",
           "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+          "title": "Domain Name",
           "type": "string"
         }
       },
@@ -1562,7 +1576,10 @@
       ]
     },
     "Shared53": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "ISO 3166-1 alpha-2 country code. Extracted unchanged from the 65 sites that stated it inline; see adcontextprotocol/adcp#8525.",
       "pattern": "^[A-Z]{2}$",
+      "title": "Country Code",
       "type": "string"
     },
     "Shared54": {
@@ -1830,8 +1847,10 @@
           "description": "Data-provider signal - references a signal from a data provider's published adagents.json signals[]. Buyers can verify authorization by checking the data provider's adagents.json.",
           "properties": {
             "data_provider_domain": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
               "description": "Domain of the data provider that owns this signal (e.g., 'pinnacle-data.example'). The signal definition is published at this domain's /.well-known/adagents.json",
               "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+              "title": "Domain Name",
               "type": "string"
             },
             "id": {
@@ -2000,8 +2019,10 @@
       },
       "properties": {
         "data_provider_domain": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
           "description": "Domain that publishes the signal definition in its adagents.json signals[].",
           "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+          "title": "Domain Name",
           "type": "string"
         },
         "scope": {
@@ -2336,8 +2357,10 @@
       "type": "number"
     },
     "Shared90": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "description": "Domain where /.well-known/brand.json is hosted, or the brand's operating domain",
       "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+      "title": "Domain Name",
       "type": "string"
     },
     "Shared91": {
@@ -2711,9 +2734,11 @@
                         "description": "Buyer's representation that this embedding can be verified by a governance agent on the seller's `creative_policy.accepted_verifiers` list. The `agent_url` MUST match (canonicalized) one of the seller's published `accepted_verifiers[].agent_url` entries; sellers reject `sync_creatives` submissions whose `verify_agent.agent_url` is off-list with `PROVENANCE_VERIFIER_NOT_ACCEPTED`. This is buyer-supplied evidence, not buyer-driven routing \u2014 the seller is the verifier-of-record and the seller controls which agent it actually calls (the seller MAY use a different on-list agent if it determines this is more appropriate; the seller does not call buyer-asserted endpoints outside its allowlist). MAY be omitted for self-verifiable embeddings (e.g., a C2PA text manifest with a public key the seller already trusts).",
                         "properties": {
                           "agent_url": {
+                            "$schema": "http://json-schema.org/draft-07/schema#",
                             "description": "URL of the governance agent the buyer represents was used to embed/verify this layer. MUST use the `https://` scheme and MUST appear in the seller's `creative_policy.accepted_verifiers[].agent_url` list (canonicalized per /docs/reference/url-canonicalization: lowercase scheme and host, strip default port, normalize path dot-segments). Sellers MUST NOT call this URL until the canonicalized match is confirmed.",
                             "format": "uri",
                             "pattern": "^https://",
+                            "title": "HTTPS URL",
                             "type": "string"
                           },
                           "feature_id": {
@@ -2855,9 +2880,11 @@
                         "description": "Buyer's representation that this watermark can be detected by a governance agent on the seller's `creative_policy.accepted_verifiers` list. The `agent_url` MUST match (canonicalized) one of the seller's published `accepted_verifiers[].agent_url` entries; sellers reject `sync_creatives` submissions whose `verify_agent.agent_url` is off-list with `PROVENANCE_VERIFIER_NOT_ACCEPTED`. This is buyer-supplied evidence, not buyer-driven routing \u2014 the seller is the verifier-of-record and the seller controls which agent it actually calls (the seller MAY use a different on-list agent if it determines this is more appropriate; the seller does not call buyer-asserted endpoints outside its allowlist).",
                         "properties": {
                           "agent_url": {
+                            "$schema": "http://json-schema.org/draft-07/schema#",
                             "description": "URL of the governance agent the buyer represents was used to apply/detect this watermark. MUST use the `https://` scheme and MUST appear in the seller's `creative_policy.accepted_verifiers[].agent_url` list (canonicalized per /docs/reference/url-canonicalization: lowercase scheme and host, strip default port, normalize path dot-segments). Sellers MUST NOT call this URL until the canonicalized match is confirmed.",
                             "format": "uri",
                             "pattern": "^https://",
+                            "title": "HTTPS URL",
                             "type": "string"
                           },
                           "feature_id": {
@@ -2953,8 +2980,10 @@
           ],
           "properties": {
             "country": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
               "description": "ISO 3166-1 alpha-2 country code for the postal values.",
               "pattern": "^[A-Z]{2}$",
+              "title": "Country Code",
               "type": "string"
             },
             "system": {
@@ -3083,8 +3112,10 @@
       "description": "A catalog-backed named place target. Values are stable identifiers in the declared system. Entries within geo_places form a union; different geographic inclusion dimensions intersect. value_labels are diagnostic only and MUST NOT be used to resolve targeting.",
       "properties": {
         "country": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
           "description": "ISO 3166-1 alpha-2 country code containing the place.",
           "pattern": "^[A-Z]{2}$",
+          "title": "Country Code",
           "type": "string"
         },
         "ext": {
@@ -3282,8 +3313,10 @@
           "type": "number"
         },
         "currency": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
           "description": "Currency of spend fields; must match the plan and planned delivery.",
           "pattern": "^[A-Z]{3}$",
+          "title": "Currency Code",
           "type": "string"
         },
         "geo_distribution": {
@@ -4327,8 +4360,10 @@
           "type": "array"
         },
         "currency": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
           "description": "ISO 4217 currency code for the budget. Governance execution checks require it whenever total_budget is present and require it to match the intent-authorized currency.",
           "pattern": "^[A-Z]{3}$",
+          "title": "Currency Code",
           "type": "string"
         },
         "daily_budget_cap": {
@@ -5847,8 +5882,10 @@
                                   "type": "string"
                                 },
                                 "publisher_domain": {
+                                  "$schema": "http://json-schema.org/draft-07/schema#",
                                   "description": "Publisher domain where the adagents.json declaring this format option is hosted.",
                                   "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                                  "title": "Domain Name",
                                   "type": "string"
                                 },
                                 "scope": {
@@ -6553,8 +6590,10 @@
                                               "type": "array"
                                             },
                                             "publisher_domain": {
+                                              "$schema": "http://json-schema.org/draft-07/schema#",
                                               "description": "Domain where the adagents.json declaring these collections is hosted (e.g., 'mrbeast.com'). The collections array in that file contains the authoritative collection definitions.",
                                               "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                                              "title": "Domain Name",
                                               "type": "string"
                                             }
                                           },
@@ -6569,7 +6608,8 @@
                                             "collection_ids"
                                           ]
                                         }
-                                      ]
+                                      ],
+                                      "title": "Explicit Collection Selector"
                                     },
                                     "minItems": 1,
                                     "type": "array",
@@ -7319,7 +7359,8 @@
                                                 "publisher_domain"
                                               ]
                                             }
-                                          ]
+                                          ],
+                                          "title": "Publisher Placement Reference"
                                         },
                                         {
                                           "$schema": "http://json-schema.org/draft-07/schema#",
@@ -7338,8 +7379,10 @@
                                                   "x-entity": "placement"
                                                 },
                                                 "publisher_domain": {
+                                                  "$schema": "http://json-schema.org/draft-07/schema#",
                                                   "description": "Domain whose adagents.json declares placement_id.",
                                                   "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                                                  "title": "Domain Name",
                                                   "type": "string"
                                                 }
                                               },
@@ -8359,8 +8402,10 @@
                               "description": "A geographic dimension for a ForecastPoint row. Variant of ForecastPoint dimensions; see forecast-point-dimensions.json for dispatch rules.",
                               "properties": {
                                 "country": {
+                                  "$schema": "http://json-schema.org/draft-07/schema#",
                                   "description": "ISO 3166-1 alpha-2 country code. Required for native postal_area rows and omitted for legacy postal rows, metro rows, country rows, and region rows.",
                                   "pattern": "^[A-Z]{2}$",
+                                  "title": "Country Code",
                                   "type": "string"
                                 },
                                 "geo_code": {

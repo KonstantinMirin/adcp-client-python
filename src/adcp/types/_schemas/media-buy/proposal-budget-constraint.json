@@ -13,19 +13,26 @@
       ]
     }
   ],
+  "definitions": {
+    "Shared0": {
+      "minimum": 0,
+      "type": "number"
+    }
+  },
   "description": "Strict inclusive budget bounds for proposal negotiation. At least one bound is required. When both are present, min MUST be less than or equal to max; implementations must enforce this semantic comparison because JSON Schema draft-07 cannot compare sibling values. The extension-tolerant legacy discovery peer is core/budget-range.json.",
   "properties": {
     "currency": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "ISO 4217 alphabetic currency code. Extracted unchanged from the 83 sites that stated it inline; see adcontextprotocol/adcp#8525.",
       "pattern": "^[A-Z]{3}$",
+      "title": "Currency Code",
       "type": "string"
     },
     "max": {
-      "minimum": 0,
-      "type": "number"
+      "$ref": "#/definitions/Shared0"
     },
     "min": {
-      "minimum": 0,
-      "type": "number"
+      "$ref": "#/definitions/Shared0"
     }
   },
   "required": [

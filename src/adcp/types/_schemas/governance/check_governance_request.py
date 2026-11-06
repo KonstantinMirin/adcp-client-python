@@ -12,7 +12,6 @@ from adcp.types.constraints import (
     CheckGovernanceRequestDeliveryMetricsAudienceDistributionCumulativeIndices,
     ConsultationContext,
     FloatMin0Max100,
-    GetAccountFinancialsResponseSuccessCurrency,
     GovernanceContext,
     HttpUrl,
     IntMin1,
@@ -26,6 +25,7 @@ from ..core.attestation_subject import AttestationResourceSubject
 from ..core.business_entity import BusinessEntity
 from ..core.canonical_proposal import CanonicalProposal
 from ..core.context import ContextObject
+from ..core.currency_code import CurrencyCode
 from ..core.ext import ExtensionObject
 from ..core.planned_delivery import PlannedDelivery
 from ..core.reporting_reliability_statistics import ObjStartEnd
@@ -82,7 +82,7 @@ class CheckGovernanceRequestDeliveryMetrics(AdCPBaseModel):
     reporting_period: Annotated[ObjStartEnd, Field(description='Start and end timestamps for the reporting window.')]
     spend: Annotated[NonNegativeFloat | None, Field(description='Total spend during the reporting period.')] = None
     cumulative_spend: Annotated[NonNegativeFloat | None, Field(description='Total spend since the governed action started.')] = None
-    currency: Annotated[GetAccountFinancialsResponseSuccessCurrency | None, Field(description='Currency of spend fields; must match the plan and planned delivery.')] = None
+    currency: Annotated[CurrencyCode | None, Field(description='Currency of spend fields; must match the plan and planned delivery.')] = None
     impressions: Annotated[NonNegativeInt | None, Field(description='Impressions delivered during the reporting period.')] = None
     cumulative_impressions: Annotated[NonNegativeInt | None, Field(description='Total impressions since the governed action started.')] = None
     geo_distribution: Annotated[dict[str, FloatMin0Max100] | None, Field(description='Actual geographic distribution. Keys are ISO 3166-1 alpha-2 codes, values are percentages.')] = None

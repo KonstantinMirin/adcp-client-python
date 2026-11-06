@@ -17,8 +17,6 @@ from adcp.types._runtime import (
     UniqueItems,
 )
 from adcp.types.constraints import (
-    AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem,
-    AdCPUrl,
     CanonicalProductCatalogMatchMatchedGtinsItem,
     FloatGt0,
     HttpUrl,
@@ -52,12 +50,14 @@ from .audience_evidence_selection import AudienceEvidenceSelection
 from .brand_ref import BrandReference
 from .cancellation_policy import CancellationPolicy
 from .collection_selector import CollectionSelector
+from .country_code import CountryCode
 from .creative_policy import CreativePolicy
 from .data_provider_signal_selector import DataProviderSignalSelector
 from .delivery_forecast import DeliveryForecast
 from .demographic_targeting_capability import DemographicTargetingCapability
 from .ext import ExtensionObject
 from .format_id import FormatReferenceStructuredObject
+from .https_url import HTTPSURL
 from .installment import Installment
 from .inventory_list_application import InventoryListApplication
 from .measurement_readiness import MeasurementReadiness
@@ -210,7 +210,7 @@ class ProvidersItem(AdCPBaseModel):
     agent_url: Annotated[HttpUrl, Field(description="Provider's agent URL from the registry. Canonical identifier for this TMP provider.")]
     context_match: Annotated[bool | None, Field(description='Whether this provider handles context match for this product.')] = False
     identity_match: Annotated[bool | None, Field(description='Whether this provider handles identity match for this product.')] = False
-    countries: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem] | None, Field(description="ISO 3166-1 alpha-2 country codes this provider serves for identity match. The router uses this to select the correct regional provider based on the request's country field. Required when identity_match is true.", min_length=1)] = None
+    countries: Annotated[list[CountryCode] | None, Field(description="ISO 3166-1 alpha-2 country codes this provider serves for identity match. The router uses this to select the correct regional provider based on the request's country field. Required when identity_match is true.", min_length=1)] = None
     uid_types: Annotated[list[UIDType] | None, Field(description="Identity types this regional provider can resolve. The router filters providers whose uid_types includes the request's uid_type. Required when identity_match is true.", min_length=1)] = None
 
 
@@ -253,7 +253,7 @@ class MaterialSubmission(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         PropertyCount(minimum=1, maximum=None),
     )
-    url: Annotated[AdCPUrl | None, Field(description='HTTPS URL for uploading or submitting physical creative materials')] = None
+    url: Annotated[HTTPSURL | None, Field(description='HTTPS URL for uploading or submitting physical creative materials')] = None
     email: Annotated[str | None, Field(description='Email address for creative material submission', json_schema_extra={'format': 'email'})] = None
     instructions: Annotated[StrMaxLen2000 | None, Field(description='Human-readable instructions for material submission (file naming conventions, shipping address, etc.)')] = None
     ext: ExtensionObject | None = None

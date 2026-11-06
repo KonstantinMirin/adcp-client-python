@@ -8,7 +8,6 @@ from pydantic import ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import Dependencies, Rule
 from adcp.types.constraints import (
-    AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain,
     AgentReportingDestinationFileTransferDestinationTransport,
     StrMinLen1MaxLen128,
     StrMinLen1MaxLen255,
@@ -16,6 +15,7 @@ from adcp.types.constraints import (
 )
 
 from ..enums.delivery_recipient_cloud import DeliveryRecipientCloud
+from .domain_name import DomainName
 
 
 class ReportingDatasetShareDestination(BranchDispatchMixin, AdCPBaseModel):
@@ -48,7 +48,7 @@ class ObjDomain(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-dataset-share-destination.json', pointer='#/oneOf/1/properties/provider')
-    domain: AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain
+    domain: DomainName
 
 
 ReportingCloud = DeliveryRecipientCloud

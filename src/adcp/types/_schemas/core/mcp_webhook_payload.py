@@ -6,16 +6,13 @@ from typing import Annotated, ClassVar
 from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
-from adcp.types.constraints import (
-    ComplyTestControllerRequestParamsReceivedReportingRevisionId,
-    SyncAccountsRequestIdempotencyKey,
-    Token,
-)
+from adcp.types.constraints import ComplyTestControllerRequestParamsReceivedReportingRevisionId, Token
 
 from ..enums.adcp_protocol import AdCPProtocol
 from ..enums.task_status import TaskStatus
 from ..enums.task_type import TaskType
 from .async_response_data import AdCPAsyncResponseData
+from .idempotency_key import IdempotencyKey
 
 
 class MCPWebhookPayload(AdCPBaseModel):
@@ -29,7 +26,7 @@ class MCPWebhookPayload(AdCPBaseModel):
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='core/mcp-webhook-payload.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'task_type': {'const': 'get_products'}, 'result': {'properties': {'status': {'const': 'rejected'}}, 'required': ['status']}}, 'required': ['task_type', 'result']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
-    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Sender-generated delivery key stable across RFC 8785 JCS-equivalent retries of the complete authenticated webhook payload. Publishers MUST generate a cryptographically random value (UUID v4 recommended), bind it immutably to the first canonical payload for the advertised delivery retry horizon, and use a fresh key for a changed payload or distinct delivery. Receivers scope the binding to the authenticated sender identity. Same key plus identical payload while active returns retryable 503; after durable acknowledgement it returns 2xx; same key plus a different canonical payload returns non-retryable 409. This is the transport delivery identity, not request idempotency or stable logical notification identity.')]
+    idempotency_key: Annotated[IdempotencyKey, Field(description='Sender-generated delivery key stable across RFC 8785 JCS-equivalent retries of the complete authenticated webhook payload. Publishers MUST generate a cryptographically random value (UUID v4 recommended), bind it immutably to the first canonical payload for the advertised delivery retry horizon, and use a fresh key for a changed payload or distinct delivery. Receivers scope the binding to the authenticated sender identity. Same key plus identical payload while active returns retryable 503; after durable acknowledgement it returns 2xx; same key plus a different canonical payload returns non-retryable 409. This is the transport delivery identity, not request idempotency or stable logical notification identity.')]
     notification_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId | None, Field(description='Optional event-layer identifier for one logical notification. Stable across re-emissions of the same logical event and distinct from the per-delivery `idempotency_key`. For terminal task webhooks, the authoritative terminal identity remains the authenticated seller plus the bound task_id; when notification_id is present, different delivery keys carrying the same value are re-emissions and MUST NOT republish terminal effects. For other event families, population and repair identity remain event-shape-dependent (see notification-type.json enumDescriptions): impairment aliases impairment_id, creative and account notifications use transition identifiers, wholesale events alias event.event_id, and capability changes use a revision-event identifier. Point-in-time delivery events (scheduled, final, delayed, adjusted, window_update) omit this field and dedupe by idempotency_key plus their delivery-report identity. Charset is constrained to `[A-Za-z0-9_.:-]`.')] = None
     operation_id: Annotated[str, Field(description='Client-generated correlation identifier for the operation that produced this webhook. Buyers supply this value at webhook registration time via `push_notification_config.operation_id`; sellers MUST echo it verbatim in every webhook payload. Sellers MUST NOT derive `operation_id` by parsing `push_notification_config.url` — the URL is opaque to the seller. Receivers MAY dispatch endpoints by URL path or query string, but MUST correlate the operation using this payload field, not URL-derived values. See [Webhooks — Operation IDs and URL templates](/docs/building/by-layer/L3/webhooks#operation-ids-and-url-templates) for the full normative wire contract.')]
     task_id: Annotated[str, Field(description='Unique identifier for this task. Use this to correlate webhook notifications with the original task submission.')]

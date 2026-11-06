@@ -7,8 +7,8 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, RequiredGroups, Rule, UniqueItems
-from adcp.types.constraints import AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain
 
+from .domain_name import DomainName
 from .property_id import PropertyID
 from .property_tag import PropertyTag
 
@@ -39,8 +39,8 @@ class PublisherPropertySelectorAll(PublisherPropertySelector):
         ForbiddenGroups((('publisher_domain', 'publisher_domains'),)),
         RequiredGroups((('publisher_domain',), ('publisher_domains',)), 'anyOf'),
     )
-    publisher_domain: Annotated[AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain | None, Field(description="Domain where publisher's adagents.json is hosted (e.g., 'cnn.com'). XOR with `publisher_domains` — exactly one MUST be present on each `publisher_properties[]` entry; both-present and neither-present both fail validation.")] = None
-    publisher_domains: Annotated[list[AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain] | None, Field(description="Compact form for fanning the same selector across many publishers (e.g., a managed network listing every publisher it represents). Each entry is the domain where that publisher's adagents.json is hosted. Each listed domain MUST be canonicalized to lowercase (the `pattern` already rejects uppercase). Mutually exclusive with `publisher_domain`. Each listed domain counts as explicitly scoped for the `managerdomain` fallback safety rule.", json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    publisher_domain: Annotated[DomainName | None, Field(description="Domain where publisher's adagents.json is hosted (e.g., 'cnn.com'). XOR with `publisher_domains` — exactly one MUST be present on each `publisher_properties[]` entry; both-present and neither-present both fail validation.")] = None
+    publisher_domains: Annotated[list[DomainName] | None, Field(description="Compact form for fanning the same selector across many publishers (e.g., a managed network listing every publisher it represents). Each entry is the domain where that publisher's adagents.json is hosted. Each listed domain MUST be canonicalized to lowercase (the `pattern` already rejects uppercase). Mutually exclusive with `publisher_domain`. Each listed domain counts as explicitly scoped for the `managerdomain` fallback safety rule.", json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     selection_type: Annotated[Literal['all'], Field(description='Discriminator indicating all properties from each addressed publisher are included')]
 
 
@@ -52,7 +52,7 @@ class PublisherPropertySelectorById(PublisherPropertySelector):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/publisher-property-selector.json', pointer='#/oneOf/1')
-    publisher_domain: Annotated[AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, Field(description="Domain where publisher's adagents.json is hosted (e.g., 'cnn.com').")]
+    publisher_domain: Annotated[DomainName, Field(description="Domain where publisher's adagents.json is hosted (e.g., 'cnn.com').")]
     selection_type: Annotated[Literal['by_id'], Field(description='Discriminator indicating selection by specific property IDs')]
     property_ids: Annotated[list[PropertyID], Field(description="Specific property IDs from the publisher's adagents.json", min_length=1)]
 
@@ -70,8 +70,8 @@ class PublisherPropertySelectorByTag(PublisherPropertySelector):
         ForbiddenGroups((('publisher_domain', 'publisher_domains'),)),
         RequiredGroups((('publisher_domain',), ('publisher_domains',)), 'anyOf'),
     )
-    publisher_domain: Annotated[AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain | None, Field(description="Domain where publisher's adagents.json is hosted (e.g., 'cnn.com'). XOR with `publisher_domains` — exactly one MUST be present on each `publisher_properties[]` entry; both-present and neither-present both fail validation.")] = None
-    publisher_domains: Annotated[list[AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain] | None, Field(description="Compact form for fanning the same tag predicate across many publishers (canonical managed-network shape). Each entry is the domain where that publisher's adagents.json is hosted. Each listed domain MUST be canonicalized to lowercase (the `pattern` already rejects uppercase). Mutually exclusive with `publisher_domain`. Each listed domain counts as explicitly scoped for the `managerdomain` fallback safety rule.", json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    publisher_domain: Annotated[DomainName | None, Field(description="Domain where publisher's adagents.json is hosted (e.g., 'cnn.com'). XOR with `publisher_domains` — exactly one MUST be present on each `publisher_properties[]` entry; both-present and neither-present both fail validation.")] = None
+    publisher_domains: Annotated[list[DomainName] | None, Field(description="Compact form for fanning the same tag predicate across many publishers (canonical managed-network shape). Each entry is the domain where that publisher's adagents.json is hosted. Each listed domain MUST be canonicalized to lowercase (the `pattern` already rejects uppercase). Mutually exclusive with `publisher_domain`. Each listed domain counts as explicitly scoped for the `managerdomain` fallback safety rule.", json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     selection_type: Annotated[Literal['by_tag'], Field(description='Discriminator indicating selection by property tags')]
     property_tags: Annotated[list[PropertyTag], Field(description="Property tags resolved against each addressed publisher's adagents.json, OR against the parent file's top-level `properties[]` when those properties carry a `publisher_domain` matching the selector. Selector covers all properties carrying any of these tags.", min_length=1)]
 

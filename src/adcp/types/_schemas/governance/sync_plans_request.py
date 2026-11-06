@@ -7,11 +7,12 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
-from adcp.types.constraints import FloatMin0Max100, HttpUrl, IntMin1, StrMaxLen2000, SyncAccountsRequestIdempotencyKey
+from adcp.types.constraints import FloatMin0Max100, HttpUrl, IntMin1, StrMaxLen2000
 
 from ..core.brand_ref import BrandReference
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
+from ..core.idempotency_key import IdempotencyKey
 from ..core.reporting_reliability_statistics import ObjStartEnd
 from ..core.version_envelope import AdCPVersionEnvelope
 from ..enums.channels import MediaChannel
@@ -196,7 +197,7 @@ class SyncPlansRequest(AdCPVersionEnvelope):
         Approximation(document='governance/sync-plans-request.json', pointer='#/properties/plans/items/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'policy_categories': {'type': 'array', 'contains': {'enum': ['fair_housing', 'fair_lending', 'fair_employment', 'pharmaceutical_advertising']}}}, 'required': ['policy_categories']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
         Approximation(document='governance/sync-plans-request.json', pointer='#/properties/plans/items/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'policy_ids': {'type': 'array', 'contains': {'const': 'eu_ai_act_annex_iii'}}}, 'required': ['policy_ids']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
-    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Client-generated unique key for at-most-once execution. `plan_id` gives resource-level dedup per plan, but the sync envelope emits audit events and can trigger governance reapproval — this key prevents those side effects from firing twice on retry. MUST be unique per (seller, request) pair. Use a fresh UUID v4 for each request.')]
+    idempotency_key: Annotated[IdempotencyKey, Field(description='Client-generated unique key for at-most-once execution. `plan_id` gives resource-level dedup per plan, but the sync envelope emits audit events and can trigger governance reapproval — this key prevents those side effects from firing twice on retry. MUST be unique per (seller, request) pair. Use a fresh UUID v4 for each request.')]
     plans: Annotated[list[PlansItem], Field(description='One or more campaign plans to sync.')]
     context: ContextObject | None = None
     ext: ExtensionObject | None = None

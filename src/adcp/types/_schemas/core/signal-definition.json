@@ -125,7 +125,10 @@
       "type": "boolean"
     },
     "Shared2": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "ISO 3166-1 alpha-2 country code. Extracted unchanged from the 65 sites that stated it inline; see adcontextprotocol/adcp#8525.",
       "pattern": "^[A-Z]{2}$",
+      "title": "Country Code",
       "type": "string"
     },
     "Shared3": {
@@ -237,9 +240,11 @@
       "description": "Per-signal data-subject-rights routing. Inline on the signal because upstream source, rights routing, and response commitments can differ by segment or may be unavailable from a public provider document for custom/private signals. This is a contact/routing reference, not a machine-callable AdCP API.",
       "properties": {
         "ccpa_opt_out_url": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
           "description": "US-specific 'Do Not Sell or Share' opt-out URL where required.",
           "format": "uri",
           "pattern": "^https://",
+          "title": "HTTPS URL",
           "type": "string"
         },
         "channels": {
@@ -313,9 +318,11 @@
                 "uniqueItems": true
               },
               "url": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
                 "description": "HTTPS URL for submitting the rights request.",
                 "format": "uri",
                 "pattern": "^https://",
+                "title": "HTTPS URL",
                 "type": "string"
               }
             },
@@ -512,8 +519,10 @@
                     "type": "string"
                   },
                   "country": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
                     "description": "ISO 3166-1 alpha-2 country code.",
                     "pattern": "^[A-Z]{2}$",
+                    "title": "Country Code",
                     "type": "string"
                   },
                   "disclosure_text": {

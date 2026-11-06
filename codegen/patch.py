@@ -71,19 +71,114 @@ wearing a patch's clothes, so it is refused at load rather than reported after a
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
+import os
 import shutil
 from collections.abc import Collection, Iterable, Iterator, Mapping, Sequence
 from pathlib import Path
 from typing import NamedTuple
 
-from codegen import bundle, keywords
+from codegen import bundle, keywords, store
 
 #: The manifest's filename inside a patch set directory.
 MANIFEST = "manifest.json"
 #: The directory inside a patch set holding the new documents, laid out at the paths they
 #: take in the bundle.
 DOCUMENTS = "documents"
+
+#: **THE PATCH SETS THE BUILD APPLIES, in the order they are applied** -- paths relative to
+#: the checkout, which is where a patch set lives.
+#:
+#: This is the one declaration of it, and :func:`for_build` is the one way to the bundle a
+#: run reads.  **Measured before this existed: ``grep 'patch.apply\\|patch.additions'
+#: codegen/*.py`` matched NOTHING** -- this module was read by two test files and by no
+#: compile path, ``codegen/__main__`` read the published bundle raw, and the override table
+#: was therefore measured, written, reviewed and consumed by nothing.  An override the
+#: emitter never sees compensates for no defect.
+#:
+#: **A TUPLE AND NOT A PATH, because the two kinds compose**: ``patches/8525`` extracts and
+#: ``patches/8735`` annotates, each is applied to the output of the one before it, and
+#: :func:`load`'s and :func:`additions`' refusals then range over the bundle as the previous
+#: set left it -- so a set whose ask has landed upstream breaks the BUILD and not a test.
+#:
+#: **THE EXTRACTIONS ARE FIRST AND THEY ARE WHERE A CLASS MOVES.**  An addition adds an
+#: annotation, so it can move a NAME; an extraction adds a document and rewrites each
+#: matching site to ``$ref`` it, so it moves a class from the site to the new document and
+#: turns every other site into an import.  ``patches/8525`` carries five such documents and
+#: none of them was in the bundle any run read: the whole point of the set -- "extraction
+#: gives the structure a document path, which IS its name" -- had never reached the tree.
+BUILD = ("patches/8525", "patches/8735")
+
+
+def _patch_set_digest(sets: Sequence[Path]) -> str:
+    """A digest over every file of every patch set, path and bytes alike.
+
+    The patched bundle is a function of the published bundle, these files, and the code that
+    applies them; :func:`for_build` keys on all three and this is the middle one.  The PATH
+    is in the digest beside the bytes, so adding an empty file changes the answer and
+    renaming one does too -- ``store.compiler_digest``'s own rule, for the same reason.
+    """
+    h = hashlib.sha256()
+    for patch_set in sets:
+        for path in sorted(patch_set.rglob("*")):
+            if not path.is_file():
+                continue
+            h.update(path.relative_to(patch_set).as_posix().encode())
+            h.update(path.read_bytes())
+    return h.hexdigest()
+
+
+def for_build(published: Path, sets: Sequence[str] = BUILD) -> Path:
+    """**The bundle a RUN reads: ``published`` with every patch set of ``sets`` applied.**
+
+    ``docs/plan/rebuild-plan.md`` §1, "A patched bundle is a legitimate input": the patch is
+    an INPUT and not a compiler decision, so this is the one seam between the published
+    bundle and everything downstream, and nothing downstream learns a patch was applied.
+    Every entry point goes through it -- ``codegen.__main__``, ``./check``,
+    ``tests/fresh.py`` and ``tests/test_emit.py`` -- so **there is one patched bundle and
+    not one per reader.**  Two readers of two bundles would report two sets of figures over
+    two different inputs, which is exactly the defect of a patch set applied only in a test.
+
+    **MATERIALISED ON DISK AND KEYED ON WHAT IT IS A FUNCTION OF**, because every reader
+    downstream takes a bundle DIRECTORY -- ``bundle.read`` opens files, ``bundle.portable``
+    walks them -- and an in-memory overlay would be a second reading of the bundle that the
+    record check could not range over.  The key is ``store.key``'s, which already covers the
+    compiler's own source and the published bundle's name, plus a digest of the patch set's
+    files (:func:`_patch_set_digest`); so an edit to the override table moves the directory,
+    there is nothing to invalidate by hand, and the compile store beneath keys on this
+    directory's own path and cannot be handed a compile of the other bundle.
+
+    **An EMPTY ``sets`` is ``published`` itself**, unmaterialised: a caller that applies no
+    patch is reading the published bundle, and copying it to say so would be 125 MB of
+    answer to a question nobody asked.
+
+    Written to a staging directory and renamed, because two xdist workers race for the same
+    key and a half-copied bundle read by a sibling would be a document set with holes rather
+    than a miss.  A rename onto an existing directory is not atomic, so the loser of the
+    race keeps its own copy and discards it -- the worst a race costs is 0.8 s and 125 MB,
+    never a different answer.
+    """
+    held = [Path(name) for name in sets]
+    if not held:
+        return published
+    key = store.key(published, (_patch_set_digest(held),))
+    at = store.CACHE_ROOT / "patched-bundle" / key
+    if not at.is_dir():
+        staged = at.with_name(f"{key}.{os.getpid()}.tmp")
+        source = published
+        for index, patch_set in enumerate(held):
+            step = staged if index == len(held) - 1 else Path(f"{staged}.{index}")
+            apply(source, patch_set, step)
+            source = step
+        at.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            os.replace(staged, at)
+        except OSError:
+            shutil.rmtree(staged, ignore_errors=True)
+        for index in range(len(held) - 1):
+            shutil.rmtree(f"{staged}.{index}", ignore_errors=True)
+    return at
 
 
 class Extraction(NamedTuple):
@@ -461,6 +556,32 @@ def apply(published: Path, patch_set: Path, out: Path) -> tuple[Extraction, ...]
     Both orders are defensible and this one is checkable: a keyword added before the
     rewrite would be a sibling the match reads as an annotation, so the entry that asked for
     it would silently decide whether its own site still matched an extraction.
+
+    **A DOCUMENT THE PATCH DOES NOT REWRITE KEEPS THE PUBLISHED BYTES, and the write is
+    skipped rather than made identical.**  ``copytree`` above has already put the published
+    file there, so a document the rewrite and the additions both leave alone is already
+    correct on disk and re-serialising it can only change it.  Measured over the BUILD's
+    1,625 files before this line existed: 571 identical (``bundled/`` and ``mcp/``, which
+    this loop never visits), **854 differing by a trailing newline alone** -- re-serialised,
+    semantically untouched -- and 200 differing in content.
+
+    **AND THE TRAILING NEWLINE WAS NOT COSMETIC**, which is the whole reason this is a
+    decision and not a tidy-up.  ``bundle.source_identities`` digests a document's own RAW
+    BYTES and its reference closure's, so each of those 854 moved its own key and dragged
+    every referrer's with it: source identity moved for 1,054 of 1,054 documents, every
+    accepts-corpus entry in the repository missed, and the whole graded population drew cold
+    -- for one byte of whitespace in documents the patch says nothing about.  With the write
+    skipped the moved set is 434 of 1,054 and 873 of 2,598 graded pairs keep their committed
+    floor entry.
+
+    It is the class ``docs/plan/rebuild-plan.md`` §9 already names -- *"I re-serialised
+    brand.json with json.dumps to insert one key"* -- arriving inside the build instead of
+    inside a review: **edit, or copy, the text; never round-trip the parsed object for its
+    own sake.**  The gate is
+    ``tests/test_patch_8525.py::test_a_document_the_patch_leaves_alone_keeps_the_published_bytes``,
+    which equates the set that moved by BYTES with the set that moved by CONTENT --
+    ``test_the_measurement_8525_argues_from_is_reproducible`` compares parsed objects and is
+    blind to this by construction.
     """
     extractions = load(patch_set, published)
     grown = additions(patch_set, published)
@@ -468,10 +589,13 @@ def apply(published: Path, patch_set: Path, out: Path) -> tuple[Extraction, ...]
         shutil.rmtree(out)
     shutil.copytree(published, out)
     for document in bundle.portable(published):
-        doc = rewritten(document, bundle.read(published, document), extractions)
+        before = bundle.read(published, document)
+        doc = rewritten(document, before, extractions)
         for grows in grown:
             if grows.document == document:
                 doc = added_at(doc, grows.pointer, grows.keyword, grows.value)
+        if doc == before:
+            continue
         (out / document).write_text(json.dumps(doc, indent=2) + "\n")
     for held in extractions:
         destination = out / held.document
@@ -535,6 +659,23 @@ def differing(published: Path, patched: Path) -> Iterator[Difference]:
     where the published document wrote them in its own order.  Every other difference,
     including a list's order, is reported.
 
+    **AND THE RECORD'S OWN STORAGE IS PUT BACK BEFORE THE COMPARISON**
+    (:func:`codegen.bundle.expanded`), because the hoisting is NUMBERED IN WALK ORDER and a
+    patch that adds a keyword at one node changes which subtrees are identical.
+    ``docs/plan/architecture.md``, "THE RECORD'S TEXT IS A DAG; ITS POINTERS ARE NOT": *"The
+    hoisting is a storage representation and the readers dereference through it; it is not a
+    renaming."*  So a comparison made THROUGH it is comparing two different nodes wherever an
+    index has shifted.
+
+    **Measured, and it is why this line exists.**  The first run of this check over an
+    override table of 162 additions reported **2,648 differences** in
+    ``compliance/comply-test-controller-request.json`` alone -- ``#/definitions/Shared479``
+    gaining an ``enum`` and losing its ``properties``, ``Shared512`` becoming ``Shared511``
+    at every referrer -- and :func:`seen_by_a_validator` was non-empty on every one of them.
+    Not one was a keyword the patch moved: one more distinct subtree shifted the whole
+    numbering by one, and the check compared each stored entry against its neighbour.  A
+    check that reddens on a storage index is a check that cannot be read.
+
     KNOWN COST: :func:`codegen.bundle.record` is O(paths through the reference graph) and
     this takes 2,108 of them, which is minutes rather than seconds.  The population is the
     whole bundle and the check is the deliverable, so the cost is paid rather than sampled.
@@ -551,8 +692,30 @@ def differing(published: Path, patched: Path) -> Iterator[Difference]:
     in_published = set(bundle.portable(published))
     in_patched = set(bundle.portable(patched))
     for document in sorted(in_published):
-        before = bundle.record(published, document, in_published)
-        after = bundle.record(patched, document, in_patched)
+        # THE EXPANSION IS BOUND TO ITS OWN NAME and does not overwrite the record's.
+        # ``bundle.record`` answers ``dict | Refusal`` and ``bundle.expanded`` answers
+        # ``object`` -- an HONEST return type for a generic recursive walk and not an
+        # imprecision to suppress, because the walk dereferences THROUGH the storage, so
+        # what comes back at a storage reference is whatever that root's own section holds,
+        # and the walk carries no table of which keys hold a subschema.  Writing the
+        # expansion back onto the narrowed name would claim the narrowing survived a call
+        # that does not promise it.  So the record is read under ``stored_*`` -- which is
+        # the form it arrives in -- the expansion is declared at the type ``expanded``
+        # actually states, and the screen below is what establishes mapping-ness from here.
+        # That screen is the one the rest of this loop relies on and it CAN still fail: a
+        # refused record reaches it and is reported as a difference, unexpanded.
+        stored_before = bundle.record(published, document, in_published)
+        stored_after = bundle.record(patched, document, in_patched)
+        before: object = (
+            bundle.expanded(stored_before, stored_before)
+            if isinstance(stored_before, Mapping)
+            else stored_before
+        )
+        after: object = (
+            bundle.expanded(stored_after, stored_after)
+            if isinstance(stored_after, Mapping)
+            else stored_after
+        )
         if not isinstance(before, Mapping) or not isinstance(after, Mapping):
             if type(before) is not type(after) or before != after:
                 yield Difference(

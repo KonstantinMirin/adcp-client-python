@@ -94,6 +94,7 @@ from ._schemas.core.assets.display_tag_asset import DisplayTagAsset as DisplayTa
 from ._schemas.core.assets.display_tag_asset import InlineMarkup as InlineMarkup
 from ._schemas.core.assets.display_tag_asset import PairedRedirect as PairedRedirect
 from ._schemas.core.assets.display_tag_asset import TagURL as TagURL
+from ._schemas.core.assets.display_tag_asset import TagURLMacroDeclarationsItem as TagURLMacroDeclarationsItem
 from ._schemas.core.assets.html_asset import HTMLAsset as HTMLAsset
 from ._schemas.core.assets.image_asset import ImageAsset as ImageAsset
 from ._schemas.core.assets.javascript_asset import JavaScriptAsset as JavaScriptAsset
@@ -374,6 +375,7 @@ from ._schemas.core.compact_task_submitted import CompactTaskSubmitted as Compac
 from ._schemas.core.compact_task_working import CompactTaskWorking as CompactTaskWorking
 from ._schemas.core.content_rating import ContentRating as ContentRating
 from ._schemas.core.context import ContextObject as ContextObject
+from ._schemas.core.country_code import CountryCode as CountryCode
 from ._schemas.core.creative_approval_scope import ScopedCreativeApproval as ScopedCreativeApproval
 from ._schemas.core.creative_asset import CreativeAsset as CreativeAsset
 from ._schemas.core.creative_assets import CreativeAssets as CreativeAssets
@@ -401,6 +403,7 @@ from ._schemas.core.creative_representation_set import CreativeRepresentationSet
 from ._schemas.core.creative_revision_id import CreativeRevisionID as CreativeRevisionID
 from ._schemas.core.creative_variable import CreativeVariable as CreativeVariable
 from ._schemas.core.creative_variant import CreativeVariant as CreativeVariant
+from ._schemas.core.currency_code import CurrencyCode as CurrencyCode
 from ._schemas.core.daast_tracker_constraints import DaastOffset as DaastOffset
 from ._schemas.core.daast_tracker_constraints import DAASTTrackerConstraints as DAASTTrackerConstraints
 from ._schemas.core.daast_tracker_constraints import (
@@ -450,6 +453,7 @@ from ._schemas.core.destination import DestinationAgent as DestinationAgent
 from ._schemas.core.destination import DestinationPlatform as DestinationPlatform
 from ._schemas.core.destination_item import DestinationItem as DestinationItem
 from ._schemas.core.diagnostic_issue import DiagnosticIssue as DiagnosticIssue
+from ._schemas.core.domain_name import DomainName as DomainName
 from ._schemas.core.downstream_connection_requirement import (
     DownstreamConnectionRequirement as DownstreamConnectionRequirement,
 )
@@ -573,7 +577,9 @@ from ._schemas.core.get_geo_place_resolution_response import (
     GetGeographicPlaceResolutionResponse as GetGeographicPlaceResolutionResponse,
 )
 from ._schemas.core.hotel_item import HotelItem as HotelItem
+from ._schemas.core.https_url import HTTPSURL as HTTPSURL
 from ._schemas.core.iana_timezone import IANATimezoneIdentifier as IANATimezoneIdentifier
+from ._schemas.core.idempotency_key import IdempotencyKey as IdempotencyKey
 from ._schemas.core.identifier import Identifier as Identifier
 from ._schemas.core.impairment import Impairment as Impairment
 from ._schemas.core.indicator import Indicator as Indicator
@@ -725,9 +731,9 @@ from ._schemas.core.placement_property_delivery_metrics import (
     PlacementPropertyDeliveryMetrics as PlacementPropertyDeliveryMetrics,
 )
 from ._schemas.core.placement_ref import PlacementReference as PlacementReference
-from ._schemas.core.placement_selection import PlacementRefsItem as PlacementRefsItem
 from ._schemas.core.placement_selection import PlacementSelection as PlacementSelection
 from ._schemas.core.placement_selection import ProductDefaultPlacements as ProductDefaultPlacements
+from ._schemas.core.placement_selection import PublisherPlacementReference as PublisherPlacementReference
 from ._schemas.core.placement_selection import SelectedPlacements as SelectedPlacements
 from ._schemas.core.planned_delivery import PlannedDelivery as PlannedDelivery
 from ._schemas.core.platform_extension_ref import PlatformExtensionReference as PlatformExtensionReference
@@ -813,7 +819,6 @@ from ._schemas.core.product_filters import (
 from ._schemas.core.product_filters import (
     AudienceActivationMethodsItemTmpIdentityMatch as AudienceActivationMethodsItemTmpIdentityMatch,
 )
-from ._schemas.core.product_filters import PricingCurrenciesItem as PricingCurrenciesItem
 from ._schemas.core.product_filters import ProductFilters as ProductFilters
 from ._schemas.core.product_filters import SignalTargetingItemBinary as SignalTargetingItemBinary
 from ._schemas.core.product_filters import SignalTargetingItemCategorical as SignalTargetingItemCategorical
@@ -866,7 +871,6 @@ from ._schemas.core.reference_asset import ReferenceAsset as ReferenceAsset
 from ._schemas.core.reference_renderer import ReferenceRenderer as ReferenceRenderer
 from ._schemas.core.registry_event import ChangedFields as ChangedFields
 from ._schemas.core.registry_event import Countries as Countries
-from ._schemas.core.registry_event import Domain as Domain
 from ._schemas.core.registry_event import RegistryEvent as RegistryEvent
 from ._schemas.core.registry_event import (
     RegistryEventAgentComplianceChangedAgent as RegistryEventAgentComplianceChangedAgent,
@@ -1264,6 +1268,7 @@ from ._schemas.core.wholesale_feed_webhook import WholesaleFeedWebhook as Wholes
 from ._schemas.core.x_entity_types import XEntityTypes as XEntityTypes
 
 __all__ = [
+    'HTTPSURL',
     'AcceptancePolicyProfileIDs',
     'AcceptedAttestationIssuersItemAgent',
     'AcceptedAttestationIssuersItemBrand',
@@ -1520,6 +1525,7 @@ __all__ = [
     'ControlMediaBuyResponseSubmitted',
     'CoordinatedPlacementsFormatDeclaration',
     'Countries',
+    'CountryCode',
     'CountrySupport',
     'CountrySupportMaxValuesPerPackage',
     'CpmPricing',
@@ -1547,6 +1553,7 @@ __all__ = [
     'CreativeRevisionID',
     'CreativeVariable',
     'CreativeVariant',
+    'CurrencyCode',
     'CustomFormatDeclaration',
     'CustomPricing',
     'DAASTAsset',
@@ -1605,7 +1612,7 @@ __all__ = [
     'DiagnosticIssue',
     'DisplayTagAsset',
     'DisplayTagFormatDeclaration',
-    'Domain',
+    'DomainName',
     'DownstreamConnectionExecutionRequirement',
     'DownstreamConnectionRequirement',
     'Duration',
@@ -1709,6 +1716,7 @@ __all__ = [
     'HotelItem',
     'HoursValue',
     'IANATimezoneIdentifier',
+    'IdempotencyKey',
     'Identifier',
     'Ids',
     'ImageAsset',
@@ -1869,7 +1877,6 @@ __all__ = [
     'PlacementPresentationReference',
     'PlacementPropertyDeliveryMetrics',
     'PlacementReference',
-    'PlacementRefsItem',
     'PlacementSelection',
     'PlannedDelivery',
     'PlatformDistribution',
@@ -1903,7 +1910,6 @@ __all__ = [
     'PostalCountrySystemZAPostalCode',
     'PreviewRendererMetadata',
     'Price',
-    'PricingCurrenciesItem',
     'PricingOption',
     'PricingOptionCpa',
     'PricingOptionCpc',
@@ -1953,6 +1959,7 @@ __all__ = [
     'PublisherCatalogFormatOptionReference',
     'PublisherCatalogPlacementIdentity',
     'PublisherDesignatedPreviewProvider',
+    'PublisherPlacementReference',
     'PublisherPropertySelector',
     'PublisherPropertySelectorAll',
     'PublisherPropertySelectorById',
@@ -2101,6 +2108,7 @@ __all__ = [
     'SyncCreativesAsyncWorking',
     'TMPIdentityMatch',
     'TagURL',
+    'TagURLMacroDeclarationsItem',
     'Tags',
     'Talent',
     'TargetLocalizationReadback',

@@ -7,9 +7,9 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
-from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem
 
 from ..enums.geo_level import GeographicTargetingLevel
+from .country_code import CountryCode
 
 
 class GeoForecastDimension(AdCPBaseModel):
@@ -34,7 +34,7 @@ class GeoForecastDimension(AdCPBaseModel):
     kind: Annotated[Literal['geo'], Field(description='Dimension family discriminator.')]
     geo_level: Annotated[GeographicTargetingLevel, Field(description='Geographic level for this forecast point.')]
     system: Annotated[str | None, Field(description="Classification system for metro or postal_area levels. Required when geo_level is 'metro' or 'postal_area'. Metro rows use metro-system enum values such as 'nielsen_dma'; native postal rows use country-local postal-system enum values such as 'zip' with country 'US'; deprecated legacy postal rows may use legacy-postal-system enum values such as 'us_zip'. Omit for country and region rows.")] = None
-    country: Annotated[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem | None, Field(description='ISO 3166-1 alpha-2 country code. Required for native postal_area rows and omitted for legacy postal rows, metro rows, country rows, and region rows.')] = None
+    country: Annotated[CountryCode | None, Field(description='ISO 3166-1 alpha-2 country code. Required for native postal_area rows and omitted for legacy postal rows, metro rows, country rows, and region rows.')] = None
     geo_code: Annotated[str, Field(description="Geographic code within the level and system. Country: ISO 3166-1 alpha-2 ('US'). Region: ISO 3166-2 with country prefix ('US-CA'). Metro/postal: system-specific code ('501', '10001').")]
     geo_name: Annotated[str | None, Field(description="Human-readable geographic name (e.g., 'United States', 'California', 'New York DMA').")] = None
 

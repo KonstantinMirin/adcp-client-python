@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import SyncAccountsRequestIdempotencyKey
+from adcp.types.constraints import StrIdempotencyKey
 
 from ..core.context import ContextObject
 from ..core.error import Error
@@ -87,7 +87,7 @@ class FailedReportingReceipt(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/sync-reporting-receipts-response.json', pointer='#/properties/results/items/anyOf/4')
     result: Literal['failed']
-    reporting_receipt_id: SyncAccountsRequestIdempotencyKey
+    reporting_receipt_id: StrIdempotencyKey
     errors: Annotated[list[Error], Field(max_length=16, min_length=1)]
 
 

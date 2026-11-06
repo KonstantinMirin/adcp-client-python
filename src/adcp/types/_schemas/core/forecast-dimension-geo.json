@@ -310,8 +310,10 @@
   ],
   "definitions": {
     "Shared0": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "description": "ISO 3166-1 alpha-2 country code.",
       "pattern": "^[A-Z]{2}$",
+      "title": "Country Code",
       "type": "string"
     },
     "Shared1": {
@@ -335,8 +337,10 @@
   "description": "A geographic dimension for a ForecastPoint row. Variant of ForecastPoint dimensions; see forecast-point-dimensions.json for dispatch rules.",
   "properties": {
     "country": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "description": "ISO 3166-1 alpha-2 country code. Required for native postal_area rows and omitted for legacy postal rows, metro rows, country rows, and region rows.",
       "pattern": "^[A-Z]{2}$",
+      "title": "Country Code",
       "type": "string"
     },
     "geo_code": {

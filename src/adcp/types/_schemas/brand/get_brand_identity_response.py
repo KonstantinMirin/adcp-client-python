@@ -8,7 +8,6 @@ from pydantic import ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, PropertyCount, Rule
 from adcp.types.constraints import (
-    AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem,
     BrandDiscoveryColorValue,
     BrandDiscoveryFontRoleOpentypeFeaturesItem,
     DictMinProperties1,
@@ -22,6 +21,7 @@ from adcp.types.envelopes import FailedResponse
 
 from ..brand import Background, KellerType, LogoOrientation, LogoVariant, ObjUrlWeightWeightRangeStyle
 from ..core.context import ContextObject
+from ..core.country_code import CountryCode
 from ..core.error import Error
 from ..core.ext import ExtensionObject
 from ..core.protocol_envelope import ProtocolEnvelope
@@ -174,8 +174,8 @@ class Rights(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/get-brand-identity-response.json', pointer='#/oneOf/0/properties/rights')
     available_uses: list[RightUse] | None = None
-    countries: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem] | None, Field(description='Countries where rights are available (ISO 3166-1 alpha-2). If omitted, rights are available worldwide.')] = None
-    excluded_countries: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem] | None, Field(description='Countries excluded from availability (ISO 3166-1 alpha-2)')] = None
+    countries: Annotated[list[CountryCode] | None, Field(description='Countries where rights are available (ISO 3166-1 alpha-2). If omitted, rights are available worldwide.')] = None
+    excluded_countries: Annotated[list[CountryCode] | None, Field(description='Countries excluded from availability (ISO 3166-1 alpha-2)')] = None
     exclusivity_model: str | None = None
     content_restrictions: list[str] | None = None
 

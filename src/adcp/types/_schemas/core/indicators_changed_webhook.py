@@ -11,11 +11,11 @@ from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
-    SyncAccountsRequestIdempotencyKey,
 )
 
 from ..enums.indicator_type import IndicatorType
 from .ext import ExtensionObject
+from .idempotency_key import IdempotencyKey
 
 
 class RelationshipKind(StrEnum):
@@ -52,7 +52,7 @@ class IndicatorsChangedWebhook(AdCPBaseModel):
         ConditionalRequired((Match('relationship_kind', True, ('package',)),), require=('package_id',), forbid=()),
         ConditionalRequired((Match('relationship_kind', True, ('creative_assignment',)),), require=('package_id', 'creative_id'), forbid=()),
     )
-    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey, Field(description='Random fire identifier reused across retries. Receivers dedupe within the authenticated sender scope.')]
+    idempotency_key: Annotated[IdempotencyKey, Field(description='Random fire identifier reused across retries. Receivers dedupe within the authenticated sender scope.')]
     notification_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId, Field(description='Stable identity for this logical snapshot change across re-emissions. A later semantic change receives a new value.')]
     notification_type: Literal['indicators.changed']
     fired_at: AwareDatetime

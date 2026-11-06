@@ -1112,8 +1112,10 @@
       }
     },
     "Shared109": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "description": "Domain where /.well-known/brand.json is hosted, or the brand's operating domain",
       "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+      "title": "Domain Name",
       "type": "string"
     },
     "Shared11": {
@@ -1498,9 +1500,11 @@
                         "description": "Buyer's representation that this embedding can be verified by a governance agent on the seller's `creative_policy.accepted_verifiers` list. The `agent_url` MUST match (canonicalized) one of the seller's published `accepted_verifiers[].agent_url` entries; sellers reject `sync_creatives` submissions whose `verify_agent.agent_url` is off-list with `PROVENANCE_VERIFIER_NOT_ACCEPTED`. This is buyer-supplied evidence, not buyer-driven routing \u2014 the seller is the verifier-of-record and the seller controls which agent it actually calls (the seller MAY use a different on-list agent if it determines this is more appropriate; the seller does not call buyer-asserted endpoints outside its allowlist). MAY be omitted for self-verifiable embeddings (e.g., a C2PA text manifest with a public key the seller already trusts).",
                         "properties": {
                           "agent_url": {
+                            "$schema": "http://json-schema.org/draft-07/schema#",
                             "description": "URL of the governance agent the buyer represents was used to embed/verify this layer. MUST use the `https://` scheme and MUST appear in the seller's `creative_policy.accepted_verifiers[].agent_url` list (canonicalized per /docs/reference/url-canonicalization: lowercase scheme and host, strip default port, normalize path dot-segments). Sellers MUST NOT call this URL until the canonicalized match is confirmed.",
                             "format": "uri",
                             "pattern": "^https://",
+                            "title": "HTTPS URL",
                             "type": "string"
                           },
                           "feature_id": {
@@ -1642,9 +1646,11 @@
                         "description": "Buyer's representation that this watermark can be detected by a governance agent on the seller's `creative_policy.accepted_verifiers` list. The `agent_url` MUST match (canonicalized) one of the seller's published `accepted_verifiers[].agent_url` entries; sellers reject `sync_creatives` submissions whose `verify_agent.agent_url` is off-list with `PROVENANCE_VERIFIER_NOT_ACCEPTED`. This is buyer-supplied evidence, not buyer-driven routing \u2014 the seller is the verifier-of-record and the seller controls which agent it actually calls (the seller MAY use a different on-list agent if it determines this is more appropriate; the seller does not call buyer-asserted endpoints outside its allowlist).",
                         "properties": {
                           "agent_url": {
+                            "$schema": "http://json-schema.org/draft-07/schema#",
                             "description": "URL of the governance agent the buyer represents was used to apply/detect this watermark. MUST use the `https://` scheme and MUST appear in the seller's `creative_policy.accepted_verifiers[].agent_url` list (canonicalized per /docs/reference/url-canonicalization: lowercase scheme and host, strip default port, normalize path dot-segments). Sellers MUST NOT call this URL until the canonicalized match is confirmed.",
                             "format": "uri",
                             "pattern": "^https://",
+                            "title": "HTTPS URL",
                             "type": "string"
                           },
                           "feature_id": {
@@ -1842,7 +1848,10 @@
       "type": "boolean"
     },
     "Shared21": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "A lowercase DNS domain name, dot-separated LDH labels. Extracted unchanged from the 54 sites that stated it inline; see adcontextprotocol/adcp#8525.",
       "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+      "title": "Domain Name",
       "type": "string"
     },
     "Shared22": {
@@ -2075,7 +2084,10 @@
       "type": "string"
     },
     "Shared44": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "ISO 3166-1 alpha-2 country code. Extracted unchanged from the 65 sites that stated it inline; see adcontextprotocol/adcp#8525.",
       "pattern": "^[A-Z]{2}$",
+      "title": "Country Code",
       "type": "string"
     },
     "Shared45": {
@@ -2760,8 +2772,11 @@
       "const": "fixed"
     },
     "Shared67": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "A URL whose scheme is https. Extracted unchanged from the 46 sites that stated it inline; see adcontextprotocol/adcp#8525. This is the shape adcontextprotocol/adcp#8398 asks the other seven uri patterns to reduce to.",
       "format": "uri",
       "pattern": "^https://",
+      "title": "HTTPS URL",
       "type": "string"
     },
     "Shared68": {
@@ -5571,9 +5586,11 @@
                         "type": "string"
                       },
                       "uri": {
+                        "$schema": "http://json-schema.org/draft-07/schema#",
                         "description": "HTTPS URL identifying the extension. `https://` is mandatory \u2014 `http://`, `file://`, `data:`, and other schemes are rejected at the schema layer (defense-in-depth on top of the fetch-contract normative rules). The URI base is the owning agent's URL; the path identifies the extension within that agent. Example: 'https://creative.adcontextprotocol.org/translated/meta/extensions/meta_pixel'. The full fetch contract \u2014 SSRF allowlist, response-size cap, $ref sandbox, schema-compile bounds \u2014 is documented on `product-format-declaration.json#format_schema` and applies to ALL fetches of this reference shape regardless of whether the field is named `format_schema` (load-bearing for validation) or `platform_extensions` (informational); the *transport* rules are identical, only the *consumption* semantics differ.",
                         "format": "uri",
                         "pattern": "^https://",
+                        "title": "HTTPS URL",
                         "type": "string"
                       }
                     },
@@ -5642,8 +5659,10 @@
                     "type": "object"
                   },
                   "publisher_domain": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
                     "description": "Publisher namespace for format_option_id when this operation claims compatibility with a publisher declaration.",
                     "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                    "title": "Domain Name",
                     "type": "string"
                   },
                   "sample_render_url": {
@@ -6010,9 +6029,11 @@
       "description": "Operator identity posture \u2014 trust-root pointer (`brand_json_url`) plus key-scoping and compromise-response controls the agent operates. `brand_json_url` is **load-bearing** for signature verification: when the agent declares any signing posture (`request_signing.supported_for`/`required_for` non-empty, `webhook_signing.supported === true`, or any `key_origins` subfield), `brand_json_url` MUST be present (storyboard-enforced in 3.x; schema-required in 4.0). Verifiers use it to bootstrap from the agent URL to the operator's brand.json (and from there to signing keys); see [security.mdx \u00a7Discovering an agent's signing keys](https://adcontextprotocol.org/docs/building/by-layer/L1/security#discovering-an-agents-signing-keys-via-brand_json_url). The remaining fields (`per_principal_key_isolation`, `key_origins`, `compromise_notification`) are advisory and receivers use them to reason about blast radius and revocation latency at onboarding. Empty-object semantics: `identity: {}` means \"posture block present but no posture claimed\" \u2014 schema-valid but advisory-neutral and receivers MUST treat it as equivalent to omitting the block, **except** that an agent declaring a signing posture elsewhere in the response with an empty `identity` MUST be rejected by storyboard runners as missing `brand_json_url`.",
       "properties": {
         "brand_json_url": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
           "description": "HTTPS URL of the operator's brand.json (typically `https://{operator-domain}/.well-known/brand.json`). Trust-root pointer for this agent's signing keys. See [security.mdx \u00a7Discovering an agent's signing keys via `brand_json_url`](https://adcontextprotocol.org/docs/building/by-layer/L1/security#discovering-an-agents-signing-keys-via-brand_json_url) for the verifier algorithm and `x-adcp-validation` for structured constraints. Distinct from `sponsored_intelligence.brand_url`, which is a rendering pointer for SI agent visuals \u2014 verifiers MUST use this field for key discovery and MUST NOT fall back to `sponsored_intelligence.brand_url` as a trust-root pointer.",
           "format": "uri",
           "pattern": "^https://",
+          "title": "HTTPS URL",
           "type": "string",
           "x-adcp-validation": {
             "distinct_from": "sponsored_intelligence.brand_url",
@@ -6333,9 +6354,11 @@
               "type": "string"
             },
             "catalog_url": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
               "description": "HTTPS document that validates against acceptance-policy-catalog.json.",
               "format": "uri",
               "pattern": "^https://",
+              "title": "HTTPS URL",
               "type": "string"
             },
             "default_profile_ids": {
@@ -7678,9 +7701,11 @@
                                 "type": "string"
                               },
                               "url": {
+                                "$schema": "http://json-schema.org/draft-07/schema#",
                                 "description": "HTTPS endpoint accepting the standard geo-place resolution query parameters.",
                                 "format": "uri",
                                 "pattern": "^https://",
+                                "title": "HTTPS URL",
                                 "type": "string"
                               }
                             },
@@ -7693,9 +7718,11 @@
                             "type": "object"
                           },
                           "source": {
+                            "$schema": "http://json-schema.org/draft-07/schema#",
                             "description": "Optional catalog dataset or derivative-source identifier. This records provenance/coverage and does not change the identifier namespace in system.",
                             "format": "uri",
                             "pattern": "^https://",
+                            "title": "HTTPS URL",
                             "type": "string"
                           },
                           "supported_versions": {

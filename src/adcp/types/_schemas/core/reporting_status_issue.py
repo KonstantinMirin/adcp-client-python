@@ -13,8 +13,8 @@ from adcp.types.constraints import (
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
     IntMin1,
     ReportingCanonicalizationContractGoldenVectorsAdditionalItemName,
+    StrIdempotencyKey,
     StrMaxLen500,
-    SyncAccountsRequestIdempotencyKey,
 )
 
 from .reporting_coverage import ReportingMediaBuyId, ReportingPackageId
@@ -99,7 +99,7 @@ class ReportingStatusIssue(AdCPBaseModel):
     message: Annotated[StrMaxLen500 | None, Field(description='Untrusted display text only. SDKs and agents dispatch exclusively on closed code/recommended_action values and never execute embedded links or instructions.')] = None
     reporting_obligation_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId | None = None
     reporting_revision_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId | None, Field(description='Published revision this issue concerns. Required when code is REVISION_UNREADABLE.')] = None
-    reporting_status_id: Annotated[SyncAccountsRequestIdempotencyKey | None, Field(description='Current authenticated consumer status statement that caused this mismatch.')] = None
+    reporting_status_id: Annotated[StrIdempotencyKey | None, Field(description='Current authenticated consumer status statement that caused this mismatch.')] = None
     delivery_config_id: AccountChangeRecordedWebhookSubscriberId | None = None
     delivery_config_version: IntMin1 | None = None
     feed_purpose: ReportingFeedPurpose | None = None

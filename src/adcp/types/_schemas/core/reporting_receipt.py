@@ -12,8 +12,8 @@ from adcp.types.constraints import (
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
     ReportingAdjustmentReceiptObservedAdjustmentSha256,
     ReportingAdjustmentReceiptRejectionCode,
+    StrIdempotencyKey,
     StrMinLen1MaxLen512,
-    SyncAccountsRequestIdempotencyKey,
 )
 
 from ..common._vocabularies import _VALUES_ACCEPTED_REJECTED
@@ -44,11 +44,11 @@ class ReportingReceipt(AdCPBaseModel):
         ConditionalRequired((Match('verification_profile', True, ('manifest_checksums',)),Match('status', True, ('accepted',)),), require=('observed_manifest_sha256',), forbid=()),
         ConditionalRequired((Match('verification_profile', True, ('native_commit',)),Match('status', True, ('accepted',)),), require=('observed_native_version_ref',), forbid=()),
     )
-    reporting_receipt_id: SyncAccountsRequestIdempotencyKey
+    reporting_receipt_id: StrIdempotencyKey
     reporting_obligation_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId
     reporting_revision_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId
     reporting_materialization_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId
-    supersedes_reporting_receipt_id: Annotated[SyncAccountsRequestIdempotencyKey | None, Field(description="Optional immutable rejected receipt replaced by this new receipt. It MUST name the caller's current rejected receipt for this obligation and revision; accepted current receipts are terminal.")] = None
+    supersedes_reporting_receipt_id: Annotated[StrIdempotencyKey | None, Field(description="Optional immutable rejected receipt replaced by this new receipt. It MUST name the caller's current rejected receipt for this obligation and revision; accepted current receipts are terminal.")] = None
     status: Status
     verification_profile: ReportingVerificationProfile
     observed_row_count: NonNegativeInt

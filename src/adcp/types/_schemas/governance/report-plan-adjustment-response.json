@@ -68,7 +68,10 @@
           "type": "number"
         },
         "currency": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "ISO 4217 alphabetic currency code. Extracted unchanged from the 83 sites that stated it inline; see adcontextprotocol/adcp#8525.",
           "pattern": "^[A-Z]{3}$",
+          "title": "Currency Code",
           "type": "string"
         }
       },

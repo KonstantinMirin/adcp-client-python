@@ -9,7 +9,6 @@ from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import Dependencies, Rule
 from adcp.types.constraints import (
     CanonicalProposalTermsDigest,
-    GetAccountFinancialsResponseSuccessCurrency,
     IntMin1,
     MediaBuyName,
     StrMaxLen500,
@@ -25,6 +24,7 @@ from .bidding_policy import BiddingPolicy
 from .budget_allocation import BudgetAllocation
 from .business_entity import BusinessEntity
 from .context import ContextObject
+from .currency_code import CurrencyCode
 from .ext import ExtensionObject
 from .impairment import Impairment
 from .media_buy_frequency_cap import MediaBuyFrequencyCap
@@ -84,7 +84,7 @@ class MediaBuy(AdCPBaseModel):
     daily_budget_cap: Annotated[NonNegativeFloat | None, Field(description='Current hard aggregate spend ceiling per calendar day. Sellers MUST echo this whenever an aggregate daily cap is set. It bounds total media-buy spend without allocating or reserving spend for packages.')] = None
     frequency_cap: Annotated[MediaBuyFrequencyCap | None, Field(description='Current hard MediaBuy-level cap. Sellers MUST echo it whenever set. Its counter aggregates exposures across all participating packages; each package targeting_overlay.frequency_cap remains independently binding.')] = None
     budget_cap_timezone: Annotated[str | None, Field(description='IANA timezone defining the shared calendar-day boundary for every aggregate and package daily cap on this media buy. Sellers MUST echo it whenever any daily cap is set.')] = None
-    currency: Annotated[GetAccountFinancialsResponseSuccessCurrency | None, Field(description="Single ISO 4217 denomination for total_budget, every package budget/minimum, and every canonical BiddingPolicy monetary field. Every package's selected pricing option MUST declare this currency; packages requiring another currency belong in a separate media buy.")] = None
+    currency: Annotated[CurrencyCode | None, Field(description="Single ISO 4217 denomination for total_budget, every package budget/minimum, and every canonical BiddingPolicy monetary field. Every package's selected pricing option MUST declare this currency; packages requiring another currency belong in a separate media buy.")] = None
     budget_allocation: Annotated[BudgetAllocation | None, Field(description='Accepted cross-package budget allocation configuration. Omitted means fixed allocation for legacy buys.')] = None
     pacing: Annotated[Pacing | None, Field(description='Aggregate pacing strategy for total_budget across the media-buy flight.')] = None
     bidding: Annotated[Bidding | None, Field(description='Media-buy-authored bidding policy. This is the complete default inherited by packages that omit package.bidding; `{automatic:true}` is an explicit authored automatic policy. In seller-optimized mode, cost_per/roas bind to the primary budget_allocation optimization goal. In fixed mode, inherited cost_per requires compatible package primary-goal result units and inherited roas requires value-bearing primary goals. Monetary fields use media_buy.currency; every affected pricing option MUST declare the same currency. Package overrides are permitted only where advertised; conflicts MUST be rejected atomically with BIDDING_PLACEMENT_CONFLICT.')] = None

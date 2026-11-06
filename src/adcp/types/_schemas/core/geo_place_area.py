@@ -7,8 +7,9 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, StrMinLen1
+from adcp.types.constraints import StrMinLen1
 
+from .country_code import CountryCode
 from .ext import ExtensionObject
 from .geo_place_system import GeographicPlaceIdentifierSystem
 from .geo_place_type import GeographicPlaceType
@@ -28,7 +29,7 @@ class GeographicPlaceArea(AdCPBaseModel):
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='core/geo-place-area.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'system': {'enum': ['geonames', 'google_ads', 'microsoft_ads']}}, 'required': ['system']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
-    country: Annotated[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, Field(description='ISO 3166-1 alpha-2 country code containing the place.')]
+    country: Annotated[CountryCode, Field(description='ISO 3166-1 alpha-2 country code containing the place.')]
     system: GeographicPlaceIdentifierSystem
     system_version: Annotated[StrMinLen1 | None, Field(description="Optional exact catalog version from the seller's declared supported_versions. When omitted, the seller applies catalog.current_version and MUST echo that version on persisted package state.")] = None
     place_type: GeographicPlaceType

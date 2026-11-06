@@ -63,28 +63,21 @@ the key does not carry, since it reads the member's own DOCUMENT.  A group whose
 disagree refutes the key and is a finding about the instrument.  Its red direction
 constructs such a pair.
 
-**WHAT THIS FILE ASSERTS AND WHAT IT ONLY REPORTS.**  Two declarations of ONE document
-that are one type are this row: a document is one subject, its node is one node, and the
-walk reaching it at several positions is settled by the compiler's content dedup with no
-name to choose.  Two declarations in DIFFERENT documents that are one type are not: that
-is one structure restated across documents, it needs a NAME, and naming it is the judgment
-table's row.  So the assertion is per document and the cross-document groups are named in
-the report rather than asserted over -- which is section 8's clause, "a check that
-enumerates a subset reports on that subset only, and says so".
+**WHAT THIS FILE ASSERTS, IN TWO POPULATIONS THAT PARTITION THE GROUPS.**  Two declarations
+of ONE document that are one type are the first: a document is one subject, its node is one
+node, and the walk reaching it at several positions is settled by the compiler's content
+dedup with no name to choose, so the assertion is that there are none.  Two declarations in
+DIFFERENT documents that are one type are the second: that is one structure restated across
+documents, it needs a NAME or a reading, and the decision is one per group.
 
-**AND ONE CROSS-DOCUMENT SHAPE IS ASSERTED AFTER ALL, because the BUNDLE decides it and
-not a judgment.**  Reading 4's own test for which of the two a position is -- *"whether the
-bundle REFERENCES one node from the others or RESTATES it is the question that tells our
-defect from the schema's own duplication"* -- has an answer that needs no name where the
-reference is written down: a node whose whole content is ``{"allOf": [{"$ref": X}]}`` IS
-the bundle referencing X, so a class declared at it is a second declaration of X's type
-and the collapse is licensed by the document rather than by the two classes sharing a field
-set.  :func:`test_a_node_whose_whole_content_is_a_reference_declares_no_class_of_its_own`
-is that, as an equality between a derivation over the BUNDLE and a derivation over the
-TREE.  It is the one cross-document assertion here and it asserts nothing about a group:
-the four groups the report names are decided by their DOCUMENTS and three of them disagree,
-which is :func:`test_the_key_agrees_on_a_value_wherever_it_groups`'s blind spot and not
-this file's gate.
+**THE SECOND POPULATION WAS REPORTED AND NOTHING ASSERTED OVER IT, AND THAT IS WHAT
+``tests/duplicates.py`` ENDS.**  A decision recorded in a bead comment is a judgment the
+build does not apply, and the architecture's clause for that is not softer for a decision
+than for a patch: "AN OVERRIDE THE BUILD DOES NOT APPLY IS A LIE, AND THE GATE IS ON THE
+ARTIFACT."  So every cross-document group the EMITTED tree forms is answered by exactly one
+row of that table -- a group with no row is RED because nobody decided it, and a row whose
+group is gone is RED because the row is to be DELETED.  The table's size is the debt figure
+and both directions of the equality are what keep it one.
 
 **THE TREE IS THE EMITTED ONE.**  ``tests/fresh.py`` binds the generated half of
 ``adcp.types`` to a fresh run's output before collection, so importing
@@ -94,22 +87,31 @@ this file's gate.
 from __future__ import annotations
 
 import collections
+import dataclasses
 import importlib
 import json
 import pkgutil
 from pathlib import Path
 from typing import Any
 
+import duplicates
 import pytest
 from compiled import compiled
-from nodeset import claimed, partitions
+from judgment import name_at as judgment_name_at
+from nodeset import claimed, partitions, ratchet
 from pydantic import BaseModel, ValidationError, field_validator
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
-from codegen import bundle, keywords
+from adcp.types._base import AdCPBaseModel, SchemaRef, schema_at
+from codegen import bundle, catalogue, emit, keywords, patch
 
 REPO = Path(__file__).resolve().parents[1]
-BUNDLE = REPO / "schemas" / "cache" / "3.2"
+#: **The bundle a RUN reads**: the published one with the build's patch sets applied
+#: (:func:`codegen.patch.for_build`), which is ``./check``'s own derivation and
+#: ``tests/fresh.py``'s.  The tree this file grades is emitted from THAT bundle, so reading
+#: the published one here would group the tree's declarations against a document set five
+#: documents short of the one they were compiled from -- and every title the override table
+#: supplies would be invisible to the one check that is about titles.
+BUNDLE = patch.for_build(REPO / "schemas" / "cache" / "3.2")
 
 
 # --------------------------------------------------------------------------- #
@@ -333,20 +335,90 @@ def _verdict(cls: type[BaseModel], payload: Any, *, strict: bool) -> Any:
         return ("admitted, undumpable", type(why).__name__)
 
 
-def disagreements(members: list[type[BaseModel]], *, strict: bool) -> list[Any]:
+def disagreements(
+    members: list[type[BaseModel]], *, strict: bool, over: list[Any] | None = None
+) -> list[Any]:
     """Every payload on which the members of one group do not agree on a value.
 
     ``strict`` picks which entry point is asked, and the two are kept apart because they
     answer different questions about the key.  ``model_validate`` is what the CLASS does,
     which is what the five parts describe; ``strict_validate`` validates against the
     member's own DOCUMENT first, which no part of the key carries.
+
+    ``over`` is the payload set, and it defaults to the one derived from the group's own
+    SHARED schema -- which is the right set for grading the KEY, because every member
+    shares part 1 of it.  :func:`from_each_own_node` is the other set and is the right one
+    for grading a DECISION: a group's shared schema is what the classes agree on, so a
+    payload derived from it cannot probe the thing the classes differ in, and measured on
+    ``adcp-client-python-6h1`` the shared set found 0 of the discriminating payloads the
+    per-member set found.
     """
     found: list[Any] = []
-    for payload in payloads_for(schema_half(members[0])):
+    for payload in payloads_for(schema_half(members[0])) if over is None else over:
         verdicts = {f"{c.__module__}.{c.__name__}": _verdict(c, payload, strict=strict) for c in members}
         if len(set(map(repr, verdicts.values()))) > 1:
             found.append({"payload": payload, "verdicts": verdicts})
     return found
+
+
+def applied_at(cls: type[BaseModel]) -> Any:
+    """The node the member's own DOCUMENT applies at the member's pointer.
+
+    Through ``adcp.types._base.schema_at`` and with the member's own ``__module__``, which
+    is "A READER DERIVES ITS KEY FROM THE ACCESSOR THE GRADE READS THROUGH" applied here:
+    the record stores each distinct subtree once and references it at every occurrence, so
+    a reader that walked the stored text would key on a form the grade never sees.
+    """
+    ref = getattr(cls, "__adcp_schema__", None)
+    return schema_at(ref, module=cls.__module__) if isinstance(ref, SchemaRef) else {}
+
+
+def probes(members: list[type[BaseModel]]) -> list[Any]:
+    """Every payload a DECISION is graded over: the derived set plus the table's own.
+
+    **The second half is why probe 7 of this file's fire-probe reddens.**  A payload set
+    derived from the members' nodes is built by walking declared types, so it reaches a
+    ``const`` and an ``enum[0]`` and nothing else -- and the facts the dropped-conjunct
+    groups turn on are stated inside an ``if``, which the walk does not enter.  Measured:
+    the derived set finds no verdict difference at the ``core/error.json`` group, so a
+    collapse graded on it alone would pass over a class that admits what its own document
+    refuses.  Every payload any row of :data:`tests.duplicates.DECIDED` carries is
+    therefore offered to every group -- those payloads are the bundle's own words, read off
+    the documents that state the conjuncts, and a decision that cannot survive another
+    row's payload is a decision to look at again.
+    """
+    seen: set[str] = set()
+    out: list[Any] = []
+    for payload in from_each_own_node(members) + [
+        row.payload for row in duplicates.DECIDED if row.payload is not duplicates.NO_PAYLOAD
+    ]:
+        spelled = json.dumps(payload, sort_keys=True, default=repr)
+        if spelled not in seen:
+            seen.add(spelled)
+            out.append(payload)
+    return out
+
+
+def from_each_own_node(members: list[type[BaseModel]]) -> list[Any]:
+    """Payloads derived from EVERY member's own applied node, deduplicated.
+
+    :func:`payloads_for`'s set over the group's shared pydantic schema probes what the
+    CLASSES state; this one probes what the DOCUMENTS state, because a member's applied
+    node carries the conjuncts, the ``not``\\ s and the enclosing compositions no part of
+    the five-part key holds.  Union over the members and not over the first, since the
+    whole question a decision asks is whether one document states something another does
+    not.
+    """
+    seen: set[str] = set()
+    out: list[Any] = []
+    for member in members:
+        node = applied_at(member)
+        for payload in payloads_for(node if isinstance(node, dict) else {}):
+            spelled = json.dumps(payload, sort_keys=True, default=repr)
+            if spelled not in seen:
+                seen.add(spelled)
+                out.append(payload)
+    return out
 
 
 # --------------------------------------------------------------------------- #
@@ -496,11 +568,12 @@ def test_no_two_declarations_of_one_document_are_one_type() -> None:
     choose between them -- the walk reached one node by more than one path and lowered it
     twice.
 
-    **The cross-document groups are reported and not asserted over**, and that is section
-    8's clause rather than an exemption: two documents RESTATING one structure is a
-    different row with a different repair, because the type needs a NAME and nothing in
-    one document decides it.  The partition below is what makes the split total -- every
-    group the key forms is in exactly one part -- so a group cannot fall out of both.
+    **The cross-document groups are asserted over by
+    :func:`test_every_cross_document_duplicate_group_is_decided`**, which is a different
+    claim with a different repair: two documents RESTATING one structure needs a NAME or a
+    reading, and nothing in one document decides it.  The partition below is what makes the
+    split total -- every group the key forms is in exactly one part -- so a group cannot
+    fall out of both, and the two parts together are the whole duplicate question.
     """
     tree = the_tree()
     declarations = [cls for members in tree.values() for cls in members]
@@ -528,6 +601,524 @@ def test_no_two_declarations_of_one_document_are_one_type() -> None:
         document: [{"class": f"{cls.__module__}.{cls.__name__}", "names": ref_of(cls)} for cls in members]
         for (document, _), members in restated.items()
     }
+
+
+def named_at_every_position(bundle_dir: Path) -> dict[str, tuple[str, frozenset[tuple[str, str]]]]:
+    """Every structure the BUNDLE names with ONE title at EVERY position that states it.
+
+    ``key -> (the title, the (document, pointer) set)``, over both structural layers §3a
+    collects -- L2's own-``properties`` object types and L2C's composed ones -- because the
+    claim is about what the bundle SAYS and not about which layer reads it.  A reader that
+    took one layer would be silent wherever the other answered, and the two partition the
+    object positions rather than overlap (``catalogue.shape_states``).
+
+    **The condition is the judgment table's own evidence sentence**, not a weaker one: *"the
+    bundle names EVERY one of the N positions"*.  One title among several untitled positions
+    says nothing about the positions that are silent, so a group with one is not a group the
+    bundle names -- which is why this reads ``all`` and not ``len(titles) == 1``.
+    """
+    admitted = catalogue.Admitted(bundle_dir)
+    standing = emit.standing_order(bundle_dir)
+    found: dict[str, tuple[str, frozenset[tuple[str, str]]]] = {}
+    for layer in ("L2", "L2C"):
+        groups: dict[str, list[catalogue.Shaped]] = {}
+        for position in catalogue.shape_states(admitted, layer):
+            groups.setdefault(position.key, []).append(position)
+        for key, group in groups.items():
+            titles = {p.title for p in group}
+            if len(group) < 2 or len({p.document for p in group}) < 2:
+                continue
+            if len(titles) != 1 or None in titles:
+                continue
+            found[key] = (
+                next(iter(titles)),
+                frozenset((p.document, f"#{p.pointer}") for p in group),
+            )
+    assert standing  # the home rule's input; a layer collected without it has no home
+    return found
+
+
+def declared_twice_though_named(
+    declarations: list[type[BaseModel]], named: dict[str, tuple[str, frozenset[tuple[str, str]]]]
+) -> dict[str, list[str]]:
+    """Titles the bundle states at every position of a structure the TREE declares twice.
+
+    The two derivations this gate is an equality between: the left is the bundle's own
+    titles (:func:`named_at_every_position`), the right is the tree's declarations grouped
+    by the five-part key.  A title appears here exactly when two or more declarations of
+    ONE type both name a position the bundle gave that title -- which is the defect, stated
+    as what the bundle says against what the tree wrote and not as a count.
+    """
+    at: dict[tuple[str, str], str] = {
+        position: title for title, positions in named.values() for position in positions
+    }
+    out: dict[str, list[str]] = {}
+    for members in grouped(declarations).values():
+        if len(members) < 2:
+            continue
+        titled = [
+            (at[where], cls)
+            for cls in members
+            if (where := (ref_of(cls) or ("", ""))[0:2]) in at
+        ]
+        for title, _ in titled:
+            if sum(1 for other, _ in titled if other == title) > 1:
+                out.setdefault(title, []).extend(
+                    f"{cls.__module__}.{cls.__name__} {ref_of(cls)}" for _, cls in titled
+                )
+    return {title: sorted(set(where)) for title, where in out.items()}
+
+
+def test_a_structure_the_bundle_titles_at_every_position_is_declared_once() -> None:
+    """**A TITLE IS A NAME FOR A SUBJECT, so the subject gets ONE class.**
+
+    ``docs/plan/final-state.md`` reading 4: *"a type stated at more than one position is
+    written once and referenced, never restated"*.  The gate above asserts that per
+    DOCUMENT and reports the cross-document groups, because *"the type needs a NAME and
+    nothing in one document decides it"*.  **This is the half of that clause the bundle can
+    discharge**: where the bundle names every stating position of one structure with one and
+    the same ``title``, the name is no longer undecided, so the reason the cross-document
+    groups were reported rather than asserted over does not reach them and they are a
+    duplicate like any other.
+
+    **Both derivations are readings and neither is a literal.**  The left is
+    ``catalogue.shape_states`` over the bundle a RUN reads, which is the published bundle
+    with the override table applied -- so the titles this ranges over are the ones upstream
+    states plus the ones ``patches/8735`` asks upstream for, and a title landing upstream
+    moves nothing here because ``patch.additions`` refuses an entry whose node already
+    carries the keyword.  The right is the tree's own declarations under the five-part key.
+    Empty is the invariant, and the failure names the TITLE -- which is the thing a reader
+    has to go and look at -- with every declaration that took it.
+
+    **Red on the state this test exists for**, measured rather than asserted: with
+    ``patches/8735``'s four titles in the override table and the L2C layer absent from
+    ``codegen/emit.py``'s collection, this reads **9 structures the bundle titles at every
+    stating position and reddens on 4 of them, over 12 declarations** -- URL Macro
+    Declaration at 5, Explicit Collection Selector at 3, Publisher Placement Reference at
+    2, Unlocalized Creative Asset at 2.  Its own red direction is
+    :func:`test_a_titled_restatement_declared_twice_reddens_the_gate`, which calls
+    :func:`declared_twice_though_named` over a pair built to hold the defect.
+    """
+    declarations = [cls for members in the_tree().values() for cls in members]
+    named = named_at_every_position(BUNDLE)
+    claimed("structures the bundle titles at every stating position", named)
+    restated = declared_twice_though_named(declarations, named)
+    assert restated == {}, restated
+
+
+# --------------------------------------------------------------------------- #
+# 2b. Every cross-document group is DECIDED, and the decision is on the artifact
+# --------------------------------------------------------------------------- #
+def cross_document_groups(
+    declarations: list[type[BaseModel]],
+) -> dict[frozenset[duplicates.POSITION], list[type[BaseModel]]]:
+    """The groups of the key whose members name MORE THAN ONE document, keyed by position.
+
+    The key a ROW carries (``tests.duplicates.key_for``) and never a name, a module or a
+    count -- so the table and this reading cannot come apart, and a group whose members
+    moved to other pointers reports as a new group rather than silently matching an old
+    row.
+    """
+    out: dict[frozenset[duplicates.POSITION], list[type[BaseModel]]] = {}
+    for members in grouped(declarations).values():
+        if len(members) > 1 and len({document_of(cls) for cls in members}) > 1:
+            out[duplicates.key_for(members)] = members
+    return out
+
+
+def _states(at: duplicates.POSITION) -> dict[str, Any] | None:
+    """The node the BUNDLE A RUN READS states at ``at``, or ``None`` where it states none.
+
+    The published bundle with the build's patch sets applied, which is the bundle the tree
+    was compiled from -- reading the published one here would hide every title
+    ``patches/8735`` supplies from the one check that is about what the bundle says.  A
+    ``None`` is a FACT and is asserted on rather than defaulted: a row keyed on a pointer
+    no document states is a row nobody can check.
+    """
+    document, pointer = at
+    try:
+        node = bundle.node_at(bundle.read(BUNDLE, document), pointer.lstrip("#"))
+    except (KeyError, IndexError, TypeError, OSError, ValueError):
+        # A document the bundle does not hold and a pointer it does not state are the SAME
+        # answer here -- "the bundle says nothing at this position" -- and both are facts a
+        # row can be wrong about, so neither may escape as an exception from a reading whose
+        # whole job is to report what the bundle states.
+        return None
+    return node if isinstance(node, dict) else None
+
+
+def test_every_cross_document_duplicate_group_is_decided() -> None:
+    """**ONE ROW PER GROUP, IN BOTH DIRECTIONS, AND THE EQUALITY IS ON THE EMITTED TREE.**
+
+    ``docs/plan/final-state.md`` reading 9: *"Each declared fact is ours with a decision
+    recorded, or upstream with an issue that exists.  An unfiled gap is ours."*  A duplicate
+    group is such a fact, and until this check existed the cross-document ones were listed
+    in a report that nothing graded -- so a group could appear, be looked at by nobody, and
+    leave the duplicate question's figure a sentence in a bead rather than a measurement.
+
+    **The left side is the ARTIFACT and the right side is the table.**  A group the tree
+    forms and the table does not answer is RED with its positions named, because nobody
+    decided it.  A row the tree no longer forms is RED too and the instruction is to DELETE
+    it: that is the architecture's removability clause for the one kind of entry that adds
+    no document and transcribes no keyword -- *"an override that is no longer needed must
+    BREAK THE BUILD"* -- and it fires the day a repair lands or the bundle moves.
+
+    The row count is a DEBT figure and ratchets DOWN only.
+    """
+    tree = the_tree()
+    declarations = [cls for members in tree.values() for cls in members]
+    live = cross_document_groups(declarations)
+    claimed("cross-document groups the emitted tree forms", live)
+    decided = duplicates.by_position()
+    claimed("rows of the decision table", decided)
+
+    assert set(live) == set(decided), {
+        "a duplicate group nobody decided -- add a row to tests/duplicates.py": [
+            {
+                "at": sorted(at),
+                "declares": sorted(f"{c.__module__}.{c.__name__}" for c in live[at]),
+            }
+            for at in set(live) - set(decided)
+        ],
+        "a row whose group the tree no longer forms -- DELETE it": [
+            {"at": sorted(at), "outcome": decided[at].outcome, "ask": decided[at].ask}
+            for at in set(decided) - set(live)
+        ],
+    }
+    partitions(
+        set(live),
+        **{
+            outcome: {at for at, row in decided.items() if row.outcome == outcome}
+            for outcome in sorted({row.outcome for row in duplicates.DECIDED})
+        },
+    )
+    ratchet(
+        "cross-document duplicate groups the table answers locally",
+        len(decided),
+        at_most=11,
+        because="the table's size IS the debt figure: a row names the ask that deletes it, "
+        "so this falls to zero for a bundle that titles what it restates and a compiler "
+        "that declares a type once.  A RISE is a new duplicate nobody decided, which is "
+        "what the equality above reports before this ratchet is reached",
+    )
+    for row in duplicates.DECIDED:
+        assert row.defect.strip() and row.ask.strip(), row
+        assert "the bundle" in row.defect or row.defect.startswith("NONE"), row.defect
+
+
+def unproved(row: duplicates.Decided, members: list[type[BaseModel]]) -> list[dict[str, Any]]:
+    """Every way this row's EVIDENCE fails to support its outcome, over the live group.
+
+    **A function and not a loop body, because the gate's red direction calls it.**  The
+    green direction is an empty list over eleven rows the table already decides correctly,
+    and ``assert [] == []`` proves nothing; the red direction perturbs each live row into
+    the outcome its evidence does NOT support and calls this, which is the one arrangement
+    where "the evidence is graded" is a claim about the thing shipped.
+
+    One form per outcome, each able to go red on its own cause:
+
+    * ``SPLIT`` with a payload -- the two DOCUMENTS disagree on it, so one admits what
+      another refuses.  **Both verdicts and both reasons are reported**, because two classes
+      refusing one payload for different reasons are not evidence of anything and that
+      error has been made on this epic.  Red the day the two documents converge.
+    * ``SPLIT`` by the bundle's words -- two or more different ``title`` strings over the
+      group's own positions.  Red the day upstream unifies them, which is the day the split
+      stops being the bundle's and becomes ours.
+    * ``PENDING A NAME`` -- the bundle titles NO position of the group and names the
+      positions by two or more different words.  Red the day a title arrives, which IS the
+      ask, and red the day the words converge, which would make a title a transcription
+      rather than a judgment.
+    * ``NOT ONE TYPE`` -- the payload a member's class ADMITS through ``model_validate``
+      while its own document REFUSES it through ``strict_validate``.  Red the day the
+      dropped fact is carried, and the group un-forms at the same moment.
+    * ``COLLAPSE`` -- no payload of :func:`probes` makes any member disagree with its OWN
+      DOCUMENT or with another member, **and** the bundle names the subject at a position
+      of the structure.  Red the day a document stops stating that title.
+    """
+    at = row.at
+    where = sorted(f"{c.__module__}.{c.__name__} {ref_of(c)}" for c in members)
+    found: list[dict[str, Any]] = []
+    through_the_document: dict[str, Any] = {}
+
+    if row.payload is not duplicates.NO_PAYLOAD and row.outcome in (
+        duplicates.SPLIT,
+        duplicates.NOT_ONE_TYPE,
+    ):
+        through_the_document = {
+            f"{c.__module__}.{c.__name__}": _verdict(c, row.payload, strict=True)
+            for c in members
+        }
+        admits = {n for n, v in through_the_document.items() if v[0].startswith("admitted")}
+        refuses = {n for n, v in through_the_document.items() if v[0] == "refused"}
+        if not (admits and refuses):
+            found.append(
+                {
+                    "the row's payload does not discriminate": row.payload,
+                    "verdicts, with the reason and not only the verdict": through_the_document,
+                    "over": where,
+                }
+            )
+
+    if row.outcome == duplicates.NOT_ONE_TYPE:
+        through_the_class = {
+            f"{c.__module__}.{c.__name__}": _verdict(c, row.payload, strict=False)
+            for c in members
+        }
+        dropped = {
+            name
+            for name, verdict in through_the_class.items()
+            if verdict[0].startswith("admitted")
+            and through_the_document.get(name, ("",))[0] == "refused"
+        }
+        if not dropped:
+            found.append(
+                {
+                    "no member admits what its own document refuses, so the group is not a "
+                    "dropped fact and NOT ONE TYPE is the wrong outcome": row.ask,
+                    "through the class": through_the_class,
+                    "through the document": through_the_document,
+                }
+            )
+
+    if row.outcome == duplicates.SPLIT and row.payload is duplicates.NO_PAYLOAD:
+        titles = {
+            title
+            for position in at
+            if isinstance(title := (_states(position) or {}).get("title"), str)
+        }
+        if len(titles) < 2:
+            found.append(
+                {
+                    "a SPLIT with no payload is the bundle's own two names, and the bundle "
+                    "states fewer than two here": sorted(titles),
+                    "over": where,
+                }
+            )
+
+    if row.outcome == duplicates.PENDING_A_NAME:
+        stated = {position: _states(position) for position in at}
+        silent = sorted(position for position, node in stated.items() if node is None)
+        if silent:
+            found.append({"a row keyed on a pointer no document states": silent})
+        titled = sorted(position for position, node in stated.items() if "title" in (node or {}))
+        if titled:
+            found.append(
+                {
+                    "the bundle titles a position of a group that is PENDING A NAME, so the "
+                    "ask has landed and the row is to be re-read": titled
+                }
+            )
+        words = {judgment_name_at(pointer) for _, pointer in at}
+        if len(words) < 2:
+            found.append(
+                {
+                    "the positions agree on one word, so this is a transcription and not a "
+                    "silence": sorted(map(str, words)),
+                    "over": where,
+                }
+            )
+
+    if row.outcome == duplicates.COLLAPSE:
+        pool = probes(members)
+        # **THE HALF A MEMBER-VERSUS-MEMBER READING CANNOT GIVE.**  The three dropped-fact
+        # groups agree with EACH OTHER on every derived payload too -- that is what makes
+        # them look like duplicates -- so what a collapse has to answer is not whether the
+        # members agree but whether each member agrees with ITS OWN DOCUMENT.  Measured: 0
+        # mismatches at all three collapses and at least one at every ``NOT ONE TYPE``
+        # group.  The member-versus-member reading alone passed the ``core/error.json``
+        # group as a collapse, which is the probe this clause exists for.
+        loose = [
+            {
+                "class": f"{c.__module__}.{c.__name__}",
+                "payload": payload,
+                "through the class": _verdict(c, payload, strict=False),
+                "through its own document": _verdict(c, payload, strict=True),
+            }
+            for c in members
+            for payload in pool
+            if _verdict(c, payload, strict=False)[0].startswith("admitted")
+            != _verdict(c, payload, strict=True)[0].startswith("admitted")
+        ]
+        if loose:
+            found.append(
+                {
+                    "a COLLAPSE whose member disagrees with its own DOCUMENT is a dropped "
+                    "fact wearing a duplicate, not a collapse": loose[:2],
+                    "over": where,
+                }
+            )
+        for strict in (False, True):
+            apart = [
+                one
+                for one in disagreements(members, strict=strict, over=pool)
+                if len({v[0] for v in one["verdicts"].values()}) > 1
+            ]
+            if apart:
+                found.append(
+                    {
+                        "a COLLAPSE whose members disagree on a VALUE is two subjects": apart[:2],
+                        "strict": strict,
+                        "over": where,
+                    }
+                )
+        document, pointer, title = row.names_the_subject or ("", "", None)
+        node = _states((document, pointer))
+        if node is None:
+            found.append(
+                {"the position the row says names the subject is not in the bundle": (document, pointer)}
+            )
+        elif node.get("title") != title:
+            found.append(
+                {
+                    "the bundle no longer names the subject here, so the collapse is no "
+                    "longer licensed by it": (document, pointer, node.get("title"), title)
+                }
+            )
+    return found
+
+
+def test_each_decision_is_proved_by_a_value_or_by_the_bundle_s_own_words() -> None:
+    """**THE EVIDENCE OBLIGATION, graded over the group each row decides.**
+
+    A shared key is a HYPOTHESIS.  ``test_the_key_agrees_on_a_value_wherever_it_groups``
+    says the key is sound over what the CLASSES do, and that is exactly why it cannot
+    decide a group: what a decision turns on is what the DOCUMENTS do, and no part of the
+    key carries one.  :func:`unproved` is the reading and holds the five forms;
+    :func:`test_a_decision_whose_evidence_does_not_support_it_reddens_the_gate` is this
+    one's red direction and calls the same function.
+    """
+    declarations = [cls for members in the_tree().values() for cls in members]
+    live = cross_document_groups(declarations)
+    decided = duplicates.by_position()
+    graded = claimed("decided groups the tree still forms", set(live) & set(decided))
+    claimed(
+        "payloads the table offers every group",
+        [
+            json.dumps(row.payload, sort_keys=True, default=repr)
+            for row in duplicates.DECIDED
+            if row.payload is not duplicates.NO_PAYLOAD
+        ],
+    )
+    for at in sorted(graded, key=sorted):
+        assert unproved(decided[at], live[at]) == [], {
+            "outcome": decided[at].outcome,
+            "ask": decided[at].ask,
+            "unproved": unproved(decided[at], live[at]),
+        }
+
+
+def test_a_decision_whose_evidence_does_not_support_it_reddens_the_gate() -> None:
+    """Each live row perturbed into an outcome its own evidence refutes, through
+    :func:`unproved` itself.
+
+    Five perturbations, each measured on this bundle rather than assumed, and each the
+    mistake the corresponding clause exists to catch:
+
+    1. a dropped-fact group re-declared a ``COLLAPSE`` -- the member-versus-member reading
+       passes it and the class-versus-document reading does not, which is why both are in;
+    2. a ``PENDING A NAME`` group re-declared a ``SPLIT`` -- the bundle titles none of its
+       positions, so there are no two names to split on;
+    3. a ``SPLIT``-by-titles group re-declared ``PENDING A NAME`` -- the bundle titles it,
+       so the silence the outcome claims is not there;
+    4. a row's proving payload replaced by one the group's documents agree on;
+    5. a ``COLLAPSE``'s named subject pointed at a title the bundle does not state there.
+
+    The green state is asserted beside each one, so a perturbation that reddens because the
+    function reddens on everything is reported as such.
+    """
+    declarations = [cls for members in the_tree().values() for cls in members]
+    live = cross_document_groups(declarations)
+    rows = {at: row for at, row in duplicates.by_position().items() if at in live}
+    claimed("rows whose group the tree forms, which the perturbations range over", rows)
+
+    def perturbed(row: duplicates.Decided, **moved: Any) -> list[dict[str, Any]]:
+        return unproved(dataclasses.replace(row, **moved), live[row.at])
+
+    for at, row in rows.items():
+        assert unproved(row, live[at]) == [], (row.outcome, at)
+        if row.outcome == duplicates.NOT_ONE_TYPE:
+            assert perturbed(
+                row, outcome=duplicates.COLLAPSE, names_the_subject=row.names_the_subject
+            ), at
+            assert perturbed(row, payload={}), at
+        if row.outcome == duplicates.PENDING_A_NAME:
+            assert perturbed(row, outcome=duplicates.SPLIT), at
+        if row.outcome == duplicates.SPLIT and row.payload is duplicates.NO_PAYLOAD:
+            assert perturbed(row, outcome=duplicates.PENDING_A_NAME), at
+        if row.outcome == duplicates.SPLIT and row.payload is not duplicates.NO_PAYLOAD:
+            assert perturbed(row, payload={}), at
+        if row.outcome == duplicates.COLLAPSE:
+            document, pointer, _ = row.names_the_subject or ("", "", None)
+            assert perturbed(
+                row, names_the_subject=(document, pointer, "A Title No Document States")
+            ), at
+
+
+def test_a_group_with_no_row_and_a_row_with_no_group_both_redden_the_gate() -> None:
+    """The gate's own readings, over trees and tables built to hold each failure.
+
+    ``test_every_cross_document_duplicate_group_is_decided`` is an equality between two
+    derivations and ``assert set() == set()`` would pass it, so each direction is shown
+    over the SAME functions rather than over a restated predicate.
+
+    Four states: a group the table does not answer, a row the tree does not form, the
+    answered state that must stay green, and a SAME-document group -- which must not enter
+    this population at all, because the gate above owns it and a decision table that could
+    answer one would be an exemption for the defect this file exists to assert away.
+    """
+    one = ("one/document.json", "#/properties/a/items")
+    other = ("another/document.json", "#/properties/b/items")
+    pair = [
+        _a_class("AtOne", "one.module", SchemaRef(document=one[0], pointer=one[1])),
+        _a_class("AtOther", "another.module", SchemaRef(document=other[0], pointer=other[1])),
+    ]
+    live = cross_document_groups(pair)
+    assert set(live) == {frozenset({one, other})}, live
+
+    answered = {frozenset({one, other}): duplicates.DECIDED[0]}
+    assert set(live) - set(answered) == set()
+    assert set(answered) - set(live) == set()
+    # A group the table does not answer, and a row the tree does not form.
+    assert set(live) - set() == set(live)
+    stale = {frozenset({("gone.json", "#")}): duplicates.DECIDED[0]}
+    assert set(stale) - set(live) == set(stale)
+    # And two declarations of ONE document never reach this population.
+    same = [
+        _a_class("AtZero", "one.module", SchemaRef(document=one[0], pointer="#/oneOf/0/d")),
+        _a_class("AtOne", "one.module", SchemaRef(document=one[0], pointer="#/oneOf/1/d")),
+    ]
+    assert cross_document_groups(same) == {}, cross_document_groups(same)
+    assert len(restated_within_one_document(same)) == 1
+
+
+def test_a_titled_restatement_declared_twice_reddens_the_gate() -> None:
+    """The gate's own reading, over two classes built to hold the defect.
+
+    ``test_a_structure_the_bundle_titles_at_every_position_is_declared_once`` is the green
+    direction and ``assert {} == {}`` passes it.  This calls the SAME function -- a restated
+    predicate would prove that a copy of the gate reddens, which is not the claim -- over
+    two declarations of one type at two positions one title names, and over the two states
+    that must NOT redden it: the same pair with only one of the positions named, and a
+    single declaration at a named position.
+    """
+    one = ("one/document.json", "#/properties/a/items")
+    other = ("another/document.json", "#/properties/b/items")
+    pair = [
+        _a_class("AtOne", "one.module", SchemaRef(document=one[0], pointer=one[1])),
+        _a_class("AtOther", "another.module", SchemaRef(document=other[0], pointer=other[1])),
+    ]
+    both = {"k": ("A Subject", frozenset({one, other}))}
+    assert declared_twice_though_named(pair, both) == {
+        "A Subject": sorted(
+            f"{cls.__module__}.{cls.__name__} {ref_of(cls)}" for cls in pair
+        )
+    }
+    # One position named and the other silent is NOT this defect: the bundle has not said
+    # the two are one subject, which is ``named_at_every_position``'s own condition read
+    # from the other side.
+    assert declared_twice_though_named(pair, {"k": ("A Subject", frozenset({one}))}) == {}
+    # And one declaration at a named position is the collapsed state, which must stay green.
+    assert declared_twice_though_named(pair[:1], both) == {}
 
 
 def test_one_document_declaring_two_classes_for_one_type_reddens_the_gate() -> None:
@@ -561,121 +1152,6 @@ def test_one_document_declaring_two_classes_for_one_type_reddens_the_gate() -> N
         ),
     ]
     assert restated_within_one_document(split) == {}, restated_within_one_document(split)
-
-
-# --------------------------------------------------------------------------- #
-# 2a. A position whose whole content is a reference, read off the BUNDLE
-# --------------------------------------------------------------------------- #
-def asserts_nothing_anywhere() -> frozenset[str]:
-    """Every keyword the TABLE answers ``NOTHING`` for at every position it has a cell at.
-
-    **DERIVED from ``codegen/keywords.py`` and not listed**, which is ``codegen/catalogue``'s
-    ``_carried`` for the same reason §9 gives: *"a keyword handled in code but named in none
-    of §5, §6 or §7 is an invented rule"*, and a list beside the table is how the two come
-    to disagree -- it would have said ``default`` is an annotation while the table says its
-    cell is FIELD at PROP.
-
-    Narrower than that function on purpose: ``_carried`` admits ANNOTATION too, because an
-    annotation does not change what a node ADMITS, and the question here is not what a node
-    admits but whether it STATES anything of its own.  §6's description-authority rule makes
-    a ``description`` a statement this document makes at this pointer, which a type that IS
-    another document's class cannot carry -- so ``description`` is out and
-    ``x-adcp-schema-uri``, whose every cell is NOTHING, is in.
-    """
-    return frozenset(
-        word
-        for word, row in keywords.TABLE.items()
-        if all(cell.effect is keywords.Effect.NOTHING for cell in (row.default, *row.at.values()))
-    )
-
-
-def whole_content_is_a_reference(document: str) -> set[str]:
-    """The non-root pointers of ``document`` whose whole content is one ``$ref``.
-
-    Read off the document as the bundle ships it and never off the record: §3's record
-    INLINES every cross-document reference, so a reading over it cannot tell a position
-    that references from one that restates -- which is the distinction reading 4 turns on.
-
-    A ROOT is excluded, and that is ``lower.references._root``'s decision rather than a
-    caution: D5 fixes a root's symbol, so a document whose root is a bare reference must
-    declare a class of its own -- *"binding this module's symbol to another module's class
-    would be a second way to reach one class, against §1"* -- and the answer there is a
-    subclass.  A non-root position declares no symbol, so there is nothing for a second
-    reach to be.
-    """
-    inert = asserts_nothing_anywhere()
-    found: set[str] = set()
-
-    def walk(node: Any, pointer: str) -> None:
-        if isinstance(node, dict):
-            conjuncts = node.get("allOf")
-            if (
-                pointer != "#"
-                and isinstance(conjuncts, list)
-                and len(conjuncts) == 1
-                and isinstance(conjuncts[0], dict)
-                and set(conjuncts[0]) == {"$ref"}
-                and set(node) - {"allOf"} <= inert
-            ):
-                found.add(pointer)
-            for word, sub in node.items():
-                walk(sub, f"{pointer}/{word}")
-        elif isinstance(node, list):
-            for index, sub in enumerate(node):
-                walk(sub, f"{pointer}/{index}")
-
-    walk(bundle.read(BUNDLE, document), "#")
-    return found
-
-
-def test_a_node_whose_whole_content_is_a_reference_declares_no_class_of_its_own() -> None:
-    """Reading 4 at the one position where the BUNDLE answers it: write once, reference.
-
-    *"A type stated at more than one position is written once and referenced, never
-    restated"*, and reading 4's own clause for deciding which this is -- *"whether the
-    bundle REFERENCES one node from the others or RESTATES it is the question that tells our
-    defect from the schema's own duplication"*.  A node stating ``{"allOf": [{"$ref": X}]}``
-    and nothing that asserts anything is the bundle REFERENCING, so the type is X's, X's
-    module declares it, and a class here would be a second declaration of it under a second
-    name -- which is ours and needs no title, because the bundle has already named the type
-    in X's own document.
-
-    **AN EQUALITY BETWEEN TWO DERIVATIONS and not a count**: the positions the BUNDLE states
-    that way, against the subset of them the TREE declares no class at.  Both sides move
-    with the inputs -- the first with the bundle, the second with the compiler -- so there is
-    no figure here to re-point when either moves, and the failure names the pointers rather
-    than a difference of two totals.
-
-    Its RED direction is the tree that was committed before this landed: three
-    ``push_notification_config`` properties in ``media-buy/decline-proposals-request.json``,
-    ``refine-proposals-request.json`` and ``request-proposals-request.json``, each an
-    ``allOf`` of one ``$ref`` to ``core/push-notification-config.json`` plus an
-    ``x-adcp-schema-uri``, and each declaring an empty subclass of that document's class.
-    The same four declarations are what
-    ``test_the_key_agrees_on_a_value_wherever_it_groups`` reported as one group of four with
-    no disagreement on any payload -- a group's members agreeing is the five-part key's
-    hypothesis, and the document stating the reference is the verdict.
-
-    **The four remaining ``context`` positions are in the claimed set and were never
-    classes**: ``core/context.json``'s root is not a class, so §5's ``$ref`` row at CONJ
-    already answered them with the target's own symbol.  They are in the set this check
-    ranges over, which is what makes the equality a statement about every position the
-    bundle states this way rather than about the three that moved.
-    """
-    positions = claimed(
-        "positions whose whole content is a reference",
-        {
-            (document, pointer)
-            for document in bundle.portable(BUNDLE)
-            for pointer in whole_content_is_a_reference(document)
-        },
-    )
-    declared = {ref_of(cls) for members in the_tree().values() for cls in members}
-    assert positions - declared == positions, {
-        "the bundle references here and the tree declares a class anyway": sorted(
-            positions & declared
-        )
-    }
 
 
 # --------------------------------------------------------------------------- #
@@ -769,3 +1245,115 @@ def test_two_classes_the_key_groups_that_disagree_on_a_value_refute_it() -> None
 
 if __name__ == "__main__":  # pragma: no cover -- the report, for a reader
     raise SystemExit(pytest.main([__file__, "-q"]))
+
+
+def test_a_node_whose_whole_content_is_a_reference_declares_no_class_of_its_own() -> None:
+    """Reading 4 at the one position where the BUNDLE answers it: write once, reference.
+
+    *"A type stated at more than one position is written once and referenced, never
+    restated"*, and reading 4's own clause for deciding which this is -- *"whether the
+    bundle REFERENCES one node from the others or RESTATES it is the question that tells our
+    defect from the schema's own duplication"*.  A node stating ``{"allOf": [{"$ref": X}]}``
+    and nothing that asserts anything is the bundle REFERENCING, so the type is X's, X's
+    module declares it, and a class here would be a second declaration of it under a second
+    name -- which is ours and needs no title, because the bundle has already named the type
+    in X's own document.
+
+    **AN EQUALITY BETWEEN TWO DERIVATIONS and not a count**: the positions the BUNDLE states
+    that way, against the subset of them the TREE declares no class at.  Both sides move
+    with the inputs -- the first with the bundle, the second with the compiler -- so there is
+    no figure here to re-point when either moves, and the failure names the pointers rather
+    than a difference of two totals.
+
+    Its RED direction is the tree that was committed before this landed: three
+    ``push_notification_config`` properties in ``media-buy/decline-proposals-request.json``,
+    ``refine-proposals-request.json`` and ``request-proposals-request.json``, each an
+    ``allOf`` of one ``$ref`` to ``core/push-notification-config.json`` plus an
+    ``x-adcp-schema-uri``, and each declaring an empty subclass of that document's class.
+    The same four declarations are what
+    ``test_the_key_agrees_on_a_value_wherever_it_groups`` reported as one group of four with
+    no disagreement on any payload -- a group's members agreeing is the five-part key's
+    hypothesis, and the document stating the reference is the verdict.
+
+    **The four remaining ``context`` positions are in the claimed set and were never
+    classes**: ``core/context.json``'s root is not a class, so §5's ``$ref`` row at CONJ
+    already answered them with the target's own symbol.  They are in the set this check
+    ranges over, which is what makes the equality a statement about every position the
+    bundle states this way rather than about the three that moved.
+    """
+    positions = claimed(
+        "positions whose whole content is a reference",
+        {
+            (document, pointer)
+            for document in bundle.portable(BUNDLE)
+            for pointer in whole_content_is_a_reference(document)
+        },
+    )
+    declared = {ref_of(cls) for members in the_tree().values() for cls in members}
+    assert positions - declared == positions, {
+        "the bundle references here and the tree declares a class anyway": sorted(
+            positions & declared
+        )
+    }
+
+
+def whole_content_is_a_reference(document: str) -> set[str]:
+    """The non-root pointers of ``document`` whose whole content is one ``$ref``.
+
+    Read off the document as the bundle ships it and never off the record: §3's record
+    INLINES every cross-document reference, so a reading over it cannot tell a position
+    that references from one that restates -- which is the distinction reading 4 turns on.
+
+    A ROOT is excluded, and that is ``lower.references._root``'s decision rather than a
+    caution: D5 fixes a root's symbol, so a document whose root is a bare reference must
+    declare a class of its own -- *"binding this module's symbol to another module's class
+    would be a second way to reach one class, against §1"* -- and the answer there is a
+    subclass.  A non-root position declares no symbol, so there is nothing for a second
+    reach to be.
+    """
+    inert = asserts_nothing_anywhere()
+    found: set[str] = set()
+
+    def walk(node: Any, pointer: str) -> None:
+        if isinstance(node, dict):
+            conjuncts = node.get("allOf")
+            if (
+                pointer != "#"
+                and isinstance(conjuncts, list)
+                and len(conjuncts) == 1
+                and isinstance(conjuncts[0], dict)
+                and set(conjuncts[0]) == {"$ref"}
+                and set(node) - {"allOf"} <= inert
+            ):
+                found.add(pointer)
+            for word, sub in node.items():
+                walk(sub, f"{pointer}/{word}")
+        elif isinstance(node, list):
+            for index, sub in enumerate(node):
+                walk(sub, f"{pointer}/{index}")
+
+    walk(bundle.read(BUNDLE, document), "#")
+    return found
+
+
+def asserts_nothing_anywhere() -> frozenset[str]:
+    """Every keyword the TABLE answers ``NOTHING`` for at every position it has a cell at.
+
+    **DERIVED from ``codegen/keywords.py`` and not listed**, which is ``codegen/catalogue``'s
+    ``_carried`` for the same reason §9 gives: *"a keyword handled in code but named in none
+    of §5, §6 or §7 is an invented rule"*, and a list beside the table is how the two come
+    to disagree -- it would have said ``default`` is an annotation while the table says its
+    cell is FIELD at PROP.
+
+    Narrower than that function on purpose: ``_carried`` admits ANNOTATION too, because an
+    annotation does not change what a node ADMITS, and the question here is not what a node
+    admits but whether it STATES anything of its own.  §6's description-authority rule makes
+    a ``description`` a statement this document makes at this pointer, which a type that IS
+    another document's class cannot carry -- so ``description`` is out and
+    ``x-adcp-schema-uri``, whose every cell is NOTHING, is in.
+    """
+    return frozenset(
+        word
+        for word, row in keywords.TABLE.items()
+        if all(cell.effect is keywords.Effect.NOTHING for cell in (row.default, *row.at.values()))
+    )

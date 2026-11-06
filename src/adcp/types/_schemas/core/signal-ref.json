@@ -1,5 +1,32 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "Shared0": {
+      "required": [
+        "data_provider_domain"
+      ]
+    },
+    "Shared1": {
+      "required": [
+        "signal_source_url"
+      ]
+    },
+    "Shared2": {
+      "required": [
+        "agent_url"
+      ]
+    },
+    "Shared3": {
+      "required": [
+        "source"
+      ]
+    },
+    "Shared4": {
+      "required": [
+        "id"
+      ]
+    }
+  },
   "description": "Reference to a named signal definition. Uses scope as discriminator: 'data_provider' for a signal resolved through published adagents.json signals[], 'signal_source' for a source-native signal resolved through the issuing signal source, or 'product' for a product-local signal option. Scope is the resolution path, not provenance; authoritative enrichment lives on the seller, signal source, or data-provider signal definition, not on this reference.",
   "discriminator": {
     "propertyName": "scope"
@@ -11,29 +38,19 @@
       "not": {
         "anyOf": [
           {
-            "required": [
-              "data_provider_domain"
-            ]
+            "$ref": "#/definitions/Shared0"
           },
           {
-            "required": [
-              "signal_source_url"
-            ]
+            "$ref": "#/definitions/Shared1"
           },
           {
-            "required": [
-              "agent_url"
-            ]
+            "$ref": "#/definitions/Shared2"
           },
           {
-            "required": [
-              "source"
-            ]
+            "$ref": "#/definitions/Shared3"
           },
           {
-            "required": [
-              "id"
-            ]
+            "$ref": "#/definitions/Shared4"
           }
         ]
       },
@@ -61,31 +78,25 @@
       "not": {
         "anyOf": [
           {
-            "required": [
-              "agent_url"
-            ]
+            "$ref": "#/definitions/Shared2"
           },
           {
-            "required": [
-              "signal_source_url"
-            ]
+            "$ref": "#/definitions/Shared1"
           },
           {
-            "required": [
-              "source"
-            ]
+            "$ref": "#/definitions/Shared3"
           },
           {
-            "required": [
-              "id"
-            ]
+            "$ref": "#/definitions/Shared4"
           }
         ]
       },
       "properties": {
         "data_provider_domain": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
           "description": "Domain that publishes the signal definition in its adagents.json signals[].",
           "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+          "title": "Domain Name",
           "type": "string"
         },
         "scope": {
@@ -112,24 +123,16 @@
       "not": {
         "anyOf": [
           {
-            "required": [
-              "data_provider_domain"
-            ]
+            "$ref": "#/definitions/Shared0"
           },
           {
-            "required": [
-              "agent_url"
-            ]
+            "$ref": "#/definitions/Shared2"
           },
           {
-            "required": [
-              "source"
-            ]
+            "$ref": "#/definitions/Shared3"
           },
           {
-            "required": [
-              "id"
-            ]
+            "$ref": "#/definitions/Shared4"
           }
         ]
       },

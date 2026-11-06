@@ -7,7 +7,8 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
-from adcp.types.constraints import AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain
+
+from .domain_name import DomainName
 
 
 class FormatOptionReference(BranchDispatchMixin, AdCPBaseModel):
@@ -35,7 +36,7 @@ class PublisherCatalogFormatOptionReference(FormatOptionReference):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format-option-ref.json', pointer='#/oneOf/0')
     scope: Annotated[Literal['publisher'], Field(description="Reference resolves against the named publisher's adagents.json top-level `formats[]` catalog.")]
-    publisher_domain: Annotated[AAODirectoryAgentPublishersInverseLookupResponsePublisherEntryPublisherDomain, Field(description='Publisher domain where the adagents.json declaring this format option is hosted.')]
+    publisher_domain: Annotated[DomainName, Field(description='Publisher domain where the adagents.json declaring this format option is hosted.')]
     format_option_id: Annotated[str, Field(description="Stable format option ID from the publisher's adagents.json top-level `formats[]`, matching a publisher-catalog-backed entry in the target product's `format_options[]`.")]
 
 

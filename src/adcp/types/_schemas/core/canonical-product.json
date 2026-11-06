@@ -410,7 +410,10 @@
       "type": "object"
     },
     "Shared11": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "ISO 4217 alphabetic currency code. Extracted unchanged from the 83 sites that stated it inline; see adcontextprotocol/adcp#8525.",
       "pattern": "^[A-Z]{3}$",
+      "title": "Currency Code",
       "type": "string"
     },
     "Shared110": {
@@ -735,8 +738,10 @@
       "const": "rfc3986"
     },
     "Shared139": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "description": "ISO 3166-1 alpha-2 country code.",
       "pattern": "^[A-Z]{2}$",
+      "title": "Country Code",
       "type": "string"
     },
     "Shared14": {
@@ -1849,12 +1854,18 @@
       "type": "object"
     },
     "Shared27": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "A lowercase DNS domain name, dot-separated LDH labels. Extracted unchanged from the 54 sites that stated it inline; see adcontextprotocol/adcp#8525.",
       "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+      "title": "Domain Name",
       "type": "string"
     },
     "Shared28": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "A URL whose scheme is https. Extracted unchanged from the 46 sites that stated it inline; see adcontextprotocol/adcp#8525. This is the shape adcontextprotocol/adcp#8398 asks the other seven uri patterns to reduce to.",
       "format": "uri",
       "pattern": "^https://",
+      "title": "HTTPS URL",
       "type": "string"
     },
     "Shared29": {
@@ -2153,8 +2164,10 @@
           "uniqueItems": true
         },
         "domain": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
           "description": "Domain that hosts /.well-known/brand.json or is registered for the brand.",
           "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+          "title": "Domain Name",
           "type": "string"
         }
       },
@@ -2655,9 +2668,11 @@
                 "type": "string"
               },
               "uri": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
                 "description": "HTTPS URL identifying the extension. `https://` is mandatory \u2014 `http://`, `file://`, `data:`, and other schemes are rejected at the schema layer (defense-in-depth on top of the fetch-contract normative rules). The URI base is the owning agent's URL; the path identifies the extension within that agent. Example: 'https://creative.adcontextprotocol.org/translated/meta/extensions/meta_pixel'. The full fetch contract \u2014 SSRF allowlist, response-size cap, $ref sandbox, schema-compile bounds \u2014 is documented on `product-format-declaration.json#format_schema` and applies to ALL fetches of this reference shape regardless of whether the field is named `format_schema` (load-bearing for validation) or `platform_extensions` (informational); the *transport* rules are identical, only the *consumption* semantics differ.",
                 "format": "uri",
                 "pattern": "^https://",
+                "title": "HTTPS URL",
                 "type": "string"
               }
             },
@@ -3796,8 +3811,10 @@
       ]
     },
     "Shared73": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "description": "Domain where publisher's adagents.json is hosted (e.g., 'cnn.com'). XOR with `publisher_domains` \u2014 exactly one MUST be present on each `publisher_properties[]` entry; both-present and neither-present both fail validation.",
       "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+      "title": "Domain Name",
       "type": "string"
     },
     "Shared74": {
@@ -4270,7 +4287,10 @@
       ]
     },
     "Shared99": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "ISO 3166-1 alpha-2 country code. Extracted unchanged from the 65 sites that stated it inline; see adcontextprotocol/adcp#8525.",
       "pattern": "^[A-Z]{2}$",
+      "title": "Country Code",
       "type": "string"
     }
   },
@@ -4872,8 +4892,10 @@
                 "type": "array"
               },
               "publisher_domain": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
                 "description": "Domain where the adagents.json declaring these collections is hosted (e.g., 'mrbeast.com'). The collections array in that file contains the authoritative collection definitions.",
                 "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                "title": "Domain Name",
                 "type": "string"
               }
             },
@@ -4888,7 +4910,8 @@
               "collection_ids"
             ]
           }
-        ]
+        ],
+        "title": "Explicit Collection Selector"
       },
       "minItems": 1,
       "type": "array"
@@ -5800,8 +5823,10 @@
                       "description": "A geographic dimension for a ForecastPoint row. Variant of ForecastPoint dimensions; see forecast-point-dimensions.json for dispatch rules.",
                       "properties": {
                         "country": {
+                          "$schema": "http://json-schema.org/draft-07/schema#",
                           "description": "ISO 3166-1 alpha-2 country code. Required for native postal_area rows and omitted for legacy postal rows, metro rows, country rows, and region rows.",
                           "pattern": "^[A-Z]{2}$",
+                          "title": "Country Code",
                           "type": "string"
                         },
                         "geo_code": {
@@ -5867,8 +5892,10 @@
                               "x-entity": "placement"
                             },
                             "publisher_domain": {
+                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "description": "Domain where the adagents.json declaring a publisher-catalog placement is hosted, or the inventory publisher associated with an inline placement. Omitted only for legacy single-publisher product-context references.",
                               "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                              "title": "Domain Name",
                               "type": "string"
                             }
                           },
@@ -6153,8 +6180,10 @@
                               },
                               "properties": {
                                 "data_provider_domain": {
+                                  "$schema": "http://json-schema.org/draft-07/schema#",
                                   "description": "Domain that publishes the signal definition in its adagents.json signals[].",
                                   "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                                  "title": "Domain Name",
                                   "type": "string"
                                 },
                                 "scope": {
@@ -7224,8 +7253,10 @@
             "x-entity": "placement"
           },
           "publisher_domain": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
             "description": "For publisher_ref, the adagents.json publisher namespace. For seller_inline, optional inventory-publisher attribution only.",
             "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+            "title": "Domain Name",
             "type": "string"
           },
           "seller_agent": {
@@ -7639,8 +7670,10 @@
                     "type": "array"
                   },
                   "publisher_domain": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
                     "description": "Domain where publisher's adagents.json is hosted (e.g., 'cnn.com').",
                     "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                    "title": "Domain Name",
                     "type": "string"
                   },
                   "selection_type": {

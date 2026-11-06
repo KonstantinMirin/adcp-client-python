@@ -6,10 +6,11 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
-from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, StrMaxLen2000
+from adcp.types.constraints import StrMaxLen2000
 
 from ..core.brand_ref import BrandReference
 from ..core.context import ContextObject
+from ..core.country_code import CountryCode
 from ..core.ext import ExtensionObject
 from ..core.pagination_request import PaginationRequest
 from ..core.version_envelope import AdCPVersionEnvelope
@@ -28,7 +29,7 @@ class GetRightsRequest(AdCPVersionEnvelope):
     query: Annotated[StrMaxLen2000, Field(description='Natural language description of desired rights. The agent interprets intent, budget signals, and compatibility from this text.')]
     uses: Annotated[list[RightUse], Field(description='Rights uses being requested. The agent returns options covering these uses, potentially bundled into composite pricing.', min_length=1)]
     buyer_brand: Annotated[BrandReference | None, Field(description="The buyer's brand. The agent fetches the buyer's brand.json for compatibility filtering (e.g., dietary conflicts, competitor exclusions).")] = None
-    countries: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem] | None, Field(description='Countries where rights are needed (ISO 3166-1 alpha-2). Filters to rights available in these markets.')] = None
+    countries: Annotated[list[CountryCode] | None, Field(description='Countries where rights are needed (ISO 3166-1 alpha-2). Filters to rights available in these markets.')] = None
     brand_id: Annotated[str | None, Field(description="Search within a specific brand's rights. If omitted, searches across the agent's full roster.")] = None
     right_type: Annotated[RightType | None, Field(description='Filter by type of rights (talent, music, stock_media, etc.)')] = None
     include_excluded: Annotated[bool | None, Field(description='Include filtered-out results in the excluded array with reasons. Defaults to false.')] = False

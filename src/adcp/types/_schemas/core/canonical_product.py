@@ -28,28 +28,17 @@ from .canonical_placement import CanonicalProductPlacement
 from .canonical_pricing_option import CanonicalPricingOption
 from .canonical_product_action import CanonicalProductAction
 from .canonical_reporting_capabilities import CanonicalReportingCapabilities
-from .collection_selector import CollectionSelector
 from .demographic_targeting_capability import DemographicTargetingCapability
 from .ext import ExtensionObject
 from .inventory_list_application import InventoryListApplication
 from .media_buy_support import ProductMediaBuySupport
+from .product import CollectionsItem
 from .product_execution_requirement import ProductExecutionRequirement
 from .product_identity import ProductIdentity
 from .product_targeting_resolution import ProductTargetingResolution
 from .publisher_property_selector import PublisherPropertySelector
 from .signal_targeting_rules import SignalTargetingRules
 from .targeting_overlay_support import TargetingOverlaySupport
-
-
-class CollectionsItem(CollectionSelector):
-    """
-    References collections declared in an adagents.json. Buyers resolve full collection objects by fetching the adagents.json at the given domain and matching collection_ids against its collections array. When collection_ids is omitted, the selector references every collection declared in that adagents.json — the bulk-grant form for authorization scoping (e.g., a host authorizing a channel owner's sales agent for all of the owner's collections without tracking owner-assigned IDs).
-    """
-    model_config = ConfigDict(
-        extra='allow',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/canonical-product.json', pointer='#/properties/collections/items')
-    collection_ids: Annotated[list[str], Field(description='Collection IDs from the adagents.json collections array. Each ID must match a collection_id declared in that file. Omit to reference all collections declared in that file.', min_length=1)]
 
 
 class CatalogMatch(AdCPBaseModel):

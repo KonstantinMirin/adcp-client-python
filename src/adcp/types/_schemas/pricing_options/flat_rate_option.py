@@ -7,8 +7,9 @@ from pydantic import ConfigDict, Field, NonNegativeFloat, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import FloatMin0Max100, GetAccountFinancialsResponseSuccessCurrency, IntMin1, StrMinLen1
+from adcp.types.constraints import FloatMin0Max100, IntMin1, StrMinLen1
 
+from ..core.currency_code import CurrencyCode
 from ..enums.adjustment_kind import PriceAdjustmentKind
 from .price_breakdown import PriceBreakdown
 from .price_guidance import PriceGuidance
@@ -47,7 +48,7 @@ class FlatRatePricingOption(AdCPBaseModel):
     )
     pricing_option_id: Annotated[str, Field(description='Unique identifier for this pricing option within the product')]
     pricing_model: Annotated[Literal['flat_rate'], Field(description='Fixed cost regardless of delivery volume')]
-    currency: Annotated[GetAccountFinancialsResponseSuccessCurrency, Field(description='ISO 4217 currency code')]
+    currency: Annotated[CurrencyCode, Field(description='ISO 4217 currency code')]
     fixed_price: Annotated[NonNegativeFloat | None, Field(description='Flat rate cost. If present, this is fixed pricing. If absent, auction-based.')] = None
     floor_price: Annotated[NonNegativeFloat | None, Field(description='Minimum acceptable bid for auction pricing (mutually exclusive with fixed_price). Bids below this value will be rejected.')] = None
     price_guidance: Annotated[PriceGuidance | None, Field(description='Optional pricing guidance for auction-based bidding')] = None

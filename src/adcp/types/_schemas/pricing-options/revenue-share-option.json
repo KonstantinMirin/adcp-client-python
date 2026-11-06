@@ -71,6 +71,7 @@
       "type": "number"
     },
     "currency": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "description": "ISO 4217 currency code for commissionable_value and resulting spend",
       "examples": [
         "USD",
@@ -79,6 +80,7 @@
         "JPY"
       ],
       "pattern": "^[A-Z]{3}$",
+      "title": "Currency Code",
       "type": "string"
     },
     "custom_event_name": {

@@ -9,7 +9,6 @@ from pydantic import AwareDatetime, ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import (
-    AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem,
     AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem,
     AdCPAgentsAuthorizationAuthorizedAgentsItemSignalTagsItem,
     HttpUrl,
@@ -24,6 +23,7 @@ from ..enums.consent_basis import ConsentBasis
 from ..enums.restricted_attribute import RestrictedAttribute
 from ..enums.signal_value_type import SignalValueType
 from ._vocabularies import _VALUES_INTRA_DAY_DAILY_WEEKLY_MONTHLY_BI_MONTHLY_QUARTERLY_BI_ANNUALLY_ANNUALLY
+from .country_code import CountryCode
 from .demographic_predicate import DemographicPredicate
 from .signal_definition_enrichment import (
     Art9Basis,
@@ -138,7 +138,7 @@ class SignalDefinition(AdCPBaseModel):
     id_types: Annotated[list[IdTypesItem] | None, Field(description='Identifier currencies analyzed to determine audience membership or attributes.', min_length=1)] = None
     audience_scope: Annotated[AudienceScope | None, Field(description="Context within which the audience attribute was determined. 'single_domain' requires originating_domain.")] = None
     originating_domain: Annotated[str | None, Field(description="Domain of the digital property where the audience originates. Required when audience_scope is 'single_domain'.", json_schema_extra={'format': 'hostname'})] = None
-    countries: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem] | None, Field(description="ISO 3166-1 alpha-2 country codes where the signal is applicable. Sellers must not expose a signal for media buys in countries outside this list. Federating agents that surface a peer's signal MUST treat the peer-published list as an upper bound, re-check it against the buyer's intended deployment countries, and may apply only narrower local policy.", min_length=1)] = None
+    countries: Annotated[list[CountryCode] | None, Field(description="ISO 3166-1 alpha-2 country codes where the signal is applicable. Sellers must not expose a signal for media buys in countries outside this list. Federating agents that surface a peer's signal MUST treat the peer-published list as an upper bound, re-check it against the buyer's intended deployment countries, and may apply only narrower local policy.", min_length=1)] = None
     consent_basis: Annotated[list[ConsentBasis] | None, Field(description="Declared GDPR Article 6 lawful basis or consent basis under which this signal's data is processed. For non-GDPR regimes, use countries, policy_categories, and disclosure fields to describe jurisdiction-specific obligations unless a future enum value applies.", min_length=1)] = None
     art9_basis: Annotated[Art9Basis | None, Field(description='GDPR Article 9 basis when restricted_attributes is non-empty and the signal is used in jurisdictions where Article 9 applies. Required by policy for applicable use cases rather than universally required at schema level because sensitivity and lawful basis are jurisdiction-relative.')] = None
     modeling: Annotated[Modeling | None, Field(description="Modeling disclosure for modeled data signals. Required when methodology is 'modeled' or audience_expansion is true. This describes data modeling and intentionally does not reuse creative provenance, which is content/render oriented.")] = None

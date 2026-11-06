@@ -6,12 +6,12 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
-from adcp.types.constraints import SyncAccountsRequestIdempotencyKey
 
 from ..core.account_ref import AccountReference
 from ..core.context import ContextObject
 from ..core.creative_manifest import CreativeManifest
 from ..core.ext import ExtensionObject
+from ..core.idempotency_key import IdempotencyKey
 from ..core.push_notification_config import PushNotificationConfig
 from ..core.version_envelope import AdCPVersionEnvelope
 
@@ -24,7 +24,7 @@ class GetCreativeFeaturesRequest(AdCPVersionEnvelope):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/get-creative-features-request.json', pointer='#')
-    idempotency_key: Annotated[SyncAccountsRequestIdempotencyKey | None, Field(description='Optional in AdCP 3.x for wire compatibility; clients SHOULD send a unique key for every logical evaluation. When supplied to a provider that advertises adcp.idempotency.supported: true, exact retries with the same canonical payload MUST return the cached initial response with replayed: true and MUST NOT dispatch a second provider evaluation or record a second consumption or cost event. Reusing the key with a different creative_manifest, account, or feature_ids payload returns IDEMPOTENCY_CONFLICT. The provider MUST retain the replay record for at least 24 hours. Keys MUST be unique per (provider, request) pair to prevent cross-provider correlation. This field becomes required in AdCP 4.0; use a fresh UUID v4 for each logical evaluation.')] = None
+    idempotency_key: Annotated[IdempotencyKey | None, Field(description='Optional in AdCP 3.x for wire compatibility; clients SHOULD send a unique key for every logical evaluation. When supplied to a provider that advertises adcp.idempotency.supported: true, exact retries with the same canonical payload MUST return the cached initial response with replayed: true and MUST NOT dispatch a second provider evaluation or record a second consumption or cost event. Reusing the key with a different creative_manifest, account, or feature_ids payload returns IDEMPOTENCY_CONFLICT. The provider MUST retain the replay record for at least 24 hours. Keys MUST be unique per (provider, request) pair to prevent cross-provider correlation. This field becomes required in AdCP 4.0; use a fresh UUID v4 for each logical evaluation.')] = None
     creative_manifest: Annotated[CreativeManifest, Field(description='The canonical creative manifest to evaluate. In 3.2 it contains `format_kind`, optional `format_option_ref`, and typed assets. The deprecated named `format_id` branch remains available only for older 3.x peers.')]
     feature_ids: Annotated[list[str] | None, Field(description='Optional filter to specific features. If omitted, returns all available features.', min_length=1)] = None
     account: Annotated[AccountReference | None, Field(description='Account for billing this evaluation. Required when the governance agent charges per evaluation.')] = None

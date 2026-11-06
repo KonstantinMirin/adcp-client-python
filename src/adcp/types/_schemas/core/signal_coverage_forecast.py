@@ -8,9 +8,10 @@ from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import AtLeastOne, Rule, UniqueItems
-from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, FloatMin0Max1
+from adcp.types.constraints import FloatMin0Max1
 
 from ..enums.forecast_method import ForecastMethod
+from .country_code import CountryCode
 from .date_range import DateRange
 from .ext import ExtensionObject
 from .forecast_point import ForecastPoint
@@ -96,7 +97,7 @@ class Scope(AdCPBaseModel):
     kind: Annotated[Kind, Field(description='Denominator family for the coverage forecast.')]
     label: Annotated[str, Field(description="Human-readable denominator label, such as 'network price-priority inventory'.")]
     product_id: Annotated[str | None, Field(description="Product denominator when kind is 'product'.")] = None
-    countries: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem] | None, Field(description='Countries included in the denominator, as ISO 3166-1 alpha-2 codes.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    countries: Annotated[list[CountryCode] | None, Field(description='Countries included in the denominator, as ISO 3166-1 alpha-2 codes.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     line_item_types: Annotated[list[str] | None, Field(description='Seller or ad-server line item types included in the denominator.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     date_range: Annotated[DateRange | None, Field(description='Historical or planned date window used to compute the denominator.')] = None
 

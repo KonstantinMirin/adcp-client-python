@@ -7,10 +7,11 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
-from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem, FloatMin0Max1, HttpUrl
+from adcp.types.constraints import FloatMin0Max1, HttpUrl
 from adcp.types.envelopes import FailedResponse
 
 from ..core.context import ContextObject
+from ..core.country_code import CountryCode
 from ..core.error import Error
 from ..core.ext import ExtensionObject
 from ..core.protocol_envelope import ProtocolEnvelope
@@ -70,8 +71,8 @@ class RightsItem(AdCPBaseModel):
     match_score: Annotated[FloatMin0Max1 | None, Field(description='Relevance score from 0 to 1')] = None
     match_reasons: Annotated[list[str] | None, Field(description='Human-readable reasons for the match')] = None
     available_uses: Annotated[list[RightUse], Field(description='Rights uses available for licensing')]
-    countries: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem] | None, Field(description='Countries where rights are available (ISO 3166-1 alpha-2). When both countries and excluded_countries are present, the effective set is countries minus excluded_countries. If neither is present, all countries are available.')] = None
-    excluded_countries: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemCountriesItem] | None, Field(description='Countries excluded from availability')] = None
+    countries: Annotated[list[CountryCode] | None, Field(description='Countries where rights are available (ISO 3166-1 alpha-2). When both countries and excluded_countries are present, the effective set is countries minus excluded_countries. If neither is present, all countries are available.')] = None
+    excluded_countries: Annotated[list[CountryCode] | None, Field(description='Countries excluded from availability')] = None
     exclusivity_status: Annotated[ExclusivityStatus | None, Field(description='Current exclusivity availability')] = None
     pricing_options: Annotated[list[RightsPricingOption], Field(description='Available pricing options for these rights', min_length=1)]
     content_restrictions: Annotated[list[str] | None, Field(description='Content restrictions or approval requirements')] = None

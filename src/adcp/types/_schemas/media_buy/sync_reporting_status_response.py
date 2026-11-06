@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import SyncAccountsRequestIdempotencyKey
+from adcp.types.constraints import StrIdempotencyKey
 
 from ..core.context import ContextObject
 from ..core.error import Error
@@ -54,7 +54,7 @@ class FailedReportingConsumerStatus(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/sync-reporting-status-response.json', pointer='#/properties/results/items/oneOf/2')
     result: Literal['failed']
-    reporting_status_id: SyncAccountsRequestIdempotencyKey
+    reporting_status_id: StrIdempotencyKey
     errors: Annotated[list[Error], Field(max_length=16, min_length=1)]
 
 

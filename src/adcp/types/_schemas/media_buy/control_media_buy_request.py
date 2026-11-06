@@ -7,20 +7,14 @@ from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, RequiredGroups, Rule
-from adcp.types.constraints import (
-    IntMin1,
-    MediaBuyName,
-    StrMinLen1,
-    StrMinLen1MaxLen500,
-    StrMinLen1MaxLen4096,
-    SyncAccountsRequestIdempotencyKey,
-)
+from adcp.types.constraints import IntMin1, MediaBuyName, StrMinLen1, StrMinLen1MaxLen500, StrMinLen1MaxLen4096
 
 from ..core.bidding_policy import BiddingPolicy
 from ..core.canonical_account_ref import CanonicalAccountReference
 from ..core.canonical_budget_allocation import CanonicalBudgetAllocation
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
+from ..core.idempotency_key import IdempotencyKey
 from ..core.media_buy_frequency_cap import MediaBuyFrequencyCap
 from ..core.push_notification_config import PushNotificationConfig
 from ..core.reporting_webhook import ReportingWebhook
@@ -46,7 +40,7 @@ class ControlMediaBuyRequest(AdCPVersionEnvelope):
     )
     adcp_version: AdcpVersion | None = None
     adcp_major_version: AdcpMajorVersion | None = None
-    idempotency_key: SyncAccountsRequestIdempotencyKey
+    idempotency_key: IdempotencyKey
     account: CanonicalAccountReference
     media_buy_id: StrMinLen1
     revision: Annotated[IntMin1, Field(description='Required optimistic-concurrency revision from the latest MediaBuy snapshot.')]
